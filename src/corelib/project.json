@@ -1,0 +1,15 @@
+﻿{
+    "version": "1.0.0-*",
+    "compilationOptions": {
+        "emitEntryPoint": false,
+        "define": [ "DOTNET5_4" ]
+    },
+
+    "dependencies": {        
+        "NETStandard.Library": "1.0.0-rc3-23727"
+    },
+
+    "frameworks": {
+        "dotnet54": { }
+    }
+}
