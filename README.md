@@ -1,12 +1,18 @@
+# VSTS Cross Platform Agent (CoreCLR)
 
-install .NET core by following instructions on https://dotnet.github.io/getting-started/
+## Dependencies
 
+.NET core [Install Here](https://dotnet.github.io/getting-started/)
 
-"build.cmd" will sync all packages and build everything but the tests
+## Contribute
 
-"run.cmd" will run the vstsworker
+Run in this order:
 
-"test.cmd" will sync test packages, build and run the xunit tests. Run "build" before "test".
+First time, do in this order.
+
+`restore.cmd`: Run first time and any time you change a project.json
+`build.cmd`: build everything but the tests
+`test.cmd`: build and run unit tests
 the failed tests are printed, the full results are in src\tests\bin\Debug\dnxcore50\win7-x64\testResults.xml
 
 "clean.cmd" will delete all temporary files -> should be run before commiting code

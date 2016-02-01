@@ -1,8 +1,7 @@
 ﻿{
     "version": "1.0.0-*",
     "compilationOptions": {
-        "emitEntryPoint": false,
-        "define": [ "DOTNET5_4" ]
+        "emitEntryPoint": false
     },
 
     "dependencies": {        
@@ -10,6 +9,6 @@
     },
 
     "frameworks": {
-        "dotnet54": { }
+        "dnxcore50": { }
     }
 }

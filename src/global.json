@@ -1,0 +1,7 @@
+{
+    "projects": [
+        "Microsoft.VisualStudio.Services.Agent",
+        "Worker",
+        "Test"
+    ]
+}

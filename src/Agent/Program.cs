@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace  Microsoft.VisualStudio.Services.Agent.Agent
+namespace  Microsoft.VisualStudio.Services.Agent.CLI
 {
     public class Program
     {

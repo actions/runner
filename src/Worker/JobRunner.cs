@@ -3,11 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Microsoft.VisualStudio.Services.Agent
+namespace Microsoft.VisualStudio.Services.Agent.Worker.CLI
 {
-    public class HostContext: Context
+    public class JobRunner
     {
-        public HostContext() {
+        public JobRunner() {
             
         }
     }

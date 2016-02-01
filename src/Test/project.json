@@ -1,15 +1,19 @@
 ﻿{
-    "version": "1.0.0-*",    
+    "version": "1.0.0-*",   
     "compilationOptions": {
-        "emitEntryPoint": false
+        "emitEntryPoint": false,
+        "define": [ "SAMPLE_DEFINE" ]
     },
-
     "dependencies": {
         "NETStandard.Library": "1.0.0-rc3-23727",
+        "Microsoft.NETCore.TestHost": "1.0.0-rc2-*",
         "xunit": "2.1.0",
         "xunit.console.netcore": "1.0.2-prerelease-00101",
         "xunit.netcore.extensions": "1.0.0-prerelease-00153",
-        "xunit.runner.utility": "2.1.0"           
+        "xunit.runner.utility": "2.1.0",
+        "Agent": "",
+        "Microsoft.VisualStudio.Services.Agent": { "target": "project" },
+        "Worker": "" 
     },
     "frameworks": {
         "dnxcore50": {

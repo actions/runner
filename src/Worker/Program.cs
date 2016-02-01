@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Threading;
 
-namespace  Microsoft.VisualStudio.Services.Agent.Worker
+namespace  Microsoft.VisualStudio.Services.Agent.Worker.CLI
 {
     class Program
     {

@@ -1,17 +1,24 @@
 @echo off
-pushd src\vstsworker
-rmdir bin /s /q
-rmdir obj /s /q
-del project.lock.json
-popd
- 
-pushd src\tests
+pushd src\Worker
 rmdir bin /s /q
 rmdir obj /s /q
 del project.lock.json
 popd
 
-pushd src\corelib
+@echo off
+pushd src\Agent
+rmdir bin /s /q
+rmdir obj /s /q
+del project.lock.json
+popd
+
+pushd src\Test
+rmdir bin /s /q
+rmdir obj /s /q
+del project.lock.json
+popd
+
+pushd src\Microsoft.VisualStudio.Services.Agent
 rmdir bin /s /q
 rmdir obj /s /q
 del project.lock.json
