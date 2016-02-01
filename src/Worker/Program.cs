@@ -3,13 +3,13 @@ using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Threading;
 
-namespace  Microsoft.TeamFoundation.DistributedTask.Worker
+namespace  Microsoft.VisualStudio.Services.Agent.Worker
 {
     class Program
     {
-        static void Main()
+        static void Main(string[] args)
         {            
-            coreagent.play.SomeClass.Print();
+
         }
     }
 }
