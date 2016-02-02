@@ -18,11 +18,11 @@ $ npm install
 
 From /src dir:
 
+Win32   
+`dev {command}`
+
 *nix  
 `./dev.js {command}`
-  
-Win32   
-`dev.cmd {command}`
   
 ** Commands: **
 
