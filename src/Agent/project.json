@@ -5,7 +5,8 @@
     },
 
     "dependencies": {
-        "NETStandard.Library": "1.0.0-rc2-23727"
+        "NETStandard.Library": "1.0.0-rc2-23727",
+        "Microsoft.VisualStudio.Services.Agent": ""       
     },
 
     "frameworks": {

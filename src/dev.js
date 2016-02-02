@@ -33,7 +33,7 @@ var dotnet = function(action, args, options, bestEffort) {
     console.log();
     var rc = shell.exec(cmd).code;
     if (rc != 0 && !bestEffort) {
-        fail('dotnet failed. rc=' + rc);
+        fail(['dotnet failed. rc=' + rc]);
     }
 }
 
@@ -57,6 +57,13 @@ actions["build"] = function() {
     console.log('done.');  
 }
 
+actions["publish"] = function() {
+    projs.forEach(function(proj) {
+        dotnet('publish', [proj]);
+    })
+    console.log('done.');  
+}
+
 actions["clean"] = function() {
     projs.forEach(function(proj) {
         'Cleaning ' + proj; 
@@ -68,12 +75,8 @@ actions["clean"] = function() {
     console.log('done.');
 }
 
-actions["test"] = function() {
-    var level = args[1] || 'L0';
-    console.log('Running Tests.  Level ' + level);
-    
-    dotnet('publish', ['Test']);
-    var pubRoot = path.join(__dirname, 'Test/bin/Debug/dnxcore50');
+var findPubDir = function(proj) {
+    var pubRoot = path.join(__dirname, proj + '/bin/Debug/dnxcore50');
     var plats = shell.ls(pubRoot);
     var plat;
     if (plats && plats.length > 0) {
@@ -83,7 +86,49 @@ actions["test"] = function() {
                 plat = itemPath;
             }
         })
-        
+    }
+    return plat;
+}
+
+var heading = function(message) {
+    console.log();
+    console.log('---------------------------------------------------------------');
+    console.log('\t' + message);
+    console.log('---------------------------------------------------------------');
+}
+
+actions["layout"] = function() {
+    var layout = path.join('..', '_layout');
+    heading('Creating a layout in ' + layout);
+    console.log("Cleaning ...");
+    actions["clean"]();
+    heading('Restore');
+    actions['restore']();
+    heading('Building');
+    actions["build"]();
+    heading('Publish');
+    actions["publish"]();
+    
+    shell.rm('-rf', layout);
+    shell.mkdir('-p', layout);
+    
+    heading('Copying');
+    var rules = require('./layout.json');
+    rules.projects.forEach(function(proj) {
+        shell.cp('-Rf', findPubDir(proj) + '/', layout);    
+    });
+    console.log();
+    console.log('done.');
+}
+
+actions["test"] = function() {
+    var level = args[1] || 'L0';
+    console.log('Running Tests.  Level ' + level);
+    
+    dotnet('publish', ['Test']);
+    
+    var plat = findPubDir('Test');
+    if (plat) {        
         shell.pushd(plat);
         var rc = shell.exec('corerun xunit.console.netcore.exe Test.dll -xml testresults.xml -trait Level=' + level).code;
         console.log();

@@ -2,3 +2,4 @@
 **/obj
 **/project.lock.json
 node_modules
+_layout

@@ -6,7 +6,7 @@ namespace  Microsoft.VisualStudio.Services.Agent.CLI
     {
         public static void Main(string[] args)
         {
-            Console.WriteLine("Hello World!");
+            Console.WriteLine("Hello Agent!");
         }
     }
 }

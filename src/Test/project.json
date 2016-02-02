@@ -13,7 +13,7 @@
         "xunit.runner.utility": "2.1.0",
         "Agent": "",
         "Microsoft.VisualStudio.Services.Agent": { "target": "project" },
-        "Worker": "" 
+        "Worker": { "target": "project" } 
     },
     "frameworks": {
         "dnxcore50": {

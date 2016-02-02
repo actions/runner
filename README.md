@@ -46,5 +46,7 @@ From src:
   results in: 
   Test/bin/Debug/dnxcore50/{platform}/testResults.xml  
 
+`layout`: Creates a full layout in {root}/_layout  
+   Does a clean, restore, build, publish and copy
   
 
