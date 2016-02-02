@@ -26,7 +26,7 @@ $ npm install
 
 From src:
 
-`dev {command}` <sub><sup>(On *nix don't forget the dot slash in front)</sup></sub>
+`dev {command}` * (./dev on *nix) *
   
 ** Commands: **
 
