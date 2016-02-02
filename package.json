@@ -1,0 +1,19 @@
+{
+  "name": "vsts-agent",
+  "version": "0.6.0",
+  "description": "VSTS Xplat Agent",
+  "main": "src/dev.js",
+  "dependencies": {},
+  "devDependencies": {
+    "shelljs": "^0.5.3"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github/Microsoft/vsts-agent"
+  },
+  "author": "Microsoft",
+  "license": "MIT"
+}

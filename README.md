@@ -3,17 +3,35 @@
 ## Dependencies
 
 .NET core [Install Here](https://dotnet.github.io/getting-started/)
+Node (build) [Install Here](http://node.js.org)
 
 ## Contribute
 
-Run in this order:
+### Prepare for building.  
 
-`restore.cmd`: Run first time and any time you change a project.json  
+Once from root of repo:
+```
+$ npm install
+```
 
-`build.cmd`:   build everything but the tests  
+### Build, Test, Clean, Restore 
 
-`test.cmd`:    build and run unit tests  
-               the failed tests are printed, the full results are in src\tests\bin\Debug\dnxcore50\win7-x64\testResults.xml  
+From /src dir:
 
-`clean.cmd`:   will delete all temporary files -> should be run before commiting code  
+*nix  
+`./dev.js {command}`
+  
+Win32   
+`dev.cmd {command}`
+  
+** Commands: **
+
+`restore`: Run first time and any time you change a project.json  
+
+`build`:   build everything  
+
+`test`:    run unit tests  
+           results in src\tests\bin\Debug\dnxcore50\{platform}\testResults.xml  
+
+`clean`:   deletes build output for each projects  
 
