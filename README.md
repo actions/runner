@@ -24,13 +24,9 @@ $ npm install
 
 ### Build, Test, Clean, Restore 
 
-From /src dir:
+From src:
 
-Win32   
-`dev {command}`
-
-*nix  
-`./dev.js {command}`
+`dev {command}` <sub><sup>(On *nix don't forget the dot slash in front)</sup></sub>
   
 ** Commands: **
 
