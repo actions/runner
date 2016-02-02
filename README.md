@@ -2,10 +2,18 @@
 
 ## Dependencies
 
-.NET core [Install Here](https://dotnet.github.io/getting-started/)
-Node (build) [Install Here](http://node.js.org)
+None.  The agent will package all dependencies.
 
-## Contribute
+## Install
+
+Not available yet.  Need to build from source.  See Contribute.
+
+## Contribute (Dev)
+
+### Dev Dependencies
+
+.NET core [Install Here](https://dotnet.github.io/getting-started/)
+Node (only for build) [Install Here](http://node.js.org)
 
 ### Prepare for building.  
 
