@@ -4,6 +4,12 @@ var shell = require('shelljs');
 var path = require('path');
 var fs = require('fs');
 
+var cmd;
+var args = process.argv.slice(2);
+if (args) {
+    cmd = args[0];
+}
+
 var fail = function(lines) {
     console.error('FAIL:');
     lines.forEach(function(line) {
@@ -63,6 +69,9 @@ actions["clean"] = function() {
 }
 
 actions["test"] = function() {
+    var level = args[1] || 'L0';
+    console.log('Running Tests.  Level ' + level);
+    
     dotnet('publish', ['Test']);
     var pubRoot = path.join(__dirname, 'Test/bin/Debug/dnxcore50');
     var plats = shell.ls(pubRoot);
@@ -76,7 +85,7 @@ actions["test"] = function() {
         })
         
         shell.pushd(plat);
-        var rc = shell.exec('corerun xunit.console.netcore.exe Test.dll').code;
+        var rc = shell.exec('corerun xunit.console.netcore.exe Test.dll -xml testresults.xml -trait Level=' + level).code;
         console.log();
         console.log('Done tests.  rc=' + rc);
         console.log();
@@ -85,13 +94,6 @@ actions["test"] = function() {
     else {
         fail(['Did not find a published build under ' + pubRoot]);
     }  
-}
-
-
-var cmd;
-var args = process.argv.slice(2);
-if (args) {
-    cmd = args[0];
 }
 
 if (!cmd || !actions[cmd]) {

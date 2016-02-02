@@ -12,7 +12,7 @@ Not available yet.  Need to build from source.  See Contribute.
 
 ### Dev Dependencies
 
-.NET core [Install Here](https://dotnet.github.io/getting-started/)
+.NET Core [Install Here](https://dotnet.github.io/getting-started/)
 Node (only for build) [Install Here](http://node.js.org)
 
 ### Prepare for building.  
@@ -26,7 +26,7 @@ $ npm install
 
 From src:
 
-`dev {command}` * (./dev on *nix) *
+`dev {command}` _(./dev on *nix)_
   
 ** Commands: **
 
@@ -34,8 +34,16 @@ From src:
 
 `build`:   build everything  
 
-`test`:    run unit tests  
-           results in src\tests\bin\Debug\dnxcore50\{platform}\testResults.xml  
+`clean`:   deletes build output for each projects
 
-`clean`:   deletes build output for each projects  
+`test`:    run unit tests
+
+           can run by level:
+           `dev test L0`  
+           `dev test L1`
+           
+           results in: 
+           Test/bin/Debug/dnxcore50/{platform}/testResults.xml  
+
+  
 
