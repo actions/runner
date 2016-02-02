@@ -12,7 +12,7 @@ Not available yet.  Need to build from source.  See Contribute.
 
 ### Dev Dependencies
 
-.NET Core [Install Here](https://dotnet.github.io/getting-started/)
+.NET Core [Install Here](https://dotnet.github.io/getting-started/)  
 Node (only for build) [Install Here](http://node.js.org)
 
 ### Prepare for building.  
@@ -38,12 +38,13 @@ From src:
 
 `test`:    run unit tests
 
-           can run by level:
-           `dev test L0`  
-           `dev test L1`
-           
-           results in: 
-           Test/bin/Debug/dnxcore50/{platform}/testResults.xml  
+  can run by level:
+
+  `dev test L0`  
+  `dev test L1`
+        
+  results in: 
+  Test/bin/Debug/dnxcore50/{platform}/testResults.xml  
 
   
 
