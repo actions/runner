@@ -24,16 +24,16 @@ From src:
 
 `restore` (`r`): Run first time and any time you change a project.json  
 
-`build` (`r`):   build everything  
+`build` (`b`):   build everything  
 
-`test` (`r`):    run unit tests
+`test` (`t`):    run unit tests
         
   results in: 
   Test/bin/Debug/dnxcore50/{platform}/testResults.xml
 
 `buildtest` (`bt`): build and test
 
-`clean` (`r`):   deletes build output for each projects
+`clean` (`c`):   deletes build output for each projects
  
 `layout` (`l`): Creates a full layout in {root}/_layout  
    Does a clean, restore, build, publish and copy
