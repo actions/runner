@@ -1,24 +1,30 @@
 # VSTS Cross Platform Agent (CoreCLR)
 
-## Dependencies
+## Overview
 
-None.  The agent will package all dependencies.
+A cross platform build and release agent for Visual Studio Team Services and Team Foundation Server 2015 and beyond.
+
+Supported on Windows, OSX and Linux.  Written for the .NET Core CLR as one code base in C#.
 
 ## Install
 
-Not available yet.  Need to build from source.  See Contribute.
+Not available yet.  Need to build from source.  See Contribute below.
 
 ## Contribute (Dev)
 
 ### Dev Dependencies
 
-.NET Core [Install Here](https://dotnet.github.io/getting-started/)  
+![Win](docs/win_sm.png)![*nix](docs/linux_sm.png) .NET Core [Install Here](https://dotnet.github.io/getting-started/)  
+
+![Win](docs/win_sm.png) Git for Windows [Install Here](https://git-scm.com/downloads) _(needed for dev sh script)
 
 ### Build, Test, Clean, Restore 
 
 From src:
 
-`./dev.sh {command}` _(Win use .\dev.cmd)_
+![Win](docs/win_sm.png) `dev {command}`  
+
+![*nix](docs/linux_sm.png) `./dev.sh {command}`
   
 ** Commands: **
 
