@@ -18,7 +18,7 @@ Not available yet.  Need to build from source.  See Contribute.
 
 From src:
 
-`./dev.sh {command}` _(Win use Git bash prompt to run sh)_
+`./dev.sh {command}` _(Win use .\dev.cmd)_
   
 ** Commands: **
 
