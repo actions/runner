@@ -90,7 +90,7 @@ function test ()
     dotnet publish Test || failed "publishing Test"
     pushd Test/bin/Debug/dnxcore50 > /dev/null
     pushd $(ls -d */) > /dev/null
-    corerun xunit.console.netcore.exe Test.dll -xml testresults.xml
+    ./corerun xunit.console.netcore.exe Test.dll -xml testresults.xml
     popd > /dev/null
     popd > /dev/null
 }

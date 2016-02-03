@@ -13,40 +13,29 @@ Not available yet.  Need to build from source.  See Contribute.
 ### Dev Dependencies
 
 .NET Core [Install Here](https://dotnet.github.io/getting-started/)  
-Node (only for build) [Install Here](http://node.js.org)
-
-### Prepare for building.  
-
-Once from root of repo:
-```
-$ npm install
-```
 
 ### Build, Test, Clean, Restore 
 
 From src:
 
-`dev {command}` _(./dev on *nix)_
+`./dev.sh {command}` _(Win use Git bash prompt to run sh)_
   
 ** Commands: **
 
-`restore`: Run first time and any time you change a project.json  
+`restore` (`r`): Run first time and any time you change a project.json  
 
-`build`:   build everything  
+`build` (`r`):   build everything  
 
-`clean`:   deletes build output for each projects
-
-`test`:    run unit tests
-
-  can run by level:
-
-  `dev test L0`  
-  `dev test L1`
+`test` (`r`):    run unit tests
         
   results in: 
-  Test/bin/Debug/dnxcore50/{platform}/testResults.xml  
+  Test/bin/Debug/dnxcore50/{platform}/testResults.xml
 
-`layout`: Creates a full layout in {root}/_layout  
+`buildtest` (`bt`): build and test
+
+`clean` (`r`):   deletes build output for each projects
+ 
+`layout` (`l`): Creates a full layout in {root}/_layout  
    Does a clean, restore, build, publish and copy
   
 
