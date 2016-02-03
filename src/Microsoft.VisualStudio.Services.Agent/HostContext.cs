@@ -1,14 +1,17 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace Microsoft.VisualStudio.Services.Agent
 {
-    public class HostContext: Context
+    // TODO: Consider adding a cancellation token to IContext.
+    public interface IHostContext : IContext
     {
-        public HostContext() {
-            
+    }
+
+    public sealed class HostContext : Context, IHostContext
+    {
+        protected override void Write(LogLevel level, String message)
+        {
+            throw new System.NotImplementedException();
         }
     }
 }
