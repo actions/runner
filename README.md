@@ -20,6 +20,8 @@ Not available yet.  Need to build from source.  See Contribute below.
 
 ### Build, Test, Clean, Restore 
 
+Install client rest SDK: under root folder, create a new folder "libs" and copy all files from \\vsncstor\Users\stiliev\clientsdk 
+
 From src:
 
 ![Win](docs/win_sm.png) `dev {command}`  

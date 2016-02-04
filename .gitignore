@@ -1,5 +1,11 @@
 **/bin
 **/obj
 **/project.lock.json
+**/libs
+**/*.xproj
+**/*.xproj.user
+**/*.sln
+**/.vs
+**/.vscode
 node_modules
 _layout
