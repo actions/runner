@@ -28,7 +28,7 @@ namespace Microsoft.VisualStudio.Services.Agent.CLI
                 this.context.Info("Create session attempt {0} of {1}.", attempt, MaxAttempts);
                 try
                 {
-                    this.SessionId = await this.taskServer.CreateAgentSession(this.poolId);
+                    this.SessionId = await this.taskServer.CreateAgentSessionAsync(this.poolId);
                     return true;
                 }
                 catch (Exception ex)
@@ -73,7 +73,7 @@ namespace Microsoft.VisualStudio.Services.Agent.CLI
                 AgentMessage message = null;
                 try
                 {
-                    message = await this.taskServer.GetAgentMessage(this.poolId, this.SessionId, lastMessageId);
+                    message = await this.taskServer.GetAgentMessageAsync(this.poolId, this.SessionId, lastMessageId);
                 }
                 catch (TimeoutException)
                 {
@@ -118,7 +118,7 @@ namespace Microsoft.VisualStudio.Services.Agent.CLI
                 finally
                 {
                     lastMessageId = message.MessageId;
-                    await this.taskServer.DeleteAgentMessage(this.poolId, this.SessionId, message);
+                    await this.taskServer.DeleteAgentMessageAsync(this.poolId, this.SessionId, message);
                 }
             }
         }
@@ -127,7 +127,7 @@ namespace Microsoft.VisualStudio.Services.Agent.CLI
         {
             if (!String.IsNullOrEmpty(this.SessionId))
             {
-                await this.taskServer.DeleteAgentSession(this.poolId, this.SessionId);
+                await this.taskServer.DeleteAgentSessionAsync(this.poolId, this.SessionId);
             }
         }
 
