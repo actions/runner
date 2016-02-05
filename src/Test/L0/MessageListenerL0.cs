@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 using Microsoft.VisualStudio.Services.Agent.CLI;
@@ -12,13 +13,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         {
             this.poolId = 123;
             this.context = new MockHostContext();
-            this.dispatcher = new MockMessageDispatcher();
-            this.taskServer = new MockTaskServer();
-            this.listener = new MessageListener(
-                poolId: this.poolId,
-                context: this.context,
-                dispatcher: this.dispatcher,
-                taskServer: this.taskServer);
+            this.context.RegisterService<IMessageDispatcher, MockMessageDispatcher>(this.dispatcher = new MockMessageDispatcher());
+            this.context.RegisterService<ITaskServer, MockTaskServer>(this.taskServer = new MockTaskServer());
+            this.listener = new MessageListener();
         }
 
         [Fact]
@@ -29,19 +26,23 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             // Arrange.
             String expectedSessionId = Guid.NewGuid().ToString();
             Int32 actualPoolId = 0;
-            this.taskServer._CreateAgentSessionAsync = (poolId) =>
+            CancellationToken actualCancellationToken = default(CancellationToken);
+            this.taskServer._CreateAgentSessionAsync = (poolId, cancellationToken) =>
             {
                 actualPoolId = poolId; // This is a poor man's way of enabling assert-was-called.
+                actualCancellationToken = cancellationToken;
                 return Task.FromResult(expectedSessionId);
             };
 
             // Act.
-            Boolean result = await this.listener.CreateSessionAsync();
+            Boolean result = await this.listener.CreateSessionAsync(this.context, this.poolId);
 
             // Assert.
             Assert.True(result);
             Assert.Equal(expectedSessionId, this.listener.SessionId);
             Assert.Equal(this.poolId, actualPoolId);
+            Assert.Equal(this.context.CancellationToken, actualCancellationToken);
+            Assert.Equal(this.poolId, this.listener.PoolId);
         }
 
         private Int32 poolId;

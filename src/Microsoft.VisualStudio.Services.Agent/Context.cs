@@ -1,10 +1,17 @@
 using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Globalization;
+using System.Threading;
 
 namespace Microsoft.VisualStudio.Services.Agent
 {
     public interface IContext
     {
+        CancellationToken CancellationToken { get; }
+
+        T GetService<T>() where T : class;
+
         void Error(Exception ex);
 
         void Error(String message);
@@ -26,18 +33,47 @@ namespace Microsoft.VisualStudio.Services.Agent
 
     public abstract class Context : IContext
     {
-        public void Error(Exception ex)
+        public Context()
+        {
+            this.RegisterService<ITaskServer, TaskServer>();
+        }
+
+        public virtual CancellationToken CancellationToken
+        {
+            get
+            {
+                throw new System.NotImplementedException();
+            }
+        }
+
+        public virtual T GetService<T>() where T : class
+        {
+            System.Type target;
+            if (!serviceMappings.TryGetValue(typeof(T), out target))
+            {
+                throw new KeyNotFoundException(String.Format(CultureInfo.InvariantCulture, "Service mapping not found for key '{0}'.", typeof(T).FullName));
+            }
+
+            return Activator.CreateInstance(target) as T;
+        }
+
+        public void RegisterService<TKey, TValue>()
+        {
+            serviceMappings[typeof(TKey)] = typeof(TValue);
+        }
+
+        public virtual void Error(Exception ex)
         {
             this.Write(LogLevel.Error, ex.Message);
             this.Write(LogLevel.Verbose, ex.ToString());
         }
 
-        public void Error(String message)
+        public virtual void Error(String message)
         {
             this.Write(LogLevel.Error, message);
         }
 
-        public void Error(String format, params Object[] args)
+        public virtual void Error(String format, params Object[] args)
         {
             this.Write(LogLevel.Error, Format(format, args));
         }
@@ -78,5 +114,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         {
             return String.Format(CultureInfo.InvariantCulture, format, args);
         }
+
+        protected readonly ConcurrentDictionary<Type, Type> serviceMappings = new ConcurrentDictionary<Type, Type>();
     }
 }
