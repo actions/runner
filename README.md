@@ -20,8 +20,6 @@ Not available yet.  Need to build from source.  See Contribute below.
 
 ### Build, Test, Clean, Restore 
 
-Install client rest SDK: under root folder, create a new folder "libs" and copy all files from \\vsncstor\Users\stiliev\clientsdk 
-
 From src:
 
 ![Win](docs/win_sm.png) `dev {command}`  
@@ -51,7 +49,8 @@ From src:
 
 Install Visual Studio 2015 update 1 or later
 
-run cmd.exe as Administrator and execute the following command:
+Replace %USERPROFILE%\.dnx\packages folder with a symbolic link to %USERPROFILE%\.nuget\packages
+First delete %USERPROFILE%\.dnx\packages, then run cmd.exe as Administrator and execute the following command:
 mklink /D %USERPROFILE%\.dnx\packages %USERPROFILE%\.nuget\packages
 
 restore the packages using the commands documented above, because VS won't be able to do it
