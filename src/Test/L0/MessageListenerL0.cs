@@ -15,7 +15,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             this.context = new MockHostContext();
             this.context.RegisterService<IMessageDispatcher, MockMessageDispatcher>(this.dispatcher = new MockMessageDispatcher());
             this.context.RegisterService<ITaskServer, MockTaskServer>(this.taskServer = new MockTaskServer());
-            this.listener = new MessageListener();
+            this.listener = new MessageListener(this.context);
         }
 
         [Fact]
@@ -35,13 +35,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             };
 
             // Act.
-            Boolean result = await this.listener.CreateSessionAsync(this.context, this.poolId);
+            Boolean result = await this.listener.CreateSessionAsync(this.poolId);
 
             // Assert.
             Assert.True(result);
             Assert.Equal(expectedSessionId, this.listener.SessionId);
             Assert.Equal(this.poolId, actualPoolId);
-            Assert.Equal(this.context.CancellationToken, actualCancellationToken);
             Assert.Equal(this.poolId, this.listener.PoolId);
         }
 
