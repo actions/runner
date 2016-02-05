@@ -4,11 +4,20 @@
         "emitEntryPoint": false
     },
 
-    "dependencies": {        
-        "NETStandard.Library": "1.0.0-rc3-23727"
+    "dependencies": {
+        "Microsoft.TeamFoundation.Common": "0.5.0",
+        "Microsoft.TeamFoundation.Core.WebApi": "0.5.0",
+        "Microsoft.VisualStudio.Services.Client": "0.5.0",
+        "Microsoft.VisualStudio.Services.Common": "0.5.0",
+        "Microsoft.VisualStudio.Services.WebApi": "0.5.0",
+        "Microsoft.TeamFoundation.DistributedTask.WebApi": "0.5.0",
+        "System.Xml.XmlSerializer": "4.0.11-rc3-23721",        
+        "NETStandard.Library": "1.0.0-rc3-23721"
     },
 
     "frameworks": {
-        "dnxcore50": { }
+        "dnxcore50": {
+            "imports": "portable-net451+win8"
+        }
     }
 }
