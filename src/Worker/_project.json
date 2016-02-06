@@ -5,7 +5,7 @@
     },
 	
     "commands": {
-        "Worker": "Worker"        
+        "Worker": "Worker"
     },
 
     "configurations": {

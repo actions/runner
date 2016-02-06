@@ -21,8 +21,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
                 {
                     message = String.Format(CultureInfo.InvariantCulture, format, args);
                 }
-                catch (System.Exception ex)
+                catch (System.Exception)
                 {
+                    // TODO: Log that string format failed. Consider moving this into a context base class if that's the only place it's used. Then the current trace scope would be available as well.
                     message = String.Format(CultureInfo.InvariantCulture,"{0} {1}", format, String.Join(", ", args));
                 }
             }

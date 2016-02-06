@@ -48,5 +48,7 @@ From src:
 
 [Using Visual Studio 2015](docs/dev/vs.md)  
 [Using Visual Studio Code and Mono Debugger](docs/dev/code.md)  
-    
 
+# Styling convention
+## Member organization
+Constructors, visibility (public -> private), properties, methods (abstract first), static at the bottom, fields at the bottom.

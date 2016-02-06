@@ -9,10 +9,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
-        public void CanCreateHostContext()
+        public void CanLocateDefaultImplementation()
         {
-            HostContext hc = new HostContext("L0Test");
-            Assert.NotNull(hc);
+            Assert.Equal(typeof(TaskServer), new HostContext("L0Test").GetService<ITaskServer>().GetType());
         }
     }
 }

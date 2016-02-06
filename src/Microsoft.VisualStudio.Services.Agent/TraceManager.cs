@@ -18,7 +18,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         {
             if(String.IsNullOrEmpty(hostType))
             {
-                throw new ArgumentNullException("hostType");
+                throw new ArgumentNullException(nameof(hostType));
             }
             
             m_hostType = hostType;
