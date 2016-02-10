@@ -9,7 +9,7 @@ namespace Microsoft.VisualStudio.Services.Agent.CLI
         {
             // TODO: Consider eliminating a hard-coded service mapping by resolving the
             // matching class from the same assembly where the interface is defined.
-            HostContext context = new HostContext();
+            HostContext context = new HostContext("Agent");
             context.RegisterService<IMessageDispatcher, MessageDispatcher>();
             Console.WriteLine("Hello Agent!");
         }
