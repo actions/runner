@@ -1,10 +1,11 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Xunit;
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.CLI;
 using Microsoft.VisualStudio.Services.Agent;
+using Moq;
+using Xunit;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests
 {
@@ -12,13 +13,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
     {
         public MessageListenerL0()
         {
-            this.agentSettings = new MockAgentSettings() { PoolId = 123 };
-            this.dispatcher = new MockMessageDispatcher();
-            this.taskServer = new MockTaskServer();
-            this.context = new MockHostContext();
-            this.context.RegisterService<IAgentSettings, MockAgentSettings>(this.agentSettings);
-            this.context.RegisterService<IMessageDispatcher, MockMessageDispatcher>(this.dispatcher);
-            this.context.RegisterService<ITaskServer, MockTaskServer>(this.taskServer);
+            this.agentSettings = new Mock<IAgentSettings>();
+            this.agentSettings.Setup(x => x.PoolId).Returns(123);
+            this.dispatcher = new Mock<IMessageDispatcher>();
+            this.taskServer = new Mock<ITaskServer>();
+            this.context = new TestHostContext();
+            this.context.RegisterService<IAgentSettings>(this.agentSettings.Object);
+            this.context.RegisterService<IMessageDispatcher>(this.dispatcher.Object);
+            this.context.RegisterService<ITaskServer>(this.taskServer.Object);
             this.listener = new MessageListener();
         }
 
@@ -29,16 +31,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         {
             // Arrange.
             var expectedSession = new TaskAgentSession();
-            Int32 actualPoolId = 0;
-            TaskAgentSession actualSession = null;
-            CancellationToken actualCancellationToken = default(CancellationToken);
-            this.taskServer._CreateAgentSessionAsync = (poolId, session, cancellationToken) =>
-            {
-                actualPoolId = poolId; // This is a poor man's way of enabling assert-was-called.
-                actualSession = session;
-                actualCancellationToken = cancellationToken;
-                return Task.FromResult(expectedSession);
-            };
+            this.taskServer
+                .Setup(x => x.CreateAgentSessionAsync(
+                    It.Is<Int32>(y => y == this.agentSettings.Object.PoolId),
+                    It.Is<TaskAgentSession>(y => y != null),
+                    It.Is<CancellationToken>(y => y == this.context.CancellationToken)))
+                .Returns(Task.FromResult(expectedSession));
 
             // Act.
             Boolean result = await this.listener.CreateSessionAsync(this.context);
@@ -46,14 +44,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             // Assert.
             Assert.True(result);
             Assert.Equal(expectedSession, this.listener.Session);
-            Assert.Equal(this.agentSettings.PoolId, actualPoolId);
-            Assert.Equal(this.context.CancellationToken, actualCancellationToken);
         }
 
-        private MockAgentSettings agentSettings;
-        private MockHostContext context;
-        private MockMessageDispatcher dispatcher;
-        private MockTaskServer taskServer;
+        private Mock<IAgentSettings> agentSettings;
+        private Mock<IMessageDispatcher> dispatcher;
+        private Mock<ITaskServer> taskServer;
+        private TestHostContext context;
         private MessageListener listener;
     }
 }

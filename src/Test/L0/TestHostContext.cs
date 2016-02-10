@@ -8,7 +8,7 @@ using Microsoft.VisualStudio.Services.Agent.CLI;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests
 {
-    public sealed class MockHostContext : IHostContext
+    public sealed class TestHostContext : IHostContext
     {
         public CancellationToken CancellationToken
         {
@@ -29,7 +29,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         }
 
         // Register a singleton for unit testing.
-        public void RegisterService<TKey, TValue>(TValue singleton)
+        public void RegisterService<TKey>(Object singleton)
         {
             this.serviceInstances[typeof(TKey)] = singleton;
         }
@@ -40,7 +40,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             {
                 if(m_traceManager == null)
                 {    
-                    m_traceManager = new TraceManager("Mock", null);                    
+                    m_traceManager = new TraceManager("Mock", null);
                 }
                 
                 return m_traceManager;

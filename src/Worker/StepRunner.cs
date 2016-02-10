@@ -17,6 +17,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CLI
     {
         public async Task<TaskResult> RunAsync(IExecutionContext context, IList<IStep> steps)
         {
+            // TODO: critical just means AlwaysRun steps won't run.  It's fatal if it fails (prepared get code as an example)
+            // TODO: add finally which always, always, really runs (cleanup - post job plugins)
             // TaskResult:
             //  Abandoned
             //  Canceled
