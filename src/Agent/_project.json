@@ -8,6 +8,24 @@
         "Agent": "Agent"        
     },
 
+    "configurations": {
+        "Debug": {
+            "compilationOptions": {
+                "define": [
+                    "DEBUG",
+                    "OS_WINDOWS"
+                ]
+            }
+        },
+        "Release": {
+            "compilationOptions": {
+                "define": [
+                    "OS_WINDOWS"
+                ]
+            }
+        }
+    },
+    
     "dependencies": {
         "NETStandard.Library": "1.0.0-rc3-23721",
         "Microsoft.VisualStudio.Services.Agent": ""       

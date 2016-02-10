@@ -1,5 +1,6 @@
 **/bin
 **/obj
+**/project.json
 **/project.lock.json
 **/libs
 **/*.xproj

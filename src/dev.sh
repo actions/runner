@@ -2,11 +2,37 @@
 DEV_CMD=$1
 LAYOUT_DIR=`pwd`/../_layout
 
+define_os='OS_Windows'
+BUILD_OS=`uname`
+if [[ "$BUILD_OS" == 'Linux' ]]; then
+   define_os='OS_Linux'
+elif [[ "$BUILD_OS" == 'Darwin' ]]; then
+   define_os='OS_OSX'
+fi
+
+build_config=${build_config}${target}
+echo $build_config
+
+build_dirs=("Agent" "Microsoft.VisualStudio.Services.Agent" "Test" "Worker")
+
+echo Generating project.json files ...
+for dir_name in ${build_dirs[@]}
+do
+    rm $dir_name/project.json
+    sed -e "s/OS_WINDOWS/$define_os/g" ./$dir_name/_project.json > ./$dir_name/project.json
+done
+
 function failed()
 {
    local error=${1:-Undefined error}
    echo "Failed: $error" >&2
    exit 1
+}
+
+function warn()
+{
+   local error=${1:-Undefined error}
+   echo "WARNING - FAILED: $error" >&2
 }
 
 # ---------- Pre-Reqs -----------
@@ -32,10 +58,14 @@ function build ()
 function restore ()
 {
     heading Restoring ...
-    dotnet restore Agent || failed "restoring Agent"
-    dotnet restore Worker || failed "restoring Worker"
-    dotnet restore Microsoft.VisualStudio.Services.Agent || failed "restoring lib"
-    dotnet restore Test || failed "restoring Test"
+    rm Agent/project.lock.json
+    rm Microsoft.VisualStudio.Services.Agent/project.lock.json
+    rm Test/project.lock.json
+    rm Worker/project.lock.json    
+    dotnet restore Agent || warn "restoring Agent"
+    dotnet restore Worker || warn "restoring Worker"
+    dotnet restore Microsoft.VisualStudio.Services.Agent || warn "restoring lib"
+    dotnet restore Test || warn "restoring Test"
 }
 
 function cleanProj ()
@@ -88,7 +118,7 @@ function test ()
 {
     heading Testing ...
     dotnet publish Test || failed "publishing Test"
-    pushd Test/bin/Debug/dnxcore50 > /dev/null
+    pushd Test/bin/${build_config}/dnxcore50 > /dev/null
     pushd $(ls -d */) > /dev/null
     ./corerun xunit.console.netcore.exe Test.dll -xml testresults.xml
     popd > /dev/null
