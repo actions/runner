@@ -10,9 +10,6 @@ elif [[ "$BUILD_OS" == 'Darwin' ]]; then
    define_os='OS_OSX'
 fi
 
-build_config=${build_config}${target}
-echo $build_config
-
 build_dirs=("Agent" "Microsoft.VisualStudio.Services.Agent" "Test" "Worker")
 
 echo Generating project.json files ...
@@ -35,8 +32,6 @@ function warn()
    echo "WARNING - FAILED: $error" >&2
 }
 
-# ---------- Pre-Reqs -----------
-
 function heading()
 {
     echo
@@ -46,51 +41,41 @@ function heading()
     echo -------------------------------
 }
 
+function rundotnet ()
+{
+    dotnet_cmd=${1}
+    err_handle=${2:-failed}
+    heading ${1} ...
+    for dir_name in ${build_dirs[@]}
+    do
+        dotnet ${dotnet_cmd} $dir_name || ${err_handle} "${dotnet_cmd} $dir_name"
+    done   
+}
+
 function build ()
 {
-    heading Building ...
-    dotnet build Agent || failed "building Agent"
-    dotnet build Worker || failed "building Worker"
-    dotnet build Microsoft.VisualStudio.Services.Agent || failed "building lib"
-    dotnet build Test || failed "building Test"    
+    rundotnet build failed
 }
 
 function restore ()
 {
-    heading Restoring ...
-    rm Agent/project.lock.json
-    rm Microsoft.VisualStudio.Services.Agent/project.lock.json
-    rm Test/project.lock.json
-    rm Worker/project.lock.json    
-    dotnet restore Agent || warn "restoring Agent"
-    dotnet restore Worker || warn "restoring Worker"
-    dotnet restore Microsoft.VisualStudio.Services.Agent || warn "restoring lib"
-    dotnet restore Test || warn "restoring Test"
-}
-
-function cleanProj ()
-{
-    echo cleaning ${1}
-    rm -rf `dirname ${0}`/${1}/bin
-    rm -rf `dirname ${0}`/${1}/obj    
+    rundotnet restore warn
 }
 
 function clean ()
 {
-    heading Cleaning ...    
-    cleanProj Agent
-    cleanProj Worker
-    cleanProj Microsoft.VisualStudio.Services.Agent
-    cleanProj Test        
+    heading Cleaning ...
+    for dir_name in ${build_dirs[@]}
+    do
+        echo Cleaning ${dir_name} ...
+        rm -rf `dirname ${0}`/${dir_name}/bin
+        rm -rf `dirname ${0}`/${dir_name}/obj
+    done
 }
 
 function publish ()
 {
-    heading Publishing ...
-    dotnet publish Agent || failed "publish Agent"
-    dotnet publish Worker || failed "publish Worker"
-    dotnet publish Microsoft.VisualStudio.Services.Agent || failed "publish lib"
-    dotnet publish Test || failed "publish Test"
+    rundotnet publish
 }
 
 function copyProj ()

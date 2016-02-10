@@ -11,8 +11,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CLI
             HostContext hc = new HostContext("Worker");
             Console.WriteLine("Hello Worker!");
             
+#if OS_WINDOWS
+            Console.WriteLine("Hello Windows");
+#endif
+            
 #if OS_OSX
             Console.WriteLine("Hello OSX");
+#endif
+
+#if OS_LINUX
+            Console.WriteLine("Hello Linux");
 #endif
 
             TraceSource m_trace = hc.Trace["WorkerProcess"];
