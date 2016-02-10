@@ -3,21 +3,19 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.VisualStudio.Services.Agent;
 using Microsoft.VisualStudio.Services.Agent.CLI;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests
 {
+    // TODO: Rename the file to match.
     public class MockExecutionContext : IExecutionContext
     {
+        // Fix these delegates or switch to Moq.
         public Action<Exception> _Error_E { get; set; }
         public Action<String> _Error_M { get; set; }
         public Action<String, Object[]> _Error_F_A { get; set; }
-
-        public MockExecutionContext()
-        {
-        }
-
         public CancellationToken CancellationToken { get; set;}
         
         public void Error(Exception ex)

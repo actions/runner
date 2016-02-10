@@ -1,10 +1,13 @@
 using System;
-using System.Diagnostics;
-using System.Collections.Generic;
-using System.Threading;
 using System.Collections.Concurrent;
-using System.IO;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
+using System.IO;
+using System.Linq;
+using System.Reflection;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Microsoft.VisualStudio.Services.Agent
 {
@@ -12,6 +15,7 @@ namespace Microsoft.VisualStudio.Services.Agent
     {
         CancellationToken CancellationToken { get; }
         ITraceManager Trace { get; }
+        Task Delay(TimeSpan delay);
         T GetService<T>() where T : class;
     }
     
@@ -21,11 +25,10 @@ namespace Microsoft.VisualStudio.Services.Agent
         {
             if(String.IsNullOrEmpty(hostType))
             {
-                throw new ArgumentNullException("hostType");
+                throw new ArgumentNullException(nameof(hostType));
             }
             
             m_hostType = hostType;
-            this.RegisterService<ITaskServer, TaskServer>();
         }
        
         public CancellationToken CancellationToken
@@ -48,23 +51,44 @@ namespace Microsoft.VisualStudio.Services.Agent
                 return m_traceManager;
             }
         }
-        
+
+        public async Task Delay(TimeSpan delay)
+        {
+            await Task.Delay(delay, this.CancellationToken);
+        }
+
         public T GetService<T>() where T : class
         {
-            System.Type target;
-            if (!serviceMappings.TryGetValue(typeof(T), out target))
+            Type target;
+            if (!this.serviceMappings.TryGetValue(typeof(T), out target))
             {
-                throw new KeyNotFoundException(String.Format(CultureInfo.InvariantCulture, "Service mapping not found for key '{0}'.", typeof(T).FullName));
+                CustomAttributeData attribute = typeof(T)
+                    .GetTypeInfo()
+                    .CustomAttributes
+                    .FirstOrDefault(x => x.AttributeType == typeof(ServiceLocatorAttribute));
+                if (attribute != null)
+                {
+                    foreach (CustomAttributeNamedArgument arg in attribute.NamedArguments)
+                    {
+                        if (String.Equals(arg.MemberName, ServiceLocatorAttribute.DefaultPropertyName, StringComparison.Ordinal))
+                        {
+                            target = arg.TypedValue.Value as Type;
+                        }
+                    }
+                }
+
+                if (target == null)
+                {
+                    throw new KeyNotFoundException(String.Format(CultureInfo.InvariantCulture, "Service mapping not found for key '{0}'.", typeof(T).FullName));
+                }
+
+                this.serviceMappings.TryAdd(typeof(T), target);
+                return this.GetService<T>();
             }
 
             return Activator.CreateInstance(target) as T;
         }
 
-        public void RegisterService<TKey, TValue>()
-        {
-            serviceMappings[typeof(TKey)] = typeof(TValue);
-        }       
-        
         public void Dispose()
         {
             if (m_traceManager != null && m_traceManager is IDisposable)
@@ -76,7 +100,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         
         private readonly ConcurrentDictionary<Type, Type> serviceMappings = new ConcurrentDictionary<Type, Type>();
         private readonly CancellationToken m_cancellationToken = new CancellationToken();
-        private ITraceManager m_traceManager;    
-        private String m_hostType;        
+        private ITraceManager m_traceManager;
+        private String m_hostType;
     }
 }

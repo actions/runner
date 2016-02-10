@@ -2,20 +2,20 @@
 using System.Diagnostics;
 using Microsoft.VisualStudio.Services.Agent;
 
-namespace  Microsoft.VisualStudio.Services.Agent.Worker.CLI
+namespace Microsoft.VisualStudio.Services.Agent.Worker.CLI
 {
-    class Program
+    public static class Program
     {
-        static void Main(string[] args)
-        {   
-            HostContext hc = new HostContext("Worker");         
+        public static void Main(string[] args)
+        {
+            HostContext hc = new HostContext("Worker");
             Console.WriteLine("Hello Worker!");
             
 #if OS_OSX
             Console.WriteLine("Hello OSX");
 #endif
 
-            TraceSource m_trace = hc.Trace["WorkerProcess"];            
+            TraceSource m_trace = hc.Trace["WorkerProcess"];
             m_trace.Info("Info Hello Worker!");
             m_trace.Warning("Warning Hello Worker!");
             m_trace.Error("Error Hello Worker!");

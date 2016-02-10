@@ -1,17 +1,42 @@
 ﻿using System;
+using System.Threading.Tasks;
 using Microsoft.VisualStudio.Services.Agent;
 
 namespace Microsoft.VisualStudio.Services.Agent.CLI
 {
-    public class Program
+    public static class Program
     {
-        public static void Main(string[] args)
+        public static Int32 Main(String[] args)
         {
-            // TODO: Consider eliminating a hard-coded service mapping by resolving the
-            // matching class from the same assembly where the interface is defined.
             HostContext context = new HostContext("Agent");
-            context.RegisterService<IMessageDispatcher, MessageDispatcher>();
-            Console.WriteLine("Hello Agent!");
+            return RunAsync(context, args).Result;
+        }
+
+        public static async Task<Int32> RunAsync(IHostContext context, String[] args)
+        {
+            try
+            {
+                var clArgs = new ProgramArguments(context, args);
+                if (clArgs.Configure)
+                {
+                    throw new System.NotImplementedException();
+                }
+
+                var listener = context.GetService<IMessageListener>();
+                if (await listener.CreateSessionAsync(context))
+                {
+                    await listener.ListenAsync(context);
+                }
+
+                await listener.DeleteSessionAsync(context);
+            }
+            catch (Exception)
+            {
+                // TODO: Log exception.
+                return 1;
+            }
+
+            return 0;
         }
     }
 }

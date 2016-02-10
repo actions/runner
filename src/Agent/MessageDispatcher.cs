@@ -1,16 +1,21 @@
 using System;
+using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent;
 
 namespace Microsoft.VisualStudio.Services.Agent.CLI
 {
+    [ServiceLocator(Default = typeof(MessageDispatcher))]
     public interface IMessageDispatcher
     {
-        void Dispatch(AgentMessage message);
+        void Dispatch(TaskAgentMessage message);
     }
 
     public sealed class MessageDispatcher : IMessageDispatcher
     {
-        public void Dispatch(AgentMessage message)
+        // AgentRefreshMessage.MessageType
+        // JobCancelMessage.MessageType
+        // JobRequestMessage.MessageType
+        public void Dispatch(TaskAgentMessage message)
         {
             throw new System.NotImplementedException();
         }
