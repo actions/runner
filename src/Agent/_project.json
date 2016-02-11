@@ -13,6 +13,7 @@
             "compilationOptions": {
                 "define": [
                     "DEBUG",
+                    "TRACE",
                     "OS_WINDOWS"
                 ]
             }
@@ -20,15 +21,18 @@
         "Release": {
             "compilationOptions": {
                 "define": [
+                    "TRACE",
                     "OS_WINDOWS"
-                ]
+                ],
+                "optimize": true
             }
         }
     },
     
     "dependencies": {
         "NETStandard.Library": "1.0.0-rc3-23721",
-        "Microsoft.VisualStudio.Services.Agent": ""       
+        "Microsoft.VisualStudio.Services.Agent": "",
+        "System.Diagnostics.TraceSource": "4.0.0-rc3-23721"       
     },
 
     "frameworks": {

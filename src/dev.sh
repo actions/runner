@@ -2,10 +2,10 @@
 DEV_CMD=$1
 LAYOUT_DIR=`pwd`/../_layout
 
-define_os='OS_Windows'
+define_os='OS_WINDOWS'
 BUILD_OS=`uname`
 if [[ "$BUILD_OS" == 'Linux' ]]; then
-   define_os='OS_Linux'
+   define_os='OS_LINUX'
 elif [[ "$BUILD_OS" == 'Darwin' ]]; then
    define_os='OS_OSX'
 fi

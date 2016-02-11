@@ -4,6 +4,28 @@
         "emitEntryPoint": false,
         "define": [ "SAMPLE_DEFINE" ]
     },
+    
+    "configurations": {
+        "Debug": {
+            "compilationOptions": {
+                "define": [
+                    "DEBUG",
+                    "TRACE",
+                    "OS_WINDOWS"
+                ]
+            }
+        },
+        "Release": {
+            "compilationOptions": {
+                "define": [
+                    "TRACE",
+                    "OS_WINDOWS"
+                ],
+                "optimize": true
+            }
+        }
+    },
+    
     "dependencies": {
         "NETStandard.Library": "1.0.0-rc3-23721",
         "Microsoft.NETCore.TestHost": "1.0.0-rc3-*",

@@ -1,6 +1,9 @@
 ﻿using System;
 using System.Threading.Tasks;
+using System.Diagnostics;
 using Microsoft.VisualStudio.Services.Agent;
+using System.Reflection;
+using System.IO;
 
 namespace Microsoft.VisualStudio.Services.Agent.CLI
 {
@@ -8,8 +11,17 @@ namespace Microsoft.VisualStudio.Services.Agent.CLI
     {
         public static Int32 Main(String[] args)
         {
-            HostContext context = new HostContext("Agent");
-            return RunAsync(context, args).Result;
+            using(HostContext context = new HostContext("Agent"))
+            {
+                TraceSource m_trace = context.Trace["AgentProcess"];
+                m_trace.Info("Info Hello Agent!");
+            
+                //String workerExe = Path.Combine(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location), "Worker.exe");
+                //Int32 exitCode = ProcessInvoker.RunExe(context, workerExe, "");
+                //m_trace.Info("Worker.exe Exit: {0}", exitCode); 
+
+                return RunAsync(context, args).Result;
+            }
         }
 
         public static async Task<Int32> RunAsync(IHostContext context, String[] args)

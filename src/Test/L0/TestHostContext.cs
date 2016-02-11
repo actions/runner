@@ -40,7 +40,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             {
                 if(m_traceManager == null)
                 {    
-                    m_traceManager = new TraceManager("Mock", null);
+                    m_traceManager = new TraceManager();
                 }
                 
                 return m_traceManager;

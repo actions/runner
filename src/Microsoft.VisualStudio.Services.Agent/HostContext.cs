@@ -45,7 +45,11 @@ namespace Microsoft.VisualStudio.Services.Agent
             {
                 if(m_traceManager == null)
                 {
-                    m_traceManager = new TraceManager(m_hostType, null);                    
+                    String filename = String.Format("{0}_{1:yyyyMMdd-HHmmss}-utc.log", m_hostType, DateTime.UtcNow);
+                    Stream logFile = File.Create(filename);
+                    TextWriterTraceListener traceListener = new TextWriterTraceListener(logFile);
+                    
+                    m_traceManager = new TraceManager(traceListener);                    
                 }
                 
                 return m_traceManager;

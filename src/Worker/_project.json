@@ -13,6 +13,7 @@
             "compilationOptions": {
                 "define": [
                     "DEBUG",
+                    "TRACE",
                     "OS_WINDOWS"
                 ]
             }
@@ -20,8 +21,10 @@
         "Release": {
             "compilationOptions": {
                 "define": [
+                    "TRACE",
                     "OS_WINDOWS"
-                ]
+                ],
+                "optimize": true
             }
         }
     },
@@ -34,9 +37,9 @@
         "Microsoft.VisualStudio.Services.Common": "0.5.0",
         "Microsoft.VisualStudio.Services.WebApi": "0.5.0",
         "Microsoft.TeamFoundation.DistributedTask.WebApi": "0.5.0",
-        "System.Diagnostics.TraceSource": "4.0.0-rc3-23809",
+        "System.Diagnostics.TraceSource": "4.0.0-rc3-23721",
         "System.Xml.XmlSerializer": "4.0.11-rc3-23721",
-        "NETStandard.Library": "1.0.0-rc3-23721"
+        "NETStandard.Library": "1.0.0-rc2-23727"
     },
 
     "frameworks": {
