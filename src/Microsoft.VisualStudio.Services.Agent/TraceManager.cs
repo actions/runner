@@ -14,32 +14,35 @@ namespace Microsoft.VisualStudio.Services.Agent
 
     public class TraceManager : ITraceManager
     {        
-        public TraceManager(String hostType, TraceSetting traceSetting)
+        public TraceManager()
+            :this(new TextWriterTraceListener(System.Console.Out), new TraceSetting())
         {
-            if(String.IsNullOrEmpty(hostType))
+        }
+        
+        public TraceManager(TextWriterTraceListener traceListener)
+            :this(traceListener, new TraceSetting())
+        {
+        }
+        
+        public TraceManager(TextWriterTraceListener traceListener, TraceSetting traceSetting)
+        {            
+            if(traceListener == null)
             {
-                throw new ArgumentNullException(nameof(hostType));
+                throw new ArgumentNullException(nameof(traceListener));
             }
-            
-            m_hostType = hostType;
             
             if(traceSetting == null)
             {
-                m_traceSetting = new TraceSetting();                
+                throw new ArgumentNullException(nameof(traceSetting));
             }
-            else
-            {
-                m_traceSetting = traceSetting;                
-            }
+            
+            m_hostTraceListener = traceListener;
+            m_traceSetting = traceSetting;
             
             Switch = new SourceSwitch("VSTSAgentSwitch")
             {
                 Level = m_traceSetting.DefaultTraceLevel.ToSourceLevels()
             };
-            
-            String filename = String.Format("{0}_{1:yyyyMMdd-HHmmss.ffffff}-utc.log", m_hostType, DateTime.UtcNow);
-            Stream logFile = File.Create(filename);
-            m_hostTraceListener = new TextWriterTraceListener(logFile);
         }
         
         public SourceSwitch Switch { get; private set; }
@@ -58,7 +61,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             {
                 foreach (var traceSource in m_sources)
                 {
-                    // TODO: make sure traceSource.Close() will flush all listener.
+                    traceSource.Value.Flush();
                     traceSource.Value.Close();
                 }    
                 
@@ -92,7 +95,6 @@ namespace Microsoft.VisualStudio.Services.Agent
             return traceSource;
         }
         
-        private String m_hostType; 
         private TraceSetting m_traceSetting;
         private readonly ConcurrentDictionary<string, TraceSource> m_sources = new ConcurrentDictionary<string, TraceSource>(StringComparer.OrdinalIgnoreCase);
         private readonly TextWriterTraceListener m_hostTraceListener;
