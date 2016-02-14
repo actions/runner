@@ -17,8 +17,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CLI
     {
         public async Task<TaskResult> RunAsync(IExecutionContext context, IList<IStep> steps)
         {
-            // TODO: critical just means AlwaysRun steps won't run.  It's fatal if it fails (prepared get code as an example)
-            // TODO: add finally which always, always, really runs (cleanup - post job plugins)
+            // TODO: Convert to trace: Console.WriteLine("Steps.Count: {0}", steps.Count);
             // TaskResult:
             //  Abandoned
             //  Canceled
@@ -26,16 +25,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CLI
             //  Skipped
             //  Succeeded
             //  SucceededWithIssues
-            TaskResult? jobResult = null;
-            Boolean criticalFailed = false;
+            TaskResult jobResult = TaskResult.Succeeded;
+            Boolean stepFailed = false;
+            Boolean criticalStepFailed = false;
             foreach (IStep step in steps)
             {
-                // Skip if the step is disabled.
+                // Skip the current step if it is not Enabled.
                 if (!step.Enabled
-                    // Or if the job is critical failed and the step is not critical.
-                    || (criticalFailed && !step.Critical)
-                    // Or if the job is failed and the step is not always run.
-                    || (jobResult.HasValue && jobResult.Value == TaskResult.Failed && !step.AlwaysRun))
+                    // Or if a previous step failed and the current step is not AlwaysRun.
+                    || (stepFailed && !step.AlwaysRun && !step.Finally)
+                    // Or if a previous Critical step failed and the current step is not Finally.
+                    || (criticalStepFailed && !step.Finally))
                 {
                     step.Result = TaskResult.Skipped;
                     continue;
@@ -43,24 +43,30 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CLI
 
                 // Run the step.
                 step.Result = await step.RunAsync(context);
+                // TODO: Convert to trace: Console.WriteLine("Step result: {0}", step.Result);
 
-                // Override the job result if the step failed.
-                if (step.Result.Value == TaskResult.Failed
-                    // Or if the job is null or succeeded, and the step succeeded with issues.
-                    || ((jobResult ?? TaskResult.Succeeded) == TaskResult.Succeeded && step.Result.Value == TaskResult.SucceededWithIssues))
+                // Fixup the step result if ContinueOnError.
+                if (step.Result.Value == TaskResult.Failed && step.ContinueOnError)
                 {
-                    jobResult = step.Result;
+                    step.Result = TaskResult.SucceededWithIssues;
                 }
 
-                // Update the critical failed flag.
-                if (step.Critical && step.Result.Value == TaskResult.Failed)
+                // Update the step failed flags.
+                stepFailed = stepFailed || step.Result.Value == TaskResult.Failed;
+                criticalStepFailed = criticalStepFailed || (step.Critical && step.Result.Value == TaskResult.Failed);
+
+                // Update the job result.
+                if (step.Result.Value == TaskResult.Failed)
                 {
                     jobResult = TaskResult.Failed;
                 }
+                else if (jobResult == TaskResult.Succeeded && step.Result.Value == TaskResult.SucceededWithIssues)
+                {
+                    jobResult = TaskResult.SucceededWithIssues;
+                }
             }
 
-            // Default the job result to succeeded.
-            return jobResult ?? TaskResult.Succeeded;
+            return jobResult;
         }
     }
 }
