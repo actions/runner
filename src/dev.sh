@@ -10,7 +10,9 @@ elif [[ "$BUILD_OS" == 'Darwin' ]]; then
    define_os='OS_OSX'
 fi
 
-build_dirs=("Agent" "Microsoft.VisualStudio.Services.Agent" "Test" "Worker")
+build_dirs=("Agent.Listener" "Test" "Agent.Worker")
+build_clean_dirs=("Agent.Listener" "Test" "Agent.Worker" "Microsoft.VisualStudio.Services.Agent")
+bin_layout_dirs=("Agent.Listener" "Microsoft.VisualStudio.Services.Agent" "Agent.Worker")
 
 echo Generating project.json files ...
 for dir_name in ${build_dirs[@]}
@@ -45,8 +47,15 @@ function rundotnet ()
 {
     dotnet_cmd=${1}
     err_handle=${2:-failed}
+    run_dirs=("${!3}")
     heading ${1} ...
-    for dir_name in ${build_dirs[@]}
+    #echo Items ...
+    #for dir_name in ${run_dirs[@]}
+    #do
+    #    echo ${dotnet_cmd} ${dir_name} ...
+    #done
+    
+    for dir_name in ${run_dirs[@]}
     do
         dotnet ${dotnet_cmd} $dir_name || ${err_handle} "${dotnet_cmd} $dir_name"
     done   
@@ -54,18 +63,18 @@ function rundotnet ()
 
 function build ()
 {
-    rundotnet build failed
+    rundotnet build failed build_dirs[@]
 }
 
 function restore ()
 {
-    rundotnet restore warn
+    rundotnet restore warn bin_layout_dirs[@]
 }
 
 function clean ()
 {
     heading Cleaning ...
-    for dir_name in ${build_dirs[@]}
+    for dir_name in ${build_clean_dirs[@]}
     do
         echo Cleaning ${dir_name} ...
         rm -rf `dirname ${0}`/${dir_name}/bin
@@ -75,7 +84,7 @@ function clean ()
 
 function publish ()
 {
-    rundotnet publish
+    rundotnet publish failed bin_layout_dirs[@]
 }
 
 function copyProj ()
@@ -92,11 +101,14 @@ function layout ()
     restore
     build
     publish
+    
+    heading Layout ...
     rm -rf ${LAYOUT_DIR}
     mkdir -p ${LAYOUT_DIR}
-    copyProj Agent
-    copyProj Worker
-    copyProj Microsoft.VisualStudio.Services.Agent 
+    for bin_copy_dir in ${bin_layout_dirs[@]}
+    do
+        copyProj ${bin_copy_dir}
+    done 
 }
 
 function test ()
