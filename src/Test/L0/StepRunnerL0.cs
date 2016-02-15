@@ -5,7 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent;
-using Microsoft.VisualStudio.Services.Agent.Worker.CLI;
+using Microsoft.VisualStudio.Services.Agent.Worker;
 using Moq;
 using Xunit;
 

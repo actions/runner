@@ -4,8 +4,8 @@ using System.Linq;
 using System.Reflection;
 using Xunit;
 using Microsoft.VisualStudio.Services.Agent;
-using Microsoft.VisualStudio.Services.Agent.CLI;
-using Microsoft.VisualStudio.Services.Agent.Worker.CLI;
+using Microsoft.VisualStudio.Services.Agent.Listener;
+using Microsoft.VisualStudio.Services.Agent.Worker;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests
 {

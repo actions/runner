@@ -1,7 +1,7 @@
 using System;
 using System.Diagnostics;
 
-namespace Microsoft.VisualStudio.Services.Agent.Worker.CLI
+namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
     public class JobRunner
     {

@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent;
 
-namespace Microsoft.VisualStudio.Services.Agent.CLI
+namespace Microsoft.VisualStudio.Services.Agent.Listener
 {
     [ServiceLocator(Default = typeof(MessageListener))]
     public interface IMessageListener

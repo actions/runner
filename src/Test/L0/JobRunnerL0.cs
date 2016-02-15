@@ -1,6 +1,6 @@
 using System;
 using Xunit;
-using Microsoft.VisualStudio.Services.Agent.Worker.CLI;
+using Microsoft.VisualStudio.Services.Agent.Worker;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests
 {

@@ -5,7 +5,7 @@ using Microsoft.VisualStudio.Services.Agent;
 using System.Reflection;
 using System.IO;
 
-namespace Microsoft.VisualStudio.Services.Agent.CLI
+namespace Microsoft.VisualStudio.Services.Agent.Listener
 {
     public static class Program
     {

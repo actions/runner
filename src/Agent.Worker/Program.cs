@@ -2,7 +2,7 @@
 using System.Diagnostics;
 using Microsoft.VisualStudio.Services.Agent;
 
-namespace Microsoft.VisualStudio.Services.Agent.Worker.CLI
+namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
     public static class Program
     {

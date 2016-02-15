@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using Microsoft.VisualStudio.Services.Agent;
 
-namespace Microsoft.VisualStudio.Services.Agent.CLI
+namespace Microsoft.VisualStudio.Services.Agent.Listener
 {
     public sealed class ProgramArguments
     {

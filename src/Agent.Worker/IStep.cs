@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent;
 
-namespace Microsoft.VisualStudio.Services.Agent.Worker.CLI
+namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
     public interface IStep
     {

@@ -4,7 +4,7 @@ using System.Collections.Concurrent;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.Services.Agent;
-using Microsoft.VisualStudio.Services.Agent.CLI;
+using Microsoft.VisualStudio.Services.Agent.Listener;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests
 {

@@ -46,7 +46,7 @@ function rundotnet ()
     for dir_name in ${run_dirs[@]}
     do
         echo
-        echo -- Running: $dotnet_cmd $dir_name --
+        echo -- Running: dotnet $dotnet_cmd $dir_name --
         echo
         dotnet ${dotnet_cmd} $dir_name || ${err_handle} "${dotnet_cmd} $dir_name"
     done   
