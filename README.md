@@ -44,6 +44,8 @@ From src:
 `layout` (`l`): Creates a full layout in {root}/_layout  
    Does a clean, restore, build, publish and copy
 
+`validate` (`v`): Precheckin validation.  Runs git clean, layout and test.
+
 ### Editors
 
 [Using Visual Studio 2015](docs/dev/vs.md)  

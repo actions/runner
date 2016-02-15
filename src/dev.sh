@@ -10,16 +10,9 @@ elif [[ "$BUILD_OS" == 'Darwin' ]]; then
    define_os='OS_OSX'
 fi
 
-build_dirs=("Agent.Listener" "Test" "Agent.Worker")
+build_dirs=("Microsoft.VisualStudio.Services.Agent" "Agent.Listener" "Agent.Worker" "Test")
 build_clean_dirs=("Agent.Listener" "Test" "Agent.Worker" "Microsoft.VisualStudio.Services.Agent")
 bin_layout_dirs=("Agent.Listener" "Microsoft.VisualStudio.Services.Agent" "Agent.Worker")
-
-echo Generating project.json files ...
-for dir_name in ${build_dirs[@]}
-do
-    rm $dir_name/project.json
-    sed -e "s/OS_WINDOWS/$define_os/g" ./$dir_name/_project.json > ./$dir_name/project.json
-done
 
 function failed()
 {
@@ -49,14 +42,12 @@ function rundotnet ()
     err_handle=${2:-failed}
     run_dirs=("${!3}")
     heading ${1} ...
-    #echo Items ...
-    #for dir_name in ${run_dirs[@]}
-    #do
-    #    echo ${dotnet_cmd} ${dir_name} ...
-    #done
     
     for dir_name in ${run_dirs[@]}
     do
+        echo
+        echo -- Running: $dotnet_cmd $dir_name --
+        echo
         dotnet ${dotnet_cmd} $dir_name || ${err_handle} "${dotnet_cmd} $dir_name"
     done   
 }
@@ -68,7 +59,14 @@ function build ()
 
 function restore ()
 {
-    rundotnet restore warn bin_layout_dirs[@]
+    echo Generating project.json files ...
+    for dir_name in ${build_dirs[@]}
+    do
+        rm $dir_name/project.json
+        sed -e "s/OS_WINDOWS/$define_os/g" ./$dir_name/_project.json > ./$dir_name/project.json
+    done
+
+    rundotnet restore warn build_dirs[@]
 }
 
 function clean ()
@@ -111,7 +109,7 @@ function layout ()
     done 
 }
 
-function test ()
+function runtest ()
 {
     heading Testing ...
     dotnet publish Test || failed "publishing Test"
@@ -120,6 +118,15 @@ function test ()
     ./corerun xunit.console.netcore.exe Test.dll -xml testresults.xml
     popd > /dev/null
     popd > /dev/null
+}
+
+function validate ()
+{
+    echo git clean ...
+    git clean -fdx || failed "git clean"
+
+    layout
+    runtest
 }
 
 function buildtest ()
@@ -131,8 +138,8 @@ function buildtest ()
 case $DEV_CMD in
    "build") build;;
    "b") build;;
-   "test") test;;
-   "t") test;;
+   "test") runtest;;
+   "t") runtest;;
    "bt") buildtest;;   
    "clean") clean;;
    "c") clean;;
@@ -140,6 +147,8 @@ case $DEV_CMD in
    "r") restore;;
    "layout") layout;;
    "l") layout;;
+   "validate") validate;;
+   "v") validate;;
    *) echo "Invalid cmd.  Use build, restore, clean, test, or layout";;
 esac
 
