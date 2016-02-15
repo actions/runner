@@ -15,7 +15,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
 
             Int32 exitCode = -1;
 #if OS_WINDOWS            
-            exitCode = ProcessInvoker.RunExe(hc, "cmd.exe", "/c dir");
+            exitCode = ProcessInvoker.RunExe(hc, "cmd.exe", "/c \"dir >nul\"");
 #endif
 
 #if OS_OSX            
