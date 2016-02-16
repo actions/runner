@@ -43,6 +43,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         { 
             get
             {
+                // TODO (bryanmac): I don't like a getter doing I/O.  Should we change this?
                 if(m_traceManager == null)
                 {
                     String filename = String.Format("{0}_{1:yyyyMMdd-HHmmss}-utc.log", m_hostType, DateTime.UtcNow);

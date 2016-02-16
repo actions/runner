@@ -1,6 +1,7 @@
 using System;
-using Xunit;
+using System.Diagnostics;
 using Microsoft.VisualStudio.Services.Agent;
+using Xunit;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests
 {
@@ -9,24 +10,24 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
-        public void InvokeProcess()
+        public void SuccessExitsWithCodeZero()
         {
-            IHostContext hc = new TestHostContext();
+            using (TestHostContext thc = new TestHostContext("ProcessInvokerL0", "SuccessExitsWithCodeZero"))
+            {
+                TraceSource trace = thc.GetTrace();
 
-            Int32 exitCode = -1;
-#if OS_WINDOWS            
-            exitCode = ProcessInvoker.RunExe(hc, "cmd.exe", "/c \"dir >nul\"");
-#endif
+                Int32 exitCode = -1;
+    #if OS_WINDOWS            
+                exitCode = ProcessInvoker.RunExe(thc, "cmd.exe", "/c \"dir >nul\"");
+    #endif
 
-#if OS_OSX            
-            exitCode = ProcessInvoker.RunExe(hc, "bash", "-c ls");
-#endif
+    #if (OS_OSX || OS_LINUX)
+                exitCode = ProcessInvoker.RunExe(thc, "bash", "-c ls > /dev/null");
+    #endif
 
-#if OS_LINUX            
-            exitCode = ProcessInvoker.RunExe(hc, "bash", "-c ls");
-#endif
-
-            Assert.Equal(0, exitCode);
+                trace.Info("Exit Code: {0}", exitCode);
+                Assert.Equal(0, exitCode);                
+            }
         }
     }
 }

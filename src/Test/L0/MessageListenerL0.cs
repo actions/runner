@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
@@ -17,11 +18,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             this.agentSettings.Setup(x => x.PoolId).Returns(123);
             this.dispatcher = new Mock<IMessageDispatcher>();
             this.taskServer = new Mock<ITaskServer>();
-            this.context = new TestHostContext();
-            this.context.RegisterService<IAgentSettings>(this.agentSettings.Object);
-            this.context.RegisterService<IMessageDispatcher>(this.dispatcher.Object);
-            this.context.RegisterService<ITaskServer>(this.taskServer.Object);
             this.listener = new MessageListener();
+        }
+
+        private TestHostContext CreateTestContext(string testName)
+        {
+            TestHostContext thc = new TestHostContext("MessageListenerL0", "CreatesSession");
+            thc.RegisterService<IAgentSettings>(this.agentSettings.Object);
+            thc.RegisterService<IMessageDispatcher>(this.dispatcher.Object);
+            thc.RegisterService<ITaskServer>(this.taskServer.Object);            
+            return thc;
         }
 
         [Fact]
@@ -29,27 +35,32 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Trait("Category", "Agent")]
         public async void CreatesSession()
         {
-            // Arrange.
-            var expectedSession = new TaskAgentSession();
-            this.taskServer
-                .Setup(x => x.CreateAgentSessionAsync(
-                    It.Is<Int32>(y => y == this.agentSettings.Object.PoolId),
-                    It.Is<TaskAgentSession>(y => y != null),
-                    It.Is<CancellationToken>(y => y == this.context.CancellationToken)))
-                .Returns(Task.FromResult(expectedSession));
+            using (TestHostContext thc = CreateTestContext("CreatesSession"))
+            {
+                TraceSource trace = thc.GetTrace();
 
-            // Act.
-            Boolean result = await this.listener.CreateSessionAsync(this.context);
+                // Arrange.
+                var expectedSession = new TaskAgentSession();
+                this.taskServer
+                    .Setup(x => x.CreateAgentSessionAsync(
+                        It.Is<Int32>(y => y == this.agentSettings.Object.PoolId),
+                        It.Is<TaskAgentSession>(y => y != null),
+                        It.Is<CancellationToken>(y => y == thc.CancellationToken)))
+                    .Returns(Task.FromResult(expectedSession));
 
-            // Assert.
-            Assert.True(result);
-            Assert.Equal(expectedSession, this.listener.Session);
+                // Act.
+                Boolean result = await this.listener.CreateSessionAsync(thc);
+                trace.Info("result: {0}", result);
+
+                // Assert.
+                Assert.True(result);
+                Assert.Equal(expectedSession, this.listener.Session);
+            }
         }
-
+ 
         private Mock<IAgentSettings> agentSettings;
         private Mock<IMessageDispatcher> dispatcher;
         private Mock<ITaskServer> taskServer;
-        private TestHostContext context;
         private MessageListener listener;
     }
 }

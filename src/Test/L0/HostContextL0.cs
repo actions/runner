@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using Xunit;
 using Microsoft.VisualStudio.Services.Agent;
 
@@ -11,7 +12,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Trait("Category", "Common")]
         public void CanLocateDefaultImplementation()
         {
-            Assert.Equal(typeof(TaskServer), new HostContext("L0Test").GetService<ITaskServer>().GetType());
+            using(TestHostContext thc = new TestHostContext("HostContextL0", "CanLocateDefaultImplementation"))
+            {
+                TraceSource trace = thc.GetTrace();
+                Assert.Equal(typeof(TaskServer), new HostContext("L0Test").GetService<ITaskServer>().GetType());
+            }
         }
     }
 }

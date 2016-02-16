@@ -132,7 +132,7 @@ function validate ()
 function buildtest ()
 {
     build
-    test
+    runtest
 }
 
 case $DEV_CMD in

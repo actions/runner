@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using Xunit;
 using Microsoft.VisualStudio.Services.Agent;
 using Microsoft.VisualStudio.Services.Agent.Util;
@@ -13,9 +14,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Trait("Category", "Common")]
         public void FormatMessage()
         {
-            String message = StringUtil.Format("Test {0}", "Test");
-            
-            Assert.Equal("Test Test", message); 
+            using (TestHostContext thc = new TestHostContext("StringUtilL0", "FormatMessage"))
+            {
+                TraceSource trace = thc.GetTrace();
+
+                String message = StringUtil.Format("Test {0}", "Test");
+                trace.Info(message);
+
+                Assert.Equal("Test Test", message); 
+            }
         }
         
         [Fact]
@@ -23,9 +30,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Trait("Category", "Common")]
         public void FormatMessageWithNoArgs()
         {
-            String message = StringUtil.Format("Test {0}");
-            
-            Assert.Equal("Test {0}", message); 
+            using (TestHostContext thc = new TestHostContext("StringUtilL0", "FormatMessageWithNoArgs"))
+            {
+                TraceSource trace = thc.GetTrace();
+
+                String message = StringUtil.Format("Test {0}");
+                trace.Info(message);
+
+                Assert.Equal("Test {0}", message); 
+            }
         }
     }
 }
