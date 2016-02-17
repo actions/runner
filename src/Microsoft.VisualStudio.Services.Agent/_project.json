@@ -35,6 +35,7 @@
         "System.Diagnostics.TraceSource": "4.0.0-rc3-23721",
         "System.Diagnostics.TextWriterTraceListener": "4.0.0-rc3-23721",
         "System.IO": "4.1.0-rc3-23721",
+        "System.IO.Pipes": "4.0.0-rc3-23721",
         "System.Runtime": "4.1.0-rc3-23721",
         "System.Xml.XmlSerializer": "4.0.11-rc3-23721",
         "NETStandard.Library": "1.0.0-rc3-23721"

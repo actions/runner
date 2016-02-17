@@ -73,66 +73,68 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
         public async Task ListenAsync(IHostContext context)
         {
-            var agentSettings = context.GetService<IAgentSettings>();
-            var dispatcher = context.GetService<IMessageDispatcher>();
+            var agentSettings = context.GetService<IAgentSettings>();            
             var taskServer = context.GetService<ITaskServer>();
             TraceSource trace = context.Trace[TraceName];
             Int64? lastMessageId = null;
-            while (true)
+            using (var dispatcher = context.GetService<IMessageDispatcher>())
             {
-                TaskAgentMessage message = null;
-                try
+                while (true)
                 {
-                    message = await taskServer.GetAgentMessageAsync(agentSettings.PoolId, this.Session.SessionId, lastMessageId, context.CancellationToken);
-                }
-                catch (TimeoutException)
-                {
-                    trace.Verbose("MessageListener.Listen - TimeoutException received.");
-                }
-                catch (TaskCanceledException)
-                {
-                    trace.Verbose("MessageListener.Listen - TaskCanceledException received.");
-                }
-                catch (TaskAgentSessionExpiredException)
-                {
-                    trace.Verbose("MessageListener.Listen - TaskAgentSessionExpiredException received.");
-                    // TODO: Throw a specific exception so the caller can control the flow appropriately.
-                    return;
-                }
-                catch (OperationCanceledException)
-                {
-                    throw;
-                }
-                catch (Exception ex)
-                {
-                    trace.Verbose("MessageListener.Listen - Exception received.");
-                    trace.Error(ex);
-                    // TODO: Throw a specific exception so the caller can control the flow appropriately.
-                    return;
-                }
-
-                if (message == null)
-                {
-                    trace.Verbose("MessageListener.Listen - No message retrieved from session '{0}'.", this.Session.SessionId);
-                    continue;
-                }
-
-                trace.Verbose("MessageListener.Listen - Message '{0}' received from session '{1}'.", message.MessageId, this.Session.SessionId);
-                try
-                {
-                    // Check if refresh is required.
-                    if (String.Equals(message.MessageType, AgentRefreshMessage.MessageType, StringComparison.OrdinalIgnoreCase))
+                    TaskAgentMessage message = null;
+                    try
                     {
-                        // Throw a specific exception so the caller can control the flow appropriately.
+                        message = await taskServer.GetAgentMessageAsync(agentSettings.PoolId, this.Session.SessionId, lastMessageId, context.CancellationToken);
+                    }
+                    catch (TimeoutException)
+                    {
+                        trace.Verbose("MessageListener.Listen - TimeoutException received.");
+                    }
+                    catch (TaskCanceledException)
+                    {
+                        trace.Verbose("MessageListener.Listen - TaskCanceledException received.");
+                    }
+                    catch (TaskAgentSessionExpiredException)
+                    {
+                        trace.Verbose("MessageListener.Listen - TaskAgentSessionExpiredException received.");
+                        // TODO: Throw a specific exception so the caller can control the flow appropriately.
+                        return;
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        throw;
+                    }
+                    catch (Exception ex)
+                    {
+                        trace.Verbose("MessageListener.Listen - Exception received.");
+                        trace.Error(ex);
+                        // TODO: Throw a specific exception so the caller can control the flow appropriately.
                         return;
                     }
 
-                    dispatcher.Dispatch(message);
-                }
-                finally
-                {
-                    lastMessageId = message.MessageId;
-                    await taskServer.DeleteAgentMessageAsync(agentSettings.PoolId, lastMessageId.Value, this.Session.SessionId, context.CancellationToken);
+                    if (message == null)
+                    {
+                        trace.Verbose("MessageListener.Listen - No message retrieved from session '{0}'.", this.Session.SessionId);
+                        continue;
+                    }
+
+                    trace.Verbose("MessageListener.Listen - Message '{0}' received from session '{1}'.", message.MessageId, this.Session.SessionId);
+                    try
+                    {
+                        // Check if refresh is required.
+                        if (String.Equals(message.MessageType, AgentRefreshMessage.MessageType, StringComparison.OrdinalIgnoreCase))
+                        {
+                            // Throw a specific exception so the caller can control the flow appropriately.
+                            return;
+                        }
+
+                        await dispatcher.Dispatch(context, message);
+                    }
+                    finally
+                    {
+                        lastMessageId = message.MessageId;
+                        await taskServer.DeleteAgentMessageAsync(agentSettings.PoolId, lastMessageId.Value, this.Session.SessionId, context.CancellationToken);
+                    }
                 }
             }
         }

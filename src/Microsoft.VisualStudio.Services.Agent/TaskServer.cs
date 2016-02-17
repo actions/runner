@@ -16,10 +16,11 @@ namespace Microsoft.VisualStudio.Services.Agent
 
     public sealed class TaskServer : ITaskServer
     {
-        public Task<TaskAgentSession> CreateAgentSessionAsync(Int32 poolId, TaskAgentSession session, CancellationToken cancellationToken)
+        public async Task<TaskAgentSession> CreateAgentSessionAsync(Int32 poolId, TaskAgentSession session, CancellationToken cancellationToken)
         {
             // TODO: Pass through to the REST SDK.
-            throw new System.NotImplementedException();
+            //throw new System.NotImplementedException();
+            return session;
         }
 
         public Task DeleteAgentMessageAsync(Int32 poolId, Int64 messageId, Guid sessionId, CancellationToken cancellationToken)
@@ -32,9 +33,16 @@ namespace Microsoft.VisualStudio.Services.Agent
             throw new System.NotImplementedException();
         }
 
-        public Task<TaskAgentMessage> GetAgentMessageAsync(Int32 poolId, Guid sessionId, Int64? lastMessageId, CancellationToken cancellationToken)
+        public async Task<TaskAgentMessage> GetAgentMessageAsync(Int32 poolId, Guid sessionId, Int64? lastMessageId, CancellationToken cancellationToken)
         {
-            throw new System.NotImplementedException();
+            //throw new System.NotImplementedException();
+            var result = new TaskAgentMessage();                        
+            //var jobRequest = new JobRequestMessage(null, null, Guid.Empty, "someJob", null, null);
+            //result.Body = JsonUtility.ToString(jobRequest);
+            result.Body = "some text";
+            result.MessageType = JobRequestMessage.MessageType;
+            result.MessageId = 123;
+            return result;
         }
     }
 }
