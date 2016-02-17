@@ -38,18 +38,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             //JobRunner jobRunner = new JobRunner(hc);
             //jobRunner.Run();
 
-            if (null == args && 3 != args.Length && (!"spawnclient".Equals(args[0].ToLower())))
+            if (null != args && 3 == args.Length && "spawnclient".Equals(args[0].ToLower()))
             {
-                return;
+                using (var client = new IPCClient())
+                {
+                    JobRunner jobRunner = new JobRunner(hc, client.Transport);
+                    await client.Start(args[1], args[2]);
+                    await jobRunner.WaitToFinish();
+                    await client.Stop();
+                }
             }
-            using (var client = new IPCClient())
-            {
-                JobRunner jobRunner = new JobRunner(hc, client.Transport);
-                await client.Start(args[1], args[2]);
-                await jobRunner.WaitToFinish();
-                await client.Stop();
-            }
-
+            
             hc.Dispose();
         }
     }
