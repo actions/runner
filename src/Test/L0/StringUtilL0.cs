@@ -14,7 +14,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Trait("Category", "Common")]
         public void FormatMessage()
         {
-            using (TestHostContext thc = new TestHostContext("StringUtilL0", "FormatMessage"))
+            using (TestHostContext thc = new TestHostContext(nameof(StringUtilL0)))
             {
                 TraceSource trace = thc.GetTrace();
 
@@ -30,7 +30,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Trait("Category", "Common")]
         public void FormatMessageWithNoArgs()
         {
-            using (TestHostContext thc = new TestHostContext("StringUtilL0", "FormatMessageWithNoArgs"))
+            using (TestHostContext thc = new TestHostContext(nameof(StringUtilL0)))
             {
                 TraceSource trace = thc.GetTrace();
 
