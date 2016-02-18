@@ -34,7 +34,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             using (Server = new IPCServer())
             {
                 Server.Transport.PacketReceived += Transport_PacketReceived;
-                Server.Start("Agent.Worker.exe");
+                Server.Start("Agent.Worker");
 
                 string messageString = JsonUtility.ToString(message);                
                 await Server.Transport.SendAsync(1, messageString, context.CancellationToken);

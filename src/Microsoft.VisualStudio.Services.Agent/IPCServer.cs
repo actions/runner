@@ -27,6 +27,18 @@ namespace Microsoft.VisualStudio.Services.Agent
         public void Start(String clientFileName)
         {
             Debug.Assert(!disposedValue);
+            
+            bool hasExeSuffix = clientFileName.EndsWith(".exe", StringComparison.OrdinalIgnoreCase);
+#if OS_WINDOWS
+            if (!hasExeSuffix)
+            {
+                clientFileName += ".exe";
+            }
+#else
+            if (hasExeSuffix) {
+                clientFileName = clientFileName.Substring(0, clientFileName.Length - 4);
+            }
+#endif
             if (!Started)
             {
                 Started = true;
@@ -35,7 +47,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                 Transport.ReadPipe = InServer;
                 Transport.WritePipe = OutServer;
                 try {
-                    //TODO: ise ProcessInvoker
+                    //TODO: use ProcessInvoker
                     ClientProcess = System.Diagnostics.Process.Start(clientFileName, "spawnclient " +
                         OutServer.GetClientHandleAsString() + " " + InServer.GetClientHandleAsString());
                 }
