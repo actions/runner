@@ -33,7 +33,7 @@
         "NETStandard.Library": "1.0.0-rc3-23721",
         "Microsoft.VisualStudio.Services.Agent": "",
         "Newtonsoft.Json": "7.0.1",
-        "System.Diagnostics.TraceSource": "4.0.0-rc3-23721"       
+        "System.Diagnostics.TraceSource": "4.0.0-rc3-23721"
     },
 
     "frameworks": {

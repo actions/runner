@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using Xunit;
 using Microsoft.VisualStudio.Services.Agent;
+using Microsoft.VisualStudio.Services.Agent.Build;
 using Microsoft.VisualStudio.Services.Agent.Configuration;
 using Microsoft.VisualStudio.Services.Agent.Listener;
 using Microsoft.VisualStudio.Services.Agent.Worker;
@@ -33,7 +34,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 typeof(IHostContext),
                 typeof(IAgentService),
                 typeof(ICredentialProvider),
-                typeof(ITraceManager));
+                typeof(ITraceManager),
+                typeof(IExtension),
+                typeof(IJobExtension),
+                typeof(ICommandExtension));
         }
 
         [Fact]
