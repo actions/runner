@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
@@ -21,12 +22,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             this.listener = new MessageListener();
         }
 
-        private TestHostContext CreateTestContext(string testName)
+        private TestHostContext CreateTestContext([CallerMemberName] String testName = "")
         {
-            TestHostContext thc = new TestHostContext("MessageListenerL0", "CreatesSession");
+            TestHostContext thc = new TestHostContext(nameof(MessageListenerL0), testName);
             thc.RegisterService<IAgentSettings>(this.agentSettings.Object);
             thc.RegisterService<IWorkerManager>(this.workerManager.Object);
-            thc.RegisterService<ITaskServer>(this.taskServer.Object);            
+            thc.RegisterService<ITaskServer>(this.taskServer.Object);
             return thc;
         }
 
@@ -35,7 +36,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Trait("Category", "Agent")]
         public async void CreatesSession()
         {
-            using (TestHostContext thc = CreateTestContext("CreatesSession"))
+            using (TestHostContext thc = CreateTestContext())
             {
                 TraceSource trace = thc.GetTrace();
 

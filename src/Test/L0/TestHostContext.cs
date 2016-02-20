@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.Services.Agent;
@@ -14,7 +15,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
     public sealed class TestHostContext : IHostContext, IDisposable
     {
 
-        public TestHostContext(string suiteName, string testName)
+        public TestHostContext(string suiteName, [CallerMemberName] string testName = "")
         {
             if (suiteName == null)
             {
