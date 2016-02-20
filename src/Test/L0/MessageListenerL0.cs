@@ -9,8 +9,11 @@ using Microsoft.VisualStudio.Services.Agent;
 using Moq;
 using Xunit;
 
+using Microsoft.VisualStudio.Services.Agent.Configuration;
+
 namespace Microsoft.VisualStudio.Services.Agent.Tests
 {
+
     public sealed class MessageListenerL0
     {
         public MessageListenerL0()
