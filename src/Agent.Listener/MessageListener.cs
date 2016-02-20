@@ -1,9 +1,7 @@
 using System;
 using System.Diagnostics;
-using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
-using Microsoft.VisualStudio.Services.Agent;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener
 {
@@ -69,18 +67,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             }
 
             return false;
-        }
+        }        
 
         public async Task ListenAsync(IHostContext context)
         {
             var agentSettings = context.GetService<IAgentSettings>();            
             var taskServer = context.GetService<ITaskServer>();
-            TraceSource trace = context.Trace[TraceName];
-            Int64? lastMessageId = null;
-            using (var dispatcher = context.GetService<IMessageDispatcher>())
+            using (var workerManager = context.GetService<IWorkerManager>())
             {
+                TraceSource trace = context.Trace[TraceName];
+                Int64? lastMessageId = null;
                 while (true)
-                {
+                {                    
                     TaskAgentMessage message = null;
                     try
                     {
@@ -128,7 +126,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                             return;
                         }
 
-                        await dispatcher.Dispatch(context, message);
+                        if (String.Equals(message.MessageType, JobRequestMessage.MessageType, StringComparison.OrdinalIgnoreCase))
+                        {
+                            var newJobMessage = JsonUtility.FromString<JobRequestMessage>(message.Body);
+                            await workerManager.Run(context, newJobMessage);
+                        }
+                        else if (String.Equals(message.MessageType, JobCancelMessage.MessageType, StringComparison.OrdinalIgnoreCase))
+                        {
+                            var cancelJobMessage = JsonUtility.FromString<JobCancelMessage>(message.Body);
+                            await workerManager.Cancel(context, cancelJobMessage);
+                        }
                     }
                     finally
                     {

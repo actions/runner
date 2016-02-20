@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
+using System.Collections.Generic;
 
 namespace Microsoft.VisualStudio.Services.Agent
 {
@@ -34,12 +35,15 @@ namespace Microsoft.VisualStudio.Services.Agent
         }
 
         public async Task<TaskAgentMessage> GetAgentMessageAsync(Int32 poolId, Guid sessionId, Int64? lastMessageId, CancellationToken cancellationToken)
-        {
-            //throw new System.NotImplementedException();
-            var result = new TaskAgentMessage();                        
-            //var jobRequest = new JobRequestMessage(null, null, Guid.Empty, "someJob", null, null);
-            //result.Body = JsonUtility.ToString(jobRequest);
-            result.Body = "some text";
+        {            
+            var result = new TaskAgentMessage();
+            TaskOrchestrationPlanReference plan = new TaskOrchestrationPlanReference();
+            TimelineReference timeline = null;
+            JobEnvironment environment = new JobEnvironment();
+            List<TaskInstance> tasks = new List<TaskInstance>();
+            Guid JobId = Guid.NewGuid();
+            var jobRequest = new JobRequestMessage(plan, timeline, JobId, "someJob", environment, tasks);
+            result.Body = JsonUtility.ToString(jobRequest);            
             result.MessageType = JobRequestMessage.MessageType;
             result.MessageId = 123;
             return result;

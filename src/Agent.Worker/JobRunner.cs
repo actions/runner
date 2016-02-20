@@ -1,29 +1,19 @@
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using System;
 using System.Diagnostics;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
     public class JobRunner
     {
-        public JobRunner(IHostContext hostContext, StreamTransport transport) {
-            m_transport = transport;
+        public JobRunner(IHostContext hostContext) {
             m_hostContext = hostContext;
             m_trace = hostContext.Trace["JobRunner"];
-            m_transport.PacketReceived += M_transport_PacketReceived;
         }
 
-        private async Task M_transport_PacketReceived(object sender, IPCPacket e)
-        {
-            if (1 == e.MessageType)
-            {
-                var message = JsonUtility.FromString<TaskAgentMessage>(e.Body);
-                await Run(message);
-            }
-        }
-
-        public async Task Run(TaskAgentMessage message)
+        public async Task Run(JobRequestMessage message)
         {
             ExecutionContext context = new ExecutionContext(m_hostContext);
             m_trace.Verbose("Prepare");
@@ -38,23 +28,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             context.LogInfo("Finish...");
             context.LogVerbose("Finishing...");
 
-            context.LogInfo("Message id {0}", message.MessageId);
+            context.LogInfo("Job id {0}", message.JobId);
 
-            m_finished = true;
+            m_finishedSignal.Release();
         }
 
-        public async Task WaitToFinish()
+        public async Task WaitToFinish(IHostContext context)
         {
-            while (!m_finished)
-            {
-                await Task.Delay(100);
-            }
-            m_transport.PacketReceived -= M_transport_PacketReceived;
+            await m_finishedSignal.WaitAsync(context.CancellationToken);            
         }
 
         private IHostContext m_hostContext;
         private readonly TraceSource m_trace;
-        private readonly StreamTransport m_transport;
-        private volatile bool m_finished = false;
+        private SemaphoreSlim m_finishedSignal = new SemaphoreSlim(0, 1);
     }
 }

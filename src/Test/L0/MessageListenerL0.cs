@@ -16,7 +16,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         {
             this.agentSettings = new Mock<IAgentSettings>();
             this.agentSettings.Setup(x => x.PoolId).Returns(123);
-            this.dispatcher = new Mock<IMessageDispatcher>();
+            this.workerManager = new Mock<IWorkerManager>();
             this.taskServer = new Mock<ITaskServer>();
             this.listener = new MessageListener();
         }
@@ -25,7 +25,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         {
             TestHostContext thc = new TestHostContext("MessageListenerL0", "CreatesSession");
             thc.RegisterService<IAgentSettings>(this.agentSettings.Object);
-            thc.RegisterService<IMessageDispatcher>(this.dispatcher.Object);
+            thc.RegisterService<IWorkerManager>(this.workerManager.Object);
             thc.RegisterService<ITaskServer>(this.taskServer.Object);            
             return thc;
         }
@@ -59,7 +59,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         }
  
         private Mock<IAgentSettings> agentSettings;
-        private Mock<IMessageDispatcher> dispatcher;
+        private Mock<IWorkerManager> workerManager;
         private Mock<ITaskServer> taskServer;
         private MessageListener listener;
     }

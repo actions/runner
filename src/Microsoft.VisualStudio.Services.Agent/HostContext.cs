@@ -35,7 +35,15 @@ namespace Microsoft.VisualStudio.Services.Agent
         {
             get
             {
-                return m_cancellationToken;
+                return m_cancellationTokenSource.Token;
+            }
+        }
+
+        public CancellationTokenSource CancellationTokenSource
+        {
+            get
+            {
+                return m_cancellationTokenSource;
             }
         }
 
@@ -104,7 +112,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         }
         
         private readonly ConcurrentDictionary<Type, Type> serviceMappings = new ConcurrentDictionary<Type, Type>();
-        private readonly CancellationToken m_cancellationToken = new CancellationToken();
+        private readonly CancellationTokenSource m_cancellationTokenSource = new CancellationTokenSource();
         private ITraceManager m_traceManager;
         private String m_hostType;
     }

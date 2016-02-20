@@ -2,6 +2,8 @@
 using System.Diagnostics;
 using Microsoft.VisualStudio.Services.Agent;
 using System.Threading.Tasks;
+using System.Threading;
+using Microsoft.TeamFoundation.DistributedTask.WebApi;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
@@ -10,7 +12,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         public static void Main(string[] args)
         {
             RunAsync(args).Wait();
-        }
+        }        
 
         public static async Task RunAsync(string[] args)
         {
@@ -34,18 +36,32 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             m_trace.Warning("Warning Hello Worker!");
             m_trace.Error("Error Hello Worker!");
             m_trace.Verbose("Verbos Hello Worker!");
-            
+
             //JobRunner jobRunner = new JobRunner(hc);
             //jobRunner.Run();
 
+            JobRunner jobRunner = null;
+            Func<CancellationToken, JobCancelMessage, Task> cancelHandler = (token, message) => {
+                hc.CancellationTokenSource.Cancel();
+                return Task.CompletedTask;
+            };
+
+            Func<CancellationToken, JobRequestMessage, Task> newRequestHandler = async (token, message) => {
+                await jobRunner.Run(message);
+            };
+
             if (null != args && 3 == args.Length && "spawnclient".Equals(args[0].ToLower()))
             {
-                using (var client = new IPCClient())
+                using (var channel = hc.GetService<IProcessChannel>())
                 {
-                    JobRunner jobRunner = new JobRunner(hc, client.Transport);
-                    await client.Start(args[1], args[2]);
-                    await jobRunner.WaitToFinish();
-                    await client.Stop();
+                    channel.JobRequestMessageReceived += newRequestHandler;
+                    channel.JobCancelMessageReceived += cancelHandler;
+                    jobRunner = new JobRunner(hc);
+                    channel.StartClient(args[1], args[2]);
+                    await jobRunner.WaitToFinish(hc);
+                    channel.JobRequestMessageReceived -= newRequestHandler;
+                    channel.JobCancelMessageReceived -= cancelHandler;
+                    await channel.Stop();
                 }
             }
             
