@@ -96,7 +96,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         private static void PrintUsage()
         {
             Console.WriteLine("Usage:");
-            Console.WriteLine("Agent.Listener [configure/unconfigure/run/help] [--run] [--UnAttended] [--UserName <UserName>] [--Password <Password>] [--AuthType <Pat/Basic>] [--AgentName <AgentName>] [--PoolName <PoolName>]");
+            Console.WriteLine("Agent.Listener [configure/unconfigure/run/help] [--UnAttended] [--NoStart] [--AuthType <Pat>] [--Token <Token>] [--AgentName <AgentName>] [--PoolName <PoolName>] [--WorkFolder <WorkFolder>]");
             Environment.Exit(0);
         }
 
