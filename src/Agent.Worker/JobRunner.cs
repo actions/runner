@@ -28,14 +28,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             context.LogInfo("Finish...");
             context.LogVerbose("Finishing...");
 
-            context.LogInfo("Job id {0}", message.JobId);
+            m_trace.Info("Job id {0}", message.JobId);
 
             m_finishedSignal.Release();
         }
 
         public async Task WaitToFinish(IHostContext context)
         {
-            await m_finishedSignal.WaitAsync(context.CancellationToken);            
+            await m_finishedSignal.WaitAsync(context.CancellationToken);
         }
 
         private IHostContext m_hostContext;

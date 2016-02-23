@@ -1,8 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Threading.Tasks;
+using Microsoft.VisualStudio.Services.Agent.Util;
+using System.IO;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener
 {
@@ -19,15 +18,21 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         event EventHandler StateChanged;
         Guid JobId { get; set; }
         IProcessChannel ProcessChannel { get; set; }
-        void LaunchProcess(String pipeHandleOut, String pipeHandleIn);
+        void LaunchProcess(IHostContext hostContext, String pipeHandleOut, String pipeHandleIn, string workingFolder);
     }
 
     public class Worker : IWorker
     {
+#if OS_WINDOWS
+        private const String WorkerProcessName = "Agent.Worker.exe";
+#else
+        private const String WorkerProcessName = "Agent.Worker";
+#endif
+
         public event EventHandler StateChanged;
         public Guid JobId { get; set; }
         public IProcessChannel ProcessChannel { get; set; }
-        public Process JobProcess;
+        private IProcessInvoker _processInvoker;
         private WorkerState _state;
         public WorkerState State
         {
@@ -49,36 +54,23 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         }
         public Worker()
         {
-            JobProcess = new Process();
             State = WorkerState.New;
         }
 
-        public void LaunchProcess(String pipeHandleOut, String pipeHandleIn)
+        public void LaunchProcess(IHostContext hostContext, String pipeHandleOut, String pipeHandleIn, string workingFolder)
         {
-            string clientFileName = "Agent.Worker";
-            bool hasExeSuffix = clientFileName.EndsWith(".exe", StringComparison.OrdinalIgnoreCase);
-#if OS_WINDOWS
-            if (!hasExeSuffix)
-            {
-                clientFileName += ".exe";
-            }
-#else
-                    if (hasExeSuffix) {
-                        clientFileName = clientFileName.Substring(0, clientFileName.Length - 4);
-                    }
-#endif
-            //TODO: use ProcessInvoker instead
-            JobProcess.StartInfo.FileName = clientFileName;
-            JobProcess.StartInfo.Arguments = "spawnclient " + pipeHandleOut + " " + pipeHandleIn;
-            JobProcess.EnableRaisingEvents = true;
-            JobProcess.Exited += JobProcess_Exited;
+            string workerFileName = Path.Combine(AssemblyUtil.AssemblyDirectory, WorkerProcessName);
+            _processInvoker = hostContext.GetService<IProcessInvoker>();
+            _processInvoker.Exited += _processInvoker_Exited;
             State = WorkerState.Starting;
-            JobProcess.Start();
-        }
+            var environmentVariables = new Dictionary<String, String>();            
+            _processInvoker.Execute(hostContext, workingFolder, workerFileName, "spawnclient " + pipeHandleOut + " " + pipeHandleIn,
+                environmentVariables);
+        }        
 
-        private void JobProcess_Exited(object sender, EventArgs e)
+        private void _processInvoker_Exited(object sender, EventArgs e)
         {
-            JobProcess.Exited -= JobProcess_Exited;
+            _processInvoker.Exited -= _processInvoker_Exited;
             if (null != ProcessChannel)
             {
                 ProcessChannel.Dispose();
@@ -87,7 +79,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             State = WorkerState.Finished;
         }
 
-        #region IDisposable Support
+#region IDisposable Support
         private bool disposedValue = false; // To detect redundant calls
 
         protected virtual void Dispose(bool disposing)
@@ -99,6 +91,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     ProcessChannel.Dispose();
                     ProcessChannel = null;
                 }
+                if (null != _processInvoker)
+                {
+                    _processInvoker.Dispose();
+                    _processInvoker = null;
+                }
                 disposedValue = true;
             }
         }
@@ -109,6 +106,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
             Dispose(true);
         }
-        #endregion
+#endregion
     }
 }

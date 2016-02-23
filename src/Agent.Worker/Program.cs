@@ -9,20 +9,21 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
     public static class Program
     {
-        public static void Main(string[] args)
+        public static Int32 Main(string[] args)
         {
-            RunAsync(args).Wait();
+            return RunAsync(args).GetAwaiter().GetResult();
         }        
 
-        public static async Task RunAsync(string[] args)
+        public static async Task<Int32> RunAsync(string[] args)
         {
-            HostContext hc = new HostContext("Worker");
-            Console.WriteLine("Hello Worker!");
-            
+            using (HostContext hc = new HostContext("Worker"))
+            {
+                Console.WriteLine("Hello Worker!");
+
 #if OS_WINDOWS
-            Console.WriteLine("Hello Windows");
+                Console.WriteLine("Hello Windows");
 #endif
-            
+
 #if OS_OSX
             Console.WriteLine("Hello OSX");
 #endif
@@ -31,41 +32,50 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             Console.WriteLine("Hello Linux");
 #endif
 
-            TraceSource m_trace = hc.Trace["WorkerProcess"];
-            m_trace.Info("Info Hello Worker!");
-            m_trace.Warning("Warning Hello Worker!");
-            m_trace.Error("Error Hello Worker!");
-            m_trace.Verbose("Verbos Hello Worker!");
+                TraceSource m_trace = hc.Trace["WorkerProcess"];
+                m_trace.Info("Info Hello Worker!");
+                m_trace.Warning("Warning Hello Worker!");
+                m_trace.Error("Error Hello Worker!");
+                m_trace.Verbose("Verbos Hello Worker!");
 
-            //JobRunner jobRunner = new JobRunner(hc);
-            //jobRunner.Run();
+                //JobRunner jobRunner = new JobRunner(hc);
+                //jobRunner.Run();
 
-            JobRunner jobRunner = null;
-            Func<CancellationToken, JobCancelMessage, Task> cancelHandler = (token, message) => {
-                hc.CancellationTokenSource.Cancel();
-                return Task.CompletedTask;
-            };
-
-            Func<CancellationToken, JobRequestMessage, Task> newRequestHandler = async (token, message) => {
-                await jobRunner.Run(message);
-            };
-
-            if (null != args && 3 == args.Length && "spawnclient".Equals(args[0].ToLower()))
-            {
-                using (var channel = hc.GetService<IProcessChannel>())
+                JobRunner jobRunner = null;
+                Func<CancellationToken, JobCancelMessage, Task> cancelHandler = (token, message) =>
                 {
-                    channel.JobRequestMessageReceived += newRequestHandler;
-                    channel.JobCancelMessageReceived += cancelHandler;
-                    jobRunner = new JobRunner(hc);
-                    channel.StartClient(args[1], args[2]);
-                    await jobRunner.WaitToFinish(hc);
-                    channel.JobRequestMessageReceived -= newRequestHandler;
-                    channel.JobCancelMessageReceived -= cancelHandler;
-                    await channel.Stop();
+                    hc.CancellationTokenSource.Cancel();
+                    return Task.CompletedTask;
+                };
+
+                Func<CancellationToken, JobRequestMessage, Task> newRequestHandler = async (token, message) =>
+                {
+                    await jobRunner.Run(message);
+                };
+
+                try {
+                    if (null != args && 3 == args.Length && "spawnclient".Equals(args[0].ToLower()))
+                    {
+                        using (var channel = hc.GetService<IProcessChannel>())
+                        {
+                            channel.JobRequestMessageReceived += newRequestHandler;
+                            channel.JobCancelMessageReceived += cancelHandler;
+                            jobRunner = new JobRunner(hc);
+                            channel.StartClient(args[1], args[2]);
+                            await jobRunner.WaitToFinish(hc);
+                            channel.JobRequestMessageReceived -= newRequestHandler;
+                            channel.JobCancelMessageReceived -= cancelHandler;
+                            await channel.Stop();
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    m_trace.Error(ex);
+                    return 1;
                 }
             }
-            
-            hc.Dispose();
+            return 0;
         }
     }
 }

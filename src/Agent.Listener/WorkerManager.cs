@@ -29,7 +29,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             _jobsInProgress[jobRequestMessage.JobId] = worker;
             worker.ProcessChannel.StartServer( (p1, p2) => 
                 {
-                    worker.LaunchProcess(p1, p2);
+                    string workingFolder = ""; //TODO: pass working folder from the config to the worker process
+                    worker.LaunchProcess(context, p1, p2, workingFolder);
                 }
             );
             await worker.ProcessChannel.SendAsync(jobRequestMessage, context.CancellationToken);

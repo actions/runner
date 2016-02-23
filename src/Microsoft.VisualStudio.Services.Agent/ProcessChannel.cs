@@ -82,20 +82,21 @@ namespace Microsoft.VisualStudio.Services.Agent
                 {
                     await RunTask;
                 }
-                catch (TaskCanceledException)
+                catch (OperationCanceledException)
                 {
-                    // Ignore this exception
+                    // Ignore OperationCanceledException and TaskCanceledException exceptions
+                }
+                catch (AggregateException errors)
+                {
+                    // Ignore OperationCanceledException and TaskCanceledException exceptions
+                    errors.Handle(e => e is OperationCanceledException);
                 }
             }
         }
 
         private async Task Transport_PacketReceived(CancellationToken token, IPCPacket packet)
-        {            
-            if (token.IsCancellationRequested)
-            {
-                throw new TaskCanceledException();
-                
-            }
+        {
+            token.ThrowIfCancellationRequested();
             switch (packet.MessageType)
             {
                 case 1:

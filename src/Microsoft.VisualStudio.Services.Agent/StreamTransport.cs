@@ -42,30 +42,18 @@ namespace Microsoft.VisualStudio.Services.Agent
         public async Task SendAsync(Int32 MessageType, string Body, CancellationToken cancellationToken)
         {
             await WriteStream.WriteInt32Async(MessageType, cancellationToken);
-            if (cancellationToken.IsCancellationRequested)
-            {
-                throw new TaskCanceledException();
-            }
+            cancellationToken.ThrowIfCancellationRequested();
             await WriteStream.WriteStringAsync(Body, cancellationToken);
-            if (cancellationToken.IsCancellationRequested)
-            {
-                throw new TaskCanceledException();
-            }
+            cancellationToken.ThrowIfCancellationRequested();
         }
 
         public async Task<IPCPacket> ReceiveAsync(CancellationToken cancellationToken)
         {
             IPCPacket result = new IPCPacket(-1, "");
             result.MessageType = await ReadStream.ReadInt32Async(cancellationToken);
-            if (cancellationToken.IsCancellationRequested)
-            {
-                throw new TaskCanceledException();
-            }
+            cancellationToken.ThrowIfCancellationRequested();            
             result.Body = await ReadStream.ReadStringAsync(cancellationToken);
-            if (cancellationToken.IsCancellationRequested)
-            {
-                throw new TaskCanceledException();
-            }
+            cancellationToken.ThrowIfCancellationRequested();
             return result;
         }
 

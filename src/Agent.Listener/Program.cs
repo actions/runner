@@ -1,9 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
 using System.Diagnostics;
-using Microsoft.VisualStudio.Services.Agent;
-using System.Reflection;
-using System.IO;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener
 {
@@ -20,11 +17,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 //Int32 exitCode = ProcessInvoker.RunExe(context, workerExe, "");
                 //m_trace.Info("Worker.exe Exit: {0}", exitCode); 
 
-                return RunAsync(context, args).Result;
+                return RunAsync(context, m_trace, args).Result;
             }
         }
 
-        public static async Task<Int32> RunAsync(IHostContext context, String[] args)
+        public static async Task<Int32> RunAsync(IHostContext context, TraceSource trace, String[] args)
         {
             try
             {
@@ -42,9 +39,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
                 await listener.DeleteSessionAsync(context);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // TODO: Log exception.
+                trace.Error(ex);
                 return 1;
             }
 

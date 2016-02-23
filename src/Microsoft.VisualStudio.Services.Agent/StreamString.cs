@@ -40,10 +40,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                     await Task.Delay(100, cancellationToken);
                 }
             }
-            if (cancellationToken.IsCancellationRequested)
-            {
-                throw new TaskCanceledException();
-            }
+            cancellationToken.ThrowIfCancellationRequested();            
             if (BitConverter.IsLittleEndian)
             {
                 Array.Reverse(readBytes);
@@ -73,11 +70,8 @@ namespace Microsoft.VisualStudio.Services.Agent
 
         public async Task<string> ReadStringAsync(CancellationToken cancellationToken)
         {            
-            Int32 len = await ReadInt32Async(cancellationToken);            
-            if (cancellationToken.IsCancellationRequested)
-            {
-                throw new TaskCanceledException();
-            }
+            Int32 len = await ReadInt32Async(cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();            
             if (len <= 0 || len > MAX_STRING_SIZE)
             {                
                 throw new InvalidDataException();
@@ -104,10 +98,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                 }
             }
 
-            if (cancellationToken.IsCancellationRequested)
-            {
-                throw new TaskCanceledException();
-            }
+            cancellationToken.ThrowIfCancellationRequested();            
 
             return streamEncoding.GetString(inBuffer);
         }
@@ -121,10 +112,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                 throw new ArgumentOutOfRangeException();
             }
             await WriteInt32Async(len, cancellationToken);
-            if (cancellationToken.IsCancellationRequested)
-            {
-                throw new TaskCanceledException();
-            }            
+            cancellationToken.ThrowIfCancellationRequested();
             Task op = ioStream.WriteAsync(outBuffer, 0, len, cancellationToken);
             try
             {
@@ -133,10 +121,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             catch (OperationCanceledException)
             {                
             }
-            if (cancellationToken.IsCancellationRequested)
-            {
-                throw new TaskCanceledException();
-            }            
+            cancellationToken.ThrowIfCancellationRequested();
             op = ioStream.FlushAsync(cancellationToken);
             try
             {
