@@ -6,8 +6,8 @@ namespace Microsoft.VisualStudio.Services.Agent
     {
         public static int RunExe(IHostContext hostContext, string filename, string arguments)
         {
-            TraceSource m_trace = hostContext.Trace["ProcessInvoker"];
-            m_trace.Info("Starting process {0} {1}", filename, arguments);
+            TraceSource _trace = hostContext.GetTrace("ProcessInvoker");
+            _trace.Info("Starting process {0} {1}", filename, arguments);
 
             ProcessStartInfo processStartInfo = new ProcessStartInfo()
             {
@@ -35,7 +35,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                     {
                         lock (syncObject)
                         {
-                            m_trace.Info(e.Data);
+                            _trace.Info(e.Data);
                         }
                     }
                 };
@@ -46,7 +46,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                     {
                         lock (syncObject)
                         {
-                            m_trace.Info(e.Data);
+                            _trace.Info(e.Data);
                         }
                     }
                 };
@@ -60,7 +60,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                 bool newProcessStarted = proc.Start();
                 if (!newProcessStarted)
                 {
-                    m_trace.Verbose("Used existing process instead of starting new one for " + filename);
+                    _trace.Verbose("Used existing process instead of starting new one for " + filename);
                 }
                 proc.BeginOutputReadLine();
                 proc.BeginErrorReadLine();
@@ -71,7 +71,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                     seconds++;
                     if ((seconds % 30) == 0)
                     {
-                        m_trace.Info(
+                        _trace.Info(
                             "Waiting on process {0} ({1} seconds elapsed)",
                                 proc.Id,
                                 seconds);
@@ -88,7 +88,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                 proc.WaitForExit();
                 stopwatch.Stop();
 
-                m_trace.Info("Process finished: fileName={0} arguments={1} exitCode={2} in {3} ms", filename, arguments, proc.ExitCode, stopwatch.ElapsedMilliseconds);
+                _trace.Info("Process finished: fileName={0} arguments={1} exitCode={2} in {3} ms", filename, arguments, proc.ExitCode, stopwatch.ElapsedMilliseconds);
 
                 return proc.ExitCode;
             }

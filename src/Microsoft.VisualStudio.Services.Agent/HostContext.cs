@@ -14,13 +14,18 @@ namespace Microsoft.VisualStudio.Services.Agent
     public interface IHostContext
     {
         CancellationToken CancellationToken { get; }
-        ITraceManager Trace { get; }
+        TraceSource GetTrace(string name);
         Task Delay(TimeSpan delay);
-        T GetService<T>() where T : class;
+        T GetService<T>() where T : class, IAgentService;
     }
     
     public sealed class HostContext : IHostContext, IDisposable
     {
+        private readonly ConcurrentDictionary<Type, Type> serviceMappings = new ConcurrentDictionary<Type, Type>();
+        private readonly CancellationToken m_cancellationToken = new CancellationToken();
+        private ITraceManager _traceManager;
+        private String _hostType;
+
         public HostContext(String hostType)
         {
             if(String.IsNullOrEmpty(hostType))
@@ -28,7 +33,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                 throw new ArgumentNullException(nameof(hostType));
             }
             
-            m_hostType = hostType;
+            _hostType = hostType;
         }
        
         public CancellationToken CancellationToken
@@ -39,22 +44,21 @@ namespace Microsoft.VisualStudio.Services.Agent
             }
         }
 
-        public ITraceManager Trace 
-        { 
-            get
+        public TraceSource GetTrace(string name) 
+        {
+            if(_traceManager == null)
             {
-                // TODO (bryanmac): I don't like a getter doing I/O.  Should we change this?
-                if(m_traceManager == null)
-                {
-                    String filename = String.Format("{0}_{1:yyyyMMdd-HHmmss}-utc.log", m_hostType, DateTime.UtcNow);
-                    Stream logFile = File.Create(filename);
-                    TextWriterTraceListener traceListener = new TextWriterTraceListener(logFile);
-                    
-                    m_traceManager = new TraceManager(traceListener);                    
-                }
+                string filename = String.Format("{0}_{1:yyyyMMdd-HHmmss}-utc.log", _hostType, DateTime.UtcNow);
+                var currentAssemblyLocation = System.Reflection.Assembly.GetEntryAssembly().Location;
+                var logPath = new DirectoryInfo(currentAssemblyLocation).Parent.FullName.ToString();
+
+                Stream logFile = File.Create(Path.Combine(logPath, filename));
+                TextWriterTraceListener traceListener = new TextWriterTraceListener(logFile);
                 
-                return m_traceManager;
+                _traceManager = new TraceManager(traceListener);                    
             }
+            
+            return _traceManager[name];
         }
 
         public async Task Delay(TimeSpan delay)
@@ -62,7 +66,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             await Task.Delay(delay, this.CancellationToken);
         }
 
-        public T GetService<T>() where T : class
+        public T GetService<T>() where T : class, IAgentService
         {
             Type target;
             if (!this.serviceMappings.TryGetValue(typeof(T), out target))
@@ -91,21 +95,18 @@ namespace Microsoft.VisualStudio.Services.Agent
                 return this.GetService<T>();
             }
 
-            return Activator.CreateInstance(target) as T;
+            var svc = Activator.CreateInstance(target) as T;
+            svc.Initialize(this);
+            return svc;
         }
 
         public void Dispose()
         {
-            if (m_traceManager != null && m_traceManager is IDisposable)
+            if (_traceManager != null && _traceManager is IDisposable)
             {
-                ((IDisposable)m_traceManager).Dispose();
-                m_traceManager = null;    
+                ((IDisposable)_traceManager).Dispose();
+                _traceManager = null;    
             }
         }
-        
-        private readonly ConcurrentDictionary<Type, Type> serviceMappings = new ConcurrentDictionary<Type, Type>();
-        private readonly CancellationToken m_cancellationToken = new CancellationToken();
-        private ITraceManager m_traceManager;
-        private String m_hostType;
     }
 }

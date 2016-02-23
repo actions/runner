@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using Xunit;
 using Microsoft.VisualStudio.Services.Agent;
+using Microsoft.VisualStudio.Services.Agent.Configuration;
 using Microsoft.VisualStudio.Services.Agent.Listener;
 using Microsoft.VisualStudio.Services.Agent.Worker;
 
@@ -16,7 +17,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Trait("Category", "Agent")]
         public void AgentInterfacesSpecifyDefaultImplementation()
         {
-            Validate(typeof(IMessageListener).GetTypeInfo().Assembly);
+            Validate(typeof(IMessageListener).GetTypeInfo().Assembly, 
+                    // whitelist 
+                    typeof(ICredentialProvider));
         }
 
         [Fact]
@@ -28,6 +31,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 typeof(IHostContext).GetTypeInfo().Assembly, // assembly
                 typeof(IExecutionContext), // whitelist params
                 typeof(IHostContext),
+                typeof(IAgentService),
+                typeof(ICredentialProvider),
                 typeof(ITraceManager));
         }
 

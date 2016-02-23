@@ -109,14 +109,14 @@ namespace Microsoft.VisualStudio.Services.Agent
         
         public static void Error(this TraceSource traceSource, Exception exception)
         {
-            Trace(traceSource, TraceEventType.Error, exception.Message);
+            Trace(traceSource, TraceEventType.Error, exception.StackTrace);
         }
         
         public static void Error(this TraceSource traceSource, string format, params object[] args)
         {
             Trace(traceSource, TraceEventType.Error, format, args);
         }
-        
+
         public static void Warning(this TraceSource traceSource, string format, params object[] args)
         {
             Trace(traceSource, TraceEventType.Warning, format, args);

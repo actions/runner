@@ -34,7 +34,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
 
         public static bool AuthSchemeValidator(string value)
         {
-            return value.ConvertToEnum<AuthScheme>(AuthScheme.Unknown) == AuthScheme.Pat;
+            return CredentialManager.CredentialTypes.ContainsKey(value);
         }
 
         public static bool FilePathValidator(string value)
@@ -54,6 +54,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
             }
 
             return true;
+        }
+
+        public static bool BoolValidator(string value)
+        {
+            return String.Equals(value, "true", StringComparison.OrdinalIgnoreCase) ||
+                   String.Equals(value, "false", StringComparison.OrdinalIgnoreCase) ||
+                   String.Equals(value, "y", StringComparison.OrdinalIgnoreCase) ||
+                   String.Equals(value, "n", StringComparison.OrdinalIgnoreCase);
         }
 
         public static bool NonEmptyValidator(string value)

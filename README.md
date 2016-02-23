@@ -44,6 +44,10 @@ From src:
 `layout` (`l`): Creates a full layout in {root}/_layout  
    Does a clean, restore, build, publish and copy
 
+`update` (`u`) {dirname}: Builds and publishes just one dir.  Patches the layout
+   update {dirname}
+   Use if you change code in an assembly and don't want to wait for the full layout.
+
 `validate` (`v`): Precheckin validation.  Runs git clean, layout and test.
 
 ### Editors

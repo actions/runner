@@ -11,6 +11,9 @@ namespace Microsoft.VisualStudio.Services.Agent
         public TraceSetting()
         {
             DefaultTraceLevel = TraceLevel.Info;
+#if DEBUG
+            DefaultTraceLevel = TraceLevel.Verbose;
+#endif            
         }
         
         [DataMember(EmitDefaultValue = false)]

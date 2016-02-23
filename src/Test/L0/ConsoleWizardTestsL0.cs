@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Microsoft.VisualStudio.Services.Agent.Configuration;
 using Xunit;
@@ -14,13 +15,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             using (TestHostContext thc = new TestHostContext(nameof(ConsoleWizardTestsL0)))
             {
                 var consoleWizard = new ConsoleWizard();
+                consoleWizard.Initialize(thc);
                 var expectedValue = "ExpectedValue";
-                var returnedValue = consoleWizard.GetConfigurationValue(
-                    thc,
+                var returnedValue = consoleWizard.ReadValue(
                     "TestConfigName",
-                    new Dictionary<string, ArgumentMetaData> { { "TestConfigName", new ArgumentMetaData() } },
+                    "Test Config Name",
+                    false,
+                    String.Empty,
+                    Validators.NonEmptyValidator,
                     new Dictionary<string, string> { { "TestConfigName", expectedValue } },
-                    true);
+                    unattended: true);
+
                 Assert.True(returnedValue.Equals(expectedValue));
             }
         }

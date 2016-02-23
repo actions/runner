@@ -4,50 +4,82 @@ using System.Diagnostics;
 
 namespace Microsoft.VisualStudio.Services.Agent.Configuration
 {
-    public abstract class AgentCredential
+    public class CredentialData
     {
-        public abstract void ReadCredential(IHostContext context, Dictionary<string, string> args, Boolean isUnattended);
+        public string Scheme { get; set; }
+        public Dictionary<string, string> Data { get; set; }
+    }
 
-        protected virtual String ReadCredentialConfig(
-            IHostContext context,
-            string parameterName,
-            bool isSecret,
-            Dictionary<String, ArgumentMetaData> metaData,
-            Dictionary<String, String> args,
-            Boolean isUnattended)
+    public interface ICredentialProvider
+    {
+        CredentialData CredentialData { get; set; }
+        // TODO: (bryanmac) abstract GetVSSCredential which knows how to instantiate based off data
+        void ReadCredential(IHostContext context, Dictionary<string, string> args, bool enforceSupplied);
+    }
+
+    public abstract class CredentialProvider : ICredentialProvider
+    {
+        public CredentialProvider(string scheme)
         {
-            TraceSource m_trace = context.Trace["AgentCrendialManager"];
-            m_trace.Info("Reading credential configuration {0}", parameterName);
-            return context.GetService<IConsoleWizard>()
-                .GetConfigurationValue(context, parameterName, metaData, args, isUnattended);
+            CredentialData = new CredentialData();
+            CredentialData.Scheme = scheme;
+            CredentialData.Data = new Dictionary<string, string>();
         }
+
+        public CredentialData CredentialData { get; set; }
+
+        // TODO: (bryanmac) abstract GetVSSCredential which knows how to instantiate based off data
+
+        public abstract void ReadCredential(IHostContext context, Dictionary<string, string> args, bool enforceSupplied);
     }
 
-    public sealed class TokenCredential : AgentCredential
+    public sealed class PersonalAccessToken : CredentialProvider
     {
-        private Dictionary<String, ArgumentMetaData> CredentialMetaData = new Dictionary<String, ArgumentMetaData>
-                                                                               {
-                                                                                   {
-                                                                                       "Token",
-                                                                                       new ArgumentMetaData
-                                                                                           {
-                                                                                               Description = "Personal Access Token",
-                                                                                               IsSercret = true,
-                                                                                               Validator = Validators.NonEmptyValidator
-                                                                                           }
-                                                                                   }
-                                                                               };
-        public String Token { get; private set; }
-
-        public override void ReadCredential(IHostContext context, Dictionary<String, String> args, Boolean isUnattended)
+        public PersonalAccessToken(): base("PAT") {}
+        
+        public override void ReadCredential(IHostContext context, Dictionary<string, string> args, bool enforceSupplied)
         {
-            this.Token = this.ReadCredentialConfig(context, "Token", true, this.CredentialMetaData, args, isUnattended);
-        }
+            TraceSource trace = context.GetTrace("PersonalAccessToken");
+            trace.Info("ReadCredentials()");
+
+            var wizard = context.GetService<IConsoleWizard>();
+            trace.Verbose("reading token");
+            string tokenVal = wizard.ReadValue("token", 
+                                            "PersonalAccessToken", 
+                                            true, 
+                                            String.Empty, 
+                                            // can do better
+                                            Validators.NonEmptyValidator,
+                                            args, 
+                                            enforceSupplied);
+            CredentialData.Data["token"] = tokenVal;
+        }        
     }
 
-    public enum AuthScheme
+    public sealed class AlternateCredential : CredentialProvider
     {
-        Unknown,
-        Pat
-    }
+        public AlternateCredential(): base("ALT") {}
+        
+        public override void ReadCredential(IHostContext context, Dictionary<string, string> args, bool enforceSupplied)
+        {
+            var wizard = context.GetService<IConsoleWizard>();
+            CredentialData.Data["Username"] = wizard.ReadValue("username", 
+                                            "Username", 
+                                            false,
+                                            String.Empty,
+                                            // can do better
+                                            Validators.NonEmptyValidator, 
+                                            args, 
+                                            enforceSupplied);
+
+            CredentialData.Data["Password"] = wizard.ReadValue("password", 
+                                            "Password", 
+                                            true,
+                                            String.Empty,
+                                            // can do better
+                                            Validators.NonEmptyValidator,
+                                            args, 
+                                            enforceSupplied);            
+        }        
+    }    
 }

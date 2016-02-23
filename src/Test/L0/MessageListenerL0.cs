@@ -6,32 +6,36 @@ using System.Threading.Tasks;
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Listener;
 using Microsoft.VisualStudio.Services.Agent;
+using Microsoft.VisualStudio.Services.Agent.Configuration;
 using Moq;
 using Xunit;
-
-using Microsoft.VisualStudio.Services.Agent.Configuration;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests
 {
 
     public sealed class MessageListenerL0
     {
+        private AgentSettings _settings;
+        private Mock<IConfigurationManager> _config; 
+        private Mock<IMessageDispatcher> _dispatcher;
+        private Mock<ITaskServer> _taskServer;
+
         public MessageListenerL0()
         {
-            this.agentSettings = new Mock<IAgentSettings>();
-            this.agentSettings.Setup(x => x.PoolId).Returns(123);
-            this.dispatcher = new Mock<IMessageDispatcher>();
-            this.taskServer = new Mock<ITaskServer>();
-            this.listener = new MessageListener();
+            _settings = new AgentSettings { AgentId=1, AgentName="myagent", PoolId=123, PoolName="default", ServerUrl="http://myserver", WorkFolder="_work" };
+            _config = new Mock<IConfigurationManager>();
+            _config.Setup(x => x.GetSettings()).Returns(_settings);
+            _dispatcher = new Mock<IMessageDispatcher>();
+            _taskServer = new Mock<ITaskServer>();
         }
 
         private TestHostContext CreateTestContext([CallerMemberName] String testName = "")
         {
-            TestHostContext thc = new TestHostContext(nameof(MessageListenerL0), testName);
-            thc.RegisterService<IAgentSettings>(this.agentSettings.Object);
-            thc.RegisterService<IMessageDispatcher>(this.dispatcher.Object);
-            thc.RegisterService<ITaskServer>(this.taskServer.Object);
-            return thc;
+            TestHostContext tc = new TestHostContext(nameof(MessageListenerL0), testName);
+            tc.RegisterService<IConfigurationManager>(_config.Object);
+            tc.RegisterService<IMessageDispatcher>(_dispatcher.Object);
+            tc.RegisterService<ITaskServer>(_taskServer.Object);
+            return tc;
         }
 
         [Fact]
@@ -39,32 +43,30 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Trait("Category", "Agent")]
         public async void CreatesSession()
         {
-            using (TestHostContext thc = CreateTestContext())
+            using (TestHostContext tc = CreateTestContext())
             {
-                TraceSource trace = thc.GetTrace();
+                TraceSource trace = tc.GetTrace();
 
                 // Arrange.
                 var expectedSession = new TaskAgentSession();
-                this.taskServer
+                _taskServer
                     .Setup(x => x.CreateAgentSessionAsync(
-                        It.Is<Int32>(y => y == this.agentSettings.Object.PoolId),
+                        _settings.PoolId,
                         It.Is<TaskAgentSession>(y => y != null),
-                        It.Is<CancellationToken>(y => y == thc.CancellationToken)))
+                        tc.CancellationToken))
                     .Returns(Task.FromResult(expectedSession));
 
                 // Act.
-                Boolean result = await this.listener.CreateSessionAsync(thc);
+                MessageListener listener = new MessageListener();
+                listener.Initialize(tc);
+
+                bool result = await listener.CreateSessionAsync();
                 trace.Info("result: {0}", result);
 
                 // Assert.
                 Assert.True(result);
-                Assert.Equal(expectedSession, this.listener.Session);
+                Assert.Equal(expectedSession, listener.Session);
             }
         }
- 
-        private Mock<IAgentSettings> agentSettings;
-        private Mock<IMessageDispatcher> dispatcher;
-        private Mock<ITaskServer> taskServer;
-        private MessageListener listener;
     }
 }

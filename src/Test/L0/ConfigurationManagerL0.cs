@@ -12,73 +12,93 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
 
     public class ConfigurationManagerL0
     {
-        private string expectedToken = "expectedToken";
-        private string expectedServerUrl = "expectedServerUrl";
-        private string expectedAgentName = "expectedAgentName";
-        private string expectedPoolName = "poolName";
-        private string expectedAuthType = "pat";
-        private string expectedWorkFolder = "_work";
+        private Mock<ICredentialManager> _credMgr;
+        private Mock<IConsoleWizard> _reader;
+        private Mock<IConfigurationStore> _store;
+        private string _expectedToken = "expectedToken";
+        private string _expectedServerUrl = "expectedServerUrl";
+        private string _expectedAgentName = "expectedAgentName";
+        private string _expectedPoolName = "poolName";
+        private string _expectedAuthType = "pat";
+        private string _expectedWorkFolder = "_work";
 
         public ConfigurationManagerL0()
         {
-            this.agentCredentialManager = new Mock<IAgentCredentialManager>();
-            this.configReader = new Mock<IConsoleWizard>();
+            _credMgr = new Mock<ICredentialManager>();
+            _reader = new Mock<IConsoleWizard>();
+            _store = new Mock<IConfigurationStore>();
 
-            this.agentCredentialManager.Setup(x => x.Create(It.IsAny<AuthScheme>())).Returns(new TestAgentCredential());
+            _store.Setup(x => x.IsConfigured()).Returns(false);
+            _store.Setup(x => x.HasCredentials()).Returns(false);
+            _store.Setup(x => x.GetSettings()).Returns(
+                new AgentSettings { 
+                    ServerUrl = _expectedServerUrl,
+                    AgentName = _expectedAgentName,
+                    PoolName = _expectedPoolName,
+                    WorkFolder = _expectedWorkFolder
+                });
 
-            this.configReader.Setup(
-                x =>
-                x.GetConfigurationValue(
-                    It.IsAny<IHostContext>(),
-                    "WorkFolder",
-                    It.IsAny<Dictionary<String, ArgumentMetaData>>(),
-                    It.IsAny<Dictionary<String, String>>(),
-                    false)).Returns(expectedWorkFolder);
+            _credMgr.Setup(x => x.GetCredentialProvider(It.IsAny<string>())).Returns(new TestAgentCredential());
 
-            this.configReader.Setup(
-                x =>
-                x.GetConfigurationValue(
-                    It.IsAny<IHostContext>(),
-                    "AuthType",
-                    It.IsAny<Dictionary<String, ArgumentMetaData>>(),
-                    It.IsAny<Dictionary<String, String>>(),
-                    false)).Returns(expectedAuthType);
+            _reader.Setup(x => x.ReadValue(
+                    "work",
+                    It.IsAny<string>(), // description
+                    It.IsAny<bool>(),   // secret
+                    It.IsAny<string>(), // defaultValue
+                    It.IsAny<Func<string, bool>>(), // validator
+                    It.IsAny<Dictionary<String, String>>(), //validator
+                    false // unattended
+                )).Returns(_expectedWorkFolder);
 
-            this.configReader.Setup(
-                x =>
-                x.GetConfigurationValue(
-                    It.IsAny<IHostContext>(),
-                    "ServerUrl",
-                    It.IsAny<Dictionary<String, ArgumentMetaData>>(),
-                    It.IsAny<Dictionary<String, String>>(),
-                    false)).Returns(expectedServerUrl);
+            _reader.Setup(x => x.ReadValue(
+                    "auth",
+                    It.IsAny<string>(), // description
+                    It.IsAny<bool>(),   // secret
+                    It.IsAny<string>(), // defaultValue
+                    It.IsAny<Func<string, bool>>(), // validator
+                    It.IsAny<Dictionary<String, String>>(), //validator
+                    false // unattended
+                )).Returns(_expectedAuthType);
 
-            this.configReader.Setup(
-                x =>
-                x.GetConfigurationValue(
-                    It.IsAny<IHostContext>(),
-                    "AgentName",
-                    It.IsAny<Dictionary<String, ArgumentMetaData>>(),
-                    It.IsAny<Dictionary<String, String>>(),
-                    false)).Returns(expectedAgentName);
+            _reader.Setup(x => x.ReadValue(
+                    "url",
+                    It.IsAny<string>(), // description
+                    It.IsAny<bool>(),   // secret
+                    It.IsAny<string>(), // defaultValue
+                    It.IsAny<Func<string, bool>>(), // validator
+                    It.IsAny<Dictionary<String, String>>(), //validator
+                    false // unattended
+                )).Returns(_expectedServerUrl);
 
-            this.configReader.Setup(
-                x =>
-                x.GetConfigurationValue(
-                    It.IsAny<IHostContext>(),
-                    "PoolName",
-                    It.IsAny<Dictionary<String, ArgumentMetaData>>(),
-                    It.IsAny<Dictionary<String, String>>(),
-                    false)).Returns(expectedPoolName);
+            _reader.Setup(x => x.ReadValue(
+                    "agent",
+                    It.IsAny<string>(), // description
+                    It.IsAny<bool>(),   // secret
+                    It.IsAny<string>(), // defaultValue
+                    It.IsAny<Func<string, bool>>(), // validator
+                    It.IsAny<Dictionary<String, String>>(), //validator
+                    false // unattended
+                )).Returns(_expectedAgentName);
+
+            _reader.Setup(x => x.ReadValue(
+                    "pool",
+                    It.IsAny<string>(), // description
+                    It.IsAny<bool>(),   // secret
+                    It.IsAny<string>(), // defaultValue
+                    It.IsAny<Func<string, bool>>(), // validator
+                    It.IsAny<Dictionary<String, String>>(), //validator
+                    false // unattended
+                )).Returns(_expectedPoolName);
         }
 
         private TestHostContext CreateTestContext([CallerMemberName] String testName = "")
         {
-            TestHostContext thc = new TestHostContext(nameof(ConfigurationManagerL0), testName);
-            thc.RegisterService<IAgentCredentialManager>(this.agentCredentialManager.Object);
-            thc.RegisterService<IConsoleWizard>(this.configReader.Object);
+            TestHostContext tc = new TestHostContext(nameof(ConfigurationManagerL0), testName);
+            tc.RegisterService<ICredentialManager>(this._credMgr.Object);
+            tc.RegisterService<IConsoleWizard>(_reader.Object);
+            tc.RegisterService<IConfigurationStore>(_store.Object);
 
-            return thc;
+            return tc;
         }
 
         [Fact]
@@ -86,40 +106,45 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Trait("Category", "ConfigurationManagement")]
         public void CanEnsureConfigure()
         {
-            using (TestHostContext thc = CreateTestContext())
+            using (TestHostContext tc = CreateTestContext())
             {
-                TraceSource trace = thc.GetTrace();
+                TraceSource trace = tc.GetTrace();
 
+                trace.Info("Creating config manager");
                 IConfigurationManager configManager = new ConfigurationManager();
-                CommandLineParser clp = new CommandLineParser(thc);
+                configManager.Initialize(tc);
+
+                trace.Info("Creating command line parser");
+                CommandLineParser clp = new CommandLineParser(tc);
 
                 trace.Info("Preparing command line arguments");
                 clp.Parse(
                     new[]
                         {
-                            "configure", "--Token", expectedToken, "--ServerUrl", expectedServerUrl, "--AgentName",
-                            expectedAgentName, "--PoolName", expectedPoolName, "--authtype", expectedAuthType,
-                            "--WorkFolder", expectedWorkFolder
+                            "configure", 
+                            "--url", _expectedServerUrl, 
+                            "--agent", _expectedAgentName, 
+                            "--pool", _expectedPoolName,  
+                            "--work", _expectedWorkFolder,
+                            "--auth", _expectedAuthType,
+                            "--token", _expectedToken                            
                         });
+                
                 trace.Info("Constructed.");
 
                 trace.Info("Ensuring all the required parameters are available in the command line parameter");
-                var ensureConfigured = configManager.Configure(thc, clp.Args, false);
-                Assert.True(ensureConfigured);
+                configManager.Configure(clp.Args, false);
 
                 trace.Info("Configured, verifying all the parameter value");
-                var configuration = configManager.GetConfiguration();
-                Assert.True(configuration.Setting.ServerUrl.Equals(expectedServerUrl));
-                Assert.True(configuration.Setting.AgentName.Equals(expectedAgentName));
-                Assert.True(configuration.Setting.PoolName.Equals(expectedPoolName));
-                Assert.True(configuration.Setting.WorkFolder.Equals(expectedWorkFolder));
+                var s = configManager.GetSettings();
+                Assert.True(s.ServerUrl.Equals(_expectedServerUrl));
+                Assert.True(s.AgentName.Equals(_expectedAgentName));
+                Assert.True(s.PoolName.Equals(_expectedPoolName));
+                Assert.True(s.WorkFolder.Equals(_expectedWorkFolder));
             }
         }
 
         // TODO Unit Test for IsConfigured - Rename config file and make sure it returns false
 
-        private Mock<IAgentCredentialManager> agentCredentialManager;
-
-        private Mock<IConsoleWizard> configReader;
     }
 }

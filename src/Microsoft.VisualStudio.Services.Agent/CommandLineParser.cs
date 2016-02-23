@@ -12,41 +12,68 @@ namespace Microsoft.VisualStudio.Services.Agent
 {
     public sealed class CommandLineParser
     {
+        private TraceSource _trace;
         private static List<String> validCommands = new List<string> { "configure", "unconfigure", "run", "help" };
         public CommandLineParser(IHostContext hostContext)
         {
-            m_trace = hostContext.Trace["CommandLineParser"];
+            _trace = hostContext.GetTrace("CommandLineParser");
 
-            Commands = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            Commands = new List<string>();
             Flags = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             Args = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         }
 
-        public HashSet<string> Commands { get; }
+        public List<string> Commands { get; }
         public HashSet<string> Flags { get; }
         public Dictionary<string, string> Args { get; }
         public bool HasArgs { get; private set; }
 
+        public bool IsCommand(string name)
+        {
+            return IsCommand(0, name);
+        }
+
+        public bool IsCommand(int index, string name) 
+        {
+            bool result = false;
+
+            if (Commands.Count > index)
+            {
+                result = String.Equals(name, Commands[index], StringComparison.CurrentCultureIgnoreCase);
+            }
+
+            return result;
+        }
+
         public void Parse(String[] args)
         {
+            _trace.Info("Parse()");
+
             if(args == null)
             {
                 throw new ArgumentNullException("args");
             }
 
-            m_trace.Info("Parse {0} args", args.Length);
+            _trace.Info("Parse {0} args", args.Length);
+
+            if (args == null)
+            {
+                _trace.Info("No args");
+                return;
+            }
 
             string argScope = null;
             foreach (string arg in args)
             {
-                m_trace.Info("arg: {0}", arg);
+                _trace.Info("parsing argument");
+                _trace.Info("arg: {0}", arg);
 
                 HasArgs = HasArgs || arg.StartsWith("--");
-                m_trace.Info("HasArgs: {0}", HasArgs);
+                _trace.Info("HasArgs: {0}", HasArgs);
 
                 if (!HasArgs)
                 {
-                    m_trace.Info("Adding Command: {0}", arg);
+                    _trace.Info("Adding Command: {0}", arg);
                     Commands.Add(arg.Trim());
                 }
                 else
@@ -55,11 +82,11 @@ namespace Microsoft.VisualStudio.Services.Agent
                     if (arg.StartsWith("--") && arg.Length > 2)
                     {
                         string argVal = arg.Substring(2);
-                        m_trace.Info("arg: {0}", argVal);
+                        _trace.Info("arg: {0}", argVal);
 
                         // this means two --args in a row which means previous was a flag
                         if (argScope != null) {
-                            m_trace.Info("Adding flag: {0}", argScope);
+                            _trace.Info("Adding flag: {0}", argScope);
                             Flags.Add(argScope.Trim());
                         }
 
@@ -70,7 +97,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                         // we found a value - check if we're in scope of an arg
                         if (argScope != null && !Args.ContainsKey(argScope))
                         {
-                            m_trace.Info("Adding option {0} value: {1}", argScope, arg);
+                            _trace.Info("Adding option {0} value: {1}", argScope, arg);
                             // ignore duplicates - first wins - below will be val1
                             // --arg1 val1 --arg1 val1
                             Args.Add(argScope.Trim(), arg);
@@ -85,22 +112,22 @@ namespace Microsoft.VisualStudio.Services.Agent
 
                         // ignoring invalid things like empty - and --
                         // --arg val1 -- --flag
-                        m_trace.Info("Ignoring: {0}", arg);
+                        _trace.Info("Ignoring: {0}", arg);
                     }
                 }
             }
+            _trace.Verbose("done parsing arguments");
 
             // handle last arg being a flag
             if (argScope != null) {
                 Flags.Add(argScope);
             }
+            _trace.Verbose("Exiting parse");
         }
 
         public Boolean HasValidCommand()
         {
             return this.Commands.Any(x => validCommands.Contains(x));
         }
-
-        private TraceSource m_trace;
     }
 }

@@ -2,6 +2,7 @@
 using System.Threading.Tasks;
 using System.Diagnostics;
 using Microsoft.VisualStudio.Services.Agent;
+using Microsoft.VisualStudio.Services.Agent.Util;
 using System.Reflection;
 using System.IO;
 
@@ -15,110 +16,163 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         {
             using (HostContext context = new HostContext("Agent"))
             {
-                TraceSource m_trace = context.Trace["AgentProcess"];
-                m_trace.Info("Info Hello Agent!");
+                TraceSource _trace = context.GetTrace("AgentProcess");
+                _trace.Info("Info Hello Agent!");
 
+                //
+                // TODO (bryanmac): Need VsoAgent.exe compat shim for SCM
+                //                  That shim will also provide a compat arg parse 
+                //                  and translate / to -- etc...
+                //
                 CommandLineParser parser = new CommandLineParser(context);
-
-                m_trace.Info("Prepare command line arguments");
                 parser.Parse(args);
+                _trace.Info("Arguments parsed");
 
-                return ExecuteCommand(context, parser).Result;
+                Int32 rc = 0;
+                try 
+                {
+                    rc = ExecuteCommand(context, parser).Result;    
+                }
+                catch (Exception e)
+                {
+                    Console.Error.WriteLine(StringUtil.Format("An error occured.  {0}", e.Message));
+                    _trace.Error(e);
+                    rc = 1;
+                }
+
+                return rc;
+                
             }
         }
 
         private static async Task<Int32> ExecuteCommand(HostContext context, CommandLineParser parser)
         {
             // TODO Unit test to cover this logic
-            TraceSource m_trace = context.Trace["AgentProcess"];
-            var configManager = context.GetService<IConfigurationManager>();
+            TraceSource _trace = context.GetTrace("AgentProcess");
+            _trace.Info("ExecuteCommand()");
 
-            if (parser.Commands.Contains("help") || !parser.HasValidCommand())
+            var configManager = context.GetService<IConfigurationManager>();
+            _trace.Info("Created configuration manager");
+
+            // command is not required, if no command it just starts and/or configures if not configured
+
+            // TODO: Invalid config prints usage
+
+            if (parser.Flags.Contains("help"))
             {
+                _trace.Info("help");
                 PrintUsage();
             }
 
-            if (parser.Commands.Contains("unconfigure"))
+            // TODO: make commands a list instead of a hashset
+
+            if (parser.IsCommand("unconfigure"))
             {
+                _trace.Info("unconfigure");
                 // TODO: Unconfiure, remove config and exit
             }
 
-            if (parser.Commands.Contains("run") && !configManager.IsConfigured())
+            if (parser.IsCommand("run") && !configManager.IsConfigured())
             {
+                _trace.Info("run");
                 Console.WriteLine("Agent is not configured");
                 PrintUsage();
             }
 
-            if (parser.Commands.Contains("configure"))
-            {
-                Boolean isUnattended = parser.Flags.Contains("unattended");
+            // unattend mode will not prompt for args if not supplied.  Instead will error.
+            bool isUnattended = parser.Flags.Contains("unattended");
 
-                if (!configManager.Configure(context, parser.Args, isUnattended))
-                {
-                    m_trace.Error("Agent configuration failure");
-                    PrintUsage();
-                }
+            if (parser.IsCommand("configure"))
+            {
+                _trace.Info("configure");    
+                configManager.Configure(parser.Args, isUnattended);
+                Environment.Exit(0);
             }
 
             if (parser.Flags.Contains("nostart"))
             {
-                m_trace.Info("No start option mentioned, exiting the agent");
+                _trace.Info("No start option, exiting the agent");
                 Environment.Exit(0);
             }
 
-            if (parser.Flags.Contains("run"))
+            if (parser.IsCommand("run") && !configManager.IsConfigured())
             {
-                if (!configManager.EnsureConfigured(context))
-                {
-                    Console.WriteLine("Can't not run agent, required configuration is missing");
-                    PrintUsage();
-                }
+                throw new InvalidOperationException("Cannot run.  Must configure first.");
             }
 
-            var agentConfiguration = configManager.GetConfiguration();
-            PrintConfiguration(m_trace, agentConfiguration);
+            _trace.Info("Done evaluating commands");
+            configManager.EnsureConfigured();
 
             //String workerExe = Path.Combine(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location), "Worker.exe");
             //Int32 exitCode = ProcessInvoker.RunExe(context, workerExe, "");
-            //m_trace.Info("Worker.exe Exit: {0}", exitCode); 
+            //_trace.Info("Worker.exe Exit: {0}", exitCode); 
 
-            return RunAsync(context, agentConfiguration).Result;
+            ICredentialProvider cred = configManager.AcquireCredentials(parser.Args, isUnattended);
+            return RunAsync(context).Result;
         }
 
-        private static void PrintConfiguration(TraceSource m_trace, AgentConfiguration configuration)
+        public static async Task<Int32> RunAsync(IHostContext context)
         {
-            m_trace.Info("Server URL: {0}", configuration.Setting.ServerUrl);
-            m_trace.Info("Pool Name: {0}", configuration.Setting.PoolName);
-            m_trace.Info("Agent Name: {0}", configuration.Setting.AgentName);
-            m_trace.Info("Work Folder: {0}", configuration.Setting.WorkFolder);
-        }
-
-        private static void PrintUsage()
-        {
-            Console.WriteLine("Usage:");
-            Console.WriteLine("Agent.Listener [configure/unconfigure/run/help] [--UnAttended] [--NoStart] [--AuthType <Pat>] [--Token <Token>] [--AgentName <AgentName>] [--PoolName <PoolName>] [--WorkFolder <WorkFolder>]");
-            Environment.Exit(0);
-        }
-
-        public static async Task<Int32> RunAsync(IHostContext context, AgentConfiguration configuration)
-        {
+            /*
             try
             {
                 var listener = context.GetService<IMessageListener>();
-                if (await listener.CreateSessionAsync(context))
+                if (await listener.CreateSessionAsync())
                 {
-                    await listener.ListenAsync(context);
+                    await listener.ListenAsync();
                 }
 
-                await listener.DeleteSessionAsync(context);
+                await listener.DeleteSessionAsync();
             }
             catch (Exception)
             {
                 // TODO: Log exception.
                 return 1;
             }
+            */
 
             return 0;
         }
+
+        private static void PrintUsage()
+        {
+            string usage = @"
+usage:
+Agent.Listener [command(s)] [arguments] [options] 
+
+It is common to just run Agent or Agent.Listener with no arguments for an interactive configuration.
+You will be prompted and walked through all options.
+
+
+Commands:
+-----------------------------------------------------------------------------
+(none)         Interactively configure and then run the agent.  
+               You will be prompted for data.
+configure      Configure the agent and exit.
+unconfigure    Unconfigure the agent.
+run            Runs the agent interactively.  must be configured.
+
+
+Options:
+-----------------------------------------------------------------------------
+--unattend     Unattended config.  You will not be prompted.  
+               All answers must be supplied on cli.
+--nostart      Do not start the agent after interactive configuration.
+--auth         Auth type.  Valid options are PAT (Personal Access Token) and 
+               ALT (Alternate Credentials)
+
+
+Options by Auth Type:
+-----------------------------------------------------------------------------
+PAT
+--token        Personal Access Token data.  Best to paste value in.
+
+ALT
+--username     alternate username
+--password     alternate password
+            ";   
+            Console.WriteLine(usage);
+            Environment.Exit(0);
+        }        
     }
 }

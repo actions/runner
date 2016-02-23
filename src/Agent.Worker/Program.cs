@@ -23,7 +23,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             Console.WriteLine("Hello Linux");
 #endif
 
-            TraceSource m_trace = hc.Trace["WorkerProcess"];
+            TraceSource m_trace = hc.GetTrace("WorkerProcess");
             m_trace.Info("Info Hello Worker!");
             m_trace.Warning("Warning Hello Worker!");
             m_trace.Error("Error Hello Worker!");

@@ -44,9 +44,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             await Task.Delay(TimeSpan.Zero);
         }
 
-        public T GetService<T>() where T : class
+        public T GetService<T>() where T : class, IAgentService
         {
-            return this.serviceInstances[typeof(T)] as T;
+            T svc = this.serviceInstances[typeof(T)] as T;
+            svc.Initialize(this);
+            return svc;
         }
 
         // Register a singleton for unit testing.
@@ -57,6 +59,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         
         // simple convenience factory so each suite/test gets a different trace file per run
         public TraceSource GetTrace()
+        {
+            return GetTrace(m_suiteName + '_' + m_testName);
+        }
+
+        public TraceSource GetTrace(string name)
         {
             TraceSource trace = Trace[m_suiteName + '_' + m_testName];
             trace.Info("Starting {0}", m_testName);
