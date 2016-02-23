@@ -32,7 +32,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 Int32 rc = 0;
                 try 
                 {
-                    rc = ExecuteCommand(context, parser).Result;
+                    rc = ExecuteCommand(context, parser).GetAwaiter().GetResult();
                 }
                 catch (Exception e)
                 {
@@ -87,13 +87,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             {
                 _trace.Info("configure");    
                 configManager.Configure(parser.Args, isUnattended);
-                Environment.Exit(0);
+                return 0;
             }
 
             if (parser.Flags.Contains("nostart"))
             {
                 _trace.Info("No start option, exiting the agent");
-                Environment.Exit(0);
+                return 0;
             }
 
             if (parser.IsCommand("run") && !configManager.IsConfigured())

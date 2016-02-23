@@ -29,8 +29,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
             }
 
             Trace.Info("Creating credential type: {0}", credType);
-            return Activator.CreateInstance(CredentialTypes[credType]) as ICredentialProvider;
+            var creds = Activator.CreateInstance(CredentialTypes[credType]) as ICredentialProvider;
             Trace.Verbose("Created credential type");
+            return creds;
         }
     }
 }
