@@ -2,99 +2,115 @@ using System;
 using System.Diagnostics;
 using System.Threading.Tasks;
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
+using Microsoft.VisualStudio.Services.Agent.Configuration;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener
 {
     [ServiceLocator(Default = typeof(MessageListener))]
-    public interface IMessageListener
+    public interface IMessageListener: IAgentService
     {
-        Task<Boolean> CreateSessionAsync(IHostContext context);
-        Task ListenAsync(IHostContext context);
-        Task DeleteSessionAsync(IHostContext context);
+        Task<Boolean> CreateSessionAsync();
+        Task ListenAsync();
+        Task DeleteSessionAsync();
     }
 
-    public sealed class MessageListener : IMessageListener
+    public sealed class MessageListener : AgentService, IMessageListener
     {
+        private AgentSettings _settings;
+
         public TaskAgentSession Session { get; set; }
 
-        public async Task<Boolean> CreateSessionAsync(IHostContext context)
+        public async Task<Boolean> CreateSessionAsync()
         {
-            var agentSettings = context.GetService<IAgentSettings>();
-            var taskServer = context.GetService<ITaskServer>();
-            TraceSource trace = context.Trace[TraceName];
-            const Int32 MaxAttempts = 10;
-            Int32 attempt = 0;
+            var configManager = HostContext.GetService<IConfigurationManager>();
+            _settings = configManager.GetSettings();
+
+            var taskServer = HostContext.GetService<ITaskServer>();
+
+            const int MaxAttempts = 10;
+            int attempt = 0;
             while (++attempt <= MaxAttempts)
             {
-                trace.Info("Create session attempt {0} of {1}.", attempt, MaxAttempts);
+                Trace.Info("Create session attempt {0} of {1}.", attempt, MaxAttempts);
                 try
                 {
-                    this.Session = await taskServer.CreateAgentSessionAsync(agentSettings.PoolId, new TaskAgentSession(), context.CancellationToken);
+                    Session = await taskServer.CreateAgentSessionAsync(
+                                                        _settings.PoolId, 
+                                                        new TaskAgentSession(), 
+                                                        HostContext.CancellationToken);
                     return true;
                 }
                 catch (OperationCanceledException)
                 {
+                    Trace.Info("Cancelled");
                     throw;
                 }
                 catch (Exception ex)
                 {
-                    trace.Error("Failed to create session.");
+                    Trace.Error("Failed to create session.");
                     if (ex is TaskAgentNotFoundException)
                     {
-                        trace.Error("The agent no longer exists on the server. Stopping the agent.");
-                        trace.Error(ex);
+                        Trace.Error("The agent no longer exists on the server. Stopping the agent.");
+                        Trace.Error(ex);
                         return false;
                     }
                     else if (ex is TaskAgentSessionConflictException)
                     {
-                        trace.Error("The session for this agent already exists.");
+                        Trace.Error("The session for this agent already exists.");
                     }
                     else
                     {
-                        trace.Error(ex);
+                        Trace.Error(ex);
                     }
 
                     if (attempt >= MaxAttempts)
                     {
-                        trace.Error("Retries exhausted. Terminating the agent.");
+                        Trace.Error("Retries exhausted. Terminating the agent.");
                         return false;
                     }
 
                     TimeSpan interval = TimeSpan.FromSeconds(30);
-                    trace.Info("Sleeping for {0} seconds before retrying.", interval.TotalSeconds);
-                    await context.Delay(interval);
+                    Trace.Info("Sleeping for {0} seconds before retrying.", interval.TotalSeconds);
+                    await HostContext.Delay(interval);
                 }
             }
 
             return false;
         }        
 
-        public async Task ListenAsync(IHostContext context)
+        public async Task ListenAsync()
         {
-            var agentSettings = context.GetService<IAgentSettings>();            
-            var taskServer = context.GetService<ITaskServer>();
-            using (var workerManager = context.GetService<IWorkerManager>())
+            if (Session == null)
             {
-                TraceSource trace = context.Trace[TraceName];
-                Int64? lastMessageId = null;
+                throw new InvalidOperationException("Must create a session before listening");
+            }
+            Debug.Assert(_settings != null, "settings should not be null");            
+            var taskServer = HostContext.GetService<ITaskServer>();
+            using (var workerManager = HostContext.GetService<IWorkerManager>())
+            {
+
+                long? lastMessageId = null;
                 while (true)
-                {                    
+                {
                     TaskAgentMessage message = null;
                     try
                     {
-                        message = await taskServer.GetAgentMessageAsync(agentSettings.PoolId, this.Session.SessionId, lastMessageId, context.CancellationToken);
+                        message = await taskServer.GetAgentMessageAsync(_settings.PoolId,
+                                                                    Session.SessionId,
+                                                                    lastMessageId,
+                                                                    HostContext.CancellationToken);
                     }
                     catch (TimeoutException)
                     {
-                        trace.Verbose("MessageListener.Listen - TimeoutException received.");
+                        Trace.Verbose("MessageListener.Listen - TimeoutException received.");
                     }
                     catch (TaskCanceledException)
                     {
-                        trace.Verbose("MessageListener.Listen - TaskCanceledException received.");
+                        Trace.Verbose("MessageListener.Listen - TaskCanceledException received.");
                     }
                     catch (TaskAgentSessionExpiredException)
                     {
-                        trace.Verbose("MessageListener.Listen - TaskAgentSessionExpiredException received.");
+                        Trace.Verbose("MessageListener.Listen - TaskAgentSessionExpiredException received.");
                         // TODO: Throw a specific exception so the caller can control the flow appropriately.
                         return;
                     }
@@ -104,19 +120,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     }
                     catch (Exception ex)
                     {
-                        trace.Verbose("MessageListener.Listen - Exception received.");
-                        trace.Error(ex);
+                        Trace.Verbose("MessageListener.Listen - Exception received.");
+                        Trace.Error(ex);
                         // TODO: Throw a specific exception so the caller can control the flow appropriately.
                         return;
                     }
 
                     if (message == null)
                     {
-                        trace.Verbose("MessageListener.Listen - No message retrieved from session '{0}'.", this.Session.SessionId);
+                        Trace.Verbose("MessageListener.Listen - No message retrieved from session '{0}'.", this.Session.SessionId);
                         continue;
                     }
 
-                    trace.Verbose("MessageListener.Listen - Message '{0}' received from session '{1}'.", message.MessageId, this.Session.SessionId);
+                    Trace.Verbose("MessageListener.Listen - Message '{0}' received from session '{1}'.", message.MessageId, this.Session.SessionId);
                     try
                     {
                         // Check if refresh is required.
@@ -125,38 +141,40 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                             // Throw a specific exception so the caller can control the flow appropriately.
                             return;
                         }
-
-                        if (String.Equals(message.MessageType, JobRequestMessage.MessageType, StringComparison.OrdinalIgnoreCase))
+                        else if (String.Equals(message.MessageType, JobRequestMessage.MessageType, StringComparison.OrdinalIgnoreCase))
                         {
                             var newJobMessage = JsonUtility.FromString<JobRequestMessage>(message.Body);
-                            await workerManager.Run(context, newJobMessage);
+                            await workerManager.Run(newJobMessage);
                         }
                         else if (String.Equals(message.MessageType, JobCancelMessage.MessageType, StringComparison.OrdinalIgnoreCase))
                         {
                             var cancelJobMessage = JsonUtility.FromString<JobCancelMessage>(message.Body);
-                            await workerManager.Cancel(context, cancelJobMessage);
+                            await workerManager.Cancel(cancelJobMessage);
                         }
                     }
                     finally
                     {
                         lastMessageId = message.MessageId;
-                        await taskServer.DeleteAgentMessageAsync(agentSettings.PoolId, lastMessageId.Value, this.Session.SessionId, context.CancellationToken);
+                        await taskServer.DeleteAgentMessageAsync(_settings.PoolId,
+                                                        lastMessageId.Value,
+                                                        Session.SessionId,
+                                                        HostContext.CancellationToken);
                     }
                 }
             }
         }
 
-        public async Task DeleteSessionAsync(IHostContext context)
+        public async Task DeleteSessionAsync()
         {
-            var agentSettings = context.GetService<IAgentSettings>();
-            var taskServer = context.GetService<ITaskServer>();
+            var taskServer = HostContext.GetService<ITaskServer>();
+            
             if (this.Session != null && this.Session.SessionId != Guid.Empty)
             {
-                await taskServer.DeleteAgentSessionAsync(agentSettings.PoolId, this.Session.SessionId, context.CancellationToken);
+                await taskServer.DeleteAgentSessionAsync(_settings.PoolId, 
+                                                    Session.SessionId, 
+                                                    HostContext.CancellationToken);
             }
         }
-
-        private const String TraceName = "MessageListener";
          // // use this class scope cancellation token when we figure out how do we want to handle MessageListener level retry.
         // m_cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(context.CancellationToken);
    }

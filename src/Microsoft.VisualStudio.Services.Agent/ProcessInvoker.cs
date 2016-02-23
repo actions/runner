@@ -17,7 +17,7 @@ namespace Microsoft.VisualStudio.Services.Agent
     }
 
     [ServiceLocator(Default = typeof(ProcessInvoker))]
-    public interface IProcessInvoker : IDisposable
+    public interface IProcessInvoker : IDisposable, IAgentService
     {
         event EventHandler<ProcessDataReceivedEventArgs> OutputDataReceived;
 
@@ -25,12 +25,12 @@ namespace Microsoft.VisualStudio.Services.Agent
 
         event EventHandler Exited;
 
-        void Execute(IHostContext hostContext, String workingFolder, String filename, String arguments, IDictionary<String, String> environmentVariables);
+        void Execute(String workingFolder, String filename, String arguments, IDictionary<String, String> environmentVariables);
 
-        Task<int> WaitForExit(IHostContext hostContext);
+        Task<int> WaitForExit();
     }
     
-    public class ProcessInvoker : IProcessInvoker
+    public class ProcessInvoker : AgentService, IProcessInvoker
     {
         private Process _proc;
         private SemaphoreSlim _processExitedSignal = new SemaphoreSlim(0, 1);
@@ -41,36 +41,34 @@ namespace Microsoft.VisualStudio.Services.Agent
 
         public event EventHandler Exited;
 
-        public async Task<int> WaitForExit(IHostContext hostContext)
-        {
-            TraceSource m_trace = hostContext.Trace["ProcessInvoker"];            
-            while ((!hostContext.CancellationToken.IsCancellationRequested) && (!_proc.HasExited))
+        public async Task<int> WaitForExit()
+        {            
+            while ((!HostContext.CancellationToken.IsCancellationRequested) && (!_proc.HasExited))
             {
-                await _processExitedSignal.WaitAsync(TimeSpan.FromSeconds(30), hostContext.CancellationToken);
+                await _processExitedSignal.WaitAsync(TimeSpan.FromSeconds(30), HostContext.CancellationToken);
                 if (!_proc.HasExited)
                 {
-                    m_trace.Info(
+                    Trace.Info(
                         "Waiting on process {0} ({1} seconds elapsed)",
                             _proc.Id,
                             _stopWatch.Elapsed.TotalSeconds);
                 }
             }
-            hostContext.CancellationToken.ThrowIfCancellationRequested();
+            HostContext.CancellationToken.ThrowIfCancellationRequested();
             // Wait for process to exit without hard timeout, which will 
             // ensure that we've read everything from the stdout and stderr.
             _proc.WaitForExit();
 
-            m_trace.Info("Process finished: fileName={0} arguments={1} exitCode={2} in {3} ms",
+            Trace.Info("Process finished: fileName={0} arguments={1} exitCode={2} in {3} ms",
                 _proc.StartInfo.FileName, _proc.StartInfo.Arguments, _proc.ExitCode, _stopWatch.ElapsedMilliseconds);
 
             return _proc.ExitCode;
         }
 
-        public void Execute(IHostContext hostContext, String workingDirectory, String filename, String arguments, IDictionary<String, String> environmentVariables)
+        public void Execute(String workingDirectory, String filename, String arguments, IDictionary<String, String> environmentVariables)
         {
-            Debug.Assert(null == _proc);
-            TraceSource m_trace = hostContext.Trace["ProcessInvoker"];
-            m_trace.Info("Starting process {0} {1} on working directory {2}", filename, arguments, workingDirectory);
+            Debug.Assert(null == _proc);            
+            Trace.Info("Starting process {0} {1} on working directory {2}", filename, arguments, workingDirectory);
 
             _proc = new Process();
             _proc.StartInfo.FileName = filename;
@@ -147,7 +145,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             bool newProcessStarted = _proc.Start();
             if (!newProcessStarted)
             {
-                m_trace.Verbose("Used existing process instead of starting new one for " + filename);
+                Trace.Verbose("Used existing process instead of starting new one for " + filename);
             }
             if (_proc.StartInfo.RedirectStandardOutput) { 
                 _proc.BeginOutputReadLine();

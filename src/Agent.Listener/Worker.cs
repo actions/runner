@@ -13,15 +13,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
     }
 
     [ServiceLocator(Default = typeof(Worker))]
-    public interface IWorker : IDisposable
+    public interface IWorker : IDisposable, IAgentService
     {
         event EventHandler StateChanged;
         Guid JobId { get; set; }
         IProcessChannel ProcessChannel { get; set; }
-        void LaunchProcess(IHostContext hostContext, String pipeHandleOut, String pipeHandleIn, string workingFolder);
+        void LaunchProcess(String pipeHandleOut, String pipeHandleIn, string workingFolder);
     }
 
-    public class Worker : IWorker
+    public class Worker : AgentService, IWorker
     {
 #if OS_WINDOWS
         private const String WorkerProcessName = "Agent.Worker.exe";
@@ -57,14 +57,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             State = WorkerState.New;
         }
 
-        public void LaunchProcess(IHostContext hostContext, String pipeHandleOut, String pipeHandleIn, string workingFolder)
+        public void LaunchProcess(String pipeHandleOut, String pipeHandleIn, string workingFolder)
         {
             string workerFileName = Path.Combine(AssemblyUtil.AssemblyDirectory, WorkerProcessName);
-            _processInvoker = hostContext.GetService<IProcessInvoker>();
+            _processInvoker = HostContext.GetService<IProcessInvoker>();
             _processInvoker.Exited += _processInvoker_Exited;
             State = WorkerState.Starting;
             var environmentVariables = new Dictionary<String, String>();            
-            _processInvoker.Execute(hostContext, workingFolder, workerFileName, "spawnclient " + pipeHandleOut + " " + pipeHandleIn,
+            _processInvoker.Execute(workingFolder, workerFileName, "spawnclient " + pipeHandleOut + " " + pipeHandleIn,
                 environmentVariables);
         }        
 

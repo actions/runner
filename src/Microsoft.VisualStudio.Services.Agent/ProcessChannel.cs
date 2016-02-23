@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 namespace Microsoft.VisualStudio.Services.Agent
 {
     [ServiceLocator(Default = typeof(ProcessChannel))]
-    public interface IProcessChannel : IDisposable
+    public interface IProcessChannel : IDisposable, IAgentService
     {
         event Func<CancellationToken, JobRequestMessage, Task> JobRequestMessageReceived;
         event Func<CancellationToken, JobCancelMessage, Task> JobCancelMessageReceived;
@@ -22,7 +22,7 @@ namespace Microsoft.VisualStudio.Services.Agent
 
     public delegate void ProcessStartDelegate(String pipeHandleOut, String pipeHandleIn);
 
-    public class ProcessChannel : IProcessChannel
+    public class ProcessChannel : AgentService, IProcessChannel
     {
         private Task RunTask;
         private CancellationTokenSource TokenSource;

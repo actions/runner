@@ -18,14 +18,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
 
                 Int32 exitCode = -1;
                 var processInvoker = new ProcessInvoker();
+                processInvoker.Initialize(thc);
 #if OS_WINDOWS
-                processInvoker.Execute(thc, "", "cmd.exe", "/c \"dir >nul\"", null);
-                exitCode = await processInvoker.WaitForExit(thc);
+                processInvoker.Execute("", "cmd.exe", "/c \"dir >nul\"", null);
+                exitCode = await processInvoker.WaitForExit();
 #endif
 
 #if (OS_OSX || OS_LINUX)
-                processInvoker.Execute(thc, "", "bash", "-c ls > /dev/null", null);
-                exitCode = await processInvoker.WaitForExit(thc);
+                processInvoker.Execute("", "bash", "-c ls > /dev/null", null);
+                exitCode = await processInvoker.WaitForExit();
 #endif
 
                 trace.Info("Exit Code: {0}", exitCode);

@@ -10,7 +10,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
     {
         public JobRunner(IHostContext hostContext) {
             m_hostContext = hostContext;
-            m_trace = hostContext.Trace["JobRunner"];
+            m_trace = hostContext.GetTrace("JobRunner");
         }
 
         public async Task Run(JobRequestMessage message)

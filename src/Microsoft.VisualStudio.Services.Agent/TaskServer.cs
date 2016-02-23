@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
@@ -7,7 +8,7 @@ using System.Collections.Generic;
 namespace Microsoft.VisualStudio.Services.Agent
 {
     [ServiceLocator(Default = typeof(TaskServer))]
-    public interface ITaskServer
+    public interface ITaskServer: IAgentService
     {
         Task<TaskAgentSession> CreateAgentSessionAsync(Int32 poolId, TaskAgentSession session, CancellationToken cancellationToken);
         Task DeleteAgentMessageAsync(Int32 poolId, Int64 messageId, Guid sessionId, CancellationToken cancellationToken);
@@ -15,7 +16,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         Task<TaskAgentMessage> GetAgentMessageAsync(Int32 poolId, Guid sessionId, Int64? lastMessageId, CancellationToken cancellationToken);
     }
 
-    public sealed class TaskServer : ITaskServer
+    public sealed class TaskServer : AgentService, ITaskServer
     {
         public async Task<TaskAgentSession> CreateAgentSessionAsync(Int32 poolId, TaskAgentSession session, CancellationToken cancellationToken)
         {

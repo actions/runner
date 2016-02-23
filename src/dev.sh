@@ -1,5 +1,6 @@
 
 DEV_CMD=$1
+DEV_SUBCMD=$2
 LAYOUT_DIR=`pwd`/../_layout
 
 define_os='OS_WINDOWS'
@@ -85,11 +86,11 @@ function publish ()
     rundotnet publish failed bin_layout_dirs[@]
 }
 
-function copyProj ()
+function copyBin ()
 {
     echo Copying ${1}
     pushd ${1}/bin/Debug/dnxcore50 > /dev/null
-    cp -Rf $(ls -d */) ${LAYOUT_DIR}
+    cp -Rf $(ls -d */) ${LAYOUT_DIR}/bin
     popd > /dev/null 
 }
 
@@ -102,11 +103,21 @@ function layout ()
     
     heading Layout ...
     rm -rf ${LAYOUT_DIR}
-    mkdir -p ${LAYOUT_DIR}
+    mkdir -p ${LAYOUT_DIR}/bin
     for bin_copy_dir in ${bin_layout_dirs[@]}
     do
-        copyProj ${bin_copy_dir}
+        copyBin ${bin_copy_dir}
     done 
+}
+
+function update ()
+{
+    update_dir=${DEV_SUBCMD} || failed "must specify directory to build and update"
+    echo Updating ${update_dir}
+    dotnet build ${update_dir} || failed "failed build"
+    echo Publishing ${update_dir}
+    dotnet publish ${update_dir} || failed "failed publish"
+    copyBin ${update_dir}
 }
 
 function runtest ()
@@ -147,6 +158,8 @@ case $DEV_CMD in
    "r") restore;;
    "layout") layout;;
    "l") layout;;
+   "update") update;;
+   "u") update;;
    "validate") validate;;
    "v") validate;;
    *) echo "Invalid cmd.  Use build, restore, clean, test, or layout";;

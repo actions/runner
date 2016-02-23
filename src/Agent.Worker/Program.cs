@@ -25,21 +25,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 #endif
 
 #if OS_OSX
-            Console.WriteLine("Hello OSX");
+                Console.WriteLine("Hello OSX");
 #endif
 
 #if OS_LINUX
-            Console.WriteLine("Hello Linux");
+                Console.WriteLine("Hello Linux");
 #endif
 
-                TraceSource m_trace = hc.Trace["WorkerProcess"];
+                TraceSource m_trace =  hc.GetTrace("WorkerProcess");
                 m_trace.Info("Info Hello Worker!");
                 m_trace.Warning("Warning Hello Worker!");
                 m_trace.Error("Error Hello Worker!");
                 m_trace.Verbose("Verbos Hello Worker!");
-
-                //JobRunner jobRunner = new JobRunner(hc);
-                //jobRunner.Run();
 
                 JobRunner jobRunner = null;
                 Func<CancellationToken, JobCancelMessage, Task> cancelHandler = (token, message) =>

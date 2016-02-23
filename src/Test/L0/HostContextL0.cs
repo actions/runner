@@ -12,9 +12,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Trait("Category", "Common")]
         public void CanLocateDefaultImplementation()
         {
-            using(TestHostContext thc = new TestHostContext(nameof(HostContextL0)))
+            using(TestHostContext tc = new TestHostContext(nameof(HostContextL0)))
             {
-                TraceSource trace = thc.GetTrace();
+                TraceSource trace = tc.GetTrace();
                 Assert.Equal(typeof(TaskServer), new HostContext("L0Test").GetService<ITaskServer>().GetType());
             }
         }
