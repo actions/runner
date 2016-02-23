@@ -44,6 +44,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             }
         }
 
+        //TODO: hide somehow this variable
         public CancellationTokenSource CancellationTokenSource
         {
             get

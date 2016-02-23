@@ -20,50 +20,28 @@ namespace Microsoft.VisualStudio.Services.Agent
 
         public async Task<Int32> ReadInt32Async(CancellationToken cancellationToken)
         {
-            byte[] readBytes = new byte[4];
+            byte[] readBytes = new byte[sizeof(Int32)];
             int dataread = 0;            
-            while (4 - dataread > 0 && (!cancellationToken.IsCancellationRequested))
+            while (sizeof(Int32) - dataread > 0 && (!cancellationToken.IsCancellationRequested))
             {
-                Task<int> op = ioStream.ReadAsync(readBytes, dataread, 4 - dataread, cancellationToken);
+                Task<int> op = ioStream.ReadAsync(readBytes, dataread, sizeof(Int32) - dataread, cancellationToken);
                 int newData = 0;
-                try
-                {
-                    newData = await op.WithCancellation(cancellationToken);
-                }
-                catch (OperationCanceledException)
-                {
-                    break;
-                }
+                newData = await op.WithCancellation(cancellationToken);
                 dataread += newData;
                 if (0 == newData)
                 {
                     await Task.Delay(100, cancellationToken);
                 }
             }
-            cancellationToken.ThrowIfCancellationRequested();            
-            if (BitConverter.IsLittleEndian)
-            {
-                Array.Reverse(readBytes);
-            }
+            cancellationToken.ThrowIfCancellationRequested();
             return BitConverter.ToInt32(readBytes, 0);
         }
 
         public async Task WriteInt32Async(Int32 value, CancellationToken cancellationToken)
         {
             byte[] int32Bytes = BitConverter.GetBytes(value);
-            if (BitConverter.IsLittleEndian)
-            {
-                Array.Reverse(int32Bytes);
-            }
-            Task op = ioStream.WriteAsync(int32Bytes, 0, 4, cancellationToken);            
-            try
-            {
-                await op.WithCancellation(cancellationToken);
-            }
-            catch (OperationCanceledException)
-            {
-                throw new TaskCanceledException();
-            }
+            Task op = ioStream.WriteAsync(int32Bytes, 0, sizeof(Int32), cancellationToken);
+            await op.WithCancellation(cancellationToken);
         }
 
         const Int32 MAX_STRING_SIZE = 50*1000000;
@@ -83,23 +61,14 @@ namespace Microsoft.VisualStudio.Services.Agent
             {
                 Task<int> op = ioStream.ReadAsync(inBuffer, dataread, len - dataread, cancellationToken);
                 int newData = 0;
-                try
-                {
-                    newData = await op.WithCancellation(cancellationToken);
-                }
-                catch (OperationCanceledException)
-                {
-                    break;
-                }
+                newData = await op.WithCancellation(cancellationToken);
                 dataread += newData;
                 if (0 == newData)
                 {
                     await Task.Delay(100, cancellationToken);
                 }
             }
-
-            cancellationToken.ThrowIfCancellationRequested();            
-
+            cancellationToken.ThrowIfCancellationRequested();
             return streamEncoding.GetString(inBuffer);
         }
 
@@ -114,25 +83,11 @@ namespace Microsoft.VisualStudio.Services.Agent
             await WriteInt32Async(len, cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
             Task op = ioStream.WriteAsync(outBuffer, 0, len, cancellationToken);
-            try
-            {
-                await op.WithCancellation(cancellationToken);
-            }
-            catch (OperationCanceledException)
-            {                
-            }
-            cancellationToken.ThrowIfCancellationRequested();
+            await op.WithCancellation(cancellationToken);
             op = ioStream.FlushAsync(cancellationToken);
-            try
-            {
-                await op.WithCancellation(cancellationToken);
-            }
-            catch (OperationCanceledException)
-            {
-                throw new TaskCanceledException();
-            }
-            return outBuffer.Length + 4;
-        }        
+            await op.WithCancellation(cancellationToken);
+            return outBuffer.Length + sizeof(Int32);
+        }
     }
 
 }

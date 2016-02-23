@@ -86,6 +86,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             }
             Debug.Assert(_settings != null, "settings should not be null");            
             var taskServer = HostContext.GetService<ITaskServer>();
+            //TODO: Interaction with the WorkerManager is the responsibility of the caller. Listener just returns the message.
             using (var workerManager = HostContext.GetService<IWorkerManager>())
             {
 
@@ -120,12 +121,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     }
                     catch (Exception ex)
                     {
-                        Trace.Verbose("MessageListener.Listen - Exception received.");
+                        Trace.Warning("MessageListener.Listen - Exception received.");
                         Trace.Error(ex);
                         // TODO: Throw a specific exception so the caller can control the flow appropriately.
                         return;
                     }
-
+                    
                     if (message == null)
                     {
                         Trace.Verbose("MessageListener.Listen - No message retrieved from session '{0}'.", this.Session.SessionId);
@@ -137,9 +138,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     {
                         // Check if refresh is required.
                         if (String.Equals(message.MessageType, AgentRefreshMessage.MessageType, StringComparison.OrdinalIgnoreCase))
-                        {
-                            // Throw a specific exception so the caller can control the flow appropriately.
-                            return;
+                        {                            
+                            Trace.Warning("Referesh message received, but not yet handled by agent implementation.");
                         }
                         else if (String.Equals(message.MessageType, JobRequestMessage.MessageType, StringComparison.OrdinalIgnoreCase))
                         {

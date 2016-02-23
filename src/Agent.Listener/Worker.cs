@@ -18,6 +18,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         event EventHandler StateChanged;
         Guid JobId { get; set; }
         IProcessChannel ProcessChannel { get; set; }
+        //TODO: instead of LaunchProcess, do something like Task RunAsync(...) and make sure you take a cancellation token. The way the IWorkerManager can handle cancelling the worker is to simply signal the cancellation token that it handed to the IWorker.RunAsync method.
         void LaunchProcess(String pipeHandleOut, String pipeHandleIn, string workingFolder);
     }
 
@@ -56,7 +57,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         {
             State = WorkerState.New;
         }
-
+        
         public void LaunchProcess(String pipeHandleOut, String pipeHandleIn, string workingFolder)
         {
             string workerFileName = Path.Combine(AssemblyUtil.AssemblyDirectory, WorkerProcessName);

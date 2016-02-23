@@ -1,7 +1,7 @@
 ﻿using Microsoft.TeamFoundation.DistributedTask.WebApi;
+using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
 using System.Collections.Concurrent;
-using System.Diagnostics;
 using System.Threading.Tasks;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener
@@ -22,13 +22,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             Trace.Info("Job request {0} received.", jobRequestMessage.JobId);
             var worker = HostContext.GetService<IWorker>();
             worker.JobId = jobRequestMessage.JobId;
+            //we should always create a IProcessChannel, and not use a singleton
             worker.ProcessChannel = HostContext.GetService<IProcessChannel>();            
             worker.StateChanged += Worker_StateChanged;
             _jobsInProgress[jobRequestMessage.JobId] = worker;
-            worker.ProcessChannel.StartServer( (p1, p2) => 
+            worker.ProcessChannel.StartServer( (pipeHandleOut, pipeHandleIn) => 
                 {
-                    string workingFolder = ""; //TODO: pass working folder from the config to the worker process
-                    worker.LaunchProcess(p1, p2, workingFolder);
+                    worker.LaunchProcess(pipeHandleOut, pipeHandleIn, AssemblyUtil.AssemblyDirectory);
                 }
             );
             await worker.ProcessChannel.SendAsync(jobRequestMessage, HostContext.CancellationToken);

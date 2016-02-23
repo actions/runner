@@ -33,9 +33,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             m_finishedSignal.Release();
         }
 
-        public async Task WaitToFinish(IHostContext context)
+        public Task WaitToFinish(IHostContext context)
         {
-            await m_finishedSignal.WaitAsync(context.CancellationToken);
+            return m_finishedSignal.WaitAsync(context.CancellationToken);
         }
 
         private IHostContext m_hostContext;

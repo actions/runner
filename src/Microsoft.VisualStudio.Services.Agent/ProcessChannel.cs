@@ -10,8 +10,8 @@ namespace Microsoft.VisualStudio.Services.Agent
     [ServiceLocator(Default = typeof(ProcessChannel))]
     public interface IProcessChannel : IDisposable, IAgentService
     {
-        event Func<CancellationToken, JobRequestMessage, Task> JobRequestMessageReceived;
-        event Func<CancellationToken, JobCancelMessage, Task> JobCancelMessageReceived;
+        event Func<JobRequestMessage, CancellationToken, Task> JobRequestMessageReceived;
+        event Func<JobCancelMessage, CancellationToken, Task> JobCancelMessageReceived;
 
         Task SendAsync(JobRequestMessage jobRequest, CancellationToken cancellationToken);
         Task SendAsync(JobCancelMessage jobCancel, CancellationToken cancellationToken);
@@ -94,7 +94,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             }
         }
 
-        private async Task Transport_PacketReceived(CancellationToken token, IPCPacket packet)
+        private async Task Transport_PacketReceived(IPCPacket packet, CancellationToken token)
         {
             token.ThrowIfCancellationRequested();
             switch (packet.MessageType)
@@ -102,7 +102,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                 case 1:
                     {                        
                         var message = JsonUtility.FromString<JobRequestMessage>(packet.Body);
-                        Func<CancellationToken, JobRequestMessage, Task> jobRequestMessageReceived = JobRequestMessageReceived;
+                        Func<JobRequestMessage, CancellationToken, Task> jobRequestMessageReceived = JobRequestMessageReceived;
                         if (null == jobRequestMessageReceived)
                         {
                             return;
@@ -111,7 +111,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                         Task[] handlerTasks = new Task[invocationList.Length];
                         for (int i = 0; i < invocationList.Length; i++)
                         {
-                            handlerTasks[i] = ((Func<CancellationToken, JobRequestMessage, Task>)invocationList[i])(token, message);
+                            handlerTasks[i] = ((Func<JobRequestMessage, CancellationToken, Task>)invocationList[i])(message, token);
                         }
                         await Task.WhenAll(handlerTasks);
                     }
@@ -119,7 +119,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                 case 2:
                     {
                         var message = JsonUtility.FromString<JobCancelMessage>(packet.Body);
-                        Func<CancellationToken, JobCancelMessage, Task> jobCancelMessageReceived = JobCancelMessageReceived;
+                        Func<JobCancelMessage, CancellationToken, Task> jobCancelMessageReceived = JobCancelMessageReceived;
                         if (null == jobCancelMessageReceived)
                         {
                             return;
@@ -128,7 +128,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                         Task[] handlerTasks = new Task[invocationList.Length];
                         for (int i = 0; i < invocationList.Length; i++)
                         {
-                            handlerTasks[i] = ((Func<CancellationToken, JobCancelMessage, Task>)invocationList[i])(token, message);
+                            handlerTasks[i] = ((Func<JobCancelMessage, CancellationToken, Task>)invocationList[i])(message, token);
                         }
                         await Task.WhenAll(handlerTasks);
                     }
@@ -136,8 +136,8 @@ namespace Microsoft.VisualStudio.Services.Agent
             }
         }
 
-        public event Func<CancellationToken, JobRequestMessage, Task> JobRequestMessageReceived;
-        public event Func<CancellationToken, JobCancelMessage, Task> JobCancelMessageReceived;
+        public event Func<JobRequestMessage, CancellationToken, Task> JobRequestMessageReceived;
+        public event Func<JobCancelMessage, CancellationToken, Task> JobCancelMessageReceived;
 
         public async Task SendAsync(JobRequestMessage jobRequest, CancellationToken cancellationToken)
         {

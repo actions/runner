@@ -18,7 +18,7 @@ namespace Microsoft.VisualStudio.Services.Agent
 
     public class StreamTransport
     {
-        public event Func<CancellationToken, IPCPacket, Task> PacketReceived;
+        public event Func<IPCPacket, CancellationToken, Task> PacketReceived;
 
         public Stream ReadPipe
         {
@@ -42,18 +42,14 @@ namespace Microsoft.VisualStudio.Services.Agent
         public async Task SendAsync(Int32 MessageType, string Body, CancellationToken cancellationToken)
         {
             await WriteStream.WriteInt32Async(MessageType, cancellationToken);
-            cancellationToken.ThrowIfCancellationRequested();
             await WriteStream.WriteStringAsync(Body, cancellationToken);
-            cancellationToken.ThrowIfCancellationRequested();
         }
 
         public async Task<IPCPacket> ReceiveAsync(CancellationToken cancellationToken)
         {
             IPCPacket result = new IPCPacket(-1, "");
             result.MessageType = await ReadStream.ReadInt32Async(cancellationToken);
-            cancellationToken.ThrowIfCancellationRequested();            
             result.Body = await ReadStream.ReadStringAsync(cancellationToken);
-            cancellationToken.ThrowIfCancellationRequested();
             return result;
         }
 
@@ -62,7 +58,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             while (!token.IsCancellationRequested)
             {
                 var packet = await ReceiveAsync(token);
-                Func<CancellationToken, IPCPacket, Task> packetReceived = PacketReceived;
+                Func<IPCPacket, CancellationToken, Task> packetReceived = PacketReceived;
                 if (null == packetReceived)
                 {
                     continue;
@@ -71,7 +67,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                 Task[] handlerTasks = new Task[invocationList.Length];
                 for (int i = 0; i < invocationList.Length; i++)
                 {
-                    handlerTasks[i] = ((Func<CancellationToken, IPCPacket, Task>)invocationList[i])(token, packet);
+                    handlerTasks[i] = ((Func<IPCPacket, CancellationToken, Task>)invocationList[i])(packet, token);
                 }
                 await Task.WhenAll(handlerTasks);
             }

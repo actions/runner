@@ -17,7 +17,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             using (var client = new ProcessChannel())
             {
                 SemaphoreSlim signal = new SemaphoreSlim(0, 1);
-                Func<CancellationToken, JobRequestMessage, Task> echoFunc = async (ct, message) =>
+                Func<JobRequestMessage, CancellationToken, Task> echoFunc = async (message, ct) =>
                 {
                     var cs2 = new CancellationTokenSource();
                     await client.SendAsync(message, cs2.Token);
@@ -50,7 +50,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 List<TaskInstance> tasks = new List<TaskInstance>();
                 Guid JobId = Guid.NewGuid();
                 var jobRequest = new JobRequestMessage(plan, timeline, JobId, "someJob", environment, tasks);
-                Func<CancellationToken, JobRequestMessage, Task> verifyFunc = (ct, message) =>
+                Func<JobRequestMessage, CancellationToken, Task> verifyFunc = (message, ct) =>
                 {
                     result = message;
                     signal.Release();
@@ -61,16 +61,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 server.StartServer((p1, p2) =>
                 {
                     string clientFileName = "Test";
-                    bool hasExeSuffix = clientFileName.EndsWith(".exe", StringComparison.OrdinalIgnoreCase);
 #if OS_WINDOWS
-                    if (!hasExeSuffix)
-                    {
-                        clientFileName += ".exe";
-                    }
-#else
-                    if (hasExeSuffix) {
-                        clientFileName = clientFileName.Substring(0, clientFileName.Length - 4);
-                    }
+                    clientFileName += ".exe";
 #endif
                     jobProcess = new Process();
                     jobProcess.StartInfo.FileName = clientFileName;

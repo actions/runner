@@ -38,14 +38,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 m_trace.Error("Error Hello Worker!");
                 m_trace.Verbose("Verbos Hello Worker!");
 
+                //TODO: Consider removing events and use receive methods in ProcessChannel and StreamTransport
                 JobRunner jobRunner = null;
-                Func<CancellationToken, JobCancelMessage, Task> cancelHandler = (token, message) =>
+                Func<JobCancelMessage, CancellationToken, Task> cancelHandler = (message, token) =>
                 {
                     hc.CancellationTokenSource.Cancel();
                     return Task.CompletedTask;
                 };
 
-                Func<CancellationToken, JobRequestMessage, Task> newRequestHandler = async (token, message) =>
+                Func<JobRequestMessage, CancellationToken, Task> newRequestHandler = async (message, token) =>
                 {
                     await jobRunner.Run(message);
                 };
