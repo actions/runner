@@ -1,7 +1,7 @@
 ﻿{
     "version": "1.0.0-*",   
     "compilationOptions": {
-        "emitEntryPoint": false,
+        "emitEntryPoint": true,
         "define": [ "SAMPLE_DEFINE" ]
     },
     

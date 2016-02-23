@@ -17,7 +17,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
     {
         private AgentSettings _settings;
         private Mock<IConfigurationManager> _config; 
-        private Mock<IMessageDispatcher> _dispatcher;
+        private Mock<IWorkerManager> _workerManager;
         private Mock<ITaskServer> _taskServer;
 
         public MessageListenerL0()
@@ -25,7 +25,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             _settings = new AgentSettings { AgentId=1, AgentName="myagent", PoolId=123, PoolName="default", ServerUrl="http://myserver", WorkFolder="_work" };
             _config = new Mock<IConfigurationManager>();
             _config.Setup(x => x.GetSettings()).Returns(_settings);
-            _dispatcher = new Mock<IMessageDispatcher>();
+            _workerManager = new Mock<IWorkerManager>();
             _taskServer = new Mock<ITaskServer>();
         }
 
@@ -33,7 +33,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         {
             TestHostContext tc = new TestHostContext(nameof(MessageListenerL0), testName);
             tc.RegisterService<IConfigurationManager>(_config.Object);
-            tc.RegisterService<IMessageDispatcher>(_dispatcher.Object);
+            tc.RegisterService<IWorkerManager>(_workerManager.Object);
             tc.RegisterService<ITaskServer>(_taskServer.Object);
             return tc;
         }

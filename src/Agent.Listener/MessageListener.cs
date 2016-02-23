@@ -1,6 +1,5 @@
 using System;
 using System.Diagnostics;
-using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Configuration;
@@ -77,7 +76,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             }
 
             return false;
-        }
+        }        
 
         public async Task ListenAsync()
         {
@@ -85,74 +84,82 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             {
                 throw new InvalidOperationException("Must create a session before listening");
             }
-
-            Debug.Assert(_settings != null, "settings should not be null");
-
-            var dispatcher = HostContext.GetService<IMessageDispatcher>();
+            Debug.Assert(_settings != null, "settings should not be null");            
             var taskServer = HostContext.GetService<ITaskServer>();
-
-            long? lastMessageId = null;
-            while (true)
+            //TODO: Interaction with the WorkerManager is the responsibility of the caller. Listener just returns the message.
+            using (var workerManager = HostContext.GetService<IWorkerManager>())
             {
-                TaskAgentMessage message = null;
-                try
-                {
-                    message = await taskServer.GetAgentMessageAsync(_settings.PoolId, 
-                                                                Session.SessionId, 
-                                                                lastMessageId, 
-                                                                HostContext.CancellationToken);
-                }
-                catch (TimeoutException)
-                {
-                    Trace.Verbose("MessageListener.Listen - TimeoutException received.");
-                }
-                catch (TaskCanceledException)
-                {
-                    Trace.Verbose("MessageListener.Listen - TaskCanceledException received.");
-                }
-                catch (TaskAgentSessionExpiredException)
-                {
-                    Trace.Verbose("MessageListener.Listen - TaskAgentSessionExpiredException received.");
-                    // TODO: Throw a specific exception so the caller can control the flow appropriately.
-                    return;
-                }
-                catch (OperationCanceledException)
-                {
-                    throw;
-                }
-                catch (Exception ex)
-                {
-                    Trace.Verbose("MessageListener.Listen - Exception received.");
-                    Trace.Error(ex);
-                    // TODO: Throw a specific exception so the caller can control the flow appropriately.
-                    return;
-                }
 
-                if (message == null)
+                long? lastMessageId = null;
+                while (true)
                 {
-                    Trace.Verbose("MessageListener.Listen - No message retrieved from session '{0}'.", this.Session.SessionId);
-                    continue;
-                }
-
-                Trace.Verbose("MessageListener.Listen - Message '{0}' received from session '{1}'.", message.MessageId, this.Session.SessionId);
-                try
-                {
-                    // Check if refresh is required.
-                    if (String.Equals(message.MessageType, AgentRefreshMessage.MessageType, StringComparison.OrdinalIgnoreCase))
+                    TaskAgentMessage message = null;
+                    try
                     {
-                        // Throw a specific exception so the caller can control the flow appropriately.
+                        message = await taskServer.GetAgentMessageAsync(_settings.PoolId,
+                                                                    Session.SessionId,
+                                                                    lastMessageId,
+                                                                    HostContext.CancellationToken);
+                    }
+                    catch (TimeoutException)
+                    {
+                        Trace.Verbose("MessageListener.Listen - TimeoutException received.");
+                    }
+                    catch (TaskCanceledException)
+                    {
+                        Trace.Verbose("MessageListener.Listen - TaskCanceledException received.");
+                    }
+                    catch (TaskAgentSessionExpiredException)
+                    {
+                        Trace.Verbose("MessageListener.Listen - TaskAgentSessionExpiredException received.");
+                        // TODO: Throw a specific exception so the caller can control the flow appropriately.
                         return;
                     }
+                    catch (OperationCanceledException)
+                    {
+                        throw;
+                    }
+                    catch (Exception ex)
+                    {
+                        Trace.Warning("MessageListener.Listen - Exception received.");
+                        Trace.Error(ex);
+                        // TODO: Throw a specific exception so the caller can control the flow appropriately.
+                        return;
+                    }
+                    
+                    if (message == null)
+                    {
+                        Trace.Verbose("MessageListener.Listen - No message retrieved from session '{0}'.", this.Session.SessionId);
+                        continue;
+                    }
 
-                    dispatcher.Dispatch(message);
-                }
-                finally
-                {
-                    lastMessageId = message.MessageId;
-                    await taskServer.DeleteAgentMessageAsync(_settings.PoolId, 
-                                                    lastMessageId.Value, 
-                                                    Session.SessionId, 
-                                                    HostContext.CancellationToken);
+                    Trace.Verbose("MessageListener.Listen - Message '{0}' received from session '{1}'.", message.MessageId, this.Session.SessionId);
+                    try
+                    {
+                        // Check if refresh is required.
+                        if (String.Equals(message.MessageType, AgentRefreshMessage.MessageType, StringComparison.OrdinalIgnoreCase))
+                        {                            
+                            Trace.Warning("Referesh message received, but not yet handled by agent implementation.");
+                        }
+                        else if (String.Equals(message.MessageType, JobRequestMessage.MessageType, StringComparison.OrdinalIgnoreCase))
+                        {
+                            var newJobMessage = JsonUtility.FromString<JobRequestMessage>(message.Body);
+                            await workerManager.Run(newJobMessage);
+                        }
+                        else if (String.Equals(message.MessageType, JobCancelMessage.MessageType, StringComparison.OrdinalIgnoreCase))
+                        {
+                            var cancelJobMessage = JsonUtility.FromString<JobCancelMessage>(message.Body);
+                            await workerManager.Cancel(cancelJobMessage);
+                        }
+                    }
+                    finally
+                    {
+                        lastMessageId = message.MessageId;
+                        await taskServer.DeleteAgentMessageAsync(_settings.PoolId,
+                                                        lastMessageId.Value,
+                                                        Session.SessionId,
+                                                        HostContext.CancellationToken);
+                    }
                 }
             }
         }

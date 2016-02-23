@@ -22,7 +22,7 @@ namespace Microsoft.VisualStudio.Services.Agent
     public sealed class HostContext : IHostContext, IDisposable
     {
         private readonly ConcurrentDictionary<Type, Type> serviceMappings = new ConcurrentDictionary<Type, Type>();
-        private readonly CancellationToken m_cancellationToken = new CancellationToken();
+        private readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
         private ITraceManager _traceManager;
         private String _hostType;
 
@@ -40,7 +40,16 @@ namespace Microsoft.VisualStudio.Services.Agent
         {
             get
             {
-                return m_cancellationToken;
+                return _cancellationTokenSource.Token;
+            }
+        }
+
+        //TODO: hide somehow this variable
+        public CancellationTokenSource CancellationTokenSource
+        {
+            get
+            {
+                return _cancellationTokenSource;
             }
         }
 

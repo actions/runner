@@ -31,7 +31,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 Int32 rc = 0;
                 try 
                 {
-                    rc = ExecuteCommand(context, parser).Result;    
+                    rc = ExecuteCommand(context, parser).Result;
                 }
                 catch (Exception e)
                 {
@@ -108,30 +108,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             //_trace.Info("Worker.exe Exit: {0}", exitCode); 
 
             ICredentialProvider cred = configManager.AcquireCredentials(parser.Args, isUnattended);
-            return RunAsync(context).Result;
+            return await RunAsync(context);
         }
 
         public static async Task<Int32> RunAsync(IHostContext context)
-        {
-            /*
-            try
+        {                        
+            var listener = context.GetService<IMessageListener>();
+            if (await listener.CreateSessionAsync())
             {
-                var listener = context.GetService<IMessageListener>();
-                if (await listener.CreateSessionAsync())
-                {
-                    await listener.ListenAsync();
-                }
-
-                await listener.DeleteSessionAsync();
+                await listener.ListenAsync();
             }
-            catch (Exception)
-            {
-                // TODO: Log exception.
-                return 1;
-            }
-            */
 
-            return 0;
+            await listener.DeleteSessionAsync();
+            return 0;            
         }
 
         private static void PrintUsage()
