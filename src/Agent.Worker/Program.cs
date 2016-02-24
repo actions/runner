@@ -54,7 +54,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 try {
                     if (null != args && 3 == args.Length && "spawnclient".Equals(args[0].ToLower()))
                     {
-                        using (var channel = hc.GetService<IProcessChannel>())
+                        using (var channel = hc.CreateService<IProcessChannel>())
                         {
                             channel.JobRequestMessageReceived += newRequestHandler;
                             channel.JobCancelMessageReceived += cancelHandler;

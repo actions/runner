@@ -11,31 +11,40 @@ using Microsoft.VisualStudio.Services.Agent.Listener;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests
 {
-
     public sealed class TestHostContext : IHostContext, IDisposable
     {
-
         public TestHostContext(string suiteName, [CallerMemberName] string testName = "")
         {
-            if (suiteName == null)
+            if (string.IsNullOrEmpty(suiteName))
             {
-                throw new ArgumentNullException("suiteName");
+                throw new ArgumentNullException(nameof(suiteName));
             }
 
-            if (testName == null)
+            if (string.IsNullOrEmpty(testName))
             {
-                throw new ArgumentNullException("testName");
+                throw new ArgumentNullException(nameof(testName));
             }
 
-            m_suiteName = suiteName;
-            m_testName = testName;
+            _suiteName = suiteName;
+            _testName = testName;
+
+            // Setup the trace manager.
+            string traceFileName = $"trace_{_suiteName}_{_testName}.log";
+            if (File.Exists(traceFileName))
+            {
+                File.Delete(traceFileName);
+            }
+
+            Stream logFile = File.Create(traceFileName);
+            var traceListener = new TextWriterTraceListener(logFile);
+            _traceManager = new TraceManager(traceListener);
         }
 
         public CancellationToken CancellationToken
         {
             get
             {
-                return this.cancellationToken;
+                return _cancellationToken;
             }
         }
 
@@ -44,69 +53,91 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             await Task.Delay(TimeSpan.Zero);
         }
 
-        public T GetService<T>() where T : class, IAgentService
+        public T CreateService<T>() where T: class, IAgentService
         {
-            T svc = this.serviceInstances[typeof(T)] as T;
-            svc.Initialize(this);
-            return svc;
+            // Dequeue a registered instance.
+            object service;
+            ConcurrentQueue<object> queue = _serviceInstances[typeof(T)];
+            if (queue == null || !queue.TryDequeue(out service))
+            {
+                throw new Exception($"Unable to dequeue a registered instance for type '{typeof(T).FullName}'.");
+            }
+
+            var s = service as T;
+            s.Initialize(this);
+            return s;
         }
 
-        // Register a singleton for unit testing.
-        public void RegisterService<TKey>(Object singleton)
+        public T GetService<T>() where T : class, IAgentService
         {
-            this.serviceInstances[typeof(TKey)] = singleton;
+            // Get the registered singleton instance.
+            T service = _serviceSingletons[typeof(T)] as T;
+            if (object.ReferenceEquals(service, null))
+            {
+                throw new Exception($"Singleton instance not registered for type '{typeof(T).FullName}'.");
+            }
+
+            service.Initialize(this);
+            return service;
         }
-        
+
+        public void EnqueueInstance<T>(T instance) where T : class, IAgentService
+        {
+            // Enqueue a service instance to be returned by CreateService.
+            if (object.ReferenceEquals(instance, null))
+            {
+                throw new ArgumentNullException(nameof(instance));
+            }
+
+            ConcurrentQueue<object> queue = _serviceInstances.GetOrAdd(
+                key: typeof(T),
+                valueFactory: x => new ConcurrentQueue<object>());
+            queue.Enqueue(instance);
+        }
+
+        public void SetSingleton<T>(T singleton) where T : class, IAgentService
+        {
+            // Set the singleton instance to be returned by GetService.
+            if (object.ReferenceEquals(singleton, null))
+            {
+                throw new ArgumentNullException(nameof(singleton));
+            }
+
+            _serviceSingletons[typeof(T)] = singleton;
+        }
+
         // simple convenience factory so each suite/test gets a different trace file per run
         public TraceSource GetTrace()
         {
-            return GetTrace(m_suiteName + '_' + m_testName);
+            TraceSource trace = GetTrace($"{_suiteName}_{_testName}");
+            trace.Info($"Starting {_testName}");
+            return trace;
         }
 
         public TraceSource GetTrace(string name)
         {
-            TraceSource trace = Trace[m_suiteName + '_' + m_testName];
-            trace.Info("Starting {0}", m_testName);
-            return trace;
-        }
-
-        public ITraceManager Trace 
-        { 
-            get
-            {                
-                if(m_traceManager == null)
-                {
-                    String filename = String.Format("trace_{0}_{1}.log",
-                                                    m_suiteName, 
-                                                    m_testName);
-
-                    if (File.Exists(filename)) {
-                        File.Delete(filename);
-                    }
-
-                    Stream logFile = File.Create(filename);
-                    TextWriterTraceListener traceListener = new TextWriterTraceListener(logFile);
-                    
-                    m_traceManager = new TraceManager(traceListener);
-                }
-                
-                return m_traceManager;
-            }
+            return _traceManager[name];
         }
 
         public void Dispose()
         {
-            if (m_traceManager != null && m_traceManager is IDisposable)
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        private void Dispose(bool disposing)
+        {
+            if (disposing)
             {
-                ((IDisposable)m_traceManager).Dispose();
-                m_traceManager = null;    
+                _traceManager?.Dispose();
             }
         }
 
-        private string m_suiteName;
-        private string m_testName;
-        private ITraceManager m_traceManager;    
-        private readonly ConcurrentDictionary<Type, Object> serviceInstances = new ConcurrentDictionary<Type, Object>();
-        private readonly CancellationToken cancellationToken = new CancellationToken();
+        private readonly ConcurrentDictionary<Type, ConcurrentQueue<object>> _serviceInstances = new ConcurrentDictionary<Type, ConcurrentQueue<object>>();
+        private readonly ConcurrentDictionary<Type, object> _serviceSingletons = new ConcurrentDictionary<Type, object>();
+        private readonly ITraceManager _traceManager;
+        private readonly CancellationToken _cancellationToken = new CancellationToken();
+        private string _suiteName;
+        private string _testName;
     }
 }

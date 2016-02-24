@@ -22,7 +22,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         void LaunchProcess(String pipeHandleOut, String pipeHandleIn, string workingFolder);
     }
 
-    public class Worker : AgentService, IWorker
+    public sealed class Worker : AgentService, IWorker
     {
 #if OS_WINDOWS
         private const String WorkerProcessName = "Agent.Worker.exe";
@@ -61,13 +61,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         public void LaunchProcess(String pipeHandleOut, String pipeHandleIn, string workingFolder)
         {
             string workerFileName = Path.Combine(IOUtil.GetBinPath(), WorkerProcessName);
-            _processInvoker = HostContext.GetService<IProcessInvoker>();
+            _processInvoker = HostContext.CreateService<IProcessInvoker>();
             _processInvoker.Exited += _processInvoker_Exited;
             State = WorkerState.Starting;
             var environmentVariables = new Dictionary<String, String>();            
             _processInvoker.Execute(workingFolder, workerFileName, "spawnclient " + pipeHandleOut + " " + pipeHandleIn,
                 environmentVariables);
         }        
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
 
         private void _processInvoker_Exited(object sender, EventArgs e)
         {
@@ -80,33 +86,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             State = WorkerState.Finished;
         }
 
-#region IDisposable Support
-        private bool disposedValue = false; // To detect redundant calls
-
-        protected virtual void Dispose(bool disposing)
+        private void Dispose(bool disposing)
         {
-            if (!disposedValue)
+            if (disposing)
             {
-                if (null != ProcessChannel)
-                {
-                    ProcessChannel.Dispose();
-                    ProcessChannel = null;
-                }
-                if (null != _processInvoker)
-                {
-                    _processInvoker.Dispose();
-                    _processInvoker = null;
-                }
-                disposedValue = true;
+                ProcessChannel?.Dispose();
+                ProcessChannel = null;
+                _processInvoker?.Dispose();
+                _processInvoker = null;
             }
         }
-
-        // This code added to correctly implement the disposable pattern.
-        public void Dispose()
-        {
-            // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
-            Dispose(true);
-        }
-#endregion
     }
 }

@@ -21,7 +21,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         public async Task<TaskAgentSession> CreateAgentSessionAsync(Int32 poolId, TaskAgentSession session, CancellationToken cancellationToken)
         {
             // TODO: Pass through to the REST SDK.
-            //throw new System.NotImplementedException();
+            await Task.Yield();
             return session;
         }
 
@@ -47,6 +47,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             result.Body = JsonUtility.ToString(jobRequest);            
             result.MessageType = JobRequestMessage.MessageType;
             result.MessageId = 123;
+            await Task.Yield();
             return result;
         }
     }
