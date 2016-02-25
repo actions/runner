@@ -49,7 +49,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
             var currentAssemblyLocation = System.Reflection.Assembly.GetEntryAssembly().Location;
             Trace.Info("currentAssemblyLocation: {0}", currentAssemblyLocation);
 
-            var _binPath = new DirectoryInfo(currentAssemblyLocation).Parent.FullName.ToString();
+            _binPath = new DirectoryInfo(currentAssemblyLocation).Parent.FullName.ToString();
             Trace.Info("binPath: {0}", _binPath);
 
             RootFolder = new DirectoryInfo(_binPath).Parent.FullName.ToString();
