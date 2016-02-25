@@ -2,6 +2,7 @@
 using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
 using System.Collections.Concurrent;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener
@@ -15,47 +16,54 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
     public class WorkerManager : AgentService, IWorkerManager
     {        
-        private ConcurrentDictionary<Guid, IWorker> _jobsInProgress = new ConcurrentDictionary<Guid, IWorker>();
+        private ConcurrentDictionary<Guid, Tuple<IWorker,Task<int>, CancellationTokenSource>> _jobsInProgress 
+            = new ConcurrentDictionary<Guid, Tuple<IWorker, Task<int>, CancellationTokenSource>>();
 
-        public async Task Run(JobRequestMessage jobRequestMessage)
+        public Task Run(JobRequestMessage jobRequestMessage)
         {            
             Trace.Info("Job request {0} received.", jobRequestMessage.JobId);
             var worker = HostContext.GetService<IWorker>();
-            worker.JobId = jobRequestMessage.JobId;
-            //we should always create a IProcessChannel, and not use a singleton
-            worker.ProcessChannel = HostContext.GetService<IProcessChannel>();            
-            worker.StateChanged += Worker_StateChanged;
-            _jobsInProgress[jobRequestMessage.JobId] = worker;
-            worker.ProcessChannel.StartServer( (pipeHandleOut, pipeHandleIn) => 
+            Task<int> workerTask;
+            var cancellationTokenSource = new CancellationTokenSource();
+            workerTask = worker.RunAsync(jobRequestMessage, cancellationTokenSource.Token);
+            _jobsInProgress[jobRequestMessage.JobId] = new Tuple<IWorker, Task<int>, CancellationTokenSource>(worker, workerTask, cancellationTokenSource);
+            workerTask.ContinueWith( (task) => 
+            {
+                if (task.Status == TaskStatus.Canceled)
                 {
-                    worker.LaunchProcess(pipeHandleOut, pipeHandleIn, AssemblyUtil.AssemblyDirectory);
+                    Trace.Info("Job request {0} was canceled.", jobRequestMessage.JobId);
                 }
-            );
-            await worker.ProcessChannel.SendAsync(jobRequestMessage, HostContext.CancellationToken);
+                else if (task.Status == TaskStatus.Faulted)
+                {
+                    Trace.Error("Job request {0} failed witn an exception.", jobRequestMessage.JobId);
+                    Trace.Error(task.Exception);
+                }
+                else
+                {
+                    Trace.Info("Job request {0} processed with return code {1}.", jobRequestMessage.JobId, task.Result);
+                }
+                Tuple<IWorker, Task<int>, CancellationTokenSource> deletedJob;                
+                if (_jobsInProgress.TryRemove(jobRequestMessage.JobId, out deletedJob))
+                {
+                    deletedJob.Item1.Dispose();
+                    deletedJob.Item3.Dispose();
+                }
+            });           
+            return Task.CompletedTask;
         }
 
-        private void Worker_StateChanged(object sender, EventArgs e)
+        public Task Cancel(JobCancelMessage jobCancelMessage)
         {
-            var worker = sender as Worker;
-            if (worker.State == WorkerState.Finished)
-            {                
-                IWorker deletedJob;
-                if (_jobsInProgress.TryRemove(worker.JobId, out deletedJob))
-                {
-                    deletedJob.StateChanged -= Worker_StateChanged;
-                    deletedJob.Dispose();
-                }
-            }
-        }
-
-        public async Task Cancel(JobCancelMessage jobCancelMessage)
-        {            
-            IWorker worker = null;
+            Tuple<IWorker, Task<int>, CancellationTokenSource> worker = null;
             if (!_jobsInProgress.TryGetValue(jobCancelMessage.JobId, out worker))
             {
                 Trace.Error("Received cancellation for invalid job id {0}.", jobCancelMessage.JobId);
-            }            
-            await worker.ProcessChannel.SendAsync(jobCancelMessage, HostContext.CancellationToken);            
+            }
+            else
+            {
+                worker.Item3.Cancel();
+            }
+            return Task.CompletedTask;
         }
 
         #region IDisposable Support
@@ -65,10 +73,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         {
             if (!disposedValue)
             {
+                //TODO: decide if we should wait for workers to complete here
                 foreach (var item in _jobsInProgress)                    
                 {
-                    item.Value.StateChanged -= Worker_StateChanged;
-                    item.Value.Dispose();
+                    item.Value.Item1.Dispose();
+                    item.Value.Item3.Dispose();
                 }
 
                 disposedValue = true;

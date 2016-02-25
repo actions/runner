@@ -1,25 +1,16 @@
 ﻿using System;
-using System.Collections.Generic;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using System.IO;
+using System.Threading.Tasks;
+using Microsoft.TeamFoundation.DistributedTask.WebApi;
+using System.Threading;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener
 {
-    public enum WorkerState
-    {
-        New,
-        Starting,
-        Finished,
-    }
-
     [ServiceLocator(Default = typeof(Worker))]
     public interface IWorker : IDisposable, IAgentService
     {
-        event EventHandler StateChanged;
-        Guid JobId { get; set; }
-        IProcessChannel ProcessChannel { get; set; }
-        //TODO: instead of LaunchProcess, do something like Task RunAsync(...) and make sure you take a cancellation token. The way the IWorkerManager can handle cancelling the worker is to simply signal the cancellation token that it handed to the IWorker.RunAsync method.
-        void LaunchProcess(String pipeHandleOut, String pipeHandleIn, string workingFolder);
+        Task<int> RunAsync(JobRequestMessage jobRequestMessage, CancellationToken cancellationToken);
     }
 
     public class Worker : AgentService, IWorker
@@ -28,75 +19,57 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         private const String WorkerProcessName = "Agent.Worker.exe";
 #else
         private const String WorkerProcessName = "Agent.Worker";
-#endif
+#endif        
 
-        public event EventHandler StateChanged;
-        public Guid JobId { get; set; }
-        public IProcessChannel ProcessChannel { get; set; }
-        private IProcessInvoker _processInvoker;
-        private WorkerState _state;
-        public WorkerState State
-        {
-            get
+        public async Task<int> RunAsync(JobRequestMessage jobRequestMessage, CancellationToken cancellationToken)
+        {            
+            Task<int> workerProcessTask = null;
+            using (var processChannel = HostContext.GetService<IProcessChannel>())
+            using (var processInvoker = HostContext.GetService<IProcessInvoker>())
             {
-                return _state;
-            }
-            private set
-            {
-                if (value != _state)
-                {
-                    _state = value;
-                    if (null != StateChanged)
-                    {
-                        StateChanged(this, null);
+                processChannel.StartServer(
+                    (pipeHandleOut, pipeHandleIn) =>
+                    {                        
+                        var assemblyDirectory = AssemblyUtil.AssemblyDirectory;
+                        string workerFileName = Path.Combine(assemblyDirectory, WorkerProcessName);
+                        workerProcessTask = processInvoker.ExecuteAsync(assemblyDirectory, workerFileName, "spawnclient " + pipeHandleOut + " " + pipeHandleIn, null, cancellationToken);
                     }
+                );
+                await processChannel.SendAsync(1, JsonUtility.ToString(jobRequestMessage), cancellationToken);
+                int resultCode = 0;
+                bool canceled = false;
+                try
+                {
+                    resultCode = await workerProcessTask;
+                } 
+                catch (OperationCanceledException)
+                {
+                    canceled = true;                    
                 }
+                catch (AggregateException errors)
+                {
+                    canceled = true;
+                    // Ignore OperationCanceledException and TaskCanceledException exceptions
+                    errors.Handle(e => e is OperationCanceledException);
+                }
+                if (canceled)
+                {
+                    //we create internal cancelation token, which nobody can access, because the parent token is already cancelled
+                    //Hopefully not an issue, because cancelation should not take long
+                    CancellationTokenSource ct = new CancellationTokenSource();
+                    await processChannel.SendAsync(2, "", ct.Token);
+                }
+                return resultCode;
             }
         }
-        public Worker()
-        {
-            State = WorkerState.New;
-        }
-        
-        public void LaunchProcess(String pipeHandleOut, String pipeHandleIn, string workingFolder)
-        {
-            string workerFileName = Path.Combine(AssemblyUtil.AssemblyDirectory, WorkerProcessName);
-            _processInvoker = HostContext.GetService<IProcessInvoker>();
-            _processInvoker.Exited += _processInvoker_Exited;
-            State = WorkerState.Starting;
-            var environmentVariables = new Dictionary<String, String>();            
-            _processInvoker.Execute(workingFolder, workerFileName, "spawnclient " + pipeHandleOut + " " + pipeHandleIn,
-                environmentVariables);
-        }        
 
-        private void _processInvoker_Exited(object sender, EventArgs e)
-        {
-            _processInvoker.Exited -= _processInvoker_Exited;
-            if (null != ProcessChannel)
-            {
-                ProcessChannel.Dispose();
-                ProcessChannel = null;
-            }
-            State = WorkerState.Finished;
-        }
-
-#region IDisposable Support
+        #region IDisposable Support
         private bool disposedValue = false; // To detect redundant calls
 
         protected virtual void Dispose(bool disposing)
         {
             if (!disposedValue)
             {
-                if (null != ProcessChannel)
-                {
-                    ProcessChannel.Dispose();
-                    ProcessChannel = null;
-                }
-                if (null != _processInvoker)
-                {
-                    _processInvoker.Dispose();
-                    _processInvoker = null;
-                }
                 disposedValue = true;
             }
         }

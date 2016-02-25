@@ -7,148 +7,69 @@ using System.Threading.Tasks;
 
 namespace Microsoft.VisualStudio.Services.Agent
 {
+    public struct IPCPacket
+    {
+        public Int32 _messageType;
+        public string _body;
+        public IPCPacket(Int32 p1, string p2)
+        {
+            _messageType = p1;
+            _body = p2;
+        }
+    }
+
     [ServiceLocator(Default = typeof(ProcessChannel))]
     public interface IProcessChannel : IDisposable, IAgentService
     {
-        event Func<JobRequestMessage, CancellationToken, Task> JobRequestMessageReceived;
-        event Func<JobCancelMessage, CancellationToken, Task> JobCancelMessageReceived;
-
-        Task SendAsync(JobRequestMessage jobRequest, CancellationToken cancellationToken);
-        Task SendAsync(JobCancelMessage jobCancel, CancellationToken cancellationToken);
         void StartServer(ProcessStartDelegate processStart);
         void StartClient(string pipeNameInput, string pipeNameOutput);
-        Task Stop();
+
+        Task SendAsync(Int32 MessageType, string Body, CancellationToken cancellationToken);
+        Task<IPCPacket> ReceiveAsync(CancellationToken cancellationToken);
     }
 
     public delegate void ProcessStartDelegate(String pipeHandleOut, String pipeHandleIn);
 
     public class ProcessChannel : AgentService, IProcessChannel
     {
-        private Task RunTask;
-        private CancellationTokenSource TokenSource;
-        private AnonymousPipeServerStream InServer;
-        private AnonymousPipeServerStream OutServer;
-        private AnonymousPipeClientStream InClient;
-        private AnonymousPipeClientStream OutClient;
-        private volatile bool Started = false;
-        private StreamTransport Transport { get; set; }
-
-        public ProcessChannel()
-        {
-            Transport = new StreamTransport();
-            TokenSource = new CancellationTokenSource();
-        }
+        private AnonymousPipeServerStream _inServer;
+        private AnonymousPipeServerStream _outServer;
+        private AnonymousPipeClientStream _inClient;
+        private AnonymousPipeClientStream _outClient;
+        private StreamString _writeStream;
+        private StreamString _readStream;
 
         public void StartServer(ProcessStartDelegate processStart)
         {
-            if (!Started)
-            {
-                Started = true;
-                OutServer = new AnonymousPipeServerStream(PipeDirection.Out, HandleInheritability.Inheritable);
-                InServer = new AnonymousPipeServerStream(PipeDirection.In, HandleInheritability.Inheritable);
-                Transport.ReadPipe = InServer;
-                Transport.WritePipe = OutServer;
-                processStart(OutServer.GetClientHandleAsString(), InServer.GetClientHandleAsString());
-                OutServer.DisposeLocalCopyOfClientHandle();
-                InServer.DisposeLocalCopyOfClientHandle();
-                Transport.PacketReceived += Transport_PacketReceived;
-                RunTask = Transport.Run(TokenSource.Token);
-            }
+            _outServer = new AnonymousPipeServerStream(PipeDirection.Out, HandleInheritability.Inheritable);
+            _inServer = new AnonymousPipeServerStream(PipeDirection.In, HandleInheritability.Inheritable);
+            _readStream = new StreamString(_inServer);
+            _writeStream = new StreamString(_outServer);
+            processStart(_outServer.GetClientHandleAsString(), _inServer.GetClientHandleAsString());
+            _outServer.DisposeLocalCopyOfClientHandle();
+            _inServer.DisposeLocalCopyOfClientHandle();
         }
 
         public void StartClient(string pipeNameInput, string pipeNameOutput)
         {
-            if (!Started)
-            {
-                Started = true;
-                InClient = new AnonymousPipeClientStream(PipeDirection.In, pipeNameInput);
-                OutClient = new AnonymousPipeClientStream(PipeDirection.Out, pipeNameOutput);
-                Transport.ReadPipe = InClient;
-                Transport.WritePipe = OutClient;
-                Transport.PacketReceived += Transport_PacketReceived;
-                RunTask = Transport.Run(TokenSource.Token);
-            }
+            _inClient = new AnonymousPipeClientStream(PipeDirection.In, pipeNameInput);
+            _outClient = new AnonymousPipeClientStream(PipeDirection.Out, pipeNameOutput);
+            _readStream = new StreamString(_inClient);
+            _writeStream = new StreamString(_outClient);
+        }
+                
+        public async Task SendAsync(Int32 MessageType, string Body, CancellationToken cancellationToken)
+        {
+            await _writeStream.WriteInt32Async(MessageType, cancellationToken);
+            await _writeStream.WriteStringAsync(Body, cancellationToken);
         }
 
-        public async Task Stop()
+        public async Task<IPCPacket> ReceiveAsync(CancellationToken cancellationToken)
         {
-            if (Started)
-            {
-                Started = false;
-                Transport.PacketReceived -= Transport_PacketReceived;
-                TokenSource.Cancel();
-
-                try
-                {
-                    await RunTask;
-                }
-                catch (OperationCanceledException)
-                {
-                    // Ignore OperationCanceledException and TaskCanceledException exceptions
-                }
-                catch (AggregateException errors)
-                {
-                    // Ignore OperationCanceledException and TaskCanceledException exceptions
-                    errors.Handle(e => e is OperationCanceledException);
-                }
-            }
-        }
-
-        private async Task Transport_PacketReceived(IPCPacket packet, CancellationToken token)
-        {
-            token.ThrowIfCancellationRequested();
-            switch (packet.MessageType)
-            {
-                case 1:
-                    {                        
-                        var message = JsonUtility.FromString<JobRequestMessage>(packet.Body);
-                        Func<JobRequestMessage, CancellationToken, Task> jobRequestMessageReceived = JobRequestMessageReceived;
-                        if (null == jobRequestMessageReceived)
-                        {
-                            return;
-                        }
-                        Delegate[] invocationList = jobRequestMessageReceived.GetInvocationList();
-                        Task[] handlerTasks = new Task[invocationList.Length];
-                        for (int i = 0; i < invocationList.Length; i++)
-                        {
-                            handlerTasks[i] = ((Func<JobRequestMessage, CancellationToken, Task>)invocationList[i])(message, token);
-                        }
-                        await Task.WhenAll(handlerTasks);
-                    }
-                    break;
-                case 2:
-                    {
-                        var message = JsonUtility.FromString<JobCancelMessage>(packet.Body);
-                        Func<JobCancelMessage, CancellationToken, Task> jobCancelMessageReceived = JobCancelMessageReceived;
-                        if (null == jobCancelMessageReceived)
-                        {
-                            return;
-                        }
-                        Delegate[] invocationList = jobCancelMessageReceived.GetInvocationList();
-                        Task[] handlerTasks = new Task[invocationList.Length];
-                        for (int i = 0; i < invocationList.Length; i++)
-                        {
-                            handlerTasks[i] = ((Func<JobCancelMessage, CancellationToken, Task>)invocationList[i])(message, token);
-                        }
-                        await Task.WhenAll(handlerTasks);
-                    }
-                    break;
-            }
-        }
-
-        public event Func<JobRequestMessage, CancellationToken, Task> JobRequestMessageReceived;
-        public event Func<JobCancelMessage, CancellationToken, Task> JobCancelMessageReceived;
-
-        public async Task SendAsync(JobRequestMessage jobRequest, CancellationToken cancellationToken)
-        {
-            string messageString = JsonUtility.ToString(jobRequest);
-            await Transport.SendAsync(1, messageString, cancellationToken);
-        }
-
-        public async Task SendAsync(JobCancelMessage jobCancel, CancellationToken cancellationToken)
-        {
-            string messageString = JsonUtility.ToString(jobCancel);
-            await Transport.SendAsync(2, messageString, cancellationToken);
+            IPCPacket result = new IPCPacket(-1, "");
+            result._messageType = await _readStream.ReadInt32Async(cancellationToken);
+            result._body = await _readStream.ReadStringAsync(cancellationToken);
+            return result;
         }
 
         #region IDisposable Support
@@ -158,11 +79,10 @@ namespace Microsoft.VisualStudio.Services.Agent
         {
             if (!disposedValue)
             {
-                TokenSource.Dispose();
-                if (null != InServer) InServer.Dispose();
-                if (null != OutServer) OutServer.Dispose();
-                if (null != InClient) InClient.Dispose();
-                if (null != OutClient) OutClient.Dispose();
+                if (null != _inServer) _inServer.Dispose();
+                if (null != _outServer) _outServer.Dispose();
+                if (null != _inClient) _inClient.Dispose();
+                if (null != _outClient) _outClient.Dispose();
                 disposedValue = true;
             }
         }
