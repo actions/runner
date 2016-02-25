@@ -28,7 +28,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             _jobsInProgress[jobRequestMessage.JobId] = worker;
             worker.ProcessChannel.StartServer( (pipeHandleOut, pipeHandleIn) => 
                 {
-                    worker.LaunchProcess(pipeHandleOut, pipeHandleIn, AssemblyUtil.AssemblyDirectory);
+                    worker.LaunchProcess(pipeHandleOut, pipeHandleIn, IOUtil.GetBinPath());
                 }
             );
             await worker.ProcessChannel.SendAsync(jobRequestMessage, HostContext.CancellationToken);

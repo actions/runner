@@ -35,6 +35,11 @@
         "xunit.netcore.extensions": "1.0.0-prerelease-00153",
         "xunit.runner.utility": "2.1.0",
         "Agent.Listener": { "target": "project" },
+        "Microsoft.TeamFoundation.Common": "0.5.0",
+        "Microsoft.TeamFoundation.Core.WebApi": "0.5.0",
+        "Microsoft.VisualStudio.Services.Client": "0.5.0",
+        "Microsoft.VisualStudio.Services.Common": "0.5.0",
+        "Microsoft.VisualStudio.Services.WebApi": "0.5.0",        
         "Microsoft.VisualStudio.Services.Agent": { "target": "project" },
         "Agent.Worker": { "target": "project" } 
     },

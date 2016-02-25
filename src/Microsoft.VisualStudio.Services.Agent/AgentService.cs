@@ -20,6 +20,8 @@ namespace Microsoft.VisualStudio.Services.Agent
 
     public class AgentService
     {
+        public static string Version { get { return "2.0.0"; }}
+        
         protected IHostContext HostContext { get; private set; }
         protected TraceSource Trace { get; private set; }
 

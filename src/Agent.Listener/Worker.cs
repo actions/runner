@@ -60,7 +60,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         
         public void LaunchProcess(String pipeHandleOut, String pipeHandleIn, string workingFolder)
         {
-            string workerFileName = Path.Combine(AssemblyUtil.AssemblyDirectory, WorkerProcessName);
+            string workerFileName = Path.Combine(IOUtil.GetBinPath(), WorkerProcessName);
             _processInvoker = HostContext.GetService<IProcessInvoker>();
             _processInvoker.Exited += _processInvoker_Exited;
             State = WorkerState.Starting;

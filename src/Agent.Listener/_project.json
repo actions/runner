@@ -32,6 +32,8 @@
     "dependencies": {
         "NETStandard.Library": "1.0.0-rc3-23721",
         "Microsoft.VisualStudio.Services.Agent": "",
+        "Microsoft.VisualStudio.Services.Client": "0.5.0",
+        "Microsoft.VisualStudio.Services.Common": "0.5.0",        
         "Newtonsoft.Json": "7.0.1",
         "System.Diagnostics.TraceSource": "4.0.0-rc3-23721"       
     },
