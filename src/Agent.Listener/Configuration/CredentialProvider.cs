@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using Microsoft.VisualStudio.Services.Client;
+using Microsoft.VisualStudio.Services.Common;
 
 namespace Microsoft.VisualStudio.Services.Agent.Configuration
 {
@@ -28,8 +30,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
 
         public CredentialData CredentialData { get; set; }
 
-        // TODO: (bryanmac) abstract GetVSSCredential which knows how to instantiate based off data
-
+        public abstract VssCredentials GetVssCredentials(IHostContext context);
         public abstract void ReadCredential(IHostContext context, Dictionary<string, string> args, bool enforceSupplied);
     }
 
@@ -37,6 +38,27 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
     {
         public PersonalAccessToken(): base("PAT") {}
         
+        public override VssCredentials GetVssCredentials(IHostContext context)
+        {
+            TraceSource trace = context.GetTrace("PersonalAccessToken");
+            trace.Info("GetVssCredentials()");
+
+            if (CredentialData == null || !CredentialData.Data.ContainsKey("token"))
+            {
+                throw new InvalidOperationException("Must call ReadCredential first.");
+            }
+
+            string token = CredentialData.Data["token"];
+            trace.Info("token retrieved: {0} chars", token.Length);
+
+            // PAT uses a basic credential
+            VssBasicCredential loginCred = new VssBasicCredential("VstsAgent", token);
+            VssCredentials creds = new VssClientCredentials(loginCred);
+            trace.Verbose("cred created");
+
+            return creds;
+        }
+
         public override void ReadCredential(IHostContext context, Dictionary<string, string> args, bool enforceSupplied)
         {
             TraceSource trace = context.GetTrace("PersonalAccessToken");
@@ -59,7 +81,31 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
     public sealed class AlternateCredential : CredentialProvider
     {
         public AlternateCredential(): base("ALT") {}
-        
+
+        public override VssCredentials GetVssCredentials(IHostContext context)
+        {
+            TraceSource trace = context.GetTrace("PersonalAccessToken");
+            trace.Info("GetVssCredentials()");
+
+            if (CredentialData == null || !CredentialData.Data.ContainsKey("token"))
+            {
+                throw new InvalidOperationException("Must call ReadCredential first.");
+            }
+
+            string username = CredentialData.Data["Username"];
+            trace.Info("username retrieved: {0} chars", username.Length);
+
+            string password = CredentialData.Data["Password"];
+            trace.Info("password retrieved: {0} chars", password.Length);
+
+            // PAT uses a basic credential
+            VssBasicCredential loginCred = new VssBasicCredential(username, password);
+            VssCredentials creds = new VssClientCredentials(loginCred);
+            trace.Verbose("cred created");
+
+            return creds;
+        }
+
         public override void ReadCredential(IHostContext context, Dictionary<string, string> args, bool enforceSupplied)
         {
             var wizard = context.GetService<IConsoleWizard>();
@@ -81,5 +127,5 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
                                             args, 
                                             enforceSupplied);            
         }        
-    }    
+    }   
 }

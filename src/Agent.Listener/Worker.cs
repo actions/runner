@@ -30,7 +30,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 processChannel.StartServer(
                     (pipeHandleOut, pipeHandleIn) =>
                     {                        
-                        var assemblyDirectory = AssemblyUtil.AssemblyDirectory;
+                        var assemblyDirectory = IOUtil.GetBinPath();
                         string workerFileName = Path.Combine(assemblyDirectory, WorkerProcessName);
                         workerProcessTask = processInvoker.ExecuteAsync(assemblyDirectory, workerFileName, "spawnclient " + pipeHandleOut + " " + pipeHandleIn, null, cancellationToken);
                     }

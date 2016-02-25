@@ -107,7 +107,10 @@ function layout ()
     for bin_copy_dir in ${bin_layout_dirs[@]}
     do
         copyBin ${bin_copy_dir}
-    done 
+    done
+    
+    cp -Rf ./Misc/layoutroot/* ${LAYOUT_DIR}
+    cp -Rf ./Misc/layoutbin/* ${LAYOUT_DIR}/bin
 }
 
 function update ()

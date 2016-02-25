@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using Newtonsoft.Json;
+using Microsoft.VisualStudio.Services.Agent.Util;
 
 namespace Microsoft.VisualStudio.Services.Agent.Configuration
 {
@@ -83,7 +84,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
         {
             if (_creds == null)
             {
-                _creds = Load<CredentialData>(_credFilePath);
+                _creds = IOUtil.LoadObject<CredentialData>(_credFilePath);
             }
 
             return _creds;
@@ -93,7 +94,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
         {
             if (_settings == null)
             {
-                _settings = Load<AgentSettings>(_configFilePath);    
+                _settings = IOUtil.LoadObject<AgentSettings>(_configFilePath);    
             }
             
             return _settings;
@@ -102,35 +103,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
         public void SaveCredential(CredentialData credential)
         {   
             Trace.Info("Saving {0} credential @ {1}", credential.Scheme, _credFilePath);
-            Save(credential, _credFilePath);
-            Trace.Info("Saved.");
+            IOUtil.SaveObject(credential, _credFilePath);
+            Trace.Info("Credentials Saved.");
         }
 
         public void SaveSettings(AgentSettings settings)
         {
-            Save(settings, _configFilePath);
-        }
-
-        private void Save(Object obj, string path) 
-        {
-            Trace.Info("Saving to {0}", path);
-
-            string json = JsonConvert.SerializeObject(obj, Formatting.Indented);
-            File.WriteAllText (path, json);
-            Trace.Info("Written.");
-        }
-
-        private T Load<T>(string path)
-        {
-            // TODO: convert many of these Info statements to Verbose
-
-            Trace.Info("Loading config from {0}", path);
-
-            string json = File.ReadAllText(path);
-            Trace.Info("Loaded. Length: {0}", json.Length);
-            T config = JsonConvert.DeserializeObject<T>(json);
-            Trace.Info("Loaded.");
-            return config;
+            IOUtil.SaveObject(settings, _configFilePath);
+            Trace.Info("Settings Saved.");
         }
     }
 }

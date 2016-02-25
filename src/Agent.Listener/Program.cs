@@ -14,6 +14,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
     {
         public static Int32 Main(String[] args)
         {
+            
             using (HostContext context = new HostContext("Agent"))
             {
                 TraceSource _trace = context.GetTrace("AgentProcess");
@@ -125,42 +126,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
         private static void PrintUsage()
         {
-            string usage = @"
-usage:
-Agent.Listener [command(s)] [arguments] [options] 
-
-It is common to just run Agent or Agent.Listener with no arguments for an interactive configuration.
-You will be prompted and walked through all options.
-
-
-Commands:
------------------------------------------------------------------------------
-(none)         Interactively configure and then run the agent.  
-               You will be prompted for data.
-configure      Configure the agent and exit.
-unconfigure    Unconfigure the agent.
-run            Runs the agent interactively.  must be configured.
-
-
-Options:
------------------------------------------------------------------------------
---unattend     Unattended config.  You will not be prompted.  
-               All answers must be supplied on cli.
---nostart      Do not start the agent after interactive configuration.
---auth         Auth type.  Valid options are PAT (Personal Access Token) and 
-               ALT (Alternate Credentials)
-
-
-Options by Auth Type:
------------------------------------------------------------------------------
-PAT
---token        Personal Access Token data.  Best to paste value in.
-
-ALT
---username     alternate username
---password     alternate password
-            ";   
+            string usage = StringUtil.Loc("ListenerHelp");
             Console.WriteLine(usage);
+            Console.WriteLine(StringUtil.Loc("Test", "Hello"));
             Environment.Exit(0);
         }        
     }
