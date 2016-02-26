@@ -29,7 +29,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             context.LogVerbose("Finishing...");
 
             m_trace.Info("Job id {0}", message.JobId);
-
+            await Task.Yield();
             m_finishedSignal.Release();
         }
 

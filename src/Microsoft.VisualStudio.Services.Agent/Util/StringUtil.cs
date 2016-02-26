@@ -79,7 +79,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
                     locStr = StringUtil.Format("notFound:{0}", locKey);
                 }              
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 // loc strings shouldn't take down agent.  any failures returns loc key
             }
