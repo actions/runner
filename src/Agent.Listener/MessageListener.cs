@@ -1,8 +1,8 @@
+using Microsoft.TeamFoundation.DistributedTask.WebApi;
+using Microsoft.VisualStudio.Services.Agent.Configuration;
 using System;
 using System.Diagnostics;
 using System.Threading.Tasks;
-using Microsoft.TeamFoundation.DistributedTask.WebApi;
-using Microsoft.VisualStudio.Services.Agent.Configuration;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener
 {

@@ -1,12 +1,11 @@
+using Microsoft.TeamFoundation.DistributedTask.WebApi;
+using Microsoft.VisualStudio.Services.Agent.Worker;
+using Moq;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.TeamFoundation.DistributedTask.WebApi;
-using Microsoft.VisualStudio.Services.Agent;
-using Microsoft.VisualStudio.Services.Agent.Worker;
-using Moq;
 using Xunit;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests

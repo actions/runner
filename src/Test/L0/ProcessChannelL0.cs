@@ -1,10 +1,10 @@
-using System;
-using Xunit;
-using System.Threading.Tasks;
-using System.Threading;
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Threading.Tasks;
+using System.Threading;
+using Xunit;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests
 {
@@ -43,8 +43,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 }
                 else
                 {
-                    var message = JsonUtility.FromString<JobRequestMessage>(packetReceiveTask.Result._body);
-                    await client.SendAsync(1, JsonUtility.ToString(message), cs2.Token);
+                    var message = JsonUtility.FromString<JobRequestMessage>(packetReceiveTask.Result.Body);
+                    await client.SendAsync(MessageType.NewJobRequest, JsonUtility.ToString(message), cs2.Token);
                 }
             }
         }
@@ -80,7 +80,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                     jobProcess.Start();
                 });
                 var cs = new CancellationTokenSource();                
-                await server.SendAsync(1, JsonUtility.ToString(jobRequest), cs.Token);
+                await server.SendAsync(MessageType.NewJobRequest, JsonUtility.ToString(jobRequest), cs.Token);
                 var packetReceiveTask = server.ReceiveAsync(cs.Token);
                 Task[] taskToWait = { packetReceiveTask, Task.Delay(5000) };
                 await Task.WhenAny(taskToWait);
@@ -106,7 +106,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 }
                 else
                 {
-                    result = JsonUtility.FromString<JobRequestMessage>(packetReceiveTask.Result._body);                    
+                    result = JsonUtility.FromString<JobRequestMessage>(packetReceiveTask.Result.Body);                    
                 }
 
                 // Wait until response is received

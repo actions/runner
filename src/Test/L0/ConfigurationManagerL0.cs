@@ -1,9 +1,8 @@
+using Moq;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
-
-using Moq;
 using Xunit;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests

@@ -1,19 +1,19 @@
-﻿using System;
+﻿using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Util;
+using System;
 using System.IO;
-using System.Threading.Tasks;
-using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener
 {
-    [ServiceLocator(Default = typeof(Worker))]
-    public interface IWorker : IDisposable, IAgentService
+    [ServiceLocator(Default = typeof(JobDispatcher))]
+    public interface IJobDispatcher : IDisposable, IAgentService
     {
-        Task<int> RunAsync(JobRequestMessage jobRequestMessage, CancellationToken cancellationToken);
+        Task<int> RunAsync(JobRequestMessage message, CancellationToken token);
     }
 
-    public class Worker : AgentService, IWorker
+    public class JobDispatcher : AgentService, IJobDispatcher
     {
 #if OS_WINDOWS
         private const String WorkerProcessName = "Agent.Worker.exe";
@@ -21,21 +21,21 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         private const String WorkerProcessName = "Agent.Worker";
 #endif        
 
-        public async Task<int> RunAsync(JobRequestMessage jobRequestMessage, CancellationToken cancellationToken)
-        {            
+        public async Task<int> RunAsync(JobRequestMessage message, CancellationToken token)
+        {
             Task<int> workerProcessTask = null;
             using (var processChannel = HostContext.GetService<IProcessChannel>())
             using (var processInvoker = HostContext.GetService<IProcessInvoker>())
             {
                 processChannel.StartServer(
                     (pipeHandleOut, pipeHandleIn) =>
-                    {                        
+                    {
                         var assemblyDirectory = IOUtil.GetBinPath();
                         string workerFileName = Path.Combine(assemblyDirectory, WorkerProcessName);
-                        workerProcessTask = processInvoker.ExecuteAsync(assemblyDirectory, workerFileName, "spawnclient " + pipeHandleOut + " " + pipeHandleIn, null, cancellationToken);
+                        workerProcessTask = processInvoker.ExecuteAsync(assemblyDirectory, workerFileName, "spawnclient " + pipeHandleOut + " " + pipeHandleIn, null, token);
                     }
                 );
-                await processChannel.SendAsync(1, JsonUtility.ToString(jobRequestMessage), cancellationToken);
+                await processChannel.SendAsync(MessageType.NewJobRequest, JsonUtility.ToString(message), token);
                 int resultCode = 0;
                 bool canceled = false;
                 try
@@ -57,7 +57,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     //we create internal cancelation token, which nobody can access, because the parent token is already cancelled
                     //Hopefully not an issue, because cancelation should not take long
                     CancellationTokenSource ct = new CancellationTokenSource();
-                    await processChannel.SendAsync(2, "", ct.Token);
+                    await processChannel.SendAsync(MessageType.CancelRequest, "", ct.Token);
                 }
                 return resultCode;
             }

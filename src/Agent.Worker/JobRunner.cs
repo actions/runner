@@ -1,5 +1,4 @@
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
-using System;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
@@ -15,7 +14,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         //RunAsync takes the same parameters as IWorker.RunAsync and conceptionally is the same thing.
         //Should JobRunner implement IWorker interface?
-        public async Task<int> RunAsync(JobRequestMessage jobRequestMessage, CancellationToken cancellationToken)
+        public async Task<int> RunAsync(JobRequestMessage message, CancellationToken token)
         {
             ExecutionContext context = new ExecutionContext(m_hostContext);
             m_trace.Verbose("Prepare");
@@ -30,7 +29,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             context.LogInfo("Finish...");
             context.LogVerbose("Finishing...");
 
-            m_trace.Info("Job id {0}", jobRequestMessage.JobId);
+            m_trace.Info("Job id {0}", message.JobId);
             return 0;
         }        
 

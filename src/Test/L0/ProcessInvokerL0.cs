@@ -1,7 +1,7 @@
 using System;
 using System.Diagnostics;
-using Xunit;
 using System.Threading.Tasks;
+using Xunit;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests
 {
@@ -21,13 +21,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 processInvoker.Initialize(thc);
 #if OS_WINDOWS
                 processInvoker.Execute("", "cmd.exe", "/c \"dir >nul\"", null);
-                exitCode = await processInvoker.WaitForExit(thc.CancellationToken);
 #endif
-
 #if (OS_OSX || OS_LINUX)
                 processInvoker.Execute("", "bash", "-c ls > /dev/null", null);
-                exitCode = await processInvoker.WaitForExit(thc.CancellationToken);
 #endif
+                exitCode = await processInvoker.WaitForExit(thc.CancellationToken);
 
                 trace.Info("Exit Code: {0}", exitCode);
                 Assert.Equal(0, exitCode);                

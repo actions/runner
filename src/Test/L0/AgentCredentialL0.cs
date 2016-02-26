@@ -1,8 +1,8 @@
-using System.Collections.Generic;
-using System.Diagnostics;
 using Microsoft.VisualStudio.Services.Agent.Configuration;
 using Microsoft.VisualStudio.Services.Client;
 using Microsoft.VisualStudio.Services.Common;
+using System.Collections.Generic;
+using System.Diagnostics;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests
 {

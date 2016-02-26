@@ -1,5 +1,4 @@
-﻿using Microsoft.TeamFoundation.DistributedTask.WebApi;
-using System;
+﻿using System;
 using System.IO;
 using System.IO.Pipes;
 using System.Threading;
@@ -7,14 +6,21 @@ using System.Threading.Tasks;
 
 namespace Microsoft.VisualStudio.Services.Agent
 {
-    public struct IPCPacket
+    public enum MessageType
     {
-        public Int32 _messageType;
-        public string _body;
-        public IPCPacket(Int32 p1, string p2)
+        NotInitialized = -1,
+        NewJobRequest = 1,
+        CancelRequest = 2
+    }
+
+    public struct WorkerMessage
+    {
+        public MessageType MessageType;
+        public string Body;
+        public WorkerMessage(MessageType messageType, string body)
         {
-            _messageType = p1;
-            _body = p2;
+            MessageType = messageType;
+            Body = body;
         }
     }
 
@@ -24,8 +30,8 @@ namespace Microsoft.VisualStudio.Services.Agent
         void StartServer(ProcessStartDelegate processStart);
         void StartClient(string pipeNameInput, string pipeNameOutput);
 
-        Task SendAsync(Int32 MessageType, string Body, CancellationToken cancellationToken);
-        Task<IPCPacket> ReceiveAsync(CancellationToken cancellationToken);
+        Task SendAsync(MessageType messageType, string body, CancellationToken cancellationToken);
+        Task<WorkerMessage> ReceiveAsync(CancellationToken cancellationToken);
     }
 
     public delegate void ProcessStartDelegate(String pipeHandleOut, String pipeHandleIn);
@@ -58,17 +64,17 @@ namespace Microsoft.VisualStudio.Services.Agent
             _writeStream = new StreamString(_outClient);
         }
                 
-        public async Task SendAsync(Int32 MessageType, string Body, CancellationToken cancellationToken)
+        public async Task SendAsync(MessageType messageType, string body, CancellationToken cancellationToken)
         {
-            await _writeStream.WriteInt32Async(MessageType, cancellationToken);
-            await _writeStream.WriteStringAsync(Body, cancellationToken);
+            await _writeStream.WriteInt32Async((int)messageType, cancellationToken);
+            await _writeStream.WriteStringAsync(body, cancellationToken);
         }
 
-        public async Task<IPCPacket> ReceiveAsync(CancellationToken cancellationToken)
+        public async Task<WorkerMessage> ReceiveAsync(CancellationToken cancellationToken)
         {
-            IPCPacket result = new IPCPacket(-1, "");
-            result._messageType = await _readStream.ReadInt32Async(cancellationToken);
-            result._body = await _readStream.ReadStringAsync(cancellationToken);
+            WorkerMessage result = new WorkerMessage(MessageType.NotInitialized, String.Empty);
+            result.MessageType = (MessageType)await _readStream.ReadInt32Async(cancellationToken);
+            result.Body = await _readStream.ReadStringAsync(cancellationToken);
             return result;
         }
 

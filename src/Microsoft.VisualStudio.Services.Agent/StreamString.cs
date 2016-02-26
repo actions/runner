@@ -44,13 +44,13 @@ namespace Microsoft.VisualStudio.Services.Agent
             await op.WithCancellation(cancellationToken);
         }
 
-        const Int32 MAX_STRING_SIZE = 50*1000000;
+        const int MaxStringSize = 50*1000000;
 
         public async Task<string> ReadStringAsync(CancellationToken cancellationToken)
         {            
             Int32 len = await ReadInt32Async(cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();            
-            if (len <= 0 || len > MAX_STRING_SIZE)
+            if (len <= 0 || len > MaxStringSize)
             {                
                 throw new InvalidDataException();
             }
@@ -76,7 +76,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         {
             byte[] outBuffer = streamEncoding.GetBytes(outString);
             Int32 len = outBuffer.Length;
-            if (len > MAX_STRING_SIZE)
+            if (len > MaxStringSize)
             {
                 throw new ArgumentOutOfRangeException();
             }

@@ -1,7 +1,6 @@
-using System;
 using System.Diagnostics;
 using Xunit;
-using Microsoft.VisualStudio.Services.Agent;
+
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests
 {

@@ -1,5 +1,5 @@
-using System;
 using Microsoft.VisualStudio.Services.Agent.Configuration;
+using System;
 using Xunit;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests

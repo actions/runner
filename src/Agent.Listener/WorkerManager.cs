@@ -12,22 +12,44 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
     {
         Task Run(JobRequestMessage message);
         Task Cancel(JobCancelMessage message);
-    }    
+    }
 
     public class WorkerManager : AgentService, IWorkerManager
-    {        
-        private ConcurrentDictionary<Guid, Tuple<IWorker,Task<int>, CancellationTokenSource>> _jobsInProgress 
-            = new ConcurrentDictionary<Guid, Tuple<IWorker, Task<int>, CancellationTokenSource>>();
+    {
+        //JobDispatcherItem is used to keep track of a single JobDispatcher, its running task,
+        //and a cancellation token than can be used to stop the dispatcher
+        private struct JobDispatcherItem : IDisposable
+        {
+            public IJobDispatcher Dispatcher { get; set; }
+            public Task<int> DispatcherTask { get; set; }
+            public CancellationTokenSource Token { get; set; }
+
+            public JobDispatcherItem(IJobDispatcher dispatcher, Task<int> task, CancellationTokenSource token)
+            {
+                Dispatcher = dispatcher;
+                DispatcherTask = task;
+                Token = token;
+            }
+
+            public void Dispose()
+            {
+                Dispatcher.Dispose();
+                Token.Dispose();
+            }
+        }
+             
+        private ConcurrentDictionary<Guid, JobDispatcherItem> _jobsInProgress 
+            = new ConcurrentDictionary<Guid, JobDispatcherItem>();
 
         public Task Run(JobRequestMessage jobRequestMessage)
         {            
             Trace.Info("Job request {0} received.", jobRequestMessage.JobId);
-            var worker = HostContext.GetService<IWorker>();
-            Task<int> workerTask;
+            var jobDispatcher = HostContext.GetService<IJobDispatcher>();
+            Task<int> jobDispatcherTask;
             var cancellationTokenSource = new CancellationTokenSource();
-            workerTask = worker.RunAsync(jobRequestMessage, cancellationTokenSource.Token);
-            _jobsInProgress[jobRequestMessage.JobId] = new Tuple<IWorker, Task<int>, CancellationTokenSource>(worker, workerTask, cancellationTokenSource);
-            workerTask.ContinueWith( (task) => 
+            jobDispatcherTask = jobDispatcher.RunAsync(jobRequestMessage, cancellationTokenSource.Token);
+            _jobsInProgress[jobRequestMessage.JobId] = new JobDispatcherItem(jobDispatcher, jobDispatcherTask, cancellationTokenSource);
+            jobDispatcherTask.ContinueWith( (task) => 
             {
                 if (task.Status == TaskStatus.Canceled)
                 {
@@ -42,11 +64,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 {
                     Trace.Info("Job request {0} processed with return code {1}.", jobRequestMessage.JobId, task.Result);
                 }
-                Tuple<IWorker, Task<int>, CancellationTokenSource> deletedJob;                
+                JobDispatcherItem deletedJob;                
                 if (_jobsInProgress.TryRemove(jobRequestMessage.JobId, out deletedJob))
                 {
-                    deletedJob.Item1.Dispose();
-                    deletedJob.Item3.Dispose();
+                    deletedJob.Dispose();                    
                 }
             });           
             return Task.CompletedTask;
@@ -54,14 +75,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
         public Task Cancel(JobCancelMessage jobCancelMessage)
         {
-            Tuple<IWorker, Task<int>, CancellationTokenSource> worker = null;
+            JobDispatcherItem worker;
             if (!_jobsInProgress.TryGetValue(jobCancelMessage.JobId, out worker))
             {
                 Trace.Error("Received cancellation for invalid job id {0}.", jobCancelMessage.JobId);
             }
             else
             {
-                worker.Item3.Cancel();
+                worker.Token.Cancel();
             }
             return Task.CompletedTask;
         }
@@ -76,8 +97,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 //TODO: decide if we should wait for workers to complete here
                 foreach (var item in _jobsInProgress)                    
                 {
-                    item.Value.Item1.Dispose();
-                    item.Value.Item3.Dispose();
+                    item.Value.Dispose();                    
                 }
 
                 disposedValue = true;

@@ -1,8 +1,8 @@
-﻿using System;
+﻿using Microsoft.TeamFoundation.DistributedTask.WebApi;
+using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading.Tasks;
-using Microsoft.TeamFoundation.DistributedTask.WebApi;
-using System.Collections.Generic;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
@@ -30,7 +30,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 #if OS_LINUX
                 Console.WriteLine("Hello Linux");
 #endif
-
+                //TODO: move this code in a new class - too much code in main program
                 TraceSource m_trace =  hc.GetTrace("WorkerProcess");
                 m_trace.Info("Info Hello Worker!");
                 m_trace.Warning("Warning Hello Worker!");
@@ -44,7 +44,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                         {
                             var jobRunner = new JobRunner(hc);
                             channel.StartClient(args[1], args[2]);
-                            Task<IPCPacket> packetReceiveTask = null;
+                            Task<WorkerMessage> packetReceiveTask = null;
                             Task<int> jobRunnerTask = null;
                             var tasks = new List<Task>();
                             while (!hc.CancellationToken.IsCancellationRequested && 
@@ -65,15 +65,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                                 if (packetReceiveTask.IsCompleted)
                                 {
                                     var packet = await packetReceiveTask;
-                                    switch (packet._messageType)
+                                    switch (packet.MessageType)
                                     {
-                                        case 1:
+                                        case MessageType.NewJobRequest:
                                             {
-                                                var message = JsonUtility.FromString<JobRequestMessage>(packet._body);
+                                                var message = JsonUtility.FromString<JobRequestMessage>(packet.Body);
                                                 jobRunnerTask = jobRunner.RunAsync(message, hc.CancellationToken);
                                             }
                                             break;
-                                        case 2:
+                                        case MessageType.CancelRequest:
                                             {
                                                 hc.CancellationTokenSource.Cancel();
                                                 if (null != jobRunnerTask)

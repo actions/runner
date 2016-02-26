@@ -35,6 +35,10 @@ namespace Microsoft.VisualStudio.Services.Agent
 
     public class ProcessInvoker : AgentService, IProcessInvoker
     {
+        //TraceInterval defines how many seconds are in between printing trace messages,
+        //while waiting for the process to exit
+        private const int TraceInterval = 30; 
+
         private Process _proc;
         private SemaphoreSlim _processExitedSignal = new SemaphoreSlim(0, 1);
         private Stopwatch _stopWatch;
@@ -48,7 +52,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         {
             while ((!cancellationToken.IsCancellationRequested) && (!_proc.HasExited))
             {
-                await _processExitedSignal.WaitAsync(TimeSpan.FromSeconds(30), cancellationToken);
+                await _processExitedSignal.WaitAsync(TimeSpan.FromSeconds(TraceInterval), cancellationToken);
                 if (!_proc.HasExited)
                 {
                     Trace.Info(
