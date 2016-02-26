@@ -1,7 +1,4 @@
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using Microsoft.VisualStudio.Services.Agent;
 using Xunit;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests

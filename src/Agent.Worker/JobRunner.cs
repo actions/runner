@@ -1,5 +1,4 @@
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
-using System;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
@@ -13,7 +12,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             m_trace = hostContext.GetTrace("JobRunner");
         }
 
-        public async Task Run(JobRequestMessage message)
+        //RunAsync takes the same parameters as IWorker.RunAsync and conceptionally is the same thing.
+        //Should JobRunner implement IWorker interface?
+        public async Task<int> RunAsync(JobRequestMessage message, CancellationToken token)
         {
             ExecutionContext context = new ExecutionContext(m_hostContext);
             m_trace.Verbose("Prepare");
@@ -30,16 +31,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
             m_trace.Info("Job id {0}", message.JobId);
             await Task.Yield();
-            m_finishedSignal.Release();
-        }
-
-        public Task WaitToFinish(IHostContext context)
-        {
-            return m_finishedSignal.WaitAsync(context.CancellationToken);
+            return 0;
         }
 
         private IHostContext m_hostContext;
-        private readonly TraceSource m_trace;
-        private SemaphoreSlim m_finishedSignal = new SemaphoreSlim(0, 1);
+        private readonly TraceSource m_trace;        
     }
 }

@@ -1,11 +1,8 @@
-using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.Net.Http.Headers;
-using Microsoft.VisualStudio.Services.Agent;
 using Microsoft.VisualStudio.Services.Client;
 using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.WebApi;
+using System;
+using System.Collections.Generic;
+using System.Net.Http.Headers;
 
 namespace Microsoft.VisualStudio.Services.Agent.Util
 {

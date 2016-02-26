@@ -1,13 +1,11 @@
+using Microsoft.TeamFoundation.DistributedTask.WebApi;
+using Microsoft.VisualStudio.Services.Agent.Listener;
+using Microsoft.VisualStudio.Services.Agent.Configuration;
+using Moq;
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.TeamFoundation.DistributedTask.WebApi;
-using Microsoft.VisualStudio.Services.Agent.Listener;
-using Microsoft.VisualStudio.Services.Agent;
-using Microsoft.VisualStudio.Services.Agent.Configuration;
-using Moq;
 using Xunit;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests

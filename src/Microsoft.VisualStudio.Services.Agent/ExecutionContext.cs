@@ -1,10 +1,7 @@
-using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
-using System.Threading.Tasks;
-using System.Threading;
 using Microsoft.VisualStudio.Services.Agent.Util;
+using System;
+using System.Globalization;
+using System.Threading;
 
 namespace Microsoft.VisualStudio.Services.Agent
 {

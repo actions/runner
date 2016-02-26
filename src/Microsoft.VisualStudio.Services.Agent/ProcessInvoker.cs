@@ -27,11 +27,18 @@ namespace Microsoft.VisualStudio.Services.Agent
 
         void Execute(String workingFolder, String filename, String arguments, IDictionary<String, String> environmentVariables);
 
-        Task<int> WaitForExit();
+        Task<int> WaitForExit(CancellationToken cancellationToken);
+
+        Task<int> ExecuteAsync(String workingFolder, String filename, String arguments, 
+            IDictionary<String, String> environmentVariables, CancellationToken cancellationToken);
     }
-    
+
     public sealed class ProcessInvoker : AgentService, IProcessInvoker
     {
+        //TraceInterval defines how many seconds are in between printing trace messages,
+        //while waiting for the process to exit
+        private const int TraceInterval = 30; 
+
         private Process _proc;
         private SemaphoreSlim _processExitedSignal = new SemaphoreSlim(0, 1);
         private Stopwatch _stopWatch;
@@ -41,11 +48,11 @@ namespace Microsoft.VisualStudio.Services.Agent
 
         public event EventHandler Exited;
 
-        public async Task<int> WaitForExit()
-        {            
-            while ((!HostContext.CancellationToken.IsCancellationRequested) && (!_proc.HasExited))
+        public async Task<int> WaitForExit(CancellationToken cancellationToken)
+        {
+            while ((!cancellationToken.IsCancellationRequested) && (!_proc.HasExited))
             {
-                await _processExitedSignal.WaitAsync(TimeSpan.FromSeconds(30), HostContext.CancellationToken);
+                await _processExitedSignal.WaitAsync(TimeSpan.FromSeconds(TraceInterval), cancellationToken);
                 if (!_proc.HasExited)
                 {
                     Trace.Info(
@@ -54,7 +61,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                             _stopWatch.Elapsed.TotalSeconds);
                 }
             }
-            HostContext.CancellationToken.ThrowIfCancellationRequested();
+            cancellationToken.ThrowIfCancellationRequested();
             // Wait for process to exit without hard timeout, which will 
             // ensure that we've read everything from the stdout and stderr.
             _proc.WaitForExit();
@@ -67,7 +74,7 @@ namespace Microsoft.VisualStudio.Services.Agent
 
         public void Execute(String workingDirectory, String filename, String arguments, IDictionary<String, String> environmentVariables)
         {
-            Debug.Assert(null == _proc);            
+            Debug.Assert(null == _proc);
             Trace.Info("Starting process {0} {1} on working directory {2}", filename, arguments, workingDirectory);
 
             _proc = new Process();
@@ -147,7 +154,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             {
                 Trace.Verbose("Used existing process instead of starting new one for " + filename);
             }
-            if (_proc.StartInfo.RedirectStandardOutput) { 
+            if (_proc.StartInfo.RedirectStandardOutput) {
                 _proc.BeginOutputReadLine();
             }
             if (_proc.StartInfo.RedirectStandardError)
@@ -156,11 +163,19 @@ namespace Microsoft.VisualStudio.Services.Agent
             }
         }
 
+        public Task<int> ExecuteAsync(String workingFolder, String filename, String arguments, 
+            IDictionary<String, String> environmentVariables, CancellationToken cancellationToken)
+        {
+            Execute(workingFolder, filename, arguments, environmentVariables);         
+            return WaitForExit(cancellationToken);
+        }
+
         public void Dispose()
         {
             Dispose(true);
             GC.SuppressFinalize(this);
         }
+
 
         private void Dispose(bool disposing)
         {

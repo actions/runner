@@ -1,10 +1,10 @@
-using System;
-using Xunit;
-using System.Threading.Tasks;
-using System.Threading;
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Threading.Tasks;
+using System.Threading;
+using Xunit;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests
 {
@@ -16,19 +16,36 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         {
             using (var client = new ProcessChannel())
             {
-                SemaphoreSlim signal = new SemaphoreSlim(0, 1);
-                Func<JobRequestMessage, CancellationToken, Task> echoFunc = async (message, ct) =>
-                {
-                    var cs2 = new CancellationTokenSource();
-                    await client.SendAsync(message, cs2.Token);
-                    signal.Release();
-                };
-                client.JobRequestMessageReceived += echoFunc;
                 client.StartClient(args[1], args[2]);
-                // Wait server calls us once and we reply back
-                await signal.WaitAsync(5000);
-                client.JobRequestMessageReceived -= echoFunc;
-                await client.Stop();
+
+                var cs2 = new CancellationTokenSource();
+                var packetReceiveTask = client.ReceiveAsync(cs2.Token);
+                Task[] taskToWait = { packetReceiveTask, Task.Delay(5000)  };
+                //Wait up to 5 seconds for the server to call us and then reply back with the same data
+                await Task.WhenAny(taskToWait);
+                bool timedOut = !packetReceiveTask.IsCompleted;
+                if (timedOut)
+                {
+                    cs2.Cancel();
+                    try
+                    {
+                        await packetReceiveTask;
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        // Ignore OperationCanceledException and TaskCanceledException exceptions
+                    }
+                    catch (AggregateException errors)
+                    {
+                        // Ignore OperationCanceledException and TaskCanceledException exceptions
+                        errors.Handle(e => e is OperationCanceledException);
+                    }
+                }
+                else
+                {
+                    var message = JsonUtility.FromString<JobRequestMessage>(packetReceiveTask.Result.Body);
+                    await client.SendAsync(MessageType.NewJobRequest, JsonUtility.ToString(message), cs2.Token);
+                }
             }
         }
 
@@ -41,8 +58,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         public async Task RunIPCEndToEnd()
         {
             using (var server = new ProcessChannel())
-            {
-                SemaphoreSlim signal = new SemaphoreSlim(0, 1);
+            {                
                 JobRequestMessage result = null;                
                 TaskOrchestrationPlanReference plan = new TaskOrchestrationPlanReference();
                 TimelineReference timeline = null;
@@ -50,13 +66,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 List<TaskInstance> tasks = new List<TaskInstance>();
                 Guid JobId = Guid.NewGuid();
                 var jobRequest = new JobRequestMessage(plan, timeline, JobId, "someJob", environment, tasks);
-                Func<JobRequestMessage, CancellationToken, Task> verifyFunc = (message, ct) =>
-                {
-                    result = message;
-                    signal.Release();
-                    return Task.CompletedTask;
-                };
-                server.JobRequestMessageReceived += verifyFunc;
                 Process jobProcess;
                 server.StartServer((p1, p2) =>
                 {
@@ -70,20 +79,45 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                     jobProcess.EnableRaisingEvents = true;                    
                     jobProcess.Start();
                 });
-                var cs = new CancellationTokenSource();
-                await server.SendAsync(jobRequest, cs.Token);
+                var cs = new CancellationTokenSource();                
+                await server.SendAsync(MessageType.NewJobRequest, JsonUtility.ToString(jobRequest), cs.Token);
+                var packetReceiveTask = server.ReceiveAsync(cs.Token);
+                Task[] taskToWait = { packetReceiveTask, Task.Delay(5000) };
+                await Task.WhenAny(taskToWait);
+                bool timedOut = !packetReceiveTask.IsCompleted;
 
-                bool timedOut = !await signal.WaitAsync(5000);
+                // Wait until response is received
+                if (timedOut)
+                {
+                    cs.Cancel();
+                    try
+                    {
+                        await packetReceiveTask;
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        // Ignore OperationCanceledException and TaskCanceledException exceptions
+                    }
+                    catch (AggregateException errors)
+                    {
+                        // Ignore OperationCanceledException and TaskCanceledException exceptions
+                        errors.Handle(e => e is OperationCanceledException);
+                    }
+                }
+                else
+                {
+                    result = JsonUtility.FromString<JobRequestMessage>(packetReceiveTask.Result.Body);                    
+                }
+
                 // Wait until response is received
                 if (timedOut)
                 {
                     Assert.True(false, "Test timed out.");
                 }
-                else {
+                else
+                {
                     Assert.True(jobRequest.JobId.Equals(result.JobId) && jobRequest.JobName.Equals(result.JobName));
                 }
-                server.JobRequestMessageReceived -= verifyFunc;
-                await server.Stop();
             }
         }
     }

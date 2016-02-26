@@ -1,12 +1,8 @@
-﻿using System;
+﻿using Microsoft.VisualStudio.Services.Agent.Configuration;
+using Microsoft.VisualStudio.Services.Agent.Util;
+using System;
 using System.Threading.Tasks;
 using System.Diagnostics;
-using Microsoft.VisualStudio.Services.Agent;
-using Microsoft.VisualStudio.Services.Agent.Util;
-using System.Reflection;
-using System.IO;
-
-using Microsoft.VisualStudio.Services.Agent.Configuration;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener
 {

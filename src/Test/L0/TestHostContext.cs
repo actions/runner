@@ -1,13 +1,10 @@
 using System;
-using System.Collections.Generic;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.VisualStudio.Services.Agent;
-using Microsoft.VisualStudio.Services.Agent.Listener;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests
 {
