@@ -2,7 +2,7 @@
     "version": "1.0.0-*",   
     "compilationOptions": {
         "emitEntryPoint": true,
-        "define": [ "SAMPLE_DEFINE" ]
+        "warningsAsErrors": true
     },
     
     "configurations": {
