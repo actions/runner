@@ -59,7 +59,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
             
             Trace.Info("configured? {0}", configured);
 
-            if (!configured) {
+            if (!configured) 
+            {
                 Configure(null, false);
             }
         }
@@ -104,7 +105,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
         public void Configure(Dictionary<String, String> args, bool enforceSupplied)
         {
             Trace.Info("Configure()");
-            if (IsConfigured()) {
+            if (IsConfigured()) 
+            {
                 throw new InvalidOperationException("Cannot configure.  Already configured.");
             }
 

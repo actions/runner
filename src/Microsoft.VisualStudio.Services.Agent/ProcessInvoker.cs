@@ -33,7 +33,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             IDictionary<String, String> environmentVariables, CancellationToken cancellationToken);
     }
 
-    public class ProcessInvoker : AgentService, IProcessInvoker
+    public sealed class ProcessInvoker : AgentService, IProcessInvoker
     {
         //TraceInterval defines how many seconds are in between printing trace messages,
         //while waiting for the process to exit
@@ -170,32 +170,21 @@ namespace Microsoft.VisualStudio.Services.Agent
             return WaitForExit(cancellationToken);
         }
 
-        #region IDisposable Support
-        private bool disposedValue = false; // To detect redundant calls
-
-        protected virtual void Dispose(bool disposing)
-        {
-            if (!disposedValue)
-            {
-                _processExitedSignal.Dispose();
-                if (null != _proc)
-                {
-                    _proc.Dispose();
-                    _proc = null;
-                }
-
-                disposedValue = true;
-            }
-        }        
-
-        // This code added to correctly implement the disposable pattern.
         public void Dispose()
         {
-            // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
             Dispose(true);
+            GC.SuppressFinalize(this);
         }
-        #endregion
 
+
+        private void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _processExitedSignal.Dispose();
+                _proc?.Dispose();
+                _proc = null;
+            }
+        }
     }
-
 }

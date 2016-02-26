@@ -36,7 +36,7 @@ namespace Microsoft.VisualStudio.Services.Agent
 
     public delegate void ProcessStartDelegate(String pipeHandleOut, String pipeHandleIn);
 
-    public class ProcessChannel : AgentService, IProcessChannel
+    public sealed class ProcessChannel : AgentService, IProcessChannel
     {
         private AnonymousPipeServerStream _inServer;
         private AnonymousPipeServerStream _outServer;
@@ -78,28 +78,21 @@ namespace Microsoft.VisualStudio.Services.Agent
             return result;
         }
 
-        #region IDisposable Support
-        private bool disposedValue = false; // To detect redundant calls
-
-        protected virtual void Dispose(bool disposing)
-        {
-            if (!disposedValue)
-            {
-                if (null != _inServer) _inServer.Dispose();
-                if (null != _outServer) _outServer.Dispose();
-                if (null != _inClient) _inClient.Dispose();
-                if (null != _outClient) _outClient.Dispose();
-                disposedValue = true;
-            }
-        }
-
-
-        // This code added to correctly implement the disposable pattern.
         public void Dispose()
         {
-            // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
-            Dispose(true);            
+            Dispose(true);
+            GC.SuppressFinalize(this);
         }
-        #endregion
+
+        private void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _inServer?.Dispose();
+                _outServer?.Dispose();
+                _inClient?.Dispose();
+                _outClient?.Dispose();
+            }
+        }
     }
 }

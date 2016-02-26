@@ -63,23 +63,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             }
         }
 
-        #region IDisposable Support
-        private bool disposedValue = false; // To detect redundant calls
-
-        protected virtual void Dispose(bool disposing)
-        {
-            if (!disposedValue)
-            {
-                disposedValue = true;
-            }
-        }
-
-        // This code added to correctly implement the disposable pattern.
         public void Dispose()
         {
-            // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
             Dispose(true);
+            GC.SuppressFinalize(this);
         }
-#endregion
+
+        private void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+            }
+        }
     }
 }

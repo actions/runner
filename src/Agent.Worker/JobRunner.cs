@@ -30,8 +30,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             context.LogVerbose("Finishing...");
 
             m_trace.Info("Job id {0}", message.JobId);
+            await Task.Yield();
             return 0;
-        }        
+        }
 
         private IHostContext m_hostContext;
         private readonly TraceSource m_trace;        

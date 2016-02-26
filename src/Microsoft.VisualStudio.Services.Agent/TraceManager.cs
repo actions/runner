@@ -11,8 +11,8 @@ namespace Microsoft.VisualStudio.Services.Agent
         TraceSource this[string name] { get; }
     }
 
-    public class TraceManager : ITraceManager
-    {        
+    public sealed class TraceManager : ITraceManager
+    {
         public TraceManager()
             :this(new TextWriterTraceListener(System.Console.Out), new TraceSetting())
         {
@@ -24,7 +24,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         }
         
         public TraceManager(TextWriterTraceListener traceListener, TraceSetting traceSetting)
-        {            
+        {
             if(traceListener == null)
             {
                 throw new ArgumentNullException(nameof(traceListener));
@@ -35,12 +35,12 @@ namespace Microsoft.VisualStudio.Services.Agent
                 throw new ArgumentNullException(nameof(traceSetting));
             }
             
-            m_hostTraceListener = traceListener;
-            m_traceSetting = traceSetting;
+            _hostTraceListener = traceListener;
+            _traceSetting = traceSetting;
             
             Switch = new SourceSwitch("VSTSAgentSwitch")
             {
-                Level = m_traceSetting.DefaultTraceLevel.ToSourceLevels()
+                Level = _traceSetting.DefaultTraceLevel.ToSourceLevels()
             };
         }
         
@@ -50,24 +50,30 @@ namespace Microsoft.VisualStudio.Services.Agent
         {
             get
             {
-                return m_sources.GetOrAdd(name, key => CreateTraceSource(key));
+                return _sources.GetOrAdd(name, key => CreateTraceSource(key));
             }
         }
 
         public void Dispose()
         {
-            if(!m_sources.IsEmpty)
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        private void Dispose(bool disposing)
+        {
+            if (disposing)
             {
-                foreach (var traceSource in m_sources)
+                foreach (TraceSource traceSource in _sources.Values)
                 {
-                    traceSource.Value.Flush();
-                    traceSource.Value.Close();
-                }    
-                
-                m_sources.Clear();            
+                    traceSource.Flush();
+                    traceSource.Close();
+                }
+
+                _sources.Clear();
             }
         }
-        
+
         private TraceSource CreateTraceSource(string name)
         {
             var traceSource = new TraceSource(name)
@@ -76,7 +82,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             };
             
             TraceLevel sourceTraceLevel; 
-            if(m_traceSetting.DetailTraceSetting.TryGetValue(name, out sourceTraceLevel))
+            if(_traceSetting.DetailTraceSetting.TryGetValue(name, out sourceTraceLevel))
             {
                 traceSource.Switch = new SourceSwitch("VSTSAgentSubSwitch") 
                 {
@@ -90,13 +96,13 @@ namespace Microsoft.VisualStudio.Services.Agent
                 traceSource.Listeners.RemoveAt(0);
             }
                 
-            traceSource.Listeners.Add(m_hostTraceListener);
+            traceSource.Listeners.Add(_hostTraceListener);
             return traceSource;
         }
         
-        private TraceSetting m_traceSetting;
-        private readonly ConcurrentDictionary<string, TraceSource> m_sources = new ConcurrentDictionary<string, TraceSource>(StringComparer.OrdinalIgnoreCase);
-        private readonly TextWriterTraceListener m_hostTraceListener;
+        private TraceSetting _traceSetting;
+        private readonly ConcurrentDictionary<string, TraceSource> _sources = new ConcurrentDictionary<string, TraceSource>(StringComparer.OrdinalIgnoreCase);
+        private readonly TextWriterTraceListener _hostTraceListener;
     }
     
     public static class TraceSourceExtensions

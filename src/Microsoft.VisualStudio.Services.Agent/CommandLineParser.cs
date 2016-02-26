@@ -13,7 +13,7 @@ namespace Microsoft.VisualStudio.Services.Agent
     public sealed class CommandLineParser
     {
         private TraceSource _trace;
-        private static List<String> validCommands = new List<string> { "configure", "unconfigure", "run", "help" };
+        private static List<String> validCommands = new List<string> { "configure", "unconfigure", "run", "help", "version" };
         public CommandLineParser(IHostContext hostContext)
         {
             _trace = hostContext.GetTrace("CommandLineParser");
@@ -51,12 +51,12 @@ namespace Microsoft.VisualStudio.Services.Agent
 
             if(args == null)
             {
-                throw new ArgumentNullException("args");
+                throw new ArgumentNullException(nameof(args));
             }
 
             _trace.Info("Parse {0} args", args.Length);
 
-            if (args == null)
+            if (args.Length == 0)
             {
                 _trace.Info("No args");
                 return;
@@ -85,7 +85,8 @@ namespace Microsoft.VisualStudio.Services.Agent
                         _trace.Info("arg: {0}", argVal);
 
                         // this means two --args in a row which means previous was a flag
-                        if (argScope != null) {
+                        if (argScope != null) 
+                        {
                             _trace.Info("Adding flag: {0}", argScope);
                             Flags.Add(argScope.Trim());
                         }
@@ -119,7 +120,8 @@ namespace Microsoft.VisualStudio.Services.Agent
             _trace.Verbose("done parsing arguments");
 
             // handle last arg being a flag
-            if (argScope != null) {
+            if (argScope != null) 
+            {
                 Flags.Add(argScope);
             }
             _trace.Verbose("Exiting parse");

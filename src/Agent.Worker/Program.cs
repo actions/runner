@@ -40,7 +40,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 {
                     if (null != args && 3 == args.Length && "spawnclient".Equals(args[0].ToLower()))
                     {
-                        using (var channel = hc.GetService<IProcessChannel>())
+                        using (var channel = hc.CreateService<IProcessChannel>())
                         {
                             var jobRunner = new JobRunner(hc);
                             channel.StartClient(args[1], args[2]);

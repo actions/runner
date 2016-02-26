@@ -93,9 +93,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         private TestHostContext CreateTestContext([CallerMemberName] String testName = "")
         {
             TestHostContext tc = new TestHostContext(nameof(ConfigurationManagerL0), testName);
-            tc.RegisterService<ICredentialManager>(this._credMgr.Object);
-            tc.RegisterService<IConsoleWizard>(_reader.Object);
-            tc.RegisterService<IConfigurationStore>(_store.Object);
+            tc.SetSingleton<ICredentialManager>(this._credMgr.Object);
+            tc.SetSingleton<IConsoleWizard>(_reader.Object);
+            tc.SetSingleton<IConfigurationStore>(_store.Object);
 
             return tc;
         }

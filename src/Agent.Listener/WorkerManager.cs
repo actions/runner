@@ -14,7 +14,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         Task Cancel(JobCancelMessage message);
     }
 
-    public class WorkerManager : AgentService, IWorkerManager
+    public sealed class WorkerManager : AgentService, IWorkerManager
     {
         //JobDispatcherItem is used to keep track of a single JobDispatcher, its running task,
         //and a cancellation token than can be used to stop the dispatcher
@@ -44,6 +44,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         public Task Run(JobRequestMessage jobRequestMessage)
         {            
             Trace.Info("Job request {0} received.", jobRequestMessage.JobId);
+            // TODO: Dispose of the jobDispatcher since it implements IDisposable
             var jobDispatcher = HostContext.GetService<IJobDispatcher>();
             Task<int> jobDispatcherTask;
             var cancellationTokenSource = new CancellationTokenSource();
@@ -87,29 +88,23 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             return Task.CompletedTask;
         }
 
-        #region IDisposable Support
-        private bool disposedValue = false; // To detect redundant calls
-
-        protected virtual void Dispose(bool disposing)
-        {
-            if (!disposedValue)
-            {
-                //TODO: decide if we should wait for workers to complete here
-                foreach (var item in _jobsInProgress)                    
-                {
-                    item.Value.Dispose();                    
-                }
-
-                disposedValue = true;
-            }
-        }
-
-        // This code added to correctly implement the disposable pattern.
         public void Dispose()
         {
-            // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
             Dispose(true);
+            GC.SuppressFinalize(this);
         }
-        #endregion
+
+        private void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                // TODO: This is not thread-safe.
+                //TODO: decide if we should wait for workers to complete here
+                foreach (JobDispatcherItem dispatcherItem in _jobsInProgress.Values)
+                {
+                    dispatcherItem.Dispose();
+                }
+            }
+        }
     }
 }
