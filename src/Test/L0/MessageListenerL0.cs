@@ -32,9 +32,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         private TestHostContext CreateTestContext([CallerMemberName] String testName = "")
         {
             TestHostContext tc = new TestHostContext(nameof(MessageListenerL0), testName);
-            tc.RegisterService<IConfigurationManager>(_config.Object);
-            tc.RegisterService<IWorkerManager>(_workerManager.Object);
-            tc.RegisterService<ITaskServer>(_taskServer.Object);
+            tc.SetSingleton<IConfigurationManager>(_config.Object);
+            tc.SetSingleton<IWorkerManager>(_workerManager.Object);
+            tc.SetSingleton<ITaskServer>(_taskServer.Object);
             return tc;
         }
 

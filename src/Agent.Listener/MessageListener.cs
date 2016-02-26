@@ -87,7 +87,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             Debug.Assert(_settings != null, "settings should not be null");            
             var taskServer = HostContext.GetService<ITaskServer>();
             //TODO: Interaction with the WorkerManager is the responsibility of the caller. Listener just returns the message.
-            using (var workerManager = HostContext.GetService<IWorkerManager>())
+            using (var workerManager = HostContext.CreateService<IWorkerManager>())
             {
 
                 long? lastMessageId = null;

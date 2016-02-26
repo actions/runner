@@ -13,17 +13,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         Task Cancel(JobCancelMessage message);
     }    
 
-    public class WorkerManager : AgentService, IWorkerManager
+    public sealed class WorkerManager : AgentService, IWorkerManager
     {        
         private ConcurrentDictionary<Guid, IWorker> _jobsInProgress = new ConcurrentDictionary<Guid, IWorker>();
 
         public async Task Run(JobRequestMessage jobRequestMessage)
         {            
             Trace.Info("Job request {0} received.", jobRequestMessage.JobId);
-            var worker = HostContext.GetService<IWorker>();
+            // TODO: Dispose of the worker since it implements IDisposable.
+            var worker = HostContext.CreateService<IWorker>();
             worker.JobId = jobRequestMessage.JobId;
-            //we should always create a IProcessChannel, and not use a singleton
-            worker.ProcessChannel = HostContext.GetService<IProcessChannel>();            
+            worker.ProcessChannel = HostContext.CreateService<IProcessChannel>();
             worker.StateChanged += Worker_StateChanged;
             _jobsInProgress[jobRequestMessage.JobId] = worker;
             worker.ProcessChannel.StartServer( (pipeHandleOut, pipeHandleIn) => 
@@ -58,29 +58,23 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             await worker.ProcessChannel.SendAsync(jobCancelMessage, HostContext.CancellationToken);            
         }
 
-        #region IDisposable Support
-        private bool disposedValue = false; // To detect redundant calls
-
-        protected virtual void Dispose(bool disposing)
-        {
-            if (!disposedValue)
-            {
-                foreach (var item in _jobsInProgress)                    
-                {
-                    item.Value.StateChanged -= Worker_StateChanged;
-                    item.Value.Dispose();
-                }
-
-                disposedValue = true;
-            }
-        }
-
-        // This code added to correctly implement the disposable pattern.
         public void Dispose()
         {
-            // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
             Dispose(true);
+            GC.SuppressFinalize(this);
         }
-        #endregion
+
+        private void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                // TODO: This is not thread-safe.
+                foreach (IWorker worker in _jobsInProgress.Values)
+                {
+                    worker.StateChanged -= Worker_StateChanged;
+                    worker.Dispose();
+                }
+            }
+        }
     }
 }

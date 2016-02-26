@@ -30,7 +30,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         Task<int> WaitForExit();
     }
     
-    public class ProcessInvoker : AgentService, IProcessInvoker
+    public sealed class ProcessInvoker : AgentService, IProcessInvoker
     {
         private Process _proc;
         private SemaphoreSlim _processExitedSignal = new SemaphoreSlim(0, 1);
@@ -156,32 +156,20 @@ namespace Microsoft.VisualStudio.Services.Agent
             }
         }
 
-        #region IDisposable Support
-        private bool disposedValue = false; // To detect redundant calls
-
-        protected virtual void Dispose(bool disposing)
-        {
-            if (!disposedValue)
-            {
-                _processExitedSignal.Dispose();
-                if (null != _proc)
-                {
-                    _proc.Dispose();
-                    _proc = null;
-                }
-
-                disposedValue = true;
-            }
-        }        
-
-        // This code added to correctly implement the disposable pattern.
         public void Dispose()
         {
-            // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
             Dispose(true);
+            GC.SuppressFinalize(this);
         }
-        #endregion
 
+        private void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _processExitedSignal.Dispose();
+                _proc?.Dispose();
+                _proc = null;
+            }
+        }
     }
-
 }

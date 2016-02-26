@@ -18,7 +18,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         void Initialize(IHostContext context);
     }
 
-    public class AgentService
+    public abstract class AgentService
     {
         public static string Version { get { return "2.0.0"; }}
         
@@ -37,6 +37,6 @@ namespace Microsoft.VisualStudio.Services.Agent
         {
             HostContext = hostContext;
             Trace = HostContext.GetTrace(TraceName);
-        }        
-    }    
+        }
+    }
 }

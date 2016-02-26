@@ -22,7 +22,7 @@ namespace Microsoft.VisualStudio.Services.Agent
 
     public delegate void ProcessStartDelegate(String pipeHandleOut, String pipeHandleIn);
 
-    public class ProcessChannel : AgentService, IProcessChannel
+    public sealed class ProcessChannel : AgentService, IProcessChannel
     {
         private Task RunTask;
         private CancellationTokenSource TokenSource;
@@ -151,29 +151,22 @@ namespace Microsoft.VisualStudio.Services.Agent
             await Transport.SendAsync(2, messageString, cancellationToken);
         }
 
-        #region IDisposable Support
-        private bool disposedValue = false; // To detect redundant calls
-
-        protected virtual void Dispose(bool disposing)
-        {
-            if (!disposedValue)
-            {
-                TokenSource.Dispose();
-                if (null != InServer) InServer.Dispose();
-                if (null != OutServer) OutServer.Dispose();
-                if (null != InClient) InClient.Dispose();
-                if (null != OutClient) OutClient.Dispose();
-                disposedValue = true;
-            }
-        }
-
-
-        // This code added to correctly implement the disposable pattern.
         public void Dispose()
         {
-            // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
-            Dispose(true);            
+            Dispose(true);
+            GC.SuppressFinalize(this);
         }
-        #endregion
+
+        private void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                TokenSource.Dispose();
+                InServer?.Dispose();
+                OutServer?.Dispose();
+                InClient?.Dispose();
+                OutClient?.Dispose();
+            }
+        }
     }
 }
