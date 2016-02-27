@@ -114,7 +114,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         
         public static void Error(this TraceSource traceSource, Exception exception)
         {
-            Trace(traceSource, TraceEventType.Error, exception.StackTrace);
+            Trace(traceSource, TraceEventType.Error, exception.ToString());
         }
         
         public static void Error(this TraceSource traceSource, string format, params object[] args)

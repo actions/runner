@@ -35,6 +35,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 typeof(ITraceManager),
                 typeof(IExtension),
                 typeof(IJobExtension),
+                typeof(ILogWriter),
                 typeof(ICommandExtension));
         }
 
@@ -45,6 +46,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         {
             Validate(
                 typeof(IStepRunner).GetTypeInfo().Assembly, // assembly
+                typeof(IExecutionContext),
                 typeof(IStep)); // whitelist params
         }
 

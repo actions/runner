@@ -40,11 +40,11 @@ namespace Microsoft.VisualStudio.Services.Agent
             }
         }
 
-        //////////////////////////////////////////////////////////////
+        //
         // We will load extensions from assembly
         // once AssemblyLoadContext.Resolving event is able to 
         // resolve dependency recursively
-        //////////////////////////////////////////////////////////////
+        //
         private void LoadExtensions()
         {
             Trace.Verbose("Register BuildJobExtension.");

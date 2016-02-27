@@ -35,7 +35,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 m_trace.Info("Info Hello Worker!");
                 m_trace.Warning("Warning Hello Worker!");
                 m_trace.Error("Error Hello Worker!");
-                m_trace.Verbose("Verbos Hello Worker!");
+                m_trace.Verbose("Verbose Hello Worker!");
                 try
                 {
                     if (null != args && 3 == args.Length && "spawnclient".Equals(args[0].ToLower()))

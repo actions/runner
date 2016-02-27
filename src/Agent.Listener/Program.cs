@@ -100,10 +100,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             _trace.Info("Done evaluating commands");
             configManager.EnsureConfigured();
 
-            //String workerExe = Path.Combine(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location), "Worker.exe");
-            //Int32 exitCode = ProcessInvoker.RunExe(context, workerExe, "");
-            //_trace.Info("Worker.exe Exit: {0}", exitCode); 
-
             ICredentialProvider cred = configManager.AcquireCredentials(parser.Args, isUnattended);
             return await RunAsync(context);
         }
