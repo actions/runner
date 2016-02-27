@@ -56,5 +56,6 @@ From src:
 [Using Visual Studio Code and Mono Debugger](docs/dev/code.md)  
 
 # Styling convention
-## Member organization
-Constructors, visibility (public -> private), properties, methods (abstract first), static at the bottom, fields at the bottom.
+
+We use the dotnet foundation and CoreCLR style guidelines [located here](
+https://github.com/dotnet/corefx/blob/master/Documentation/coding-guidelines/coding-style.md)
