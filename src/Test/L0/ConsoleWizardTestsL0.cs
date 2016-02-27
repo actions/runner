@@ -12,10 +12,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Trait("Category", "ConsoleWizard")]
         public void ShouldNotReadFromUser()
         {
-            using (TestHostContext thc = new TestHostContext(nameof(ConsoleWizardTestsL0)))
+            using (TestHostContext hc = new TestHostContext(nameof(ConsoleWizardTestsL0)))
             {
                 var consoleWizard = new ConsoleWizard();
-                consoleWizard.Initialize(thc);
+                consoleWizard.Initialize(hc);
                 var expectedValue = "ExpectedValue";
                 var returnedValue = consoleWizard.ReadValue(
                     "TestConfigName",

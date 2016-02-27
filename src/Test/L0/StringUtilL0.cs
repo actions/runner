@@ -12,9 +12,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Trait("Category", "Common")]
         public void FormatMessage()
         {
-            using (TestHostContext thc = new TestHostContext(nameof(StringUtilL0)))
+            using (TestHostContext hc = new TestHostContext(nameof(StringUtilL0)))
             {
-                TraceSource trace = thc.GetTrace();
+                TraceSource trace = hc.GetTrace();
 
                 String message = StringUtil.Format("Test {0}", "Test");
                 trace.Info(message);
@@ -28,9 +28,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Trait("Category", "Common")]
         public void FormatMessageWithNoArgs()
         {
-            using (TestHostContext thc = new TestHostContext(nameof(StringUtilL0)))
+            using (TestHostContext hc = new TestHostContext(nameof(StringUtilL0)))
             {
-                TraceSource trace = thc.GetTrace();
+                TraceSource trace = hc.GetTrace();
 
                 String message = StringUtil.Format("Test {0}");
                 trace.Info(message);
