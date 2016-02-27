@@ -10,11 +10,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Trait("Category", "Common")]
         public void CanConstruct()
         {
-            using (TestHostContext thc = new TestHostContext(nameof(CommandLineParserL0)))
+            using (TestHostContext hc = new TestHostContext(nameof(CommandLineParserL0)))
             {
-                TraceSource trace = thc.GetTrace();
+                TraceSource trace = hc.GetTrace();
 
-                CommandLineParser clp = new CommandLineParser(thc);
+                CommandLineParser clp = new CommandLineParser(hc);
                 trace.Info("Constructed");
 
                 Assert.NotNull(clp); 
@@ -26,11 +26,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Trait("Category", "Common")]
         public void ParsesCommands()
         {
-            using (TestHostContext thc = new TestHostContext(nameof(CommandLineParserL0)))
+            using (TestHostContext hc = new TestHostContext(nameof(CommandLineParserL0)))
             {
-                TraceSource trace = thc.GetTrace();
+                TraceSource trace = hc.GetTrace();
 
-                CommandLineParser clp = new CommandLineParser(thc);
+                CommandLineParser clp = new CommandLineParser(hc);
                 trace.Info("Constructed.");
 
                 clp.Parse(new string[]{"cmd1", "cmd2", "--arg1", "arg1val", "badcmd"});
@@ -46,11 +46,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Trait("Category", "Common")]
         public void ParsesArgs()
         {
-            using (TestHostContext thc = new TestHostContext(nameof(CommandLineParserL0)))
+            using (TestHostContext hc = new TestHostContext(nameof(CommandLineParserL0)))
             {
-                TraceSource trace = thc.GetTrace();
+                TraceSource trace = hc.GetTrace();
 
-                CommandLineParser clp = new CommandLineParser(thc);
+                CommandLineParser clp = new CommandLineParser(hc);
                 trace.Info("Constructed.");
 
                 clp.Parse(new string[]{"cmd1", "--arg1", "arg1val", "--arg2", "arg2val"});
@@ -70,11 +70,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Trait("Category", "Common")]
         public void ParsesFlags()
         {
-            using (TestHostContext thc = new TestHostContext(nameof(CommandLineParserL0)))
+            using (TestHostContext hc = new TestHostContext(nameof(CommandLineParserL0)))
             {
-                TraceSource trace = thc.GetTrace();
+                TraceSource trace = hc.GetTrace();
 
-                CommandLineParser clp = new CommandLineParser(thc);
+                CommandLineParser clp = new CommandLineParser(hc);
                 trace.Info("Constructed.");
 
                 clp.Parse(new string[]{"cmd1", "--flag1", "--arg1", "arg1val", "--flag2"});

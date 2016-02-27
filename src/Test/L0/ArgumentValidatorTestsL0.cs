@@ -11,7 +11,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Trait("Category", "ArgumentValidator")]
         public void ServerUrlValidator()
         {
-            using (TestHostContext thc = new TestHostContext(nameof(ConfigurationManagerL0)))
+            using (TestHostContext hc = new TestHostContext(nameof(ConfigurationManagerL0)))
             {
                 Assert.True(Validators.ServerUrlValidator("http://servername"));
                 Assert.False(Validators.ServerUrlValidator("Fail"));
@@ -24,7 +24,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Trait("Category", "ArgumentValidator")]
         public void AuthSchemeValidator()
         {
-            using (TestHostContext thc = new TestHostContext(nameof(ConfigurationManagerL0)))
+            using (TestHostContext hc = new TestHostContext(nameof(ConfigurationManagerL0)))
             {
                 Assert.True(Validators.AuthSchemeValidator("pat"));
                 Assert.False(Validators.AuthSchemeValidator("Fail"));
@@ -36,7 +36,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Trait("Category", "ArgumentValidator")]
         public void NonEmptyValidator()
         {
-            using (TestHostContext thc = new TestHostContext(nameof(ConfigurationManagerL0)))
+            using (TestHostContext hc = new TestHostContext(nameof(ConfigurationManagerL0)))
             {
                 Assert.True(Validators.NonEmptyValidator("test"));
                 Assert.False(Validators.NonEmptyValidator(String.Empty));

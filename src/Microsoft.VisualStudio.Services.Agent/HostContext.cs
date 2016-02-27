@@ -67,6 +67,9 @@ namespace Microsoft.VisualStudio.Services.Agent
             await Task.Delay(delay, CancellationToken);
         }
 
+        /// <summary>
+        /// Creates a new instance of T.
+        /// </summary>
         public T CreateService<T>() where T : class, IAgentService
         {
             Type target;
@@ -101,6 +104,9 @@ namespace Microsoft.VisualStudio.Services.Agent
             return svc;
         }
 
+        /// <summary>
+        /// Gets or creates an instance of T.
+        /// </summary>
         public T GetService<T>() where T : class, IAgentService
         {
             object instance;
