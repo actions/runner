@@ -36,6 +36,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 typeof(IExtension),
                 typeof(IJobExtension),
                 typeof(ILogWriter),
+                typeof(IVariables),
+                typeof(IVariablesExtension),
                 typeof(ICommandExtension));
         }
 

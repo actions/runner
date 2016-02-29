@@ -1,8 +1,14 @@
+using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Util;
+using Microsoft.VisualStudio.Services.Client;
+using Microsoft.VisualStudio.Services.Common;
+using Microsoft.VisualStudio.Services.WebApi;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Microsoft.VisualStudio.Services.Agent.Configuration
 {
@@ -23,15 +29,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
     public interface IConfigurationManager: IAgentService
     {
         bool IsConfigured();
-        void EnsureConfigured();
-        void Configure(Dictionary<String, String> args, Boolean unattend);
+        Task EnsureConfiguredAsync();
+        Task ConfigureAsync(Dictionary<String, String> args, Boolean unattend);
         ICredentialProvider AcquireCredentials(Dictionary<String, String> args, bool enforceSupplied);
-        AgentSettings GetSettings();
+        AgentSettings LoadSettings();
     }
 
     public sealed class ConfigurationManager : AgentService, IConfigurationManager
     {
         private IConfigurationStore _store;
+        private ITaskServer _server;
 
         public override void Initialize(IHostContext hostContext)
         {
@@ -46,12 +53,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
             return _store.IsConfigured();
         }
 
-        public AgentSettings GetSettings()
-        {
-            return _store.GetSettings();
-        }
-
-        public void EnsureConfigured()
+        public async Task EnsureConfiguredAsync()
         {
             Trace.Info("EnsureConfigured()");
 
@@ -61,7 +63,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
 
             if (!configured) 
             {
-                Configure(null, false);
+                await ConfigureAsync(null, false);
             }
         }
 
@@ -94,15 +96,26 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
                 Trace.Verbose("Creating Credential: {0}", authType);
                 cred = credentialManager.GetCredentialProvider(authType);
                 cred.ReadCredential(HostContext, args, enforceSupplied);
-
-                Trace.Verbose("Saving credential");
-                _store.SaveCredential(cred.CredentialData);
             }
 
             return cred;
         }
 
-        public void Configure(Dictionary<String, String> args, bool enforceSupplied)
+        public AgentSettings LoadSettings()
+        {
+            Trace.Info("LoadSettings()");
+            if (!IsConfigured()) 
+            {
+                throw new InvalidOperationException("Not configured");
+            }
+            
+            AgentSettings settings = _store.GetSettings();
+            Trace.Info("Settings Loaded");
+            
+            return settings;
+        }
+        
+        public async Task ConfigureAsync(Dictionary<String, String> args, bool enforceSupplied)
         {
             Trace.Info("Configure()");
             if (IsConfigured()) 
@@ -117,7 +130,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
             // Loop getting url and creds until you can connect
             //
             string serverUrl = null;
-            ICredentialProvider cred = null;
+            ICredentialProvider credProv = null;
             while (true)
             {
                 WriteSection("Connect");
@@ -130,15 +143,35 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
                                                 enforceSupplied);
                 Trace.Info("serverUrl: {0}", serverUrl);
 
-                cred = AcquireCredentials(args, enforceSupplied);
+                credProv = AcquireCredentials(args, enforceSupplied);
+                VssCredentials creds = credProv.GetVssCredentials(HostContext);
+                
                 Trace.Info("cred retrieved");
 
+                bool connected = true;
+                try
+                {
+                    await TestConnectAsync(serverUrl, creds);
+                }
+                catch (System.Exception e)
+                {
+                    Console.WriteLine(e.ToString());
+                    Console.WriteLine("Failed to connect.  Try again or ctrl-c to quit");
+                    connected = false;
+                }
+
                 // we don't want to loop on unattend
-                if (enforceSupplied || TestConnect(serverUrl))
+                if (enforceSupplied || connected)
                 {
                     break;
                 }
             }
+            
+            // TODO: Create console agent service so we can hide in testing etc... and trace
+            Console.WriteLine("Saving credentials...");
+            Trace.Verbose("Saving credential");
+            _store.SaveCredential(credProv.CredentialData);
+            
             Trace.Info("Connect Complete.");
 
             //
@@ -235,13 +268,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
             // TODO connect to server if suceeds save the config
         }
 
-        private bool TestConnect(string url)
+        private async Task TestConnectAsync(string url, VssCredentials creds)
         {
-            // TODO: test with connect call
             Console.WriteLine("Connecting to server ...");
-
-            // TODO: Communicate failure, hopefully with good actionable error message
-            return true;
+            VssConnection connection = ApiUtil.CreateConnection(new Uri(url), creds);
+            
+            //connection.GetClient<TaskAgentHttpClient>();
+            
+            //await connection.ConnectAsync();
+            _server = HostContext.CreateService<ITaskServer>();
+            _server.SetConnection(connection);
+            await _server.ConnectAsync();
+            
         }
 
         private int GetPoolId(string poolName)

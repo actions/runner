@@ -17,7 +17,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             headerValues.Add(new ProductInfoHeaderValue("VstsAgent", AgentService.Version));
             VssConnection connection = new VssConnection(serverUri, credentials, settings);
             return connection;
-            //connection.ConnectAsync().SyncResult();
         }
     }
 }

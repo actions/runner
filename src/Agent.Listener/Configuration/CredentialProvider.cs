@@ -15,7 +15,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
     public interface ICredentialProvider
     {
         CredentialData CredentialData { get; set; }
-        // TODO: (bryanmac) abstract GetVSSCredential which knows how to instantiate based off data
+        VssCredentials GetVssCredentials(IHostContext context);
         void ReadCredential(IHostContext context, Dictionary<string, string> args, bool enforceSupplied);
     }
 

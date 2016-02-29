@@ -1,8 +1,11 @@
+using Microsoft.VisualStudio.Services.Client;
 using Moq;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Threading;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests
@@ -11,11 +14,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
 
     public class ConfigurationManagerL0
     {
+        private Mock<ITaskServer> _server;
         private Mock<ICredentialManager> _credMgr;
         private Mock<IConsoleWizard> _reader;
         private Mock<IConfigurationStore> _store;
         private string _expectedToken = "expectedToken";
-        private string _expectedServerUrl = "expectedServerUrl";
+        private string _expectedServerUrl = "https://localhost";
         private string _expectedAgentName = "expectedAgentName";
         private string _expectedPoolName = "poolName";
         private string _expectedAuthType = "pat";
@@ -23,10 +27,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
 
         public ConfigurationManagerL0()
         {
+            _server = new Mock<ITaskServer>();
             _credMgr = new Mock<ICredentialManager>();
             _reader = new Mock<IConsoleWizard>();
             _store = new Mock<IConfigurationStore>();
 
+            _server.Setup(x => x.SetConnection(It.IsAny<VssConnection>())).Verifiable();
+            _server.Setup(x => x.ConnectAsync()).Returns(Task.FromResult<object>(null));
+            
             _store.Setup(x => x.IsConfigured()).Returns(false);
             _store.Setup(x => x.HasCredentials()).Returns(false);
             _store.Setup(x => x.GetSettings()).Returns(
@@ -45,7 +53,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                     It.IsAny<bool>(),   // secret
                     It.IsAny<string>(), // defaultValue
                     It.IsAny<Func<string, bool>>(), // validator
-                    It.IsAny<Dictionary<String, String>>(), //validator
+                    It.IsAny<Dictionary<string, string>>(), //validator
                     false // unattended
                 )).Returns(_expectedWorkFolder);
 
@@ -96,6 +104,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             tc.SetSingleton<ICredentialManager>(this._credMgr.Object);
             tc.SetSingleton<IConsoleWizard>(_reader.Object);
             tc.SetSingleton<IConfigurationStore>(_store.Object);
+            tc.EnqueueInstance<ITaskServer>(_server.Object);
 
             return tc;
         }
@@ -132,10 +141,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 trace.Info("Constructed.");
 
                 trace.Info("Ensuring all the required parameters are available in the command line parameter");
-                configManager.Configure(clp.Args, false);
+                configManager.ConfigureAsync(clp.Args, false);
 
+                _store.Setup(x => x.IsConfigured()).Returns(true);
+                
                 trace.Info("Configured, verifying all the parameter value");
-                var s = configManager.GetSettings();
+                var s = configManager.LoadSettings();
                 Assert.True(s.ServerUrl.Equals(_expectedServerUrl));
                 Assert.True(s.AgentName.Equals(_expectedAgentName));
                 Assert.True(s.PoolName.Equals(_expectedPoolName));

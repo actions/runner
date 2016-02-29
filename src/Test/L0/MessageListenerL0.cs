@@ -22,7 +22,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         {
             _settings = new AgentSettings { AgentId=1, AgentName="myagent", PoolId=123, PoolName="default", ServerUrl="http://myserver", WorkFolder="_work" };
             _config = new Mock<IConfigurationManager>();
-            _config.Setup(x => x.GetSettings()).Returns(_settings);
+            _config.Setup(x => x.LoadSettings()).Returns(_settings);
             _workerManager = new Mock<IWorkerManager>();
             _taskServer = new Mock<ITaskServer>();
         }

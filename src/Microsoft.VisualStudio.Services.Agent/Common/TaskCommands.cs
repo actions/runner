@@ -1,8 +1,8 @@
 using System;
 
-namespace Microsoft.VisualStudio.Services.Agent.Build
+namespace Microsoft.VisualStudio.Services.Agent.Common
 {
-    public class BuildCommandExtension : ICommandExtension
+    public class TaskCommands : ICommandExtension
     {
         public Type ExtensionType 
         {
@@ -16,7 +16,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Build
         {
             get
             {
-                return "build";
+                return "task";
             }
         }
     }

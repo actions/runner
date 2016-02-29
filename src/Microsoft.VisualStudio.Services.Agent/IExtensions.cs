@@ -9,11 +9,17 @@ namespace Microsoft.VisualStudio.Services.Agent
     
     public interface ICommandExtension : IExtension
     {
-        String CommandArea { get; }
+        string CommandArea { get; }
     }
 
     public interface IJobExtension : IExtension
     {        
-        String HostTypes { get; }
+        string HostTypes { get; }
     }
+    
+    public interface IVariablesExtension : IExtension
+    {        
+        string Get();
+        string Set();
+    }    
 }

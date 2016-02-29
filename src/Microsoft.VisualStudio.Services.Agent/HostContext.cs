@@ -1,3 +1,4 @@
+using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -13,6 +14,7 @@ namespace Microsoft.VisualStudio.Services.Agent
 {
     public interface IHostContext
     {
+        Variables Variables { get; }
         CancellationToken CancellationToken { get; }
         TraceSource GetTrace(string name);
         Task Delay(TimeSpan delay);
@@ -22,6 +24,12 @@ namespace Microsoft.VisualStudio.Services.Agent
 
     public sealed class HostContext : IHostContext, IDisposable
     {
+        private readonly ConcurrentDictionary<Type, object> _serviceInstances = new ConcurrentDictionary<Type, object>();
+        private readonly ConcurrentDictionary<Type, Type> _serviceTypes = new ConcurrentDictionary<Type, Type>();
+        private readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
+        private ITraceManager _traceManager;
+        private string _hostType;
+        
         public HostContext(string hostType)
         {
             if (string.IsNullOrEmpty(hostType))
@@ -33,13 +41,22 @@ namespace Microsoft.VisualStudio.Services.Agent
 
             // Create the trace manager.
             string fileName = String.Format("{0}_{1:yyyyMMdd-HHmmss}-utc.log", _hostType, DateTime.UtcNow);
-            var currentAssemblyLocation = System.Reflection.Assembly.GetEntryAssembly().Location;
-            var logPath = new DirectoryInfo(currentAssemblyLocation).Parent.FullName.ToString();
-            Stream logFile = File.Create(Path.Combine(logPath, fileName));
+            //var currentAssemblyLocation = System.Reflection.Assembly.GetEntryAssembly().Location;
+            //var logPath = new DirectoryInfo(currentAssemblyLocation).Parent.FullName.ToString();
+            var diagPath = IOUtil.GetDiagPath();
+            if (!Directory.Exists(diagPath))
+            {
+                Directory.CreateDirectory(diagPath);
+            }
+            
+            Stream logFile = File.Create(Path.Combine(diagPath, fileName));
             TextWriterTraceListener traceListener = new TextWriterTraceListener(logFile);
             _traceManager = new TraceManager(traceListener);
+            Variables = new Variables(this);
         }
        
+        public Variables Variables { get; private set; }
+        
         public CancellationToken CancellationToken
         {
             get
@@ -133,11 +150,5 @@ namespace Microsoft.VisualStudio.Services.Agent
                 _traceManager = null;
             }
         }
-
-        private readonly ConcurrentDictionary<Type, object> _serviceInstances = new ConcurrentDictionary<Type, object>();
-        private readonly ConcurrentDictionary<Type, Type> _serviceTypes = new ConcurrentDictionary<Type, Type>();
-        private readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
-        private ITraceManager _traceManager;
-        private string _hostType;
    }
 }

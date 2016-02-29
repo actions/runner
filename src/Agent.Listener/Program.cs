@@ -1,5 +1,7 @@
 ﻿using Microsoft.VisualStudio.Services.Agent.Configuration;
 using Microsoft.VisualStudio.Services.Agent.Util;
+using Microsoft.VisualStudio.Services.Client;
+using Microsoft.VisualStudio.Services.Common;
 using System;
 using System.Threading.Tasks;
 using System.Diagnostics;
@@ -8,13 +10,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 {
     public static class Program
     {
+        private static TraceSource s_trace;
+        
         public static Int32 Main(String[] args)
         {
-            
             using (HostContext context = new HostContext("Agent"))
             {
-                TraceSource _trace = context.GetTrace("AgentProcess");
-                _trace.Info("Info Hello Agent!");
+                s_trace = context.GetTrace("AgentProcess");
+                s_trace.Info("Info Hello Agent!");
 
                 //
                 // TODO (bryanmac): Need VsoAgent.exe compat shim for SCM
@@ -23,7 +26,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 //
                 CommandLineParser parser = new CommandLineParser(context);
                 parser.Parse(args);
-                _trace.Info("Arguments parsed");
+                s_trace.Info("Arguments parsed");
 
                 Int32 rc = 0;
                 try 
@@ -33,7 +36,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 catch (Exception e)
                 {
                     Console.Error.WriteLine(StringUtil.Format("An error occured.  {0}", e.Message));
-                    _trace.Error(e);
+                    s_trace.Error(e);
                     rc = 1;
                 }
 
@@ -46,10 +49,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         {
             // TODO Unit test to cover this logic
             TraceSource _trace = context.GetTrace("AgentProcess");
-            _trace.Info("ExecuteCommand()");
+            s_trace.Info("ExecuteCommand()");
 
             var configManager = context.GetService<IConfigurationManager>();
-            _trace.Info("Created configuration manager");
+            s_trace.Info("Created configuration manager");
 
             // command is not required, if no command it just starts and/or configures if not configured
 
@@ -57,7 +60,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
             if (parser.Flags.Contains("help"))
             {
-                _trace.Info("help");
+                s_trace.Info("help");
                 PrintUsage();
             }
 
@@ -65,13 +68,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
             if (parser.IsCommand("unconfigure"))
             {
-                _trace.Info("unconfigure");
+                s_trace.Info("unconfigure");
                 // TODO: Unconfiure, remove config and exit
             }
 
             if (parser.IsCommand("run") && !configManager.IsConfigured())
             {
-                _trace.Info("run");
+                s_trace.Info("run");
                 Console.WriteLine("Agent is not configured");
                 PrintUsage();
             }
@@ -81,14 +84,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
             if (parser.IsCommand("configure"))
             {
-                _trace.Info("configure");    
-                configManager.Configure(parser.Args, isUnattended);
+                s_trace.Info("configure");    
+                await configManager.ConfigureAsync(parser.Args, isUnattended);
                 return 0;
             }
 
             if (parser.Flags.Contains("nostart"))
             {
-                _trace.Info("No start option, exiting the agent");
+                s_trace.Info("No start option, exiting the agent");
                 return 0;
             }
 
@@ -97,15 +100,39 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 throw new InvalidOperationException("Cannot run.  Must configure first.");
             }
 
-            _trace.Info("Done evaluating commands");
-            configManager.EnsureConfigured();
-
-            ICredentialProvider cred = configManager.AcquireCredentials(parser.Args, isUnattended);
+            s_trace.Info("Done evaluating commands");
+            await configManager.EnsureConfiguredAsync();
+            
             return await RunAsync(context);
         }
 
         public static async Task<Int32> RunAsync(IHostContext context)
-        {                        
+        {
+            s_trace.Info("RunAsync()");
+            
+            // Prep the task server with the configured creds
+            
+            s_trace.Info("Loading Credentials");
+            var credMgr = context.GetService<ICredentialManager>();
+            VssCredentials creds = credMgr.LoadCredentials();
+            
+            Console.WriteLine("creds");
+            Console.WriteLine(creds.ToString());
+            
+            s_trace.Info("Loading Settings");
+            var cfgMgr = context.GetService<IConfigurationManager>();
+            AgentSettings settings = cfgMgr.LoadSettings();
+            
+            var serverUrl = settings.ServerUrl;
+            s_trace.Info("ServerUrl: {0}", serverUrl);
+            Uri uri = new Uri(serverUrl);
+            VssConnection conn = ApiUtil.CreateConnection(uri, creds);
+            
+            var taskSvr = context.GetService<ITaskServer>();
+            taskSvr.SetConnection(conn);
+            
+            // start listening to the queue
+            
             var listener = context.GetService<IMessageListener>();
             if (await listener.CreateSessionAsync())
             {

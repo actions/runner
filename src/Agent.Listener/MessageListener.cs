@@ -23,7 +23,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         public async Task<Boolean> CreateSessionAsync()
         {
             var configManager = HostContext.GetService<IConfigurationManager>();
-            _settings = configManager.GetSettings();
+            _settings = configManager.LoadSettings();
 
             var taskServer = HostContext.GetService<ITaskServer>();
 

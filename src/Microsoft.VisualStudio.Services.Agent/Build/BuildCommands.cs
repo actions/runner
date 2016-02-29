@@ -2,21 +2,21 @@ using System;
 
 namespace Microsoft.VisualStudio.Services.Agent.Build
 {
-    public class BuildJobExtension : IJobExtension
+    public class BuildCommands : ICommandExtension
     {
         public Type ExtensionType 
         {
             get
             {
-                return typeof(IJobExtension);
+                return typeof(ICommandExtension);
             }    
         }
         
-        public String HostTypes
+        public String CommandArea
         {
             get
             {
-                return "build";       
+                return "build";
             }
         }
     }

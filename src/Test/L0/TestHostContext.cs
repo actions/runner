@@ -35,8 +35,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             Stream logFile = File.Create(traceFileName);
             var traceListener = new TextWriterTraceListener(logFile);
             _traceManager = new TraceManager(traceListener);
+            
+            Variables = new Variables(this);
         }
 
+        public Variables Variables { get; private set; }
         public CancellationToken CancellationToken
         {
             get

@@ -23,7 +23,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 processInvoker.Execute("", "cmd.exe", "/c \"dir >nul\"", null);
 #endif
 #if (OS_OSX || OS_LINUX)
-                processInvoker.Execute("", "bash", "-c ls > /dev/null", null);
+                processInvoker.Execute("", "bash", "-c echo .", null);
 #endif
                 exitCode = await processInvoker.WaitForExit(hc.CancellationToken);
 

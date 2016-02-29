@@ -23,6 +23,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
         {
             var currentAssemblyLocation = System.Reflection.Assembly.GetEntryAssembly().Location;
             return new DirectoryInfo(currentAssemblyLocation).Parent.FullName.ToString();         
-        }        
+        }
+        
+        public static string GetDiagPath()
+        {
+            return Path.Combine(new DirectoryInfo(GetBinPath()).Parent.FullName.ToString(), "_diag");         
+        }                
     }
 }

@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Collections.Generic;
 using System;
 using Microsoft.VisualStudio.Services.Agent.Build;
+using Microsoft.VisualStudio.Services.Agent.Common;
 
 namespace Microsoft.VisualStudio.Services.Agent
 {
@@ -47,13 +48,13 @@ namespace Microsoft.VisualStudio.Services.Agent
         //
         private void LoadExtensions()
         {
-            Trace.Verbose("Register BuildJobExtension.");
-            BuildJobExtension buildJobExtension = new BuildJobExtension();
-            AddExtensionToCache(buildJobExtension.ExtensionType, buildJobExtension);
+            Trace.Verbose("Register BuildJobs.");
+            BuildJob buildJob = new BuildJob();
+            AddExtensionToCache(buildJob.ExtensionType, buildJob);
 
-            Trace.Verbose("Register BuildCommandExtension.");
-            BuildCommandExtension buildCommandExtension = new BuildCommandExtension();
-            AddExtensionToCache(buildCommandExtension.ExtensionType, buildCommandExtension);
+            Trace.Verbose("Register BuildCommands.");
+            BuildCommands buildCommands = new BuildCommands();
+            AddExtensionToCache(buildCommands.ExtensionType, buildCommands);
         }
 
         private void AddExtensionToCache(Type extensionType, IExtension extension)
