@@ -34,7 +34,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 typeof(ICredentialProvider),
                 typeof(ITraceManager),
                 typeof(IExtension),
-                typeof(IJobExtension),
                 typeof(ILogWriter),
                 typeof(IVariables),
                 typeof(IVariablesExtension),
@@ -47,8 +46,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         public void WorkerInterfacesSpecifyDefaultImplementation()
         {
             Validate(
-                typeof(IStepRunner).GetTypeInfo().Assembly, // assembly
+                typeof(IStepsRunner).GetTypeInfo().Assembly, // assembly
                 typeof(IExecutionContext),
+                typeof(IJobExtension),
                 typeof(IStep)); // whitelist params
         }
 

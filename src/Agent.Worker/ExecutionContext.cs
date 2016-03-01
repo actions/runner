@@ -1,3 +1,4 @@
+using Microsoft.VisualStudio.Services.Agent;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
 using System.Diagnostics;
@@ -5,8 +6,8 @@ using System.Globalization;
 using System.Threading;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
-{        
-    public interface IExecutionContext
+{
+    public interface IExecutionContext : IAgentService
     {
         bool WriteDebug { get; set; }
         CancellationToken CancellationToken { get; }
@@ -14,30 +15,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         void Warning(string format, params Object[] args);
         void Output(string format, params Object[] args);
         void Debug(string format, params Object[] args);
+        IExecutionContext CreateChild();
     }
-    
-    public class ExecutionContext: IExecutionContext
+
+    public sealed class ExecutionContext : AgentService, IExecutionContext
     {
         private IWebConsoleLogger _console;
         private IPagingLogger _logger;
-        private TraceSource _trace;
-        
-        public ExecutionContext(IHostContext hostContext, Guid timeLineId) {
-            _trace = hostContext.GetTrace("ExecutionContext");
-            
-            _trace.Info("Constructor");
-            TimeLineId = timeLineId;
-            CancellationToken = CancellationTokenSource.CreateLinkedTokenSource(hostContext.CancellationToken).Token;
-            
-            _trace.Info("Creating console");
-            _console = hostContext.CreateService<IWebConsoleLogger>();
-            _console.TimeLineId = timeLineId;
-            
-            _trace.Info("Creating logger");
-            _logger = hostContext.CreateService<IPagingLogger>();
-            _logger.TimeLineId = timeLineId;
-        }
-        
+
         public bool WriteDebug { get; set; }
         public Guid TimeLineId { get; private set; }
         public CancellationToken CancellationToken { get; private set;}
@@ -74,8 +59,32 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             {
                 Write("Debug", format, args);   
             }
-        } 
-        
+        }
+
+        public IExecutionContext CreateChild()
+        {
+            var child = new ExecutionContext();
+            child.Initialize(HostContext, parent: this);
+            return child;
+        }
+
+        public override void Initialize(IHostContext hostContext) {
+            Initialize(hostContext, parent: null);
+        }
+
+        private void Initialize(IHostContext hostContext, ExecutionContext parent) {
+            base.Initialize(hostContext);
+            TimeLineId = Guid.NewGuid();
+            CancellationToken parentToken = parent != null ? parent.CancellationToken : HostContext.CancellationToken;
+            CancellationToken = CancellationTokenSource.CreateLinkedTokenSource(parentToken).Token;
+            Trace.Verbose("Creating console logger.");
+            _console = HostContext.CreateService<IWebConsoleLogger>();
+            _console.TimeLineId = TimeLineId;
+            Trace.Verbose("Creating logger.");
+            _logger = HostContext.CreateService<IPagingLogger>();
+            _logger.TimeLineId = TimeLineId;
+        }
+
         private void Write(string tag, String format, params Object[] args)
         {
             string prefix = tag != null ? StringUtil.Format("##[{0}] ", tag) : String.Empty;

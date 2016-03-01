@@ -1,6 +1,8 @@
-using System.Diagnostics;
-using System.Collections.Generic;
 using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
 using Microsoft.VisualStudio.Services.Agent.Build;
 using Microsoft.VisualStudio.Services.Agent.Common;
 
@@ -9,7 +11,7 @@ namespace Microsoft.VisualStudio.Services.Agent
     [ServiceLocator(Default = typeof(ExtensionManager))]
     public interface IExtensionManager : IAgentService
     {
-        List<IExtension> GetExtensions(Type extensionType);
+        List<T> GetExtensions<T>() where T : class, IExtension;
     }
 
     public class ExtensionManager : AgentService, IExtensionManager
@@ -17,28 +19,20 @@ namespace Microsoft.VisualStudio.Services.Agent
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
-
-            Trace.Verbose("Load all extensions.");
             LoadExtensions();
         }
         
-        public List<IExtension> GetExtensions(Type extensionType)
+        public List<T> GetExtensions<T>() where T : class, IExtension 
         {
-            if(extensionType == null)
+            Trace.Info("Get all '{0}' extensions.", typeof(T).Name);
+            List<IExtension> extensions;
+            if (_cache.TryGetValue(typeof(T), out extensions))
             {
-                throw new ArgumentNullException(nameof(extensionType));
+                return extensions.Select(x => x as T).ToList();
             }
 
-            Trace.Info("Get all {0} extensions.", extensionType);
-            if(_extensionCache.ContainsKey(extensionType))
-            {
-                return _extensionCache[extensionType];
-            }
-            else
-            {
-                Trace.Verbose("Does not find extensions for extensionType {0}.", extensionType);
-                return null;
-            }
+            Trace.Verbose("No extensions found.");
+            return null;
         }
 
         //
@@ -48,25 +42,30 @@ namespace Microsoft.VisualStudio.Services.Agent
         //
         private void LoadExtensions()
         {
-            Trace.Verbose("Register BuildJobs.");
-            BuildJob buildJob = new BuildJob();
-            AddExtensionToCache(buildJob.ExtensionType, buildJob);
-
-            Trace.Verbose("Register BuildCommands.");
-            BuildCommands buildCommands = new BuildCommands();
-            AddExtensionToCache(buildCommands.ExtensionType, buildCommands);
-        }
-
-        private void AddExtensionToCache(Type extensionType, IExtension extension)
-        {
-            if (!_extensionCache.ContainsKey(extensionType))
+            lock (_cacheLock)
             {
-                _extensionCache[extensionType] = new List<IExtension>();
+                if (_cache.Count > 0) { return; }
+                AddExtension("Microsoft.VisualStudio.Services.Agent.Worker.Build.BuildJob, Agent.Worker");
+                AddExtension(new BuildCommands());
             }
-
-            _extensionCache[extensionType].Add(extension);
         }
 
-        private readonly Dictionary<Type, List<IExtension>> _extensionCache = new Dictionary<Type, List<IExtension>>();
+        private void AddExtension(string assemblyQualifiedName)
+        {
+            Trace.Verbose($"Creating instance: {assemblyQualifiedName}");
+            Type type = Type.GetType(assemblyQualifiedName, throwOnError: true);
+            AddExtension(Activator.CreateInstance(type) as IExtension);
+        }
+
+        private void AddExtension(IExtension extension)
+        {
+            extension.Initialize(HostContext);
+            Trace.Verbose($"Registering extension: {extension.GetType().FullName}");
+            List<IExtension> list = _cache.GetOrAdd(extension.ExtensionType, new List<IExtension>());
+            list.Add(extension);
+        }
+
+        private readonly ConcurrentDictionary<Type, List<IExtension>> _cache = new ConcurrentDictionary<Type, List<IExtension>>();
+        private readonly object _cacheLock = new object();
     }
 }

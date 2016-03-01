@@ -2,6 +2,7 @@ using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 
 namespace Microsoft.VisualStudio.Services.Agent
 {
@@ -130,6 +131,11 @@ namespace Microsoft.VisualStudio.Services.Agent
         public static void Verbose(this TraceSource traceSource, string format, params object[] args)
         {
             Trace(traceSource, TraceEventType.Verbose, format, args);
+        }
+
+        public static void Entering(this TraceSource traceSource, [CallerMemberName] string name = "")
+        {
+            traceSource.Verbose(name);
         }
 
         private static void Trace(TraceSource traceSource, TraceEventType eventType, string format, params object[] args)
