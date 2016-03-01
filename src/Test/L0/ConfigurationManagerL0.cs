@@ -1,3 +1,4 @@
+using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Client;
 using Moq;
 using System;
@@ -139,7 +140,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                         });
                 
                 trace.Info("Constructed.");
-
+                
+                var expectedPools = new List<TaskAgentPool>() { new TaskAgentPool(_expectedPoolName) { Id = 1 } };
+                _server.Setup(x => x.GetAgentPoolsAsync(It.IsAny<string>())).Returns(Task.FromResult(expectedPools));
+                
+                var expectedAgents = new List<TaskAgent>();
+                _server.Setup(x => x.GetAgentsAsync(It.IsAny<int>(), It.IsAny<string>())).Returns(Task.FromResult(expectedAgents));
+                
+                var expectedAgent = new TaskAgent(_expectedAgentName) { Id = 1 };
+                _server.Setup(x => x.AddAgentAsync(It.IsAny<int>(), It.IsAny<TaskAgent>())).Returns(Task.FromResult(expectedAgent));
+                _server.Setup(x => x.UpdateAgentAsync(It.IsAny<int>(), It.IsAny<TaskAgent>())).Returns(Task.FromResult(expectedAgent));
+                
                 trace.Info("Ensuring all the required parameters are available in the command line parameter");
                 configManager.ConfigureAsync(clp.Args, false);
 
