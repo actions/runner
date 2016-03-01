@@ -10,27 +10,28 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
     public interface IStep
     {
         // Run even if a previous non-critical step has failed.
-        Boolean AlwaysRun { get; }
+        bool AlwaysRun { get; }
         // Treat Failed as SucceededWithIssues.
-        Boolean ContinueOnError { get; }
+        bool ContinueOnError { get; }
         // Treat failure as fatal. Subsequent AlwaysRun steps will not run.
-        Boolean Critical { get; }
-        String DisplayName { get; }
-        Boolean Enabled { get; }
+        bool Critical { get; }
+        string DisplayName { get; }
+        bool Enabled { get; }
+        IExecutionContext ExecutionContext { get; set; }
         // Always runs. Even if a previous critical step failed.
-        Boolean Finally { get; }
-        String Id { get; }
+        bool Finally { get; }
+        string Id { get; }
         TaskResult? Result { get; set; }
-        Task<TaskResult> RunAsync(IExecutionContext context);
+        Task<TaskResult> RunAsync();
     }
-        
-    [ServiceLocator(Default = typeof(StepRunner))]
-    public interface IStepRunner
+
+    [ServiceLocator(Default = typeof(StepsRunner))]
+    public interface IStepsRunner : IAgentService
     {
         Task<TaskResult> RunAsync(IExecutionContext context, IList<IStep> step);
     }
 
-    public sealed class StepRunner : IStepRunner
+    public sealed class StepsRunner : AgentService, IStepsRunner
     {
         public async Task<TaskResult> RunAsync(IExecutionContext context, IList<IStep> steps)
         {
@@ -59,7 +60,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 }
 
                 // Run the step.
-                step.Result = await step.RunAsync(context);
+                step.Result = await step.RunAsync();
                 // TODO: Convert to trace: Console.WriteLine("Step result: {0}", step.Result);
 
                 // Fixup the step result if ContinueOnError.

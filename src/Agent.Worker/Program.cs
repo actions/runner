@@ -42,7 +42,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     {
                         using (var channel = hc.CreateService<IProcessChannel>())
                         {
-                            var jobRunner = new JobRunner(hc);
+                            var jobRunner = hc.GetService<IJobRunner>();
                             channel.StartClient(args[1], args[2]);
                             Task<WorkerMessage> packetReceiveTask = null;
                             Task<int> jobRunnerTask = null;
@@ -70,7 +70,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                                         case MessageType.NewJobRequest:
                                             {
                                                 var message = JsonUtility.FromString<JobRequestMessage>(packet.Body);
-                                                jobRunnerTask = jobRunner.RunAsync(message, hc.CancellationToken);
+                                                jobRunnerTask = jobRunner.RunAsync(message);
                                             }
                                             break;
                                         case MessageType.CancelRequest:

@@ -14,7 +14,6 @@ namespace Microsoft.VisualStudio.Services.Agent
 
     public interface IAgentService
     {
-        string TraceName { get; }
         void Initialize(IHostContext context);
     }
 
@@ -24,9 +23,9 @@ namespace Microsoft.VisualStudio.Services.Agent
         protected TraceSource Trace { get; private set; }
 
         public string TraceName 
-        { 
+        {
             get 
-            { 
+            {
                 return this.GetType().Name; 
             }
         }
@@ -35,6 +34,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         {
             HostContext = hostContext;
             Trace = HostContext.GetTrace(TraceName);
+            Trace.Entering();
         }
     }
 }

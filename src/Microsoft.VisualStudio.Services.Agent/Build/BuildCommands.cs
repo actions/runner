@@ -2,7 +2,7 @@ using System;
 
 namespace Microsoft.VisualStudio.Services.Agent.Build
 {
-    public class BuildCommands : ICommandExtension
+    public class BuildCommands : AgentService, ICommandExtension
     {
         public Type ExtensionType 
         {

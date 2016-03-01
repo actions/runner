@@ -10,12 +10,12 @@ using Xunit;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests
 {
-    public sealed class StepRunnerL0
+    public sealed class StepsRunnerL0
     {
-        public StepRunnerL0()
+        public StepsRunnerL0()
         {
             this.context = new Mock<IExecutionContext>();
-            this.stepRunner = new StepRunner();
+            this.stepsRunner = new StepsRunner();
         }
 
         [Fact]
@@ -40,15 +40,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             foreach (var variableSet in variableSets)
             {
                 // Act.
-                TaskResult jobResult = await this.stepRunner.RunAsync(
+                TaskResult jobResult = await this.stepsRunner.RunAsync(
                     context: this.context.Object,
                     steps: variableSet.Select(x => x.Object).ToList());
 
                 // Assert.
                 Assert.Equal(TaskResult.SucceededWithIssues, jobResult);
                 Assert.Equal(2, variableSet.Length);
-                variableSet[0].Verify(x => x.RunAsync(this.context.Object));
-                variableSet[1].Verify(x => x.RunAsync(this.context.Object));
+                variableSet[0].Verify(x => x.RunAsync());
+                variableSet[1].Verify(x => x.RunAsync());
             }
         }
 
@@ -74,15 +74,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             foreach (var variableSet in variableSets)
             {
                 // Act.
-                TaskResult jobResult = await this.stepRunner.RunAsync(
+                TaskResult jobResult = await this.stepsRunner.RunAsync(
                     context: this.context.Object,
                     steps: variableSet.Steps.Select(x => x.Object).ToList());
 
                 // Assert.
                 Assert.Equal(variableSet.Expected, jobResult);
                 Assert.Equal(2, variableSet.Steps.Length);
-                variableSet.Steps[0].Verify(x => x.RunAsync(this.context.Object));
-                variableSet.Steps[1].Verify(x => x.RunAsync(this.context.Object));
+                variableSet.Steps[0].Verify(x => x.RunAsync());
+                variableSet.Steps[1].Verify(x => x.RunAsync());
             }
         }
 
@@ -113,15 +113,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             foreach (var variableSet in variableSets)
             {
                 // Act.
-                TaskResult jobResult = await this.stepRunner.RunAsync(
+                TaskResult jobResult = await this.stepsRunner.RunAsync(
                     context: this.context.Object,
                     steps: variableSet.Steps.Select(x => x.Object).ToList());
 
                 // Assert.
                 Assert.Equal(variableSet.Expected, jobResult);
                 Assert.Equal(2, variableSet.Steps.Length);
-                variableSet.Steps[0].Verify(x => x.RunAsync(this.context.Object));
-                variableSet.Steps[1].Verify(x => x.RunAsync(this.context.Object));
+                variableSet.Steps[0].Verify(x => x.RunAsync());
+                variableSet.Steps[1].Verify(x => x.RunAsync());
             }
         }
 
@@ -213,7 +213,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             foreach (var variableSet in variableSets)
             {
                 // Act.
-                TaskResult jobResult = await this.stepRunner.RunAsync(
+                TaskResult jobResult = await this.stepsRunner.RunAsync(
                     context: this.context.Object,
                     steps: variableSet.Steps.Select(x => x.Object).ToList());
 
@@ -246,15 +246,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             foreach (var variableSet in variableSets)
             {
                 // Act.
-                TaskResult jobResult = await this.stepRunner.RunAsync(
+                TaskResult jobResult = await this.stepsRunner.RunAsync(
                     context: this.context.Object,
                     steps: variableSet.Select(x => x.Object).ToList());
 
                 // Assert.
                 Assert.Equal(TaskResult.Failed, jobResult);
                 Assert.Equal(2, variableSet.Length);
-                variableSet[0].Verify(x => x.RunAsync(this.context.Object));
-                variableSet[1].Verify(x => x.RunAsync(It.IsAny<IExecutionContext>()), Times.Never());
+                variableSet[0].Verify(x => x.RunAsync());
+                variableSet[1].Verify(x => x.RunAsync(), Times.Never());
             }
         }
 
@@ -277,15 +277,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             foreach (var variableSet in variableSets)
             {
                 // Act.
-                TaskResult jobResult = await this.stepRunner.RunAsync(
+                TaskResult jobResult = await this.stepsRunner.RunAsync(
                     context: this.context.Object,
                     steps: variableSet.Select(x => x.Object).ToList());
 
                 // Assert.
                 Assert.Equal(TaskResult.Failed, jobResult);
                 Assert.Equal(2, variableSet.Length);
-                variableSet[0].Verify(x => x.RunAsync(this.context.Object));
-                variableSet[1].Verify(x => x.RunAsync(It.IsAny<IExecutionContext>()), Times.Never());
+                variableSet[0].Verify(x => x.RunAsync());
+                variableSet[1].Verify(x => x.RunAsync(), Times.Never());
             }
         }
 
@@ -299,14 +299,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             Mock<IStep> enabledStep = this.CreateStep(TaskResult.Succeeded, enabled: true);
 
             // Act.
-            TaskResult jobResult = await this.stepRunner.RunAsync(
+            TaskResult jobResult = await this.stepsRunner.RunAsync(
                 context: this.context.Object,
                 steps: new[] { disabledStep.Object, enabledStep.Object }.ToList());
 
             // Assert.
             Assert.Equal(TaskResult.Succeeded, jobResult);
-            disabledStep.Verify(x => x.RunAsync(It.IsAny<IExecutionContext>()), Times.Never());
-            enabledStep.Verify(x => x.RunAsync(this.context.Object));
+            disabledStep.Verify(x => x.RunAsync(), Times.Never());
+            enabledStep.Verify(x => x.RunAsync());
         }
 
         private Mock<IStep> CreateStep(TaskResult result, Boolean alwaysRun = false, Boolean continueOnError = false, Boolean critical = false, Boolean enabled = true, Boolean isFinally = false)
@@ -318,7 +318,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             step.Setup(x => x.Critical).Returns(critical);
             step.Setup(x => x.Enabled).Returns(enabled);
             step.Setup(x => x.Finally).Returns(isFinally);
-            step.Setup(x => x.RunAsync(this.context.Object)).Returns(Task.FromResult(result));
+            step.Setup(x => x.RunAsync()).Returns(Task.FromResult(result));
             return step;
         }
 
@@ -329,7 +329,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 steps.Select(x => String.Format(
                     CultureInfo.InvariantCulture,
                     "Returns={0},AlwaysRun={1},ContinueOnError={2},Critical={3},Enabled={4},Finally={5}",
-                    x.Object.RunAsync(this.context.Object).Result,
+                    x.Object.RunAsync().Result,
                     x.Object.AlwaysRun,
                     x.Object.ContinueOnError,
                     x.Object.Critical,
@@ -338,6 +338,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         }
 
         private readonly Mock<IExecutionContext> context;
-        private readonly StepRunner stepRunner;
+        private readonly StepsRunner stepsRunner;
     }
 }
