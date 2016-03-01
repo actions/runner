@@ -137,9 +137,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             s_trace.Info("ServerUrl: {0}", serverUrl);
             Uri uri = new Uri(serverUrl);
             VssConnection conn = ApiUtil.CreateConnection(uri, creds);
-            
-            var taskSvr = context.GetService<ITaskServer>();
-            taskSvr.SetConnection(conn);
+
+            var agentServer = context.GetService<IAgentServer>();
+            await agentServer.ConnectAsync(conn);
 
             var agent = context.GetService<IAgent>();
             await agent.RunAsync();            

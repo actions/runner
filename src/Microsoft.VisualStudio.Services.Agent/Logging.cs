@@ -4,36 +4,36 @@ using System.Globalization;
 using System.Threading;
 
 namespace Microsoft.VisualStudio.Services.Agent
-{        
+{
     public interface ILogWriter
     {
         Guid TimeLineId { get; set; }
         void Write(string message);
     }
-    
+
     [ServiceLocator(Default = typeof(WebConsoleLogger))]
-    public interface IWebConsoleLogger: IAgentService, ILogWriter
-    {
-    }    
-    
-    [ServiceLocator(Default = typeof(PagingLogger))]
-    public interface IPagingLogger: IAgentService, ILogWriter
+    public interface IWebConsoleLogger : IAgentService, ILogWriter
     {
     }
-    
-    public class WebConsoleLogger: AgentService, IWebConsoleLogger
+
+    [ServiceLocator(Default = typeof(PagingLogger))]
+    public interface IPagingLogger : IAgentService, ILogWriter
     {
-        ITaskServer _server;
-        
+    }
+
+    public class WebConsoleLogger : AgentService, IWebConsoleLogger
+    {
+        IJobServer _jobServer;
+
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
-            
+
             Trace.Verbose("Creating server");
-            _server = hostContext.GetService<ITaskServer>(); 
+            _jobServer = hostContext.GetService<IJobServer>();
             Trace.Verbose("server created");
         }
-                
+
         public Guid TimeLineId { get; set; }
         public void Write(string message)
         {
@@ -43,22 +43,22 @@ namespace Microsoft.VisualStudio.Services.Agent
             }
         }
     }
-    
-    public class PagingLogger: AgentService, IPagingLogger
+
+    public class PagingLogger : AgentService, IPagingLogger
     {
-        ITaskServer _server;
-        
+        IJobServer _jobServer;
+
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
-            
+
             Trace.Verbose("Creating _server");
-            _server = hostContext.GetService<ITaskServer>(); 
+            _jobServer = hostContext.GetService<IJobServer>();
             Trace.Verbose("server created");
         }
-                
+
         public Guid TimeLineId { get; set; }
-        
+
         //
         // Write a metadata file with id etc, point to pages on disk.
         // Each page is a guid_#.  As a page rolls over, it events it's done
@@ -71,8 +71,8 @@ namespace Microsoft.VisualStudio.Services.Agent
             {
                 throw new InvalidOperationException("TimeLineId must be set");
             }
-                        
-            Console.WriteLine(StringUtil.Format("LOG: {0} {1}", TimeLineId.ToString(), message));            
+
+            Console.WriteLine(StringUtil.Format("LOG: {0} {1}", TimeLineId.ToString(), message));
         }
-    }    
+    }
 }

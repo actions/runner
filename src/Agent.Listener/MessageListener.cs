@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 namespace Microsoft.VisualStudio.Services.Agent.Listener
 {
     [ServiceLocator(Default = typeof(MessageListener))]
-    public interface IMessageListener: IAgentService
+    public interface IMessageListener : IAgentService
     {
         Task<Boolean> CreateSessionAsync();
         Task DeleteSessionAsync();
@@ -28,13 +28,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             var configManager = HostContext.GetService<IConfigurationManager>();
             _settings = configManager.LoadSettings();
 
-            var taskServer = HostContext.GetService<ITaskServer>();
+            var agentServer = HostContext.GetService<IAgentServer>();
             const int MaxAttempts = 10;
             int attempt = 0;
             Int32 agentPoolId = _settings.PoolId;
             //session name used to be Environment.MachineName, which is added in a latter coreclr libs than what we have
             //TODO: name the session after Environment.MachineName, when we are ready to consume latest coreclr libs
-            String sessionName = "TODO_machine_name" + Guid.NewGuid().ToString();            
+            String sessionName = "TODO_machine_name" + Guid.NewGuid().ToString();
             IDictionary<String, String> agentSystemCapabilities = new Dictionary<String, String>();
             //TODO: add capabilities
             var agent = new TaskAgentReference
@@ -53,9 +53,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 Trace.Info("Create session attempt {0} of {1}.", attempt, MaxAttempts);
                 try
                 {
-                    Session = await taskServer.CreateAgentSessionAsync(
+                    Session = await agentServer.CreateAgentSessionAsync(
                                                         _settings.PoolId,
-                                                        taskAgentSession, 
+                                                        taskAgentSession,
                                                         HostContext.CancellationToken);
                     return true;
                 }
@@ -99,14 +99,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
         public async Task DeleteSessionAsync()
         {
-            var taskServer = HostContext.GetService<ITaskServer>();
+            var agentServer = HostContext.GetService<IAgentServer>();
             if (this.Session != null && this.Session.SessionId != Guid.Empty)
             {
                 //TODO: discuss how to handle cancellation
                 //we often have HostContext.CancellationToken already cancelled
                 //that is why we create a local cancellation source 
                 CancellationTokenSource ts = new CancellationTokenSource();
-                await taskServer.DeleteAgentSessionAsync(_settings.PoolId, Session.SessionId, ts.Token);                
+                await agentServer.DeleteAgentSessionAsync(_settings.PoolId, Session.SessionId, ts.Token);
             }
         }
 
@@ -120,14 +120,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 throw new InvalidOperationException("Must create a session before listening");
             }
             Debug.Assert(_settings != null, "settings should not be null");
-            var taskServer = HostContext.GetService<ITaskServer>();
+            var agentServer = HostContext.GetService<IAgentServer>();
             while (true)
             {
                 HostContext.CancellationToken.ThrowIfCancellationRequested();
                 TaskAgentMessage message = null;
                 try
                 {
-                    message = await taskServer.GetAgentMessageAsync(_settings.PoolId,
+                    message = await agentServer.GetAgentMessageAsync(_settings.PoolId,
                                                                 Session.SessionId,
                                                                 _lastMessageId,
                                                                 HostContext.CancellationToken);
