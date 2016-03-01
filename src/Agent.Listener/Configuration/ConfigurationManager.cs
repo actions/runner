@@ -181,6 +181,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
             string poolName = null;
             int poolId = 0;
             string agentName = null;
+            int agentId = 0;
 
             WriteSection("Register Agent");
 
@@ -290,6 +291,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
                         Console.WriteLine("Failed to add the agent.  Try again or ctrl-c to quit");
                     }
                 }
+                agentId = agent.Id;
 
                 if (enforceSupplied || registered)
                 {
@@ -309,6 +311,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
             // Get Agent settings
             var settings = new AgentSettings
                      {
+                         AgentId = agentId,
                          ServerUrl = serverUrl,
                          AgentName = agentName,
                          PoolName = poolName,

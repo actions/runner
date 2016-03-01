@@ -16,28 +16,41 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         {
             using (HostContext context = new HostContext("Agent"))
             {
-                s_trace = context.GetTrace("AgentProcess");
-                s_trace.Info("Info Hello Agent!");
-
-                //
-                // TODO (bryanmac): Need VsoAgent.exe compat shim for SCM
-                //                  That shim will also provide a compat arg parse 
-                //                  and translate / to -- etc...
-                //
-                CommandLineParser parser = new CommandLineParser(context);
-                parser.Parse(args);
-                s_trace.Info("Arguments parsed");
-
+                var cancelHandler = new ConsoleCancelEventHandler((sender, e) =>
+                {
+                    Console.WriteLine("Exiting...");
+                    e.Cancel = true;
+                    context.CancellationTokenSource.Cancel();
+                });
+                Console.CancelKeyPress += cancelHandler;
                 Int32 rc = 0;
                 try 
                 {
+                    s_trace = context.GetTrace("AgentProcess");
+                    s_trace.Info("Info Hello Agent!");
+
+                    //
+                    // TODO (bryanmac): Need VsoAgent.exe compat shim for SCM
+                    //                  That shim will also provide a compat arg parse 
+                    //                  and translate / to -- etc...
+                    //
+                    CommandLineParser parser = new CommandLineParser(context);
+                    parser.Parse(args);
+                    s_trace.Info("Arguments parsed");
                     rc = ExecuteCommand(context, parser).GetAwaiter().GetResult();
                 }
                 catch (Exception e)
                 {
-                    Console.Error.WriteLine(StringUtil.Format("An error occured.  {0}", e.Message));
+                    if (!(e is OperationCanceledException))
+                    {
+                        Console.Error.WriteLine(StringUtil.Format("An error occured.  {0}", e.Message));
+                    }
                     s_trace.Error(e);
                     rc = 1;
+                }
+                finally
+                {
+                    Console.CancelKeyPress -= cancelHandler;
                 }
 
                 return rc;
@@ -115,10 +128,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             s_trace.Info("Loading Credentials");
             var credMgr = context.GetService<ICredentialManager>();
             VssCredentials creds = credMgr.LoadCredentials();
-            
-            Console.WriteLine("creds");
-            Console.WriteLine(creds.ToString());
-            
+
             s_trace.Info("Loading Settings");
             var cfgMgr = context.GetService<IConfigurationManager>();
             AgentSettings settings = cfgMgr.LoadSettings();
@@ -130,17 +140,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             
             var taskSvr = context.GetService<ITaskServer>();
             taskSvr.SetConnection(conn);
-            
-            // start listening to the queue
-            
-            var listener = context.GetService<IMessageListener>();
-            if (await listener.CreateSessionAsync())
-            {
-                await listener.ListenAsync();
-            }
 
-            await listener.DeleteSessionAsync();
-            return 0;            
+            var agent = context.GetService<IAgent>();
+            await agent.RunAsync();            
+            return 0;
         }
 
         private static void PrintUsage()

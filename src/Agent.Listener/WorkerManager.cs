@@ -45,7 +45,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         {            
             Trace.Info("Job request {0} received.", jobRequestMessage.JobId);
             // TODO: Dispose of the jobDispatcher since it implements IDisposable
-            var jobDispatcher = HostContext.GetService<IJobDispatcher>();
+            var jobDispatcher = HostContext.CreateService<IJobDispatcher>();
             Task<int> jobDispatcherTask;
             var cancellationTokenSource = new CancellationTokenSource();
             jobDispatcherTask = jobDispatcher.RunAsync(jobRequestMessage, cancellationTokenSource.Token);

@@ -92,56 +92,42 @@ namespace Microsoft.VisualStudio.Services.Agent
             CheckConnection();
             return _taskClient.DeleteAgentAsync(agentPoolId, agentId);
         }
-                        
+
         //-----------------------------------------------------------------
         // MessageQueue
         //-----------------------------------------------------------------
-                
-        public async Task<TaskAgentSession> CreateAgentSessionAsync(Int32 poolId, TaskAgentSession session, CancellationToken cancellationToken)
+
+        public Task<TaskAgentSession> CreateAgentSessionAsync(Int32 poolId, TaskAgentSession session, CancellationToken cancellationToken)
         {
             CheckConnection();
-            
-            // TODO: Pass through to the REST SDK.
-            await Task.Yield();
-            return session;
+            return _taskClient.CreateAgentSessionAsync(poolId, session, null, cancellationToken);
         }
 
         public Task DeleteAgentMessageAsync(Int32 poolId, Int64 messageId, Guid sessionId, CancellationToken cancellationToken)
         {
             CheckConnection();
-            
-            throw new System.NotImplementedException();
+            return _taskClient.DeleteMessageAsync(poolId, messageId, sessionId, null, cancellationToken);
         }
 
         public Task DeleteAgentSessionAsync(Int32 poolId, Guid sessionId, CancellationToken cancellationToken)
         {
             CheckConnection();
-            
-            throw new System.NotImplementedException();
+            return _taskClient.DeleteAgentSessionAsync(poolId, sessionId, null, cancellationToken);
         }
 
-        public async Task<TaskAgentMessage> GetAgentMessageAsync(Int32 poolId, Guid sessionId, Int64? lastMessageId, CancellationToken cancellationToken)
+        public Task<TaskAgentMessage> GetAgentMessageAsync(Int32 poolId, Guid sessionId, Int64? lastMessageId, CancellationToken cancellationToken)
         {
             CheckConnection();
-                     
-            var result = new TaskAgentMessage();
-            TaskOrchestrationPlanReference plan = new TaskOrchestrationPlanReference();
-            TimelineReference timeline = null;
-            JobEnvironment environment = new JobEnvironment();
-            List<TaskInstance> tasks = new List<TaskInstance>();
-            Guid JobId = Guid.NewGuid();
-            var jobRequest = new JobRequestMessage(plan, timeline, JobId, "someJob", environment, tasks);
-            result.Body = JsonUtility.ToString(jobRequest);
-            result.MessageType = JobRequestMessage.MessageType;
-            result.MessageId = 123;
-            await Task.Yield();
-            return result;
+            var task = _taskClient.GetMessageAsync(poolId, sessionId, lastMessageId, cancellationToken);
+            //TODO: find out why GetMessageAsync does not respect the cancellation token that is passed
+            //in the mean time use this workaround
+            return task.WithCancellation(cancellationToken);
         }
-        
+
         //-----------------------------------------------------------------
         // Feedback: WebConsole and Logs
         //-----------------------------------------------------------------
-        
+
         public void QueueWebConsoleLine(Guid timeLineId, string line)
         {
             CheckConnection();
