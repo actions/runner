@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -153,9 +154,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
                 {
                     await TestConnectAsync(serverUrl, creds);
                 }
-                catch (System.Exception e)
+                catch (Exception e)
                 {
-                    Console.WriteLine(e.ToString());
+                    Trace.Error(e);
                     Console.WriteLine("Failed to connect.  Try again or ctrl-c to quit");
                     connected = false;
                 }
@@ -180,68 +181,120 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
             string poolName = null;
             int poolId = 0;
             string agentName = null;
-            while (true)
+
+            WriteSection("Register Agent");
+
+            while(true)
             {
-                WriteSection("Register Agent");
+                poolName = consoleWizard.ReadValue(CliArgs.Pool,
+                                                "Pool Name", 
+                                                false,
+                                                "default",
+                                                // can do better
+                                                Validators.NonEmptyValidator, 
+                                                args, 
+                                                enforceSupplied);
 
-                while(true)
-                {
-                    poolName = consoleWizard.ReadValue(CliArgs.Pool,
-                                                    "Pool Name", 
-                                                    false,
-                                                    "default",
-                                                    // can do better
-                                                    Validators.NonEmptyValidator, 
-                                                    args, 
-                                                    enforceSupplied);
-
-                    poolId = GetPoolId(poolName);
-                    if (enforceSupplied || poolId > 0)
-                    {
-                        break;
-                    }
+                try
+                {                    
+                    poolId = await GetPoolId(poolName);
                 }
-
-                while(true)
+                catch (System.Exception e)
                 {
-                    agentName = consoleWizard.ReadValue(CliArgs.Agent,
-                                                    "Agent Name", 
-                                                    false,
-                                                    // TODO: coreCLR doesn't expose till very recently (Jan 15)
-                                                    // Environment.MachineName,
-                                                    "myagent",
-                                                    // can do better
-                                                    Validators.NonEmptyValidator, 
-                                                    args, 
-                                                    enforceSupplied);
-
-                    bool exists = AgentExists(agentName, poolId);
-                    bool replace = false;
-                    if (exists) 
-                    {
-                        replace = consoleWizard.ReadBool(CliArgs.Replace,
-                                                    "Replace? (Y/N)",
-                                                    false,
-                                                    args, 
-                                                    enforceSupplied);
-                        if (replace)
-                        {
-                            // best effort, will fail and registration and loop on failure
-                            DeleteAgent(agentName, poolId);
-                            exists = false;
-                        }
-                    }
-
-                    if (enforceSupplied || !exists)
-                    {
-                        break;
-                    }                    
-                }
-
-                if (enforceSupplied || RegisterAgent(agentName, poolId))
+                    Trace.Error(e);
+                }                    
+                
+                if (enforceSupplied || poolId > 0)
                 {
                     break;
-                }                             
+                }
+                else
+                {
+                    Console.WriteLine("Failed to find pool name.  Try again or ctrl-c to quit");
+                }
+            }
+
+            while(true)
+            {
+                agentName = consoleWizard.ReadValue(CliArgs.Agent,
+                                                "Agent Name", 
+                                                false,
+                                                // TODO: coreCLR doesn't expose till very recently (Jan 15)
+                                                // Environment.MachineName,
+                                                "myagent",
+                                                // can do better
+                                                Validators.NonEmptyValidator, 
+                                                args, 
+                                                enforceSupplied);
+
+                // TODO: Scan for capabilites
+                var capabilities = new Dictionary<string, string>();
+                
+                TaskAgent agent = await GetAgent(agentName, poolId);
+                bool exists = agent != null;
+                bool replace = false;
+                bool registered = false;
+                if (exists) 
+                {
+                    replace = consoleWizard.ReadBool(CliArgs.Replace,
+                                                "Replace? (Y/N)",
+                                                false,
+                                                args, 
+                                                enforceSupplied);
+                    if (replace)
+                    {
+                        // update - update instead of delete so we don't lose user capabilities etc...
+                        agent.MaxParallelism = Constants.Agent.MaxParallelism;
+                        agent.Version = Constants.Agent.Version;
+                        
+                        foreach (var capability in capabilities)
+                        {
+                            agent.SystemCapabilities.Add(capability.Key, capability.Value);    
+                        }
+                        
+                        try
+                        {
+                            agent = await UpdateAgent(poolId, agent);
+                            Console.WriteLine("Successfully replaced the agent");
+                            registered = true;    
+                        }
+                        catch (Exception e)
+                        {
+                            Trace.Error(e);
+                            Console.WriteLine("Failed to replace the agent.  Try again or ctrl-c to quit");
+                        }
+                    }
+                }
+                else
+                {
+                    agent = new TaskAgent(agentName)
+                    {
+                        MaxParallelism = Constants.Agent.MaxParallelism,
+                        Version = Constants.Agent.Version
+                    };
+                    
+                    foreach (var capability in capabilities)
+                    {
+                        agent.SystemCapabilities.Add(capability.Key, capability.Value);    
+                    }
+                     
+                    try
+                    {
+                        agent = await AddAgent(poolId, agent);
+                        Console.WriteLine("Successfully added the agent");
+                        registered = true;    
+                    }
+                    catch (Exception e)
+                    {
+                        Trace.Error(e);
+                        Console.WriteLine("Failed to add the agent.  Try again or ctrl-c to quit");
+                    }
+                }
+
+                if (enforceSupplied || registered)
+                {
+                    break;
+                }                    
             }
 
             // We will Combine() what's stored with root.  Defaults to string a relative path
@@ -264,8 +317,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
                      };
             
             _store.SaveSettings(settings);
-
-            // TODO connect to server if suceeds save the config
         }
 
         private async Task TestConnectAsync(string url, VssCredentials creds)
@@ -273,36 +324,51 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
             Console.WriteLine("Connecting to server ...");
             VssConnection connection = ApiUtil.CreateConnection(new Uri(url), creds);
             
-            //connection.GetClient<TaskAgentHttpClient>();
-            
-            //await connection.ConnectAsync();
             _server = HostContext.CreateService<ITaskServer>();
             _server.SetConnection(connection);
             await _server.ConnectAsync();
             
         }
 
-        private int GetPoolId(string poolName)
+        private async Task<int> GetPoolId(string poolName)
         {
-            // TODO: Communicate failure and return 0, hopefully with good actionable error message
-            return 1;
+            int id = 0;
+            List<TaskAgentPool> pools = await _server.GetAgentPoolsAsync(poolName);
+            Trace.Verbose("Returned {0} pools", pools.Count);
+            
+            if (pools.Count == 1)
+            {
+                id = pools[0].Id;
+                Trace.Info("Found pool {0} with id {1}", poolName, id);
+            }
+            
+            return id;
         }
 
-        private bool AgentExists(string name, int poolId)
-        {
-            return false;
+        private async Task<TaskAgent> GetAgent(string name, int poolId)
+        {   
+            List<TaskAgent> agents = await _server.GetAgentsAsync(poolId, name);
+            Trace.Verbose("Returns {0} agents", agents.Count);
+            TaskAgent agent = agents.FirstOrDefault();
+            //TaskAgent agent = agents.Count > 0 ? agents[0] : null;
+            return agent;
         }
 
-        private bool DeleteAgent(string name, int poolId)
+        private async Task DeleteAgent(int poolId, int agentId)
         {
-            // TODO: Communicate failure and return 0, hopefully with good actionable error message
-            return true;
+            await _server.DeleteAgentAsync(poolId, agentId);
         }
 
-        private bool RegisterAgent(string name, int poolId)
+        private async Task<TaskAgent> UpdateAgent(int poolId, TaskAgent agent)
         {
-            // TODO: Communicate failure and return 0, hopefully with good actionable error message
-            return true;
+            TaskAgent created = await _server.UpdateAgentAsync(poolId, agent);
+            return created;
+        }
+        
+        private async Task<TaskAgent> AddAgent(int poolId, TaskAgent agent)
+        {
+            TaskAgent created = await _server.AddAgentAsync(poolId, agent);
+            return created;
         }
 
         private void WriteSection(string message)

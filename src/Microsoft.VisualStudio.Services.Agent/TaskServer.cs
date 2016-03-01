@@ -22,6 +22,13 @@ namespace Microsoft.VisualStudio.Services.Agent
         Task DeleteAgentSessionAsync(Int32 poolId, Guid sessionId, CancellationToken cancellationToken);
         Task<TaskAgentMessage> GetAgentMessageAsync(Int32 poolId, Guid sessionId, Int64? lastMessageId, CancellationToken cancellationToken);
         
+        // registration
+        Task<List<TaskAgentPool>> GetAgentPoolsAsync(string agentPoolName);
+        Task<List<TaskAgent>> GetAgentsAsync(int agentPoolId, string agentName = null);
+        Task DeleteAgentAsync(int agentPoolId, int agentId);
+        Task<TaskAgent> AddAgentAsync(Int32 agentPoolId, TaskAgent agent);
+        Task<TaskAgent> UpdateAgentAsync(int agentPoolId, TaskAgent agent);
+        
         // logging and console
         void QueueWebConsoleLine(Guid timeLineId, string line);
     }

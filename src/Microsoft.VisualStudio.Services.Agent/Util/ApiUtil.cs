@@ -14,7 +14,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             settings.MaxRetryRequest = 5;
             
             var headerValues = new List<ProductInfoHeaderValue>();
-            headerValues.Add(new ProductInfoHeaderValue("VstsAgent", AgentService.Version));
+            headerValues.Add(new ProductInfoHeaderValue("VstsAgent", Constants.Agent.Version));
             VssConnection connection = new VssConnection(serverUri, credentials, settings);
             return connection;
         }
