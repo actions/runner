@@ -27,12 +27,7 @@
     },
     
     "dependencies": {
-        "Microsoft.TeamFoundation.Common": "0.5.0",
-        "Microsoft.TeamFoundation.Core.WebApi": "0.5.0",
-        "Microsoft.VisualStudio.Services.Client": "0.5.0",
-        "Microsoft.VisualStudio.Services.Common": "0.5.0",
-        "Microsoft.VisualStudio.Services.WebApi": "0.5.0",
-        "Microsoft.TeamFoundation.DistributedTask.WebApi": "0.5.0",
+        "vss-api-netcore": "0.5.2-private",
         "Newtonsoft.Json": "7.0.1",
         "System.Diagnostics.TraceSource": "4.0.0-rc3-23721",
         "System.Diagnostics.TextWriterTraceListener": "4.0.0-rc3-23721",

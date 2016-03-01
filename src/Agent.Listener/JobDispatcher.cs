@@ -13,7 +13,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         Task<int> RunAsync(JobRequestMessage message, CancellationToken token);
     }
 
-    public class JobDispatcher : AgentService, IJobDispatcher
+    public sealed class JobDispatcher : AgentService, IJobDispatcher
     {
 #if OS_WINDOWS
         private const String WorkerProcessName = "Agent.Worker.exe";
@@ -24,8 +24,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         public async Task<int> RunAsync(JobRequestMessage message, CancellationToken token)
         {
             Task<int> workerProcessTask = null;
-            using (var processChannel = HostContext.GetService<IProcessChannel>())
-            using (var processInvoker = HostContext.GetService<IProcessInvoker>())
+            using (var processChannel = HostContext.CreateService<IProcessChannel>())
+            using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
             {
                 processChannel.StartServer(
                     (pipeHandleOut, pipeHandleIn) =>
