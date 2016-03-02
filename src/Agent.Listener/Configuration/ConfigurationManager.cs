@@ -40,12 +40,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
     {
         private IConfigurationStore _store;
         private ITaskServer _server;
+        private ITerminal _term;
 
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
             Trace.Verbose("Creating _store");
-            _store = hostContext.GetService<IConfigurationStore>(); 
+            _store = hostContext.GetService<IConfigurationStore>();
+            _term = hostContext.GetService<ITerminal>(); 
             Trace.Verbose("store created");
         }
 
@@ -157,7 +159,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
                 catch (Exception e)
                 {
                     Trace.Error(e);
-                    Console.WriteLine("Failed to connect.  Try again or ctrl-c to quit");
+                    _term.WriteLine("Failed to connect.  Try again or ctrl-c to quit");
                     connected = false;
                 }
 
@@ -169,7 +171,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
             }
             
             // TODO: Create console agent service so we can hide in testing etc... and trace
-            Console.WriteLine("Saving credentials...");
+            _term.WriteLine("Saving credentials...");
             Trace.Verbose("Saving credential");
             _store.SaveCredential(credProv.CredentialData);
             
@@ -211,7 +213,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
                 }
                 else
                 {
-                    Console.WriteLine("Failed to find pool name.  Try again or ctrl-c to quit");
+                    _term.WriteLine("Failed to find pool name.  Try again or ctrl-c to quit");
                 }
             }
 
@@ -256,13 +258,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
                         try
                         {
                             agent = await UpdateAgent(poolId, agent);
-                            Console.WriteLine("Successfully replaced the agent");
+                            _term.WriteLine("Successfully replaced the agent");
                             registered = true;    
                         }
                         catch (Exception e)
                         {
                             Trace.Error(e);
-                            Console.WriteLine("Failed to replace the agent.  Try again or ctrl-c to quit");
+                            _term.WriteLine("Failed to replace the agent.  Try again or ctrl-c to quit");
                         }
                     }
                 }
@@ -282,13 +284,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
                     try
                     {
                         agent = await AddAgent(poolId, agent);
-                        Console.WriteLine("Successfully added the agent");
+                        _term.WriteLine("Successfully added the agent");
                         registered = true;    
                     }
                     catch (Exception e)
                     {
                         Trace.Error(e);
-                        Console.WriteLine("Failed to add the agent.  Try again or ctrl-c to quit");
+                        _term.WriteLine("Failed to add the agent.  Try again or ctrl-c to quit");
                     }
                 }
                 agentId = agent.Id;
@@ -324,7 +326,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
 
         private async Task TestConnectAsync(string url, VssCredentials creds)
         {
-            Console.WriteLine("Connecting to server ...");
+            _term.WriteLine("Connecting to server ...");
             VssConnection connection = ApiUtil.CreateConnection(new Uri(url), creds);
             
             _server = HostContext.CreateService<ITaskServer>();
@@ -353,7 +355,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
             List<TaskAgent> agents = await _server.GetAgentsAsync(poolId, name);
             Trace.Verbose("Returns {0} agents", agents.Count);
             TaskAgent agent = agents.FirstOrDefault();
-            //TaskAgent agent = agents.Count > 0 ? agents[0] : null;
+
             return agent;
         }
 
@@ -376,9 +378,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
 
         private void WriteSection(string message)
         {
-            Console.WriteLine();
-            Console.WriteLine(">> {0}:", message);
-            Console.WriteLine();
+            _term.WriteLine();
+            _term.WriteLine(">> {0}:", message);
+            _term.WriteLine();
         }        
     }
 }

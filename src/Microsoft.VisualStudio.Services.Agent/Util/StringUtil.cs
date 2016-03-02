@@ -52,7 +52,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
                     Object item = _locStrings[locKey];
                     
                     Type t = item.GetType();
-                    Console.WriteLine(t.ToString());
                     
                     if (t == typeof(string))
                     {

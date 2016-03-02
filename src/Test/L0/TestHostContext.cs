@@ -10,6 +10,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
 {
     public sealed class TestHostContext : IHostContext, IDisposable
     {
+        private readonly ConcurrentDictionary<Type, ConcurrentQueue<object>> _serviceInstances = new ConcurrentDictionary<Type, ConcurrentQueue<object>>();
+        private readonly ConcurrentDictionary<Type, object> _serviceSingletons = new ConcurrentDictionary<Type, object>();
+        private readonly ITraceManager _traceManager;
+        private readonly Terminal _term;
+        private readonly CancellationToken _cancellationToken = new CancellationToken();
+        private string _suiteName;
+        private string _testName;
+                
         public TestHostContext(string suiteName, [CallerMemberName] string testName = "")
         {
             if (string.IsNullOrEmpty(suiteName))
@@ -35,6 +43,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             Stream logFile = File.Create(traceFileName);
             var traceListener = new TextWriterTraceListener(logFile);
             _traceManager = new TraceManager(traceListener);
+            
+            // inject a terminal in silent mode so all console output
+            // goes to the test trace file
+            _term = new Terminal();
+            _term.Silent = true;
+            SetSingleton<ITerminal>(_term);
+            EnqueueInstance<ITerminal>(_term);
             
             Variables = new Variables(this);
         }
@@ -132,12 +147,5 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 _traceManager?.Dispose();
             }
         }
-
-        private readonly ConcurrentDictionary<Type, ConcurrentQueue<object>> _serviceInstances = new ConcurrentDictionary<Type, ConcurrentQueue<object>>();
-        private readonly ConcurrentDictionary<Type, object> _serviceSingletons = new ConcurrentDictionary<Type, object>();
-        private readonly ITraceManager _traceManager;
-        private readonly CancellationToken _cancellationToken = new CancellationToken();
-        private string _suiteName;
-        private string _testName;
     }
 }

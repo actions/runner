@@ -1,6 +1,9 @@
 
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Configuration;
+using Microsoft.VisualStudio.Services.Agent.Util;
+using Microsoft.VisualStudio.Services.Client;
+using Microsoft.VisualStudio.Services.Common;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
@@ -10,13 +13,71 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
     [ServiceLocator(Default = typeof(Agent))]
     public interface IAgent : IAgentService
     {
-        Task RunAsync();
+        Task<int> ExecuteCommand(CommandLineParser parser);
     }
 
     public sealed class Agent : AgentService, IAgent
     {        
         private int _poolId;
         private Guid _sessionId = Guid.Empty;
+
+        public async Task<int> ExecuteCommand(CommandLineParser parser)
+        {
+            // TODO Unit test to cover this logic
+            Trace.Info("ExecuteCommand()");
+
+            var configManager = HostContext.GetService<IConfigurationManager>();
+            Trace.Info("Created configuration manager");
+
+            // command is not required, if no command it just starts and/or configures if not configured
+
+            // TODO: Invalid config prints usage
+
+            if (parser.Flags.Contains("help"))
+            {
+                Trace.Info("help");
+                PrintUsage();
+            }
+
+            if (parser.IsCommand("unconfigure"))
+            {
+                Trace.Info("unconfigure");
+                // TODO: Unconfiure, remove config and exit
+            }
+
+            if (parser.IsCommand("run") && !configManager.IsConfigured())
+            {
+                Trace.Info("run");
+                Console.WriteLine("Agent is not configured");
+                PrintUsage();
+            }
+
+            // unattend mode will not prompt for args if not supplied.  Instead will error.
+            bool isUnattended = parser.Flags.Contains("unattended");
+
+            if (parser.IsCommand("configure"))
+            {
+                Trace.Info("configure");    
+                await configManager.ConfigureAsync(parser.Args, isUnattended);
+                return 0;
+            }
+
+            if (parser.Flags.Contains("nostart"))
+            {
+                Trace.Info("No start option, exiting the agent");
+                return 0;
+            }
+
+            if (parser.IsCommand("run") && !configManager.IsConfigured())
+            {
+                throw new InvalidOperationException("Cannot run.  Must configure first.");
+            }
+
+            Trace.Info("Done evaluating commands");
+            await configManager.EnsureConfiguredAsync();
+            
+            return await RunAsync();
+        }
 
         private async Task DeleteMessageAsync(TaskAgentMessage message)
         {            
@@ -34,21 +95,44 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 await taskServer.DeleteAgentMessageAsync(_poolId, message.MessageId, _sessionId, cancellationToken);
             }
         }
-
+                
         //create worker manager, create message listener and start listening to the queue
-        public async Task RunAsync()
+        private async Task<int> RunAsync()
         {
+            Trace.Info("RunAsync()");
+            
+            // Prep the task server with the configured creds
+            
+            Trace.Info("Loading Credentials");
+            var credMgr = HostContext.GetService<ICredentialManager>();
+            VssCredentials creds = credMgr.LoadCredentials();
+
+            Trace.Info("Loading Settings");
             var configManager = HostContext.GetService<IConfigurationManager>();
             AgentSettings settings = configManager.LoadSettings();
-            _poolId = settings.PoolId;
-
+            Trace.Info(settings);
             
+            _poolId = settings.PoolId;
+            
+            var serverUrl = settings.ServerUrl;
+            Trace.Info("ServerUrl: {0}", serverUrl);
+            Uri uri = new Uri(serverUrl);
+            VssConnection conn = ApiUtil.CreateConnection(uri, creds);
+            
+            Trace.Info("Set credentials on task service");
+            var taskSvr = HostContext.GetService<ITaskServer>();
+            taskSvr.SetConnection(conn);
+            
+            var term = HostContext.GetService<ITerminal>();
+            
+
             var listener = HostContext.GetService<IMessageListener>();
             if (!await listener.CreateSessionAsync())
             {
-                return;
+                return 1;
             }
-            Console.WriteLine("Listening for messages");
+            term.WriteLine("Listening for Jobs");
+            
             _sessionId = listener.Session.SessionId;
             TaskAgentMessage message = null;
             try
@@ -89,5 +173,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 await listener.DeleteSessionAsync();
             }
         }
+
+        private static void PrintUsage()
+        {
+            string usage = StringUtil.Loc("ListenerHelp");
+            Console.WriteLine(usage);
+            Console.WriteLine(StringUtil.Loc("Test", "Hello"));
+            Environment.Exit(0);
+        }        
     }
 }
