@@ -18,10 +18,10 @@ namespace Microsoft.VisualStudio.Services.Agent
                 //
                 // Keep alphabetical
                 //
-                public static readonly string HomeDirectory = "agent.homedirectory";
+                public static readonly string HomeDirectory = "agent.homedirectory";                                
                 public static readonly string Id = "agent.id";
                 public static readonly string JobName = "agent.jobname";
-                public static readonly string JobStatus = "agent.jobstatus";
+                public static readonly string JobStatus = "agent.jobstatus";        
                 public static readonly string MachineName = "agent.machinename";
                 public static readonly string Name = "agent.name";
                 public static readonly string OS = "agent.os";
@@ -31,18 +31,18 @@ namespace Microsoft.VisualStudio.Services.Agent
                 public static readonly string WorkFolder = "agent.workfolder";
                 public static readonly string WorkingFolder = "agent.WorkingDirectory";
             }
-
+            
             public static class Common
             {
                 public static readonly string TestResultsDirectory = "common.testresultsdirectory";
             }
-
+            
             public static class System
             {
                 //
                 // Keep alphabetical
                 //
-                public static readonly string AccessToken = "system.accessToken";
+                public static readonly string AccessToken = "system.accessToken";                
                 public static readonly string CollectionId = "system.collectionid";
                 public static readonly string Debug = "system.debug";
                 public static readonly string DefaultWorkingDirectory = "system.defaultworkingdirectory";
@@ -54,15 +54,15 @@ namespace Microsoft.VisualStudio.Services.Agent
                 // back comapt variable, do not document
                 public static readonly string TFServerUrl = "system.TeamFoundationServerUri";
                 public static readonly string PreferPowerShellExecution = "system.preferps";
-                public static readonly string PreferGit = "system.prefergit";
+                public static readonly string PreferGit = "system.prefergit";                               
             }
-
+            
             public static class Task
             {
                 //
                 // Keep alphabetical
                 //
-                public static readonly string TaskDisplayName = "Task.DisplayName";
+                public static readonly string TaskDisplayName = "Task.DisplayName";                   
             }
         }
     }

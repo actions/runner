@@ -1,4 +1,3 @@
-
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Configuration;
 using System;
@@ -14,16 +13,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
     }
 
     public sealed class Agent : AgentService, IAgent
-    {        
+    {
         private int _poolId;
         private Guid _sessionId = Guid.Empty;
 
         private async Task DeleteMessageAsync(TaskAgentMessage message)
-        {            
+        {
             if (message != null && _sessionId != Guid.Empty)
             {
                 //TODO: decide what tokens to use if HostCotnext is already canceled
-                var taskServer = HostContext.GetService<ITaskServer>();                
+                var agentServer = HostContext.GetService<IAgentServer>();
                 var cancellationToken = HostContext.CancellationToken;
                 CancellationTokenSource tokenSource = null;
                 if (cancellationToken.IsCancellationRequested)
@@ -31,7 +30,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     tokenSource = new CancellationTokenSource();
                     cancellationToken = tokenSource.Token;
                 }
-                await taskServer.DeleteAgentMessageAsync(_poolId, message.MessageId, _sessionId, cancellationToken);
+                await agentServer.DeleteAgentMessageAsync(_poolId, message.MessageId, _sessionId, cancellationToken);
             }
         }
 
@@ -42,7 +41,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             AgentSettings settings = configManager.LoadSettings();
             _poolId = settings.PoolId;
 
-            
+
             var listener = HostContext.GetService<IMessageListener>();
             if (!await listener.CreateSessionAsync())
             {
@@ -53,11 +52,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             TaskAgentMessage message = null;
             try
             {
-                 using (var workerManager = HostContext.GetService<IWorkerManager>())
-                 {                    
-                     while (true)
-                     {                        
-                        try 
+                using (var workerManager = HostContext.GetService<IWorkerManager>())
+                {
+                    while (true)
+                    {
+                        try
                         {
                             HostContext.CancellationToken.ThrowIfCancellationRequested();
                             message = await listener.GetNextMessageAsync(); //get next message
@@ -77,12 +76,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                                 await workerManager.Cancel(cancelJobMessage);
                             }
                         }
-                        finally 
+                        finally
                         {
                             await DeleteMessageAsync(message);
                         }
-                     }
-                 }
+                    }
+                }
             }
             finally
             {
