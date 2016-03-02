@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
-    [ServiceLocator(Default = typeof(ProcessChannel))]
+    [ServiceLocator(Default = typeof(JobRunner))]
     public interface IJobRunner : IAgentService
     {
         Task<int> RunAsync(JobRequestMessage message);
@@ -53,6 +53,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             {
                 var taskRunner = HostContext.CreateService<ITaskRunner>();
                 taskRunner.ExecutionContext = jobExecutionContext.CreateChild();
+                // TODO: taskRunner.TaskInstance = taskInstance;
                 steps.Add(taskRunner);
             }
 

@@ -7,6 +7,7 @@ using System.Threading;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
+    [ServiceLocator(Default = typeof(ExecutionContext))]
     public interface IExecutionContext : IAgentService
     {
         bool WriteDebug { get; set; }

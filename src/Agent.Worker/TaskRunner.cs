@@ -14,20 +14,22 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
     public sealed class TaskRunner : AgentService, ITaskRunner
     {
-        public bool AlwaysRun { get { throw new NotImplementedException(); } }
-        public bool ContinueOnError { get { throw new NotImplementedException(); } }
-        public bool Critical { get { throw new NotImplementedException(); } }
-        public string DisplayName { get { throw new NotImplementedException(); } }
-        public bool Enabled { get { throw new NotImplementedException(); } }
+        // TODO: FIX THESE:
+        public bool AlwaysRun => false;
+        public bool ContinueOnError => false;
+        public bool Critical => false;
+        public string DisplayName => "Some display name";
+        public bool Enabled => true;
         public IExecutionContext ExecutionContext { get; set; }
-        public bool Finally { get { throw new NotImplementedException(); } }
-        public string Id { get { throw new NotImplementedException(); } }
+        public bool Finally => false;
+        public string Id => Guid.NewGuid().ToString();
         public TaskResult? Result { get; set; }
 
         public async Task<TaskResult> RunAsync()
         {
+            // TODO: IMPLEMENT
             await Task.Yield();
-            throw new NotImplementedException();
+            return TaskResult.Succeeded;
         }
     }
 }
