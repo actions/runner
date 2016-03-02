@@ -44,7 +44,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 } 
                 catch (OperationCanceledException)
                 {
-                    canceled = true;                    
+                    canceled = true;
                 }
                 catch (AggregateException errors)
                 {

@@ -78,13 +78,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                         }
                         finally
                         {
-                            await DeleteMessageAsync(message);
+                            if (null != message)
+                            {
+                                //TODO: make sure we don't mask more important exception
+                                await DeleteMessageAsync(message);
+                                message = null;
+                            }
                         }
                     }
                 }
             }
             finally
             {
+                //TODO: make sure we don't mask more important exception
                 await listener.DeleteSessionAsync();
             }
         }

@@ -12,6 +12,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
     {
         Task Run(JobRequestMessage message);
         Task Cancel(JobCancelMessage message);
+
+        //TODO: add waitForJobsToFinish and cancelAllJobs
+        //these will be needed to implement refresh and exit when service is stopped        
     }
 
     public sealed class WorkerManager : AgentService, IWorkerManager
