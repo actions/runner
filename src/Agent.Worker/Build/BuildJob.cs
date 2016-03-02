@@ -12,7 +12,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         {
             get
             {
-                throw new NotImplementedException();
+                // TODO: IMPLEMENT.
+                return null;
             }
         }
 
@@ -20,7 +21,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         {
             get
             {
-                throw new NotImplementedException();
+                // TODO: IMPLEMENT.
+                return null;
             }
         }
     }

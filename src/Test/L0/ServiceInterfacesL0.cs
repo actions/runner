@@ -28,8 +28,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         {
             Validate(
                 typeof(IHostContext).GetTypeInfo().Assembly, // assembly
-                typeof(IExecutionContext), // whitelist params
-                typeof(IHostContext),
+                typeof(IHostContext), // whitelist params
                 typeof(IAgentService),
                 typeof(ICredentialProvider),
                 typeof(ITraceManager),

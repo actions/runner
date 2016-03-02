@@ -27,6 +27,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         private readonly ConcurrentDictionary<Type, object> _serviceInstances = new ConcurrentDictionary<Type, object>();
         private readonly ConcurrentDictionary<Type, Type> _serviceTypes = new ConcurrentDictionary<Type, Type>();
         private readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
+        private TraceSource _trace;
         private ITraceManager _traceManager;
         private string _hostType;
         
@@ -41,17 +42,17 @@ namespace Microsoft.VisualStudio.Services.Agent
 
             // Create the trace manager.
             string fileName = String.Format("{0}_{1:yyyyMMdd-HHmmss}-utc.log", _hostType, DateTime.UtcNow);
-            //var currentAssemblyLocation = System.Reflection.Assembly.GetEntryAssembly().Location;
-            //var logPath = new DirectoryInfo(currentAssemblyLocation).Parent.FullName.ToString();
             var diagPath = IOUtil.GetDiagPath();
-            if (!Directory.Exists(diagPath))
-            {
-                Directory.CreateDirectory(diagPath);
-            }
-            
-            Stream logFile = File.Create(Path.Combine(diagPath, fileName));
+            Directory.CreateDirectory(diagPath);
+            Stream logFile = new FileStream(
+                Path.Combine(diagPath, fileName),
+                FileMode.Create,
+                FileAccess.ReadWrite,
+                FileShare.Read,
+                bufferSize: 4096);
             TextWriterTraceListener traceListener = new TextWriterTraceListener(logFile);
             _traceManager = new TraceManager(traceListener);
+            _trace = GetTrace(nameof(HostContext));
             Variables = new Variables(this);
         }
        
@@ -89,6 +90,8 @@ namespace Microsoft.VisualStudio.Services.Agent
         /// </summary>
         public T CreateService<T>() where T : class, IAgentService
         {
+            _trace.Entering();
+            _trace.Verbose($"Resolving implementation for type: {typeof(T).FullName}");
             Type target;
             if (!_serviceTypes.TryGetValue(typeof(T), out target))
             {
@@ -116,6 +119,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                 target = _serviceTypes[typeof(T)];
             }
 
+            _trace.Verbose($"Found type: {target.FullName}");
             var svc = Activator.CreateInstance(target) as T;
             svc.Initialize(this);
             return svc;
