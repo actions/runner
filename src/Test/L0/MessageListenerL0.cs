@@ -173,7 +173,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 _agentServer
                     .Setup(x => x.GetAgentMessageAsync(
                         _settings.PoolId, expectedSession.SessionId, It.IsAny<long?>(), tc.CancellationToken))
-                    //.Returns(Task.FromResult<TaskAgentMessage>(messages.Dequeue()));
                     .Returns(async (Int32 poolId, Guid sessionId, Int64? lastMessageId, CancellationToken cancellationToken) =>
                     {
                         await Task.Yield();

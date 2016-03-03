@@ -73,12 +73,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                             else if (String.Equals(message.MessageType, JobCancelMessage.MessageType, StringComparison.OrdinalIgnoreCase))
                             {
                                 var cancelJobMessage = JsonUtility.FromString<JobCancelMessage>(message.Body);
-                                await workerManager.Cancel(cancelJobMessage);
+                                workerManager.Cancel(cancelJobMessage);
                             }
                         }
                         finally
                         {
-                            if (null != message)
+                            if (message != null)
                             {
                                 //TODO: make sure we don't mask more important exception
                                 await DeleteMessageAsync(message);

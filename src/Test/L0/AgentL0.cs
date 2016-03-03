@@ -26,7 +26,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             _agentServer = new Mock<IAgentServer>();            
         }
 
-        private JobRequestMessage createJobRequestMessage(string jobName)
+        private JobRequestMessage CreateJobRequestMessage(string jobName)
         {
             TaskOrchestrationPlanReference plan = new TaskOrchestrationPlanReference();
             TimelineReference timeline = null;
@@ -37,7 +37,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             return jobRequest;
         }
 
-        private JobCancelMessage createJobCancelMessage()
+        private JobCancelMessage CreateJobCancelMessage()
         {
             var message = new JobCancelMessage(Guid.NewGuid(), TimeSpan.FromSeconds(0));
             return message;
@@ -45,7 +45,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
 
         [Fact]
         [Trait("Level", "L0")]
-        [Trait("Category", "Common")]
+        [Trait("Category", "Agent")]
         //process 2 new job messages, and one cancel message
         public async void TestRunAsync()
         {
@@ -74,25 +74,25 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                     {
                         new TaskAgentMessage
                         {
-                            Body = JsonUtility.ToString(createJobRequestMessage("job1")),
+                            Body = JsonUtility.ToString(CreateJobRequestMessage("job1")),
                             MessageId = 4234,
                             MessageType = JobRequestMessage.MessageType
                         },
                         new TaskAgentMessage
                         {
-                            Body = JsonUtility.ToString(createJobCancelMessage()),
+                            Body = JsonUtility.ToString(CreateJobCancelMessage()),
                             MessageId = 4235,
                             MessageType = JobCancelMessage.MessageType
                         },
                         new TaskAgentMessage
                         {
-                            Body = JsonUtility.ToString(createJobRequestMessage("last_job")),
+                            Body = JsonUtility.ToString(CreateJobRequestMessage("last_job")),
                             MessageId = 4236,
                             MessageType = JobRequestMessage.MessageType
                         }
                     };
                 var messages = new Queue<TaskAgentMessage>(arMessages);
-                Task workerManagerTask = new Task(() => { });
+                var signalWorkerComplete = new SemaphoreSlim(0, 1);
                 _configurationManager.Setup(x => x.LoadSettings())
                     .Returns(settings);
                 _messageListener.Setup(x => x.CreateSessionAsync())
@@ -107,6 +107,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                                 await Task.Delay(2000, hc.CancellationToken);
                                 throw new TimeoutException();
                             }
+
                             return messages.Dequeue();
                         });
                 _messageListener.Setup(x => x.DeleteSessionAsync())
@@ -117,8 +118,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                             //last job starts the task
                             if (m.JobName.Equals("last_job"))
                             {
-                                workerManagerTask.Start();
-                                return workerManagerTask;
+                                signalWorkerComplete.Release();
+                                return Task.CompletedTask;
                             }                            
                             else 
                             {
@@ -127,10 +128,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                             
                         }
                     );
-                _workerManager.Setup(x => x.Cancel(It.IsAny<JobCancelMessage>()))
-                    .Returns(Task.CompletedTask);
-                _agentServer.Setup(x => 
-                    x.DeleteAgentMessageAsync(settings.PoolId, arMessages[0].MessageId, taskAgentSession.SessionId, It.IsAny<CancellationToken>()))
+                _workerManager.Setup(x => x.Cancel(It.IsAny<JobCancelMessage>()));
+                _agentServer.Setup(x => x.DeleteAgentMessageAsync(settings.PoolId, arMessages[0].MessageId, taskAgentSession.SessionId, It.IsAny<CancellationToken>()))
                     .Returns( (Int32 poolId, Int64 messageId, Guid sessionId, CancellationToken cancellationToken) =>
                     {
                         return Task.CompletedTask;
@@ -138,14 +137,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
 
                 //Act
                 Task agentTask = agent.RunAsync();
-                
+
                 //Assert
                 //wait for the agent to run one job
-                Task[] taskToWait1 = { workerManagerTask, Task.Delay(2000) };
-                await Task.WhenAny(taskToWait1);
-                if (!workerManagerTask.IsCompleted)
+                if (! await signalWorkerComplete.WaitAsync(2000) )                
                 {
-                    Assert.True(false, "IMessageListener.GetNextMessageAsync was not invoked.");
+                    Assert.True(false, $"{nameof(_messageListener.Object.GetNextMessageAsync)} was not invoked." );
                 }
                 else
                 {
@@ -157,7 +154,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                     //wait for the Agent to exit
                     await Task.WhenAny(taskToWait2);
 
-                    Assert.True(agentTask.IsCompleted, "IAgent.RunAsync timed out.");
+                    Assert.True(agentTask.IsCompleted, $"{nameof(agent.RunAsync)} timed out.");
                     Assert.True(!agentTask.IsFaulted, agentTask.Exception?.ToString());
                     Assert.True(agentTask.IsCanceled);
 

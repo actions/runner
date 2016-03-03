@@ -20,7 +20,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             _processInvoker = new Mock<IProcessInvoker>();
         }
 
-        private JobRequestMessage createJobRequestMessage()
+        private JobRequestMessage CreateJobRequestMessage()
         {
             TaskOrchestrationPlanReference plan = new TaskOrchestrationPlanReference();
             TimelineReference timeline = null;
@@ -33,8 +33,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
 
         [Fact]
         [Trait("Level", "L0")]
-        [Trait("Category", "Common")]
-        public async void ProcessJobMessage()
+        [Trait("Category", "Agent")]
+        public async void DispatchesJobRequest()
         {
             //Arrange
             using (var hc = new TestHostContext(nameof(JobDispatcherL0)))
@@ -45,7 +45,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 jobDispatcher.Initialize(hc);
                 var ts = new CancellationTokenSource();
                 CancellationToken token = ts.Token;
-                JobRequestMessage message = createJobRequestMessage();
+                JobRequestMessage message = CreateJobRequestMessage();
                 string strMessage = JsonUtility.ToString(message);
 
                 _processInvoker.Setup(x => x.ExecuteAsync(It.IsAny<String>(), It.IsAny<String>(), "spawnclient 1 2", null, token))
@@ -60,14 +60,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 int exitCode = await jobDispatcher.RunAsync(message, ts.Token);
                 
                 //Assert
-                Assert.True(exitCode == 56);
+                Assert.Equal(exitCode, 56);
             }
         }
 
         [Fact]
         [Trait("Level", "L0")]
-        [Trait("Category", "Common")]
-        public async void CancelJobMessage()
+        [Trait("Category", "Agent")]
+        public async void DispatchesCancellationRequest()
         {
             //Arrange
             using (var hc = new TestHostContext(nameof(JobDispatcherL0)))
@@ -78,7 +78,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 jobDispatcher.Initialize(hc);
                 var ts = new CancellationTokenSource();
                 CancellationToken token = ts.Token;
-                JobRequestMessage message = createJobRequestMessage();
+                JobRequestMessage message = CreateJobRequestMessage();
                 string strMessage = JsonUtility.ToString(message);
 
                 _processInvoker.Setup(x => x.ExecuteAsync(It.IsAny<String>(), It.IsAny<String>(), "spawnclient 1 2", null, token))

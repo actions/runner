@@ -13,7 +13,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
     {
         private Mock<IJobDispatcher> _jobDispatcher;
 
-        private JobRequestMessage createJobRequestMessage()
+        private JobRequestMessage CreateJobRequestMessage()
         {
             TaskOrchestrationPlanReference plan = new TaskOrchestrationPlanReference();
             TimelineReference timeline = null;
@@ -24,7 +24,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             return jobRequest;
         }
 
-        private JobCancelMessage createJobCancelMessage(Guid jobId)
+        private JobCancelMessage CreateJobCancelMessage(Guid jobId)
         {
             var message = new JobCancelMessage(jobId, TimeSpan.FromSeconds(0));
             return message;
@@ -37,7 +37,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         
         [Fact]
         [Trait("Level", "L0")]
-        [Trait("Category", "Common")]
+        [Trait("Category", "Agent")]
         public async void TestRun()
         {
             using (var hc = new TestHostContext(nameof(WorkerManagerL0)))
@@ -45,7 +45,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             {
                 hc.EnqueueInstance<IJobDispatcher>(_jobDispatcher.Object);
                 workerManager.Initialize(hc);
-                JobRequestMessage jobMessage = createJobRequestMessage();
+                JobRequestMessage jobMessage = CreateJobRequestMessage();
                 _jobDispatcher.Setup(x => x.RunAsync(jobMessage, It.IsAny<CancellationToken>()))
                     .Returns(Task.FromResult<int>(21));
                 await workerManager.Run(jobMessage);
@@ -56,7 +56,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         
         [Fact]
         [Trait("Level", "L0")]
-        [Trait("Category", "Common")]
+        [Trait("Category", "Agent")]
         public async void TestCancel()
         {
             //Arrange
@@ -65,8 +65,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             {
                 hc.EnqueueInstance<IJobDispatcher>(_jobDispatcher.Object);
                 workerManager.Initialize(hc);                
-                JobRequestMessage jobMessage = createJobRequestMessage();
-                JobCancelMessage cancelMessage = createJobCancelMessage(jobMessage.JobId);
+                JobRequestMessage jobMessage = CreateJobRequestMessage();
+                JobCancelMessage cancelMessage = CreateJobCancelMessage(jobMessage.JobId);
                 bool started = false;
                 Task jobTask = null;
                 _jobDispatcher.Setup(x => x.RunAsync(jobMessage, It.IsAny<CancellationToken>()))
@@ -85,21 +85,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                     i--;
                 }
                 Assert.True(started);
-                if (started)
-                {
-                    //Act
-                    //send cancel message
-                    await workerManager.Cancel(cancelMessage);
+
+                //Act
+                //send cancel message
+                workerManager.Cancel(cancelMessage);
                     
-                    //Assert
-                    //wait up to 2 sec for cancellation to be processed
-                    Task[] taskToWait = { jobTask, Task.Delay(2000) };
-                    await Task.WhenAny(taskToWait);
-                    _jobDispatcher.Verify(x => x.RunAsync(jobMessage, It.IsAny<CancellationToken>()),
-                        "IJobDispatcher.RunAsync not invoked");
-                    Assert.True(jobTask.IsCompleted);
-                    Assert.True(jobTask.IsCanceled);
-                }
+                //Assert
+                //wait up to 2 sec for cancellation to be processed
+                Task[] taskToWait = { jobTask, Task.Delay(2000) };
+                await Task.WhenAny(taskToWait);
+                _jobDispatcher.Verify(x => x.RunAsync(jobMessage, It.IsAny<CancellationToken>()),
+                    $"{nameof(_jobDispatcher.Object.RunAsync)} not invoked");
+                Assert.True(jobTask.IsCompleted);
+                Assert.True(jobTask.IsCanceled);                
             }
         }
     }
