@@ -1,3 +1,4 @@
+using Microsoft.VisualStudio.Services.Agent.Worker;
 using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
@@ -50,11 +51,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             _term.Silent = true;
             SetSingleton<ITerminal>(_term);
             EnqueueInstance<ITerminal>(_term);
-            
-            Variables = new Variables(this);
         }
 
-        public Variables Variables { get; private set; }
         public CancellationToken CancellationToken
         {
             get

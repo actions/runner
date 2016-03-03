@@ -19,7 +19,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         private ConcurrentQueue<String> _consoleLines = new ConcurrentQueue<String>();
         private ConcurrentDictionary<Guid, TimelineInfo> _timelines = new ConcurrentDictionary<Guid, TimelineInfo>();
         private Dictionary<Guid, List<TimelineRecord>> _bufferedRetryRecords = new Dictionary<Guid, List<TimelineRecord>>();
-        private ConcurrentQueue<FileInfo> _uploadFiles = new ConcurrentQueue<FileInfo>();
+        private ConcurrentQueue<UploadFileInfo> _uploadFiles = new ConcurrentQueue<UploadFileInfo>();
 
         public void QueueWebConsoleLine(Guid timelineId, Guid timelineRecordId, string line)
         {
@@ -47,7 +47,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         public ConcurrentQueue<TimelineRecord> Records { get; set; }
     }
 
-    internal class FileInfo
+    internal class UploadFileInfo
     {
         public Guid TimelineId { get; set; }
         public Guid TimelineRecordId { get; set; }

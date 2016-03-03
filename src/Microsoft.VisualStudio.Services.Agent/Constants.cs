@@ -9,8 +9,24 @@ namespace Microsoft.VisualStudio.Services.Agent
             public static readonly int MaxParallelism = 1;
             public static readonly string Version = "2.98.0";    
         }
-        
-        
+
+        public static class Build
+        {
+            public static class Path
+            {
+                public static readonly string ArtifactsDirectory = "a";
+                public static readonly string BinariesDirectory = "b";
+                public static readonly string GarbageCollectionDirectory = "GC";
+                public static readonly string LegacyArtifactsDirectory = "artifacts";
+                public static readonly string LegacyStagingDirectory = "staging";
+                public static readonly string SourceRootMappingDirectory = "SourceRootMapping";
+                public static readonly string SourcesDirectory = "s";
+                public static readonly string TestResultsDirectory = "TestResults";
+                public static readonly string TopLevelTrackingConfigFile = "Mappings.json";
+                public static readonly string TrackingConfigFile = "SourceFolder.json";
+            }
+        }
+
         public static class Variables
         {
             public static class Agent
@@ -31,7 +47,13 @@ namespace Microsoft.VisualStudio.Services.Agent
                 public static readonly string WorkFolder = "agent.workfolder";
                 public static readonly string WorkingFolder = "agent.WorkingDirectory";
             }
-            
+
+            public static class Build
+            {
+                public static readonly string Clean = "build.clean";
+                public static readonly string DefinitionName = "build.definitionname";
+            }
+
             public static class Common
             {
                 public static readonly string TestResultsDirectory = "common.testresultsdirectory";

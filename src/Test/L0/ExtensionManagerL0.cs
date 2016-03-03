@@ -26,8 +26,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
 
                 // Assert.
                 Assert.True(
-                    extensions.Any(x => x is BuildJob),
-                    "Expected BuildJob extension to be returned as a job extension.");
+                    extensions.Any(x => x is BuildJobExtension),
+                    $"Expected {nameof(BuildJobExtension)} extension to be returned as a job extension.");
             }
         }
     }

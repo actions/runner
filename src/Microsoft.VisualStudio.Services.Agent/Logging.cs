@@ -28,10 +28,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
-
-            Trace.Verbose("Creating server");
             _jobServer = hostContext.GetService<IJobServer>();
-            Trace.Verbose("server created");
         }
 
         public Guid TimeLineId { get; set; }
@@ -51,10 +48,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
-
-            Trace.Verbose("Creating _server");
             _jobServer = hostContext.GetService<IJobServer>();
-            Trace.Verbose("server created");
         }
 
         public Guid TimeLineId { get; set; }
