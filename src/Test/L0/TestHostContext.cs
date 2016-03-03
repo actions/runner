@@ -63,6 +63,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             }
         }
 
+        public CancellationTokenSource CancellationTokenSource
+        {
+            get
+            {
+                return _cancellationTokenSource;
+            }
+        }
+
         public void Cancel()
         {
             _cancellationTokenSource.Cancel();
