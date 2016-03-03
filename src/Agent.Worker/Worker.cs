@@ -41,27 +41,24 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     await Task.WhenAny(tasks);
                     if (packetReceiveTask.IsCompleted)
                     {
-                        var packet = await packetReceiveTask;
+                        WorkerMessage packet = await packetReceiveTask;
                         switch (packet.MessageType)
                         {
-                            case MessageType.NewJobRequest:
-                                {
-                                    var message = JsonUtility.FromString<JobRequestMessage>(packet.Body);
-                                    jobRunnerTask = jobRunner.RunAsync(message);
-                                }
-
+                            case MessageType.NewJobRequest:                                
+                                var message = JsonUtility.FromString<JobRequestMessage>(packet.Body);
+                                jobRunnerTask = jobRunner.RunAsync(message);
                                 break;
                             case MessageType.CancelRequest:
+                                tokenSource.Cancel();
+                                if (null != jobRunnerTask)
                                 {
-                                    tokenSource.Cancel();
-                                    if (null != jobRunnerTask)
-                                    {
-                                        //next line should throw OperationCanceledException
-                                        await jobRunnerTask;
-                                    }
+                                    //next line should throw OperationCanceledException
+                                    await jobRunnerTask;
                                 }
 
                                 break;
+                            default:
+                                throw new System.NotSupportedException();
                         }
 
                         packetReceiveTask = null;

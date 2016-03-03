@@ -10,7 +10,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             int resultCode = 0;
             using (HostContext hc = new HostContext("Worker"))
             {
-                TraceSource m_trace = hc.GetTrace("WorkerProcess");
+                TraceSource trace = hc.GetTrace(nameof(Program));
                 try
                 {
                     if (null != args && 3 == args.Length && "spawnclient".Equals(args[0].ToLower()))
@@ -30,7 +30,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 }
                 catch (Exception ex)
                 {
-                    m_trace.Error(ex);
+                    trace.Error(ex);
                     resultCode = 1;
                 }
             }

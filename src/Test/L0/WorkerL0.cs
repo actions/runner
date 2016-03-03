@@ -31,6 +31,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             var jobRequest = new JobRequestMessage(plan, timeline, JobId, jobName, environment, tasks);
             return jobRequest;
         }
+
         private JobCancelMessage CreateJobCancelMessage(Guid jobId)
         {
             var message = new JobCancelMessage(jobId, TimeSpan.FromSeconds(0));
@@ -72,7 +73,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 int exitCode = await worker.RunAsync("1", "2", cs);
 
                 //Assert
-                Assert.Equal(exitCode, 23);
+                Assert.Equal(23, exitCode);
                 _processChannel.Verify(x => x.StartClient("1", "2"), Times.Once());
             }
         }
