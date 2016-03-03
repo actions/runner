@@ -19,6 +19,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         private AgentSettings _settings;
         private Mock<IConfigurationManager> _config;
         private Mock<IAgentServer> _agentServer;
+        private Mock<ICredentialManager> _credMgr;
 
         public MessageListenerL0()
         {
@@ -26,6 +27,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             _config = new Mock<IConfigurationManager>();
             _config.Setup(x => x.LoadSettings()).Returns(_settings);
             _agentServer = new Mock<IAgentServer>();
+            _credMgr = new Mock<ICredentialManager>();
         }
 
         private TestHostContext CreateTestContext([CallerMemberName] String testName = "")
@@ -33,6 +35,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             TestHostContext tc = new TestHostContext(nameof(MessageListenerL0), testName);
             tc.SetSingleton<IConfigurationManager>(_config.Object);
             tc.SetSingleton<IAgentServer>(_agentServer.Object);
+            tc.SetSingleton<ICredentialManager>(this._credMgr.Object);
             return tc;
         }
 

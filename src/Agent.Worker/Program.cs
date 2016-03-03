@@ -17,19 +17,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         {
             using (HostContext hc = new HostContext("Worker"))
             {
-                Console.WriteLine("Hello Worker!");
-
-#if OS_WINDOWS
-                Console.WriteLine("Hello Windows");
-#endif
-
-#if OS_OSX
-                Console.WriteLine("Hello OSX");
-#endif
-
-#if OS_LINUX
-                Console.WriteLine("Hello Linux");
-#endif
                 //TODO: move this code in a new class - too much code in main program
                 TraceSource m_trace =  hc.GetTrace("WorkerProcess");
                 m_trace.Info("Info Hello Worker!");

@@ -1,4 +1,5 @@
 using Microsoft.VisualStudio.Services.Agent.Util;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
@@ -113,6 +114,12 @@ namespace Microsoft.VisualStudio.Services.Agent
             Trace(traceSource, TraceEventType.Information, format, args);
         }
         
+        public static void Info(this TraceSource traceSource, object item, params object[] args)
+        {
+            string json = JsonConvert.SerializeObject(item, Formatting.Indented);
+            Trace(traceSource, TraceEventType.Information, json);
+        }
+                
         public static void Error(this TraceSource traceSource, Exception exception)
         {
             Trace(traceSource, TraceEventType.Error, exception.ToString());
@@ -132,12 +139,18 @@ namespace Microsoft.VisualStudio.Services.Agent
         {
             Trace(traceSource, TraceEventType.Verbose, format, args);
         }
+        
+        public static void Verbose(this TraceSource traceSource, object item, params object[] args)
+        {
+            string json = JsonConvert.SerializeObject(item, Formatting.Indented);
+            Trace(traceSource, TraceEventType.Verbose, json);
+        }        
 
         public static void Entering(this TraceSource traceSource, [CallerMemberName] string name = "")
         {
             traceSource.Verbose(name);
         }
-
+        
         private static void Trace(TraceSource traceSource, TraceEventType eventType, string format, params object[] args)
         {
             String message = StringUtil.Format(format, args);
