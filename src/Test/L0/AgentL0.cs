@@ -43,8 +43,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             return message;
         }
 
-        //TODO: refactor CommandLineParser to use Service Pattern so that we can unit test Agent.ExecuteCommand
-#if false
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Agent")]
@@ -97,6 +95,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 var signalWorkerComplete = new SemaphoreSlim(0, 1);
                 _configurationManager.Setup(x => x.LoadSettings())
                     .Returns(settings);
+                _configurationManager.Setup(x => x.IsConfigured())
+                    .Returns(true);
+                _configurationManager.Setup(x => x.EnsureConfiguredAsync())
+                    .Returns(Task.CompletedTask);
                 _messageListener.Setup(x => x.CreateSessionAsync())
                     .Returns(Task.FromResult<bool>(true));
                 _messageListener.Setup(x => x.Session)
@@ -138,7 +140,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                     });
 
                 //Act
-                Task agentTask = agent.ExecuteCommand();
+                var parser = new CommandLineParser(hc);
+                parser.Parse(new string[] { "" });
+                Task agentTask = agent.ExecuteCommand(parser);
 
                 //Assert
                 //wait for the agent to run one job
@@ -160,10 +164,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                     Assert.True(!agentTask.IsFaulted, agentTask.Exception?.ToString());
                     Assert.True(agentTask.IsCanceled);
 
-                    _workerManager.Verify(x => x.Run(It.IsAny<JobRequestMessage>()), Times.AtLeast(2), 
-                        "IWorkerManager.Run not invoked");
+                    _workerManager.Verify(x => x.Run(It.IsAny<JobRequestMessage>()), Times.AtLeast(2),
+                         $"{nameof(_workerManager.Object.Run)} was not invoked.");
                     _workerManager.Verify(x => x.Cancel(It.IsAny<JobCancelMessage>()), Times.Once(),
-                        "IWorkerManager.Cancel not invoked");
+                        $"{nameof(_workerManager.Object.Cancel)} was not invoked.");
                     _messageListener.Verify(x => x.GetNextMessageAsync(), Times.AtLeast(arMessages.Length));
                     _messageListener.Verify(x => x.CreateSessionAsync(), Times.Once());
                     _messageListener.Verify(x => x.DeleteSessionAsync(), Times.Once());
@@ -171,6 +175,5 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 }
             }
         }
-#endif
     }
 }
