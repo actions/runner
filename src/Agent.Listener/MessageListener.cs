@@ -1,5 +1,8 @@
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Configuration;
+using Microsoft.VisualStudio.Services.Agent.Util;
+using Microsoft.VisualStudio.Services.Client;
+using Microsoft.VisualStudio.Services.Common;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -9,7 +12,7 @@ using System.Threading.Tasks;
 namespace Microsoft.VisualStudio.Services.Agent.Listener
 {
     [ServiceLocator(Default = typeof(MessageListener))]
-    public interface IMessageListener: IAgentService
+    public interface IMessageListener : IAgentService
     {
         Task<Boolean> CreateSessionAsync();
         Task DeleteSessionAsync();
@@ -25,37 +28,59 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
         public async Task<Boolean> CreateSessionAsync()
         {
+            Trace.Info("Creating Session");
+            
+            const int MaxAttempts = 10;
+            int attempt = 0;            
+            
+            //
+            // Settings
+            //
             var configManager = HostContext.GetService<IConfigurationManager>();
             _settings = configManager.LoadSettings();
+            int agentPoolId = _settings.PoolId;
+            var serverUrl = _settings.ServerUrl;
+            Trace.Info("Loaded settings");
+            Trace.Info(_settings);
+            
+            //
+            // Load Credentials
+            //
+            Trace.Info("Loading Credentials");
+            var credMgr = HostContext.GetService<ICredentialManager>();
+            VssCredentials creds = credMgr.LoadCredentials();                        
+            Uri uri = new Uri(serverUrl);
+            VssConnection conn = ApiUtil.CreateConnection(uri, creds);
 
-            var taskServer = HostContext.GetService<ITaskServer>();
-            const int MaxAttempts = 10;
-            int attempt = 0;
-            Int32 agentPoolId = _settings.PoolId;
             //session name used to be Environment.MachineName, which is added in a latter coreclr libs than what we have
             //TODO: name the session after Environment.MachineName, when we are ready to consume latest coreclr libs
-            String sessionName = "TODO_machine_name" + Guid.NewGuid().ToString();            
+            String sessionName = "TODO_machine_name" + Guid.NewGuid().ToString();
+
             IDictionary<String, String> agentSystemCapabilities = new Dictionary<String, String>();
             //TODO: add capabilities
+
             var agent = new TaskAgentReference
             {
                 Id = _settings.AgentId,
                 Name = _settings.AgentName,
-                // Make sure the current agent version is reflected in our posted reference for the session. This is how
-                // the server will detect a version change without requiring permissions other than Listen from the agent.
-                Version = AgentConstants.Version,
+                Version = Constants.Agent.Version,
                 Enabled = true
             };
             var taskAgentSession = new TaskAgentSession(sessionName, agent, agentSystemCapabilities);
 
+            var agentSvr = HostContext.GetService<IAgentServer>();
             while (++attempt <= MaxAttempts)
             {
                 Trace.Info("Create session attempt {0} of {1}.", attempt, MaxAttempts);
                 try
                 {
-                    Session = await taskServer.CreateAgentSessionAsync(
+                    Trace.Info("Connecting to the Agent Server...");
+                    
+                    await agentSvr.ConnectAsync(conn);
+                                        
+                    Session = await agentSvr.CreateAgentSessionAsync(
                                                         _settings.PoolId,
-                                                        taskAgentSession, 
+                                                        taskAgentSession,
                                                         HostContext.CancellationToken);
                     return true;
                 }
@@ -99,14 +124,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
         public async Task DeleteSessionAsync()
         {
-            var taskServer = HostContext.GetService<ITaskServer>();
+            var agentServer = HostContext.GetService<IAgentServer>();
             if (this.Session != null && this.Session.SessionId != Guid.Empty)
             {
                 //TODO: discuss how to handle cancellation
                 //we often have HostContext.CancellationToken already cancelled
                 //that is why we create a local cancellation source 
                 CancellationTokenSource ts = new CancellationTokenSource();
-                await taskServer.DeleteAgentSessionAsync(_settings.PoolId, Session.SessionId, ts.Token);                
+                await agentServer.DeleteAgentSessionAsync(_settings.PoolId, Session.SessionId, ts.Token);
             }
         }
 
@@ -120,14 +145,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 throw new InvalidOperationException("Must create a session before listening");
             }
             Debug.Assert(_settings != null, "settings should not be null");
-            var taskServer = HostContext.GetService<ITaskServer>();
+            var agentServer = HostContext.GetService<IAgentServer>();
             while (true)
             {
                 HostContext.CancellationToken.ThrowIfCancellationRequested();
                 TaskAgentMessage message = null;
                 try
                 {
-                    message = await taskServer.GetAgentMessageAsync(_settings.PoolId,
+                    message = await agentServer.GetAgentMessageAsync(_settings.PoolId,
                                                                 Session.SessionId,
                                                                 _lastMessageId,
                                                                 HostContext.CancellationToken);

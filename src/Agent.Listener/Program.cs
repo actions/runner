@@ -58,7 +58,5 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 
             }
         }
-
-        
     }
 }

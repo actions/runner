@@ -16,7 +16,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         private AgentSettings _settings;
         private Mock<IConfigurationManager> _config; 
         private Mock<IWorkerManager> _workerManager;
-        private Mock<ITaskServer> _taskServer;
+        private Mock<IAgentServer> _agentServer;
+        private Mock<ICredentialManager> _credMgr;
 
         public MessageListenerL0()
         {
@@ -24,7 +25,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             _config = new Mock<IConfigurationManager>();
             _config.Setup(x => x.LoadSettings()).Returns(_settings);
             _workerManager = new Mock<IWorkerManager>();
-            _taskServer = new Mock<ITaskServer>();
+            _agentServer = new Mock<IAgentServer>();
+            _credMgr = new Mock<ICredentialManager>();
         }
 
         private TestHostContext CreateTestContext([CallerMemberName] String testName = "")
@@ -32,7 +34,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             TestHostContext tc = new TestHostContext(nameof(MessageListenerL0), testName);
             tc.SetSingleton<IConfigurationManager>(_config.Object);
             tc.SetSingleton<IWorkerManager>(_workerManager.Object);
-            tc.SetSingleton<ITaskServer>(_taskServer.Object);
+            tc.SetSingleton<IAgentServer>(_agentServer.Object);
+            tc.SetSingleton<ICredentialManager>(this._credMgr.Object);
             return tc;
         }
 
@@ -47,7 +50,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
 
                 // Arrange.
                 var expectedSession = new TaskAgentSession();
-                _taskServer
+                _agentServer
                     .Setup(x => x.CreateAgentSessionAsync(
                         _settings.PoolId,
                         It.Is<TaskAgentSession>(y => y != null),

@@ -15,7 +15,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
 
     public class ConfigurationManagerL0
     {
-        private Mock<ITaskServer> _server;
+        private Mock<IAgentServer> _agentServer;
         private Mock<ICredentialManager> _credMgr;
         private Mock<IConsoleWizard> _reader;
         private Mock<IConfigurationStore> _store;
@@ -28,13 +28,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
 
         public ConfigurationManagerL0()
         {
-            _server = new Mock<ITaskServer>();
+            _agentServer = new Mock<IAgentServer>();
             _credMgr = new Mock<ICredentialManager>();
             _reader = new Mock<IConsoleWizard>();
             _store = new Mock<IConfigurationStore>();
 
-            _server.Setup(x => x.SetConnection(It.IsAny<VssConnection>())).Verifiable();
-            _server.Setup(x => x.ConnectAsync()).Returns(Task.FromResult<object>(null));
+            _agentServer.Setup(x => x.ConnectAsync(It.IsAny<VssConnection>())).Returns(Task.FromResult<object>(null));
             
             _store.Setup(x => x.IsConfigured()).Returns(false);
             _store.Setup(x => x.HasCredentials()).Returns(false);
@@ -105,7 +104,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             tc.SetSingleton<ICredentialManager>(this._credMgr.Object);
             tc.SetSingleton<IConsoleWizard>(_reader.Object);
             tc.SetSingleton<IConfigurationStore>(_store.Object);
-            tc.EnqueueInstance<ITaskServer>(_server.Object);
+            tc.EnqueueInstance<IAgentServer>(_agentServer.Object);
 
             return tc;
         }
@@ -142,14 +141,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 trace.Info("Constructed.");
                 
                 var expectedPools = new List<TaskAgentPool>() { new TaskAgentPool(_expectedPoolName) { Id = 1 } };
-                _server.Setup(x => x.GetAgentPoolsAsync(It.IsAny<string>())).Returns(Task.FromResult(expectedPools));
+                _agentServer.Setup(x => x.GetAgentPoolsAsync(It.IsAny<string>())).Returns(Task.FromResult(expectedPools));
                 
                 var expectedAgents = new List<TaskAgent>();
-                _server.Setup(x => x.GetAgentsAsync(It.IsAny<int>(), It.IsAny<string>())).Returns(Task.FromResult(expectedAgents));
+                _agentServer.Setup(x => x.GetAgentsAsync(It.IsAny<int>(), It.IsAny<string>())).Returns(Task.FromResult(expectedAgents));
                 
                 var expectedAgent = new TaskAgent(_expectedAgentName) { Id = 1 };
-                _server.Setup(x => x.AddAgentAsync(It.IsAny<int>(), It.IsAny<TaskAgent>())).Returns(Task.FromResult(expectedAgent));
-                _server.Setup(x => x.UpdateAgentAsync(It.IsAny<int>(), It.IsAny<TaskAgent>())).Returns(Task.FromResult(expectedAgent));
+                _agentServer.Setup(x => x.AddAgentAsync(It.IsAny<int>(), It.IsAny<TaskAgent>())).Returns(Task.FromResult(expectedAgent));
+                _agentServer.Setup(x => x.UpdateAgentAsync(It.IsAny<int>(), It.IsAny<TaskAgent>())).Returns(Task.FromResult(expectedAgent));
                 
                 trace.Info("Ensuring all the required parameters are available in the command line parameter");
                 configManager.ConfigureAsync(clp.Args, false);

@@ -1,9 +1,6 @@
-
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Configuration;
 using Microsoft.VisualStudio.Services.Agent.Util;
-using Microsoft.VisualStudio.Services.Client;
-using Microsoft.VisualStudio.Services.Common;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
@@ -17,10 +14,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
     }
 
     public sealed class Agent : AgentService, IAgent
-    {        
-        private int _poolId;
+    {
         private Guid _sessionId = Guid.Empty;
-
+        private int _poolId;
+        
         public async Task<int> ExecuteCommand(CommandLineParser parser)
         {
             // TODO Unit test to cover this logic
@@ -78,54 +75,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             
             return await RunAsync();
         }
-
-        private async Task DeleteMessageAsync(TaskAgentMessage message)
-        {            
-            if (message != null && _sessionId != Guid.Empty)
-            {
-                //TODO: decide what tokens to use if HostCotnext is already canceled
-                var taskServer = HostContext.GetService<ITaskServer>();                
-                var cancellationToken = HostContext.CancellationToken;
-                CancellationTokenSource tokenSource = null;
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    tokenSource = new CancellationTokenSource();
-                    cancellationToken = tokenSource.Token;
-                }
-                await taskServer.DeleteAgentMessageAsync(_poolId, message.MessageId, _sessionId, cancellationToken);
-            }
-        }
                 
         //create worker manager, create message listener and start listening to the queue
         private async Task<int> RunAsync()
         {
             Trace.Info("RunAsync()");
             
-            // Prep the task server with the configured creds
-            
-            Trace.Info("Loading Credentials");
-            var credMgr = HostContext.GetService<ICredentialManager>();
-            VssCredentials creds = credMgr.LoadCredentials();
+            var term = HostContext.GetService<ITerminal>();
 
-            Trace.Info("Loading Settings");
             var configManager = HostContext.GetService<IConfigurationManager>();
             AgentSettings settings = configManager.LoadSettings();
-            Trace.Info(settings);
-            
             _poolId = settings.PoolId;
             
-            var serverUrl = settings.ServerUrl;
-            Trace.Info("ServerUrl: {0}", serverUrl);
-            Uri uri = new Uri(serverUrl);
-            VssConnection conn = ApiUtil.CreateConnection(uri, creds);
-            
-            Trace.Info("Set credentials on task service");
-            var taskSvr = HostContext.GetService<ITaskServer>();
-            taskSvr.SetConnection(conn);
-            
-            var term = HostContext.GetService<ITerminal>();
-            
-
             var listener = HostContext.GetService<IMessageListener>();
             if (!await listener.CreateSessionAsync())
             {
@@ -137,11 +98,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             TaskAgentMessage message = null;
             try
             {
-                 using (var workerManager = HostContext.GetService<IWorkerManager>())
-                 {                    
-                     while (true)
-                     {                        
-                        try 
+                using (var workerManager = HostContext.GetService<IWorkerManager>())
+                {
+                    while (true)
+                    {
+                        try
                         {
                             HostContext.CancellationToken.ThrowIfCancellationRequested();
                             message = await listener.GetNextMessageAsync(); //get next message
@@ -161,12 +122,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                                 await workerManager.Cancel(cancelJobMessage);
                             }
                         }
-                        finally 
+                        finally
                         {
                             await DeleteMessageAsync(message);
                         }
-                     }
-                 }
+                    }
+                }
             }
             finally
             {
@@ -174,6 +135,23 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             }
         }
 
+        private async Task DeleteMessageAsync(TaskAgentMessage message)
+        {
+            if (message != null && _sessionId != Guid.Empty)
+            {
+                //TODO: decide what tokens to use if HostCotnext is already canceled
+                var agentServer = HostContext.GetService<IAgentServer>();
+                var cancellationToken = HostContext.CancellationToken;
+                CancellationTokenSource tokenSource = null;
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    tokenSource = new CancellationTokenSource();
+                    cancellationToken = tokenSource.Token;
+                }
+                await agentServer.DeleteAgentMessageAsync(_poolId, message.MessageId, _sessionId, cancellationToken);
+            }
+        }
+        
         private static void PrintUsage()
         {
             string usage = StringUtil.Loc("ListenerHelp");
