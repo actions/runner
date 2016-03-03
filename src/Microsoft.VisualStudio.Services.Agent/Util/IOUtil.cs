@@ -22,6 +22,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
         public static string GetBinPath()
         {
             var currentAssemblyLocation = System.Reflection.Assembly.GetEntryAssembly().Location;
+            // TODO: IO can be avoided here by using Path.GetDirectoryName.
             return new DirectoryInfo(currentAssemblyLocation).Parent.FullName.ToString();         
         }
         
