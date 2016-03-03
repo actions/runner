@@ -20,7 +20,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         IExecutionContext ExecutionContext { get; set; }
         // Always runs. Even if a previous critical step failed.
         bool Finally { get; }
-        string Id { get; }
         TaskResult? Result { get; set; }
         Task<TaskResult> RunAsync();
     }
