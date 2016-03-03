@@ -14,7 +14,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         private readonly ConcurrentDictionary<Type, object> _serviceSingletons = new ConcurrentDictionary<Type, object>();
         private readonly ITraceManager _traceManager;
         private readonly Terminal _term;
-        private readonly CancellationToken _cancellationToken = new CancellationToken();
+        private readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
         private string _suiteName;
         private string _testName;
                 
@@ -59,8 +59,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         {
             get
             {
-                return _cancellationToken;
+                return _cancellationTokenSource.Token;
             }
+        }
+
+        public void Cancel()
+        {
+            _cancellationTokenSource.Cancel();
         }
 
         public async Task Delay(TimeSpan delay)

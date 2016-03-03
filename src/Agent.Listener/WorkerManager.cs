@@ -10,8 +10,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
     [ServiceLocator(Default = typeof(WorkerManager))]
     public interface IWorkerManager : IDisposable, IAgentService
     {
+        //TODO: make Run return a task that completes only whent he job is done
+        //this will allow for the caller to await and cancel the jobs, needed 
+        //for refresh and exit when service is stopped      
         Task Run(JobRequestMessage message);
-        Task Cancel(JobCancelMessage message);
+        void Cancel(JobCancelMessage message);
     }
 
     public sealed class WorkerManager : AgentService, IWorkerManager
@@ -74,7 +77,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             return Task.CompletedTask;
         }
 
-        public Task Cancel(JobCancelMessage jobCancelMessage)
+        public void Cancel(JobCancelMessage jobCancelMessage)
         {
             JobDispatcherItem worker;
             if (!_jobsInProgress.TryGetValue(jobCancelMessage.JobId, out worker))
@@ -85,7 +88,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             {
                 worker.Token.Cancel();
             }
-            return Task.CompletedTask;
         }
 
         public void Dispose()
