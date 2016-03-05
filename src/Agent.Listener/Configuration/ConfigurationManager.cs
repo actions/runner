@@ -403,7 +403,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
         private void WriteSection(string message)
         {
             _term.WriteLine();
-            _term.WriteLine(">> {0}:", message);
+            _term.WriteLine($">> {message}:");
             _term.WriteLine();
         } 
     }

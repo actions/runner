@@ -26,6 +26,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             TaskOrchestrationPlanReference plan = new TaskOrchestrationPlanReference();
             TimelineReference timeline = null;
             JobEnvironment environment = new JobEnvironment();
+            environment.Variables[Constants.Variables.System.Culture] = "en-US";
             List<TaskInstance> tasks = new List<TaskInstance>();
             Guid JobId = Guid.NewGuid();
             var jobRequest = new JobRequestMessage(plan, timeline, JobId, jobName, environment, tasks);

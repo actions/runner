@@ -36,7 +36,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         public string Get(string name)
         {
-            string val = _store[name];
+            string val;
+            _store.TryGetValue(name, out val);
             _trace.Verbose($"Get {name}='{val}'");
             return val;
         }
@@ -54,7 +55,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         public T? GetEnum<T>(string name) where T : struct
         {
-            // TODO: Make sure null doesn't blow up.
             T val;
             if (Enum.TryParse(Get(name), ignoreCase: true, result: out val))
             {
