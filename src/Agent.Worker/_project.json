@@ -29,12 +29,13 @@
             }
         }
     },
-    
+
     "dependencies": {
         "Microsoft.VisualStudio.Services.Agent": "",
         "vss-api-netcore": "0.5.2-private",
         "System.Diagnostics.TraceSource": "4.0.0-rc3-23721",
         "System.Xml.XmlSerializer": "4.0.11-rc3-23721",
+        "System.IO.Compression.ZipFile": "4.0.1-rc3-23721",
         "NETStandard.Library": "1.0.0-rc3-23721"
     },
 

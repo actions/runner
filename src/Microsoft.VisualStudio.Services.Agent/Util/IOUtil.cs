@@ -28,6 +28,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
         public static string GetDiagPath()
         {
             return Path.Combine(new DirectoryInfo(GetBinPath()).Parent.FullName.ToString(), "_diag");         
-        }                
+        }
+
+        public static string GetTasksPath()
+        {
+            return Path.Combine(new DirectoryInfo(GetBinPath()).Parent.FullName.ToString(), "_tasks");
+        }
     }
 }
