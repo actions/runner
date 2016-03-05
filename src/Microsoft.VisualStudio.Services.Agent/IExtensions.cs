@@ -11,10 +11,4 @@ namespace Microsoft.VisualStudio.Services.Agent
     {
         string CommandArea { get; }
     }
-
-    public interface IVariablesExtension : IExtension
-    {
-        string Get();
-        string Set();
-    }
 }

@@ -54,13 +54,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     // Or if a previous Critical step failed and the current step is not Finally.
                     || (criticalStepFailed && !step.Finally))
                 {
+                    Trace.Verbose($"Skipping '{step.DisplayName}'.");
                     step.Result = TaskResult.Skipped;
                     continue;
                 }
 
                 // Run the step.
+                Trace.Verbose($"Running '{step.DisplayName}'.");
                 step.Result = await step.RunAsync();
-                // TODO: Convert to trace: Console.WriteLine("Step result: {0}", step.Result);
+                Trace.Verbose($"Step result: {step.Result}");
 
                 // Fixup the step result if ContinueOnError.
                 if (step.Result.Value == TaskResult.Failed && step.ContinueOnError)

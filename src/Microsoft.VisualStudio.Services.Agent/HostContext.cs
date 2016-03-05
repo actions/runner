@@ -14,7 +14,6 @@ namespace Microsoft.VisualStudio.Services.Agent
 {
     public interface IHostContext
     {
-        Variables Variables { get; }
         CancellationToken CancellationToken { get; }
         TraceSource GetTrace(string name);
         Task Delay(TimeSpan delay);
@@ -53,11 +52,8 @@ namespace Microsoft.VisualStudio.Services.Agent
             TextWriterTraceListener traceListener = new TextWriterTraceListener(logFile);
             _traceManager = new TraceManager(traceListener);
             _trace = GetTrace(nameof(HostContext));
-            Variables = new Variables(this);
         }
-       
-        public Variables Variables { get; private set; }
-        
+
         public CancellationToken CancellationToken
         {
             get
@@ -90,11 +86,10 @@ namespace Microsoft.VisualStudio.Services.Agent
         /// </summary>
         public T CreateService<T>() where T : class, IAgentService
         {
-            _trace.Entering();
-            _trace.Verbose($"Resolving implementation for type: {typeof(T).FullName}");
             Type target;
             if (!_serviceTypes.TryGetValue(typeof(T), out target))
             {
+                // Infer the concrete type from the ServiceLocatorAttribute.
                 CustomAttributeData attribute = typeof(T)
                     .GetTypeInfo()
                     .CustomAttributes
@@ -119,8 +114,8 @@ namespace Microsoft.VisualStudio.Services.Agent
                 target = _serviceTypes[typeof(T)];
             }
 
-            _trace.Verbose($"Found type: {target.FullName}");
-            var svc = Activator.CreateInstance(target) as T;
+            // Create a new instance.
+            T svc = Activator.CreateInstance(target) as T;
             svc.Initialize(this);
             return svc;
         }
@@ -130,13 +125,17 @@ namespace Microsoft.VisualStudio.Services.Agent
         /// </summary>
         public T GetService<T>() where T : class, IAgentService
         {
+            // Return the cached instance if one already exists.
             object instance;
             if (_serviceInstances.TryGetValue(typeof(T), out instance))
             {
                 return instance as T;
             }
 
+            // Otherwise create a new instance and try to add it to the cache.
             _serviceInstances.TryAdd(typeof(T), CreateService<T>());
+
+            // Return the instance from the cache.
             return _serviceInstances[typeof(T)] as T;
         }
 

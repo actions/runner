@@ -1,17 +1,11 @@
+using Microsoft.VisualStudio.Services.Client;
+using Microsoft.VisualStudio.Services.Common;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using Microsoft.VisualStudio.Services.Client;
-using Microsoft.VisualStudio.Services.Common;
 
 namespace Microsoft.VisualStudio.Services.Agent.Configuration
 {
-    public class CredentialData
-    {
-        public string Scheme { get; set; }
-        public Dictionary<string, string> Data { get; set; }
-    }
-
     public interface ICredentialProvider
     {
         CredentialData CredentialData { get; set; }

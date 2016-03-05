@@ -26,16 +26,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
             // Validate parameters.
             ArgUtil.NotNull(message, nameof(message));
-            ArgUtil.NotNull(message.Environment, nameof(message.Environment));
-            ArgUtil.NotNull(message.Environment.Variables, nameof(message.Environment.Variables));
             ArgUtil.NotNull(message.Tasks, nameof(message.Tasks));
             Trace.Info("Job ID {0}", message.JobId);
 
             // Create the job execution context.
             var jobExecutionContext = HostContext.CreateService<IExecutionContext>();
+            jobExecutionContext.InitializeEnvironment(message);
 
             // Get the job extensions.
-            string hostType = message.Environment.Variables[Constants.Variables.System.HostType];
+            string hostType = jobExecutionContext.Variables.System_HostType;
             IJobExtension[] extensions =
                 (extensionManager.GetExtensions<IJobExtension>() ?? new List<IJobExtension>())
                 .Where(x => string.Equals(x.HostType, hostType, StringComparison.OrdinalIgnoreCase))
@@ -43,15 +42,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
             // Add the prepare steps.
             List<IStep> steps = new List<IStep>();
-            foreach (IStep prepareStep in extensions.Select(x => x.PrepareStep).Where(x => x != null))
+            foreach (IJobExtension extension in extensions)
             {
-                prepareStep.ExecutionContext = jobExecutionContext.CreateChild();
-                steps.Add(prepareStep);
+                if (extension.PrepareStep != null)
+                {
+                    Trace.Verbose($"Adding {extension.GetType().Name}.{nameof(extension.PrepareStep)}.");
+                    extension.PrepareStep.ExecutionContext = jobExecutionContext.CreateChild();
+                    steps.Add(extension.PrepareStep);
+                }
             }
 
             // Add the task steps.
             foreach (TaskInstance taskInstance in message.Tasks)
             {
+                Trace.Verbose($"Adding {taskInstance.DisplayName}.");
                 var taskRunner = HostContext.CreateService<ITaskRunner>();
                 taskRunner.ExecutionContext = jobExecutionContext.CreateChild();
                 taskRunner.TaskInstance = taskInstance;
@@ -59,10 +63,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             }
 
             // Add the finally steps.
-            foreach (IStep finallyStep in extensions.Select(x => x.FinallyStep).Where(x => x != null))
+            foreach (IJobExtension extension in extensions)
             {
-                finallyStep.ExecutionContext = jobExecutionContext.CreateChild();
-                steps.Add(finallyStep);
+                if (extension.FinallyStep != null)
+                {
+                    Trace.Verbose($"Adding {extension.GetType().Name}.{nameof(extension.FinallyStep)}.");
+                    extension.FinallyStep.ExecutionContext = jobExecutionContext.CreateChild();
+                    steps.Add(extension.FinallyStep);
+                }
             }
 
             // Run the steps.
