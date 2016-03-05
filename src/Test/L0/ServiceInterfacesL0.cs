@@ -46,30 +46,36 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         {
             Validate(
                 typeof(IStepsRunner).GetTypeInfo().Assembly, // assembly
-                typeof(IExecutionContext),
+                typeof(IExecutionContext), // whitelist params
                 typeof(IJobExtension),
-                typeof(IStep)); // whitelist params
+                typeof(IStep));
         }
 
         private static void Validate(Assembly assembly, params Type[] whitelist)
         {
+            // Iterate over all non-whitelisted interfaces contained within the assembly.
             IDictionary<TypeInfo, Type> w = whitelist.ToDictionary(x => x.GetTypeInfo());
-            foreach (TypeInfo typeInfo in assembly.DefinedTypes)
+            foreach (TypeInfo interfaceTypeInfo in assembly.DefinedTypes.Where(x => x.IsInterface && !w.ContainsKey(x)))
             {
-                // Skip non-interfaces and whitelisted types.
-                if (!typeInfo.IsInterface || w.ContainsKey(typeInfo)) { continue; }
-
-                // Assert the ServiceLocatorAttribute is defined properly on all non-whitelisted interfaces.
+                // Assert the ServiceLocatorAttribute is defined on the interface.
                 CustomAttributeData attribute =
-                    typeInfo
+                    interfaceTypeInfo
                     .CustomAttributes
                     .SingleOrDefault(x => x.AttributeType == typeof(ServiceLocatorAttribute));
-                Assert.True(attribute != null, $"Missing ServiceLocatorAttribute for interface '{typeInfo.FullName}'. Add the attribute to the interface or whitelist the interface in the test.");
+                Assert.True(attribute != null, $"Missing {nameof(ServiceLocatorAttribute)} for interface '{interfaceTypeInfo.FullName}'. Add the attribute to the interface or whitelist the interface in the test.");
+
+                // Assert the interface is mapped to a concrete type.
                 CustomAttributeNamedArgument defaultArg =
                     attribute
                     .NamedArguments
                     .SingleOrDefault(x => String.Equals(x.MemberName, ServiceLocatorAttribute.DefaultPropertyName, StringComparison.Ordinal));
-                Assert.True(defaultArg.TypedValue.Value as Type != null, $"Missing Default parameter on ServiceLocatorAttribute for the interface '{typeInfo.FullName}'.");
+                Type concreteType = defaultArg.TypedValue.Value as Type;
+                string invalidConcreteTypeMessage = $"Invalid Default parameter on {nameof(ServiceLocatorAttribute)} for the interface '{interfaceTypeInfo.FullName}'. The default implementation must not be null, must not be an interface, must be a class, and must implement the interface '{interfaceTypeInfo.FullName}'.";
+                Assert.True(concreteType != null, invalidConcreteTypeMessage);
+                TypeInfo concreteTypeInfo = concreteType.GetTypeInfo();
+                Assert.False(concreteTypeInfo.IsInterface, invalidConcreteTypeMessage);
+                Assert.True(concreteTypeInfo.IsClass, invalidConcreteTypeMessage);
+                Assert.True(concreteTypeInfo.ImplementedInterfaces.Any(x => x.GetTypeInfo() == interfaceTypeInfo), invalidConcreteTypeMessage);
             }
         }
     }

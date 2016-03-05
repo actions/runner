@@ -1,5 +1,6 @@
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent;
+using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,26 +11,29 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
     [ServiceLocator(Default = typeof(TaskRunner))]
     public interface ITaskRunner : IStep, IAgentService
     {
+        TaskInstance TaskInstance { get; set; }
     }
 
     public sealed class TaskRunner : AgentService, ITaskRunner
     {
-        // TODO: FIX THESE:
-        public bool AlwaysRun => false;
-        public bool ContinueOnError => false;
+        public bool AlwaysRun => TaskInstance?.AlwaysRun ?? default(bool);
+        public bool ContinueOnError => TaskInstance?.ContinueOnError ?? default(bool);
         public bool Critical => false;
-        public string DisplayName => "Some display name";
-        public bool Enabled => true;
+        public string DisplayName => TaskInstance?.DisplayName;
+        public bool Enabled => TaskInstance?.Enabled ?? default(bool);
         public IExecutionContext ExecutionContext { get; set; }
         public bool Finally => false;
-        public string Id => Guid.NewGuid().ToString();
+        public TaskInstance TaskInstance { get; set; }
         public TaskResult? Result { get; set; }
 
-        public async Task<TaskResult> RunAsync()
+        public Task<TaskResult> RunAsync()
         {
-            // TODO: IMPLEMENT
-            await Task.Yield();
-            return TaskResult.Succeeded;
+            Trace.Entering();
+            ArgUtil.NotNull(ExecutionContext, nameof(ExecutionContext));
+            ArgUtil.NotNull(TaskInstance, nameof(TaskInstance));
+            // TODO: Load the task definition Path.Combine("tasks", TaskInstance.Name, taskInstance.Version)
+            // TODO: Choose the handler.
+            return Task.FromResult(TaskResult.Succeeded);
         }
     }
 }

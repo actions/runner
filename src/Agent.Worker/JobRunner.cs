@@ -18,17 +18,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         public async Task<int> RunAsync(JobRequestMessage message)
         {
             Trace.Entering();
-            Trace.Info("Job ID {0}", message.JobId);
             var stepsRunner = HostContext.GetService<IStepsRunner>();
             var extensionManager = HostContext.GetService<IExtensionManager>();
             var jobServer = HostContext.GetService<IJobServer>();
             await jobServer.ConnectAsync(ApiUtil.GetVssConnection(message));
 
             // Validate parameters.
-            if (message == null) { throw new ArgumentNullException(nameof(message)); }
-            if (message.Environment == null) { throw new ArgumentNullException(nameof(message.Environment)); }
-            if (message.Environment.Variables == null) { throw new ArgumentNullException(nameof(message.Environment.Variables)); }
-            if (message.Tasks == null) { throw new ArgumentNullException(nameof(message.Tasks)); }
+            ArgUtil.NotNull(message, nameof(message));
+            ArgUtil.NotNull(message.Environment, nameof(message.Environment));
+            ArgUtil.NotNull(message.Environment.Variables, nameof(message.Environment.Variables));
+            ArgUtil.NotNull(message.Tasks, nameof(message.Tasks));
+            Trace.Info("Job ID {0}", message.JobId);
 
             // Create the job execution context.
             var jobExecutionContext = HostContext.CreateService<IExecutionContext>();
@@ -53,7 +53,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             {
                var taskRunner = HostContext.CreateService<ITaskRunner>();
                 taskRunner.ExecutionContext = jobExecutionContext.CreateChild();
-                // TODO: taskRunner.TaskInstance = taskInstance;
+                taskRunner.TaskInstance = taskInstance;
                 steps.Add(taskRunner);
             }
 
