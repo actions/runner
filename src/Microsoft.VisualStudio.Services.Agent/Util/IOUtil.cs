@@ -35,5 +35,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
         {
             return Path.Combine(new DirectoryInfo(GetBinPath()).Parent.FullName.ToString(), "_tasks");
         }
+
+        public static string GetTempPath()
+        {
+            return Path.Combine(new DirectoryInfo(GetBinPath()).Parent.FullName.ToString(), "_temp");
+        }
     }
 }

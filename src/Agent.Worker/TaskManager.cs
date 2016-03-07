@@ -2,8 +2,10 @@ using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using Newtonsoft.Json.Linq;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
+using System.Linq;
 
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
@@ -11,48 +13,29 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
     [ServiceLocator(Default = typeof(TaskManager))]
     public interface ITaskManager : IAgentService
     {
-        Task EnsureTaskExists(string taskName, Guid taskId, string taskVersion);
-
         string GetDestinationPath(string componentName, Guid taskId, string version);
+
+        Task EnsureTasksExist(List<IStep> steps);
     }
 
     public sealed class TaskManager : AgentService, ITaskManager
     {
         private const string TaskJsonFileName = "task.json";
 
-        public async Task EnsureTaskExists(string taskName, Guid taskId, string taskVersion)
+        private async Task EnsureTaskExists(string taskName, Guid taskId, string taskVersion)
         {
             var jobServer = HostContext.GetService<IJobServer>();
-
-            if (string.IsNullOrEmpty(taskName))
-            {
-                throw new ArgumentNullException("taskName");
-            }
-
-            if (taskId == null || taskId == Guid.Empty)
-            {
-                throw new ArgumentNullException("taskId");
-            }
-
-            if (string.IsNullOrEmpty(taskVersion))
-            {
-                throw new ArgumentNullException("taskVersion");
-            }
-            
+            ArgUtil.NotNullOrEmpty(taskName, nameof(taskName));
+            ArgUtil.NotEmpty(taskId, nameof(taskId));
+            ArgUtil.NotNullOrEmpty(taskVersion, nameof(taskVersion));
             string destPath = GetDestinationPath(taskName, taskId, taskVersion);
 
             // first check to see if we already have the task
             bool taskDirectoryExists = Directory.Exists(destPath);
-            if (taskDirectoryExists && await IsValidTask(destPath))
-            {
-                Trace.Verbose("{0} - Task:{1}, found in the cache at {2}", nameof(EnsureTaskExists), taskName, destPath);
-                return;
-            }
-
-            //directory exists, but data is bad or incomplete - wipe it
             if (taskDirectoryExists)
             {
-                Directory.Delete(destPath, true);
+                Trace.Info("{0} - Task:{1}, version {2} found in the cache at {3}", nameof(EnsureTaskExists), taskName, taskVersion, destPath);
+                return;
             }
 
             string taskZipFile;
@@ -67,12 +50,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
             if (!taskToDownload.ContentsUploaded)
             {
-                //this is a task with no content to download
-                return;
+                Trace.Error("task has no content");
+                throw new InvalidDataException();
             }
 
             //download and extract task in a temp folder and rename it on success
-            string tempPath = GetDestinationPath(taskName, taskId, Guid.NewGuid().ToString());
+            string tempPath = Path.Combine(IOUtil.GetTempPath(), taskName + "_" + version);
             try
             {
                 Directory.CreateDirectory(tempPath);
@@ -83,10 +66,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     await result.CopyToAsync(fs, 81920, HostContext.CancellationToken);
                 }
 
-                await Task.Run(() => System.IO.Compression.ZipFile.ExtractToDirectory(taskZipFile, tempPath), HostContext.CancellationToken);
+                System.IO.Compression.ZipFile.ExtractToDirectory(taskZipFile, tempPath);
                 File.Delete(taskZipFile);
+                if (!IsValidTask(tempPath))
+                {
+                    throw new InvalidDataException("Invalid task content (task.json)");
+                }
+                string destPathParent = Path.Combine(IOUtil.GetTasksPath(), taskName + "_" + taskId.ToString());
+                Directory.CreateDirectory(destPathParent);
                 Directory.Move(tempPath, destPath);
-                Trace.Verbose("{0} - Download Task:{1}, cached to: {2}", nameof(EnsureTaskExists), taskToDownload.Name, destPath);
+                Trace.Info("{0} - Downloaded Task:{1}, version {2}, cached to: {3}", nameof(EnsureTaskExists), taskToDownload.Name, taskToDownload.Version, destPath);
             }
             finally
             {
@@ -96,23 +85,24 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     bool tempDirectoryExists = Directory.Exists(tempPath);
                     if (tempDirectoryExists)
                     {
+                        Trace.Verbose("Deleting task temp folder: {0}", tempPath);
                         Directory.Delete(tempPath, true);
                     }
                 }
                 catch (Exception ex)
                 {
                     //it is not critical if we fail to delete the temp folder -> just log an error
-                    Trace.Error(ex);
+                    Trace.Info("Failed to delete temp folder {0} with exception {1}", tempPath, ex.ToString());                    
                 }
             }
         }
 
-        private async Task<bool> IsValidTask(string destPath)
+        private bool IsValidTask(string destPath)
         {
             string taskJsonPath = Path.Combine(destPath, TaskJsonFileName);
             try
             {
-                string json = await Task.Run(() => File.ReadAllText(taskJsonPath), HostContext.CancellationToken);
+                string json = File.ReadAllText(taskJsonPath);
                 JObject.Parse(json);
             }
             catch (Exception)
@@ -126,6 +116,27 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         public string GetDestinationPath(string componentName, Guid taskId, string version)
         {            
             return Path.Combine(IOUtil.GetTasksPath(), componentName + "_" + taskId.ToString(), version);
+        }
+
+        public async Task EnsureTasksExist(List<IStep> steps)
+        {
+            //remove duplicate and disabled tasks
+            var uniqueTasks =
+                from step in steps
+                where step as ITaskRunner != null && step.Enabled
+                group step by new
+                    {
+                        (step as ITaskRunner).TaskInstance.Id,
+                        (step as ITaskRunner).TaskInstance.Name,
+                        (step as ITaskRunner).TaskInstance.Version
+                    } 
+                into newTask
+                select newTask;
+            foreach (var task in uniqueTasks)                
+            {                
+                await EnsureTaskExists(task.Key.Name,
+                    task.Key.Id, task.Key.Version);
+            }
         }
     }
 }

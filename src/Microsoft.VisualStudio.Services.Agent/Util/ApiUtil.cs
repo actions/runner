@@ -20,7 +20,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             return connection;
         }
 
-        //This code is copied from Ting PR, to enable E2E test
         public static VssConnection GetVssConnection(JobRequestMessage jobRequest)
         {
             var serviceEndpoint = jobRequest.Environment.SystemConnection;
