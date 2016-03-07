@@ -1,27 +1,27 @@
+using Microsoft.VisualStudio.Services.Agent.Util;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using Newtonsoft.Json;
-using Microsoft.VisualStudio.Services.Agent.Util;
 
-namespace Microsoft.VisualStudio.Services.Agent.Configuration
+namespace Microsoft.VisualStudio.Services.Agent
 {
     //
     // Settings are persisted in this structure
     //
     public sealed class AgentSettings
     {
-        public Int32 AgentId { get; set; }
-        public String AgentName { get; set; }
-        public Int32 PoolId { get; set; }
-        public String PoolName { get; set; }
+        public int AgentId { get; set; }
+        public string AgentName { get; set; }
+        public int PoolId { get; set; }
+        public string PoolName { get; set; }
         public string ServerUrl { get; set; }
-        public String WorkFolder { get; set; }
+        public string WorkFolder { get; set; }
     }
 
     [ServiceLocator(Default = typeof(ConfigurationStore))]
-    public interface IConfigurationStore: IAgentService
+    public interface IConfigurationStore : IAgentService
     {
         string RootFolder { get; }
         bool IsConfigured();
@@ -32,7 +32,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
         void SaveSettings(AgentSettings settings);
     }
 
-    public class ConfigurationStore : AgentService, IConfigurationStore
+    public sealed class ConfigurationStore : AgentService, IConfigurationStore
     {
         private string _binPath;
         private string _configFilePath;
@@ -43,8 +43,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
-
-            Trace.Info("Initialize()");
 
             var currentAssemblyLocation = System.Reflection.Assembly.GetEntryAssembly().Location;
             Trace.Info("currentAssemblyLocation: {0}", currentAssemblyLocation);
@@ -94,7 +92,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
         {
             if (_settings == null)
             {
-                _settings = IOUtil.LoadObject<AgentSettings>(_configFilePath);    
+                _settings = IOUtil.LoadObject<AgentSettings>(_configFilePath);
             }
             
             return _settings;

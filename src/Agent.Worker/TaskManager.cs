@@ -55,7 +55,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             }
 
             //download and extract task in a temp folder and rename it on success
-            string tempPath = Path.Combine(IOUtil.GetTempPath(), taskName + "_" + version);
+            string tempPath = Path.Combine(IOUtil.GetTasksPath(HostContext), "_temp_" + taskName + "_" + version);
             try
             {
                 Directory.CreateDirectory(tempPath);
@@ -72,7 +72,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 {
                     throw new InvalidDataException("Invalid task content (task.json)");
                 }
-                string destPathParent = Path.Combine(IOUtil.GetTasksPath(), taskName + "_" + taskId.ToString());
+                string destPathParent = Path.Combine(IOUtil.GetTasksPath(HostContext), taskName + "_" + taskId.ToString());
                 Directory.CreateDirectory(destPathParent);
                 Directory.Move(tempPath, destPath);
                 Trace.Info("{0} - Downloaded Task:{1}, version {2}, cached to: {3}", nameof(EnsureTaskExists), taskToDownload.Name, taskToDownload.Version, destPath);
@@ -115,7 +115,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         public string GetDestinationPath(string componentName, Guid taskId, string version)
         {            
-            return Path.Combine(IOUtil.GetTasksPath(), componentName + "_" + taskId.ToString(), version);
+            return Path.Combine(IOUtil.GetTasksPath(HostContext), componentName + "_" + taskId.ToString(), version);
         }
 
         public async Task EnsureTasksExist(List<IStep> steps)

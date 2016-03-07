@@ -10,32 +10,32 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
     public static class StringUtil
     {
         private static Dictionary<string, Object> _locStrings;
-         
-        public static String Format(String format, params Object[] args)
+
+        // TODO: Add unit tests for this. Test cases where args is null and empty array.
+        public static string Format(string format, params object[] args)
         {
-            if (String.IsNullOrEmpty(format))
+            if (string.IsNullOrEmpty(format))
             {
-                return String.Empty;
+                return string.Empty;
             }
-            
-            String message = format;
-            
-            if(args != null && args.Length > 0)
+
+            string message = format;
+            if (args != null && args.Length > 0)
             {
                 try
                 {
-                    message = String.Format(CultureInfo.InvariantCulture, format, args);
+                    message = string.Format(CultureInfo.InvariantCulture, format, args);
                 }
-                catch (System.Exception)
+                catch (Exception)
                 {
                     // TODO: Log that string format failed. Consider moving this into a context base class if that's the only place it's used. Then the current trace scope would be available as well.
-                    message = String.Format(CultureInfo.InvariantCulture,"{0} {1}", format, String.Join(", ", args));
+                    message = string.Format(CultureInfo.InvariantCulture, "{0} {1}", format, string.Join(", ", args));
                 }
             }
-            
+
             return message;
         }
-                
+
         public static string Loc(string locKey, params Object[] args)
         {
             //

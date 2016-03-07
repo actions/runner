@@ -1,3 +1,4 @@
+using Microsoft.VisualStudio.Services.Agent;
 using Newtonsoft.Json;
 using System;
 using System.IO;
@@ -18,27 +19,31 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             T obj = JsonConvert.DeserializeObject<T>(json);
             return obj;
         }
-        
+
         public static string GetBinPath()
         {
             var currentAssemblyLocation = System.Reflection.Assembly.GetEntryAssembly().Location;
             // TODO: IO can be avoided here by using Path.GetDirectoryName.
-            return new DirectoryInfo(currentAssemblyLocation).Parent.FullName.ToString();         
+            return new DirectoryInfo(currentAssemblyLocation).Parent.FullName;
         }
-        
+
         public static string GetDiagPath()
         {
-            return Path.Combine(new DirectoryInfo(GetBinPath()).Parent.FullName.ToString(), "_diag");         
+            return Path.Combine(new DirectoryInfo(GetBinPath()).Parent.FullName, "_diag");
         }
 
-        public static string GetTasksPath()
+        public static string GetWorkPath(IHostContext hostContext)
         {
-            return Path.Combine(new DirectoryInfo(GetBinPath()).Parent.FullName.ToString(), "_tasks");
+            var configurationStore = hostContext.GetService<IConfigurationStore>();
+            AgentSettings settings = configurationStore.GetSettings();
+            return Path.Combine(
+                Path.GetDirectoryName(GetBinPath()),
+                settings.WorkFolder);
         }
 
-        public static string GetTempPath()
+        public static string GetTasksPath(IHostContext hostContext)
         {
-            return Path.Combine(new DirectoryInfo(GetBinPath()).Parent.FullName.ToString(), "_temp");
-        }
+            return Path.Combine(GetWorkPath(hostContext), "_tasks");
+        }        
     }
 }

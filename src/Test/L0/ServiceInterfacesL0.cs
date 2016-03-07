@@ -1,6 +1,7 @@
 using Microsoft.VisualStudio.Services.Agent.Configuration;
 using Microsoft.VisualStudio.Services.Agent.Listener;
 using Microsoft.VisualStudio.Services.Agent.Worker;
+using Microsoft.VisualStudio.Services.Agent.Worker.Build;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,9 +17,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Trait("Category", "Agent")]
         public void AgentInterfacesSpecifyDefaultImplementation()
         {
-            Validate(typeof(IMessageListener).GetTypeInfo().Assembly, 
-                    // whitelist 
-                    typeof(ICredentialProvider));
+            // Validate all interfaces in the Listener assembly define a valid service locator attribute.
+            // Otherwise, the interface needs to whitelisted.
+            var whitelist = new[]
+            {
+                typeof(ICredentialProvider),
+            };
+            Validate(
+                assembly: typeof(IMessageListener).GetTypeInfo().Assembly,
+                whitelist: whitelist);
         }
 
         [Fact]
@@ -26,17 +33,21 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Trait("Category", "Common")]
         public void CommonInterfacesSpecifyDefaultImplementation()
         {
-            Validate(
-                typeof(IHostContext).GetTypeInfo().Assembly, // assembly
-                typeof(IHostContext), // whitelist params
+            // Validate all interfaces in the Common assembly define a valid service locator attribute.
+            // Otherwise, the interface needs to whitelisted.
+            var whitelist = new[]
+            {
                 typeof(IAgentService),
+                typeof(ICommandExtension),
                 typeof(ICredentialProvider),
-                typeof(ITraceManager),
                 typeof(IExtension),
+                typeof(IHostContext),
                 typeof(ILogWriter),
-                typeof(IVariables),
-                typeof(IVariablesExtension),
-                typeof(ICommandExtension));
+                typeof(ITraceManager),
+            };
+            Validate(
+                assembly: typeof(IHostContext).GetTypeInfo().Assembly,
+                whitelist: whitelist);
         }
 
         [Fact]
@@ -44,11 +55,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Trait("Category", "Worker")]
         public void WorkerInterfacesSpecifyDefaultImplementation()
         {
-            Validate(
-                typeof(IStepsRunner).GetTypeInfo().Assembly, // assembly
-                typeof(IExecutionContext), // whitelist params
+            // Validate all interfaces in the Worker assembly define a valid service locator attribute.
+            // Otherwise, the interface needs to whitelisted.
+            var whitelist = new[]
+            {
+                typeof(IExecutionContext),
                 typeof(IJobExtension),
-                typeof(IStep));
+                typeof(ISourceProvider),
+                typeof(IStep),
+            };
+            Validate(
+                assembly: typeof(IStepsRunner).GetTypeInfo().Assembly,
+                whitelist: whitelist);
         }
 
         private static void Validate(Assembly assembly, params Type[] whitelist)
