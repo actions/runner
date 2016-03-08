@@ -153,6 +153,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         
         private static void Trace(TraceSource traceSource, TraceEventType eventType, string format, params object[] args)
         {
+            ArgUtil.NotNull(traceSource, nameof(traceSource));
             String message = StringUtil.Format(format, args);
             traceSource.TraceEvent(eventType, 0, message);
         }

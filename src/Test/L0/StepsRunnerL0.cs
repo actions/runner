@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Xunit;
 
@@ -12,10 +13,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
 {
     public sealed class StepsRunnerL0
     {
-        public StepsRunnerL0()
+        private Mock<IExecutionContext> _executionContext;
+        private StepsRunner _stepsRunner;
+
+        public TestHostContext Initialize([CallerMemberName] string testName = "")
         {
-            this.context = new Mock<IExecutionContext>();
-            this.stepsRunner = new StepsRunner();
+            var hc = new TestHostContext(nameof(StepsRunnerL0), testName);
+            _executionContext = new Mock<IExecutionContext>();
+            _stepsRunner = new StepsRunner();
+            _stepsRunner.Initialize(hc);
+            return hc;
         }
 
         [Fact]
@@ -23,32 +30,35 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Trait("Category", "Worker")]
         public async Task RunsAfterContinueOnError()
         {
-            // Arrange.
-            var variableSets = new[]
+            using (TestHostContext hc = Initialize())
             {
-                new[] { this.CreateStep(TaskResult.Failed, continueOnError: true), this.CreateStep(TaskResult.Succeeded) },
-                new[] { this.CreateStep(TaskResult.Failed, continueOnError: true), this.CreateStep(TaskResult.Succeeded, alwaysRun: true) },
-                new[] { this.CreateStep(TaskResult.Failed, continueOnError: true), this.CreateStep(TaskResult.Succeeded, continueOnError: true) },
-                new[] { this.CreateStep(TaskResult.Failed, continueOnError: true), this.CreateStep(TaskResult.Succeeded, critical: true) },
-                new[] { this.CreateStep(TaskResult.Failed, continueOnError: true), this.CreateStep(TaskResult.Succeeded, isFinally: true) },
-                new[] { this.CreateStep(TaskResult.Failed, continueOnError: true, critical: true), this.CreateStep(TaskResult.Succeeded) },
-                new[] { this.CreateStep(TaskResult.Failed, continueOnError: true, critical: true), this.CreateStep(TaskResult.Succeeded, alwaysRun: true) },
-                new[] { this.CreateStep(TaskResult.Failed, continueOnError: true, critical: true), this.CreateStep(TaskResult.Succeeded, continueOnError: true) },
-                new[] { this.CreateStep(TaskResult.Failed, continueOnError: true, critical: true), this.CreateStep(TaskResult.Succeeded, critical: true) },
-                new[] { this.CreateStep(TaskResult.Failed, continueOnError: true, critical: true), this.CreateStep(TaskResult.Succeeded, isFinally: true) },
-            };
-            foreach (var variableSet in variableSets)
-            {
-                // Act.
-                TaskResult jobResult = await this.stepsRunner.RunAsync(
-                    context: this.context.Object,
-                    steps: variableSet.Select(x => x.Object).ToList());
+                // Arrange.
+                var variableSets = new[]
+                {
+                    new[] { this.CreateStep(TaskResult.Failed, continueOnError: true), this.CreateStep(TaskResult.Succeeded) },
+                    new[] { this.CreateStep(TaskResult.Failed, continueOnError: true), this.CreateStep(TaskResult.Succeeded, alwaysRun: true) },
+                    new[] { this.CreateStep(TaskResult.Failed, continueOnError: true), this.CreateStep(TaskResult.Succeeded, continueOnError: true) },
+                    new[] { this.CreateStep(TaskResult.Failed, continueOnError: true), this.CreateStep(TaskResult.Succeeded, critical: true) },
+                    new[] { this.CreateStep(TaskResult.Failed, continueOnError: true), this.CreateStep(TaskResult.Succeeded, isFinally: true) },
+                    new[] { this.CreateStep(TaskResult.Failed, continueOnError: true, critical: true), this.CreateStep(TaskResult.Succeeded) },
+                    new[] { this.CreateStep(TaskResult.Failed, continueOnError: true, critical: true), this.CreateStep(TaskResult.Succeeded, alwaysRun: true) },
+                    new[] { this.CreateStep(TaskResult.Failed, continueOnError: true, critical: true), this.CreateStep(TaskResult.Succeeded, continueOnError: true) },
+                    new[] { this.CreateStep(TaskResult.Failed, continueOnError: true, critical: true), this.CreateStep(TaskResult.Succeeded, critical: true) },
+                    new[] { this.CreateStep(TaskResult.Failed, continueOnError: true, critical: true), this.CreateStep(TaskResult.Succeeded, isFinally: true) },
+                };
+                foreach (var variableSet in variableSets)
+                {
+                    // Act.
+                    TaskResult jobResult = await _stepsRunner.RunAsync(
+                        context: _executionContext.Object,
+                        steps: variableSet.Select(x => x.Object).ToList());
 
-                // Assert.
-                Assert.Equal(TaskResult.SucceededWithIssues, jobResult);
-                Assert.Equal(2, variableSet.Length);
-                variableSet[0].Verify(x => x.RunAsync());
-                variableSet[1].Verify(x => x.RunAsync());
+                    // Assert.
+                    Assert.Equal(TaskResult.SucceededWithIssues, jobResult);
+                    Assert.Equal(2, variableSet.Length);
+                    variableSet[0].Verify(x => x.RunAsync());
+                    variableSet[1].Verify(x => x.RunAsync());
+                }
             }
         }
 
@@ -57,32 +67,35 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Trait("Category", "Worker")]
         public async Task RunsAlwaysRuns()
         {
-            // Arrange.
-            var variableSets = new[]
+            using (TestHostContext hc = Initialize())
             {
-                new
+                // Arrange.
+                var variableSets = new[]
                 {
-                    Steps = new[] { this.CreateStep(TaskResult.Succeeded), this.CreateStep(TaskResult.Succeeded, alwaysRun: true) },
-                    Expected = TaskResult.Succeeded,
-                },
-                new
+                    new
+                    {
+                        Steps = new[] { this.CreateStep(TaskResult.Succeeded), this.CreateStep(TaskResult.Succeeded, alwaysRun: true) },
+                        Expected = TaskResult.Succeeded,
+                    },
+                    new
+                    {
+                        Steps = new[] { this.CreateStep(TaskResult.Failed), this.CreateStep(TaskResult.Succeeded, alwaysRun: true) },
+                        Expected = TaskResult.Failed,
+                    },
+                };
+                foreach (var variableSet in variableSets)
                 {
-                    Steps = new[] { this.CreateStep(TaskResult.Failed), this.CreateStep(TaskResult.Succeeded, alwaysRun: true) },
-                    Expected = TaskResult.Failed,
-                },
-            };
-            foreach (var variableSet in variableSets)
-            {
-                // Act.
-                TaskResult jobResult = await this.stepsRunner.RunAsync(
-                    context: this.context.Object,
-                    steps: variableSet.Steps.Select(x => x.Object).ToList());
+                    // Act.
+                    TaskResult jobResult = await _stepsRunner.RunAsync(
+                        context: _executionContext.Object,
+                        steps: variableSet.Steps.Select(x => x.Object).ToList());
 
-                // Assert.
-                Assert.Equal(variableSet.Expected, jobResult);
-                Assert.Equal(2, variableSet.Steps.Length);
-                variableSet.Steps[0].Verify(x => x.RunAsync());
-                variableSet.Steps[1].Verify(x => x.RunAsync());
+                    // Assert.
+                    Assert.Equal(variableSet.Expected, jobResult);
+                    Assert.Equal(2, variableSet.Steps.Length);
+                    variableSet.Steps[0].Verify(x => x.RunAsync());
+                    variableSet.Steps[1].Verify(x => x.RunAsync());
+                }
             }
         }
 
@@ -91,37 +104,40 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Trait("Category", "Worker")]
         public async Task RunsFinally()
         {
-            // Arrange.
-            var variableSets = new[]
+            using (TestHostContext hc = Initialize())
             {
-                new
+                // Arrange.
+                var variableSets = new[]
                 {
-                    Steps = new[] { this.CreateStep(TaskResult.Succeeded), this.CreateStep(TaskResult.Succeeded, isFinally: true) },
-                    Expected = TaskResult.Succeeded,
-                },
-                new
+                    new
+                    {
+                        Steps = new[] { this.CreateStep(TaskResult.Succeeded), this.CreateStep(TaskResult.Succeeded, isFinally: true) },
+                        Expected = TaskResult.Succeeded,
+                    },
+                    new
+                    {
+                        Steps = new[] { this.CreateStep(TaskResult.Failed), this.CreateStep(TaskResult.Succeeded, isFinally: true) },
+                        Expected = TaskResult.Failed,
+                    },
+                    new
+                    {
+                        Steps = new[] { this.CreateStep(TaskResult.Failed, critical: true), this.CreateStep(TaskResult.Succeeded, isFinally: true) },
+                        Expected = TaskResult.Failed,
+                    },
+                };
+                foreach (var variableSet in variableSets)
                 {
-                    Steps = new[] { this.CreateStep(TaskResult.Failed), this.CreateStep(TaskResult.Succeeded, isFinally: true) },
-                    Expected = TaskResult.Failed,
-                },
-                new
-                {
-                    Steps = new[] { this.CreateStep(TaskResult.Failed, critical: true), this.CreateStep(TaskResult.Succeeded, isFinally: true) },
-                    Expected = TaskResult.Failed,
-                },
-            };
-            foreach (var variableSet in variableSets)
-            {
-                // Act.
-                TaskResult jobResult = await this.stepsRunner.RunAsync(
-                    context: this.context.Object,
-                    steps: variableSet.Steps.Select(x => x.Object).ToList());
+                    // Act.
+                    TaskResult jobResult = await _stepsRunner.RunAsync(
+                        context: _executionContext.Object,
+                        steps: variableSet.Steps.Select(x => x.Object).ToList());
 
-                // Assert.
-                Assert.Equal(variableSet.Expected, jobResult);
-                Assert.Equal(2, variableSet.Steps.Length);
-                variableSet.Steps[0].Verify(x => x.RunAsync());
-                variableSet.Steps[1].Verify(x => x.RunAsync());
+                    // Assert.
+                    Assert.Equal(variableSet.Expected, jobResult);
+                    Assert.Equal(2, variableSet.Steps.Length);
+                    variableSet.Steps[0].Verify(x => x.RunAsync());
+                    variableSet.Steps[1].Verify(x => x.RunAsync());
+                }
             }
         }
 
@@ -130,102 +146,105 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Trait("Category", "Worker")]
         public async Task SetsJobResultCorrectly()
         {
-            // Arrange.
-            var variableSets = new[]
+            using (TestHostContext hc = Initialize())
             {
-                new
+                // Arrange.
+                var variableSets = new[]
                 {
-                    Steps = new[] { this.CreateStep(TaskResult.Abandoned) },
-                    Expected = TaskResult.Succeeded
-                },
-                new
+                    new
+                    {
+                        Steps = new[] { this.CreateStep(TaskResult.Abandoned) },
+                        Expected = TaskResult.Succeeded
+                    },
+                    new
+                    {
+                        Steps = new[] { this.CreateStep(TaskResult.Canceled) },
+                        Expected = TaskResult.Succeeded
+                    },
+                    new
+                    {
+                        Steps = new[] { this.CreateStep(TaskResult.Failed), this.CreateStep(TaskResult.Succeeded) },
+                        Expected = TaskResult.Failed
+                    },
+                    new
+                    {
+                        Steps = new[] { this.CreateStep(TaskResult.Failed), this.CreateStep(TaskResult.Succeeded, alwaysRun: true) },
+                        Expected = TaskResult.Failed
+                    },
+                    new
+                    {
+                        Steps = new[] { this.CreateStep(TaskResult.Failed), this.CreateStep(TaskResult.Succeeded, isFinally: true) },
+                        Expected = TaskResult.Failed
+                    },
+                    new
+                    {
+                        Steps = new[] { this.CreateStep(TaskResult.Failed, continueOnError: true), this.CreateStep(TaskResult.Failed) },
+                        Expected = TaskResult.Failed
+                    },
+                    new
+                    {
+                        Steps = new[] { this.CreateStep(TaskResult.Failed, continueOnError: true), this.CreateStep(TaskResult.Succeeded) },
+                        Expected = TaskResult.SucceededWithIssues
+                    },
+                    new
+                    {
+                        Steps = new[] { this.CreateStep(TaskResult.Failed, continueOnError: true, critical: true), this.CreateStep(TaskResult.Succeeded) },
+                        Expected = TaskResult.SucceededWithIssues
+                    },
+                    new
+                    {
+                        Steps = new[] { this.CreateStep(TaskResult.Skipped) },
+                        Expected = TaskResult.Succeeded
+                    },
+                    new
+                    {
+                        Steps = new[] { this.CreateStep(TaskResult.Succeeded) },
+                        Expected = TaskResult.Succeeded
+                    },
+                    new
+                    {
+                        Steps = new[] { this.CreateStep(TaskResult.Succeeded), this.CreateStep(TaskResult.Failed) },
+                        Expected = TaskResult.Failed
+                    },
+                    new
+                    {
+                        Steps = new[] { this.CreateStep(TaskResult.Succeeded), this.CreateStep(TaskResult.SucceededWithIssues) },
+                        Expected = TaskResult.SucceededWithIssues
+                    },
+                    new
+                    {
+                        Steps = new[] { this.CreateStep(TaskResult.SucceededWithIssues), this.CreateStep(TaskResult.Succeeded) },
+                        Expected = TaskResult.SucceededWithIssues
+                    },
+                    new
+                    {
+                        Steps = new[] { this.CreateStep(TaskResult.SucceededWithIssues), this.CreateStep(TaskResult.Failed) },
+                        Expected = TaskResult.Failed
+                    },
+                //  Abandoned
+                //  Canceled
+                //  Failed
+                //  Skipped
+                //  Succeeded
+                //  SucceededWithIssues
+                };
+                foreach (var variableSet in variableSets)
                 {
-                    Steps = new[] { this.CreateStep(TaskResult.Canceled) },
-                    Expected = TaskResult.Succeeded
-                },
-                new
-                {
-                    Steps = new[] { this.CreateStep(TaskResult.Failed), this.CreateStep(TaskResult.Succeeded) },
-                    Expected = TaskResult.Failed
-                },
-                new
-                {
-                    Steps = new[] { this.CreateStep(TaskResult.Failed), this.CreateStep(TaskResult.Succeeded, alwaysRun: true) },
-                    Expected = TaskResult.Failed
-                },
-                new
-                {
-                    Steps = new[] { this.CreateStep(TaskResult.Failed), this.CreateStep(TaskResult.Succeeded, isFinally: true) },
-                    Expected = TaskResult.Failed
-                },
-                new
-                {
-                    Steps = new[] { this.CreateStep(TaskResult.Failed, continueOnError: true), this.CreateStep(TaskResult.Failed) },
-                    Expected = TaskResult.Failed
-                },
-                new
-                {
-                    Steps = new[] { this.CreateStep(TaskResult.Failed, continueOnError: true), this.CreateStep(TaskResult.Succeeded) },
-                    Expected = TaskResult.SucceededWithIssues
-                },
-                new
-                {
-                    Steps = new[] { this.CreateStep(TaskResult.Failed, continueOnError: true, critical: true), this.CreateStep(TaskResult.Succeeded) },
-                    Expected = TaskResult.SucceededWithIssues
-                },
-                new
-                {
-                    Steps = new[] { this.CreateStep(TaskResult.Skipped) },
-                    Expected = TaskResult.Succeeded
-                },
-                new
-                {
-                    Steps = new[] { this.CreateStep(TaskResult.Succeeded) },
-                    Expected = TaskResult.Succeeded
-                },
-                new
-                {
-                    Steps = new[] { this.CreateStep(TaskResult.Succeeded), this.CreateStep(TaskResult.Failed) },
-                    Expected = TaskResult.Failed
-                },
-                new
-                {
-                    Steps = new[] { this.CreateStep(TaskResult.Succeeded), this.CreateStep(TaskResult.SucceededWithIssues) },
-                    Expected = TaskResult.SucceededWithIssues
-                },
-                new
-                {
-                    Steps = new[] { this.CreateStep(TaskResult.SucceededWithIssues), this.CreateStep(TaskResult.Succeeded) },
-                    Expected = TaskResult.SucceededWithIssues
-                },
-                new
-                {
-                    Steps = new[] { this.CreateStep(TaskResult.SucceededWithIssues), this.CreateStep(TaskResult.Failed) },
-                    Expected = TaskResult.Failed
-                },
-            //  Abandoned
-            //  Canceled
-            //  Failed
-            //  Skipped
-            //  Succeeded
-            //  SucceededWithIssues
-            };
-            foreach (var variableSet in variableSets)
-            {
-                // Act.
-                TaskResult jobResult = await this.stepsRunner.RunAsync(
-                    context: this.context.Object,
-                    steps: variableSet.Steps.Select(x => x.Object).ToList());
+                    // Act.
+                    TaskResult jobResult = await _stepsRunner.RunAsync(
+                        context: _executionContext.Object,
+                        steps: variableSet.Steps.Select(x => x.Object).ToList());
 
-                // Assert.
-                Assert.True(
-                    variableSet.Expected == jobResult,
-                    String.Format(
-                        CultureInfo.InvariantCulture,
-                        "Expected '{0}'. Actual '{1}'. Steps: {2}",
-                        variableSet.Expected,
-                        jobResult,
-                        this.FormatSteps(variableSet.Steps)));
+                    // Assert.
+                    Assert.True(
+                        variableSet.Expected == jobResult,
+                        String.Format(
+                            CultureInfo.InvariantCulture,
+                            "Expected '{0}'. Actual '{1}'. Steps: {2}",
+                            variableSet.Expected,
+                            jobResult,
+                            this.FormatSteps(variableSet.Steps)));
+                }
             }
         }
 
@@ -234,27 +253,30 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Trait("Category", "Worker")]
         public async Task SkipsAfterCriticalFailure()
         {
-            // Arrange.
-            var variableSets = new[]
+            using (TestHostContext hc = Initialize())
             {
-                new[] { this.CreateStep(TaskResult.Failed, critical: true), this.CreateStep(TaskResult.Succeeded) },
-                new[] { this.CreateStep(TaskResult.Failed, critical: true), this.CreateStep(TaskResult.Succeeded, alwaysRun: true) },
-                new[] { this.CreateStep(TaskResult.Failed, critical: true), this.CreateStep(TaskResult.Succeeded, continueOnError: true) },
-                new[] { this.CreateStep(TaskResult.Failed, critical: true), this.CreateStep(TaskResult.Succeeded, critical: true) },
-                new[] { this.CreateStep(TaskResult.Failed, critical: true), this.CreateStep(TaskResult.Succeeded, alwaysRun: true, continueOnError: true, critical: true) },
-            };
-            foreach (var variableSet in variableSets)
-            {
-                // Act.
-                TaskResult jobResult = await this.stepsRunner.RunAsync(
-                    context: this.context.Object,
-                    steps: variableSet.Select(x => x.Object).ToList());
+                // Arrange.
+                var variableSets = new[]
+                {
+                    new[] { this.CreateStep(TaskResult.Failed, critical: true), this.CreateStep(TaskResult.Succeeded) },
+                    new[] { this.CreateStep(TaskResult.Failed, critical: true), this.CreateStep(TaskResult.Succeeded, alwaysRun: true) },
+                    new[] { this.CreateStep(TaskResult.Failed, critical: true), this.CreateStep(TaskResult.Succeeded, continueOnError: true) },
+                    new[] { this.CreateStep(TaskResult.Failed, critical: true), this.CreateStep(TaskResult.Succeeded, critical: true) },
+                    new[] { this.CreateStep(TaskResult.Failed, critical: true), this.CreateStep(TaskResult.Succeeded, alwaysRun: true, continueOnError: true, critical: true) },
+                };
+                foreach (var variableSet in variableSets)
+                {
+                    // Act.
+                    TaskResult jobResult = await _stepsRunner.RunAsync(
+                        context: _executionContext.Object,
+                        steps: variableSet.Select(x => x.Object).ToList());
 
-                // Assert.
-                Assert.Equal(TaskResult.Failed, jobResult);
-                Assert.Equal(2, variableSet.Length);
-                variableSet[0].Verify(x => x.RunAsync());
-                variableSet[1].Verify(x => x.RunAsync(), Times.Never());
+                    // Assert.
+                    Assert.Equal(TaskResult.Failed, jobResult);
+                    Assert.Equal(2, variableSet.Length);
+                    variableSet[0].Verify(x => x.RunAsync());
+                    variableSet[1].Verify(x => x.RunAsync(), Times.Never());
+                }
             }
         }
 
@@ -263,29 +285,32 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Trait("Category", "Worker")]
         public async Task SkipsAfterFailure()
         {
-            // Arrange.
-            var variableSets = new[]
+            using (TestHostContext hc = Initialize())
             {
-                new[] { this.CreateStep(TaskResult.Failed), this.CreateStep(TaskResult.Succeeded) },
-                new[] { this.CreateStep(TaskResult.Failed), this.CreateStep(TaskResult.Succeeded, continueOnError: true) },
-                new[] { this.CreateStep(TaskResult.Failed), this.CreateStep(TaskResult.Succeeded, critical: true) },
-                new[] { this.CreateStep(TaskResult.Failed, critical: true), this.CreateStep(TaskResult.Succeeded) },
-                new[] { this.CreateStep(TaskResult.Failed, critical: true), this.CreateStep(TaskResult.Succeeded, alwaysRun: true) },
-                new[] { this.CreateStep(TaskResult.Failed, critical: true), this.CreateStep(TaskResult.Succeeded, continueOnError: true) },
-                new[] { this.CreateStep(TaskResult.Failed, critical: true), this.CreateStep(TaskResult.Succeeded, critical: true) },
-            };
-            foreach (var variableSet in variableSets)
-            {
-                // Act.
-                TaskResult jobResult = await this.stepsRunner.RunAsync(
-                    context: this.context.Object,
-                    steps: variableSet.Select(x => x.Object).ToList());
+                // Arrange.
+                var variableSets = new[]
+                {
+                    new[] { this.CreateStep(TaskResult.Failed), this.CreateStep(TaskResult.Succeeded) },
+                    new[] { this.CreateStep(TaskResult.Failed), this.CreateStep(TaskResult.Succeeded, continueOnError: true) },
+                    new[] { this.CreateStep(TaskResult.Failed), this.CreateStep(TaskResult.Succeeded, critical: true) },
+                    new[] { this.CreateStep(TaskResult.Failed, critical: true), this.CreateStep(TaskResult.Succeeded) },
+                    new[] { this.CreateStep(TaskResult.Failed, critical: true), this.CreateStep(TaskResult.Succeeded, alwaysRun: true) },
+                    new[] { this.CreateStep(TaskResult.Failed, critical: true), this.CreateStep(TaskResult.Succeeded, continueOnError: true) },
+                    new[] { this.CreateStep(TaskResult.Failed, critical: true), this.CreateStep(TaskResult.Succeeded, critical: true) },
+                };
+                foreach (var variableSet in variableSets)
+                {
+                    // Act.
+                    TaskResult jobResult = await _stepsRunner.RunAsync(
+                        context: _executionContext.Object,
+                        steps: variableSet.Select(x => x.Object).ToList());
 
-                // Assert.
-                Assert.Equal(TaskResult.Failed, jobResult);
-                Assert.Equal(2, variableSet.Length);
-                variableSet[0].Verify(x => x.RunAsync());
-                variableSet[1].Verify(x => x.RunAsync(), Times.Never());
+                    // Assert.
+                    Assert.Equal(TaskResult.Failed, jobResult);
+                    Assert.Equal(2, variableSet.Length);
+                    variableSet[0].Verify(x => x.RunAsync());
+                    variableSet[1].Verify(x => x.RunAsync(), Times.Never());
+                }
             }
         }
 
@@ -294,19 +319,22 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Trait("Category", "Worker")]
         public async Task SkipsDisabledTasks()
         {
-            // Arrange.
-            Mock<IStep> disabledStep = this.CreateStep(TaskResult.Succeeded, enabled: false);
-            Mock<IStep> enabledStep = this.CreateStep(TaskResult.Succeeded, enabled: true);
+            using (TestHostContext hc = Initialize())
+            {
+                // Arrange.
+                Mock<IStep> disabledStep = this.CreateStep(TaskResult.Succeeded, enabled: false);
+                Mock<IStep> enabledStep = this.CreateStep(TaskResult.Succeeded, enabled: true);
 
-            // Act.
-            TaskResult jobResult = await this.stepsRunner.RunAsync(
-                context: this.context.Object,
-                steps: new[] { disabledStep.Object, enabledStep.Object }.ToList());
+                // Act.
+                TaskResult jobResult = await _stepsRunner.RunAsync(
+                    context: _executionContext.Object,
+                    steps: new[] { disabledStep.Object, enabledStep.Object }.ToList());
 
-            // Assert.
-            Assert.Equal(TaskResult.Succeeded, jobResult);
-            disabledStep.Verify(x => x.RunAsync(), Times.Never());
-            enabledStep.Verify(x => x.RunAsync());
+                // Assert.
+                Assert.Equal(TaskResult.Succeeded, jobResult);
+                disabledStep.Verify(x => x.RunAsync(), Times.Never());
+                enabledStep.Verify(x => x.RunAsync());
+            }
         }
 
         private Mock<IStep> CreateStep(TaskResult result, Boolean alwaysRun = false, Boolean continueOnError = false, Boolean critical = false, Boolean enabled = true, Boolean isFinally = false)
@@ -336,8 +364,5 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                     x.Object.Enabled,
                     x.Object.Finally)));
         }
-
-        private readonly Mock<IExecutionContext> context;
-        private readonly StepsRunner stepsRunner;
     }
 }
