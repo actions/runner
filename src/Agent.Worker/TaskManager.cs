@@ -7,7 +7,6 @@ using System.IO;
 using System.Threading.Tasks;
 using System.Linq;
 
-
 namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
     [ServiceLocator(Default = typeof(TaskManager))]
@@ -15,7 +14,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
     {
         string GetDestinationPath(string componentName, Guid taskId, string version);
 
-        Task EnsureTasksExist(List<IStep> steps);
+        Task EnsureTasksExist(IEnumerable<TaskInstance> tasks);
     }
 
     public sealed class TaskManager : AgentService, ITaskManager
@@ -62,8 +61,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 taskZipFile = Path.Combine(tempPath, string.Format("{0}.zip", Guid.NewGuid()));
                 using (FileStream fs = new FileStream(taskZipFile, FileMode.Create))
                 {
-                    Stream result = await jobServer.GetTaskContentZipAsync(taskToDownload.Id, taskToDownload.Version, HostContext.CancellationToken);
-                    await result.CopyToAsync(fs, 81920, HostContext.CancellationToken);
+                    using (Stream result = await jobServer.GetTaskContentZipAsync(taskToDownload.Id, taskToDownload.Version, HostContext.CancellationToken))
+                    {                     
+                        await result.CopyToAsync(fs, 81920, HostContext.CancellationToken);
+                    }
                 }
 
                 System.IO.Compression.ZipFile.ExtractToDirectory(taskZipFile, tempPath);
@@ -118,22 +119,22 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             return Path.Combine(IOUtil.GetTasksPath(HostContext), componentName + "_" + taskId.ToString(), version);
         }
 
-        public async Task EnsureTasksExist(List<IStep> steps)
+        public async Task EnsureTasksExist(IEnumerable<TaskInstance> tasks)
         {
             //remove duplicate and disabled tasks
             var uniqueTasks =
-                from step in steps
-                where step as ITaskRunner != null && step.Enabled
-                group step by new
+                from task in tasks
+                where task.Enabled
+                group task by new
                     {
-                        (step as ITaskRunner).TaskInstance.Id,
-                        (step as ITaskRunner).TaskInstance.Name,
-                        (step as ITaskRunner).TaskInstance.Version
-                    } 
+                        task.Id,
+                        task.Name,
+                        task.Version
+                    }
                 into newTask
                 select newTask;
-            foreach (var task in uniqueTasks)                
-            {                
+            foreach (var task in uniqueTasks)
+            {
                 await EnsureTaskExists(task.Key.Name,
                     task.Key.Id, task.Key.Version);
             }

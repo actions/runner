@@ -74,7 +74,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
             // Download tasks if not already in the cache
             var taskManager = HostContext.GetService<ITaskManager>();
-            await taskManager.EnsureTasksExist(steps);
+            await taskManager.EnsureTasksExist(message.Tasks);
 
             // Run the steps.
             await stepsRunner.RunAsync(jobExecutionContext, steps);
