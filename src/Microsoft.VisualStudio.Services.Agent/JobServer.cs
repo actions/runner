@@ -24,8 +24,8 @@ namespace Microsoft.VisualStudio.Services.Agent
         Task<List<TimelineRecord>> UpdateTimelineRecordsAsync(Guid scopeIdentifier, string hubName, Guid planId, Guid timelineId, IEnumerable<TimelineRecord> records, CancellationToken cancellationToken);
 
         // task download
-        Task GetTaskContentZipAsync(Guid taskId, TaskVersion taskVersion, string destination);
-        Task<TaskDefinition> GetTaskDefinitionAsync(Guid taskId, TaskVersion taskVersion);
+        Task<Stream> GetTaskContentZipAsync(Guid taskId, TaskVersion taskVersion, CancellationToken token);
+        Task<TaskDefinition> GetTaskDefinitionAsync(Guid taskId, TaskVersion taskVersion, CancellationToken token);
     }
 
     public sealed class JobServer : AgentService, IJobServer
@@ -33,6 +33,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         private bool _hasConnection;
         private VssConnection _connection;
         private TaskHttpClient _taskClient;
+        private TaskAgentHttpClient _taskAgentClient;
 
         public async Task ConnectAsync(VssConnection jobConnection)
         {
@@ -44,6 +45,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             }
 
             _taskClient = _connection.GetClient<TaskHttpClient>();
+            _taskAgentClient = _connection.GetClient<TaskAgentHttpClient>();
             _hasConnection = true;
         }
 
@@ -94,14 +96,14 @@ namespace Microsoft.VisualStudio.Services.Agent
         // Task Manager: Query and Download Task
         //-----------------------------------------------------------------
 
-        public Task<TaskDefinition> GetTaskDefinitionAsync(Guid taskId, TaskVersion taskVersion)
+        public Task<TaskDefinition> GetTaskDefinitionAsync(Guid taskId, TaskVersion taskVersion, CancellationToken token)
         {
-            throw new NotImplementedException();
+            return _taskAgentClient.GetTaskDefinitionAsync(taskId, taskVersion, null, null, null, token);
         }
 
-        public Task GetTaskContentZipAsync(Guid taskId, TaskVersion taskVersion, string destination)
+        public Task<Stream> GetTaskContentZipAsync(Guid taskId, TaskVersion taskVersion, CancellationToken token)
         {
-            throw new NotImplementedException();
+            return _taskAgentClient.GetTaskContentZipAsync(taskId, taskVersion, null, token);
         }
     }
 }

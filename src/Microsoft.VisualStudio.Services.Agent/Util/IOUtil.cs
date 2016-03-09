@@ -43,5 +43,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
                 Path.GetDirectoryName(GetBinPath()),
                 settings.WorkFolder);
         }
+
+        public static string GetTasksPath(IHostContext hostContext)
+        {
+            return Path.Combine(GetWorkPath(hostContext), "_tasks");
+        }        
     }
 }
