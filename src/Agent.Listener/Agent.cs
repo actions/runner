@@ -17,7 +17,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
     {
         private Guid _sessionId = Guid.Empty;
         private int _poolId;
-        
+        private ITerminal _term;
+
+        public override void Initialize(IHostContext hostContext)
+        {
+            base.Initialize(hostContext);
+            this._term = HostContext.GetService<ITerminal>();
+        }
+
         public async Task<int> ExecuteCommand(CommandLineParser parser)
         {
             // TODO Unit test to cover this logic
@@ -54,9 +61,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
             if (parser.IsCommand("configure"))
             {
-                Trace.Info("configure");    
-                await configManager.ConfigureAsync(parser.Args, isUnattended);
-                return 0;
+                Trace.Info("configure");
+
+                try
+                {
+                    await configManager.ConfigureAsync(parser.Args, parser.Flags, isUnattended);
+                    return 0;
+                }
+                catch (Exception ex)
+                {
+                    Trace.Error(ex);
+                    _term.WriteError(ex.Message);
+                    return 1;
+                }
             }
 
             if (parser.Flags.Contains("nostart"))
@@ -81,8 +98,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         {
             Trace.Info("RunAsync()");
             
-            var term = HostContext.GetService<ITerminal>();
-
             var configManager = HostContext.GetService<IConfigurationManager>();
             AgentSettings settings = configManager.LoadSettings();
             _poolId = settings.PoolId;
@@ -92,7 +107,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             {
                 return 1;
             }
-            term.WriteLine("Listening for Jobs");
+            _term.WriteLine(StringUtil.Loc("ListenForJobs"));
             
             _sessionId = listener.Session.SessionId;
             TaskAgentMessage message = null;
