@@ -90,7 +90,7 @@ function copyBin ()
 {
     echo Copying ${1}
     pushd ${1}/bin/Debug/dnxcore50 > /dev/null
-    cp -Rf $(ls -d */) ${LAYOUT_DIR}/bin
+    cp -Rf $(ls -d */)publish/* ${LAYOUT_DIR}/bin
     popd > /dev/null 
 }
 
@@ -129,7 +129,7 @@ function runtest ()
     dotnet publish Test || failed "publishing Test"
     rm -Rf Test/bin/Debug/dnxcore50/_diag
     pushd Test/bin/Debug/dnxcore50 > /dev/null
-    pushd $(ls -d */ | grep -v '_') > /dev/null
+    pushd $(ls -d */ | grep -v '_')publish > /dev/null
     ./corerun xunit.console.netcore.exe Test.dll -xml testresults.xml
     popd > /dev/null
     popd > /dev/null
