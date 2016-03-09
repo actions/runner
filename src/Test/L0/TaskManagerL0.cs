@@ -29,7 +29,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         private string GetZipFolderName()
         {
             var currentAssemblyLocation = System.Reflection.Assembly.GetEntryAssembly().Location;
-            var baseTestDirectory = new DirectoryInfo(currentAssemblyLocation).Parent.Parent.Parent.Parent.Parent;
+            var baseTestDirectory = new DirectoryInfo(currentAssemblyLocation).Parent.Parent.Parent.Parent.Parent.Parent;
             string zipFileFolder = Path.Combine(baseTestDirectory.FullName, TestDataFolderName, nameof(TaskManagerL0));
             return zipFileFolder;
         }

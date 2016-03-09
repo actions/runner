@@ -42,5 +42,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 Assert.False(Validators.NonEmptyValidator(String.Empty));
             }
         }
+
+        [WindowsOnlyFact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "ArgumentValidator")]
+        public void WindowsLogonAccountValidator()
+        {
+            using (TestHostContext hc = new TestHostContext(nameof(ConfigurationManagerL0)))
+            {
+                Assert.False(Validators.NTAccountValidator(string.Empty));
+                Assert.True(Validators.NTAccountValidator("NT AUTHORITY\\LOCAL SERVICE"));
+            }
+        }
     }
 }

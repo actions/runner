@@ -29,13 +29,14 @@
     "dependencies": {
         "vss-api-netcore": "0.5.2-private",
         "Newtonsoft.Json": "7.0.1",
-        "System.Diagnostics.TraceSource": "4.0.0-rc3-23721",
-        "System.Diagnostics.TextWriterTraceListener": "4.0.0-rc3-23721",
-        "System.IO": "4.1.0-rc3-23721",
-        "System.IO.Pipes": "4.0.0-rc3-23721",
-        "System.Runtime": "4.1.0-rc3-23721",
-        "System.Xml.XmlSerializer": "4.0.11-rc3-23721",
-        "NETStandard.Library": "1.0.0-rc3-23721"
+        "System.Diagnostics.TraceSource": "4.0.0-rc3-23829",
+        "System.Diagnostics.TextWriterTraceListener": "4.0.0-rc3-23829",
+        "System.Diagnostics.Process": "4.1.0-rc3-23829",
+        "System.IO": "4.1.0-rc3-23829",
+        "System.IO.Pipes": "4.0.0-rc3-23829",
+        "System.Runtime": "4.1.0-rc3-23829",
+        "System.Xml.XmlSerializer": "4.0.11-rc3-23829",
+        "NETStandard.Library": "1.0.0-rc3-23829"
     },
 
     "frameworks": {

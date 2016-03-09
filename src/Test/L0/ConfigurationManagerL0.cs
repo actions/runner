@@ -151,7 +151,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 _agentServer.Setup(x => x.UpdateAgentAsync(It.IsAny<int>(), It.IsAny<TaskAgent>())).Returns(Task.FromResult(expectedAgent));
                 
                 trace.Info("Ensuring all the required parameters are available in the command line parameter");
-                configManager.ConfigureAsync(clp.Args, false);
+                configManager.ConfigureAsync(clp.Args, clp.Flags, false);
 
                 _store.Setup(x => x.IsConfigured()).Returns(true);
                 
