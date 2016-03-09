@@ -90,7 +90,11 @@ function copyBin ()
 {
     echo Copying ${1}
     pushd ${1}/bin/Debug/dnxcore50 > /dev/null
-    cp -Rf $(ls -d */*) ${LAYOUT_DIR}/bin
+    source_dir=$(ls -d */)publish/
+    if [ ! -d "$source_dir" ]; then
+        failed "Publish folder is missing. Please ensure you use the correct .NET Core tools (see readme for instructions)"
+    fi
+    cp -Rf ${source_dir}* ${LAYOUT_DIR}/bin
     popd > /dev/null 
 }
 
@@ -129,7 +133,7 @@ function runtest ()
     dotnet publish Test || failed "publishing Test"
     rm -Rf Test/bin/Debug/dnxcore50/_diag
     pushd Test/bin/Debug/dnxcore50 > /dev/null
-    pushd $(ls -d */ | grep -v '_') > /dev/null
+    pushd $(ls -d */ | grep -v '_')publish > /dev/null
     ./corerun xunit.console.netcore.exe Test.dll -xml testresults.xml
     popd > /dev/null
     popd > /dev/null
