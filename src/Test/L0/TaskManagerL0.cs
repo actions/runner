@@ -100,28 +100,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 };
 
                 var tasks = new List<TaskInstance>(arTasks);                
-                var bingVersion = new TaskVersion(arTasks[1].Version);                
-
-                _jobServer
-                    .Setup(x => x.GetTaskDefinitionAsync(It.IsAny<Guid>(), It.IsAny<TaskVersion>(), hc.CancellationToken))
-                    .Returns( (Guid taskId, TaskVersion taskVersion, CancellationToken token) =>
-                        {
-                            if (!taskId.Equals(bingGuid) || !taskVersion.Equals(bingVersion))
-                            {
-                                return Task.FromResult<TaskDefinition>(null);
-                            }
-                            return Task.FromResult<TaskDefinition>(
-                                new TaskDefinition
-                                {
-                                    Id = bingGuid,
-                                    Version = bingVersion,
-                                    Name = bingTaskName,
-                                    ContentsUploaded = true
-                                }
-                                );
-                        }
-                    );
-
+                var bingVersion = new TaskVersion(arTasks[1].Version);
                 _jobServer
                     .Setup(x => x.GetTaskContentZipAsync(It.IsAny<Guid>(), It.IsAny<TaskVersion>(), hc.CancellationToken))
                     .Returns((Guid taskId, TaskVersion taskVersion, CancellationToken token) =>
@@ -141,8 +120,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 string destPath = taskManager.GetDestinationPath(bingTaskName, bingGuid, bingVersion);
                 Assert.True(File.Exists(Path.Combine(destPath, "task.json")));
                 //assert download has happened only once, because disabled, duplicate and cached tasks are not downloaded
-                _jobServer
-                    .Verify(x => x.GetTaskDefinitionAsync(It.IsAny<Guid>(), It.IsAny<TaskVersion>(), hc.CancellationToken), Times.Once());
                 _jobServer
                     .Verify(x => x.GetTaskContentZipAsync(It.IsAny<Guid>(), It.IsAny<TaskVersion>(), hc.CancellationToken), Times.Once());
 

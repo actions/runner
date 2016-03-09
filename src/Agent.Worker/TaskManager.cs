@@ -14,6 +14,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
     {
         string GetDestinationPath(string componentName, Guid taskId, string version);
 
+        //TODO: we need pass ExecutionContext for logging
         Task EnsureTasksExist(IEnumerable<TaskInstance> tasks);
     }
 
@@ -37,46 +38,38 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 return;
             }
 
-            string taskZipFile;
-            TaskDefinition taskToDownload = null;
+            string taskZipFile;            
             var version = new TaskVersion(taskVersion);
-            taskToDownload = await jobServer.GetTaskDefinitionAsync(taskId, version, HostContext.CancellationToken);
-            if (taskToDownload == null)
-            {
-                Trace.Error("{0} - Can't find task definition in server with Id: {1}, Version: {2}.", nameof(EnsureTaskExists), taskId, version);
-                throw new InvalidDataException();
-            }
-
-            if (!taskToDownload.ContentsUploaded)
-            {
-                Trace.Error("task has no content");
-                throw new InvalidDataException();
-            }
 
             //download and extract task in a temp folder and rename it on success
-            string tempPath = Path.Combine(IOUtil.GetTasksPath(HostContext), "_temp_" + taskName + "_" + version);
+            string tempPath = Path.Combine(IOUtil.GetTasksPath(HostContext), "_temp_" + Guid.NewGuid());
             try
             {
                 Directory.CreateDirectory(tempPath);
                 taskZipFile = Path.Combine(tempPath, string.Format("{0}.zip", Guid.NewGuid()));
-                using (FileStream fs = new FileStream(taskZipFile, FileMode.Create))
+                //open zip stream in async mode
+                using (FileStream fs = new FileStream(taskZipFile, FileMode.Create, FileAccess.Write, FileShare.None, 4096, true))
                 {
-                    using (Stream result = await jobServer.GetTaskContentZipAsync(taskToDownload.Id, taskToDownload.Version, HostContext.CancellationToken))
-                    {                     
+                    using (Stream result = await jobServer.GetTaskContentZipAsync(taskId, version, HostContext.CancellationToken))
+                    {
+                        //81920 is the default used by System.IO.Stream.CopyTo and is under the large object heap threshold (85k). 
                         await result.CopyToAsync(fs, 81920, HostContext.CancellationToken);
+                        await fs.FlushAsync(HostContext.CancellationToken);
                     }
                 }
 
                 System.IO.Compression.ZipFile.ExtractToDirectory(taskZipFile, tempPath);
                 File.Delete(taskZipFile);
+                //TODO: find out if this check belongs here or it is handler's responsibility 
                 if (!IsValidTask(tempPath))
                 {
+                    //TODO: add localized message
                     throw new InvalidDataException("Invalid task content (task.json)");
                 }
                 string destPathParent = Path.Combine(IOUtil.GetTasksPath(HostContext), taskName + "_" + taskId.ToString());
                 Directory.CreateDirectory(destPathParent);
                 Directory.Move(tempPath, destPath);
-                Trace.Info("{0} - Downloaded Task:{1}, version {2}, cached to: {3}", nameof(EnsureTaskExists), taskToDownload.Name, taskToDownload.Version, destPath);
+                Trace.Info("{0} - Downloaded Task:{1}, version {2}, cached to: {3}", nameof(EnsureTaskExists), taskName, taskVersion, destPath);
             }
             finally
             {
