@@ -7,10 +7,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
 {
     public static class IOUtil
     {
-        public static void SaveObject(Object obj, string path) 
+        public static void SaveObject(Object obj, string path)
         {
-            string json = JsonConvert.SerializeObject(obj, Formatting.Indented);
-            File.WriteAllText (path, json);
+            string json = JsonConvert.SerializeObject(
+                obj,
+                Formatting.Indented,
+                new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore });
+            File.WriteAllText(path, json);
         }
 
         public static T LoadObject<T>(string path)

@@ -18,6 +18,9 @@ namespace Microsoft.VisualStudio.Services.Agent
         public string PoolName { get; set; }
         public string ServerUrl { get; set; }
         public string WorkFolder { get; set; }
+        public bool RunAsService { get; set; }
+        public string WindowsServiceName { get; set; }
+        public string WindowsServiceDisplayName { get; set; }
     }
 
     [ServiceLocator(Default = typeof(ConfigurationStore))]

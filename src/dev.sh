@@ -90,7 +90,7 @@ function copyBin ()
 {
     echo Copying ${1}
     pushd ${1}/bin/Debug/dnxcore50 > /dev/null
-    cp -Rf $(ls -d */) ${LAYOUT_DIR}/bin
+    cp -Rf $(ls -d */*) ${LAYOUT_DIR}/bin
     popd > /dev/null 
 }
 

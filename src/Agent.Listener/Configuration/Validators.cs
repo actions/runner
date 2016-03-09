@@ -1,7 +1,6 @@
 using System;
 using System.IO;
-
-using Microsoft.VisualStudio.Services.Agent.Util;
+using System.Security.Principal;
 
 namespace Microsoft.VisualStudio.Services.Agent.Configuration
 {
@@ -67,6 +66,27 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
         public static bool NonEmptyValidator(string value)
         {
             return !string.IsNullOrEmpty(value);
+        }
+
+        public static bool NTAccountValidator(string arg)
+        {
+            if (string.IsNullOrEmpty(arg) || String.IsNullOrEmpty(arg.TrimStart('.', '\\')))
+            {
+                return false;
+            }
+
+            try
+            {
+                var logonAccount = arg.TrimStart('.');
+                NTAccount ntaccount = new NTAccount(logonAccount);
+                SecurityIdentifier sid = (SecurityIdentifier)ntaccount.Translate(typeof(SecurityIdentifier));
+            }
+            catch (IdentityNotMappedException)
+            {
+                return false;
+            }
+
+            return true;
         }
     }
 }
