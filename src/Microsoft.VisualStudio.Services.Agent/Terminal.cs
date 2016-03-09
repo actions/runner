@@ -31,13 +31,14 @@ namespace Microsoft.VisualStudio.Services.Agent
         public void WriteLine(string line, params object[] args)
         {
             var msg = StringUtil.Format(line, args);
+
             Trace.Info("term: {0}", msg);
             if (!Silent)
             {
                 Console.WriteLine(msg);    
             }
         }
-        
+
         public void WriteError(string line, params object[] args)
         {
             var msg = StringUtil.Format(line, args);

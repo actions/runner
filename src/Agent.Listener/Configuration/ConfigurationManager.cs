@@ -21,6 +21,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
         public const string Agent = "agent";
         public const string Replace = "replace";
         public const string Work = "work";
+        public const string RunAsService = "runasservice";
     }
 
     // TODO: does initialize make sense for service locator pattern?
@@ -31,7 +32,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
     {
         bool IsConfigured();
         Task EnsureConfiguredAsync();
-        Task ConfigureAsync(Dictionary<String, String> args, Boolean unattend);
+        Task ConfigureAsync(Dictionary<string, string> args, HashSet<string> flags, bool unattend);
         ICredentialProvider AcquireCredentials(Dictionary<String, String> args, bool enforceSupplied);
         AgentSettings LoadSettings();
     }
@@ -58,7 +59,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
 
         public async Task EnsureConfiguredAsync()
         {
-            Trace.Info("EnsureConfigured()");
+            Trace.Info(nameof(EnsureConfiguredAsync));
 
             bool configured = _store.IsConfigured();
 
@@ -66,13 +67,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
 
             if (!configured)
             {
-                await ConfigureAsync(null, false);
+                await ConfigureAsync(null, null, false);
             }
         }
 
         public ICredentialProvider AcquireCredentials(Dictionary<String, String> args, bool enforceSupplied)
         {
-            Trace.Info("AcquireCredentials()");
+            Trace.Info(nameof(AcquireCredentials));
 
             var credentialManager = HostContext.GetService<ICredentialManager>();
             ICredentialProvider cred = null;
@@ -88,7 +89,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
                 // get from user
                 var consoleWizard = HostContext.GetService<IConsoleWizard>();
                 string authType = consoleWizard.ReadValue(CliArgs.Auth,
-                                                        "Authentication Type",
+                                                        StringUtil.Loc("AuthenticationType"),
                                                         false,
                                                         "PAT",
                                                         Validators.AuthSchemeValidator,
@@ -106,7 +107,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
 
         public AgentSettings LoadSettings()
         {
-            Trace.Info("LoadSettings()");
+            Trace.Info(nameof(LoadSettings));
             if (!IsConfigured())
             {
                 throw new InvalidOperationException("Not configured");
@@ -118,12 +119,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
             return settings;
         }
 
-        public async Task ConfigureAsync(Dictionary<String, String> args, bool enforceSupplied)
+        public async Task ConfigureAsync(Dictionary<string, string> args, HashSet<string> flags, bool enforceSupplied)
         {
-            Trace.Info("Configure()");
+            Trace.Info(nameof(ConfigureAsync));
             if (IsConfigured())
             {
-                throw new InvalidOperationException("Cannot configure.  Already configured.");
+                throw new InvalidOperationException(StringUtil.Loc("AlreadyConfiguredError"));
             }
 
             Trace.Info("Read agent settings");
@@ -138,7 +139,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
             {
                 WriteSection("Connect");
                 serverUrl = consoleWizard.ReadValue(CliArgs.Url,
-                                                "Server URL",
+                                                StringUtil.Loc("ServerUrl"),
                                                 false,
                                                 String.Empty,
                                                 Validators.ServerUrlValidator,
@@ -159,7 +160,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
                 catch (Exception e)
                 {
                     Trace.Error(e);
-                    _term.WriteLine("Failed to connect.  Try again or ctrl-c to quit");
+                    _term.WriteLine(StringUtil.Loc("FailedToConnect"));
                     connected = false;
                 }
 
@@ -171,7 +172,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
             }
 
             // TODO: Create console agent service so we can hide in testing etc... and trace
-            _term.WriteLine("Saving credentials...");
+            _term.WriteLine(StringUtil.Loc("SavingCredential"));
             Trace.Verbose("Saving credential");
             _store.SaveCredential(credProv.CredentialData);
 
@@ -190,7 +191,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
             while (true)
             {
                 poolName = consoleWizard.ReadValue(CliArgs.Pool,
-                                                "Pool Name",
+                                                "Pool Name", // Not localized as pool name is a technical term
                                                 false,
                                                 "default",
                                                 // can do better
@@ -202,7 +203,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
                 {
                     poolId = await GetPoolId(poolName);
                 }
-                catch (System.Exception e)
+                catch (Exception e)
                 {
                     Trace.Error(e);
                 }
@@ -213,14 +214,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
                 }
                 else
                 {
-                    _term.WriteLine("Failed to find pool name.  Try again or ctrl-c to quit");
+                    _term.WriteLine(StringUtil.Loc("FailedToFindPool"));
                 }
             }
 
             while (true)
             {
                 agentName = consoleWizard.ReadValue(CliArgs.Agent,
-                                                "Agent Name",
+                                                StringUtil.Loc("AgentName"),
                                                 false,
                                                 // TODO: coreCLR doesn't expose till very recently (Jan 15)
                                                 // Environment.MachineName,
@@ -240,7 +241,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
                 if (exists)
                 {
                     replace = consoleWizard.ReadBool(CliArgs.Replace,
-                                                "Replace? (Y/N)",
+                                                StringUtil.Loc("Replece"),
                                                 false,
                                                 args,
                                                 enforceSupplied);
@@ -258,13 +259,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
                         try
                         {
                             agent = await UpdateAgent(poolId, agent);
-                            _term.WriteLine("Successfully replaced the agent");
+                            _term.WriteLine(StringUtil.Loc("AgentReplaced"));
                             registered = true;    
                         }
                         catch (Exception e)
                         {
                             Trace.Error(e);
-                            _term.WriteLine("Failed to replace the agent.  Try again or ctrl-c to quit");
+                            _term.WriteLine(StringUtil.Loc("FailedToReplaceAgent"));
                         }
                     }
                 }
@@ -284,13 +285,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
                     try
                     {
                         agent = await AddAgent(poolId, agent);
-                        _term.WriteLine("Successfully added the agent");
+                        _term.WriteLine(StringUtil.Loc("AgentAddedSuccessfully"));
                         registered = true;
                     }
                     catch (Exception e)
                     {
                         Trace.Error(e);
-                        _term.WriteLine("Failed to add the agent.  Try again or ctrl-c to quit");
+                        _term.WriteLine(StringUtil.Loc("AddAgentFailed"));
                     }
                 }
                 agentId = agent.Id;
@@ -303,13 +304,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
 
             // We will Combine() what's stored with root.  Defaults to string a relative path
             string workFolder = consoleWizard.ReadValue(CliArgs.Work,
-                                                    "Work Folder",
+                                                    StringUtil.Loc("WorkFolderDescription"),
                                                     false,
                                                     "_work",
                                                     // can do better
                                                     Validators.NonEmptyValidator,
                                                     args,
                                                     enforceSupplied);
+
             // Get Agent settings
             var settings = new AgentSettings
             {
@@ -318,15 +320,39 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
                 AgentName = agentName,
                 PoolName = poolName,
                 PoolId = poolId,
-                WorkFolder = workFolder
+                WorkFolder = workFolder,
             };
+
+            bool runAsService = false;
+            if (flags != null && flags.Contains("runasservice"))
+            {
+                runAsService = true;
+            }
+            else
+            {
+                runAsService = consoleWizard.ReadBool(
+                    CliArgs.RunAsService,
+                    StringUtil.Loc("RunAgentAsServiceDescription"),
+                    false,
+                    null,
+                    enforceSupplied);
+            }
+
+            if (runAsService)
+            {
+                settings.RunAsService = true;
+                Trace.Info("Configuring to run the agent as service");
+                var serviceControlManager = HostContext.GetService<IServiceControlManager>();
+
+                await serviceControlManager.ConfigureServiceAsync(settings, args, enforceSupplied);
+            }
 
             _store.SaveSettings(settings);
         }
 
         private async Task TestConnectAsync(string url, VssCredentials creds)
         {
-            _term.WriteLine("Connecting to server ...");
+            _term.WriteLine(StringUtil.Loc("ConnectingToServer"));
             VssConnection connection = ApiUtil.CreateConnection(new Uri(url), creds);
 
             _agentServer = HostContext.CreateService<IAgentServer>();
