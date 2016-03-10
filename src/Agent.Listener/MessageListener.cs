@@ -22,41 +22,37 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
     public sealed class MessageListener : AgentService, IMessageListener
     {
+        // TODO: FIX THIS: private long? _lastMessageId;
         private AgentSettings _settings;
 
         public TaskAgentSession Session { get; set; }
 
         public async Task<Boolean> CreateSessionAsync()
         {
-            Trace.Info("Creating Session");
-            
+            Trace.Entering();
             const int MaxAttempts = 10;
-            int attempt = 0;            
-            
-            //
+            int attempt = 0;
+
             // Settings
-            //
             var configManager = HostContext.GetService<IConfigurationManager>();
             _settings = configManager.LoadSettings();
             int agentPoolId = _settings.PoolId;
             var serverUrl = _settings.ServerUrl;
-            Trace.Info("Loaded settings");
             Trace.Info(_settings);
-            
-            //
+
             // Load Credentials
-            //
-            Trace.Info("Loading Credentials");
+            Trace.Verbose("Loading Credentials");
             var credMgr = HostContext.GetService<ICredentialManager>();
-            VssCredentials creds = credMgr.LoadCredentials();                        
+            VssCredentials creds = credMgr.LoadCredentials();
             Uri uri = new Uri(serverUrl);
             VssConnection conn = ApiUtil.CreateConnection(uri, creds);
 
             //session name used to be Environment.MachineName, which is added in a latter coreclr libs than what we have
             //TODO: name the session after Environment.MachineName, when we are ready to consume latest coreclr libs
-            String sessionName = "TODO_machine_name" + Guid.NewGuid().ToString();
+            //TODO: see if this is available in new std lib ver
+            string sessionName = "TODO_machine_name" + Guid.NewGuid().ToString();
 
-            IDictionary<String, String> agentSystemCapabilities = new Dictionary<String, String>();
+            var agentSystemCapabilities = new Dictionary<string, string>();
             //TODO: add capabilities
 
             var agent = new TaskAgentReference
@@ -75,9 +71,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 try
                 {
                     Trace.Info("Connecting to the Agent Server...");
-                    
                     await agentSvr.ConnectAsync(conn);
-                                        
+
                     Session = await agentSvr.CreateAgentSessionAsync(
                                                         _settings.PoolId,
                                                         taskAgentSession,
@@ -135,16 +130,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             }
         }
 
-
-        private long? _lastMessageId = null;
-
         public async Task<TaskAgentMessage> GetNextMessageAsync()
         {
-            if (Session == null)
-            {
-                throw new InvalidOperationException("Must create a session before listening");
-            }
-            Debug.Assert(_settings != null, "settings should not be null");
+            Trace.Entering();
+            ArgUtil.NotNull(Session, nameof(Session));
+            ArgUtil.NotNull(_settings, nameof(_settings));
             var agentServer = HostContext.GetService<IAgentServer>();
             while (true)
             {
@@ -154,20 +144,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 {
                     message = await agentServer.GetAgentMessageAsync(_settings.PoolId,
                                                                 Session.SessionId,
-                                                                _lastMessageId,
+                                                                null, // TODO: FIX THIS: _lastMessageId,
                                                                 HostContext.CancellationToken);
                 }
                 catch (TimeoutException)
                 {
-                    Trace.Verbose("MessageListener.Listen - TimeoutException received.");
+                    Trace.Verbose($"{nameof(TimeoutException)} received.");
                 }
                 catch (TaskCanceledException)
                 {
-                    Trace.Verbose("MessageListener.Listen - TaskCanceledException received.");
+                    Trace.Verbose($"{nameof(TaskCanceledException)} received.");
                 }
                 catch (TaskAgentSessionExpiredException)
                 {
-                    Trace.Verbose("MessageListener.Listen - TaskAgentSessionExpiredException received.");
+                    Trace.Verbose($"{nameof(TaskAgentSessionExpiredException)} received.");
                     // TODO: Throw a specific exception so the caller can control the flow appropriately.
                     throw;
                 }
@@ -177,7 +167,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 }
                 catch (Exception ex)
                 {
-                    Trace.Warning("MessageListener.Listen - Exception received.");
                     Trace.Error(ex);
                     // TODO: Throw a specific exception so the caller can control the flow appropriately.
                     throw;
@@ -185,11 +174,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
                 if (message == null)
                 {
-                    Trace.Verbose("MessageListener.Listen - No message retrieved from session '{0}'.", this.Session.SessionId);
+                    Trace.Verbose($"No message retrieved from session '{Session.SessionId}'.");
                     continue;
                 }
 
-                Trace.Verbose("MessageListener.Listen - Message '{0}' received from session '{1}'.", message.MessageId, this.Session.SessionId);
+                Trace.Verbose($"Message '{message.MessageId}' received from session '{Session.SessionId}'.");
                 return message;
             }
         }

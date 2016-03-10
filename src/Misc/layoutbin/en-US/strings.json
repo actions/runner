@@ -1,5 +1,7 @@
 {
-    "Test": "TestValue {0} World",
+    "AgentIsNotConfigured": "Agent is not configured.",
+    "EnterValidValueFor0": "Enter a valid value for {0}.",
+    "InvalidConfigFor0TerminatingUnattended": "Invalid configuration provided for {0}. Terminating unattended configuration.",
     "ListenerHelp": [
 "Visual Studio Team Services Agent",
 "Copyright (c) Microsoft Corporation",
@@ -90,5 +92,9 @@
   "FailedToFindPool": "Failed to find pool name. Try again or ctrl-c to quit",
   "AlreadyConfiguredError": "Cannot configure. Already configured.",
   "ListenForJobs": "Listening for Jobs",
-  "LocalServiceNotFound": "Can not find local service account"
+  "LocalServiceNotFound": "Can not find local service account",
+  "N": "N",
+  "Prompt0": "Enter {0}",
+  "Prompt0Default1": "Enter {0} (press Enter for {1})",
+  "Y": "Y"
 }

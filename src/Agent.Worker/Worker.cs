@@ -1,4 +1,5 @@
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
+using Microsoft.VisualStudio.Services.Agent.Util;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -44,8 +45,21 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                         WorkerMessage packet = await packetReceiveTask;
                         switch (packet.MessageType)
                         {
-                            case MessageType.NewJobRequest:                                
+                            case MessageType.NewJobRequest:
+                                // Deserialize the job message.
                                 var message = JsonUtility.FromString<JobRequestMessage>(packet.Body);
+
+                                // Set the default thread culture.
+                                string culture;
+                                if (!message.Environment.Variables.TryGetValue(Constants.Variables.System.Culture, out culture))
+                                {
+                                    culture = null;
+                                }
+
+                                ArgUtil.NotNullOrEmpty(culture, nameof(culture));
+                                HostContext.SetDefaultCulture(culture);
+
+                                // Run the job.
                                 jobRunnerTask = jobRunner.RunAsync(message);
                                 break;
                             case MessageType.CancelRequest:

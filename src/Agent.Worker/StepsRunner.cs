@@ -34,7 +34,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
     {
         public async Task<TaskResult> RunAsync(IExecutionContext context, IList<IStep> steps)
         {
-            // TODO: Convert to trace: Console.WriteLine("Steps.Count: {0}", steps.Count);
             // TaskResult:
             //  Abandoned
             //  Canceled
@@ -47,6 +46,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             Boolean criticalStepFailed = false;
             foreach (IStep step in steps)
             {
+                Trace.Verbose($"Processing step: DisplayName='{step.DisplayName}', AlwaysRun={step.AlwaysRun}, ContinueOnError={step.ContinueOnError}, Critical={step.Critical}, Enabled={step.Enabled}, Finally={step.Finally}");
+
                 // Skip the current step if it is not Enabled.
                 if (!step.Enabled
                     // Or if a previous step failed and the current step is not AlwaysRun.
@@ -54,13 +55,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     // Or if a previous Critical step failed and the current step is not Finally.
                     || (criticalStepFailed && !step.Finally))
                 {
-                    Trace.Verbose($"Skipping '{step.DisplayName}'.");
+                    Trace.Verbose($"Skipping step.");
                     step.Result = TaskResult.Skipped;
                     continue;
                 }
 
                 // Run the step.
-                Trace.Verbose($"Running '{step.DisplayName}'.");
+                Trace.Verbose($"Running step.");
                 step.Result = await step.RunAsync();
                 Trace.Verbose($"Step result: {step.Result}");
 
@@ -68,6 +69,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 if (step.Result.Value == TaskResult.Failed && step.ContinueOnError)
                 {
                     step.Result = TaskResult.SucceededWithIssues;
+                    Trace.Verbose($"Step result: {step.Result}");
                 }
 
                 // Update the step failed flags.
@@ -83,6 +85,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 {
                     jobResult = TaskResult.SucceededWithIssues;
                 }
+
+                Trace.Verbose($"Current state: jobResult='{jobResult}', stepFailed={stepFailed}, criticalStepFailed={criticalStepFailed}");
             }
 
             return jobResult;

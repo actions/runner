@@ -19,14 +19,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         IExecutionContext CreateChild();
         void InitializeEnvironment(JobRequestMessage message);
-        void Write(string tag, string format, params object[] args);
+        void Write(string tag, string message);
     }
 
     public sealed class ExecutionContext : AgentService, IExecutionContext
     {
         private IWebConsoleLogger _console;
         private IPagingLogger _logger;
-        private JobRequestMessage _requestMessage;
 
         public CancellationToken CancellationToken { get; private set; }
         public List<ServiceEndpoint> Endpoints { get; private set; }
@@ -43,6 +42,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             return child;
         }
 
+        public override void Initialize(IHostContext hostContext)
+        {
+            Initialize(hostContext, parent: null);
+        }
+
         public void InitializeEnvironment(JobRequestMessage message)
         {
             // Validate/store parameters.
@@ -51,23 +55,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             ArgUtil.NotNull(message.Environment, nameof(message.Environment));
             ArgUtil.NotNull(message.Environment.Endpoints, nameof(message.Environment.Endpoints));
             ArgUtil.NotNull(message.Environment.Variables, nameof(message.Environment.Variables));
-            _requestMessage = message;
 
             // Initialize the environment.
             Endpoints = message.Environment.Endpoints;
             Variables = new Variables(HostContext, message.Environment.Variables);
         }
 
-        public void Write(string tag, String format, params Object[] args)
+        // Do not add a format string overload. In general, execution context messages are user facing and
+        // therefore should be localized. Use the Loc methods from the StringUtil class. The exception to
+        // the rule is command messages - which should be crafted using strongly typed wrapper methods.
+        public void Write(string tag, string message)
         {
-            string msg = StringUtil.Format("{0}{1}", tag, StringUtil.Format(format, args));
+            string msg = $"{tag}{message}";
             _logger.Write(msg);
             _console.Write(msg);
-        }
-
-        public override void Initialize(IHostContext hostContext)
-        {
-            Initialize(hostContext, parent: null);
         }
 
         private void Initialize(IHostContext hostContext, ExecutionContext parent)
@@ -82,7 +83,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             _logger.TimeLineId = TimeLineId;
             if (parent != null)
             {
-                InitializeEnvironment(parent._requestMessage);
+                Endpoints = parent.Endpoints;
+                Variables = parent.Variables;
             }
         }
     }
@@ -95,29 +97,34 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             context.Debug(ex.ToString());
         }
 
-        public static void Error(this IExecutionContext context, string format, params object[] args)
+        // Do not add a format string overload. See comment on ExecutionContext.Write().
+        public static void Error(this IExecutionContext context, string message)
         {
-            context.Write(WellKnownTags.Error, format, args);
+            context.Write(WellKnownTags.Error, message);
         }
 
-        public static void Warning(this IExecutionContext context, string format, params object[] args)
+        // Do not add a format string overload. See comment on ExecutionContext.Write().
+        public static void Warning(this IExecutionContext context, string message)
         {
-            context.Write(WellKnownTags.Warning, format, args);
+            context.Write(WellKnownTags.Warning, message);
         }
 
-        public static void Output(this IExecutionContext context, string format, params object[] args)
+        // Do not add a format string overload. See comment on ExecutionContext.Write().
+        public static void Output(this IExecutionContext context, string message)
         {
-            context.Write(null, format, args);
+            context.Write(null, message);
         }
 
-        public static void Command(this IExecutionContext context, string format, params object[] args)
+        // Do not add a format string overload. See comment on ExecutionContext.Write().
+        public static void Command(this IExecutionContext context, string message)
         {
-            context.Write(WellKnownTags.Command, format, args);
+            context.Write(WellKnownTags.Command, message);
         }
 
-        public static void Section(this IExecutionContext context, string format, params object[] args)
+        // Do not add a format string overload. See comment on ExecutionContext.Write().
+        public static void Section(this IExecutionContext context, string message)
         {
-            context.Write(WellKnownTags.Section, format, args);
+            context.Write(WellKnownTags.Section, message);
         }
 
         //
@@ -125,11 +132,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         // It's meant to help the end user debug their definitions.
         // Why are my inputs not working?  It's not meant for dev debugging which is diag
         //
-        public static void Debug(this IExecutionContext context, string format, params object[] args)
+        // Do not add a format string overload. See comment on ExecutionContext.Write().
+        public static void Debug(this IExecutionContext context, string message)
         {
             if (context.WriteDebug)
             {
-                context.Write(WellKnownTags.Debug, format, args);
+                context.Write(WellKnownTags.Debug, message);
             }
         }
     }

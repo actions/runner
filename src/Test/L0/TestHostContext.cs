@@ -2,6 +2,7 @@ using Microsoft.VisualStudio.Services.Agent.Worker;
 using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -18,7 +19,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         private readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
         private string _suiteName;
         private string _testName;
-                
+
+        public TestHostContext(object testClass, [CallerMemberName] string testName = "")
+            : this(
+                // Trim the test assembly's root namespace from the class's full name.
+                suiteName: testClass.GetType().FullName.Substring(typeof(Tests.Program).FullName.LastIndexOf(nameof(Tests.Program))).Replace(".", "_"),
+                testName: testName)
+        {
+        }
+
         public TestHostContext(string suiteName, [CallerMemberName] string testName = "")
         {
             if (string.IsNullOrEmpty(suiteName))
@@ -74,6 +83,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             _cancellationTokenSource.Cancel();
         }
 
+        public CultureInfo DefaultCulture { get; private set; }
+
         public async Task Delay(TimeSpan delay)
         {
             await Task.Delay(TimeSpan.Zero);
@@ -119,6 +130,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 key: typeof(T),
                 valueFactory: x => new ConcurrentQueue<object>());
             queue.Enqueue(instance);
+        }
+
+        public void SetDefaultCulture(string name)
+        {
+            this.DefaultCulture = new CultureInfo(name);
         }
 
         public void SetSingleton<T>(T singleton) where T : class, IAgentService
