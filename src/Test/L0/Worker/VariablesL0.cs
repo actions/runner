@@ -32,7 +32,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
         public void CanSetAndGet()
         {
             // Arrange.
-            using (TestHostContext hc = new TestHostContext(nameof(VariablesL0)))
+            using (TestHostContext hc = new TestHostContext(this))
             {
                 var variables = new Variables(hc, new Dictionary<string, string>());
 
@@ -51,7 +51,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
         public void GetBooleanDoesNotThrowWhenNull()
         {
             // Arrange.
-            using (TestHostContext hc = new TestHostContext(nameof(VariablesL0)))
+            using (TestHostContext hc = new TestHostContext(this))
             {
                 var variables = new Variables(hc, new Dictionary<string, string>());
 
@@ -69,7 +69,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
         public void GetEnumDoesNotThrowWhenNull()
         {
             // Arrange.
-            using (TestHostContext hc = new TestHostContext(nameof(VariablesL0)))
+            using (TestHostContext hc = new TestHostContext(this))
             {
                 var variables = new Variables(hc, new Dictionary<string, string>());
 

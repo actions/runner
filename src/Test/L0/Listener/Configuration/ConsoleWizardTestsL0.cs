@@ -1,9 +1,9 @@
-using Microsoft.VisualStudio.Services.Agent.Configuration;
+using Microsoft.VisualStudio.Services.Agent.Listener.Configuration;
 using System;
 using System.Collections.Generic;
 using Xunit;
 
-namespace Microsoft.VisualStudio.Services.Agent.Tests
+namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
 {
     public class ConsoleWizardTestsL0
     {
@@ -12,7 +12,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Trait("Category", "ConsoleWizard")]
         public void ShouldNotReadFromUser()
         {
-            using (TestHostContext hc = new TestHostContext(nameof(ConsoleWizardTestsL0)))
+            using (TestHostContext hc = new TestHostContext(this))
             {
                 var consoleWizard = new ConsoleWizard();
                 consoleWizard.Initialize(hc);

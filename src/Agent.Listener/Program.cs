@@ -1,4 +1,4 @@
-﻿using Microsoft.VisualStudio.Services.Agent.Configuration;
+﻿using Microsoft.VisualStudio.Services.Agent.Listener.Configuration;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
 using System.Threading.Tasks;

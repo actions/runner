@@ -1,6 +1,6 @@
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
-using Microsoft.VisualStudio.Services.Agent.Configuration;
 using Microsoft.VisualStudio.Services.Agent.Listener;
+using Microsoft.VisualStudio.Services.Agent.Listener.Configuration;
 using Moq;
 using System;
 using System.Collections.Generic;
@@ -9,7 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 
-namespace Microsoft.VisualStudio.Services.Agent.Tests
+namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
 {
     public sealed class AgentL0
     {
@@ -49,7 +49,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         //process 2 new job messages, and one cancel message
         public async void TestRunAsync()
         {
-            using (var hc = new TestHostContext(nameof(AgentL0)))            
+            using (var hc = new TestHostContext(this))
             {
                 //Arrange
                 var agent = new Microsoft.VisualStudio.Services.Agent.Listener.Agent();

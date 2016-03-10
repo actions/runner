@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using System.Security.Principal;
 
-namespace Microsoft.VisualStudio.Services.Agent.Configuration
+namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 {
     public static class Validators
     {

@@ -10,7 +10,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 
-namespace Microsoft.VisualStudio.Services.Agent.Tests
+namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
 {    
     public sealed class TaskManagerL0
     {
@@ -52,7 +52,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         public async void TestEnsureTasksExist()
         {
             //Arrange
-            using (var hc = new TestHostContext(nameof(TaskManagerL0)))
+            using (var hc = new TestHostContext(this))
             {
                 hc.SetSingleton<IJobServer>(_jobServer.Object);
                 hc.SetSingleton<IConfigurationStore>(_configurationStore.Object);

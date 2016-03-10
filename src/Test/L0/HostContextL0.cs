@@ -1,10 +1,9 @@
 using System.Diagnostics;
 using Xunit;
 
-
 namespace Microsoft.VisualStudio.Services.Agent.Tests
 {
-    public class HostContextL0
+    public sealed class HostContextL0
     {
         [Fact]
         [Trait("Level", "L0")]
@@ -12,7 +11,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         public void GetServiceReturnsSingleton()
         {
             // Arrange.
-            using(TestHostContext tc = new TestHostContext(nameof(HostContextL0)))
+            using(TestHostContext tc = new TestHostContext(this))
             {
                 TraceSource trace = tc.GetTrace();
                 using (var hostContext = new HostContext($"L0Test_{nameof(GetServiceReturnsSingleton)}"))
@@ -36,7 +35,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         public void CreateServiceReturnsNewInstance()
         {
             // Arrange.
-            using(TestHostContext tc = new TestHostContext(nameof(HostContextL0)))
+            using(TestHostContext tc = new TestHostContext(this))
             {
                 TraceSource trace = tc.GetTrace();
                 using(var hostContext = new HostContext($"L0Test_{nameof(CreateServiceReturnsNewInstance)}"))

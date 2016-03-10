@@ -10,7 +10,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Trait("Category", "Common")]
         public void CanConstruct()
         {
-            using (TestHostContext hc = new TestHostContext(nameof(CommandLineParserL0)))
+            using (TestHostContext hc = new TestHostContext(this))
             {
                 TraceSource trace = hc.GetTrace();
 
@@ -26,7 +26,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Trait("Category", "Common")]
         public void ParsesCommands()
         {
-            using (TestHostContext hc = new TestHostContext(nameof(CommandLineParserL0)))
+            using (TestHostContext hc = new TestHostContext(this))
             {
                 TraceSource trace = hc.GetTrace();
 
@@ -46,7 +46,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Trait("Category", "Common")]
         public void ParsesArgs()
         {
-            using (TestHostContext hc = new TestHostContext(nameof(CommandLineParserL0)))
+            using (TestHostContext hc = new TestHostContext(this))
             {
                 TraceSource trace = hc.GetTrace();
 
@@ -70,7 +70,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Trait("Category", "Common")]
         public void ParsesFlags()
         {
-            using (TestHostContext hc = new TestHostContext(nameof(CommandLineParserL0)))
+            using (TestHostContext hc = new TestHostContext(this))
             {
                 TraceSource trace = hc.GetTrace();
 

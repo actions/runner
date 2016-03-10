@@ -1,10 +1,10 @@
-using Microsoft.VisualStudio.Services.Agent.Configuration;
+using Microsoft.VisualStudio.Services.Agent.Listener.Configuration;
 using Microsoft.VisualStudio.Services.Client;
 using Microsoft.VisualStudio.Services.Common;
 using System.Collections.Generic;
 using System.Diagnostics;
 
-namespace Microsoft.VisualStudio.Services.Agent.Tests
+namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
 {
     public class TestAgentCredential : CredentialProvider
     {

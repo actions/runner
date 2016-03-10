@@ -4,7 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 
-namespace Microsoft.VisualStudio.Services.Agent.Configuration
+namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 {
     public interface ICredentialProvider
     {

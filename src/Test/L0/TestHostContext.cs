@@ -1,4 +1,5 @@
 using Microsoft.VisualStudio.Services.Agent.Worker;
+using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
@@ -21,27 +22,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         private string _testName;
 
         public TestHostContext(object testClass, [CallerMemberName] string testName = "")
-            : this(
-                // Trim the test assembly's root namespace from the class's full name.
-                suiteName: testClass.GetType().FullName.Substring(typeof(Tests.Program).FullName.LastIndexOf(nameof(Tests.Program))).Replace(".", "_"),
-                testName: testName)
         {
-        }
-
-        public TestHostContext(string suiteName, [CallerMemberName] string testName = "")
-        {
-            if (string.IsNullOrEmpty(suiteName))
-            {
-                throw new ArgumentNullException(nameof(suiteName));
-            }
-
-            if (string.IsNullOrEmpty(testName))
-            {
-                throw new ArgumentNullException(nameof(testName));
-            }
-
-            _suiteName = suiteName;
+            ArgUtil.NotNull(testClass, nameof(testClass));
+            ArgUtil.NotNullOrEmpty(testName, nameof(testName));
             _testName = testName;
+
+            // Trim the test assembly's root namespace from the test class's full name.
+            _suiteName = testClass.GetType().FullName.Substring(
+                startIndex: typeof(Tests.Program).FullName.LastIndexOf(nameof(Program)));
+            _suiteName = _suiteName.Replace(".", "_");
 
             // Setup the trace manager.
             string traceFileName = $"trace_{_suiteName}_{_testName}.log";

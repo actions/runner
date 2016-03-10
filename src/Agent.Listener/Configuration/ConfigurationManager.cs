@@ -11,7 +11,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Microsoft.VisualStudio.Services.Agent.Configuration
+namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 {
     public static class CliArgs
     {

@@ -12,7 +12,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Trait("Category", "Common")]
         public async Task SuccessExitsWithCodeZero()
         {
-            using (TestHostContext hc = new TestHostContext(nameof(ProcessInvokerL0)))
+            using (TestHostContext hc = new TestHostContext(this))
             {
                 TraceSource trace = hc.GetTrace();
 
