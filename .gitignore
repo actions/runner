@@ -9,4 +9,6 @@
 **/.vs
 **/.vscode
 node_modules
+_downloads
 _layout
+

@@ -1,7 +1,9 @@
+NODE_VERSION="4.3.2"
 
 DEV_CMD=$1
 DEV_SUBCMD=$2
 LAYOUT_DIR=`pwd`/../_layout
+DOWNLOAD_DIR=`pwd`/../_downloads
 
 define_os='OS_WINDOWS'
 BUILD_OS=`uname`
@@ -26,6 +28,13 @@ function warn()
 {
    local error=${1:-Undefined error}
    echo "WARNING - FAILED: $error" >&2
+}
+
+function checkRC() {
+    local rc=$?
+    if [ $rc -ne 0 ]; then
+        failed "${1} Failed with return code $rc"
+    fi
 }
 
 function heading()
@@ -94,6 +103,60 @@ function copyBin ()
     popd > /dev/null 
 }
 
+function downloadNode ()
+{
+    echo "Downloading Node ${NODE_VERSION}..."
+    target_dir="${LAYOUT_DIR}/externals/node"
+    mkdir -p $target_dir
+
+    if [[ "$define_os" == 'OS_WINDOWS' ]]; then
+        # Windows
+        node_download_dir="${DOWNLOAD_DIR}/node-v${NODE_VERSION}-win-x64"
+
+        pushd "${node_download_dir}" > /dev/null
+        node_exe_url=https://nodejs.org/dist/v${NODE_VERSION}/win-x64/node.exe
+
+        # TODO finish on win
+        
+        popd > /dev/null
+    else
+        # OSX/Linux
+        mkdir -p "${DOWNLOAD_DIR}"
+        pushd "${DOWNLOAD_DIR}" > /dev/null
+
+        platform_lower=`echo "${BUILD_OS}" | awk '{print tolower($0)}'`
+        node_file="node-v${NODE_VERSION}-${platform_lower}-x64"
+        node_zip="${node_file}.tar.gz"
+        
+        if [ -f ${node_zip} ]; then
+            echo "Download exists"
+        else
+            node_url="https://nodejs.org/dist/v${NODE_VERSION}/${node_zip}"
+            echo "Downloading Node ${NODE_VERSION} @ ${node_url}"
+            curl -skSLO $node_url &> "${DOWNLOAD_DIR}/curl.log"
+            checkRC "Download (curl)"
+        fi
+
+        if [ -d ${node_file} ]; then
+            echo "Already extracted"
+        else
+            echo "Extracting"
+            tar zxvf ${node_zip} &> "${DOWNLOAD_DIR}/tar.log"
+            checkRC "Unzip (node)"
+        fi   
+        
+        # copy to layout
+        echo "Copying to layout"
+        cp -R ${node_file}/* ${target_dir}    
+
+        popd > /dev/null
+    fi    
+
+    echo Done
+
+    
+}
+
 function layout ()
 {
     clean
@@ -151,6 +214,7 @@ function buildtest ()
 }
 
 case $DEV_CMD in
+   "n") downloadNode;;
    "build") build;;
    "b") build;;
    "test") runtest;;
