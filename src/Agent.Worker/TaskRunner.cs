@@ -4,6 +4,7 @@ using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
@@ -31,6 +32,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             Trace.Entering();
             ArgUtil.NotNull(ExecutionContext, nameof(ExecutionContext));
             ArgUtil.NotNull(TaskInstance, nameof(TaskInstance));
+
+            ExecutionContext.Start();
+            CancellationTokenSource ts = new CancellationTokenSource(TimeSpan.FromMinutes(1));
+            while (!ts.IsCancellationRequested)
+            {
+                ExecutionContext.Write(null, DateTime.UtcNow.ToString("O"));
+                Task.Delay(50).Wait();
+            }
+            ExecutionContext.Result = TaskResult.Succeeded;
+            ExecutionContext.Complete();
+
             // TODO: Load the task definition Path.Combine("tasks", TaskInstance.Name, taskInstance.Version)
             // TODO: Choose the handler.
             return Task.FromResult(TaskResult.Succeeded);
