@@ -7,18 +7,18 @@ To build, we rely on .NET Core version 1.0.0.001598
 Additional instructions are available [here](https://dotnet.github.io/getting-started/) Please use the links below to download the correct version of Windows/OSX installers.
 
 
-## ![Win](../docs/win_med.png) Windows
+## ![Win](../win_med.png) Windows
 
 Install [dotnet-win-x64.1.0.0.001598.exe](https://dotnetcli.blob.core.windows.net/dotnet/beta/Installers/1.0.0.001598/dotnet-win-x64.1.0.0.001598.exe)
 
 TIP: Uninstall any existing version first (Programs and Features -> Microsoft Dotnet CLI for Windows).
 
-## ![Apple](../docs/apple_med.png) OSX 10.11  
+## ![Apple](../apple_med.png) OSX 10.11  
 
 Install [dotnet-osx-x64.1.0.0.001598.pkg](https://dotnetcli.blob.core.windows.net/dotnet/beta/Installers/1.0.0.001598/dotnet-osx-x64.1.0.0.001598.pkg)
 
 
-## ![Linux](../docs/linux_med.png) Ubuntu 14.04
+## ![Linux](../linux_med.png) Ubuntu 14.04
 
 On Ubuntu, it must be installed using apt-get  
 
