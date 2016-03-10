@@ -4,6 +4,8 @@
 
 A cross platform build and release agent for Visual Studio Team Services and Team Foundation Server 2015 and beyond.
 
+> Status:  Work is just beginning on this project.  Please do not log issues yet.  You are welcome to inspect and try it out as we build it.
+
 Supported on Windows, OSX and Linux.  Written for the .NET Core CLR as one code base in C#.
 
 ## Install
