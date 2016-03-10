@@ -14,7 +14,7 @@ Not available yet.  Need to build from source.  See Contribute below.
 
 ### Dev Dependencies
 
-![Win](docs/win_sm.png)![*nix](docs/linux_sm.png) [Install .NET Core](docs/dev/netcore.md)
+![Win](docs/win_sm.png)![*nix](docs/linux_sm.png) [Install .NET Core Required for our Build](docs/dev/netcore.md)
 
 ![Win](docs/win_sm.png) Git for Windows [Install Here](https://git-scm.com/downloads) _(needed for dev sh script)
 

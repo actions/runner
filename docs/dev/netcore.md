@@ -11,7 +11,7 @@ Additional instructions are available [here](https://dotnet.github.io/getting-st
 
 Install [dotnet-win-x64.1.0.0.001598.exe](https://dotnetcli.blob.core.windows.net/dotnet/beta/Installers/1.0.0.001598/dotnet-win-x64.1.0.0.001598.exe)
 
-TIP: Uninstall any existing version first (Programs and Features -> Microsoft Dotnet CLI for Windows).
+> <sub><sup>TIP: Uninstall any existing version first (Programs and Features -> Microsoft Dotnet CLI for Windows).</sup></sub>  
 
 ## ![Apple](../apple_med.png) OSX 10.11  
 
