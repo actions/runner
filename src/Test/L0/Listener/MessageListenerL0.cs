@@ -1,6 +1,6 @@
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Listener;
-using Microsoft.VisualStudio.Services.Agent.Configuration;
+using Microsoft.VisualStudio.Services.Agent.Listener.Configuration;
 using Moq;
 using System;
 using System.Diagnostics;
@@ -11,9 +11,8 @@ using System.Threading;
 using System.Reflection;
 using System.Collections.Generic;
 
-namespace Microsoft.VisualStudio.Services.Agent.Tests
+namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
 {
-
     public sealed class MessageListenerL0
     {
         private AgentSettings _settings;
@@ -32,7 +31,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
 
         private TestHostContext CreateTestContext([CallerMemberName] String testName = "")
         {
-            TestHostContext tc = new TestHostContext(nameof(MessageListenerL0), testName);
+            TestHostContext tc = new TestHostContext(this, testName);
             tc.SetSingleton<IConfigurationManager>(_config.Object);
             tc.SetSingleton<IAgentServer>(_agentServer.Object);
             tc.SetSingleton<ICredentialManager>(this._credMgr.Object);

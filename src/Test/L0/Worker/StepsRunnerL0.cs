@@ -18,7 +18,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
 
         private TestHostContext CreateTestContext([CallerMemberName] String testName = "")
         {
-            var tc = new TestHostContext(nameof(StepsRunnerL0), testName);
+            var tc = new TestHostContext(this, testName);
             _context = new Mock<IExecutionContext>();
             _context.Object.Initialize(tc);
             _stepsRunner = new StepsRunner();

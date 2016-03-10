@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 using Microsoft.VisualStudio.Services.Agent.Util;
 
-namespace Microsoft.VisualStudio.Services.Agent.Configuration
+namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 {
     public class WindowsServiceControlManager : ServiceControlManager
     {

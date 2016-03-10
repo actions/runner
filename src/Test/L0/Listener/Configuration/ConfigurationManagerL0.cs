@@ -9,9 +9,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 
-namespace Microsoft.VisualStudio.Services.Agent.Tests
+namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
 {
-    using Microsoft.VisualStudio.Services.Agent.Configuration;
+    using Microsoft.VisualStudio.Services.Agent.Listener.Configuration;
 
     public class ConfigurationManagerL0
     {
@@ -100,7 +100,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
 
         private TestHostContext CreateTestContext([CallerMemberName] String testName = "")
         {
-            TestHostContext tc = new TestHostContext(nameof(ConfigurationManagerL0), testName);
+            TestHostContext tc = new TestHostContext(this, testName);
             tc.SetSingleton<ICredentialManager>(this._credMgr.Object);
             tc.SetSingleton<IConsoleWizard>(_reader.Object);
             tc.SetSingleton<IConfigurationStore>(_store.Object);

@@ -16,7 +16,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         public void LoadsTypeFromString()
         {
             // Arrange.
-            using (TestHostContext tc = new TestHostContext(nameof(ExtensionManagerL0)))
+            using (TestHostContext tc = new TestHostContext(this))
             {
                 var manager = new ExtensionManager();
                 manager.Initialize(tc);

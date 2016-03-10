@@ -21,7 +21,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
         public void ReturnsCorrectHashKey()
         {
             // Arrange.
-            using (TestHostContext tc = new TestHostContext(nameof(SourceProviderL0)))
+            using (TestHostContext tc = new TestHostContext(this))
             {
                 var executionContext = new Mock<IExecutionContext>();
                 executionContext

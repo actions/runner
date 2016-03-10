@@ -7,7 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 
-namespace Microsoft.VisualStudio.Services.Agent.Tests
+namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
 {
     public sealed class WorkerManagerL0
     {
@@ -40,7 +40,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Trait("Category", "Agent")]
         public async void TestRun()
         {
-            using (var hc = new TestHostContext(nameof(WorkerManagerL0)))
+            using (var hc = new TestHostContext(this))
             using (var workerManager = new WorkerManager())
             {
                 hc.EnqueueInstance<IJobDispatcher>(_jobDispatcher.Object);
@@ -60,7 +60,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         public async void TestCancel()
         {
             //Arrange
-            using (var hc = new TestHostContext(nameof(WorkerManagerL0)))
+            using (var hc = new TestHostContext(this))
             using (var workerManager = new WorkerManager())
             {
                 hc.EnqueueInstance<IJobDispatcher>(_jobDispatcher.Object);

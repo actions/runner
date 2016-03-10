@@ -1,16 +1,13 @@
+using Microsoft.VisualStudio.Services.Agent.Listener.Configuration;
+using Moq;
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
-
-using Microsoft.VisualStudio.Services.Agent.Configuration;
-
-using Moq;
-
 using Xunit;
 
-namespace Microsoft.VisualStudio.Services.Agent.Tests
+namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
 {
     public sealed class WindowsServiceControlManagerL0
     {
@@ -57,15 +54,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
 
         private TestHostContext CreateTestContext([CallerMemberName] String testName = "")
         {
-            TestHostContext tc = new TestHostContext(nameof(ConfigurationManagerL0), testName);
+            TestHostContext tc = new TestHostContext(this, testName);
             tc.SetSingleton<IConsoleWizard>(_reader.Object);
             tc.SetSingleton<IProcessInvoker>(_processInvoker.Object);
             return tc;
         }
 
-        [WindowsOnlyFact]
+#if OS_WINDOWS
+        [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
+#endif
         public async Task WindowsServiceControlManagerShouldInstallService()
         {
             using (var tc = CreateTestContext())
@@ -88,9 +87,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             }
         }
 
-        [WindowsOnlyFact]
+#if OS_WINDOWS
+        [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
+#endif
         public async Task PromptForPasswordForNonDefaultServiceUserAccount()
         {
             using (var tc = this.CreateTestContext())
