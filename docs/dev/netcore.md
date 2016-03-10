@@ -6,6 +6,7 @@ Installation instructions are available [here](https://dotnet.github.io/getting-
 
 ## [.Net Core for Windows](https://dotnetcli.blob.core.windows.net/dotnet/beta/Installers/1.0.0.001598/dotnet-win-x64.1.0.0.001598.exe)
 
+Uninstall any existing version first (Programs and Features -> Microsoft Dotnet CLI for Windows).
 
 ## [.Net Core for OSX 10.11](https://dotnetcli.blob.core.windows.net/dotnet/beta/Installers/1.0.0.001598/dotnet-osx-x64.1.0.0.001598.pkg)
 
