@@ -15,23 +15,21 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
     public sealed class Agent : AgentService, IAgent
     {
-        private Guid _sessionId = Guid.Empty;
+        private Guid _sessionId;
         private int _poolId;
         private ITerminal _term;
 
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
-            this._term = HostContext.GetService<ITerminal>();
+            _term = HostContext.GetService<ITerminal>();
         }
 
         public async Task<int> ExecuteCommand(CommandLineParser parser)
         {
             // TODO Unit test to cover this logic
-            Trace.Info("ExecuteCommand()");
-
+            Trace.Info(nameof(ExecuteCommand));
             var configManager = HostContext.GetService<IConfigurationManager>();
-            Trace.Info("Created configuration manager");
 
             // command is not required, if no command it just starts and/or configures if not configured
 
@@ -39,8 +37,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
             if (parser.Flags.Contains("help"))
             {
-                Trace.Info("help");
                 PrintUsage();
+                return 0;
             }
 
             if (parser.IsCommand("unconfigure"))
@@ -52,8 +50,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             if (parser.IsCommand("run") && !configManager.IsConfigured())
             {
                 Trace.Info("run");
-                Console.WriteLine("Agent is not configured");
+                _term.WriteError(StringUtil.Loc("AgentIsNotConfigured"));
                 PrintUsage();
+                return 1;
             }
 
             // unattend mode will not prompt for args if not supplied.  Instead will error.
@@ -96,19 +95,21 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         //create worker manager, create message listener and start listening to the queue
         private async Task<int> RunAsync()
         {
-            Trace.Info("RunAsync()");
-            
+            Trace.Info(nameof(RunAsync));
+
+            // Load the settings.
             var configManager = HostContext.GetService<IConfigurationManager>();
             AgentSettings settings = configManager.LoadSettings();
             _poolId = settings.PoolId;
-            
+
             var listener = HostContext.GetService<IMessageListener>();
             if (!await listener.CreateSessionAsync())
             {
                 return 1;
             }
+
             _term.WriteLine(StringUtil.Loc("ListenForJobs"));
-            
+
             _sessionId = listener.Session.SessionId;
             TaskAgentMessage message = null;
             try
@@ -122,16 +123,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                             HostContext.CancellationToken.ThrowIfCancellationRequested();
                             message = await listener.GetNextMessageAsync(); //get next message
 
-                            if (String.Equals(message.MessageType, AgentRefreshMessage.MessageType, StringComparison.OrdinalIgnoreCase))
+                            if (string.Equals(message.MessageType, AgentRefreshMessage.MessageType, StringComparison.OrdinalIgnoreCase))
                             {
                                 Trace.Warning("Referesh message received, but not yet handled by agent implementation.");
                             }
-                            else if (String.Equals(message.MessageType, JobRequestMessage.MessageType, StringComparison.OrdinalIgnoreCase))
+                            else if (string.Equals(message.MessageType, JobRequestMessage.MessageType, StringComparison.OrdinalIgnoreCase))
                             {
                                 var newJobMessage = JsonUtility.FromString<JobRequestMessage>(message.Body);
                                 await workerManager.Run(newJobMessage);
                             }
-                            else if (String.Equals(message.MessageType, JobCancelMessage.MessageType, StringComparison.OrdinalIgnoreCase))
+                            else if (string.Equals(message.MessageType, JobCancelMessage.MessageType, StringComparison.OrdinalIgnoreCase))
                             {
                                 var cancelJobMessage = JsonUtility.FromString<JobCancelMessage>(message.Body);
                                 workerManager.Cancel(cancelJobMessage);
@@ -169,16 +170,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     tokenSource = new CancellationTokenSource();
                     cancellationToken = tokenSource.Token;
                 }
+
                 await agentServer.DeleteAgentMessageAsync(_poolId, message.MessageId, _sessionId, cancellationToken);
             }
         }
-        
-        private static void PrintUsage()
+
+        private void PrintUsage()
         {
-            string usage = StringUtil.Loc("ListenerHelp");
-            Console.WriteLine(usage);
-            Console.WriteLine(StringUtil.Loc("Test", "Hello"));
-            Environment.Exit(0);
-        }        
+            _term.WriteLine(StringUtil.Loc("ListenerHelper"));
+        }
     }
 }

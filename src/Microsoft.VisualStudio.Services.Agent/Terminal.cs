@@ -1,5 +1,7 @@
 using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
+using System.Collections.Generic;
+using System.Globalization;
 
 namespace Microsoft.VisualStudio.Services.Agent
 {
@@ -12,40 +14,88 @@ namespace Microsoft.VisualStudio.Services.Agent
     public interface ITerminal: IAgentService
     {
         bool Silent { get; set; }
+        string ReadLine();
+        string ReadSecret();
+        void Write(string message);
         void WriteLine();
-        void WriteLine(string line, params object[] args);
-        void WriteError(string line, params object[] args);
+        void WriteLine(string line);
+        void WriteError(string line);
     }
     
-    public class Terminal: AgentService, ITerminal
+    public sealed class Terminal: AgentService, ITerminal
     {
         public bool Silent { get; set; }
+
+        public string ReadLine()
+        {
+            return Console.ReadLine();
+        }
+
+        // TODO: Consider using SecureString.
+        public string ReadSecret()
+        {
+            var chars = new List<char>();
+            while (true)
+            {
+                ConsoleKeyInfo key = Console.ReadKey(intercept: true);
+                if (key.Key == ConsoleKey.Enter)
+                {
+                    Console.WriteLine();
+                    break;
+                }
+                else if (key.Key == ConsoleKey.Backspace)
+                {
+                    if (chars.Count > 0)
+                    {
+                        chars.RemoveAt(chars.Count - 1);
+                        // TODO: Remove a character from the screen also.
+                    }
+                }
+                else if (key.KeyChar > 0)
+                {
+                    chars.Add(key.KeyChar);
+                    Console.Write("*");
+                }
+            }
+
+            string val = new String(chars.ToArray());
+            Trace.Info("Secret gathered.");
+            return val;
+        }
+
+        public void Write(string message)
+        {
+            Trace.Info($"term: {message}");
+            if (!Silent)
+            {
+                Console.Write(message);
+            }
+        }
+
         public void WriteLine()
         {
-            if (!Silent)
-            {
-                Console.WriteLine();    
-            }
+            WriteLine(string.Empty);
         }
-        
-        public void WriteLine(string line, params object[] args)
-        {
-            var msg = StringUtil.Format(line, args);
 
-            Trace.Info("term: {0}", msg);
+        // Do not add a format string overload. Terminal messages are user facing and therefore
+        // should be localized. Use the Loc extension method in the TerminalExtensions class.
+        public void WriteLine(string line)
+        {
+            Trace.Info($"term: {line}");
             if (!Silent)
             {
-                Console.WriteLine(msg);    
+                Console.WriteLine(line);
             }
         }
 
-        public void WriteError(string line, params object[] args)
+        // Do not add a format string overload. Terminal messages are user facing and therefore
+        // should be localized. Use the Loc methods from the TerminalExtensions class.
+        public void WriteError(string line)
         {
-            var msg = StringUtil.Format(line, args);
-            Trace.Error("term: {0}", msg);
+            Trace.Error($"term: {line}");
             if (!Silent)
             {
-                Console.Error.WriteLine(msg);   
+                Console.Error.WriteLine(line);
             }
         }
     }

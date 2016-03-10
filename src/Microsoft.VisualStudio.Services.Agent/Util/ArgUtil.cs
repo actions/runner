@@ -27,5 +27,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
                 throw new ArgumentNullException(name);
             }
         }
+
+        public static void NotNullOrEmpty(string value, string name)
+        {
+            if (string.IsNullOrEmpty(value))
+            {
+                throw new ArgumentNullException(name);
+            }
+        }
     }
 }

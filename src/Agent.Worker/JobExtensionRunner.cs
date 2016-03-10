@@ -36,8 +36,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         public bool Enabled { get; private set; }
         public IExecutionContext ExecutionContext { get; set; }
         public bool Finally { get; private set; }
-        // TODO: REMOVE AFTER REBASE
-        public string Id => Guid.NewGuid().ToString();
         public TaskResult? Result { get; set; }
 
         public Task<TaskResult> RunAsync()

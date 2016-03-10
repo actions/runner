@@ -19,6 +19,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         Task Delay(TimeSpan delay);
         T CreateService<T>() where T : class, IAgentService;
         T GetService<T>() where T : class, IAgentService;
+        void SetDefaultCulture(string name);
     }
 
     public sealed class HostContext : IHostContext, IDisposable
@@ -137,6 +138,12 @@ namespace Microsoft.VisualStudio.Services.Agent
 
             // Return the instance from the cache.
             return _serviceInstances[typeof(T)] as T;
+        }
+
+        public void SetDefaultCulture(string name)
+        {
+            ArgUtil.NotNull(name, nameof(name));
+            CultureInfo.DefaultThreadCurrentCulture = new CultureInfo(name);
         }
 
         public void Dispose()

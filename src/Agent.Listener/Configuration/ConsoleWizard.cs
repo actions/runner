@@ -1,3 +1,4 @@
+using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -26,6 +27,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
 
     public class ConsoleWizard : AgentService, IConsoleWizard
     {
+        private ITerminal _terminal;
+
+        public override void Initialize(IHostContext hostContext)
+        {
+            base.Initialize(hostContext);
+            _terminal = HostContext.GetService<ITerminal>();
+        }
+
         public bool ReadBool(
             string argName,
             string description,
@@ -33,10 +42,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
             Dictionary<String, String> args,
             bool unattended)
         {
-            string def = defaultValue ? "Y" : "N";
+            string def = defaultValue ? StringUtil.Loc("Y") : StringUtil.Loc("N");
             string answer = ReadValue(argName, description, false, def, Validators.BoolValidator, args, unattended);
             
-            return String.Equals(answer, "Y", StringComparison.OrdinalIgnoreCase) ||
+            return String.Equals(answer, StringUtil.Loc("Y"), StringComparison.CurrentCultureIgnoreCase) ||
                    String.Equals(answer, "true", StringComparison.OrdinalIgnoreCase);
         }
 
@@ -49,16 +58,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
             Dictionary<String, String> args,
             bool unattended)
         {
-            Trace.Info("ReadValue()");
+            Trace.Info(nameof(ReadValue));
 
             // If the value for the parameter is specified in the command line it will take precedence.
             // If its not found in the cmdline parameter, it will try to read from existing config
             // and prompt from user quoting the default value read from the config.
             // Error out otherwise, we can't find the value for the parameter
-            String value = string.Empty;
-
-            // TODO: Put this in resource files
-            var errorMessage = string.Format("Enter a valid value for {0}", description);
+            string value = string.Empty;
 
             if (args != null && args.ContainsKey(argName))
             {
@@ -75,7 +81,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
 
             if (unattended)
             {
-                Console.WriteLine("Invalid configuration provided for {0}. Terminating unattended configuration", argName);
+                _terminal.WriteLine(StringUtil.Loc("InvalidConfigFor0TerminatingUnattended", argName));
+                // TODO: Don't Environment.Exit(). Makes unit testing difficult.
                 Environment.Exit(1);
             }
 
@@ -94,7 +101,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
                 }
 
                 Trace.Info("Invalid value for the parameter {0}", argName);
-                Console.WriteLine(errorMessage);
+                _terminal.WriteLine(StringUtil.Loc("EnterValidValueFor0", description));
             }
 
             return value;
@@ -103,20 +110,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
 
         private string ReadParameterFromUser(string parameterName, bool secret, string description, string defaultValue)
         {
-            Trace.Info("ReadParameterFromUser()");
-            // TODO: Localize?
-            var defaultValueFormat = string.Format("(enter for {0})", defaultValue);
-            var prompt = string.Format("Enter {0} {1} > ", description, string.IsNullOrEmpty(defaultValue) ? string.Empty : defaultValueFormat);
-
-            Console.Write(prompt);
+            Trace.Info(nameof(ReadParameterFromUser));
+            string prompt =
+                string.IsNullOrEmpty(defaultValue)
+                ? StringUtil.Loc("Prompt0", description)
+                : StringUtil.Loc("Prompt0Default1", description, defaultValue);
+            _terminal.Write($"{prompt} > ");
 
             if (secret)
             {
                 Trace.Info("Getting secret");
-                return ReadSecret();
+                return _terminal.ReadSecret()?.Trim() ?? string.Empty;
             }
 
-            var inputValue = Console.ReadLine().Trim();
+            string inputValue = _terminal.ReadLine()?.Trim() ?? string.Empty;
 
             if (string.IsNullOrEmpty(inputValue))
             {
@@ -124,36 +131,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Configuration
             }
 
             return inputValue;
-        }
-
-        private string ReadSecret()
-        {
-            List<char> chars = new List<char>();
-            while (true)
-            {
-                ConsoleKeyInfo key = Console.ReadKey(true);
-                if (key.Key == ConsoleKey.Enter)
-                {
-                    Console.WriteLine();
-                    break;
-                }
-                else if (key.Key == ConsoleKey.Backspace)
-                {
-                    if (chars.Count > 0)
-                    {
-                        chars.RemoveAt(chars.Count - 1);
-                    }
-                }
-                else if (key.KeyChar > 0)
-                {
-                    chars.Add(key.KeyChar);
-                    Console.Write("*");
-                }
-            }
-
-            string val = new String(chars.ToArray()).Trim();
-            Trace.Info("Secret gathered. {0} chars", val);
-            return val;
         }
     }
 }

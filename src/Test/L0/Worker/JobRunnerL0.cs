@@ -2,7 +2,7 @@ using Microsoft.VisualStudio.Services.Agent.Worker;
 using System;
 using Xunit;
 
-namespace Microsoft.VisualStudio.Services.Agent.Tests
+namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
 {
     public class JobRunnerL0
     {

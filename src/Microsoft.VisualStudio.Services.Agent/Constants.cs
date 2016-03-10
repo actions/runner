@@ -66,6 +66,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                 //
                 public static readonly string AccessToken = "system.accessToken";                
                 public static readonly string CollectionId = "system.collectionid";
+                public static readonly string Culture = "system.culture";
                 public static readonly string Debug = "system.debug";
                 public static readonly string DefaultWorkingDirectory = "system.defaultworkingdirectory";
                 public static readonly string DefinitionId = "system.definitionid";

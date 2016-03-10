@@ -25,6 +25,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
             // Validate parameters.
             ArgUtil.NotNull(message, nameof(message));
+            ArgUtil.NotNull(message.Environment, nameof(message.Environment));
+            ArgUtil.NotNull(message.Environment.Variables, nameof(message.Environment.Variables));
             ArgUtil.NotNull(message.Tasks, nameof(message.Tasks));
             Trace.Info("Job ID {0}", message.JobId);
 

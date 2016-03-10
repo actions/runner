@@ -9,34 +9,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
 {
     public static class StringUtil
     {
-        private static Dictionary<string, Object> _locStrings;
+        private static readonly object[] DefaultFormatArgs = new object[] { null };
+        private static Dictionary<string, object> _locStrings;
 
-        // TODO: Add unit tests for this. Test cases where args is null and empty array.
         public static string Format(string format, params object[] args)
         {
-            if (string.IsNullOrEmpty(format))
-            {
-                return string.Empty;
-            }
-
-            string message = format;
-            if (args != null && args.Length > 0)
-            {
-                try
-                {
-                    message = string.Format(CultureInfo.InvariantCulture, format, args);
-                }
-                catch (Exception)
-                {
-                    // TODO: Log that string format failed. Consider moving this into a context base class if that's the only place it's used. Then the current trace scope would be available as well.
-                    message = string.Format(CultureInfo.InvariantCulture, "{0} {1}", format, string.Join(", ", args));
-                }
-            }
-
-            return message;
+            return Format(CultureInfo.InvariantCulture, format, args);
         }
 
-        public static string Loc(string locKey, params Object[] args)
+        // Do not combine the non-format overload with the format overload.
+        public static string Loc(string locKey)
         {
             //
             // TODO: Replace this custom little loc impl with proper one after confirming OSX/Linux support
@@ -48,15 +30,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
                 EnsureLoaded();
 
                 if (_locStrings.ContainsKey(locKey))
-                {                
+                {
                     Object item = _locStrings[locKey];
-                    
+
                     Type t = item.GetType();
-                    
+
                     if (t == typeof(string))
                     {
-                        string str = _locStrings[locKey].ToString();
-                        locStr = StringUtil.Format(str, args);                            
+                        locStr = _locStrings[locKey].ToString();
                     }
                     else if (t == typeof(JArray))
                     {
@@ -66,15 +47,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
                         {
                             sb.Append(line);
                             sb.Append(Environment.NewLine);
-                            //locStr += (line + Environment.NewLine);
                         }
+
                         locStr = sb.ToString();
                     }
                 }
                 else
                 {
                     locStr = StringUtil.Format("notFound:{0}", locKey);
-                }              
+                }
             }
             catch (Exception)
             {
@@ -83,17 +64,50 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             
             return locStr;
         }
-                
+
+        // Do not combine the non-format overload with the format overload.
+        public static string Loc(string locKey, params object[] args)
+        {
+            return Format(CultureInfo.CurrentCulture, Loc(locKey), args);
+        }
+
+        private static string Format(CultureInfo culture, string format, params object[] args)
+        {
+            try
+            {
+                // 1) Protect against argument null exception for the format parameter.
+                // 2) Protect against argument null exception for the args parameter.
+                // 3) Coalesce null or empty args with an array containing one null element.
+                //    This protects against format exceptions where string.Format thinks
+                //    that not enough arguments were supplied, even though the intended arg
+                //    literally is null or an empty array.
+                return string.Format(
+                    culture,
+                    format ?? string.Empty,
+                    args == null || args.Length == 0 ? DefaultFormatArgs : args);
+            }
+            catch (FormatException)
+            {
+                // TODO: Log that string format failed. Consider moving this into a context base class if that's the only place it's used. Then the current trace scope would be available as well.
+                if (args != null)
+                {
+                    return string.Format(culture, "{0} {1}", format, string.Join(", ", args));
+                }
+
+                return format;
+            }
+        }
+
         private static void EnsureLoaded()
         {
             if (_locStrings == null)
-            {   
+            {
                 string stringsPath = Path.Combine(IOUtil.GetBinPath(), 
                                                 CultureInfo.CurrentCulture.Name,
                                                 "strings.json");
                                                 
                 _locStrings = IOUtil.LoadObject<Dictionary<string, Object>>(stringsPath);
-            }            
-        }        
+            }
+        }
     }
 }
