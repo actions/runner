@@ -11,34 +11,9 @@ namespace Microsoft.VisualStudio.Services.Agent
         void Write(string message);
     }
 
-    [ServiceLocator(Default = typeof(WebConsoleLogger))]
-    public interface IWebConsoleLogger : IAgentService, ILogWriter
-    {
-    }
-
     [ServiceLocator(Default = typeof(PagingLogger))]
     public interface IPagingLogger : IAgentService, ILogWriter
     {
-    }
-
-    public class WebConsoleLogger : AgentService, IWebConsoleLogger
-    {
-        IJobServer _jobServer;
-
-        public override void Initialize(IHostContext hostContext)
-        {
-            base.Initialize(hostContext);
-            _jobServer = hostContext.GetService<IJobServer>();
-        }
-
-        public Guid TimeLineId { get; set; }
-        public void Write(string message)
-        {
-            if (TimeLineId == Guid.Empty)
-            {
-                throw new InvalidOperationException("TimeLineId must be set");
-            }
-        }
     }
 
     public class PagingLogger : AgentService, IPagingLogger

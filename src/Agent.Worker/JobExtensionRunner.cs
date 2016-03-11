@@ -3,6 +3,7 @@ using Microsoft.VisualStudio.Services.Agent;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
@@ -40,6 +41,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         public Task<TaskResult> RunAsync()
         {
+            ExecutionContext.Start();
+            CancellationTokenSource ts = new CancellationTokenSource(TimeSpan.FromMinutes(1));
+            while (!ts.IsCancellationRequested)
+            {
+                ExecutionContext.Write(null, DateTime.UtcNow.ToString("O"));
+                Task.Delay(50).Wait();
+            }
+            ExecutionContext.Result = TaskResult.Succeeded;
+            ExecutionContext.Complete();
+
             return _runAsync();
         }
     }
