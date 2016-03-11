@@ -94,7 +94,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
 #endif
         public async Task PromptForPasswordForNonDefaultServiceUserAccount()
         {
-            using (var tc = this.CreateTestContext())
+            using (var tc = CreateTestContext())
             {
                 var serviceControlManager = new WindowsServiceControlManager();
                 serviceControlManager.Initialize(tc);

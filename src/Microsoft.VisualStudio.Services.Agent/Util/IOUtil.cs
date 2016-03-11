@@ -2,6 +2,7 @@ using Microsoft.VisualStudio.Services.Agent;
 using Newtonsoft.Json;
 using System;
 using System.IO;
+using System.Reflection;
 
 namespace Microsoft.VisualStudio.Services.Agent.Util
 {
@@ -25,14 +26,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
 
         public static string GetBinPath()
         {
-            var currentAssemblyLocation = System.Reflection.Assembly.GetEntryAssembly().Location;
-            // TODO: IO can be avoided here by using Path.GetDirectoryName.
-            return new DirectoryInfo(currentAssemblyLocation).Parent.FullName;
+            return Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
         }
 
         public static string GetDiagPath()
         {
-            return Path.Combine(new DirectoryInfo(GetBinPath()).Parent.FullName, "_diag");
+            return Path.Combine(
+                Path.GetDirectoryName(GetBinPath()),
+                Constants.Path.DiagDirectory);
         }
 
         public static string GetWorkPath(IHostContext hostContext)
@@ -46,7 +47,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
 
         public static string GetTasksPath(IHostContext hostContext)
         {
-            return Path.Combine(GetWorkPath(hostContext), "_tasks");
-        }        
+            return Path.Combine(
+                GetWorkPath(hostContext),
+                Constants.Path.TasksDirectory);
+        }
     }
 }

@@ -6,6 +6,8 @@ using System.Threading.Tasks;
 
 namespace Microsoft.VisualStudio.Services.Agent
 {
+    public delegate void StartProcessDelegate(string pipeHandleOut, string pipeHandleIn);
+
     public enum MessageType
     {
         NotInitialized = -1,
@@ -27,14 +29,12 @@ namespace Microsoft.VisualStudio.Services.Agent
     [ServiceLocator(Default = typeof(ProcessChannel))]
     public interface IProcessChannel : IDisposable, IAgentService
     {
-        void StartServer(ProcessStartDelegate processStart);
+        void StartServer(StartProcessDelegate startProcess);
         void StartClient(string pipeNameInput, string pipeNameOutput);
 
         Task SendAsync(MessageType messageType, string body, CancellationToken cancellationToken);
         Task<WorkerMessage> ReceiveAsync(CancellationToken cancellationToken);
     }
-
-    public delegate void ProcessStartDelegate(String pipeHandleOut, String pipeHandleIn);
 
     public sealed class ProcessChannel : AgentService, IProcessChannel
     {
@@ -45,13 +45,13 @@ namespace Microsoft.VisualStudio.Services.Agent
         private StreamString _writeStream;
         private StreamString _readStream;
 
-        public void StartServer(ProcessStartDelegate processStart)
+        public void StartServer(StartProcessDelegate startProcess)
         {
             _outServer = new AnonymousPipeServerStream(PipeDirection.Out, HandleInheritability.Inheritable);
             _inServer = new AnonymousPipeServerStream(PipeDirection.In, HandleInheritability.Inheritable);
             _readStream = new StreamString(_inServer);
             _writeStream = new StreamString(_outServer);
-            processStart(_outServer.GetClientHandleAsString(), _inServer.GetClientHandleAsString());
+            startProcess(_outServer.GetClientHandleAsString(), _inServer.GetClientHandleAsString());
             _outServer.DisposeLocalCopyOfClientHandle();
             _inServer.DisposeLocalCopyOfClientHandle();
         }
@@ -63,7 +63,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             _readStream = new StreamString(_inClient);
             _writeStream = new StreamString(_outClient);
         }
-                
+
         public async Task SendAsync(MessageType messageType, string body, CancellationToken cancellationToken)
         {
             await _writeStream.WriteInt32Async((int)messageType, cancellationToken);

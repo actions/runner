@@ -27,8 +27,18 @@ namespace Microsoft.VisualStudio.Services.Agent
             }
         }
 
+        public static class Path
+        {
+            public static readonly string DiagDirectory = "_diag";
+            public static readonly string TaskJsonFile = "task.json";
+            public static readonly string TasksDirectory = "_tasks";
+        }
+
         public static class Variables
         {
+            public static readonly string MacroPrefix = "$(";
+            public static readonly string MacroSuffix = ")";
+
             public static class Agent
             {
                 //
@@ -74,18 +84,9 @@ namespace Microsoft.VisualStudio.Services.Agent
                 public static readonly string HostType = "system.hosttype";
                 // public static readonly string System = "system";
                 public static readonly string TeamProject = "system.teamproject";
-                // back comapt variable, do not document
+                // back compat variable, do not document
                 public static readonly string TFServerUrl = "system.TeamFoundationServerUri";
-                public static readonly string PreferPowerShellExecution = "system.preferps";
                 public static readonly string PreferGit = "system.prefergit";                               
-            }
-            
-            public static class Task
-            {
-                //
-                // Keep alphabetical
-                //
-                public static readonly string TaskDisplayName = "Task.DisplayName";                   
             }
         }
     }

@@ -9,12 +9,12 @@ namespace Microsoft.VisualStudio.Services.Agent
 {
     public class StreamString
     {
-        private Stream ioStream;
+        private Stream _ioStream;
         private UnicodeEncoding streamEncoding;
 
         public StreamString(Stream ioStream)
         {
-            this.ioStream = ioStream;
+            _ioStream = ioStream;
             streamEncoding = new UnicodeEncoding();
         }
 
@@ -24,7 +24,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             int dataread = 0;            
             while (sizeof(Int32) - dataread > 0 && (!cancellationToken.IsCancellationRequested))
             {
-                Task<int> op = ioStream.ReadAsync(readBytes, dataread, sizeof(Int32) - dataread, cancellationToken);
+                Task<int> op = _ioStream.ReadAsync(readBytes, dataread, sizeof(Int32) - dataread, cancellationToken);
                 int newData = 0;
                 newData = await op.WithCancellation(cancellationToken);
                 dataread += newData;
@@ -33,6 +33,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                     await Task.Delay(100, cancellationToken);
                 }
             }
+
             cancellationToken.ThrowIfCancellationRequested();
             return BitConverter.ToInt32(readBytes, 0);
         }
@@ -40,7 +41,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         public async Task WriteInt32Async(Int32 value, CancellationToken cancellationToken)
         {
             byte[] int32Bytes = BitConverter.GetBytes(value);
-            Task op = ioStream.WriteAsync(int32Bytes, 0, sizeof(Int32), cancellationToken);
+            Task op = _ioStream.WriteAsync(int32Bytes, 0, sizeof(Int32), cancellationToken);
             await op.WithCancellation(cancellationToken);
         }
 
@@ -59,7 +60,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             int dataread = 0;
             while (len - dataread > 0 && (!cancellationToken.IsCancellationRequested))
             {
-                Task<int> op = ioStream.ReadAsync(inBuffer, dataread, len - dataread, cancellationToken);
+                Task<int> op = _ioStream.ReadAsync(inBuffer, dataread, len - dataread, cancellationToken);
                 int newData = 0;
                 newData = await op.WithCancellation(cancellationToken);
                 dataread += newData;
@@ -68,11 +69,12 @@ namespace Microsoft.VisualStudio.Services.Agent
                     await Task.Delay(100, cancellationToken);
                 }
             }
+
             cancellationToken.ThrowIfCancellationRequested();
             return streamEncoding.GetString(inBuffer);
         }
 
-        public async Task<int> WriteStringAsync(string outString, CancellationToken cancellationToken)
+        public async Task WriteStringAsync(string outString, CancellationToken cancellationToken)
         {
             byte[] outBuffer = streamEncoding.GetBytes(outString);
             Int32 len = outBuffer.Length;
@@ -80,14 +82,13 @@ namespace Microsoft.VisualStudio.Services.Agent
             {
                 throw new ArgumentOutOfRangeException();
             }
+
             await WriteInt32Async(len, cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
-            Task op = ioStream.WriteAsync(outBuffer, 0, len, cancellationToken);
+            Task op = _ioStream.WriteAsync(outBuffer, 0, len, cancellationToken);
             await op.WithCancellation(cancellationToken);
-            op = ioStream.FlushAsync(cancellationToken);
+            op = _ioStream.FlushAsync(cancellationToken);
             await op.WithCancellation(cancellationToken);
-            return outBuffer.Length + sizeof(Int32);
         }
     }
-
 }

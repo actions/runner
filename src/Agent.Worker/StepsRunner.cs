@@ -20,19 +20,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         IExecutionContext ExecutionContext { get; set; }
         // Always runs. Even if a previous critical step failed.
         bool Finally { get; }
-        TaskResult? Result { get; set; }
-        Task<TaskResult> RunAsync();
+        Task RunAsync();
     }
 
     [ServiceLocator(Default = typeof(StepsRunner))]
     public interface IStepsRunner : IAgentService
     {
-        Task<TaskResult> RunAsync(IExecutionContext context, IList<IStep> step);
+        Task RunAsync(IExecutionContext jobContext, IList<IStep> steps);
     }
 
     public sealed class StepsRunner : AgentService, IStepsRunner
     {
-        public async Task<TaskResult> RunAsync(IExecutionContext context, IList<IStep> steps)
+        public async Task RunAsync(IExecutionContext jobContext, IList<IStep> steps)
         {
             // TaskResult:
             //  Abandoned
@@ -41,12 +40,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             //  Skipped
             //  Succeeded
             //  SucceededWithIssues
-            TaskResult jobResult = TaskResult.Succeeded;
-            Boolean stepFailed = false;
-            Boolean criticalStepFailed = false;
+            bool stepFailed = false;
+            bool criticalStepFailed = false;
             foreach (IStep step in steps)
             {
-                Trace.Verbose($"Processing step: DisplayName='{step.DisplayName}', AlwaysRun={step.AlwaysRun}, ContinueOnError={step.ContinueOnError}, Critical={step.Critical}, Enabled={step.Enabled}, Finally={step.Finally}");
+                Trace.Info($"Processing step: DisplayName='{step.DisplayName}', AlwaysRun={step.AlwaysRun}, ContinueOnError={step.ContinueOnError}, Critical={step.Critical}, Enabled={step.Enabled}, Finally={step.Finally}");
+
+                // TODO: Disabled steps may have already been removed. Investigate.
 
                 // Skip the current step if it is not Enabled.
                 if (!step.Enabled
@@ -55,41 +55,57 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     // Or if a previous Critical step failed and the current step is not Finally.
                     || (criticalStepFailed && !step.Finally))
                 {
-                    Trace.Verbose($"Skipping step.");
-                    step.Result = TaskResult.Skipped;
+                    Trace.Info("Skipping step.");
+                    step.ExecutionContext.Result = TaskResult.Skipped;
                     continue;
                 }
 
                 // Run the step.
-                Trace.Verbose($"Running step.");
-                step.Result = await step.RunAsync();
-                Trace.Verbose($"Step result: {step.Result}");
+                Trace.Info("Starting the step.");
+                step.ExecutionContext.Start();
+                try
+                {
+                    await step.RunAsync();
+                }
+                catch (Exception ex)
+                {
+                    // Log the error and fail the step.
+                    Trace.Error($"Caught exception from step: {ex}");
+                    step.ExecutionContext.Error(ex);
+                    step.ExecutionContext.Result = TaskResult.Failed;
+                }
 
                 // Fixup the step result if ContinueOnError.
-                if (step.Result.Value == TaskResult.Failed && step.ContinueOnError)
+                if (step.ExecutionContext.Result == TaskResult.Failed && step.ContinueOnError)
                 {
-                    step.Result = TaskResult.SucceededWithIssues;
-                    Trace.Verbose($"Step result: {step.Result}");
+                    step.ExecutionContext.Result = TaskResult.SucceededWithIssues;
+                    Trace.Info($"Updated step result: {step.ExecutionContext.Result}");
                 }
+                else
+                {
+                    Trace.Info($"Step result: {step.ExecutionContext.Result}");
+                }
+
+                // Complete the step context.
+                step.ExecutionContext.Complete();
 
                 // Update the step failed flags.
-                stepFailed = stepFailed || step.Result.Value == TaskResult.Failed;
-                criticalStepFailed = criticalStepFailed || (step.Critical && step.Result.Value == TaskResult.Failed);
+                stepFailed = stepFailed || step.ExecutionContext.Result == TaskResult.Failed;
+                criticalStepFailed = criticalStepFailed || (step.Critical && step.ExecutionContext.Result == TaskResult.Failed);
 
                 // Update the job result.
-                if (step.Result.Value == TaskResult.Failed)
+                if (step.ExecutionContext.Result == TaskResult.Failed)
                 {
-                    jobResult = TaskResult.Failed;
+                    jobContext.Result = TaskResult.Failed;
                 }
-                else if (jobResult == TaskResult.Succeeded && step.Result.Value == TaskResult.SucceededWithIssues)
+                else if ((jobContext.Result ?? TaskResult.Succeeded) == TaskResult.Succeeded &&
+                    step.ExecutionContext.Result == TaskResult.SucceededWithIssues)
                 {
-                    jobResult = TaskResult.SucceededWithIssues;
+                    jobContext.Result = TaskResult.SucceededWithIssues;
                 }
 
-                Trace.Verbose($"Current state: jobResult='{jobResult}', stepFailed={stepFailed}, criticalStepFailed={criticalStepFailed}");
+                Trace.Info($"Current state: job state = '{jobContext.Result}', step failed = {stepFailed}, critical step failed = {criticalStepFailed}");
             }
-
-            return jobResult;
         }
     }
 }

@@ -19,12 +19,6 @@ namespace Microsoft.VisualStudio.Services.Agent
         private readonly TextWriterTraceListener _hostTraceListener;
         private TraceSetting _traceSetting;
 
-        // TODO: REMOVE DEAD CODE.
-        public TraceManager()
-            : this(new TextWriterTraceListener(System.Console.Out), new TraceSetting())
-        {
-        }
-        
         public TraceManager(TextWriterTraceListener traceListener)
             : this(traceListener, new TraceSetting())
         {

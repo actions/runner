@@ -51,8 +51,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                 _processInvoker.Setup(x => x.ExecuteAsync(It.IsAny<String>(), It.IsAny<String>(), "spawnclient 1 2", null, token))
                     .Returns(Task.FromResult<int>(56));
 
-                _processChannel.Setup(x => x.StartServer(It.IsAny<ProcessStartDelegate>()))
-                    .Callback((ProcessStartDelegate startDel) => { startDel("1","2"); });
+                _processChannel.Setup(x => x.StartServer(It.IsAny<StartProcessDelegate>()))
+                    .Callback((StartProcessDelegate startDel) => { startDel("1","2"); });
                 _processChannel.Setup(x => x.SendAsync(MessageType.NewJobRequest, It.Is<string>(s => s.Equals(strMessage)), token))
                     .Returns(Task.CompletedTask);
 
@@ -82,11 +82,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                 string strMessage = JsonUtility.ToString(message);
 
                 _processInvoker.Setup(x => x.ExecuteAsync(It.IsAny<String>(), It.IsAny<String>(), "spawnclient 1 2", null, token))
-                    .Returns(async(String workingFolder, String filename, String arguments, IDictionary<String, String> environmentVariables, 
-                    CancellationToken cancellationToken) => { await Task.Delay(5000, cancellationToken);  return 56; });
+                    .Returns(async(String workingFolder, String filename, String arguments, IDictionary<String, String> environment, CancellationToken cancellationToken) =>
+                    {
+                        await Task.Delay(5000, cancellationToken);
+                        return 56;
+                    });
 
-                _processChannel.Setup(x => x.StartServer(It.IsAny<ProcessStartDelegate>()))
-                    .Callback((ProcessStartDelegate startDel) => { startDel("1", "2"); });
+                _processChannel.Setup(x => x.StartServer(It.IsAny<StartProcessDelegate>()))
+                    .Callback((StartProcessDelegate startDel) => { startDel("1", "2"); });
                 _processChannel.Setup(x => x.SendAsync(MessageType.NewJobRequest, It.Is<string>(s => s.Equals(strMessage)), token))
                     .Returns(Task.CompletedTask);
                 _processChannel.Setup(x => x.SendAsync(MessageType.CancelRequest, It.IsAny<String>(), It.IsAny<CancellationToken>()))

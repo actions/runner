@@ -38,7 +38,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         {
             string val;
             _store.TryGetValue(name, out val);
-            _trace.Verbose($"Get {name}='{val}'");
+            _trace.Verbose($"Get '{name}': '{val}'");
             return val;
         }
 
@@ -64,13 +64,30 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             return null;
         }
 
+        public IEnumerator<KeyValuePair<string, string>> GetEnumerator()
+        {
+            return _store.GetEnumerator();
+        }
+
         public void Set(string name, string val)
         {
             // TODO: Determine whether this line should be uncommented again: ArgUtil.NotNull(val, nameof(val));
             // Can variables not be cleared? Can a null variable come across the wire? What if the user does ##setvariable from a script and we interpret as null instead of empty string. This feels brittle.
 
-            _trace.Verbose($"Set {name}='{val}'");
+            _trace.Verbose($"Set '{name}' = '{val}'");
             _store[name] = val;
+        }
+
+        public bool TryGetValue(string name, out string val)
+        {
+            if (_store.TryGetValue(name, out val))
+            {
+                _trace.Verbose($"Get '{name}': '{val}'");
+                return true;
+            }
+
+            _trace.Verbose($"Get '{name}' (not found)");
+            return false;
         }
     }
 }
