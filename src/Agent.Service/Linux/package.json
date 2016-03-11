@@ -1,0 +1,37 @@
+{
+  "name": "vstsagent-service",
+  "description": "VSTS Agent Service module to run in systemd",
+  "version": "0.0.1",
+  "preferGlobal": true,
+  "license": "MIT",
+  "movedDependencies": {
+    "iniparser": "~1.0.5",
+    "async": "0.2.9",
+    "glob": "^6.0.0",
+    "nconf": "0.6.x",
+    "read": "^1.0.5",
+    "semver": "^5.1.0",
+    "svchost": "0.1.x",
+    "svcinstall": "^0.2.1",
+    "validator": "~3.11.0",
+    "vso-node-api": "^3.0.1",
+    "vso-task-lib": "^0.5.0",
+    "node-uuid": "1.x",
+    "minimist": "0.2.0",
+    "xmlreader": "^0.2.3"
+  },
+  "dependencies": {
+      "shelljs": "0.3.x",
+      "moment": "2.12.x"
+  },
+  "devDependencies": {
+    "del": "^1.1.1",
+    "gulp": "^3.8.11",
+    "gulp-gzip": "^1.0.0",
+    "gulp-mocha": "^2.0.0",
+    "gulp-tar": "^1.4.0",
+    "gulp-tsc": "^0.10.1",
+    "merge2": "^0.3.1",
+    "mocha": "^2.1.0"
+  }
+}

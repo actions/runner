@@ -2,6 +2,7 @@
 DEV_CMD=$1
 DEV_SUBCMD=$2
 LAYOUT_DIR=`pwd`/../_layout
+AGENTSERVICE_SRC=`pwd`/Agent.Service
 
 define_os='OS_WINDOWS'
 BUILD_OS=`uname`
@@ -53,9 +54,39 @@ function rundotnet ()
     done   
 }
 
+function buildagentservice()
+{
+    if [[ "$define_os" == 'OS_LINUX' ]]; then
+	echo Building Linux Agent Service ...
+
+	#TODO Assume node/gulp already installed?
+	pushd ${AGENTSERVICE_SRC}/Linux
+	gulp build
+	popd
+    fi
+}
+
+function deployagentservice()
+{
+    if [[ "$define_os" == 'OS_LINUX' ]]; then
+	echo Building and deploying Linux Agent Service ...
+
+	#TODO Assume node/gulp already installed?
+	pushd ${AGENTSERVICE_SRC}/Linux > /dev/null
+	gulp layout
+	popd > /dev/null
+
+	# fetch run time dependency, eventually this will also be part of packaging (getagent.sh)
+	pushd ${LAYOUT_DIR}/bin > /dev/null
+	npm install
+	popd > /dev/null
+    fi
+}
+
 function build ()
 {
     rundotnet build failed build_dirs[@]
+    buildagentservice
 }
 
 function restore ()
@@ -115,6 +146,8 @@ function layout ()
     
     cp -Rf ./Misc/layoutroot/* ${LAYOUT_DIR}
     cp -Rf ./Misc/layoutbin/* ${LAYOUT_DIR}/bin
+
+    deployagentservice
 }
 
 function update ()
