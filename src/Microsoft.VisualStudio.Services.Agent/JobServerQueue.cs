@@ -186,16 +186,16 @@ namespace Microsoft.VisualStudio.Services.Agent
             {
                 Trace.Verbose("Enqueue web console line queue: {0}", line);
                 _webConsoleLineQueue.Enqueue(line);
-            }
 
-            // Too many web console lines enqueued.
-            // Signal dequeue task to run immediately in case of the task is still waiting for deplay
-            if (_webConsoleLineQueue.Count >= _webConsoleLineQueueForceProcessThreshold)
-            {
-                Trace.Verbose("Web console line queue has {0} lines enqueued, reach force process threshold {1}, signal dequeue task to process them right now.", _webConsoleLineQueue.Count, _webConsoleLineQueueForceProcessThreshold);
-                if (_webConsoleLineQueueSemaphore.CurrentCount == 0)
+                // Too many web console lines enqueued.
+                // Signal dequeue task to run immediately in case of the task is still waiting for deplay
+                if (_webConsoleLineQueue.Count >= _webConsoleLineQueueForceProcessThreshold)
                 {
-                    _webConsoleLineQueueSemaphore.Release();
+                    Trace.Verbose("Web console line queue has {0} lines enqueued, reach force process threshold {1}, signal dequeue task to process them right now.", _webConsoleLineQueue.Count, _webConsoleLineQueueForceProcessThreshold);
+                    if (_webConsoleLineQueueSemaphore.CurrentCount == 0)
+                    {
+                        _webConsoleLineQueueSemaphore.Release();
+                    }
                 }
             }
         }
@@ -227,16 +227,16 @@ namespace Microsoft.VisualStudio.Services.Agent
 
                 Trace.Verbose("Enqueue file upload queue: file '{0}' attach to record {1}", newFile.Path, timelineRecordId);
                 _fileUploadQueue.Enqueue(newFile);
-            }
 
-            // Too many file upload enqueued.
-            // Signal dequeue task to run immediately in case of the task is still waiting for deplay
-            if (_fileUploadQueue.Count >= _fileUploadQueueForceProcessThreshold)
-            {
-                Trace.Verbose("file upload queue has {0} files enqueued, reach force process threshold {1}, signal dequeue task to process them right now.", _fileUploadQueue.Count, _fileUploadQueueForceProcessThreshold);
-                if (_fileUploadQueueSemaphore.CurrentCount == 0)
+                // Too many file upload enqueued.
+                // Signal dequeue task to run immediately in case of the task is still waiting for deplay
+                if (_fileUploadQueue.Count >= _fileUploadQueueForceProcessThreshold)
                 {
-                    _fileUploadQueueSemaphore.Release();
+                    Trace.Verbose("file upload queue has {0} files enqueued, reach force process threshold {1}, signal dequeue task to process them right now.", _fileUploadQueue.Count, _fileUploadQueueForceProcessThreshold);
+                    if (_fileUploadQueueSemaphore.CurrentCount == 0)
+                    {
+                        _fileUploadQueueSemaphore.Release();
+                    }
                 }
             }
         }
@@ -261,17 +261,17 @@ namespace Microsoft.VisualStudio.Services.Agent
 
                 Trace.Verbose("Enqueue timeline {0} update queue: {1}", timelineId, timelineRecord.Id);
                 _timelineUpdateQueue[timelineId].Enqueue(timelineRecord.Clone());
-            }
 
-            // Too many timeline update enqueued.
-            // Signal dequeue task to run immediately in case of the task is still waiting for deplay
-            var totalPendingCount = _timelineUpdateQueue.Sum(q => q.Value.Count);
-            if (totalPendingCount >= _timelineUpdateQueueForceProcessThreshold)
-            {
-                Trace.Verbose("timeline update queue has {0} updates enqueued for all timeline, reach force process threshold {1}, signal dequeue task to process them right now.", totalPendingCount, _timelineUpdateQueueForceProcessThreshold);
-                if (_timelineUpdateQueueSemaphore.CurrentCount == 0)
+                // Too many timeline update enqueued.
+                // Signal dequeue task to run immediately in case of the task is still waiting for deplay
+                var totalPendingCount = _timelineUpdateQueue.Sum(q => q.Value.Count);
+                if (totalPendingCount >= _timelineUpdateQueueForceProcessThreshold)
                 {
-                    _timelineUpdateQueueSemaphore.Release();
+                    Trace.Verbose("timeline update queue has {0} updates enqueued for all timeline, reach force process threshold {1}, signal dequeue task to process them right now.", totalPendingCount, _timelineUpdateQueueForceProcessThreshold);
+                    if (_timelineUpdateQueueSemaphore.CurrentCount == 0)
+                    {
+                        _timelineUpdateQueueSemaphore.Release();
+                    }
                 }
             }
         }

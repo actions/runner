@@ -118,7 +118,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             _jobServerQueue.QueueTimelineRecordUpdate(_mainTimelineId, _record);
 
             //Section
-            Write(WellKnownTags.Section, _record.Name);
+            this.Section($"Starting: {_record.Name}");
         }
 
         public void Complete(string currentOperation = null)
@@ -144,6 +144,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     _jobServerQueue.QueueTimelineRecordUpdate(_detailTimelineId, record.Value);
                 }
             }
+
+            //Section
+            this.Section($"Finishing: {_record.Name}");
         }
 
         public void Progress(int percentage, string currentOperation = null)
