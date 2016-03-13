@@ -147,7 +147,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
             // Determine the source directory name. Check if the directory is named "s" already.
             // Convert the source directory to be named "s" if there is a problem with the old name.
-            String sourcesDirectoryNameOnly = Constants.Build.Path.SourcesDirectory;
+            string sourcesDirectoryNameOnly = Constants.Build.Path.SourcesDirectory;
             if (!Directory.Exists(Path.Combine(legacyConfig.BuildDirectory, sourcesDirectoryNameOnly))
                 && !String.Equals(endpoint.Name, Constants.Build.Path.ArtifactsDirectory, StringComparison.OrdinalIgnoreCase)
                 && !String.Equals(endpoint.Name, Constants.Build.Path.LegacyArtifactsDirectory, StringComparison.OrdinalIgnoreCase)
