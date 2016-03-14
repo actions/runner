@@ -37,7 +37,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
             // Get or create the top-level tracking config.
             TopLevelTrackingConfig topLevelConfig;
-            String topLevelFile = Path.Combine(
+            string topLevelFile = Path.Combine(
                 IOUtil.GetWorkPath(HostContext),
                 Constants.Build.Path.SourceRootMappingDirectory,
                 Constants.Build.Path.TopLevelTrackingConfigFile);
@@ -85,13 +85,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 TrackingConfig.FileFormatVersionJsonProperty);
             if (content.Contains(fileFormatVersionJsonProperty))
             {
-                // The config is in version 2 format.
-                Trace.Verbose("Parsing tracking config file version 2 format.");
+                // The config is the new format.
+                Trace.Verbose("Parsing new tracking config format.");
                 return JsonConvert.DeserializeObject<TrackingConfig>(content);
             }
 
-            // Attempt to parse the version 1 format.
-            Trace.Verbose("Parsing tracking config file version 1 format.");
+            // Attempt to parse the legacy format.
+            Trace.Verbose("Parsing legacy tracking config format.");
             LegacyTrackingConfig config = LegacyTrackingConfig.TryParse(content);
             if (config == null)
             {
