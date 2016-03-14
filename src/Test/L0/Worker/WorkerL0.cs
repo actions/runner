@@ -54,7 +54,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                 var jobMessage = CreateJobRequestMessage("job1");
                 var workerMessage = new WorkerMessage(MessageType.NewJobRequest, JsonUtility.ToString(jobMessage));
                 _processChannel.Setup(x => x.StartClient("1", "2"));
-                _processChannel.Setup(x => x.ReceiveAsync(hc.CancellationToken))
+                _processChannel.Setup(x => x.ReceiveAsync(It.IsAny<CancellationToken>()))
                     .Returns((CancellationToken cancellationToken) => { return Task.FromResult(workerMessage); });
                 _jobRunner.Setup(x => x.RunAsync(It.IsAny<JobRequestMessage>()))
                     .Returns((JobRequestMessage jm) =>
@@ -112,7 +112,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                     };
                 var workerMessages = new Queue<WorkerMessage>(arWorkerMessages);
 
-                _processChannel.Setup(x => x.ReceiveAsync(hc.CancellationToken))
+                _processChannel.Setup(x => x.ReceiveAsync(It.IsAny<CancellationToken>()))
                     .Returns(async(CancellationToken cancellationToken) => 
                     {
                         if (0 == workerMessages.Count)
