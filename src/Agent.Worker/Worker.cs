@@ -1,5 +1,6 @@
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Util;
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -14,6 +15,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
     public sealed class Worker : AgentService, IWorker
     {
+        //allow up to 30sec for the first message to be received
+        private readonly TimeSpan WorkerStartTimeout = TimeSpan.FromSeconds(30);
+
         public async Task<int> RunAsync(string pipeIn, string pipeOut, CancellationTokenSource tokenSource)
         {
             using (var channel = HostContext.CreateService<IProcessChannel>())
@@ -23,13 +27,29 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 Task<WorkerMessage> packetReceiveTask = null;
                 Task<int> jobRunnerTask = null;
                 var tasks = new List<Task>();
+
+                //first packet receive has a token that is cancelled in 30sec to avoid infinite hang
+                bool firstPacket = true;
+                var ct1 = new CancellationTokenSource(WorkerStartTimeout);
+                var firstPacketTokenSource = CancellationTokenSource.CreateLinkedTokenSource(ct1.Token, HostContext.CancellationToken);
                 while (!HostContext.CancellationToken.IsCancellationRequested &&
                     (null == jobRunnerTask || (!jobRunnerTask.IsCompleted)))
                 {
                     tasks.Clear();
+                    //receive a packet
                     if (null == packetReceiveTask)
                     {
-                        packetReceiveTask = channel.ReceiveAsync(HostContext.CancellationToken);
+                        CancellationToken token;
+                        if (firstPacket)
+                        {
+                            firstPacket = false;
+                            token = firstPacketTokenSource.Token;
+                        }
+                        else
+                        {
+                            token = HostContext.CancellationToken;
+                        }
+                        packetReceiveTask = channel.ReceiveAsync(token);
                     }
 
                     tasks.Add(packetReceiveTask);

@@ -20,67 +20,37 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             return connection;
         }
 
+        // The server only send down OAuth token in Job Request message.
         public static VssConnection GetVssConnection(JobRequestMessage jobRequest)
         {
             var serviceEndpoint = jobRequest.Environment.SystemConnection;
 
-            Uri serverUrl = null;
-            VssCredentials credentials = null;
-            if (serviceEndpoint != null)
+            if (serviceEndpoint == null ||
+                serviceEndpoint.Url == null ||
+                serviceEndpoint.Authorization == null ||
+                string.IsNullOrEmpty(serviceEndpoint.Authorization.Scheme) ||
+                serviceEndpoint.Authorization.Parameters.Count == 0)
             {
-                serverUrl = serviceEndpoint.Url;
-
-                String accessToken = GetAccessToken(serviceEndpoint.Authorization);
-                if (!String.IsNullOrEmpty(accessToken))
-                {
-                    switch (serviceEndpoint.Authorization.Scheme)
-                    {
-                        case EndpointAuthorizationSchemes.OAuth:
-                            credentials = new VssOAuthCredential(accessToken);
-                            break;
-
-                        case EndpointAuthorizationSchemes.OAuthWrap:
-                            credentials = new VssServiceIdentityCredential(new VssServiceIdentityToken(accessToken));
-                            break;
-                    }
-                }
+                throw new ArgumentOutOfRangeException(nameof(jobRequest.Environment.SystemConnection));
             }
 
-            if (serverUrl != null && credentials != null)
+            Uri serverUrl = serviceEndpoint.Url;
+            VssCredentials credentials = null;
+            string accessToken;
+            if (serviceEndpoint.Authorization.Scheme == EndpointAuthorizationSchemes.OAuth &&
+                serviceEndpoint.Authorization.Parameters.TryGetValue(EndpointAuthorizationParameters.AccessToken, out accessToken))
             {
-                return CreateConnection(serverUrl, credentials);
+                credentials = new VssOAuthCredential(accessToken);
+            }
+
+            if (credentials == null)
+            {
+                throw new ArgumentNullException(nameof(credentials));
             }
             else
             {
-                return null;
+                return CreateConnection(serverUrl, credentials);
             }
-        }
-
-        private static String GetAccessToken(EndpointAuthorization authorization)
-        {
-            if (authorization == null || String.IsNullOrEmpty(authorization.Scheme) || authorization.Parameters.Count == 0)
-            {
-                return null;
-            }
-
-            String accessToken;
-            switch (authorization.Scheme)
-            {
-                case EndpointAuthorizationSchemes.OAuth:
-                case EndpointAuthorizationSchemes.OAuthWrap:
-                    if (authorization.Parameters.TryGetValue(EndpointAuthorizationParameters.AccessToken, out accessToken))
-                    {
-                        return accessToken;
-                    }
-
-                    break;
-                // TODO: add more authorization types
-                default:
-                    // Unable to Construct credentials, return null.
-                    break;
-            }
-
-            return null;
         }
     }
 }

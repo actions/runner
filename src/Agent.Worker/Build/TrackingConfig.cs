@@ -26,7 +26,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         {
             // Set the directories.
             BuildDirectory = Path.GetFileName(copy.BuildDirectory); // Just take the portion after _work folder.
-            String artifactsDirectoryNameOnly =
+            string artifactsDirectoryNameOnly =
                 useNewArtifactsDirectoryName ? Constants.Build.Path.ArtifactsDirectory : Constants.Build.Path.LegacyArtifactsDirectory;
             ArtifactsDirectory = Path.Combine(BuildDirectory, artifactsDirectoryNameOnly);
             SourcesDirectory = Path.Combine(BuildDirectory, sourcesDirectoryNameOnly);
@@ -34,11 +34,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
             // Set the other properties.
             CollectionId = copy.CollectionId;
+            CollectionUrl = executionContext.Variables.System_TFCollectionUrl;
             DefinitionId = copy.DefinitionId;
             HashKey = copy.HashKey;
             RepositoryUrl = copy.RepositoryUrl;
             System = copy.System;
-            SetCollectionName(executionContext);
         }
 
         public TrackingConfig(IExecutionContext executionContext, ServiceEndpoint endpoint, int buildDirectory, string hashKey)
@@ -55,7 +55,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             HashKey = hashKey;
             RepositoryUrl = endpoint.Url.AbsoluteUri;
             System = BuildSystem;
-            SetCollectionName(executionContext);
             UpdateJobRunProperties(executionContext);
         }
 
@@ -65,20 +64,31 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         [JsonProperty("agent_builddirectory")]
         public string BuildDirectory { get; set; }
 
-        public string CollectionName { get; set; }
+        public string CollectionUrl { get; set; }
 
         public string DefinitionName { get; set; }
 
         [JsonProperty(FileFormatVersionJsonProperty)]
         public int FileFormatVersion
         {
-            get { return 2; }
+            get
+            {
+                return 3;
+            }
 
             set
             {
-                if (value != 2)
+                // Version 3 changes:
+                //   CollectionName was removed.
+                //   CollectionUrl was added.
+                switch (value)
                 {
-                    throw new NotSupportedException();
+                    case 3:
+                    case 2:
+                        break;
+                    default:
+                        // Should never reach here.
+                        throw new NotSupportedException();
                 }
             }
         }
@@ -115,24 +125,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
         public void UpdateJobRunProperties(IExecutionContext executionContext)
         {
-            // Set the collection name.
+            CollectionUrl = executionContext.Variables.System_TFCollectionUrl;
             DefinitionName = executionContext.Variables.Build_DefinitionName;
             LastRunOn = DateTimeOffset.Now;
-        }
-
-        private void SetCollectionName(IExecutionContext executionContext)
-        {
-            string collectionUrlString = executionContext.Variables.System_TFCollectionUrl;
-            Uri collectionUrl;
-            if (!Uri.TryCreate(collectionUrlString, UriKind.Absolute, out collectionUrl))
-            {
-                CollectionName = string.Empty;
-            }
-            else
-            {
-                string lastSegment = (collectionUrl.Segments.LastOrDefault() ?? String.Empty).TrimEnd('/');
-                CollectionName = Uri.UnescapeDataString(lastSegment);
-            }
         }
     }
 }
