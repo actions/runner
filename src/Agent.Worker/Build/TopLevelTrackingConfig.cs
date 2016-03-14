@@ -12,16 +12,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
         [JsonProperty("lastBuildFolderCreatedOn")]
         [EditorBrowsableAttribute(EditorBrowsableState.Never)]
-        public String LastBuildDirectoryCreatedOnString
+        public string LastBuildDirectoryCreatedOnString
         {
             get
             {
-                return String.Format(CultureInfo.InvariantCulture, "{0}", this.LastBuildDirectoryCreatedOn);
+                return string.Format(CultureInfo.InvariantCulture, "{0}", this.LastBuildDirectoryCreatedOn);
             }
 
             set
             {
-                if (String.IsNullOrEmpty(value))
+                if (string.IsNullOrEmpty(value))
                 {
                     this.LastBuildDirectoryCreatedOn = null;
                     return;
