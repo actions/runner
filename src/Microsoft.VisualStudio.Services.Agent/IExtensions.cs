@@ -6,9 +6,4 @@ namespace Microsoft.VisualStudio.Services.Agent
     {
         Type ExtensionType { get; }
     }
-
-    public interface ICommandExtension : IExtension
-    {
-        string CommandArea { get; }
-    }
 }

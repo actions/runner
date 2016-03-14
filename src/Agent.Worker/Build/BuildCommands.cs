@@ -1,6 +1,6 @@
 using System;
 
-namespace Microsoft.VisualStudio.Services.Agent.Build
+namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 {
     public class BuildCommands : AgentService, ICommandExtension
     {
@@ -18,6 +18,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Build
             {
                 return "build";
             }
+        }
+
+        public void ProcessCommand(IExecutionContext context, Command command)
+        {
+            throw new NotImplementedException();
         }
     }
 }

@@ -307,12 +307,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         public static void Error(this IExecutionContext context, string message)
         {
             context.Write(WellKnownTags.Error, message);
+            context.AddIssue(new Issue() { Type = IssueType.Error, Message = message });
         }
 
         // Do not add a format string overload. See comment on ExecutionContext.Write().
         public static void Warning(this IExecutionContext context, string message)
         {
             context.Write(WellKnownTags.Warning, message);
+            context.AddIssue(new Issue() { Type = IssueType.Warning, Message = message });
         }
 
         // Do not add a format string overload. See comment on ExecutionContext.Write().

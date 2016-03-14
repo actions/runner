@@ -39,7 +39,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             var whitelist = new[]
             {
                 typeof(IAgentService),
-                typeof(ICommandExtension),
                 typeof(ICredentialProvider),
                 typeof(IExtension),
                 typeof(IHostContext),
@@ -62,6 +61,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 typeof(IExecutionContext),
                 typeof(IHandler),
                 typeof(IJobExtension),
+                typeof(ICommandExtension),
                 typeof(ISourceProvider),
                 typeof(IStep),
             };

@@ -20,9 +20,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
     {
         protected readonly Dictionary<string, string> Environment = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
+        protected ICommandHandler CommandHandler { get; private set; }
         public IExecutionContext ExecutionContext { get; set; }
         public Dictionary<string, string> Inputs { get; set; }
         public string TaskDirectory { get; set; }
+
+        public override void Initialize(IHostContext hostContext)
+        {
+            base.Initialize(hostContext);
+
+            // cache command handler.
+            CommandHandler = hostContext.GetService<ICommandHandler>();
+        }
 
         protected void AddEndpointsToEnvironment()
         {
