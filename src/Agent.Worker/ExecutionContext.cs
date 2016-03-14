@@ -1,10 +1,7 @@
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
-using Microsoft.VisualStudio.Services.Agent;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Globalization;
 using System.Threading;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
@@ -111,6 +108,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         public void Start(string currentOperation = null)
         {
+            _logger = HostContext.CreateService<IPagingLogger>();
+            _logger.Setup(_mainTimelineId, _record.Id);
+
             _record.CurrentOperation = currentOperation ?? _record.CurrentOperation;
             _record.StartTime = DateTime.UtcNow;
             _record.State = TimelineRecordState.InProgress;
@@ -123,27 +123,39 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         public void Complete(string currentOperation = null)
         {
-            _record.CurrentOperation = currentOperation ?? _record.CurrentOperation;
-            _record.FinishTime = DateTime.UtcNow;
-            _record.PercentComplete = 100;
-            _record.Result = _record.Result ?? TaskResult.Succeeded;
-            _record.State = TimelineRecordState.Completed;
-
-            _jobServerQueue.QueueTimelineRecordUpdate(_mainTimelineId, _record);
-
-            // complete all detail timeline records.
-            if (_detailTimelineId != Guid.Empty && _detailRecords.Count > 0)
+            try
             {
-                foreach (var record in _detailRecords)
-                {
-                    record.Value.FinishTime = record.Value.FinishTime ?? DateTime.UtcNow;
-                    record.Value.PercentComplete = record.Value.PercentComplete ?? 100;
-                    record.Value.Result = record.Value.Result ?? TaskResult.Succeeded;
-                    record.Value.State = record.Value.State ?? TimelineRecordState.Completed;
 
-                    _jobServerQueue.QueueTimelineRecordUpdate(_detailTimelineId, record.Value);
+
+                _record.CurrentOperation = currentOperation ?? _record.CurrentOperation;
+                _record.FinishTime = DateTime.UtcNow;
+                _record.PercentComplete = 100;
+                _record.Result = _record.Result ?? TaskResult.Succeeded;
+                _record.State = TimelineRecordState.Completed;
+
+                _jobServerQueue.QueueTimelineRecordUpdate(_mainTimelineId, _record);
+
+                // complete all detail timeline records.
+                if (_detailTimelineId != Guid.Empty && _detailRecords.Count > 0)
+                {
+                    foreach (var record in _detailRecords)
+                    {
+                        record.Value.FinishTime = record.Value.FinishTime ?? DateTime.UtcNow;
+                        record.Value.PercentComplete = record.Value.PercentComplete ?? 100;
+                        record.Value.Result = record.Value.Result ?? TaskResult.Succeeded;
+                        record.Value.State = record.Value.State ?? TimelineRecordState.Completed;
+
+                        _jobServerQueue.QueueTimelineRecordUpdate(_detailTimelineId, record.Value);
+                    }
                 }
             }
+            finally
+            {
+                if (_logger != null)
+                {
+                    _logger.End();
+                }
+            }            
         }
 
         public void Progress(int percentage, string currentOperation = null)
@@ -258,10 +270,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
-
-            // TODO: implement paging logger.
-            _logger = HostContext.CreateService<IPagingLogger>();
-            _logger.TimeLineId = Guid.NewGuid();
 
             _jobServerQueue = HostContext.GetService<IJobServerQueue>();
         }

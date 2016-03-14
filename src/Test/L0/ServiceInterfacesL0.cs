@@ -42,7 +42,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 typeof(ICredentialProvider),
                 typeof(IExtension),
                 typeof(IHostContext),
-                typeof(ILogWriter),
                 typeof(ITraceManager),
             };
             Validate(
