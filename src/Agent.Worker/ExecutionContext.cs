@@ -42,6 +42,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         private readonly TimelineRecord _record = new TimelineRecord();
         private readonly Dictionary<Guid, TimelineRecord> _detailRecords = new Dictionary<Guid, TimelineRecord>();
+        private readonly object _loggerLock = new object();
 
         private IPagingLogger _logger;
         private IJobServerQueue _jobServerQueue;
@@ -123,42 +124,32 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         public void Complete(string currentOperation = null)
         {
-            try
+            _record.CurrentOperation = currentOperation ?? _record.CurrentOperation;
+            _record.FinishTime = DateTime.UtcNow;
+            _record.PercentComplete = 100;
+            _record.Result = _record.Result ?? TaskResult.Succeeded;
+            _record.State = TimelineRecordState.Completed;
+
+            _jobServerQueue.QueueTimelineRecordUpdate(_mainTimelineId, _record);
+
+            // complete all detail timeline records.
+            if (_detailTimelineId != Guid.Empty && _detailRecords.Count > 0)
             {
-
-
-                _record.CurrentOperation = currentOperation ?? _record.CurrentOperation;
-                _record.FinishTime = DateTime.UtcNow;
-                _record.PercentComplete = 100;
-                _record.Result = _record.Result ?? TaskResult.Succeeded;
-                _record.State = TimelineRecordState.Completed;
-
-                _jobServerQueue.QueueTimelineRecordUpdate(_mainTimelineId, _record);
-
-                // complete all detail timeline records.
-                if (_detailTimelineId != Guid.Empty && _detailRecords.Count > 0)
+                foreach (var record in _detailRecords)
                 {
-                    foreach (var record in _detailRecords)
-                    {
-                        record.Value.FinishTime = record.Value.FinishTime ?? DateTime.UtcNow;
-                        record.Value.PercentComplete = record.Value.PercentComplete ?? 100;
-                        record.Value.Result = record.Value.Result ?? TaskResult.Succeeded;
-                        record.Value.State = record.Value.State ?? TimelineRecordState.Completed;
+                    record.Value.FinishTime = record.Value.FinishTime ?? DateTime.UtcNow;
+                    record.Value.PercentComplete = record.Value.PercentComplete ?? 100;
+                    record.Value.Result = record.Value.Result ?? TaskResult.Succeeded;
+                    record.Value.State = record.Value.State ?? TimelineRecordState.Completed;
 
-                        _jobServerQueue.QueueTimelineRecordUpdate(_detailTimelineId, record.Value);
-                    }
+                    _jobServerQueue.QueueTimelineRecordUpdate(_detailTimelineId, record.Value);
                 }
-
-                //Section
-                this.Section($"Finishing: {_record.Name}");
             }
-            finally
-            {
-                if (_logger != null)
-                {
-                    _logger.End();
-                }
-            }            
+
+            //Section
+            this.Section($"Finishing: {_record.Name}");
+
+            _logger.End();
         }
 
         public void Progress(int percentage, string currentOperation = null)
@@ -257,7 +248,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             // Initialize the job timeline record.
             // the job timeline record is at order 1.
             InitializeTimelineRecord(message.Timeline.Id, message.JobId, null, ExecutionContextType.Job, message.JobName, 1);
-        }
+        }        
 
         // Do not add a format string overload. In general, execution context messages are user facing and
         // therefore should be localized. Use the Loc methods from the StringUtil class. The exception to
@@ -265,7 +256,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         public void Write(string tag, string message)
         {
             string msg = $"{tag}{message}";
-            _logger.Write(msg);
+            lock (_loggerLock)
+            {
+                _logger.Write(msg);
+            }            
 
             _jobServerQueue.QueueWebConsoleLine(msg);
         }

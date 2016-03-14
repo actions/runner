@@ -16,14 +16,14 @@ namespace Microsoft.VisualStudio.Services.Agent
 
     public class PagingLogger : AgentService, IPagingLogger
     {
-        public const int PageSize = 256;
+        public const int PageSize = 8*1024*1024;
 
         private Guid _timelineId;
         private Guid _timelineRecordId;
         private string _pageId;
         private FileStream _pageData;
         private StreamWriter _pageWriter;
-        private int _lineCount;
+        private int _byteCount;
         private int _pageCount;
         private string _dataFileName;
         private string _pagesFolder;
@@ -32,10 +32,6 @@ namespace Microsoft.VisualStudio.Services.Agent
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
-            _pageWriter = null;
-            _pageData = null;
-            _lineCount = 0;
-            _pageCount = 0;
             _pageId = Guid.NewGuid().ToString();
             _pagesFolder = Path.Combine(IOUtil.GetDiagPath(), "pages");
             _jobServerQueue = HostContext.GetService<IJobServerQueue>();
@@ -56,21 +52,24 @@ namespace Microsoft.VisualStudio.Services.Agent
         //
         public void Write(string message)
         {
-            ArgUtil.NotEmpty(_timelineId, nameof(_timelineId));
-
             // lazy creation on write
             if (_pageWriter == null)
             {
                 Create();
             }
 
-            _pageWriter.WriteLine($"{DateTime.UtcNow.ToString("O")} {message}");
-
-            // TODO: split lines - line count not completely accurate
-            if (++_lineCount >= PageSize)
+            string line = $"{DateTime.UtcNow.ToString("O")} {message}";
+            _pageWriter.WriteLine(line);
+            _byteCount += System.Text.Encoding.UTF8.GetByteCount(line);
+            if (_byteCount >= PageSize)
             {
                 NewPage();
             }
+        }
+
+        public void End()
+        {
+            EndPage();
         }
 
         private void Create()
@@ -81,8 +80,8 @@ namespace Microsoft.VisualStudio.Services.Agent
         private void NewPage()
         {
             EndPage();
-            _lineCount = 0;
-            _dataFileName = Path.Combine(_pagesFolder, $"{_pageId}_{++_pageCount}.page");
+            _byteCount = 0;
+            _dataFileName = Path.Combine(_pagesFolder, $"{_pageId}_{++_pageCount}.log");
             _pageData = new FileStream(_dataFileName, FileMode.CreateNew);
             _pageWriter = new StreamWriter(_pageData, System.Text.Encoding.UTF8);
         }
@@ -99,11 +98,6 @@ namespace Microsoft.VisualStudio.Services.Agent
                 _pageData = null;
                 _jobServerQueue.QueueFileUpload(_timelineId, _timelineRecordId, "DistributedTask.Core.Log", "CustomToolLog", _dataFileName, true);
             }
-        }
-
-        public void End()
-        {
-            EndPage();
-        }
+        }        
     }
 }
