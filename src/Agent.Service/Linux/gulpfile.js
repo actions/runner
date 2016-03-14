@@ -27,8 +27,9 @@ gulp.task('build', ['clean'], function () {
 gulp.task('layout', ['clean', 'build'], function (done) {
     // TODO package this correctly, this works for devs now
     return merge([
-	gulp.src([path.join(buildPath, '**')]).pipe(gulp.dest(layoutbin)),
-	gulp.src(['package.json']).pipe(gulp.dest(layoutbin))
+    gulp.src([path.join(buildPath, '**')]).pipe(gulp.dest(layoutbin)),
+    gulp.src(['package.json']).pipe(gulp.dest(layoutbin)),
+    gulp.src(['vsts.agent.service.template']).pipe(gulp.dest(layoutbin))
     ]);
 });
 

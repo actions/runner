@@ -6,7 +6,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 {
     public class OsxServiceControlManager : ServiceControlManager
     {
-        public override Task ConfigureServiceAsync(AgentSettings settings, Dictionary<string, string> args, bool enforceSupplied)
+        public override void ConfigureService(AgentSettings settings, Dictionary<string, string> args, bool enforceSupplied)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override void StartService(string serviceName)
         {
             throw new NotImplementedException();
         }

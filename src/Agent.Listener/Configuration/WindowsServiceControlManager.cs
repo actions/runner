@@ -17,9 +17,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         private const string ServiceNamePattern = "vstsagent.{0}.{1}";
         private const string ServiceDisplayNamePattern = "VSTS Agent ({0}.{1})";
 
-        public override Task ConfigureServiceAsync(AgentSettings settings, Dictionary<string, string> args, bool enforceSupplied)
+        public override void ConfigureService(AgentSettings settings, Dictionary<string, string> args, bool enforceSupplied)
         {
-            Trace.Info(nameof(ConfigureServiceAsync));
+            Trace.Info(nameof(this.ConfigureService));
 
             var consoleWizard = HostContext.GetService<IConsoleWizard>();
             string logonAccount = string.Empty;
@@ -51,25 +51,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             }
 
             // TODO: Create a unique group VSTS_G{#HASH} and add the account to the group and grant permission for the group on the root folder
-            var accountName = new Uri(settings.ServerUrl).Host.Split('.').FirstOrDefault();
+            CalculateServiceName(settings, ServiceNamePattern, ServiceDisplayNamePattern);
 
-            if (string.IsNullOrEmpty(accountName))
-            {
-                throw new InvalidOperationException(StringUtil.Loc("CannotFindHostName"));
-            }
-
-            settings.WindowsServiceName = StringUtil.Format(ServiceNamePattern, accountName, settings.AgentName);
-            settings.WindowsServiceDisplayName = StringUtil.Format(ServiceDisplayNamePattern, accountName, settings.AgentName);
             string agentServiceExecutable = Path.Combine(IOUtil.GetBinPath(), WindowsServiceControllerName);
 
             // TODO check and unconfigure/configure the service using advapi32.dll service install methods using pinvoke
-
-            return Task.FromResult(0);
         }
 
-        public bool CheckServiceExists(string serviceName)
+        public override void StartService(string serviceName)
         {
-            return false;
+            throw new NotImplementedException();
         }
 
         public bool Unconfigure(string serviceName)

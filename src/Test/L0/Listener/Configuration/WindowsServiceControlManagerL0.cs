@@ -65,25 +65,24 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
 #endif
-        public async Task WindowsServiceControlManagerShouldInstallService()
+        public void WindowsServiceControlManagerShouldInstallService()
         {
             using (var tc = CreateTestContext())
             {
                 var serviceControlManager = new WindowsServiceControlManager();
                 serviceControlManager.Initialize(tc);
                 var agentSettings = new AgentSettings { ServerUrl = "http://server.name", AgentName = "myagent"};
-                    await 
-                    serviceControlManager.ConfigureServiceAsync(
-                        agentSettings,
-                        new Dictionary<string, string>
-                            {
-                                { "windowslogonaccount", "NT AUTHORITY\\LOCAL SERVICE" },
-                                { "windowslogonpassword", "test" }
-                            },
-                        true);
+                serviceControlManager.ConfigureService(
+                    agentSettings,
+                    new Dictionary<string, string>
+                        {
+                            { "windowslogonaccount", "NT AUTHORITY\\LOCAL SERVICE" },
+                            { "windowslogonpassword", "test" }
+                        },
+                    true);
 
-                Assert.Equal("vstsagent.server.myagent", agentSettings.WindowsServiceName);
-                Assert.Equal("VSTS Agent (server.myagent)", agentSettings.WindowsServiceDisplayName);
+                Assert.Equal("vstsagent.server.myagent", agentSettings.ServiceName);
+                Assert.Equal("VSTS Agent (server.myagent)", agentSettings.ServiceDisplayName);
             }
         }
 
@@ -92,7 +91,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
 #endif
-        public async Task PromptForPasswordForNonDefaultServiceUserAccount()
+        public void PromptForPasswordForNonDefaultServiceUserAccount()
         {
             using (var tc = this.CreateTestContext())
             {
@@ -110,7 +109,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
                         It.IsAny<Dictionary<string, string>>(), // args
                         It.IsAny<bool>())).Returns("domain\\randomuser");
 
-                await serviceControlManager.ConfigureServiceAsync(agentSettings, null, true);
+                serviceControlManager.ConfigureService(agentSettings, null, true);
 
                 _reader.Verify(
                     x =>

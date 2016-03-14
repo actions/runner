@@ -338,16 +338,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                     enforceSupplied);
             }
 
+            var serviceControlManager = HostContext.GetService<IServiceControlManager>();
             if (runAsService)
             {
                 settings.RunAsService = true;
                 Trace.Info("Configuring to run the agent as service");
-                var serviceControlManager = HostContext.GetService<IServiceControlManager>();
-
-                await serviceControlManager.ConfigureServiceAsync(settings, args, enforceSupplied);
+                serviceControlManager.ConfigureService(settings, args, enforceSupplied);
             }
 
             _store.SaveSettings(settings);
+
+            if (runAsService)
+            {
+                serviceControlManager.StartService(settings.ServiceName);
+            }
         }
 
         private async Task TestConnectAsync(string url, VssCredentials creds)
