@@ -398,7 +398,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
                 Assert.Equal(1, gcFiles.Length);
                 string gcFile = gcFiles.Single();
                 string gcContents = File.ReadAllText(gcFile);
-                Assert.Equal(TrackingContents, gcContents);
+                Assert.Equal(TrimCR(TrackingContents), TrimCR(gcContents));
                 // File name should a GUID.
                 Assert.True(Regex.IsMatch(Path.GetFileNameWithoutExtension(gcFile), "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"));
                 // File name should not be the default GUID.
@@ -460,7 +460,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
   ""repositoryUrl"": ""http://contoso:8080/tfs/DefaultCollection/_git/gitTest"",
   ""system"": ""build""
 }";
-                Assert.Equal(ExpectedGCContents, gcContents);
+                Assert.Equal(TrimCR(ExpectedGCContents), TrimCR(gcContents));
             }
         }
 
@@ -519,6 +519,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
                 Assert.True(testStartOn.AddSeconds(-1) <= config.LastRunOn);
                 Assert.True(DateTimeOffset.Now.AddSeconds(1) >= config.LastRunOn);
             }
+        }
+
+        //removes CR so the test can run on Linux, even if it was synced on a Windows drive share
+        //this is used when Linux VM is building from a folder mounted on a Windows box
+        private string TrimCR(string value)
+        {
+            return value.Replace("\r", string.Empty);
         }
     }
 }
