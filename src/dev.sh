@@ -134,7 +134,7 @@ function runtest ()
     rm -Rf Test/bin/Debug/dnxcore50/_diag
     pushd Test/bin/Debug/dnxcore50 > /dev/null
     pushd $(ls -d */ | grep -v '_')publish > /dev/null
-    ./corerun xunit.console.netcore.exe Test.dll -xml testresults.xml
+    ./corerun xunit.console.netcore.exe Test.dll -xml testresults.xml || failed "failed tests"
     popd > /dev/null
     popd > /dev/null
 }
