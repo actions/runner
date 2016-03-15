@@ -51,26 +51,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             EnqueueInstance<ITerminal>(_term);
         }
 
-        public CancellationToken CancellationToken
-        {
-            get
-            {
-                return _cancellationTokenSource.Token;
-            }
-        }
+        public CancellationToken CancellationToken => _cancellationTokenSource.Token;
 
-        public CancellationTokenSource CancellationTokenSource
-        {
-            get
-            {
-                return _cancellationTokenSource;
-            }
-        }
-
-        public void Cancel()
-        {
-            _cancellationTokenSource.Cancel();
-        }
+        public CancellationTokenSource CancellationTokenSource => _cancellationTokenSource;
 
         public CultureInfo DefaultCulture { get; private set; }
 
@@ -123,7 +106,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
 
         public void SetDefaultCulture(string name)
         {
-            this.DefaultCulture = new CultureInfo(name);
+            DefaultCulture = new CultureInfo(name);
         }
 
         public void SetSingleton<T>(T singleton) where T : class, IAgentService
@@ -161,6 +144,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             if (disposing)
             {
                 _traceManager?.Dispose();
+                _cancellationTokenSource.Cancel();
             }
         }
     }

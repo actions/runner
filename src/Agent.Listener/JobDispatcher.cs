@@ -29,45 +29,62 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             using (var processChannel = HostContext.CreateService<IProcessChannel>())
             using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
             {
+                // Start the process channel.
+                // It's OK if StartServer bubbles an execption after the worker process has already started.
+                // The worker will shutdown after 30 seconds if it hasn't received the job message.
                 processChannel.StartServer(
-                    (pipeHandleOut, pipeHandleIn) =>
+                    // Delegate to start the child process.
+                    startProcess: (string pipeHandleOut, string pipeHandleIn) =>
                     {
+                        // Validate args.
+                        ArgUtil.NotNullOrEmpty(pipeHandleOut, nameof(pipeHandleOut));
+                        ArgUtil.NotNullOrEmpty(pipeHandleIn, nameof(pipeHandleIn));
+
+                        // Start the child process.
                         var assemblyDirectory = IOUtil.GetBinPath();
                         string workerFileName = Path.Combine(assemblyDirectory, WorkerProcessName);
-                        workerProcessTask = processInvoker.ExecuteAsync(assemblyDirectory, workerFileName, "spawnclient " + pipeHandleOut + " " + pipeHandleIn, null, token);
-                    }
-                );
+                        workerProcessTask = processInvoker.ExecuteAsync(
+                            workingDirectory: assemblyDirectory,
+                            fileName: workerFileName,
+                            arguments: "spawnclient " + pipeHandleOut + " " + pipeHandleIn,
+                            environment: null,
+                            cancellationToken: token);
+                    });
 
-                //send the job request
-                var ct1 = new CancellationTokenSource(ChannelTimeout);
-                await processChannel.SendAsync(MessageType.NewJobRequest, JsonUtility.ToString(message), ct1.Token);
+                // Send the job request message.
+                // TODO: Kill the worker process if sending the job message times out. The worker
+                // process may have successfully received the job message.
+                await processChannel.SendAsync(
+                    messageType: MessageType.NewJobRequest,
+                    body: JsonUtility.ToString(message),
+                    cancellationToken: new CancellationTokenSource(ChannelTimeout).Token);
 
-                int resultCode = 0;
-                bool canceled = false;
                 try
                 {
-                    resultCode = await workerProcessTask;
+                    // Wait for the process to exit.
+                    return await workerProcessTask;
                 } 
                 catch (OperationCanceledException)
                 {
-                    canceled = true;
                 }
                 catch (AggregateException errors)
                 {
-                    canceled = true;
-                    // Ignore OperationCanceledException and TaskCanceledException exceptions
+                    // Ignore OperationCanceledException and TaskCanceledException exceptions.
+                    // Otherwise bubble out.
                     errors.Handle(e => e is OperationCanceledException);
                 }
-                if (canceled)
-                {
-                    //we create internal cancellation token, because the parent token is already cancelled
-                    CancellationTokenSource ct2 = new CancellationTokenSource(ChannelTimeout);
-                    await processChannel.SendAsync(MessageType.CancelRequest, string.Empty, ct2.Token);
-                }
-                return resultCode;
+
+                // Send a cancellation message.
+                // TODO: Regardless of whether the cancellation message is sent successfully, wait for a certain amount of time, then kill the worker process if it is still running.
+                await processChannel.SendAsync(
+                    messageType: MessageType.CancelRequest,
+                    body: string.Empty,
+                    cancellationToken: new CancellationTokenSource(ChannelTimeout).Token);
+                return 0;
             }
         }
 
+        // TODO: REMOVE DEAD CODE.
         public void Dispose()
         {
             Dispose(true);

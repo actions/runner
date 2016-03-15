@@ -10,10 +10,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
     public sealed class JobExtensionRunner : IStep
     {
-        private readonly Func<Task<TaskResult>> _runAsync;
+        private readonly Func<Task> _runAsync;
 
         public JobExtensionRunner(
-            Func<Task<TaskResult>> runAsync,
+            Func<Task> runAsync,
             bool alwaysRun,
             bool continueOnError,
             bool critical,
@@ -37,21 +37,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         public bool Enabled { get; private set; }
         public IExecutionContext ExecutionContext { get; set; }
         public bool Finally { get; private set; }
-        public TaskResult? Result { get; set; }
 
-        public Task<TaskResult> RunAsync()
+        public async Task RunAsync()
         {
-            ExecutionContext.Start();
-            CancellationTokenSource ts = new CancellationTokenSource(TimeSpan.FromMinutes(1));
-            while (!ts.IsCancellationRequested)
-            {
-                ExecutionContext.Write(null, DateTime.UtcNow.ToString("O"));
-                Task.Delay(50).Wait();
-            }
-            ExecutionContext.Result = TaskResult.Succeeded;
-            ExecutionContext.Complete();
-
-            return _runAsync();
+            await _runAsync();
         }
     }
 }

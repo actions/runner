@@ -2,6 +2,7 @@ using Microsoft.VisualStudio.Services.Agent.Listener;
 using Microsoft.VisualStudio.Services.Agent.Listener.Configuration;
 using Microsoft.VisualStudio.Services.Agent.Worker;
 using Microsoft.VisualStudio.Services.Agent.Worker.Build;
+using Microsoft.VisualStudio.Services.Agent.Worker.Handlers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -59,6 +60,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             var whitelist = new[]
             {
                 typeof(IExecutionContext),
+                typeof(IHandler),
                 typeof(IJobExtension),
                 typeof(ISourceProvider),
                 typeof(IStep),

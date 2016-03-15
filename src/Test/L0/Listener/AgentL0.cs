@@ -153,7 +153,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                 else
                 {
                     //Act
-                    hc.Cancel(); //stop Agent
+                    hc.CancellationTokenSource.Cancel(); //stop Agent
                     
                     //Assert
                     Task[] taskToWait2 = { agentTask, Task.Delay(2000) };

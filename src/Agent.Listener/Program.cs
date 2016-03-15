@@ -1,6 +1,7 @@
 ﻿using Microsoft.VisualStudio.Services.Agent.Listener.Configuration;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Diagnostics;
 
@@ -10,15 +11,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
     {
         private static TraceSource s_trace;
         
-        public static Int32 Main(String[] args)
+        public static int Main(string[] args)
         {
-            using (HostContext context = new HostContext("Agent"))
+            var tokenSource = new CancellationTokenSource();
+            using (HostContext context = new HostContext("Agent", tokenSource.Token))
             {
                 var cancelHandler = new ConsoleCancelEventHandler((sender, e) =>
                 {
                     Console.WriteLine("Exiting...");
                     e.Cancel = true;
-                    context.CancellationTokenSource.Cancel();
+                    tokenSource.Cancel();
                 });
                 Console.CancelKeyPress += cancelHandler;
                 

@@ -129,7 +129,7 @@ namespace Microsoft.VisualStudio.Services.Agent
 
         public Boolean HasValidCommand()
         {
-            return this.Commands.Any(x => validCommands.Contains(x));
+            return Commands.Any(x => validCommands.Contains(x));
         }
     }
 }

@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
@@ -14,74 +15,193 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
 {    
     public sealed class TaskManagerL0
     {
+        private const string TestDataFolderName = "TestData";
+        private readonly CancellationTokenSource _ecTokenSource = new CancellationTokenSource();
         private Mock<IJobServer> _jobServer;
         private Mock<IConfigurationStore> _configurationStore;
-        private string _workFolderName;
+        private Mock<IExecutionContext> _ec;
+        private TestHostContext _hc;
+        private TaskManager _taskManager;
+        private string _workFolder;
 
-        public TaskManagerL0()
+        //Test the cancellation flow: interrupt download task via HostContext cancellation token.
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async void BubblesCancellation()
         {
-            _jobServer = new Mock<IJobServer>();
-            _configurationStore = new Mock<IConfigurationStore>();
-            _workFolderName = $"_work_{Guid.NewGuid().ToString()}";
-        }
-
-        const string TestDataFolderName = "TestData";
-
-        private string GetZipFolderName()
-        {
-            var currentAssemblyLocation = System.Reflection.Assembly.GetEntryAssembly().Location;
-            var baseTestDirectory = new DirectoryInfo(currentAssemblyLocation).Parent.Parent.Parent.Parent.Parent.Parent;
-            string zipFileFolder = Path.Combine(baseTestDirectory.FullName, TestDataFolderName, nameof(TaskManagerL0));
-            return zipFileFolder;
-        }
-        private Stream GetZipStream()
-        {
-            string zipFileFolder = GetZipFolderName();
-            string zipFile = zipFileFolder + ".zip";
-            if (File.Exists(zipFile))
+            try
             {
-                File.Delete(zipFile);
+                //Arrange
+                Setup();
+                var bingTask = new TaskInstance()
+                {
+                    Enabled = true,
+                    Name = "Bing",
+                    Version = "0.1.2",
+                    Id = Guid.NewGuid()
+                };
+                var pingTask = new TaskInstance()
+                {
+                    Enabled = true,
+                    Name = "Ping",
+                    Version = "0.1.1",
+                    Id = Guid.NewGuid()
+                };
+
+                var bingVersion = new TaskVersion(bingTask.Version);
+                var pingVersion = new TaskVersion(pingTask.Version);
+
+                _jobServer
+                    .Setup(x => x.GetTaskContentZipAsync(It.IsAny<Guid>(), It.IsAny<TaskVersion>(), _ec.Object.CancellationToken))
+                    .Returns((Guid taskId, TaskVersion taskVersion, CancellationToken token) =>
+                    {
+                        _ecTokenSource.Cancel();
+                        return Task.FromResult<Stream>(GetZipStream());
+                    });
+
+                var tasks = new List<TaskInstance>(new TaskInstance[] { bingTask, pingTask });
+
+                //Act
+                //should initiate a download with a mocked IJobServer, which sets a cancellation token and
+                //download task is expected to be in cancelled state
+                Task downloadTask = _taskManager.DownloadAsync(_ec.Object, tasks);
+                Task[] taskToWait = { downloadTask, Task.Delay(2000) };
+                //wait for the task to be cancelled to exit
+                await Task.WhenAny(taskToWait);
+
+                //Assert
+                //verify task completed in less than 2sec and it is in cancelled state
+                Assert.True(downloadTask.IsCompleted, $"{nameof(_taskManager.DownloadAsync)} timed out.");
+                Assert.True(!downloadTask.IsFaulted, downloadTask.Exception?.ToString());
+                Assert.True(downloadTask.IsCanceled);
+                //check if the task.json was not downloaded for ping and bing tasks
+                Assert.Equal(
+                    0,
+                    Directory.GetFiles(IOUtil.GetTasksPath(_hc), "*", SearchOption.AllDirectories).Length);
+                //assert download was invoked only once, because the first task cancelled the second task download
+                _jobServer
+                    .Verify(x => x.GetTaskContentZipAsync(It.IsAny<Guid>(), It.IsAny<TaskVersion>(), _ec.Object.CancellationToken), Times.Once());
             }
-            ZipFile.CreateFromDirectory(zipFileFolder, zipFile, CompressionLevel.Fastest, false);
-            FileStream fs = new FileStream(zipFile, FileMode.Open);
-            return fs;
+            finally
+            {
+                Teardown();
+            }
         }
-        
+
+        //Test how exceptions are propagated to the caller.
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async void BubblesNetworkException()
+        {
+            try
+            {
+                // Arrange.
+                Setup();
+                var pingTask = new TaskInstance()
+                {
+                    Enabled = true,
+                    Name = "Ping",
+                    Version = "0.1.1",
+                    Id = Guid.NewGuid()
+                };
+
+                var pingVersion = new TaskVersion(pingTask.Version);
+                Exception expectedException = new System.Net.Http.HttpRequestException("simulated network error");
+                _jobServer
+                    .Setup(x => x.GetTaskContentZipAsync(It.IsAny<Guid>(), It.IsAny<TaskVersion>(), _ec.Object.CancellationToken))
+                    .Returns((Guid taskId, TaskVersion taskVersion, CancellationToken token) =>
+                    {
+                        throw expectedException;
+                    });
+
+                var tasks = new List<TaskInstance>(new TaskInstance[] { pingTask });
+
+                //Act
+                Exception actualException = null;
+                try
+                {
+                    await _taskManager.DownloadAsync(_ec.Object, tasks);
+                }
+                catch (Exception ex)
+                {
+                    actualException = ex;
+                }
+
+                //Assert
+                //verify task completed in less than 2sec and it is in failed state state
+                Assert.Equal(expectedException, actualException);
+                //see if the task.json was not downloaded
+                Assert.Equal(
+                    0,
+                    Directory.GetFiles(IOUtil.GetTasksPath(_hc), "*", SearchOption.AllDirectories).Length);
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void DeserializesPlatformSupportedHandlersOnly()
+        {
+            try
+            {
+                // Arrange.
+                Setup();
+                // Prepare the content.
+                const string Content = @"
+{
+    ""execution"": {
+        ""Node"": { },
+        ""Process"": { },
+    }
+}";
+                // Write the task.json to disk.
+                TaskInstance instance;
+                string directory;
+                CreateTask(jsonContent: Content, instance: out instance, directory: out directory);
+
+                // Act.
+                Definition definition = _taskManager.Load(instance);
+
+                // Assert.
+                Assert.NotNull(definition);
+                Assert.NotNull(definition.Data);
+                Assert.NotNull(definition.Data.Execution);
+                Assert.NotNull(definition.Data.Execution.Node);
+#if OS_WINDOWS
+                Assert.NotNull(definition.Data.Execution.Process);
+#else
+                Assert.Null(definition.Data.Execution.Process);
+#endif
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
         //Test the normal flow, which downloads a few tasks and skips disabled, duplicate and cached tasks.
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async void TestEnsureTasksExist()
+        public async void DownloadsTasks()
         {
             try
             {
-
                 //Arrange
-                using (var hc = new TestHostContext(this))
+                Setup();
+                //pass 3 tasks: one disabled task and two duplicate tasks named "Bing"
+                var bingGuid = Guid.NewGuid();
+                string bingTaskName = "Bing";
+                string bingVersion = "1.21.2";
+                var tasks = new List<TaskInstance>
                 {
-                    hc.SetSingleton<IJobServer>(_jobServer.Object);
-                    hc.SetSingleton<IConfigurationStore>(_configurationStore.Object);
-                    var taskManager = new TaskManager();
-                    taskManager.Initialize(hc);
-
-                    _configurationStore.Setup(x => x.GetSettings()).Returns(
-                     new AgentSettings
-                     {
-                         WorkFolder = _workFolderName
-                     });
-
-                    string workingFolder = IOUtil.GetWorkPath(hc);
-                    if (Directory.Exists(workingFolder))
-                    {
-                        Directory.Delete(IOUtil.GetWorkPath(hc), true);
-                    }
-
-                    //pass 3 tasks: one disabled task and two duplicate tasks named "Bing"
-                    var bingGuid = Guid.NewGuid();
-                    string bingTaskName = "Bing";
-                    var arTasks = new TaskInstance[]
-                    {
-                   new TaskInstance()
+                    new TaskInstance()
                     {
                         Enabled = false,
                         Name = "Ping",
@@ -92,204 +212,371 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                     {
                         Enabled = true,
                         Name = bingTaskName,
-                        Version = "1.21.2",
+                        Version = bingVersion,
                         Id = bingGuid
                     },
                     new TaskInstance()
                     {
                         Enabled = true,
                         Name = bingTaskName,
-                        Version = "1.21.2",
+                        Version = bingVersion,
                         Id = bingGuid
                     }
-                    };
+                };
+                _jobServer
+                    .Setup(x => x.GetTaskContentZipAsync(
+                        bingGuid,
+                        It.Is<TaskVersion>(y => string.Equals(y.ToString(), bingVersion, StringComparison.Ordinal)),
+                        _ec.Object.CancellationToken))
+                    .Returns(Task.FromResult<Stream>(GetZipStream()));
 
-                    var tasks = new List<TaskInstance>(arTasks);
-                    var bingVersion = new TaskVersion(arTasks[1].Version);
-                    _jobServer
-                        .Setup(x => x.GetTaskContentZipAsync(It.IsAny<Guid>(), It.IsAny<TaskVersion>(), hc.CancellationToken))
-                        .Returns((Guid taskId, TaskVersion taskVersion, CancellationToken token) =>
-                        {
-                            return Task.FromResult<Stream>(GetZipStream());
-                        });
+                //Act
+                //first invocation will download and unzip the task from mocked IJobServer
+                await _taskManager.DownloadAsync(_ec.Object, tasks);
+                //second and third invocations should find the task in the cache and do nothing
+                await _taskManager.DownloadAsync(_ec.Object, tasks);
+                await _taskManager.DownloadAsync(_ec.Object, tasks);
 
-                    //Act
-                    //first invocation will download and unzip the task from mocked IJobServer
-                    await taskManager.EnsureTasksExist(tasks);
-                    //second and third invocations should find the task in the cache and do nothing
-                    await taskManager.EnsureTasksExist(tasks);
-                    await taskManager.EnsureTasksExist(tasks);
-
-                    //Assert
-                    //see if the task.json was downloaded
-                    string destPath = taskManager.GetDestinationPath(bingTaskName, bingGuid, bingVersion);
-                    Assert.True(File.Exists(Path.Combine(destPath, "task.json")));
-                    //assert download has happened only once, because disabled, duplicate and cached tasks are not downloaded
-                    _jobServer
-                        .Verify(x => x.GetTaskContentZipAsync(It.IsAny<Guid>(), It.IsAny<TaskVersion>(), hc.CancellationToken), Times.Once());
-                }
+                //Assert
+                //see if the task.json was downloaded
+                string destDirectory = Path.Combine(
+                    IOUtil.GetTasksPath(_hc),
+                    $"{bingTaskName}_{bingGuid}",
+                    bingVersion);
+                Assert.True(File.Exists(Path.Combine(destDirectory, Constants.Path.TaskJsonFile)));
+                //assert download has happened only once, because disabled, duplicate and cached tasks are not downloaded
+                _jobServer
+                    .Verify(x => x.GetTaskContentZipAsync(It.IsAny<Guid>(), It.IsAny<TaskVersion>(), It.IsAny<CancellationToken>()), Times.Once());
             }
             finally
             {
-                //Cleanup
-                string zipFile = GetZipFolderName() + ".zip";
-                if (File.Exists(zipFile))
-                {
-                    File.Delete(zipFile);
-                }
+                Teardown();
             }
         }
 
-        //Test the cancellation flow: interrupt download task via HostContext cancellation token.
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async void TestCancellationOfEnsureTasksExist()
+        public void DoesNotMatchPlatform()
         {
             try
             {
-                //Arrange
-                using (var hc = new TestHostContext(this))
-                {
-                    hc.SetSingleton<IJobServer>(_jobServer.Object);
-                    hc.SetSingleton<IConfigurationStore>(_configurationStore.Object);
-                    var taskManager = new TaskManager();
-                    taskManager.Initialize(hc);
+                // Arrange.
+                Setup();
+#if !OS_WINDOWS
+                const string Platform = "windows";
+#else
+                const string Platform = "nosuch"; // TODO: What to do here?
+#endif
+                HandlerData data = new NodeHandlerData() { Platforms = new string[] { Platform } };
 
-                    _configurationStore.Setup(x => x.GetSettings()).Returns(
-                     new AgentSettings
-                     {
-                         WorkFolder = _workFolderName
-                     });
-
-                    string workingFolder = IOUtil.GetWorkPath(hc);
-                    if (Directory.Exists(workingFolder))
-                    {
-                        Directory.Delete(IOUtil.GetWorkPath(hc), true);
-                    }
-
-                    var bingTask = new TaskInstance()
-                    {
-                        Enabled = true,
-                        Name = "Bing",
-                        Version = "0.1.2",
-                        Id = Guid.NewGuid()
-                    };
-                    var pingTask = new TaskInstance()
-                    {
-                        Enabled = true,
-                        Name = "Ping",
-                        Version = "0.1.1",
-                        Id = Guid.NewGuid()
-                    };
-
-                    var bingVersion = new TaskVersion(bingTask.Version);
-                    var pingVersion = new TaskVersion(pingTask.Version);
-
-                    _jobServer
-                        .Setup(x => x.GetTaskContentZipAsync(It.IsAny<Guid>(), It.IsAny<TaskVersion>(), hc.CancellationToken))
-                        .Returns((Guid taskId, TaskVersion taskVersion, CancellationToken token) =>
-                        {
-                            hc.Cancel();
-                            return Task.FromResult<Stream>(GetZipStream());
-                        });
-
-                    var tasks = new List<TaskInstance>(new TaskInstance[] { bingTask, pingTask });
-
-                    //Act
-                    //should initiate a download with a mocked IJobServer, which sets a cancelation token and
-                    //ensureExistTask task is expected to be in cancelled state
-                    Task ensureExistTask = taskManager.EnsureTasksExist(tasks);
-                    Task[] taskToWait = { ensureExistTask, Task.Delay(2000) };
-                    //wait for the task to be cancelled to exit
-                    await Task.WhenAny(taskToWait);
-
-                    //Assert
-                    //verify task completed in less than 2sec and it is in cancelled state
-                    Assert.True(ensureExistTask.IsCompleted, $"{nameof(taskManager.EnsureTasksExist)} timed out.");
-                    Assert.True(!ensureExistTask.IsFaulted, ensureExistTask.Exception?.ToString());
-                    Assert.True(ensureExistTask.IsCanceled);
-                    //check if the task.json was not downloaded for ping and bing tasks
-                    string bingDestPath = taskManager.GetDestinationPath(bingTask.Name, bingTask.Id, bingVersion);
-                    string pingDestPath = taskManager.GetDestinationPath(pingTask.Name, pingTask.Id, pingVersion);
-                    Assert.True(!File.Exists(Path.Combine(bingDestPath, "task.json")));
-                    Assert.True(!File.Exists(Path.Combine(pingDestPath, "task.json")));
-                    //assert download was invoked only once, because the first task cancelled the second task download
-                    _jobServer
-                        .Verify(x => x.GetTaskContentZipAsync(It.IsAny<Guid>(), It.IsAny<TaskVersion>(), hc.CancellationToken), Times.Once());
-                }
+                // Act/Assert.
+                Assert.False(data.PreferredOnCurrentPlatform());
             }
             finally
             {
-                //Cleanup
-                string zipFile = GetZipFolderName() + ".zip";
-                if (File.Exists(zipFile))
-                {
-                    File.Delete(zipFile);
-                }
+                Teardown();
             }
         }
 
-        //Test how exceptions are propagated to the caller.
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async void TestNetworkErrorWhileDownloadingTask()
+        public void LoadsDefinition()
         {
-            //Arrange
-            using (var hc = new TestHostContext(this))
+            try
             {
-                hc.SetSingleton<IJobServer>(_jobServer.Object);
-                hc.SetSingleton<IConfigurationStore>(_configurationStore.Object);
-                var taskManager = new TaskManager();
-                taskManager.Initialize(hc);
+                // Arrange.
+                Setup();
+                // Prepare the task.json content.
+                const string Content = @"
+{
+    ""inputs"": [
+        {
+            ""extraInputKey"": ""Extra input value"",
+            ""name"": ""someFilePathInput"",
+            ""type"": ""filePath"",
+            ""label"": ""Some file path input label"",
+            ""defaultValue"": ""Some default file path"",
+            ""required"": true,
+            ""helpMarkDown"": ""Some file path input markdown""
+        },
+        {
+            ""name"": ""someStringInput"",
+            ""type"": ""string"",
+            ""label"": ""Some string input label"",
+            ""defaultValue"": ""Some default string"",
+            ""helpMarkDown"": ""Some string input markdown"",
+            ""required"": false,
+            ""groupName"": ""advanced""
+        }
+    ],
+    ""execution"": {
+        ""Node"": {
+            ""target"": ""Some Node target"",
+            ""extraNodeArg"": ""Extra node arg value""
+        },
+        ""Process"": {
+            ""target"": ""Some process target"",
+            ""argumentFormat"": ""Some process argument format"",
+            ""workingDirectory"": ""Some process working directory"",
+            ""extraProcessArg"": ""Some extra process arg"",
+            ""platforms"": [
+                ""windows""
+            ]
+        },
+        ""NoSuchHandler"": {
+            ""target"": ""no such target""
+        }
+    },
+    ""someExtraSection"": {
+        ""someExtraKey"": ""Some extra value""
+    }
+}";
+                // Write the task.json to disk.
+                TaskInstance instance;
+                string directory;
+                CreateTask(jsonContent: Content, instance: out instance, directory: out directory);
 
-                _configurationStore.Setup(x => x.GetSettings()).Returns(
-                 new AgentSettings
-                 {
-                     WorkFolder = _workFolderName
-                 });
+                // Act.
+                Definition definition = _taskManager.Load(instance);
 
-                string workingFolder = IOUtil.GetWorkPath(hc);
-                if (Directory.Exists(workingFolder))
+                // Assert.
+                Assert.NotNull(definition);
+                Assert.Equal(directory, definition.Directory);
+                Assert.NotNull(definition.Data);
+                Assert.NotNull(definition.Data.Inputs); // inputs
+                Assert.Equal(2, definition.Data.Inputs.Length);
+                Assert.Equal("someFilePathInput", definition.Data.Inputs[0].Name);
+                Assert.Equal("Some default file path", definition.Data.Inputs[0].DefaultValue);
+                Assert.Equal("someStringInput", definition.Data.Inputs[1].Name);
+                Assert.Equal("Some default string", definition.Data.Inputs[1].DefaultValue);
+                Assert.NotNull(definition.Data.Execution); // execution
+
+#if OS_WINDOWS
+                // Process handler should only be deserialized on Windows.
+                Assert.Equal(2, definition.Data.Execution.All.Count);
+#else
+                // Only Node handler should be deserialized on non-Windows.
+                Assert.Equal(1, definition.Data.Execution.All.Count);
+#endif
+
+                // Node handler should always be deserialized.
+                Assert.NotNull(definition.Data.Execution.Node); // execution.Node
+                Assert.Equal(definition.Data.Execution.Node, definition.Data.Execution.All[0]);
+                Assert.Equal("Some Node target", definition.Data.Execution.Node.Target);
+
+#if OS_WINDOWS
+                // Process handler should only be deserialized on Windows.
+                Assert.NotNull(definition.Data.Execution.Process); // execution.Process
+                Assert.Equal(definition.Data.Execution.Process, definition.Data.Execution.All[1]);
+                Assert.Equal("Some process argument format", definition.Data.Execution.Process.ArgumentFormat);
+                Assert.NotNull(definition.Data.Execution.Process.Platforms);
+                Assert.Equal(1, definition.Data.Execution.Process.Platforms.Length);
+                Assert.Equal("windows", definition.Data.Execution.Process.Platforms[0]);
+                Assert.Equal("Some process target", definition.Data.Execution.Process.Target);
+                Assert.Equal("Some process working directory", definition.Data.Execution.Process.WorkingDirectory);
+#endif
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void MatchesPlatform()
+        {
+            try
+            {
+                // Arrange.
+                Setup();
+#if OS_WINDOWS
+                const string Platform = "WiNdOwS";
+#else
+                // TODO: What to do here?
+                const string Platform = "";
+                if (string.IsNullOrEmpty(Platform))
                 {
-                    Directory.Delete(IOUtil.GetWorkPath(hc), true);
+                    return;
                 }
+#endif
+                HandlerData data = new NodeHandlerData() { Platforms = new[] { Platform } };
 
-                var pingTask = new TaskInstance()
+                // Act/Assert.
+                Assert.True(data.PreferredOnCurrentPlatform());
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void ReplacesMacros()
+        {
+            try
+            {
+                // Arrange.
+                Setup();
+                const string Directory = "Some directory";
+                Definition definition = new Definition() { Directory = Directory };
+                NodeHandlerData node = new NodeHandlerData()
                 {
-                    Enabled = true,
-                    Name = "Ping",
-                    Version = "0.1.1",
-                    Id = Guid.NewGuid()
+                    Target = @"$(CuRrEnTdIrEcToRy)\Some node target",
+                    WorkingDirectory = @"$(CuRrEnTdIrEcToRy)\Some node working directory",
+                };
+                ProcessHandlerData process = new ProcessHandlerData()
+                {
+                    ArgumentFormat = @"$(CuRrEnTdIrEcToRy)\Some process argument format",
+                    Target = @"$(CuRrEnTdIrEcToRy)\Some process target",
+                    WorkingDirectory = @"$(CuRrEnTdIrEcToRy)\Some process working directory",
                 };
 
-                var pingVersion = new TaskVersion(pingTask.Version);
+                // Act.
+                node.ReplaceMacros(definition);
+                process.ReplaceMacros(definition);
 
-                _jobServer
-                    .Setup(x => x.GetTaskContentZipAsync(It.IsAny<Guid>(), It.IsAny<TaskVersion>(), hc.CancellationToken))
-                    .Returns((Guid taskId, TaskVersion taskVersion, CancellationToken token) =>
+                // Assert.
+                Assert.Equal($@"{Directory}\Some node target", node.Target);
+                Assert.Equal($@"{Directory}\Some node working directory", node.WorkingDirectory);
+                Assert.Equal($@"{Directory}\Some process argument format", process.ArgumentFormat);
+                Assert.Equal($@"{Directory}\Some process target", process.Target);
+                Assert.Equal($@"{Directory}\Some process working directory", process.WorkingDirectory);
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void ReplacesMacrosAndPreventsInfiniteRecursion()
+        {
+            try
+            {
+                // Arrange.
+                Setup();
+                string directory = $"{HandlerData.CurrentDirectoryMacro}{HandlerData.CurrentDirectoryMacro}";
+                Definition definition = new Definition() { Directory = directory };
+                NodeHandlerData node = new NodeHandlerData()
+                {
+                    Target = @"$(currentDirectory)\Some node target",
+                };
+
+                // Act.
+                node.ReplaceMacros(definition);
+
+                // Assert.
+                Assert.Equal($@"{directory}\Some node target", node.Target);
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void ReplacesMultipleMacroInstances()
+        {
+            try
+            {
+                // Arrange.
+                Setup();
+                const string Directory = "Some directory";
+                Definition definition = new Definition() { Directory = Directory };
+                NodeHandlerData node = new NodeHandlerData()
+                {
+                    Target = @"$(CuRrEnTdIrEcToRy)$(CuRrEnTdIrEcToRy)\Some node target",
+                };
+
+                // Act.
+                node.ReplaceMacros(definition);
+
+                // Assert.
+                Assert.Equal($@"{Directory}{Directory}\Some node target", node.Target);
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
+        private void CreateTask(string jsonContent, out TaskInstance instance, out string directory)
+        {
+            const string TaskName = "SomeTask";
+            const string TaskVersion = "1.2.3";
+            Guid taskGuid = Guid.NewGuid();
+            directory = Path.Combine(_workFolder, Constants.Path.TasksDirectory, $"{TaskName}_{taskGuid}", TaskVersion);
+            string file = Path.Combine(directory, Constants.Path.TaskJsonFile);
+            Directory.CreateDirectory(Path.GetDirectoryName(file));
+            File.WriteAllText(file, jsonContent);
+            instance = new TaskInstance()
+            {
+                Id = taskGuid,
+                Name = TaskName,
+                Version = TaskVersion,
+            };
+        }
+
+        private Stream GetZipStream()
+        {
+            // Locate the test data folder containing the task.json.
+            string sourceFolder = Path.Combine(TestUtil.GetTestDataPath(), nameof(TaskManagerL0));
+            Assert.True(Directory.Exists(sourceFolder), $"Directory does not exist: {sourceFolder}");
+            Assert.True(File.Exists(Path.Combine(sourceFolder, Constants.Path.TaskJsonFile)));
+
+            // Create the zip file under the work folder so it gets cleaned up.
+            string zipFile = Path.Combine(
+                _workFolder,
+                $"{Guid.NewGuid()}.zip");
+            Directory.CreateDirectory(_workFolder);
+            ZipFile.CreateFromDirectory(sourceFolder, zipFile, CompressionLevel.Fastest, includeBaseDirectory: false);
+            return new FileStream(zipFile, FileMode.Open);
+        }
+
+        private void Setup([CallerMemberName] string name = "")
+        {
+            // Random work folder.
+            _workFolder = Path.Combine(IOUtil.GetBinPath(), $"_work_{Path.GetRandomFileName()}");
+
+            // Mocks.
+            _jobServer = new Mock<IJobServer>();
+            _configurationStore = new Mock<IConfigurationStore>();
+            _configurationStore
+                .Setup(x => x.GetSettings())
+                .Returns(
+                    new AgentSettings
                     {
-                        throw new System.Net.Http.HttpRequestException("simulated network error");
+                        WorkFolder = _workFolder
                     });
+            _ec = new Mock<IExecutionContext>();
+            _ec.Setup(x => x.CancellationToken).Returns(_ecTokenSource.Token);
 
-                var tasks = new List<TaskInstance>(new TaskInstance[] { pingTask });
+            // Test host context.
+            _hc = new TestHostContext(this, name);
+            _hc.SetSingleton<IJobServer>(_jobServer.Object);
+            _hc.SetSingleton<IConfigurationStore>(_configurationStore.Object);
 
-                //Act
-                //EnsureTasksExist should throw a HttpRequestException exception
-                Task ensureExistTask = taskManager.EnsureTasksExist(tasks);
-                Task[] taskToWait = { ensureExistTask, Task.Delay(2000) };
-                //wait for the task to be cancelled to exit
-                await Task.WhenAny(taskToWait);
+            // Instance to test.
+            _taskManager = new TaskManager();
+            _taskManager.Initialize(_hc);
+        }
 
-                //Assert
-                //verify task completed in less than 2sec and it is in failed state state
-                Assert.True(ensureExistTask.IsCompleted, $"{nameof(taskManager.EnsureTasksExist)} timed out.");
-                Assert.True(ensureExistTask.IsFaulted, $"{nameof(taskManager.EnsureTasksExist)} did not propagate exception to caller.");
-                Assert.True(!ensureExistTask.IsCanceled);
-                //see if the task.json was not downloaded
-                string pingDestPath = taskManager.GetDestinationPath(pingTask.Name, pingTask.Id, pingVersion);                
-                Assert.True(!File.Exists(Path.Combine(pingDestPath, "task.json")));                
+        private void Teardown()
+        {
+            _hc?.Dispose();
+            if (!string.IsNullOrEmpty(_workFolder) && Directory.Exists(_workFolder))
+            {
+                Directory.Delete(_workFolder, recursive: true);
             }
         }
     }

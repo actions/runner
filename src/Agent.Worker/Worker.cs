@@ -10,103 +10,76 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
     [ServiceLocator(Default = typeof(Worker))]
     public interface IWorker : IAgentService
     {
-        Task<int> RunAsync(string pipeIn, string pipeOut, CancellationTokenSource tokenSource);
+        Task RunAsync(string pipeIn, string pipeOut, CancellationTokenSource hostTokenSource);
     }
 
     public sealed class Worker : AgentService, IWorker
     {
-        //allow up to 30sec for the first message to be received
         private readonly TimeSpan WorkerStartTimeout = TimeSpan.FromSeconds(30);
 
-        public async Task<int> RunAsync(string pipeIn, string pipeOut, CancellationTokenSource tokenSource)
+        public async Task RunAsync(string pipeIn, string pipeOut, CancellationTokenSource hostTokenSource)
         {
+            // Validate args.
+            ArgUtil.NotNullOrEmpty(pipeIn, nameof(pipeIn));
+            ArgUtil.NotNullOrEmpty(pipeOut, nameof(pipeOut));
+            ArgUtil.NotNull(hostTokenSource, nameof(hostTokenSource));
+            var jobRunner = HostContext.GetService<IJobRunner>();
+
             using (var channel = HostContext.CreateService<IProcessChannel>())
             {
-                var jobRunner = HostContext.GetService<IJobRunner>();
+                // Start the channel.
                 channel.StartClient(pipeIn, pipeOut);
-                Task<WorkerMessage> packetReceiveTask = null;
-                Task<int> jobRunnerTask = null;
-                var tasks = new List<Task>();
 
-                //first packet receive has a token that is cancelled in 30sec to avoid infinite hang
-                bool firstPacket = true;
-                var ct1 = new CancellationTokenSource(WorkerStartTimeout);
-                var firstPacketTokenSource = CancellationTokenSource.CreateLinkedTokenSource(ct1.Token, HostContext.CancellationToken);
-                while (!HostContext.CancellationToken.IsCancellationRequested &&
-                    (null == jobRunnerTask || (!jobRunnerTask.IsCompleted)))
+                // Wait for up to 30 seconds for a message from the channel.
+                Trace.Info("Waiting to receive the job message from the channel.");
+                WorkerMessage channelMessage = await channel.ReceiveAsync(new CancellationTokenSource(WorkerStartTimeout).Token);
+
+                // Deserialize the job message.
+                Trace.Info("Message received.");
+                ArgUtil.Equal(MessageType.NewJobRequest, channelMessage.MessageType, nameof(channelMessage.MessageType));
+                ArgUtil.NotNullOrEmpty(channelMessage.Body, nameof(channelMessage.Body));
+                var jobMessage = JsonUtility.FromString<JobRequestMessage>(channelMessage.Body);
+                ArgUtil.NotNull(jobMessage, nameof(jobMessage));
+
+                // Set the default thread culture.
+                string culture;
+                ArgUtil.NotNull(jobMessage.Environment, nameof(jobMessage.Environment));
+                ArgUtil.NotNull(jobMessage.Environment.Variables, nameof(jobMessage.Environment.Variables));
+                if (!jobMessage.Environment.Variables.TryGetValue(Constants.Variables.System.Culture, out culture))
                 {
-                    tasks.Clear();
-                    //receive a packet
-                    if (null == packetReceiveTask)
-                    {
-                        CancellationToken token;
-                        if (firstPacket)
-                        {
-                            firstPacket = false;
-                            token = firstPacketTokenSource.Token;
-                        }
-                        else
-                        {
-                            token = HostContext.CancellationToken;
-                        }
-                        packetReceiveTask = channel.ReceiveAsync(token);
-                    }
-
-                    tasks.Add(packetReceiveTask);
-                    if (null != jobRunnerTask)
-                    {
-                        tasks.Add(jobRunnerTask);
-                    }
-
-                    //wait for either a new packet to be received or for the job runner to finish execution
-                    await Task.WhenAny(tasks);
-                    if (packetReceiveTask.IsCompleted)
-                    {
-                        WorkerMessage packet = await packetReceiveTask;
-                        switch (packet.MessageType)
-                        {
-                            case MessageType.NewJobRequest:
-                                // Deserialize the job message.
-                                var message = JsonUtility.FromString<JobRequestMessage>(packet.Body);
-
-                                // Set the default thread culture.
-                                string culture;
-                                if (!message.Environment.Variables.TryGetValue(Constants.Variables.System.Culture, out culture))
-                                {
-                                    culture = null;
-                                }
-
-                                ArgUtil.NotNullOrEmpty(culture, nameof(culture));
-                                HostContext.SetDefaultCulture(culture);
-
-                                // Run the job.
-                                jobRunnerTask = jobRunner.RunAsync(message);
-                                break;
-                            case MessageType.CancelRequest:
-                                tokenSource.Cancel();
-                                if (null != jobRunnerTask)
-                                {
-                                    //next line should throw OperationCanceledException
-                                    await jobRunnerTask;
-                                }
-
-                                break;
-                            default:
-                                throw new System.NotSupportedException();
-                        }
-
-                        packetReceiveTask = null;
-                    }
+                    culture = null;
                 }
 
-                if (null != jobRunnerTask && jobRunnerTask.IsCompleted)
+                ArgUtil.NotNullOrEmpty(culture, nameof(culture));
+                HostContext.SetDefaultCulture(culture);
+
+                // Start the job.
+                Task jobRunnerTask = jobRunner.RunAsync(jobMessage);
+
+                // Start listening for a cancel message from the channel.
+                Trace.Info("Listening for cancel message from the channel.");
+                CancellationTokenSource channelTokenSource = new CancellationTokenSource();
+                Task<WorkerMessage> channelTask = channel.ReceiveAsync(channelTokenSource.Token);
+
+                // Wait for one of the tasks to complete.
+                Trace.Info("Waiting for the job to complete or for a cancel message from the channel.");
+                Task.WaitAny(jobRunnerTask, channelTask);
+
+                // Handle if the job completed.
+                if (jobRunnerTask.IsCompleted)
                 {
-                    //next line will throw if job runner failed with an exception
-                    return await jobRunnerTask;
+                    Trace.Info("Job completed.");
+                    channelTokenSource.Cancel(); // Cancel waiting for a message from the channel.
+                    return;
                 }
+
+                // Otherwise a cancel message was received from the channel.
+                Trace.Info("Cancellation message received.");
+                channelMessage = await channelTask;
+                ArgUtil.Equal(MessageType.CancelRequest, channelMessage.MessageType, nameof(channelMessage.MessageType));
+                hostTokenSource.Cancel();   // Expire the host cancellation token.
+                await jobRunnerTask;        // Await the job.
             }
-         
-            return 0;
         }
     }
 }
