@@ -21,7 +21,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         private const int MaxUserNameLength = 32;
         private const string VstsAgentServiceTemplate = "vsts.agent.service.template";
 
-        public override void ConfigureService(
+        public override bool ConfigureService(
             AgentSettings settings,
             Dictionary<string, string> args,
             bool enforceSupplied)
@@ -35,7 +35,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 Trace.Info("Systemd does not exists, returning");
                 _term.WriteLine(StringUtil.Loc("SystemdDoesNotExists"));
 
-                return;
+                return false;
             }
 
             if (CheckServiceExists(settings.ServiceName))
@@ -85,6 +85,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             EnableService(settings.ServiceName);
 
             _term.WriteLine(StringUtil.Loc("LinuxServiceConfigured", settings.ServiceName));
+            return true;
         }
 
         public override void StartService(string serviceName)

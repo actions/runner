@@ -17,7 +17,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         private const string ServiceNamePattern = "vstsagent.{0}.{1}";
         private const string ServiceDisplayNamePattern = "VSTS Agent ({0}.{1})";
 
-        public override void ConfigureService(AgentSettings settings, Dictionary<string, string> args, bool enforceSupplied)
+        public override bool ConfigureService(AgentSettings settings, Dictionary<string, string> args, bool enforceSupplied)
         {
             Trace.Info(nameof(ConfigureService));
 
@@ -56,6 +56,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             string agentServiceExecutable = Path.Combine(IOUtil.GetBinPath(), WindowsServiceControllerName);
 
             // TODO check and unconfigure/configure the service using advapi32.dll service install methods using pinvoke
+            return true;
         }
 
         public override void StartService(string serviceName)

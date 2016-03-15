@@ -6,7 +6,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 {
     public class OsxServiceControlManager : ServiceControlManager
     {
-        public override void ConfigureService(AgentSettings settings, Dictionary<string, string> args, bool enforceSupplied)
+        public override bool ConfigureService(AgentSettings settings, Dictionary<string, string> args, bool enforceSupplied)
         {
             throw new NotImplementedException();
         }
