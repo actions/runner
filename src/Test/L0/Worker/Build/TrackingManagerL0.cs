@@ -520,6 +520,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
                 Assert.True(testStartOn.AddSeconds(-1) <= config.LastRunOn);
                 Assert.True(DateTimeOffset.Now.AddSeconds(1) >= config.LastRunOn);
             }
-        }        
+        }
     }
 }
