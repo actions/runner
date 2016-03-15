@@ -19,7 +19,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
         public override void ConfigureService(AgentSettings settings, Dictionary<string, string> args, bool enforceSupplied)
         {
-            Trace.Info(nameof(this.ConfigureService));
+            Trace.Info(nameof(ConfigureService));
 
             var consoleWizard = HostContext.GetService<IConsoleWizard>();
             string logonAccount = string.Empty;

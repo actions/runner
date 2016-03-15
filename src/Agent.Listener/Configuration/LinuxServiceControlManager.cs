@@ -53,7 +53,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 getlogin_r(loginUser, MaxUserNameLength);
                 string currentUserName = loginUser.ToString();
 
-                
                 var unitContent = File.ReadAllText(Path.Combine(IOUtil.GetBinPath(), VstsAgentServiceTemplate));
                 var tokensToReplace = new Dictionary<string, string>
                                           {
@@ -108,6 +107,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             catch (Exception)
             {
                 _term.WriteError(StringUtil.Loc("LinuxServiceStartFailed"));
+                throw;
             }
         }
 
@@ -183,6 +183,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             {
                 Trace.Error(ex);
                 _term.WriteError(StringUtil.Loc("CannotChangeOwnership"));
+
+                throw;
             }
         }
 
@@ -193,9 +195,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             {
                 ExecuteSystemdCommand("enable " + serviceName);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                Trace.Error(ex);
                 _term.WriteError(StringUtil.Loc("LinuxServiceStartFailed"));
+
+                throw;
             }
         }
 
@@ -209,6 +214,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             catch (Exception)
             {
                 _term.WriteError(StringUtil.Loc("LinuxServiceStartFailed"));
+
+                // We dont want to throw here. We can still replace the systemd unit file and call daemon-reload
             }
         }
 
@@ -222,6 +229,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             catch (Exception)
             {
                 _term.WriteError(StringUtil.Loc("SystemdCannotReload"));
+                throw;
             }
         }
 
