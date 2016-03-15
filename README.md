@@ -2,11 +2,14 @@
 
 ## Overview
 
-A cross platform build and release agent for Visual Studio Team Services and Team Foundation Server 2015 and beyond.
-
-> Status:  Work is just beginning on this project.  Please do not log issues yet.  You are welcome to inspect and try it out as we build it.
+A cross platform build and release agent for Visual Studio Team Services and Team Foundation Server 2015 and beyond.  This will be replacing/combining the existing closed source windows build agent and the existing [xplat agent](https://github.com/Microsoft/vso-agent)
 
 Supported on Windows, OSX and Linux.  Written for the .NET Core CLR as one code base in C#.
+
+Will run all existing tasks (typescript/javascript and powershell) including [our in the box](https://github.com/Microsoft/vso-agent-tasks) and your custom tasks written with our [vsts task SDK](https://github.com/Microsoft/vsts-task-lib). 
+
+> Status:  Work is just beginning on this project.  Please do not log issues yet.  You are welcome to inspect and try it out as we build it.  We are targetting a preview early in April 2016, available with VSTS soon after that and is targetting the next TFS release for on-premises.
+
 
 ## Install
 
