@@ -34,7 +34,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
             TestHostContext tc = new TestHostContext(this, testName);
             tc.SetSingleton<IConfigurationManager>(_config.Object);
             tc.SetSingleton<IAgentServer>(_agentServer.Object);
-            tc.SetSingleton<ICredentialManager>(this._credMgr.Object);
+            tc.SetSingleton<ICredentialManager>(_credMgr.Object);
             return tc;
         }
 

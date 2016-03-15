@@ -7,9 +7,9 @@ namespace Microsoft.VisualStudio.Services.Agent
     [AttributeUsage(AttributeTargets.Interface, Inherited = false, AllowMultiple = false)]
     public sealed class ServiceLocatorAttribute : Attribute
     {
-        public Type Default { get; set; }
+        public static readonly string DefaultPropertyName = "Default";
 
-        public static readonly String DefaultPropertyName = "Default";
+        public Type Default { get; set; }
     }
 
     public interface IAgentService
@@ -26,7 +26,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         {
             get 
             {
-                return this.GetType().Name; 
+                return GetType().Name;
             }
         }
 

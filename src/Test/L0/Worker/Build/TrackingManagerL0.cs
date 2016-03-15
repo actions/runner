@@ -20,6 +20,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
     {
         private const string CollectionId = "226466ab-342b-4ca4-bbee-0b87154d4936";
         private const string CollectionName = "Some collection name";
+        // TODO: Add a test for collection in the domain.
         private const string CollectionUrl = "http://contoso:8080/tfs/DefaultCollection/";
         private const string DefinitionId = "1234";
         private const string DefinitionName = "Some definition name";

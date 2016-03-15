@@ -16,18 +16,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         {
             get
             {
-                return string.Format(CultureInfo.InvariantCulture, "{0}", this.LastBuildDirectoryCreatedOn);
+                return string.Format(CultureInfo.InvariantCulture, "{0}", LastBuildDirectoryCreatedOn);
             }
 
             set
             {
                 if (string.IsNullOrEmpty(value))
                 {
-                    this.LastBuildDirectoryCreatedOn = null;
+                    LastBuildDirectoryCreatedOn = null;
                     return;
                 }
 
-                this.LastBuildDirectoryCreatedOn = DateTimeOffset.Parse(value, CultureInfo.InvariantCulture);
+                LastBuildDirectoryCreatedOn = DateTimeOffset.Parse(value, CultureInfo.InvariantCulture);
             }
         }
 

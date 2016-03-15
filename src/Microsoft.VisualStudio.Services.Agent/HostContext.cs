@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 
 namespace Microsoft.VisualStudio.Services.Agent
 {
-    public interface IHostContext
+    public interface IHostContext : IDisposable
     {
         CancellationToken CancellationToken { get; }
         TraceSource GetTrace(string name);
@@ -26,53 +26,41 @@ namespace Microsoft.VisualStudio.Services.Agent
     {
         private readonly ConcurrentDictionary<Type, object> _serviceInstances = new ConcurrentDictionary<Type, object>();
         private readonly ConcurrentDictionary<Type, Type> _serviceTypes = new ConcurrentDictionary<Type, Type>();
-        private readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
         private TraceSource _trace;
         private ITraceManager _traceManager;
-        private string _hostType;
-        
-        public HostContext(string hostType)
+
+        public HostContext(string hostType, CancellationToken cancellationToken)
+            : this(
+                hostType: hostType,
+                logFile: Path.Combine(IOUtil.GetDiagPath(), StringUtil.Format("{0}_{1:yyyyMMdd-HHmmss}-utc.log", hostType, DateTime.UtcNow)),
+                cancellationToken: cancellationToken)
         {
-            if (string.IsNullOrEmpty(hostType))
-            {
-                throw new ArgumentNullException(nameof(hostType));
-            }
-            
-            _hostType = hostType;
+        }
+
+        public HostContext(string hostType, string logFile, CancellationToken cancellationToken)
+        {
+            // Validate args.
+            ArgUtil.NotNullOrEmpty(hostType, nameof(hostType));
+            ArgUtil.NotNullOrEmpty(logFile, nameof(logFile));
+            ArgUtil.NotNull(cancellationToken, nameof(cancellationToken));
+            CancellationToken = cancellationToken;
 
             // Create the trace manager.
-            string fileName = String.Format("{0}_{1:yyyyMMdd-HHmmss}-utc.log", _hostType, DateTime.UtcNow);
-            var diagPath = IOUtil.GetDiagPath();
-            Directory.CreateDirectory(diagPath);
-            Stream logFile = new FileStream(
-                Path.Combine(diagPath, fileName),
+            Directory.CreateDirectory(Path.GetDirectoryName(logFile));
+            Stream logStream = new FileStream(
+                logFile,
                 FileMode.Create,
                 FileAccess.ReadWrite,
                 FileShare.Read,
                 bufferSize: 4096);
-            TextWriterTraceListener traceListener = new TextWriterTraceListener(logFile);
+            TextWriterTraceListener traceListener = new TextWriterTraceListener(logStream);
             _traceManager = new TraceManager(traceListener);
             _trace = GetTrace(nameof(HostContext));
         }
 
-        public CancellationToken CancellationToken
-        {
-            get
-            {
-                return _cancellationTokenSource.Token;
-            }
-        }
+        public CancellationToken CancellationToken { get; private set; }
 
-        //TODO: hide somehow this variable
-        public CancellationTokenSource CancellationTokenSource
-        {
-            get
-            {
-                return _cancellationTokenSource;
-            }
-        }
-
-        public TraceSource GetTrace(string name) 
+        public TraceSource GetTrace(string name)
         {
             return _traceManager[name];
         }

@@ -1,57 +1,108 @@
+using Microsoft.VisualStudio.Services.Agent.Util;
 using System.Diagnostics;
+using System.IO;
+using System.Runtime.CompilerServices;
+using System.Threading;
 using Xunit;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests
 {
     public sealed class HostContextL0
     {
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Common")]
-        public void GetServiceReturnsSingleton()
-        {
-            // Arrange.
-            using(TestHostContext tc = new TestHostContext(this))
-            {
-                TraceSource trace = tc.GetTrace();
-                using (var hostContext = new HostContext($"L0Test_{nameof(GetServiceReturnsSingleton)}"))
-                {
-                    // Act.
-                    var reference1 = hostContext.GetService<IAgentServer>();
-                    var reference2 = hostContext.GetService<IAgentServer>();
-
-                    // Assert.
-                    Assert.NotNull(reference1);
-                    Assert.IsType<AgentServer>(reference1);
-                    Assert.NotNull(reference2);
-                    Assert.True(object.ReferenceEquals(reference1, reference2));
-                }
-            }
-        }
+        private HostContext _hc;
+        private CancellationTokenSource _tokenSource;
 
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
         public void CreateServiceReturnsNewInstance()
         {
-            // Arrange.
-            using(TestHostContext tc = new TestHostContext(this))
+            try
             {
-                TraceSource trace = tc.GetTrace();
-                using(var hostContext = new HostContext($"L0Test_{nameof(CreateServiceReturnsNewInstance)}"))
-                {
-                    // Act.
-                    var reference1 = hostContext.CreateService<IAgentServer>();
-                    var reference2 = hostContext.CreateService<IAgentServer>();
+                // Arrange.
+                Setup();
 
-                    // Assert.
-                    Assert.NotNull(reference1);
-                    Assert.IsType<AgentServer>(reference1);
-                    Assert.NotNull(reference2);
-                    Assert.IsType<AgentServer>(reference2);
-                    Assert.False(object.ReferenceEquals(reference1, reference2));
-                }
+                // Act.
+                var reference1 = _hc.CreateService<IAgentServer>();
+                var reference2 = _hc.CreateService<IAgentServer>();
+
+                // Assert.
+                Assert.NotNull(reference1);
+                Assert.IsType<AgentServer>(reference1);
+                Assert.NotNull(reference2);
+                Assert.IsType<AgentServer>(reference2);
+                Assert.False(object.ReferenceEquals(reference1, reference2));
             }
+            finally
+            {
+                // Cleanup.
+                Teardown();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void GetServiceReturnsSingleton()
+        {
+            try
+            {
+                // Arrange.
+                Setup();
+
+                // Act.
+                var reference1 = _hc.GetService<IAgentServer>();
+                var reference2 = _hc.GetService<IAgentServer>();
+
+                // Assert.
+                Assert.NotNull(reference1);
+                Assert.IsType<AgentServer>(reference1);
+                Assert.NotNull(reference2);
+                Assert.True(object.ReferenceEquals(reference1, reference2));
+            }
+            finally
+            {
+                // Cleanup.
+                Teardown();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void StoresCancellationToken()
+        {
+            try
+            {
+                // Arrange.
+                Setup();
+
+                // Act.
+                CancellationToken actual = _hc.CancellationToken;
+
+                // Assert.
+                Assert.Equal(_tokenSource.Token, actual);
+            }
+            finally
+            {
+                // Cleanup.
+                Teardown();
+            }
+        }
+
+        public void Setup([CallerMemberName] string testName = "")
+        {
+            _tokenSource = new CancellationTokenSource();
+            _hc = new HostContext(
+                hostType: "L0Test",
+                logFile: Path.Combine(IOUtil.GetBinPath(), $"trace_{nameof(HostContextL0)}_{testName}.log"),
+                cancellationToken: _tokenSource.Token);
+        }
+
+        public void Teardown()
+        {
+            _hc?.Dispose();
+            _tokenSource?.Dispose();
         }
     }
 }

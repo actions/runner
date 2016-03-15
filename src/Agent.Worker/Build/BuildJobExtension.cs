@@ -29,25 +29,33 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 @finally: false);
         }
 
-        private async Task<TaskResult> PrepareAsync()
+        private Task PrepareAsync()
         {
+            // Validate args.
             Trace.Entering();
-            var directoryManager = HostContext.GetService<IBuildDirectoryManager>();
+            ArgUtil.NotNull(PrepareStep, nameof(PrepareStep));
+            ArgUtil.NotNull(PrepareStep.ExecutionContext, nameof(PrepareStep.ExecutionContext));
             IExecutionContext executionContext = PrepareStep.ExecutionContext;
+            var directoryManager = HostContext.GetService<IBuildDirectoryManager>();
+
+            // Get the repo endpoint and source provider.
             ServiceEndpoint endpoint = null;
             ISourceProvider sourceProvider = null;
             if (!TryGetPrimaryEndpointAndSourceProvider(executionContext, out endpoint, out sourceProvider))
             {
-                executionContext.Error(StringUtil.Loc("SupportedRepositoryEndpointNotFound"));
-                return TaskResult.Failed;
+                throw new Exception(StringUtil.Loc("SupportedRepositoryEndpointNotFound"));
             }
 
+            // Prepare the build directory.
             TrackingConfig trackingConfig = directoryManager.PrepareDirectory(
                 executionContext,
                 endpoint,
                 sourceProvider);
-            await Task.Yield();
-            return TaskResult.Succeeded;
+
+            // TODO:
+            executionContext.Output("TODO: Update the build variables.");
+            executionContext.Output("TODO: Sync sources.");
+            return Task.CompletedTask;
         }
 
         private bool TryGetPrimaryEndpointAndSourceProvider(

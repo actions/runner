@@ -19,8 +19,8 @@ namespace Microsoft.VisualStudio.Services.Agent
         public string ServerUrl { get; set; }
         public string WorkFolder { get; set; }
         public bool RunAsService { get; set; }
-        public string WindowsServiceName { get; set; }
-        public string WindowsServiceDisplayName { get; set; }
+        public string ServiceName { get; set; }
+        public string ServiceDisplayName { get; set; }
     }
 
     [ServiceLocator(Default = typeof(ConfigurationStore))]
@@ -50,16 +50,16 @@ namespace Microsoft.VisualStudio.Services.Agent
             var currentAssemblyLocation = System.Reflection.Assembly.GetEntryAssembly().Location;
             Trace.Info("currentAssemblyLocation: {0}", currentAssemblyLocation);
 
-            _binPath = new DirectoryInfo(currentAssemblyLocation).Parent.FullName.ToString();
+            _binPath = IOUtil.GetBinPath();
             Trace.Info("binPath: {0}", _binPath);
 
-            RootFolder = new DirectoryInfo(_binPath).Parent.FullName.ToString();
+            RootFolder = IOUtil.GetRootPath();
             Trace.Info("RootFolder: {0}", RootFolder);
 
-            _configFilePath = Path.Combine(RootFolder, ".Agent");
+            _configFilePath = IOUtil.GetConfigFilePath();
             Trace.Info("ConfigFilePath: {0}", _configFilePath);
 
-            _credFilePath = Path.Combine(RootFolder, ".Credentials");
+            _credFilePath = IOUtil.GetCredFilePath();
             Trace.Info("CredFilePath: {0}", _credFilePath);
         }
 

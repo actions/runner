@@ -96,5 +96,13 @@
   "N": "N",
   "Prompt0": "Enter {0}",
   "Prompt0Default1": "Enter {0} (press Enter for {1})",
-  "Y": "Y"
+  "Y": "Y",
+  "UnauthorizedAccess": "You do not have access to {0} to create systemd unit file. Did you forget to run with sudo permission?",
+  "LinuxServiceStartFailed": "couldn't start the service. Start the service manually",
+  "SystemdCannotReload": "Can not reload systemd daemon",
+  "LinuxServiceConfigured": "Service {0} successfully configured",
+  "ServiceAleadyExists": "Service already exists, it will be overwritten",
+  "CanNotFindSystemd": "Can not find if systemd is installed",
+  "SystemdDoesNotExists": "Systemd does not exist, if you are having init.d or any other init system you can manually configure it.",
+  "CannotChangePermission": "Can not change permission of configuration store, report this error. You can still run the agent in interactive mode."
 }
