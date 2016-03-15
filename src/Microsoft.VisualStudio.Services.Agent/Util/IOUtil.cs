@@ -36,6 +36,21 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
                 Constants.Path.DiagDirectory);
         }
 
+        public static string GetRootPath()
+        {
+            return new DirectoryInfo(GetBinPath()).Parent.FullName;
+        }
+
+        public static string GetConfigFilePath()
+        {
+            return Path.Combine(GetRootPath(), ".Agent");
+        }
+
+        public static string GetCredFilePath()
+        {
+            return Path.Combine(GetRootPath(), ".Credentials");
+        }
+
         public static string GetWorkPath(IHostContext hostContext)
         {
             var configurationStore = hostContext.GetService<IConfigurationStore>();
