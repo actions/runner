@@ -339,16 +339,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             }
 
             var serviceControlManager = HostContext.GetService<IServiceControlManager>();
+            bool successfullyConfigured = false;
             if (runAsService)
             {
                 settings.RunAsService = true;
                 Trace.Info("Configuring to run the agent as service");
-                serviceControlManager.ConfigureService(settings, args, enforceSupplied);
+                successfullyConfigured = serviceControlManager.ConfigureService(settings, args, enforceSupplied);
             }
 
             _store.SaveSettings(settings);
 
-            if (runAsService)
+            if (runAsService && successfullyConfigured)
             {
                 serviceControlManager.StartService(settings.ServiceName);
             }
