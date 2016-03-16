@@ -10,12 +10,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
     [ServiceLocator(Default = typeof(JobRunner))]
     public interface IJobRunner : IAgentService
     {
-        Task RunAsync(JobRequestMessage message);
+        Task<TaskResult> RunAsync(JobRequestMessage message);
     }
 
     public sealed class JobRunner : AgentService, IJobRunner
     {
-        public async Task RunAsync(JobRequestMessage message)
+        public async Task<TaskResult> RunAsync(JobRequestMessage message)
         {
             // Validate parameters.
             Trace.Entering();
@@ -98,7 +98,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     Trace.Error($"Caught exception from {nameof(TaskManager)}: {ex}");
                     jobContext.Error(ex);
                     jobContext.Result = TaskResult.Failed;
-                    return;
+                    return jobContext.Result.Value;
                 }
 
                 // TODO: Recursive expand variables before running the steps. Detect cycles and warn if a cyclical reference is encountered. Depth limit of 50. Use a stack, not recursive function.
@@ -115,20 +115,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     Trace.Error($"Caught exception from {nameof(StepsRunner)}: {ex}");
                     jobContext.Error(ex);
                     jobContext.Result = TaskResult.Failed;
-                    return;
+                    return jobContext.Result.Value;
                 }
 
                 Trace.Info($"Job result: {jobContext.Result}");
+                return jobContext.Result ?? TaskResult.Succeeded;
             }
-            catch (Exception ex)
+            // Only handle the exception if we can set the job result. Otherwise let it bubble.
+            catch (Exception ex) when (jobContext != null)
             {
                 // Log the error and fail the job.
                 Trace.Error($"Caught exception: {ex}");
-                if (jobContext != null)
-                {
-                    jobContext.Error(ex);
-                    jobContext.Result = TaskResult.Failed;
-                }
+                jobContext.Error(ex);
+                jobContext.Result = TaskResult.Failed;
+                return jobContext.Result.Value;
             }
             finally
             {

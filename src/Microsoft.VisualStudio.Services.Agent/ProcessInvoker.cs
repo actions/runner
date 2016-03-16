@@ -20,6 +20,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             IDictionary<string, string>
             environment);
 
+        // TODO: fire cancellation will not kill process.
         Task<int> ExecuteAsync(
             string workingDirectory,
             string fileName,
@@ -27,6 +28,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             IDictionary<string, string> environment,
             CancellationToken cancellationToken);
 
+        // TODO: fire cancellation will not kill process.
         Task<int> WaitForExit(CancellationToken cancellationToken);
     }
 

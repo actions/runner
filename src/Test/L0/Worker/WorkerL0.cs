@@ -76,7 +76,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                         return default(WorkerMessage);
                     });
                 _jobRunner.Setup(x => x.RunAsync(It.IsAny<JobRequestMessage>()))
-                    .Returns(Task.CompletedTask);
+                    .Returns(Task.FromResult<TaskResult>(TaskResult.Succeeded));
 
                 //Act
                 await worker.RunAsync(pipeIn: "1", pipeOut: "2", hostTokenSource: hc.CancellationTokenSource);
@@ -122,7 +122,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                 _processChannel.Setup(x => x.ReceiveAsync(It.IsAny<CancellationToken>()))
                     .Returns(() => Task.FromResult(workerMessages.Dequeue()));
                 _jobRunner.Setup(x => x.RunAsync(It.IsAny<JobRequestMessage>()))
-                    .Returns(async () => await Task.Delay(-1, hc.CancellationToken));
+                    .Returns(
+                    async (JobRequestMessage jm) =>
+                    {
+                        await Task.Delay(-1, hc.CancellationToken);
+                        return TaskResult.Canceled;
+                    });
 
                 //Act
                 await Assert.ThrowsAsync<TaskCanceledException>(
