@@ -14,8 +14,6 @@ if [[ ("$PLATFORM_NAME" == "Linux") || ("$PLATFORM_NAME" == "Darwin") ]]; then
    PLATFORM=`echo "${PLATFORM_NAME}" | awk '{print tolower($0)}'`
 fi
 
-echo "Platform:${PLATFORM} ... ${PLATFORM_NAME}"
-
 function checkRC() {
     local rc=$?
     if [ $rc -ne 0 ]; then
@@ -42,7 +40,6 @@ function acquireNode ()
         node_download_dir="${DOWNLOAD_DIR}/node-v${NODE_VERSION}-win-x64"
         mkdir -p $node_download_dir
         pushd "${node_download_dir}" > /dev/null
-        pwd
 
         node_exe_url=https://nodejs.org/dist/v${NODE_VERSION}/win-x64/node.exe
         echo "Downloading Node ${NODE_VERSION} @ ${node_exe_url}"

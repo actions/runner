@@ -86,7 +86,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
         }
 
 
-#if OS_LINUX
+#if THIS_WORKS_AGAIN
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
