@@ -36,6 +36,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
                 Constants.Path.DiagDirectory);
         }
 
+        public static string GetExternalsPath()
+        {
+            return Path.Combine(
+                GetRootPath(),
+                Constants.Path.ExternalsDirectory);
+        }
+
         public static string GetRootPath()
         {
             return new DirectoryInfo(GetBinPath()).Parent.FullName;

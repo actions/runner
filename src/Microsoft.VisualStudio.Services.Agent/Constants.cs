@@ -30,6 +30,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         public static class Path
         {
             public static readonly string DiagDirectory = "_diag";
+            public static readonly string ExternalsDirectory = "externals";
             public static readonly string TaskJsonFile = "task.json";
             public static readonly string TasksDirectory = "_tasks";
         }
