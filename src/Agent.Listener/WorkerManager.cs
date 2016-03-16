@@ -44,6 +44,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         private ConcurrentDictionary<Guid, JobDispatcherItem> _jobsInProgress 
             = new ConcurrentDictionary<Guid, JobDispatcherItem>();
 
+        // TODO: the run() method looks weird, it always return task.complete.
+        // change it to be void instead of task.
         public Task Run(JobRequestMessage jobRequestMessage)
         {            
             Trace.Info("Job request {0} received.", jobRequestMessage.JobId);

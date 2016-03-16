@@ -10,14 +10,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
     [ServiceLocator(Default = typeof(Worker))]
     public interface IWorker : IAgentService
     {
-        Task RunAsync(string pipeIn, string pipeOut, CancellationTokenSource hostTokenSource);
+        Task<int> RunAsync(string pipeIn, string pipeOut, CancellationTokenSource hostTokenSource);
     }
 
     public sealed class Worker : AgentService, IWorker
     {
         private readonly TimeSpan WorkerStartTimeout = TimeSpan.FromSeconds(30);
 
-        public async Task RunAsync(string pipeIn, string pipeOut, CancellationTokenSource hostTokenSource)
+        public async Task<int> RunAsync(string pipeIn, string pipeOut, CancellationTokenSource hostTokenSource)
         {
             // Validate args.
             ArgUtil.NotNullOrEmpty(pipeIn, nameof(pipeIn));
@@ -54,7 +54,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 HostContext.SetDefaultCulture(culture);
 
                 // Start the job.
-                Task jobRunnerTask = jobRunner.RunAsync(jobMessage);
+                Task<TaskResult> jobRunnerTask = jobRunner.RunAsync(jobMessage);
 
                 // Start listening for a cancel message from the channel.
                 Trace.Info("Listening for cancel message from the channel.");
@@ -70,7 +70,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 {
                     Trace.Info("Job completed.");
                     channelTokenSource.Cancel(); // Cancel waiting for a message from the channel.
-                    return;
+                    return TaskResultUtil.TranslateToReturnCode(await jobRunnerTask);
                 }
 
                 // Otherwise a cancel message was received from the channel.
@@ -78,7 +78,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 channelMessage = await channelTask;
                 ArgUtil.Equal(MessageType.CancelRequest, channelMessage.MessageType, nameof(channelMessage.MessageType));
                 hostTokenSource.Cancel();   // Expire the host cancellation token.
-                await jobRunnerTask;        // Await the job.
+                // Await the job.
+                return TaskResultUtil.TranslateToReturnCode(await jobRunnerTask);
             }
         }
     }

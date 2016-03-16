@@ -8,6 +8,7 @@
 **/*.sln
 **/.vs
 **/.vscode
+**/*.error
 node_modules
 _downloads
 _layout

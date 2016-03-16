@@ -16,7 +16,7 @@ namespace Microsoft.VisualStudio.Services.Agent
     {
         CancellationToken CancellationToken { get; }
         TraceSource GetTrace(string name);
-        Task Delay(TimeSpan delay);
+        Task Delay(TimeSpan delay, CancellationToken cancellationToken);
         T CreateService<T>() where T : class, IAgentService;
         T GetService<T>() where T : class, IAgentService;
         void SetDefaultCulture(string name);
@@ -65,9 +65,9 @@ namespace Microsoft.VisualStudio.Services.Agent
             return _traceManager[name];
         }
 
-        public async Task Delay(TimeSpan delay)
+        public async Task Delay(TimeSpan delay, CancellationToken cancellationToken)
         {
-            await Task.Delay(delay, CancellationToken);
+            await Task.Delay(delay, cancellationToken);
         }
 
         /// <summary>

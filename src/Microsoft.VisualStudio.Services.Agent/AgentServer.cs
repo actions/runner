@@ -24,6 +24,10 @@ namespace Microsoft.VisualStudio.Services.Agent
         Task DeleteAgentMessageAsync(Int32 poolId, Int64 messageId, Guid sessionId, CancellationToken cancellationToken);
         Task DeleteAgentSessionAsync(Int32 poolId, Guid sessionId, CancellationToken cancellationToken);
         Task<TaskAgentMessage> GetAgentMessageAsync(Int32 poolId, Guid sessionId, Int64? lastMessageId, CancellationToken cancellationToken);
+
+        // job request
+        Task<TaskAgentJobRequest> RenewAgentRequestAsync(int poolId, long requestId, Guid lockToken, CancellationToken cancellationToken = default(CancellationToken));
+        Task<TaskAgentJobRequest> FinishAgentRequestAsync(int poolId, long requestId, Guid lockToken, DateTime finishTime, TaskResult result, CancellationToken cancellationToken = default(CancellationToken));
     }
 
     public sealed class AgentServer : AgentService, IAgentServer
@@ -116,6 +120,22 @@ namespace Microsoft.VisualStudio.Services.Agent
             //TODO: find out why GetMessageAsync does not respect the cancellation token that is passed
             //in the mean time use this workaround
             return task.WithCancellation(cancellationToken);
+        }
+
+        //-----------------------------------------------------------------
+        // JobRequest
+        //-----------------------------------------------------------------
+
+        public Task<TaskAgentJobRequest> RenewAgentRequestAsync(int poolId, long requestId, Guid lockToken, CancellationToken cancellationToken = default(CancellationToken))
+        {
+            CheckConnection();
+            return _taskAgentClient.RenewAgentRequestAsync(poolId, requestId, lockToken, cancellationToken: cancellationToken);
+        }
+
+        public Task<TaskAgentJobRequest> FinishAgentRequestAsync(int poolId, long requestId, Guid lockToken, DateTime finishTime, TaskResult result, CancellationToken cancellationToken = default(CancellationToken))
+        {
+            CheckConnection();
+            return _taskAgentClient.FinishAgentRequestAsync(poolId, requestId, lockToken, finishTime, result, cancellationToken);
         }
     }
 }
