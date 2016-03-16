@@ -11,7 +11,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
         public TestAgentCredential(): base("TEST") {}
         public override VssCredentials GetVssCredentials(IHostContext context)
         {
-            TraceSource trace = context.GetTrace("PersonalAccessToken");
+            TraceSourceWrapper trace = context.GetTrace("PersonalAccessToken");
             trace.Info("GetVssCredentials()");
 
             VssBasicCredential loginCred = new VssBasicCredential("test", "password");

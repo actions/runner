@@ -18,6 +18,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         private readonly ITraceManager _traceManager;
         private readonly Terminal _term;
         private readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
+        private readonly SecretMasker _secretMasker;
         private string _suiteName;
         private string _testName;
 
@@ -41,8 +42,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
 
             Stream logFile = File.Create(traceFileName);
             var traceListener = new TextWriterTraceListener(logFile);
-            _traceManager = new TraceManager(traceListener);
-            
+            _secretMasker = new SecretMasker();
+            _traceManager = new TraceManager(traceListener, _secretMasker);
+            SetSingleton<ISecretMasker>(_secretMasker);
+
             // inject a terminal in silent mode so all console output
             // goes to the test trace file
             _term = new Terminal();
@@ -121,14 +124,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         }
 
         // simple convenience factory so each suite/test gets a different trace file per run
-        public TraceSource GetTrace()
+        public TraceSourceWrapper GetTrace()
         {
-            TraceSource trace = GetTrace($"{_suiteName}_{_testName}");
+            TraceSourceWrapper trace = GetTrace($"{_suiteName}_{_testName}");
             trace.Info($"Starting {_testName}");
             return trace;
         }
 
-        public TraceSource GetTrace(string name)
+        public TraceSourceWrapper GetTrace(string name)
         {
             return _traceManager[name];
         }

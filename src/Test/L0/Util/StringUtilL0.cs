@@ -16,7 +16,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Util
             // Arrange.
             using (TestHostContext hc = new TestHostContext(this))
             {
-                TraceSource trace = hc.GetTrace();
+                TraceSourceWrapper trace = hc.GetTrace();
                 var variableSets = new[]
                 {
                     new { Format = null as string, Args = null as object[], Expected = string.Empty },
@@ -51,7 +51,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Util
             // Arrange.
             using (TestHostContext hc = new TestHostContext(this))
             {
-                TraceSource trace = hc.GetTrace();
+                TraceSourceWrapper trace = hc.GetTrace();
                 var variableSets = new[]
                 {
                     new { Format = "Bad format { 0}", Args = null as object[], Expected = "Bad format { 0}" },

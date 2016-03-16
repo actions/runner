@@ -45,7 +45,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
         {
             using (TestHostContext tc = CreateTestContext())
             {
-                TraceSource trace = tc.GetTrace();
+                TraceSourceWrapper trace = tc.GetTrace();
 
                 // Arrange.
                 var expectedSession = new TaskAgentSession();
@@ -81,7 +81,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
         {
             using (TestHostContext tc = CreateTestContext())
             {
-                TraceSource trace = tc.GetTrace();
+                TraceSourceWrapper trace = tc.GetTrace();
 
                 // Arrange.
                 var expectedSession = new TaskAgentSession();
@@ -124,7 +124,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
         {
             using (TestHostContext tc = CreateTestContext())
             {
-                TraceSource trace = tc.GetTrace();
+                TraceSourceWrapper trace = tc.GetTrace();
 
                 // Arrange.
                 var expectedSession = new TaskAgentSession();

@@ -9,7 +9,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 {
     public static class Program
     {
-        private static TraceSource s_trace;
+        private static TraceSourceWrapper s_trace;
         
         public static int Main(string[] args)
         {

@@ -13,7 +13,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
     {
         private readonly ConcurrentDictionary<string, string> _store = new ConcurrentDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         private readonly IHostContext _hostContext;
-        private readonly TraceSource _trace;
+        private readonly TraceSourceWrapper _trace;
 
         public Variables(IHostContext hostContext, IDictionary<string, string> copy)
         {
@@ -73,6 +73,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         {
             // TODO: Determine whether this line should be uncommented again: ArgUtil.NotNull(val, nameof(val));
             // Can variables not be cleared? Can a null variable come across the wire? What if the user does ##setvariable from a script and we interpret as null instead of empty string. This feels brittle.
+            //TODO: Determine if variable should be added to SecretMasker
 
             _trace.Verbose($"Set '{name}' = '{val}'");
             _store[name] = val;

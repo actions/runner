@@ -116,7 +116,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
         {
             using (TestHostContext tc = CreateTestContext())
             {
-                TraceSource trace = tc.GetTrace();
+                TraceSourceWrapper trace = tc.GetTrace();
 
                 trace.Info("Creating config manager");
                 IConfigurationManager configManager = new ConfigurationManager();

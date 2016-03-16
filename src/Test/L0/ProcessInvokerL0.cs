@@ -14,7 +14,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         {
             using (TestHostContext hc = new TestHostContext(this))
             {
-                TraceSource trace = hc.GetTrace();
+                TraceSourceWrapper trace = hc.GetTrace();
 
                 Int32 exitCode = -1;
                 var processInvoker = new ProcessInvoker();

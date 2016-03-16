@@ -15,7 +15,7 @@ namespace Microsoft.VisualStudio.Services.Agent
     public interface IHostContext : IDisposable
     {
         CancellationToken CancellationToken { get; }
-        TraceSource GetTrace(string name);
+        TraceSourceWrapper GetTrace(string name);
         Task Delay(TimeSpan delay);
         T CreateService<T>() where T : class, IAgentService;
         T GetService<T>() where T : class, IAgentService;
@@ -26,7 +26,7 @@ namespace Microsoft.VisualStudio.Services.Agent
     {
         private readonly ConcurrentDictionary<Type, object> _serviceInstances = new ConcurrentDictionary<Type, object>();
         private readonly ConcurrentDictionary<Type, Type> _serviceTypes = new ConcurrentDictionary<Type, Type>();
-        private TraceSource _trace;
+        private TraceSourceWrapper _trace;
         private ITraceManager _traceManager;
 
         public HostContext(string hostType, CancellationToken cancellationToken)
@@ -54,13 +54,13 @@ namespace Microsoft.VisualStudio.Services.Agent
                 FileShare.Read,
                 bufferSize: 4096);
             TextWriterTraceListener traceListener = new TextWriterTraceListener(logStream);
-            _traceManager = new TraceManager(traceListener);
+            _traceManager = new TraceManager(traceListener, GetService<ISecretMasker>());
             _trace = GetTrace(nameof(HostContext));
         }
 
         public CancellationToken CancellationToken { get; private set; }
 
-        public TraceSource GetTrace(string name)
+        public TraceSourceWrapper GetTrace(string name)
         {
             return _traceManager[name];
         }
