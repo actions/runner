@@ -1,6 +1,8 @@
 {
     "AgentIsNotConfigured": "Agent is not configured.",
     "EnterValidValueFor0": "Enter a valid value for {0}.",
+    "FailedDeletingTempDirectory0Message1": "Failed to delete temporary directory '{0}'. {1}",
+    "GetSources": "Get Sources",
     "InvalidConfigFor0TerminatingUnattended": "Invalid configuration provided for {0}. Terminating unattended configuration.",
     "ListenerHelp": [
 "Visual Studio Team Services Agent",
@@ -72,6 +74,8 @@
 "bin/Agent.Listener configure --url https://myaccount.visualstudio.com --agent myagent --pool default --nostart --auth PAT --token o4u5...",
 "bin/Agent.Listener run"        
     ],
+  "SupportedRepositoryEndpointNotFound": "Unable to match any source repository endpoints with any of the supported source providers.",
+  "UnableToParseBuildTrackingConfig0": "Unable to parse the legacy build tracking configuration. A new build directory will be created instead. The previous directory may be left in an unreclaimed state. Legacy configuration contents: {0}",
   "WindowsLogonAccountNameDescription": "User account to use for the service",
   "WindowsLogonPasswordDescription": "Password for the account {0}",
   "ServerUrl": "Server URL",

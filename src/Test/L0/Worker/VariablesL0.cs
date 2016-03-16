@@ -31,9 +31,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
         [Trait("Category", "Worker")]
         public void CanSetAndGet()
         {
-            // Arrange.
             using (TestHostContext hc = new TestHostContext(this))
             {
+                // Arrange.
                 var variables = new Variables(hc, new Dictionary<string, string>());
 
                 // Act.
@@ -50,9 +50,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
         [Trait("Category", "Worker")]
         public void GetBooleanDoesNotThrowWhenNull()
         {
-            // Arrange.
             using (TestHostContext hc = new TestHostContext(this))
             {
+                // Arrange.
                 var variables = new Variables(hc, new Dictionary<string, string>());
 
                 // Act.
@@ -68,9 +68,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
         [Trait("Category", "Worker")]
         public void GetEnumDoesNotThrowWhenNull()
         {
-            // Arrange.
             using (TestHostContext hc = new TestHostContext(this))
             {
+                // Arrange.
                 var variables = new Variables(hc, new Dictionary<string, string>());
 
                 // Act.

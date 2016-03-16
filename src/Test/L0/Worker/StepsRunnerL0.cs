@@ -31,9 +31,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
         [Trait("Category", "Worker")]
         public async Task RunsAfterContinueOnError()
         {
-            // Arrange.
             using (TestHostContext hc = CreateTestContext())
             {
+                // Arrange.
                 var variableSets = new[]
                 {
                     new[] { CreateStep(TaskResult.Failed, continueOnError: true), CreateStep(TaskResult.Succeeded) },
@@ -70,9 +70,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
         [Trait("Category", "Worker")]
         public async Task RunsAlwaysRuns()
         {
-            // Arrange.
             using (TestHostContext hc = CreateTestContext())
             {
+                // Arrange.
                 var variableSets = new[]
                 {
                     new
@@ -109,9 +109,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
         [Trait("Category", "Worker")]
         public async Task RunsFinally()
         {
-            // Arrange.
             using (TestHostContext hc = CreateTestContext())
             {
+                // Arrange.
                 var variableSets = new[]
                 {
                     new
@@ -153,9 +153,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
         [Trait("Category", "Worker")]
         public async Task SetsJobResultCorrectly()
         {
-            // Arrange.
             using (TestHostContext hc = CreateTestContext())
             {
+                // Arrange.
                 var variableSets = new[]
                 {
                     new
@@ -257,9 +257,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
         [Trait("Category", "Worker")]
         public async Task SkipsAfterCriticalFailure()
         {
-            // Arrange.
             using (TestHostContext hc = CreateTestContext())
             {
+                // Arrange.
                 var variableSets = new[]
                 {
                     new[] { CreateStep(TaskResult.Failed, critical: true), CreateStep(TaskResult.Succeeded) },
@@ -291,9 +291,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
         [Trait("Category", "Worker")]
         public async Task SkipsAfterFailure()
         {
-            // Arrange.
             using (TestHostContext hc = CreateTestContext())
             {
+                // Arrange.
                 var variableSets = new[]
                 {
                     new[] { CreateStep(TaskResult.Failed), CreateStep(TaskResult.Succeeded) },
@@ -327,9 +327,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
         [Trait("Category", "Worker")]
         public async Task SkipsDisabledTasks()
         {
-            // Arrange.
             using (TestHostContext hc = CreateTestContext())
             {
+                // Arrange.
                 Mock<IStep> disabledStep = CreateStep(TaskResult.Succeeded, enabled: false);
                 Mock<IStep> enabledStep = CreateStep(TaskResult.Succeeded, enabled: true);
 
@@ -364,7 +364,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             return step;
         }
 
-        private String FormatSteps(IEnumerable<Mock<IStep>> steps)
+        private string FormatSteps(IEnumerable<Mock<IStep>> steps)
         {
             return String.Join(
                 " ; ",

@@ -34,13 +34,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             _suiteName = _suiteName.Replace(".", "_");
 
             // Setup the trace manager.
-            string traceFileName = $"trace_{_suiteName}_{_testName}.log";
-            if (File.Exists(traceFileName))
+            TraceFileName = Path.Combine(
+                IOUtil.GetBinPath(),
+                $"trace_{_suiteName}_{_testName}.log");
+            if (File.Exists(TraceFileName))
             {
-                File.Delete(traceFileName);
+                File.Delete(TraceFileName);
             }
 
-            Stream logFile = File.Create(traceFileName);
+            Stream logFile = File.Create(TraceFileName);
             var traceListener = new TextWriterTraceListener(logFile);
             _secretMasker = new SecretMasker();
             _traceManager = new TraceManager(traceListener, _secretMasker);
@@ -59,6 +61,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         public CancellationTokenSource CancellationTokenSource => _cancellationTokenSource;
 
         public CultureInfo DefaultCulture { get; private set; }
+
+        public string TraceFileName { get; private set; }
 
         public async Task Delay(TimeSpan delay, CancellationToken token)
         {

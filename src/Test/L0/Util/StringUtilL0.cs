@@ -13,10 +13,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Util
         [Trait("Category", "Common")]
         public void FormatAlwaysCallsFormat()
         {
-            // Arrange.
             using (TestHostContext hc = new TestHostContext(this))
             {
                 Tracing trace = hc.GetTrace();
+
+                // Arrange.
                 var variableSets = new[]
                 {
                     new { Format = null as string, Args = null as object[], Expected = string.Empty },
@@ -48,10 +49,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Util
         [Trait("Category", "Common")]
         public void FormatHandlesFormatException()
         {
-            // Arrange.
             using (TestHostContext hc = new TestHostContext(this))
             {
                 Tracing trace = hc.GetTrace();
+
+                // Arrange.
                 var variableSets = new[]
                 {
                     new { Format = "Bad format { 0}", Args = null as object[], Expected = "Bad format { 0}" },
@@ -78,9 +80,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Util
         [Trait("Category", "Common")]
         public void FormatUsesInvariantCulture()
         {
-            // Arrange.
             using (TestHostContext hc = new TestHostContext(this))
             {
+                // Arrange.
                 CultureInfo originalCulture = CultureInfo.CurrentCulture;
                 try
                 {

@@ -20,9 +20,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
         [Trait("Category", "Worker")]
         public void ReturnsCorrectHashKey()
         {
-            // Arrange.
             using (TestHostContext tc = new TestHostContext(this))
             {
+                // Arrange.
                 var executionContext = new Mock<IExecutionContext>();
                 executionContext
                     .Setup(x => x.Variables)
