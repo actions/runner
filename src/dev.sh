@@ -1,5 +1,3 @@
-NODE_VERSION="4.3.2"
-
 DEV_CMD=$1
 DEV_SUBCMD=$2
 LAYOUT_DIR=`pwd`/../_layout
@@ -153,8 +151,6 @@ function downloadNode ()
     fi    
 
     echo Done
-
-    
 }
 
 function layout ()
