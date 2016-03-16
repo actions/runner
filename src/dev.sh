@@ -1,7 +1,7 @@
-
 DEV_CMD=$1
 DEV_SUBCMD=$2
 LAYOUT_DIR=`pwd`/../_layout
+DOWNLOAD_DIR=`pwd`/../_downloads
 
 define_os='OS_WINDOWS'
 BUILD_OS=`uname`
@@ -26,6 +26,13 @@ function warn()
 {
    local error=${1:-Undefined error}
    echo "WARNING - FAILED: $error" >&2
+}
+
+function checkRC() {
+    local rc=$?
+    if [ $rc -ne 0 ]; then
+        failed "${1} Failed with return code $rc"
+    fi
 }
 
 function heading()
@@ -115,6 +122,9 @@ function layout ()
     
     cp -Rf ./Misc/layoutroot/* ${LAYOUT_DIR}
     cp -Rf ./Misc/layoutbin/* ${LAYOUT_DIR}/bin
+
+    heading Externals ...
+    bash ./Misc/externals.sh
 }
 
 function update ()
