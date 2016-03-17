@@ -86,12 +86,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
         }
 
 
-#if THIS_WORKS_AGAIN
+#if OS_LINUX
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
 #endif
-        public void LinuxServiceControlManagerShouldShoudStartServiceCorrectly()
+        public void LinuxServiceControlManagerShouldStartServiceCorrectly()
         {
             using (var tc = CreateTestContext())
             {
@@ -108,6 +108,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
                                             ServerUrl = "http://server.name"
                                         };
 
+                // Tests dont run with sudo permission
+                Environment.SetEnvironmentVariable("SUDO_USER", Environment.GetEnvironmentVariable("USER"));
                 controlManager.StartService(agentSettings.ServiceName);
 
                 _processInvoker.Verify(

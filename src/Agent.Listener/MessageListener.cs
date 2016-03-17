@@ -110,7 +110,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
                     TimeSpan interval = TimeSpan.FromSeconds(30);
                     Trace.Info("Sleeping for {0} seconds before retrying.", interval.TotalSeconds);
-                    await HostContext.Delay(interval);
+                    await HostContext.Delay(interval, HostContext.CancellationToken);
                 }
             }
 

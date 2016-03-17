@@ -60,7 +60,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
 
         public CultureInfo DefaultCulture { get; private set; }
 
-        public async Task Delay(TimeSpan delay)
+        public async Task Delay(TimeSpan delay, CancellationToken token)
         {
             await Task.Delay(TimeSpan.Zero);
         }

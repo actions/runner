@@ -60,11 +60,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
                 object outputLock = new object();
                 processInvoker.OutputDataReceived += OnDataReceived;
                 processInvoker.ErrorDataReceived += OnDataReceived;
-                // TODO: Resolve the copy of node provided by the agent.
+                string nodeDirectory = Path.Combine(IOUtil.GetExternalsPath(), "node", "bin");
 #if OS_WINDOWS
-                string fileName = "node.exe";
+                string nodeFile = Path.Combine(nodeDirectory, "node.exe");
 #else
-                string fileName = "node";
+                string nodeFile = Path.Combine(nodeDirectory, "node");
 #endif
 
                 // Format the arguments passed to node.
@@ -74,7 +74,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
                 string arguments = StringUtil.Format(@"""{0}""", target.Replace(@"""", @"\"""));
                 int exitCode = await processInvoker.ExecuteAsync(
                     workingDirectory: workingDirectory,
-                    fileName: fileName,
+                    fileName: nodeFile,
                     arguments: arguments,
                     environment: Environment,
                     cancellationToken: ExecutionContext.CancellationToken);

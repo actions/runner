@@ -34,21 +34,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 var worker = hc.GetService<IWorker>();
 
                 // Run the worker.
-                await worker.RunAsync(
+                return await worker.RunAsync(
                     pipeIn: args[1],
                     pipeOut: args[2],
                     hostTokenSource: tokenSource);
-                return 0;
-            }
-            catch (OperationCanceledException)
-            {
-                // Ignore OperationCanceledException and TaskCanceledException exceptions
-            }
-            catch (AggregateException errors)
-            {
-                // Ignore OperationCanceledException and TaskCanceledException exceptions
-                // TODO: Won't this throw and crash the app? Shouldn't this be logged and handled?
-                errors.Handle(e => e is OperationCanceledException);
             }
             catch (Exception ex)
             {
