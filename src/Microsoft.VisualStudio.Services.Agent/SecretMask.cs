@@ -4,26 +4,45 @@ using System.Text.RegularExpressions;
 
 namespace Microsoft.VisualStudio.Services.Agent
 {
-    public interface ISecretMask
+    public class ReplacementPosition
+    {
+        public ReplacementPosition(int start, int length)
+        {
+            Start = start;
+            Length = length;
+        }
+
+        public int Start { get; set; }
+        public int Length { get; set; }
+        public int End
+        {
+            get
+            {
+                return Start + Length;
+            }
+        }
+    }
+
+    public interface ISecret
     {
         /// <summary>
         /// Returns one item (start, length) for each match found in the input string.
         /// </summary>
         /// <param name="input"></param>
         /// <returns></returns>
-        IEnumerable<Tuple<int, int>> GetPositions(string input);
+        IEnumerable<ReplacementPosition> GetPositions(string input);
     }
 
-    public class RegexMask : ISecretMask
+    public class RegexSecret : ISecret
     {
         private readonly Regex _regex;
 
-        public RegexMask(string expression)
+        public RegexSecret(string expression)
         {
             _regex = new Regex(expression);
         }
 
-        public IEnumerable<Tuple<int, int>> GetPositions(string input)
+        public IEnumerable<ReplacementPosition> GetPositions(string input)
         {
             int startat = 0;
             while (startat < input.Length)
@@ -32,7 +51,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                 if (match.Success)
                 {
                     startat = match.Index + 1;
-                    yield return new Tuple<int, int>(match.Index, match.Length);
+                    yield return new ReplacementPosition(match.Index, match.Length);
                 }
                 else
                 {
@@ -42,16 +61,16 @@ namespace Microsoft.VisualStudio.Services.Agent
         }
     }
 
-    public class ValueMask : ISecretMask
+    public class ValueSecret : ISecret
     {
         private readonly string _valueToMask;
 
-        public ValueMask(string value)
+        public ValueSecret(string value)
         {
             _valueToMask = value;
         }
 
-        public IEnumerable<Tuple<int, int>> GetPositions(string input)
+        public IEnumerable<ReplacementPosition> GetPositions(string input)
         {
             if (!string.IsNullOrEmpty(input) && !string.IsNullOrEmpty(_valueToMask))
             {
@@ -61,7 +80,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                     startIndex = input.IndexOf(_valueToMask, startIndex);
                     if (startIndex > -1)
                     {
-                        yield return new Tuple<int, int>(startIndex, _valueToMask.Length);
+                        yield return new ReplacementPosition(startIndex, _valueToMask.Length);
                         ++startIndex;
                     }
                 }
@@ -69,11 +88,11 @@ namespace Microsoft.VisualStudio.Services.Agent
         }
     }
 
-    public class VariableValueMask : ValueMask
+    public class VariableSecret : ValueSecret
     {
         public string VariableName { get; private set; }
 
-        public VariableValueMask(string variableName, string value)
+        public VariableSecret(string variableName, string value)
             : base(value)
         {
             VariableName = variableName;

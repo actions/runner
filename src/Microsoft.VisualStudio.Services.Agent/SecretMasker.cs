@@ -8,37 +8,24 @@ namespace Microsoft.VisualStudio.Services.Agent
     [ServiceLocator(Default = typeof(SecretMasker))]
     public interface ISecretMasker : IAgentService
     {
-        IEnumerable<ISecretMask> Masks { get; }
+        IEnumerable<ISecret> Masks { get; }
 
         string MaskSecrets(string input);
 
-        void Add(ISecretMask mask);
+        void Add(ISecret mask);
+
+        void AddRegEx(string expression);
+
+        void AddValue(string value);
+
+        void AddVariableName(string variableName, string value);
     }
 
     public class SecretMasker : AgentService, ISecretMasker
     {
-        private const string MaskedString = "********";
+        private const string Mask = "********";
 
-        private readonly List<ISecretMask> _secretMasks = new List<ISecretMask>();
-
-        private class ReplacementPosition
-        {
-            public ReplacementPosition(int start, int length)
-            {
-                Start = start;
-                Length = length;
-            }
-
-            public int Start { get; set; }
-            public int Length { get; set; }
-            public int End
-            {
-                get
-                {
-                    return Start + Length;
-                }
-            }
-        }
+        private readonly List<ISecret> _secretMasks = new List<ISecret>();
 
         public override void Initialize(IHostContext hostContext)
         {
@@ -46,7 +33,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             //The HostContext.Trace needs SecretMasker to be constructed already.
             //We should not call HostContext.GetTrace or trace anywhere from SecretMasker
             //implementation, because of the circular dependency (this.Trace is null).
-            HostContext = hostContext;            
+            //Also HostContext is null, but we don't need it anyway here
         }
 
         public string MaskSecrets(string input)
@@ -57,8 +44,8 @@ namespace Microsoft.VisualStudio.Services.Agent
             }
 
             // get indexes and lengths of all substrings that will be replaced
-            var positionsToReplace = new List<Tuple<int, int>>();
-            foreach (ISecretMask secretMask in _secretMasks)
+            var positionsToReplace = new List<ReplacementPosition>();
+            foreach (ISecret secretMask in _secretMasks)
             {
                 positionsToReplace.AddRange(secretMask.GetPositions(input));
             }
@@ -71,24 +58,24 @@ namespace Microsoft.VisualStudio.Services.Agent
             // merge positions into ranges of characters to replace
             List<ReplacementPosition> replacementPositions = new List<ReplacementPosition>();
             ReplacementPosition currentReplacement = null;
-            foreach (var substring in positionsToReplace.OrderBy(t => t.Item1))
+            foreach (var substring in positionsToReplace.OrderBy(t => t.Start))
             {
                 if (currentReplacement == null)
                 {
-                    currentReplacement = new ReplacementPosition(substring.Item1, substring.Item2);
+                    currentReplacement = new ReplacementPosition(substring.Start, substring.Length);
                     replacementPositions.Add(currentReplacement);
                 }
                 else
                 {
-                    if (substring.Item1 <= currentReplacement.End)
+                    if (substring.Start <= currentReplacement.End)
                     {
                         // overlap
-                        currentReplacement.Length = Math.Max(currentReplacement.End, substring.Item1 + substring.Item2) - currentReplacement.Start;
+                        currentReplacement.Length = Math.Max(currentReplacement.End, substring.Start + substring.Length) - currentReplacement.Start;
                     }
                     else
                     {
                         // no overlap
-                        currentReplacement = new ReplacementPosition(substring.Item1, substring.Item2);
+                        currentReplacement = new ReplacementPosition(substring.Start, substring.Length);
                         replacementPositions.Add(currentReplacement);
                     }
                 }
@@ -100,7 +87,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             foreach (var replacement in replacementPositions)
             {
                 stringBuilder.Append(input.Substring(startIndex, replacement.Start - startIndex));
-                stringBuilder.Append(MaskedString);
+                stringBuilder.Append(Mask);
                 startIndex = replacement.Start + replacement.Length;
             }
 
@@ -112,12 +99,27 @@ namespace Microsoft.VisualStudio.Services.Agent
             return stringBuilder.ToString();
         }
 
-        public void Add(ISecretMask mask)
+        public void Add(ISecret mask)
         {
             _secretMasks.Add(mask);
         }
 
-        public IEnumerable<ISecretMask> Masks
+        public void AddRegEx(string expression)
+        {
+            Add(new RegexSecret(expression));
+        }
+
+        public void AddValue(string value)
+        {
+            Add(new ValueSecret(value));
+        }
+
+        public void AddVariableName(string variableName, string value)
+        {
+            Add(new VariableSecret(variableName, value));
+        }
+
+        public IEnumerable<ISecret> Masks
         {
             get
             {

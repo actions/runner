@@ -124,14 +124,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         }
 
         // simple convenience factory so each suite/test gets a different trace file per run
-        public TraceSourceWrapper GetTrace()
+        public Tracing GetTrace()
         {
-            TraceSourceWrapper trace = GetTrace($"{_suiteName}_{_testName}");
+            Tracing trace = GetTrace($"{_suiteName}_{_testName}");
             trace.Info($"Starting {_testName}");
             return trace;
         }
 
-        public TraceSourceWrapper GetTrace(string name)
+        public Tracing GetTrace(string name)
         {
             return _traceManager[name];
         }

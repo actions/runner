@@ -12,7 +12,7 @@ namespace Microsoft.VisualStudio.Services.Agent
 {
     public sealed class CommandLineParser
     {
-        private TraceSourceWrapper _trace;
+        private Tracing _trace;
         private static List<String> validCommands = new List<string> { "configure", "unconfigure", "run", "help", "version" };
         public CommandLineParser(IHostContext hostContext)
         {

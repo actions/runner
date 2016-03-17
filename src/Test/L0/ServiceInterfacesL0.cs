@@ -44,7 +44,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 typeof(IExtension),
                 typeof(IHostContext),
                 typeof(ITraceManager),
-                typeof(ISecretMask)
+                typeof(ISecret)
             };
             Validate(
                 assembly: typeof(IHostContext).GetTypeInfo().Assembly,

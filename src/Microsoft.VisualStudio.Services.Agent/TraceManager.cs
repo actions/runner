@@ -8,12 +8,12 @@ namespace Microsoft.VisualStudio.Services.Agent
     public interface ITraceManager: IDisposable
     {
         SourceSwitch Switch { get; }
-        TraceSourceWrapper this[string name] { get; }
+        Tracing this[string name] { get; }
     }
 
     public sealed class TraceManager : ITraceManager
     {
-        private readonly ConcurrentDictionary<string, TraceSourceWrapper> _sources = new ConcurrentDictionary<string, TraceSourceWrapper>(StringComparer.OrdinalIgnoreCase);
+        private readonly ConcurrentDictionary<string, Tracing> _sources = new ConcurrentDictionary<string, Tracing>(StringComparer.OrdinalIgnoreCase);
         private readonly TextWriterTraceListener _hostTraceListener;
         private TraceSetting _traceSetting;
         private ISecretMasker _secretMasker;
@@ -41,7 +41,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         
         public SourceSwitch Switch { get; private set; }
 
-        public TraceSourceWrapper this[string name]
+        public Tracing this[string name]
         {
             get
             {
@@ -59,7 +59,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         {
             if (disposing)
             {
-                foreach (TraceSourceWrapper traceSource in _sources.Values)
+                foreach (Tracing traceSource in _sources.Values)
                 {
                     traceSource.Dispose();
                 }
@@ -68,7 +68,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             }
         }
 
-        private TraceSourceWrapper CreateTraceSource(string name)
+        private Tracing CreateTraceSource(string name)
         {
             SourceSwitch sourceSwitch = Switch;
             TraceLevel sourceTraceLevel;
@@ -79,7 +79,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                     Level = sourceTraceLevel.ToSourceLevels()
                 };
             }
-            return new TraceSourceWrapper(name, _secretMasker, sourceSwitch, _hostTraceListener);
+            return new Tracing(name, _secretMasker, sourceSwitch, _hostTraceListener);
         }
     }
 }

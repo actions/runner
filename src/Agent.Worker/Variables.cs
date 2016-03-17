@@ -13,7 +13,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
     {
         private readonly ConcurrentDictionary<string, string> _store = new ConcurrentDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         private readonly IHostContext _hostContext;
-        private readonly TraceSourceWrapper _trace;
+        private readonly Tracing _trace;
 
         public Variables(IHostContext hostContext, IDictionary<string, string> copy)
         {

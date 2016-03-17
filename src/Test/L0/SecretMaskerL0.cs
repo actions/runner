@@ -10,7 +10,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         public void SecretMasker_MaskSecrets_EmptyInput()
         {
             var secretMasker = new SecretMasker();
-            secretMasker.Add(new ValueMask("abcd"));
+            secretMasker.Add(new ValueSecret("abcd"));
 
             var result = secretMasker.MaskSecrets(null);
             Assert.Equal(string.Empty, result);
@@ -36,7 +36,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         public void SecretMasker_MaskSecrets_BasicReplacement()
         {
             var secretMasker = new SecretMasker();
-            secretMasker.Add(new ValueMask("def"));
+            secretMasker.Add(new ValueSecret("def"));
 
             var input = "abcdefg";
             var result = secretMasker.MaskSecrets(input);
@@ -50,7 +50,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         public void SecretMasker_MaskSecrets_MultipleInstances()
         {
             var secretMasker = new SecretMasker();
-            secretMasker.Add(new ValueMask("def"));
+            secretMasker.Add(new ValueSecret("def"));
 
             var input = "abcdefgdef";
             var result = secretMasker.MaskSecrets(input);
@@ -64,7 +64,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         public void SecretMasker_MaskSecrets_MultipleAdjacentInstances()
         {
             var secretMasker = new SecretMasker();
-            secretMasker.Add(new ValueMask("abc"));
+            secretMasker.Add(new ValueSecret("abc"));
 
             var input = "abcabcdef";
             var result = secretMasker.MaskSecrets(input);
@@ -78,8 +78,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         public void SecretMasker_MaskSecrets_MultipleSecrets()
         {
             var secretMasker = new SecretMasker();
-            secretMasker.Add(new ValueMask("bcd"));
-            secretMasker.Add(new ValueMask("fgh"));
+            secretMasker.Add(new ValueSecret("bcd"));
+            secretMasker.Add(new ValueSecret("fgh"));
 
             var input = "abcdefghi";
             var result = secretMasker.MaskSecrets(input);
@@ -93,8 +93,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         public void SecretMasker_MaskSecrets_OverlappingSecrets()
         {
             var secretMasker = new SecretMasker();
-            secretMasker.Add(new ValueMask("def"));
-            secretMasker.Add(new ValueMask("bcd"));
+            secretMasker.Add(new ValueSecret("def"));
+            secretMasker.Add(new ValueSecret("bcd"));
 
             var input = "abcdefg";
             var result = secretMasker.MaskSecrets(input);
@@ -111,8 +111,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         public void SecretMasker_MaskSecrets_AdjacentSecrets()
         {
             var secretMasker = new SecretMasker();
-            secretMasker.Add(new ValueMask("efg"));
-            secretMasker.Add(new ValueMask("bcd"));
+            secretMasker.Add(new ValueSecret("efg"));
+            secretMasker.Add(new ValueSecret("bcd"));
 
             var input = "abcdefgh";
             var result = secretMasker.MaskSecrets(input);

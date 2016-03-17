@@ -7,13 +7,13 @@ using System.Runtime.CompilerServices;
 
 namespace Microsoft.VisualStudio.Services.Agent
 {
-    public sealed class TraceSourceWrapper : IDisposable
+    public sealed class Tracing : IDisposable
     {
         private ISecretMasker _secretMasker;
 
         private TraceSource _traceSource;
 
-        public TraceSourceWrapper(string name, ISecretMasker secretMasker, SourceSwitch sourceSwitch, TextWriterTraceListener traceListener)
+        public Tracing(string name, ISecretMasker secretMasker, SourceSwitch sourceSwitch, TextWriterTraceListener traceListener)
         {
             ArgUtil.NotNull(secretMasker, nameof(secretMasker));
             _secretMasker = secretMasker;

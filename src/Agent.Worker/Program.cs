@@ -20,7 +20,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             IHostContext hc,
             CancellationTokenSource tokenSource)
         {
-            TraceSourceWrapper trace = hc.GetTrace(nameof(Program));
+            Tracing trace = hc.GetTrace(nameof(Program));
             try
             {
                 // Validate args.

@@ -30,7 +30,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 {
                     if (maskHint.Type == MaskType.Regex)
                     {
-                        secretMasker.Add(new RegexMask(maskHint.Value));
+                        secretMasker.AddRegEx(maskHint.Value);
                     }
                     else if (maskHint.Type == MaskType.Variable && variables != null)
                     {
@@ -39,7 +39,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                         {
                             if (!string.IsNullOrEmpty(value))
                             {
-                                secretMasker.Add(new VariableValueMask(maskHint.Value, value));
+                                secretMasker.AddVariableName(maskHint.Value, value);
                             }
                         }
                     }
@@ -56,10 +56,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     {
                         foreach (string value in endpoint.Authorization.Parameters.Values)
                         {
-                            secretMasker.Add(new ValueMask(value));
+                            secretMasker.AddValue(value);
                             if (!Uri.EscapeDataString(value).Equals(value, StringComparison.OrdinalIgnoreCase))
                             {
-                                secretMasker.Add(new ValueMask(Uri.EscapeDataString(value)));
+                                secretMasker.AddValue(Uri.EscapeDataString(value));
                             }
                         }
                     }

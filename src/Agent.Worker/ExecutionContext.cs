@@ -110,7 +110,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         public void Start(string currentOperation = null)
         {
-            _secretMasker = HostContext.GetService<ISecretMasker>();
             _logger = HostContext.CreateService<IPagingLogger>();
             _logger.Setup(_mainTimelineId, _record.Id);
 
@@ -271,6 +270,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             base.Initialize(hostContext);
 
             _jobServerQueue = HostContext.GetService<IJobServerQueue>();
+            _secretMasker = HostContext.GetService<ISecretMasker>();
         }
 
         private void InitializeTimelineRecord(Guid timelineId, Guid timelineRecordId, Guid? parentTimelineRecordId, string recordType, string name, int order)

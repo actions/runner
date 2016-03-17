@@ -10,7 +10,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Trait("Category", "Common")]
         public void ValueMaskTests_GetPositions_EmptyValue()
         {
-            var masker = new ValueMask(null);
+            var masker = new ValueSecret(null);
             var input = "abcdefg";
 
             var positions = masker.GetPositions(input);
@@ -22,7 +22,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Trait("Category", "Common")]
         public void ValueMaskTests_GetPositions_EmptyInput()
         {
-            var masker = new ValueMask("def");
+            var masker = new ValueSecret("def");
             string input = null;
 
             var positions = masker.GetPositions(input);
@@ -34,13 +34,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Trait("Category", "Common")]
         public void ValueMaskTests_GetPositions_Basic()
         {
-            var masker = new ValueMask("def");
+            var masker = new ValueSecret("def");
             string input = "abcdefg";
 
             var positions = masker.GetPositions(input).ToList();
             Assert.Equal(1, positions.Count);
-            Assert.Equal(3, positions[0].Item1);
-            Assert.Equal(3, positions[0].Item2);
+            Assert.Equal(3, positions[0].Start);
+            Assert.Equal(3, positions[0].Length);
         }
 
         [Fact]
@@ -48,13 +48,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Trait("Category", "Common")]
         public void ValueMaskTests_GetPositions_BeginningOfString()
         {
-            var masker = new ValueMask("abc");
+            var masker = new ValueSecret("abc");
             string input = "abcdefg";
 
             var positions = masker.GetPositions(input).ToList();
             Assert.Equal(1, positions.Count);
-            Assert.Equal(0, positions[0].Item1);
-            Assert.Equal(3, positions[0].Item2);
+            Assert.Equal(0, positions[0].Start);
+            Assert.Equal(3, positions[0].Length);
         }
 
         [Fact]
@@ -62,13 +62,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Trait("Category", "Common")]
         public void ValueMaskTests_GetPositions_EndOfString()
         {
-            var masker = new ValueMask("efg");
+            var masker = new ValueSecret("efg");
             string input = "abcdefg";
 
             var positions = masker.GetPositions(input).ToList();
             Assert.Equal(1, positions.Count);
-            Assert.Equal(4, positions[0].Item1);
-            Assert.Equal(3, positions[0].Item2);
+            Assert.Equal(4, positions[0].Start);
+            Assert.Equal(3, positions[0].Length);
         }
 
         [Fact]
@@ -76,15 +76,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Trait("Category", "Common")]
         public void ValueMaskTests_GetPositions_Multiple()
         {
-            var masker = new ValueMask("def");
+            var masker = new ValueSecret("def");
             string input = "abcdefgdefg";
 
             var positions = masker.GetPositions(input).ToList();
             Assert.Equal(2, positions.Count);
-            Assert.Equal(3, positions[0].Item1);
-            Assert.Equal(3, positions[0].Item2);
-            Assert.Equal(7, positions[1].Item1);
-            Assert.Equal(3, positions[1].Item2);
+            Assert.Equal(3, positions[0].Start);
+            Assert.Equal(3, positions[0].Length);
+            Assert.Equal(7, positions[1].Start);
+            Assert.Equal(3, positions[1].Length);
         }
 
         [Fact]
@@ -92,15 +92,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Trait("Category", "Common")]
         public void ValueMaskTests_GetPositions_Overlap()
         {
-            var masker = new ValueMask("cdcd");
+            var masker = new ValueSecret("cdcd");
             string input = "abcdcdcdefg";
 
             var positions = masker.GetPositions(input).ToList();
             Assert.Equal(2, positions.Count);
-            Assert.Equal(2, positions[0].Item1);
-            Assert.Equal(4, positions[0].Item2);
-            Assert.Equal(4, positions[1].Item1);
-            Assert.Equal(4, positions[1].Item2);
+            Assert.Equal(2, positions[0].Start);
+            Assert.Equal(4, positions[0].Length);
+            Assert.Equal(4, positions[1].Start);
+            Assert.Equal(4, positions[1].Length);
         }
     }
 }
