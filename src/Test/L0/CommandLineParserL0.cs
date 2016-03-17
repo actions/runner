@@ -12,7 +12,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         {
             using (TestHostContext hc = new TestHostContext(this))
             {
-                TraceSource trace = hc.GetTrace();
+                Tracing trace = hc.GetTrace();
 
                 CommandLineParser clp = new CommandLineParser(hc);
                 trace.Info("Constructed");
@@ -28,7 +28,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         {
             using (TestHostContext hc = new TestHostContext(this))
             {
-                TraceSource trace = hc.GetTrace();
+                Tracing trace = hc.GetTrace();
 
                 CommandLineParser clp = new CommandLineParser(hc);
                 trace.Info("Constructed.");
@@ -48,7 +48,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         {
             using (TestHostContext hc = new TestHostContext(this))
             {
-                TraceSource trace = hc.GetTrace();
+                Tracing trace = hc.GetTrace();
 
                 CommandLineParser clp = new CommandLineParser(hc);
                 trace.Info("Constructed.");
@@ -72,7 +72,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         {
             using (TestHostContext hc = new TestHostContext(this))
             {
-                TraceSource trace = hc.GetTrace();
+                Tracing trace = hc.GetTrace();
 
                 CommandLineParser clp = new CommandLineParser(hc);
                 trace.Info("Constructed.");

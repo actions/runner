@@ -20,7 +20,7 @@ namespace Microsoft.VisualStudio.Services.Agent
     public abstract class AgentService
     {
         protected IHostContext HostContext { get; private set; }
-        protected TraceSource Trace { get; private set; }
+        protected Tracing Trace { get; private set; }
 
         public string TraceName 
         {

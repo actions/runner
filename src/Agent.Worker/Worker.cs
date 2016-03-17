@@ -17,6 +17,56 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
     {
         private readonly TimeSpan WorkerStartTimeout = TimeSpan.FromSeconds(30);
 
+        private void InitializeSecrets(JobRequestMessage message)
+        {
+            var secretMasker = HostContext.GetService<ISecretMasker>();
+            
+            // Add mask hints
+            if (message?.Environment?.MaskHints != null)
+            {
+                IDictionary<string, string> variables = message?.Environment?.Variables;
+
+                foreach (MaskHint maskHint in message.Environment.MaskHints)
+                {
+                    if (maskHint.Type == MaskType.Regex)
+                    {
+                        secretMasker.AddRegEx(maskHint.Value);
+                    }
+                    else if (maskHint.Type == MaskType.Variable && variables != null)
+                    {
+                        string value;
+                        if (variables.TryGetValue(maskHint.Value, out value))
+                        {
+                            if (!string.IsNullOrEmpty(value))
+                            {
+                                secretMasker.AddVariableName(maskHint.Value, value);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Add masks for service endpoints
+            if (message?.Environment?.Endpoints != null)
+            {
+                foreach (ServiceEndpoint endpoint in message.Environment.Endpoints)
+                {
+                    if (endpoint.Authorization != null &&
+                        endpoint.Authorization.Parameters != null)
+                    {
+                        foreach (string value in endpoint.Authorization.Parameters.Values)
+                        {
+                            secretMasker.AddValue(value);
+                            if (!Uri.EscapeDataString(value).Equals(value, StringComparison.OrdinalIgnoreCase))
+                            {
+                                secretMasker.AddValue(Uri.EscapeDataString(value));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         public async Task<int> RunAsync(string pipeIn, string pipeOut, CancellationTokenSource hostTokenSource)
         {
             // Validate args.
@@ -52,6 +102,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
                 ArgUtil.NotNullOrEmpty(culture, nameof(culture));
                 HostContext.SetDefaultCulture(culture);
+
+                //initialize secret masks
+                InitializeSecrets(jobMessage);
+
+                Trace.Verbose($"JobMessage: {channelMessage.Body}");
 
                 // Start the job.
                 Task<TaskResult> jobRunnerTask = jobRunner.RunAsync(jobMessage);

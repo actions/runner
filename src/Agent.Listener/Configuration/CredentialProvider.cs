@@ -34,7 +34,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         
         public override VssCredentials GetVssCredentials(IHostContext context)
         {
-            TraceSource trace = context.GetTrace("PersonalAccessToken");
+            Tracing trace = context.GetTrace("PersonalAccessToken");
             trace.Info("GetVssCredentials()");
 
             if (CredentialData == null || !CredentialData.Data.ContainsKey("token"))
@@ -55,7 +55,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
         public override void ReadCredential(IHostContext context, Dictionary<string, string> args, bool enforceSupplied)
         {
-            TraceSource trace = context.GetTrace("PersonalAccessToken");
+            Tracing trace = context.GetTrace("PersonalAccessToken");
             trace.Info("ReadCredentials()");
 
             var wizard = context.GetService<IConsoleWizard>();
@@ -78,7 +78,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
         public override VssCredentials GetVssCredentials(IHostContext context)
         {
-            TraceSource trace = context.GetTrace("PersonalAccessToken");
+            Tracing trace = context.GetTrace("PersonalAccessToken");
             trace.Info("GetVssCredentials()");
 
             if (CredentialData == null || !CredentialData.Data.ContainsKey("token"))

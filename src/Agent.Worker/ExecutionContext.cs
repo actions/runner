@@ -45,6 +45,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         private readonly object _loggerLock = new object();
 
         private IPagingLogger _logger;
+        private ISecretMasker _secretMasker;
         private IJobServerQueue _jobServerQueue;
 
         private Guid _mainTimelineId;
@@ -254,8 +255,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         // therefore should be localized. Use the Loc methods from the StringUtil class. The exception to
         // the rule is command messages - which should be crafted using strongly typed wrapper methods.
         public void Write(string tag, string message)
-        {
-            string msg = $"{tag}{message}";
+        {            
+            string msg = _secretMasker.MaskSecrets($"{tag}{message}");
             lock (_loggerLock)
             {
                 _logger.Write(msg);
@@ -269,6 +270,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             base.Initialize(hostContext);
 
             _jobServerQueue = HostContext.GetService<IJobServerQueue>();
+            _secretMasker = HostContext.GetService<ISecretMasker>();
         }
 
         private void InitializeTimelineRecord(Guid timelineId, Guid timelineRecordId, Guid? parentTimelineRecordId, string recordType, string name, int order)
