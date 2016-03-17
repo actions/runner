@@ -3,8 +3,6 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using Microsoft.VisualStudio.Services.Agent.Build;
-using Microsoft.VisualStudio.Services.Agent.Common;
 
 namespace Microsoft.VisualStudio.Services.Agent
 {
@@ -57,7 +55,8 @@ namespace Microsoft.VisualStudio.Services.Agent
                         Add(instance, "Microsoft.VisualStudio.Services.Agent.Worker.Build.BuildJobExtension, Agent.Worker");
 
                         // Add command extensions:
-                        Add(instance, new BuildCommands());
+                        Add(instance, "Microsoft.VisualStudio.Services.Agent.Worker.TaskCommands, Agent.Worker");
+                        Add(instance, "Microsoft.VisualStudio.Services.Agent.Worker.Build.BuildCommands, Agent.Worker");
 
                         // Add source provider extensions:
                         Add(instance, "Microsoft.VisualStudio.Services.Agent.Worker.Build.GitSourceProvider, Agent.Worker");
