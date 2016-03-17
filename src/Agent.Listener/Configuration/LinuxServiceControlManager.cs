@@ -49,16 +49,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
             try
             {
-                StringBuilder loginUser = new StringBuilder();
-                getlogin_r(loginUser, MaxUserNameLength);
-                string currentUserName = loginUser.ToString();
-
                 var unitContent = File.ReadAllText(Path.Combine(IOUtil.GetBinPath(), VstsAgentServiceTemplate));
                 var tokensToReplace = new Dictionary<string, string>
                                           {
                                               { "{Description}", settings.ServiceDisplayName },
                                               { "{BinDirectory}", IOUtil.GetBinPath() },
-                                              { "{User}", currentUserName }
+                                              { "{User}", GetCurrentLoginName() }
                                           };
 
                 unitContent = tokensToReplace.Aggregate(
@@ -165,16 +161,29 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
             try
             {
-                StringBuilder loginUser = new StringBuilder();
-                getlogin_r(loginUser, MaxUserNameLength);
-                string userName = loginUser.ToString();
+                string uidValue = Environment.GetEnvironmentVariable("SUDO_UID");
+                string gidValue = Environment.GetEnvironmentVariable("SUDO_GID");
+                uint uid = 0, gid = 0;
 
-                IntPtr statPtr = getpwnam(userName);
-                var stat = Marshal.PtrToStructure<LoginStat>(statPtr);
+                if (string.IsNullOrEmpty(uidValue) || string.IsNullOrEmpty(gidValue)
+                    || !uint.TryParse(uidValue, out uid) || !uint.TryParse(gidValue, out gid))
+                {
+                    Trace.Info("SUDO_UID and SUDO_GID environment variables are not found, calling getpwnam to find the uid,gid of the user");
+                    string userName = GetCurrentLoginName();
+
+                    IntPtr statPtr = getpwnam(userName);
+
+                    var stat = Marshal.PtrToStructure<LoginStat>(statPtr);
+                    uid = stat.pw_uid;
+                    gid = stat.pw_gid;
+                }
+
+                Trace.Info(StringUtil.Format("Found uid {0} gid {1} of the logged in user", uid, gid));
+
                 foreach (var file in filesToChange)
                 {
-                    Trace.Info("Changing ownership of {0} to current user {1}", file.Key, userName);
-                    chown(file.Key, stat.pw_uid, stat.pw_gid);
+                    Trace.Info("Changing ownership of {0} to logged in user", file.Key);
+                    chown(file.Key, uid, gid);
 
                     Trace.Info("Changing permission of {0} to {1}", file.Key, file.Value);
                     chmod(file.Key, file.Value);
@@ -225,6 +234,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             Trace.Info(nameof(ReloadSystemd));
             try
             {
+                // TODO: systemd prints any pending info message to the TTY, hide this if possible
                 ExecuteSystemdCommand("daemon-reload");
             }
             catch (Exception)
@@ -252,6 +262,37 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             }
         }
 
+        private string GetCurrentLoginName()
+        {
+            Trace.Info(nameof(GetCurrentLoginName));
+
+            string userName = Environment.GetEnvironmentVariable("SUDO_USER");
+            Trace.Info(StringUtil.Format("Found login username as {0}", userName));
+
+            if (string.IsNullOrEmpty(userName))
+            {
+                // This should never be null, however the env variables can be controller or modified
+                // in such cases try getting the username using getlogin
+                Trace.Info("Trying to get login username using getlogin_r");
+                StringBuilder loginUser = new StringBuilder();
+                int result = getlogin_r(loginUser, MaxUserNameLength);
+
+                Trace.Verbose(StringUtil.Format("Result of getlogin_r {0}", result));
+
+                if (result == 0)
+                {
+                    userName = loginUser.ToString();
+                    Trace.Info(StringUtil.Format("Found login username as {0}", userName));
+                }
+                else
+                {
+                    // TODO: Should we set it to root instead of failing?
+                    throw new InvalidOperationException(StringUtil.Loc("CanNotFindLoginUserName"));
+                }
+            }
+
+            return userName;
+        }
         // Only the configuration requires sudo permission as systemd commands have to be called. But the agent itself will run with current user premission
         [DllImport("libc.so.6")]
         private static extern int getlogin_r(StringBuilder buf, int bufsize);

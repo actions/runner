@@ -103,6 +103,7 @@
   "LinuxServiceConfigured": "Service {0} successfully configured",
   "ServiceAleadyExists": "Service already exists, it will be overwritten",
   "CanNotFindSystemd": "Can not find if systemd is installed",
-  "SystemdDoesNotExists": "Systemd does not exist, if you are having init.d or any other init system you can manually configure it.",
-  "CannotChangePermission": "Can not change permission of configuration store, report this error. You can still run the agent in interactive mode."
+  "SystemdDoesNotExists": "Systemd does not exist, if you are having init.d or any other init system you can manually configure it",
+  "CannotChangePermission": "Can not change permission of configuration store, report this error. You can still run the agent in interactive mode",
+  "CanNotFindLoginUserName": "Can not find logged in username"
 }
