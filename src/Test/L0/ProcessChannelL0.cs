@@ -1,4 +1,5 @@
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
+using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -69,10 +70,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 Process jobProcess;
                 server.StartServer((p1, p2) =>
                 {
-                    string clientFileName = "Test";
-#if OS_WINDOWS
-                    clientFileName += ".exe";
-#endif
+                    string clientFileName = $"Test{IOUtil.ExeExtension}";
                     jobProcess = new Process();
                     jobProcess.StartInfo.FileName = clientFileName;
                     jobProcess.StartInfo.Arguments = "spawnclient " + p1 + " " + p2;

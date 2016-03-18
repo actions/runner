@@ -15,9 +15,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Trait("Category", "Common")]
         public void LoadsTypeFromString()
         {
-            // Arrange.
             using (TestHostContext tc = new TestHostContext(this))
             {
+                // Arrange.
                 var manager = new ExtensionManager();
                 manager.Initialize(tc);
 

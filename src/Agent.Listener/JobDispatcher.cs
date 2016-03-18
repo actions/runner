@@ -15,11 +15,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
     public sealed class JobDispatcher : AgentService, IJobDispatcher
     {
-#if OS_WINDOWS
-        private const string WorkerProcessName = "Agent.Worker.exe";
-#else
-        private const string WorkerProcessName = "Agent.Worker";
-#endif        
+        private static readonly string _workerProcessName = $"Agent.Worker{IOUtil.ExeExtension}";
+
         //allow up to 30sec for any data to be transmitted over the process channel
         private readonly TimeSpan ChannelTimeout = TimeSpan.FromSeconds(30);
 
@@ -73,7 +70,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
                         // Start the child process.
                         var assemblyDirectory = IOUtil.GetBinPath();
-                        string workerFileName = Path.Combine(assemblyDirectory, WorkerProcessName);
+                        string workerFileName = Path.Combine(assemblyDirectory, _workerProcessName);
                         workerProcessTask = processInvoker.ExecuteAsync(
                             workingDirectory: assemblyDirectory,
                             fileName: workerFileName,

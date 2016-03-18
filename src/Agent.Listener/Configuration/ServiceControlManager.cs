@@ -39,7 +39,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
             if (string.IsNullOrEmpty(accountName))
             {
-                throw new InvalidOperationException(StringUtil.Loc("CannotFindHostName"));
+                // TODO: Localize this error message:
+                throw new InvalidOperationException("CannotFindHostName");
             }
 
             settings.ServiceName = StringUtil.Format(serviceNamePattern, accountName, settings.AgentName);

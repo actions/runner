@@ -91,4 +91,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             return false;
         }
     }
+
+    public enum BuildCleanOption
+    {
+        None,
+        Source,
+        Binary,
+        All,
+    }
 }

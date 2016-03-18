@@ -60,12 +60,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
                 object outputLock = new object();
                 processInvoker.OutputDataReceived += OnDataReceived;
                 processInvoker.ErrorDataReceived += OnDataReceived;
-                string nodeDirectory = Path.Combine(IOUtil.GetExternalsPath(), "node", "bin");
-#if OS_WINDOWS
-                string nodeFile = Path.Combine(nodeDirectory, "node.exe");
-#else
-                string nodeFile = Path.Combine(nodeDirectory, "node");
-#endif
+                string node = Path.Combine(
+                    IOUtil.GetExternalsPath(),
+                    "node",
+                    "bin",
+                    $"node{IOUtil.ExeExtension}");
 
                 // Format the arguments passed to node.
                 // 1) Wrap the script file path in double quotes.
@@ -74,7 +73,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
                 string arguments = StringUtil.Format(@"""{0}""", target.Replace(@"""", @"\"""));
                 int exitCode = await processInvoker.ExecuteAsync(
                     workingDirectory: workingDirectory,
-                    fileName: nodeFile,
+                    fileName: node,
                     arguments: arguments,
                     environment: Environment,
                     cancellationToken: ExecutionContext.CancellationToken);

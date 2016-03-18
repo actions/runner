@@ -27,6 +27,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             // Validate parameters.
             Trace.Entering();
             ArgUtil.NotNull(executionContext, nameof(executionContext));
+            ArgUtil.NotNull(executionContext.Variables, nameof(executionContext.Variables));
             ArgUtil.NotNull(endpoint, nameof(endpoint));
             ArgUtil.NotNull(sourceProvider, nameof(sourceProvider));
             var trackingManager = HostContext.GetService<ITrackingManager>();
@@ -34,18 +35,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             // Defer to the source provider to calculate the hash key.
             Trace.Verbose("Calculating build directory hash key.");
             string hashKey = sourceProvider.GetBuildDirectoryHashKey(executionContext, endpoint);
+            Trace.Verbose($"Hash key: {hashKey}");
 
             // Load the existing tracking file if one already exists.
-            string directory = Path.Combine(
+            string trackingFile = Path.Combine(
                 IOUtil.GetWorkPath(HostContext),
                 Constants.Build.Path.SourceRootMappingDirectory,
                 executionContext.Variables.System_CollectionId,
-                executionContext.Variables.System_DefinitionId);
-            string file = Path.Combine(
-                directory,
+                executionContext.Variables.System_DefinitionId,
                 Constants.Build.Path.TrackingConfigFile);
-            Trace.Verbose($"Loading tracking config if exists: {file}");
-            TrackingConfigBase existingConfig = trackingManager.LoadIfExists(executionContext, file);
+            Trace.Verbose($"Loading tracking config if exists: {trackingFile}");
+            TrackingConfigBase existingConfig = trackingManager.LoadIfExists(executionContext, trackingFile);
 
             // Check if the build needs to be garbage collected. If the hash key
             // has changed, then the existing build directory cannot be reused.
@@ -56,6 +56,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 // Just store a reference to the config for now. It can safely be
                 // marked for garbage collection only after the new build directory
                 // config has been created.
+                Trace.Verbose($"Hash key from existing tracking config does not match. Existing key: {existingConfig.HashKey}");
                 garbageConfig = existingConfig;
                 existingConfig = null;
             }
@@ -64,7 +65,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             TrackingConfig newConfig;
             if (existingConfig == null)
             {
-                newConfig = trackingManager.Create(executionContext, endpoint, hashKey, file);
+                Trace.Verbose("Creating a new tracking config file.");
+                newConfig = trackingManager.Create(executionContext, endpoint, hashKey, trackingFile);
+                ArgUtil.NotNull(newConfig, nameof(newConfig));
             }
             else
             {
@@ -72,50 +75,53 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 newConfig = ConvertToNewFormat(executionContext, endpoint, existingConfig);
 
                 // For existing tracking config files, update the job run properties.
-                trackingManager.UpdateJobRunProperties(executionContext, newConfig, file);
+                Trace.Verbose("Updating job run properties.");
+                trackingManager.UpdateJobRunProperties(executionContext, newConfig, trackingFile);
             }
 
             // Mark the old configuration for garbage collection.
             if (garbageConfig != null)
             {
+                Trace.Verbose("Marking existing config for garbage collection.");
                 trackingManager.MarkForGarbageCollection(executionContext, garbageConfig);
             }
 
-            // TODO: IMPLEMENT CODE DEALING WITH BuildCleanOption ENUM
-            // // // manage built-in directories.
-            // // // delete entire build directory if clean=all is set.
-            // // // always recreate artifactstaging dir and testresult dir.
-            // // // recreate binaries dir if clean=binary is set.
-            // // // delete source dir if clean=src is set.
-            // // if (cleanOpt == BuildCleanOption.All)
-            // // {
-            // //     DeleteDirectory(
-            // //         executionContext,
-            // //         description: "build directory",
-            // //         path: Path.Combine(IOUtil.GetWorkPath(HostContext), newConfig.BuildDirectory));
-            // // }
+            // Prepare the build directory.
+            // Delete entire build directory if clean=all is set.
+            // Always recreate artifactstaging dir and testresult dir.
+            // Recreate binaries dir if clean=binary is set.
+            // Delete source dir if clean=src is set.
+            BuildCleanOption? cleanOption = executionContext.Variables.Build_Clean;
+            if (cleanOption == BuildCleanOption.All)
+            {
+                DeleteDirectory(
+                    executionContext,
+                    description: "build directory",
+                    path: Path.Combine(IOUtil.GetWorkPath(HostContext), newConfig.BuildDirectory));
+            }
 
             CreateDirectory(
                 executionContext,
                 description: "artifacts directory",
-                path: Path.Combine(IOUtil.GetWorkPath(HostContext), newConfig.ArtifactsDirectory));
+                path: Path.Combine(IOUtil.GetWorkPath(HostContext), newConfig.ArtifactsDirectory),
+                deleteExisting: true);
             CreateDirectory(
                 executionContext,
                 description: "test results directory",
-                path: Path.Combine(IOUtil.GetWorkPath(HostContext), newConfig.TestResultsDirectory));
-            // TODO: IMPLEMENT CODE DEALING WITH BuildCleanOption ENUM
-            // // CreateDirectory(
-            // //     executionContext,
-            // //     description: "binaries directory",
-            // //     path: Path.Combine(IOUtil.GetWorkPath(HostContext), newConfig.BuildDirectory, Constants.Build.Path.BinariesDirectory),
-            // //     deleteExistingFirst: cleanOpt == BuildCleanOption.Binary);
-            // // if (cleanOpt == BuildCleanOption.Source)
-            // // {
-            // //     DeleteDirectory(
-            // //         executionContext,
-            // //         description: "source directory",
-            // //         path: Path.Combine(IOUtil.GetWorkPath(HostContext), newConfig.BuildDirectory, Constants.Build.Path.SourcesDirectory));
-            // // }
+                path: Path.Combine(IOUtil.GetWorkPath(HostContext), newConfig.TestResultsDirectory),
+                deleteExisting: true);
+            CreateDirectory(
+                executionContext,
+                description: "binaries directory",
+                path: Path.Combine(IOUtil.GetWorkPath(HostContext), newConfig.BuildDirectory, Constants.Build.Path.BinariesDirectory),
+                deleteExisting: cleanOption == BuildCleanOption.Binary);
+            if (cleanOption == BuildCleanOption.Source)
+            {
+                DeleteDirectory(
+                    executionContext,
+                    description: "source directory",
+                    path: Path.Combine(IOUtil.GetWorkPath(HostContext), newConfig.BuildDirectory, Constants.Build.Path.SourcesDirectory));
+            }
 
             return newConfig;
         }
@@ -171,7 +177,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             return newConfig;
         }
 
-        private void CreateDirectory(IExecutionContext executionContext, string description, string path, bool deleteExisting = true)
+        private void CreateDirectory(IExecutionContext executionContext, string description, string path, bool deleteExisting)
         {
             // Delete.
             if (deleteExisting)
@@ -182,27 +188,28 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             // Create.
             if (!Directory.Exists(path))
             {
-                Trace.Verbose($"Creating {description}.");
+                Trace.Info($"Creating {description}.");
                 Directory.CreateDirectory(path);
             }
         }
 
         private void DeleteDirectory(IExecutionContext executionContext, string description, string path)
         {
-            Trace.Verbose($"Checking if {description} exists: '{path}'");
+            Trace.Info($"Checking if {description} exists: '{path}'");
             if (Directory.Exists(path))
             {
                 // Delete the files.
                 executionContext.Debug($"Deleting {description}: '{path}'");
-                Trace.Verbose("Deleting files.");
+                Trace.Info("Deleting files.");
                 foreach (string file in Directory.EnumerateFiles(path, "*", SearchOption.AllDirectories))
                 {
                     executionContext.CancellationToken.ThrowIfCancellationRequested();
+                    // TODO: Test for readonly files.
                     File.Delete(file);
                 }
 
                 // Delete the directories.
-                Trace.Verbose("Deleting directories.");
+                Trace.Info("Deleting directories.");
                 foreach (string directory in Directory.GetDirectories(path, "*", SearchOption.AllDirectories).OrderByDescending(x => x.Length))
                 {
                     executionContext.CancellationToken.ThrowIfCancellationRequested();

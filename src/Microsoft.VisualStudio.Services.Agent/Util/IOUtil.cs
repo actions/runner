@@ -8,6 +8,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
 {
     public static class IOUtil
     {
+        public static string ExeExtension
+        {
+            get
+            {
+#if OS_WINDOWS
+                return ".exe";
+#else
+                return string.Empty;
+#endif
+            }
+        }
+
         public static void SaveObject(Object obj, string path)
         {
             string json = JsonConvert.SerializeObject(

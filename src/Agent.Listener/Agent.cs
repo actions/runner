@@ -177,7 +177,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
         private void PrintUsage()
         {
-            _term.WriteLine(StringUtil.Loc("ListenerHelper"));
+            _term.WriteLine(StringUtil.Loc("ListenerHelp"));
         }
     }
 }
