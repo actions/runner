@@ -39,6 +39,30 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             ValidateLocStrings(new TestHostContext(this), project: "Agent.Worker");
         }
 
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "LocString")]
+        public void IsLocStringsPrettyPrint()
+        {
+            // Load the strings.
+            string stringsFile = Path.Combine(TestUtil.GetSrcPath(), "Misc", "layoutbin", "en-US", "strings.json");
+            Assert.True(File.Exists(stringsFile), $"File does not exist: {stringsFile}");
+            var resourceDictionary = IOUtil.LoadObject<Dictionary<string, object>>(stringsFile);
+
+            // sort the dictionary.
+            Dictionary<string, object> sortedResourceDictionary = new Dictionary<string, object>();
+            foreach (var res in resourceDictionary.OrderBy(r => r.Key))
+            {
+                sortedResourceDictionary[res.Key] = res.Value;
+            }
+
+            // print to file.
+            string prettyStringsFile = Path.Combine(TestUtil.GetSrcPath(), "Misc", "layoutbin", "en-US", "strings.json.pretty");
+            IOUtil.SaveObject(sortedResourceDictionary, prettyStringsFile);
+
+            Assert.True(string.Equals(File.ReadAllText(stringsFile), File.ReadAllText(prettyStringsFile)), $"Orginal string.json file: {stringsFile} is not pretty printed, replace it with: {prettyStringsFile}");
+        }
+
         private void ValidateLocStrings(TestHostContext hc, string project)
         {
             using (hc)

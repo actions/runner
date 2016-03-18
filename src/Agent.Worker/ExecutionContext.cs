@@ -255,7 +255,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         // therefore should be localized. Use the Loc methods from the StringUtil class. The exception to
         // the rule is command messages - which should be crafted using strongly typed wrapper methods.
         public void Write(string tag, string message)
-        {            
+        {
             string msg = _secretMasker.MaskSecrets($"{tag}{message}");
             lock (_loggerLock)
             {

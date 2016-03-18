@@ -25,6 +25,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             ArgUtil.NotNull(message.Tasks, nameof(message.Tasks));
             Trace.Info("Job ID {0}", message.JobId);
 
+            if (message.Environment.Variables.ContainsKey(Constants.Variables.System.EnableAccessToken) &&
+                StringUtil.ConvertToBoolean(message.Environment.Variables[Constants.Variables.System.EnableAccessToken]))
+            {
+                // TODO: get access token use Util Method
+                message.Environment.Variables[Constants.Variables.System.AccessToken] = message.Environment.SystemConnection.Authorization.Parameters["AccessToken"];
+            }
+
             // Setup the job server and job server queue.
             var jobServer = HostContext.GetService<IJobServer>();
             await jobServer.ConnectAsync(ApiUtil.GetVssConnection(message));
