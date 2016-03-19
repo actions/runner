@@ -10,6 +10,13 @@ Will run all existing tasks (typescript/javascript and powershell) including [ou
 
 > Status:  Work is just beginning on this project.  Please do not log issues yet.  You are welcome to inspect and try it out as we build it.  We are targetting a preview early in April 2016, available with VSTS soon after that and is targetting the next TFS release for on-premises.
 
+## Build Status
+|   | Debug |
+|---|:-----:|
+|**Ubuntu 15.10**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/b924d696-3eae-4116-8443-9a18392d8544/2853/badge?branch=master)|
+|**OSX 10.11**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/b924d696-3eae-4116-8443-9a18392d8544/3080/badge?branch=master)|
+|**Windows Server 2012R2**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/b924d696-3eae-4116-8443-9a18392d8544/2850/badge?branch=master)|
+
 
 ## Install
 
