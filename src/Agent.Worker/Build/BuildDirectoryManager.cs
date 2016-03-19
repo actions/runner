@@ -195,25 +195,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             Trace.Info($"Checking if {description} exists: '{path}'");
             if (Directory.Exists(path))
             {
-                // Delete the files.
                 executionContext.Debug($"Deleting {description}: '{path}'");
-                Trace.Info("Deleting files.");
-                foreach (string file in Directory.EnumerateFiles(path, "*", SearchOption.AllDirectories))
-                {
-                    executionContext.CancellationToken.ThrowIfCancellationRequested();
-                    // TODO: Test for readonly files.
-                    File.Delete(file);
-                }
-
-                // Delete the directories.
-                Trace.Info("Deleting directories.");
-                foreach (string directory in Directory.GetDirectories(path, "*", SearchOption.AllDirectories).OrderByDescending(x => x.Length))
-                {
-                    executionContext.CancellationToken.ThrowIfCancellationRequested();
-                    Directory.Delete(directory);
-                }
-
-                Directory.Delete(path);
+                IOUtil.DeleteDirectory(path, executionContext.CancellationToken);
             }
         }
     }

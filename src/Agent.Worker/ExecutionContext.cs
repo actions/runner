@@ -2,6 +2,7 @@ using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
@@ -244,12 +245,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
             // Initialize the environment.
             Endpoints = message.Environment.Endpoints;
-            Variables = new Variables(HostContext, message.Environment.Variables);
+            List<string> warnings;
+            Variables = new Variables(HostContext, message.Environment.Variables, out warnings);
 
             // Initialize the job timeline record.
             // the job timeline record is at order 1.
             InitializeTimelineRecord(message.Timeline.Id, message.JobId, null, ExecutionContextType.Job, message.JobName, 1);
-        }        
+
+            // Log any warnings.
+            foreach (string warning in (warnings ?? new List<string>()))
+            {
+                this.Warning(warning);
+            }
+        }
 
         // Do not add a format string overload. In general, execution context messages are user facing and
         // therefore should be localized. Use the Loc methods from the StringUtil class. The exception to
@@ -260,7 +268,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             lock (_loggerLock)
             {
                 _logger.Write(msg);
-            }            
+            }
 
             _jobServerQueue.QueueWebConsoleLine(msg);
         }

@@ -2,30 +2,29 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace Microsoft.VisualStudio.Services.Agent
 {
     [ServiceLocator(Default = typeof(SecretMasker))]
     public interface ISecretMasker : IAgentService
     {
-        IEnumerable<ISecret> Masks { get; }
-
         string MaskSecrets(string input);
 
-        void Add(ISecret mask);
-
-        void AddRegEx(string expression);
+        void AddRegex(string expression);
 
         void AddValue(string value);
 
-        void AddVariableName(string variableName, string value);
+        void AddVariable(string name, string value);
     }
 
-    public class SecretMasker : AgentService, ISecretMasker
+    public sealed class SecretMasker : AgentService, ISecretMasker
     {
         private const string Mask = "********";
+        private readonly List<ISecret> _secrets = new List<ISecret>();
+        private readonly HashSet<string> _variableNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        private readonly List<ISecret> _secretMasks = new List<ISecret>();
+        public HashSet<string> VariableNames => _variableNames;
 
         public override void Initialize(IHostContext hostContext)
         {
@@ -33,7 +32,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             //The HostContext.Trace needs SecretMasker to be constructed already.
             //We should not call HostContext.GetTrace or trace anywhere from SecretMasker
             //implementation, because of the circular dependency (this.Trace is null).
-            //Also HostContext is null, but we don't need it anyway here
+            //Also HostContext is null, but we don't need it anyway here.
         }
 
         public string MaskSecrets(string input)
@@ -45,11 +44,12 @@ namespace Microsoft.VisualStudio.Services.Agent
 
             // get indexes and lengths of all substrings that will be replaced
             var positionsToReplace = new List<ReplacementPosition>();
-            foreach (ISecret secretMask in _secretMasks)
+            foreach (ISecret secret in _secrets)
             {
-                positionsToReplace.AddRange(secretMask.GetPositions(input));
+                positionsToReplace.AddRange(secret.GetPositions(input));
             }
 
+            // short-circuit if nothing to replace
             if (positionsToReplace.Count == 0)
             {
                 return input;
@@ -99,31 +99,108 @@ namespace Microsoft.VisualStudio.Services.Agent
             return stringBuilder.ToString();
         }
 
-        public void Add(ISecret mask)
+        public void AddRegex(string expression)
         {
-            _secretMasks.Add(mask);
-        }
-
-        public void AddRegEx(string expression)
-        {
-            Add(new RegexSecret(expression));
+            _secrets.Add(new RegexSecret(expression));
         }
 
         public void AddValue(string value)
         {
-            Add(new ValueSecret(value));
+            if (!string.IsNullOrEmpty(value))
+            {
+                _secrets.Add(new ValueSecret(value));
+            }
         }
 
-        public void AddVariableName(string variableName, string value)
+        // TODO: REVISIT WRT CONCURRENCY. NEED TO SWAP OUT UNDERLYING LIST TO AVOID INTERFERENCE WITH ITERATORS.
+        public void AddVariable(string name, string value)
         {
-            Add(new VariableSecret(variableName, value));
+            _variableNames.Add(name);
+            if (!string.IsNullOrEmpty(value))
+            {
+                _secrets.Add(new ValueSecret(value));
+            }
+        }
+    }
+
+    public class ReplacementPosition
+    {
+        public ReplacementPosition(int start, int length)
+        {
+            Start = start;
+            Length = length;
         }
 
-        public IEnumerable<ISecret> Masks
+        public int Start { get; set; }
+        public int Length { get; set; }
+        public int End
         {
             get
             {
-                return _secretMasks.AsReadOnly();
+                return Start + Length;
+            }
+        }
+    }
+
+    public interface ISecret
+    {
+        /// <summary>
+        /// Returns one item (start, length) for each match found in the input string.
+        /// </summary>
+        IEnumerable<ReplacementPosition> GetPositions(string input);
+    }
+
+    public sealed class RegexSecret : ISecret
+    {
+        private readonly Regex _regex;
+
+        public RegexSecret(string expression)
+        {
+            _regex = new Regex(expression);
+        }
+
+        public IEnumerable<ReplacementPosition> GetPositions(string input)
+        {
+            int startIndex = 0;
+            while (startIndex < input.Length)
+            {
+                var match = _regex.Match(input, startIndex);
+                if (match.Success)
+                {
+                    startIndex = match.Index + 1;
+                    yield return new ReplacementPosition(match.Index, match.Length);
+                }
+                else
+                {
+                    yield break;
+                }
+            }
+        }
+    }
+
+    public sealed class ValueSecret : ISecret
+    {
+        private readonly string _valueToMask;
+
+        public ValueSecret(string value)
+        {
+            _valueToMask = value;
+        }
+
+        public IEnumerable<ReplacementPosition> GetPositions(string input)
+        {
+            if (!string.IsNullOrEmpty(input) && !string.IsNullOrEmpty(_valueToMask))
+            {
+                int startIndex = 0;
+                while (startIndex > -1 && startIndex < input.Length)
+                {
+                    startIndex = input.IndexOf(_valueToMask, startIndex);
+                    if (startIndex > -1)
+                    {
+                        yield return new ReplacementPosition(startIndex, _valueToMask.Length);
+                        ++startIndex;
+                    }
+                }
             }
         }
     }
