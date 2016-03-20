@@ -120,9 +120,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         {
             // Validate args.
             Trace.Entering();
-            ArgUtil.NotNull(PrepareStep, nameof(PrepareStep));
-            ArgUtil.NotNull(PrepareStep.ExecutionContext, nameof(PrepareStep.ExecutionContext));
-            IExecutionContext executionContext = PrepareStep.ExecutionContext;
+            ArgUtil.NotNull(FinallyStep, nameof(FinallyStep));
+            ArgUtil.NotNull(FinallyStep.ExecutionContext, nameof(FinallyStep.ExecutionContext));
+            IExecutionContext executionContext = FinallyStep.ExecutionContext;
 
             // If syncSources = false, we will not reset repository.
             bool syncSources = executionContext.Variables.Build_SyncSources ?? true;
