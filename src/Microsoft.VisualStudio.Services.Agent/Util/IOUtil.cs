@@ -91,7 +91,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
         {
             ArgUtil.NotNullOrEmpty(command, nameof(command));
 
+#if OS_WINDOWS
             string path = Environment.GetEnvironmentVariable("Path");
+#else
+            string path = Environment.GetEnvironmentVariable("PATH");
+#endif
             if (string.IsNullOrEmpty(path))
             {
                 return null;
@@ -100,7 +104,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
 #if OS_WINDOWS
             char pathSep = ';';
 #else
-            char pathSep=':';
+            char pathSep = ':';
 #endif
 
             string[] pathSegments = path.Split(new Char[] { pathSep }, StringSplitOptions.RemoveEmptyEntries);
