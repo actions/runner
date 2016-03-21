@@ -6,6 +6,7 @@ using System;
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
@@ -15,6 +16,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         string RepositoryType { get; }
 
         string GetBuildDirectoryHashKey(IExecutionContext executionContext, ServiceEndpoint endpoint);
+
+        Task GetSourceAsync(IExecutionContext executionContext, ServiceEndpoint endpoint, CancellationToken cancellationToken);
+
+        Task PostJobCleanupAsync(IExecutionContext executionContext, ServiceEndpoint endpoint);
     }
 
     public abstract class SourceProvider : AgentService

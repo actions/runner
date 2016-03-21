@@ -92,14 +92,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             // Recreate binaries dir if clean=binary is set.
             // Delete source dir if clean=src is set.
             BuildCleanOption? cleanOption = executionContext.Variables.Build_Clean;
-            if (cleanOption == BuildCleanOption.All)
-            {
-                DeleteDirectory(
-                    executionContext,
-                    description: "build directory",
-                    path: Path.Combine(IOUtil.GetWorkPath(HostContext), newConfig.BuildDirectory));
-            }
-
+            CreateDirectory(
+                executionContext,
+                description: "build directory",
+                path: Path.Combine(IOUtil.GetWorkPath(HostContext), newConfig.BuildDirectory),
+                deleteExisting: cleanOption == BuildCleanOption.All);
             CreateDirectory(
                 executionContext,
                 description: "artifacts directory",
@@ -115,13 +112,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 description: "binaries directory",
                 path: Path.Combine(IOUtil.GetWorkPath(HostContext), newConfig.BuildDirectory, Constants.Build.Path.BinariesDirectory),
                 deleteExisting: cleanOption == BuildCleanOption.Binary);
-            if (cleanOption == BuildCleanOption.Source)
-            {
-                DeleteDirectory(
-                    executionContext,
-                    description: "source directory",
-                    path: Path.Combine(IOUtil.GetWorkPath(HostContext), newConfig.BuildDirectory, Constants.Build.Path.SourcesDirectory));
-            }
+            CreateDirectory(
+                executionContext,
+                description: "source directory",
+                path: Path.Combine(IOUtil.GetWorkPath(HostContext), newConfig.BuildDirectory, Constants.Build.Path.SourcesDirectory),
+                deleteExisting: cleanOption == BuildCleanOption.Source);
 
             return newConfig;
         }
@@ -182,12 +177,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             // Delete.
             if (deleteExisting)
             {
+                executionContext.Debug($"Delete existing {description}: '{path}'");
                 DeleteDirectory(executionContext, description, path);
             }
 
             // Create.
             if (!Directory.Exists(path))
             {
+                executionContext.Debug($"Creating {description}: '{path}'");
                 Trace.Info($"Creating {description}.");
                 Directory.CreateDirectory(path);
             }

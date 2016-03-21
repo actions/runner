@@ -71,6 +71,34 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             return Format(CultureInfo.CurrentCulture, Loc(locKey), args);
         }
 
+        /// <summary>
+        /// Convert String to boolean, valid true string: "1", "true", "$true", valid false string: "0", "false", "$false".
+        /// </summary>
+        /// <param name="value"></param>
+        /// <param name="defaultValue">default result when value is null or empty or not a valid true/false string.</param>
+        /// <returns></returns>
+        public static bool ConvertToBoolean(string value, bool? defaultValue = null)
+        {
+            if (string.IsNullOrEmpty(value))
+            {
+                return defaultValue ?? false;
+            }
+
+            switch (value.ToLowerInvariant())
+            {
+                case "1":
+                case "true":
+                case "$true":
+                    return true;
+                case "0":
+                case "false":
+                case "$false":
+                    return false;
+                default:
+                    return defaultValue ?? false;
+            }
+        }
+
         private static string Format(CultureInfo culture, string format, params object[] args)
         {
             try

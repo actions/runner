@@ -102,7 +102,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
                 _buildDirectoryManager.PrepareDirectory(_ec.Object, _endpoint, _sourceProvider.Object);
 
                 // Assert.
-                Assert.False(Directory.Exists(sourcesDirectory));
+                Assert.True(Directory.Exists(sourcesDirectory));
+                Assert.Equal(0, Directory.GetFileSystemEntries(sourcesDirectory, "*", SearchOption.AllDirectories).Length);
             }
         }
 
@@ -153,9 +154,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
                 _buildDirectoryManager.PrepareDirectory(_ec.Object, _endpoint, _sourceProvider.Object);
 
                 // Assert.
-                Assert.Equal(3, Directory.GetFileSystemEntries(buildDirectory, "*", SearchOption.AllDirectories).Length);
+                Assert.Equal(4, Directory.GetFileSystemEntries(buildDirectory, "*", SearchOption.AllDirectories).Length);
                 Assert.True(Directory.Exists(Path.Combine(_workFolder, _newConfig.BuildDirectory, Constants.Build.Path.ArtifactsDirectory)));
                 Assert.True(Directory.Exists(Path.Combine(_workFolder, _newConfig.BuildDirectory, Constants.Build.Path.BinariesDirectory)));
+                Assert.True(Directory.Exists(Path.Combine(_workFolder, _newConfig.BuildDirectory, Constants.Build.Path.SourcesDirectory)));
                 Assert.True(Directory.Exists(Path.Combine(_workFolder, _newConfig.BuildDirectory, Constants.Build.Path.TestResultsDirectory)));
             }
         }
