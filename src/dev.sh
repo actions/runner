@@ -3,11 +3,22 @@ DEV_SUBCMD=$2
 LAYOUT_DIR=`pwd`/../_layout
 DOWNLOAD_DIR=`pwd`/../_downloads
 
+BUILD_CONFIG="Debug"
+if [[ "$DEV_SUBCMD" == "Release" ]]; then
+    BUILD_CONFIG="Release"
+fi
+
+PLATFORM_NAME=`uname`
+PLATFORM="windows"
+if [[ ("$PLATFORM_NAME" == "Linux") || ("$PLATFORM_NAME" == "Darwin") ]]; then
+   PLATFORM=`echo "${PLATFORM_NAME}" | awk '{print tolower($0)}'`
+fi
+
+# allow for #if defs in code
 define_os='OS_WINDOWS'
-BUILD_OS=`uname`
-if [[ "$BUILD_OS" == 'Linux' ]]; then
+if [[ "$PLATFORM" == 'linux' ]]; then
    define_os='OS_LINUX'
-elif [[ "$BUILD_OS" == 'Darwin' ]]; then
+elif [[ "$PLATFORM" == 'darwin' ]]; then
    define_os='OS_OSX'
 fi
 
@@ -49,19 +60,31 @@ function rundotnet ()
     dotnet_cmd=${1}
     err_handle=${2:-failed}
     run_dirs=("${!3}")
+
     heading ${1} ...
+
+    cfg_args=""
+    if [[ ("$dotnet_cmd" == "build") || ("$dotnet_cmd" == "publish") ]]; then
+        cfg_args="-c ${BUILD_CONFIG}"
+        echo "${cfg_args}"
+    fi
     
     for dir_name in ${run_dirs[@]}
     do
         echo
         echo -- Running: dotnet $dotnet_cmd $dir_name --
         echo
-        dotnet ${dotnet_cmd} $dir_name || ${err_handle} "${dotnet_cmd} $dir_name"
+        dotnet ${dotnet_cmd} $dir_name $cfg_args || ${err_handle} "${dotnet_cmd} $dir_name"
     done   
 }
 
 function build ()
 {
+    commit_token="_COMMIT_HASH_"
+    commit_hash=`git rev-parse HEAD` || "failed git commit hash"
+    echo "Building ${commit_hash}"
+    sed "s/$commit_token/$commit_hash/g" "Misc/BuildConstants.ch" > "Microsoft.VisualStudio.Services.Agent/BuildConstants.cs"
+
     rundotnet build failed build_dirs[@]
 }
 
@@ -96,11 +119,13 @@ function publish ()
 function copyBin ()
 {
     echo Copying ${1}
-    pushd ${1}/bin/Debug/dnxcore50 > /dev/null
+    pushd ${1}/bin/${BUILD_CONFIG}/dnxcore50 > /dev/null
+
     source_dir=$(ls -d */)publish/
     if [ ! -d "$source_dir" ]; then
         failed "Publish folder is missing. Please ensure you use the correct .NET Core tools (see readme for instructions)"
     fi
+
     cp -Rf ${source_dir}* ${LAYOUT_DIR}/bin
     popd > /dev/null 
 }
@@ -113,7 +138,7 @@ function layout ()
     publish
     
     heading Layout ...
-    rm -rf ${LAYOUT_DIR}
+    rm -Rf ${LAYOUT_DIR}
     mkdir -p ${LAYOUT_DIR}/bin
     for bin_copy_dir in ${bin_layout_dirs[@]}
     do
@@ -125,6 +150,10 @@ function layout ()
 
     heading Externals ...
     bash ./Misc/externals.sh
+
+    if [[ ("$PLATFORM" == "linux") || ("$PLATFORM" == "darwin") ]]; then
+       package
+    fi
 }
 
 function update ()
@@ -141,8 +170,8 @@ function runtest ()
 {
     heading Testing ...
     dotnet publish Test || failed "publishing Test"
-    rm -Rf Test/bin/Debug/dnxcore50/_diag
-    pushd Test/bin/Debug/dnxcore50 > /dev/null
+    rm -Rf Test/bin/${BUILD_CONFIG}/dnxcore50/_diag
+    pushd Test/bin/${BUILD_CONFIG}/dnxcore50 > /dev/null
     pushd $(ls -d */ | grep -v '_')publish > /dev/null
     ./corerun xunit.console.netcore.exe Test.dll -xml testresults.xml || failed "failed tests"
     popd > /dev/null
@@ -164,6 +193,20 @@ function buildtest ()
     runtest
 }
 
+function package ()
+{
+    pkg_dir=`pwd`/../_package
+
+    agent_ver=`${LAYOUT_DIR}/bin/Agent.Listener --version` || "failed version"
+    agent_pkg_name="vsts-agent-${PLATFORM}-${agent_ver}-$(date +%m)$(date +%d).tar.gz"
+    rm -Rf ${LAYOUT_DIR}/_diag
+    mkdir -p $pkg_dir
+    pushd $pkg_dir > /dev/null
+    rm -Rf *
+    tar -czf ${agent_pkg_name} -C ${LAYOUT_DIR} .
+    popd > /dev/null
+}
+
 case $DEV_CMD in
    "build") build;;
    "b") build;;
@@ -178,6 +221,8 @@ case $DEV_CMD in
    "l") layout;;
    "update") update;;
    "u") update;;
+   "package") package;;
+   "p") package;;
    "validate") validate;;
    "v") validate;;
    *) echo "Invalid cmd.  Use build, restore, clean, test, or layout";;

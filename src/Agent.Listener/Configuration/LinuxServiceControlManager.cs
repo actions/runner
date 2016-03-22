@@ -193,7 +193,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             catch (Exception ex)
             {
                 Trace.Error(ex);
-                _term.WriteError(StringUtil.Loc("CannotChangeOwnership"));
+                // TODO: Localize this error message.
+                _term.WriteError("CannotChangeOwnership");
 
                 throw;
             }

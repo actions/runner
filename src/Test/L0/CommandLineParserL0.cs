@@ -37,7 +37,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 trace.Info("Parsed");
 
                 trace.Info("Commands: {0}", clp.Commands.Count);
-                Assert.True(clp.Commands.Count == 2);                
+                Assert.True(clp.Commands.Count == 2);
             }
         }
 
@@ -61,7 +61,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 Assert.True(clp.Args.ContainsKey("arg1"));
                 Assert.Equal(clp.Args["arg1"], "arg1val");
                 Assert.True(clp.Args.ContainsKey("arg2"));
-                Assert.Equal(clp.Args["arg2"], "arg2val");                                
+                Assert.Equal(clp.Args["arg2"], "arg2val");
             }
         }
 
@@ -83,8 +83,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 trace.Info("Args: {0}", clp.Flags.Count);
                 Assert.True(clp.Flags.Count == 2);
                 Assert.True(clp.Flags.Contains("flag1"));
-                Assert.True(clp.Flags.Contains("flag2"));         
+                Assert.True(clp.Flags.Contains("flag2"));
             }
-        }        
+        }
     }
 }

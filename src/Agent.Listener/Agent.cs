@@ -55,12 +55,22 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     // TODO: Unconfiure, remove config and exit
                 }
 
-                if (parser.IsCommand("run") && !configManager.IsConfigured())
+                if (parser.Flags.Contains("version"))
                 {
-                    Trace.Info("run");
-                    _term.WriteError(StringUtil.Loc("AgentIsNotConfigured"));
-                    PrintUsage();
-                    return 1;
+                    _term.WriteLine(Constants.Agent.Version);
+                    return 0;
+                }
+
+                if (parser.Flags.Contains("commit"))
+                {
+                    _term.WriteLine(BuildConstants.Source.CommitHash);
+                    return 0;
+                }            
+
+                if (parser.IsCommand("unconfigure"))
+                {
+                    Trace.Info("unconfigure");
+                    // TODO: Unconfiure, remove config and exit
                 }
 
                 // unattend mode will not prompt for args if not supplied.  Instead will error.
@@ -192,7 +202,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
         private void PrintUsage()
         {
-            _term.WriteLine(StringUtil.Loc("ListenerHelper"));
+            _term.WriteLine(StringUtil.Loc("ListenerHelp"));
         }
 
         private void Quit()

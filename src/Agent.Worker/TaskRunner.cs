@@ -77,44 +77,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
             // Expand the inputs.
             Trace.Verbose("Expanding inputs.");
-            foreach (string inputKey in inputs.Keys.ToArray())
-            {
-                // Bump the start index with each replacement to prevent recursive replacement.
-                Trace.Verbose($"Expanding input '{inputKey}'.");
-                int startIndex = 0;
-                int prefixIndex;
-                int suffixIndex;
-                string inputValue = inputs[inputKey] ?? string.Empty;
-                while (startIndex < inputValue.Length &&
-                    (prefixIndex = inputValue.IndexOf(Constants.Variables.MacroPrefix, startIndex, StringComparison.Ordinal)) >= 0 &&
-                    (suffixIndex = inputValue.IndexOf(Constants.Variables.MacroSuffix, prefixIndex + Constants.Variables.MacroPrefix.Length, StringComparison.Ordinal)) >= 0)
-                {
-                    // A variable macro candidate was found.
-                    string variableKey = inputValue.Substring(
-                        startIndex: prefixIndex + Constants.Variables.MacroPrefix.Length,
-                        length: suffixIndex - prefixIndex - Constants.Variables.MacroPrefix.Length);
-                    Trace.Verbose($"Variable macro candidate '{variableKey}'.");
-                    string variableValue;
-                    if (!string.IsNullOrEmpty(variableKey) &&
-                        ExecutionContext.Variables.TryGetValue(variableKey, out variableValue))
-                    {
-                        // Update the input value.
-                        Trace.Verbose("Candidate found.");
-                        inputValue = string.Concat(
-                            inputValue.Substring(0, prefixIndex),
-                            variableValue ?? string.Empty,
-                            inputValue.Substring(suffixIndex + Constants.Variables.MacroSuffix.Length));
-                        startIndex = prefixIndex + (variableValue ?? string.Empty).Length;
-                    }
-                    else
-                    {
-                        Trace.Verbose("Candidate not found.");
-                        startIndex += Constants.Variables.MacroPrefix.Length;
-                    }
-                }
-
-                inputs[inputKey] = inputValue;
-            }
+            ExecutionContext.Variables.ExpandValues(target: inputs);
 
             // TODO: Delegate to the source provider to fixup the file path inputs.
 

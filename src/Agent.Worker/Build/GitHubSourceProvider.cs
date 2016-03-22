@@ -4,7 +4,7 @@ using System;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 {
-    public sealed class GitHubSourceProvider : SourceProvider, ISourceProvider
+    public sealed class GitHubSourceProvider : GitSourceProvider, ISourceProvider
     {
         public override string RepositoryType => WellKnownRepositoryTypes.GitHub;
     }

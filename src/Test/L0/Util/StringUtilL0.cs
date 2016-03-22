@@ -13,10 +13,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Util
         [Trait("Category", "Common")]
         public void FormatAlwaysCallsFormat()
         {
-            // Arrange.
             using (TestHostContext hc = new TestHostContext(this))
             {
                 Tracing trace = hc.GetTrace();
+
+                // Arrange.
                 var variableSets = new[]
                 {
                     new { Format = null as string, Args = null as object[], Expected = string.Empty },
@@ -48,10 +49,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Util
         [Trait("Category", "Common")]
         public void FormatHandlesFormatException()
         {
-            // Arrange.
             using (TestHostContext hc = new TestHostContext(this))
             {
                 Tracing trace = hc.GetTrace();
+
+                // Arrange.
                 var variableSets = new[]
                 {
                     new { Format = "Bad format { 0}", Args = null as object[], Expected = "Bad format { 0}" },
@@ -78,9 +80,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Util
         [Trait("Category", "Common")]
         public void FormatUsesInvariantCulture()
         {
-            // Arrange.
             using (TestHostContext hc = new TestHostContext(this))
             {
+                // Arrange.
                 CultureInfo originalCulture = CultureInfo.CurrentCulture;
                 try
                 {
@@ -96,6 +98,93 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Util
                 {
                     CultureInfo.CurrentCulture = originalCulture;
                 }
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void ConvertNullOrEmptryStringToBool()
+        {
+            using (TestHostContext hc = new TestHostContext(this))
+            {
+                // Arrange.
+                string nullString = null;
+                string emptyString = string.Empty;
+
+                // Act.
+                bool result1 = StringUtil.ConvertToBoolean(nullString);
+                bool result2 = StringUtil.ConvertToBoolean(emptyString);
+
+                // Actual
+                Assert.False(result1, "Null String should convert to false.");
+                Assert.False(result2, "Empty String should convert to false.");
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void ConvertNullOrEmptryStringToDefaultBool()
+        {
+            using (TestHostContext hc = new TestHostContext(this))
+            {
+                // Arrange.
+                string nullString = null;
+                string emptyString = string.Empty;
+
+                // Act.
+                bool result1 = StringUtil.ConvertToBoolean(nullString, true);
+                bool result2 = StringUtil.ConvertToBoolean(emptyString, true);
+
+                // Actual
+                Assert.True(result1, "Null String should convert to true since default value is set to true.");
+                Assert.True(result2, "Empty String should convert to true since default value is set to true.");
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void ConvertStringToBool()
+        {
+            using (TestHostContext hc = new TestHostContext(this))
+            {
+                // Arrange.
+                string trueString1 = "1";
+                string trueString2 = "True";
+                string trueString3 = "$TRUE";
+                string falseString1 = "0";
+                string falseString2 = "false";
+                string falseString3 = "$False";
+
+                string undefineString1 = "-1";
+                string undefineString2 = "sometext";
+                string undefineString3 = "2015-03-21";
+
+                // Act.
+                bool result1 = StringUtil.ConvertToBoolean(trueString1, false);
+                bool result2 = StringUtil.ConvertToBoolean(trueString2);
+                bool result3 = StringUtil.ConvertToBoolean(trueString3, true);
+                bool result4 = StringUtil.ConvertToBoolean(falseString1, true);
+                bool result5 = StringUtil.ConvertToBoolean(falseString2);
+                bool result6 = StringUtil.ConvertToBoolean(falseString3, false);
+
+                bool result7 = StringUtil.ConvertToBoolean(undefineString1, true);
+                bool result8 = StringUtil.ConvertToBoolean(undefineString2);
+                bool result9 = StringUtil.ConvertToBoolean(undefineString3, false);
+
+                // Actual
+                Assert.True(result1, $"'{trueString1}' should convert to true.");
+                Assert.True(result2, $"'{trueString2}' should convert to true.");
+                Assert.True(result3, $"'{trueString3}' should convert to true.");
+                Assert.False(result4, $"'{falseString1}' should convert to false.");
+                Assert.False(result5, $"'{falseString2}' should convert to false.");
+                Assert.False(result6, $"'{falseString3}' should convert to false.");
+
+                Assert.True(result7, $"'{undefineString1}' should convert to true, since default is true.");
+                Assert.False(result8, $"'{undefineString2}' should convert to false.");
+                Assert.False(result9, $"'{undefineString3}' should convert to false.");
             }
         }
     }

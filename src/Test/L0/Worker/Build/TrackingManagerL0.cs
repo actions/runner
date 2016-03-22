@@ -50,7 +50,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
 
             // Setup the execution context.
             _ec = new Mock<IExecutionContext>();
-            _variables = new Variables(hc, new Dictionary<string, string>());
+            List<string> warnings;
+            _variables = new Variables(hc, new Dictionary<string, string>(), out warnings);
             _variables.Set(Constants.Variables.System.CollectionId, CollectionId);
             _variables.Set(WellKnownDistributedTaskVariables.TFCollectionUrl, CollectionUrl);
             _variables.Set(Constants.Variables.System.DefinitionId, DefinitionId);

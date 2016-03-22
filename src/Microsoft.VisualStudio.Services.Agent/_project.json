@@ -34,6 +34,7 @@
         "System.Diagnostics.Process": "4.1.0-rc3-23829",
         "System.IO": "4.1.0-rc3-23829",
         "System.IO.Pipes": "4.0.0-rc3-23829",
+        "System.Linq.Parallel": "4.0.0",
         "System.Runtime": "4.1.0-rc3-23829",
         "System.Xml.XmlSerializer": "4.0.11-rc3-23829",
         "NETStandard.Library": "1.0.0-rc3-23829"

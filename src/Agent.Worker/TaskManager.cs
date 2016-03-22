@@ -6,8 +6,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
-using System.Threading.Tasks;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
@@ -69,11 +70,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             {
                 try
                 {
-                    //sometimes the temp folder is not deleted -> wipe it
+                    //if the temp folder wasn't moved -> wipe it
                     if (Directory.Exists(tempDirectory))
                     {
                         Trace.Verbose("Deleting task temp folder: {0}", tempDirectory);
-                        Directory.Delete(tempDirectory, true);
+                        IOUtil.DeleteDirectory(tempDirectory, CancellationToken.None); // Don't cancel this cleanup and should be pretty fast.
                     }
                 }
                 catch (Exception ex)
