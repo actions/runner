@@ -14,20 +14,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
     [ServiceLocator(Default = typeof(MessageListener))]
     public interface IMessageListener : IAgentService
     {
-        Task<Boolean> CreateSessionAsync();
+        Task<Boolean> CreateSessionAsync(CancellationToken token);
         Task DeleteSessionAsync();
-        Task<TaskAgentMessage> GetNextMessageAsync();
+        Task<TaskAgentMessage> GetNextMessageAsync(CancellationToken token);
         TaskAgentSession Session { get; }
     }
 
     public sealed class MessageListener : AgentService, IMessageListener
     {
-        // TODO: FIX THIS: private long? _lastMessageId;
+        private long? _lastMessageId;
         private AgentSettings _settings;
 
         public TaskAgentSession Session { get; set; }
 
-        public async Task<Boolean> CreateSessionAsync()
+        public async Task<Boolean> CreateSessionAsync(CancellationToken token)
         {
             Trace.Entering();
             const int MaxAttempts = 10;
@@ -46,12 +46,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             VssCredentials creds = credMgr.LoadCredentials();
             Uri uri = new Uri(serverUrl);
             VssConnection conn = ApiUtil.CreateConnection(uri, creds);
-
-            //session name used to be Environment.MachineName, which is added in a latter coreclr libs than what we have
-            //TODO: name the session after Environment.MachineName, when we are ready to consume latest coreclr libs
-            //TODO: see if this is available in new std lib ver
-            string sessionName = "TODO_machine_name" + Guid.NewGuid().ToString();
-
+            string sessionName = $"{Environment.MachineName}_{Guid.NewGuid().ToString()}";
             var agentSystemCapabilities = new Dictionary<string, string>();
             //TODO: add capabilities
 
@@ -76,7 +71,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     Session = await agentSvr.CreateAgentSessionAsync(
                                                         _settings.PoolId,
                                                         taskAgentSession,
-                                                        HostContext.CancellationToken);
+                                                        token);
                     return true;
                 }
                 catch (OperationCanceledException)
@@ -110,7 +105,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
                     TimeSpan interval = TimeSpan.FromSeconds(30);
                     Trace.Info("Sleeping for {0} seconds before retrying.", interval.TotalSeconds);
-                    await HostContext.Delay(interval, HostContext.CancellationToken);
+                    await HostContext.Delay(interval, token);
                 }
             }
 
@@ -120,17 +115,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         public async Task DeleteSessionAsync()
         {
             var agentServer = HostContext.GetService<IAgentServer>();
-            if (this.Session != null && this.Session.SessionId != Guid.Empty)
-            {
-                //TODO: discuss how to handle cancellation
-                //we often have HostContext.CancellationToken already cancelled
-                //that is why we create a local cancellation source 
-                CancellationTokenSource ts = new CancellationTokenSource();
-                await agentServer.DeleteAgentSessionAsync(_settings.PoolId, Session.SessionId, ts.Token);
+            if (Session != null && Session.SessionId != Guid.Empty)
+            {                
+                using (var ts = new CancellationTokenSource(TimeSpan.FromSeconds(30)))
+                {
+                    await agentServer.DeleteAgentSessionAsync(_settings.PoolId, Session.SessionId, ts.Token);
+                }
             }
         }
 
-        public async Task<TaskAgentMessage> GetNextMessageAsync()
+        public async Task<TaskAgentMessage> GetNextMessageAsync(CancellationToken token)
         {
             Trace.Entering();
             ArgUtil.NotNull(Session, nameof(Session));
@@ -138,14 +132,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             var agentServer = HostContext.GetService<IAgentServer>();
             while (true)
             {
-                HostContext.CancellationToken.ThrowIfCancellationRequested();
+                token.ThrowIfCancellationRequested();
                 TaskAgentMessage message = null;
                 try
                 {
                     message = await agentServer.GetAgentMessageAsync(_settings.PoolId,
                                                                 Session.SessionId,
-                                                                null, // TODO: FIX THIS: _lastMessageId,
-                                                                HostContext.CancellationToken);
+                                                                _lastMessageId,
+                                                                token);
+                    if (message != null)
+                    {
+                        _lastMessageId = message.MessageId;
+                    }
                 }
                 catch (TimeoutException)
                 {

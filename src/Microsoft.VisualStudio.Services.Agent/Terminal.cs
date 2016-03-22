@@ -13,6 +13,8 @@ namespace Microsoft.VisualStudio.Services.Agent
     [ServiceLocator(Default = typeof(Terminal))]
     public interface ITerminal: IAgentService
     {
+        event EventHandler CancelKeyPress;
+
         bool Silent { get; set; }
         string ReadLine();
         string ReadSecret();
@@ -20,11 +22,32 @@ namespace Microsoft.VisualStudio.Services.Agent
         void WriteLine();
         void WriteLine(string line);
         void WriteError(string line);
+        void UnregisterCancelEvent();
     }
     
     public sealed class Terminal: AgentService, ITerminal
     {
         public bool Silent { get; set; }
+
+        public event EventHandler CancelKeyPress;
+
+        public override void Initialize(IHostContext hostContext)
+        {
+            base.Initialize(hostContext);
+
+            Console.CancelKeyPress += Console_CancelKeyPress;            
+        }
+
+        public void UnregisterCancelEvent()
+        {
+            Console.CancelKeyPress -= Console_CancelKeyPress;
+        }
+
+        private void Console_CancelKeyPress(object sender, ConsoleCancelEventArgs e)
+        {
+            e.Cancel = true;
+            CancelKeyPress?.Invoke(this, e);
+        }
 
         public string ReadLine()
         {

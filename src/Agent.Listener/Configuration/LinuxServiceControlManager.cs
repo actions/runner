@@ -6,6 +6,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 
 using Microsoft.VisualStudio.Services.Agent.Util;
+using System.Threading;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 {
@@ -252,8 +253,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 var processInvoker = HostContext.CreateService<IProcessInvoker>();
 
                 // TODO: can systemd installed in non default directory?
-                processInvoker.Execute("/usr/bin", "systemctl", command, null);
-                processInvoker.WaitForExit(HostContext.CancellationToken);
+                using (var cs = new CancellationTokenSource(TimeSpan.FromSeconds(45)))
+                {
+                    processInvoker.ExecuteAsync("/usr/bin", "systemctl", command, null, cs.Token).Wait();
+                }
             }
             catch (Exception ex)
             {

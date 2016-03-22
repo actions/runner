@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 
@@ -13,6 +14,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         public async Task SuccessExitsWithCodeZero()
         {
             using (TestHostContext hc = new TestHostContext(this))
+            using (var tokenSource = new CancellationTokenSource())
             {
                 Tracing trace = hc.GetTrace();
 
@@ -20,15 +22,47 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 var processInvoker = new ProcessInvoker();
                 processInvoker.Initialize(hc);
 #if OS_WINDOWS
-                processInvoker.Execute("", "cmd.exe", "/c \"dir >nul\"", null);
+                exitCode = await processInvoker.ExecuteAsync("", "cmd.exe", "/c \"dir >nul\"", null, tokenSource.Token);
 #endif
 #if (OS_OSX || OS_LINUX)
-                processInvoker.Execute("", "bash", "-c echo .", null);
+                exitCode = await processInvoker.ExecuteAsync("", "bash", "-c echo .", null, tokenSource.Token);
 #endif
-                exitCode = await processInvoker.WaitForExit(hc.CancellationToken);
 
                 trace.Info("Exit Code: {0}", exitCode);
-                Assert.Equal(0, exitCode);                
+                Assert.Equal(0, exitCode);
+            }
+        }
+
+
+        //Run a process that normally takes 20sec to finish and cancel it.        
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public async Task TestCancel()
+        {
+            const int SecondsToRun = 20;
+            using (TestHostContext hc = new TestHostContext(this))
+            using (var tokenSource = new CancellationTokenSource())
+            {
+                Tracing trace = hc.GetTrace();
+                var processInvoker = new ProcessInvoker();
+                processInvoker.Initialize(hc);
+                Stopwatch watch = Stopwatch.StartNew();
+#if OS_WINDOWS
+                Task execTask = processInvoker.ExecuteAsync("", "cmd.exe", $"/c \"choice /T {SecondsToRun} /D y\"", null, tokenSource.Token);
+#endif
+#if (OS_OSX || OS_LINUX)
+                Task execTask = processInvoker.ExecuteAsync("", "bash", $"sleep {SecondsToRun}s", null, tokenSource.Token);
+#endif
+                tokenSource.Cancel();
+                await Task.WhenAny(new Task[] { execTask });
+                Assert.True(execTask.IsCompleted);
+                Assert.True(!execTask.IsFaulted);
+                Assert.True(execTask.IsCanceled);
+                watch.Stop();
+                var elapsedSeconds = watch.ElapsedMilliseconds / 1000;
+                //if cancellation fails, then execution time is more than 10 seconds
+                Assert.True(elapsedSeconds < SecondsToRun / 2, "cancellation failed, because task took too long to run");
             }
         }
     }

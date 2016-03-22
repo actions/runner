@@ -67,6 +67,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 {
                     await step.RunAsync();
                 }
+                catch (OperationCanceledException ex)
+                {
+                    // Log the error and fail the step.
+                    Trace.Error($"Caught exception from step: {ex}");
+                    step.ExecutionContext.Error(ex);
+                    step.ExecutionContext.Result = TaskResult.Canceled;
+                }
                 catch (Exception ex)
                 {
                     // Log the error and fail the step.

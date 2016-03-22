@@ -23,14 +23,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
 
             _processInvoker.Setup(
                 x =>
-                x.Execute(
+                x.ExecuteAsync(
                     It.IsAny<string>(),
                     It.IsAny<string>(),
                     It.IsAny<string>(),
-                    It.IsAny<Dictionary<string, string>>()));
-
-            _processInvoker.Setup(x => x.WaitForExit(It.IsAny<CancellationToken>())).Returns(Task.FromResult(0));
-
+                    It.IsAny<Dictionary<string, string>>(),
+                    It.IsAny<CancellationToken>())).Returns(Task.FromResult(0));
         }
 
         private TestHostContext CreateTestContext([CallerMemberName] String testName = "")
@@ -71,16 +69,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
                 Assert.Equal(agentSettings.ServiceDisplayName, "VSTS Agent (server.agent)");
 
                 _processInvoker.Verify(
-                    x => x.Execute("/usr/bin", "systemctl", "daemon-reload", It.IsAny<Dictionary<string, string>>()),
+                    x => x.ExecuteAsync("/usr/bin", "systemctl", "daemon-reload", It.IsAny<Dictionary<string, string>>(), It.IsAny<CancellationToken>()),
                     Times.Once);
 
                 _processInvoker.Verify(
-                    x => x.Execute("/usr/bin", "systemctl", "stop vsts.agent.server.agent.service", It.IsAny<Dictionary<string, string>>()),
+                    x => x.ExecuteAsync("/usr/bin", "systemctl", "stop vsts.agent.server.agent.service", It.IsAny<Dictionary<string, string>>(), It.IsAny<CancellationToken>()),
                     Times.Once);
 
                 _processInvoker.Verify(
                     x =>
-                    x.Execute("/usr/bin", "systemctl", "enable vsts.agent.server.agent.service", It.IsAny<Dictionary<string, string>>()),
+                    x.ExecuteAsync("/usr/bin", "systemctl", "enable vsts.agent.server.agent.service", It.IsAny<Dictionary<string, string>>(), It.IsAny<CancellationToken>()),
                     Times.Once);
             }
         }
@@ -113,11 +111,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
                 controlManager.StartService(agentSettings.ServiceName);
 
                 _processInvoker.Verify(
-                    x => x.Execute("/usr/bin", "systemctl", "daemon-reload", It.IsAny<Dictionary<string, string>>()),
+                    x => x.ExecuteAsync("/usr/bin", "systemctl", "daemon-reload", It.IsAny<Dictionary<string, string>>(), It.IsAny<CancellationToken>()),
                     Times.Once);
 
                 _processInvoker.Verify(
-                    x => x.Execute("/usr/bin", "systemctl", "start testservice", It.IsAny<Dictionary<string, string>>()),
+                    x => x.ExecuteAsync("/usr/bin", "systemctl", "start testservice", It.IsAny<Dictionary<string, string>>(), It.IsAny<CancellationToken>()),
                     Times.Once);
             }
         }

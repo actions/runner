@@ -38,7 +38,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Agent")]
-        public async void TestRun()
+        public void TestRun()
         {
             using (var hc = new TestHostContext(this))
             using (var workerManager = new WorkerManager())
@@ -48,7 +48,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                 JobRequestMessage jobMessage = CreateJobRequestMessage();
                 _jobDispatcher.Setup(x => x.RunAsync(jobMessage, It.IsAny<CancellationToken>()))
                     .Returns(Task.FromResult<int>(21));
-                await workerManager.Run(jobMessage);
+                workerManager.Run(jobMessage);
                 _jobDispatcher.Verify(x => x.RunAsync(jobMessage, It.IsAny<CancellationToken>()),
                     "IJobDispatcher.RunAsync not invoked");
             }
@@ -77,7 +77,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                         await jobTask;
                         return 0;
                     });
-                await workerManager.Run(jobMessage);                
+                workerManager.Run(jobMessage);                
                 int i = 20;
                 while (i > 0 && (!started))
                 {

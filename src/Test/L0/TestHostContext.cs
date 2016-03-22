@@ -17,7 +17,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         private readonly ConcurrentDictionary<Type, object> _serviceSingletons = new ConcurrentDictionary<Type, object>();
         private readonly ITraceManager _traceManager;
         private readonly Terminal _term;
-        private readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
         private readonly SecretMasker _secretMasker;
         private string _suiteName;
         private string _testName;
@@ -53,10 +52,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             SetSingleton<ITerminal>(_term);
             EnqueueInstance<ITerminal>(_term);
         }
-
-        public CancellationToken CancellationToken => _cancellationTokenSource.Token;
-
-        public CancellationTokenSource CancellationTokenSource => _cancellationTokenSource;
 
         public CultureInfo DefaultCulture { get; private set; }
 
@@ -147,7 +142,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             if (disposing)
             {
                 _traceManager?.Dispose();
-                _cancellationTokenSource.Cancel();
             }
         }
     }

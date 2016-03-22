@@ -14,7 +14,6 @@ namespace Microsoft.VisualStudio.Services.Agent
 {
     public interface IHostContext : IDisposable
     {
-        CancellationToken CancellationToken { get; }
         Tracing GetTrace(string name);
         Task Delay(TimeSpan delay, CancellationToken cancellationToken);
         T CreateService<T>() where T : class, IAgentService;
@@ -29,21 +28,18 @@ namespace Microsoft.VisualStudio.Services.Agent
         private Tracing _trace;
         private ITraceManager _traceManager;
 
-        public HostContext(string hostType, CancellationToken cancellationToken)
+        public HostContext(string hostType)
             : this(
                 hostType: hostType,
-                logFile: Path.Combine(IOUtil.GetDiagPath(), StringUtil.Format("{0}_{1:yyyyMMdd-HHmmss}-utc.log", hostType, DateTime.UtcNow)),
-                cancellationToken: cancellationToken)
+                logFile: Path.Combine(IOUtil.GetDiagPath(), StringUtil.Format("{0}_{1:yyyyMMdd-HHmmss}-utc.log", hostType, DateTime.UtcNow)))
         {
         }
 
-        public HostContext(string hostType, string logFile, CancellationToken cancellationToken)
+        public HostContext(string hostType, string logFile)
         {
             // Validate args.
             ArgUtil.NotNullOrEmpty(hostType, nameof(hostType));
             ArgUtil.NotNullOrEmpty(logFile, nameof(logFile));
-            ArgUtil.NotNull(cancellationToken, nameof(cancellationToken));
-            CancellationToken = cancellationToken;
 
             // Create the trace manager.
             Directory.CreateDirectory(Path.GetDirectoryName(logFile));
@@ -57,8 +53,6 @@ namespace Microsoft.VisualStudio.Services.Agent
             _traceManager = new TraceManager(traceListener, GetService<ISecretMasker>());
             _trace = GetTrace(nameof(HostContext));
         }
-
-        public CancellationToken CancellationToken { get; private set; }
 
         public Tracing GetTrace(string name)
         {

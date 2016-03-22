@@ -44,6 +44,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
         public async void CreatesSession()
         {
             using (TestHostContext tc = CreateTestContext())
+            using (var tokenSource = new CancellationTokenSource())
             {
                 Tracing trace = tc.GetTrace();
 
@@ -53,14 +54,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                     .Setup(x => x.CreateAgentSessionAsync(
                         _settings.PoolId,
                         It.Is<TaskAgentSession>(y => y != null),
-                        tc.CancellationToken))
+                        tokenSource.Token))
                     .Returns(Task.FromResult(expectedSession));
 
                 // Act.
                 MessageListener listener = new MessageListener();
                 listener.Initialize(tc);
 
-                bool result = await listener.CreateSessionAsync();
+                bool result = await listener.CreateSessionAsync(tokenSource.Token);
                 trace.Info("result: {0}", result);
 
                 // Assert.
@@ -70,7 +71,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                     .Verify(x => x.CreateAgentSessionAsync(
                         _settings.PoolId,
                         It.Is<TaskAgentSession>(y => y != null),
-                        tc.CancellationToken), Times.Once());
+                        tokenSource.Token), Times.Once());
             }
         }
 
@@ -80,6 +81,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
         public async void DeleteSession()
         {
             using (TestHostContext tc = CreateTestContext())
+            using (var tokenSource = new CancellationTokenSource())
             {
                 Tracing trace = tc.GetTrace();
 
@@ -93,14 +95,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                     .Setup(x => x.CreateAgentSessionAsync(
                         _settings.PoolId,
                         It.Is<TaskAgentSession>(y => y != null),
-                        tc.CancellationToken))
+                        tokenSource.Token))
                     .Returns(Task.FromResult(expectedSession));
 
                 // Act.
                 MessageListener listener = new MessageListener();
                 listener.Initialize(tc);
 
-                bool result = await listener.CreateSessionAsync();
+                bool result = await listener.CreateSessionAsync(tokenSource.Token);
                 Assert.True(result);
                 Assert.Equal(expectedSession, listener.Session);
 
@@ -109,7 +111,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                         _settings.PoolId, expectedSession.SessionId, It.IsAny<CancellationToken>()))
                     .Returns(Task.CompletedTask);
                 await listener.DeleteSessionAsync();
-                
+
                 //Assert
                 _agentServer
                     .Verify(x => x.DeleteAgentSessionAsync(
@@ -123,6 +125,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
         public async void GetNextMessage()
         {
             using (TestHostContext tc = CreateTestContext())
+            using (var tokenSource = new CancellationTokenSource())
             {
                 Tracing trace = tc.GetTrace();
 
@@ -136,14 +139,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                     .Setup(x => x.CreateAgentSessionAsync(
                         _settings.PoolId,
                         It.Is<TaskAgentSession>(y => y != null),
-                        tc.CancellationToken))
+                        tokenSource.Token))
                     .Returns(Task.FromResult(expectedSession));
 
                 // Act.
                 MessageListener listener = new MessageListener();
                 listener.Initialize(tc);
 
-                bool result = await listener.CreateSessionAsync();
+                bool result = await listener.CreateSessionAsync(tokenSource.Token);
                 Assert.True(result);
                 Assert.Equal(expectedSession, listener.Session);
 
@@ -174,15 +177,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
 
                 _agentServer
                     .Setup(x => x.GetAgentMessageAsync(
-                        _settings.PoolId, expectedSession.SessionId, It.IsAny<long?>(), tc.CancellationToken))
+                        _settings.PoolId, expectedSession.SessionId, It.IsAny<long?>(), tokenSource.Token))
                     .Returns(async (Int32 poolId, Guid sessionId, Int64? lastMessageId, CancellationToken cancellationToken) =>
                     {
                         await Task.Yield();
                         return messages.Dequeue();
                     });
-                TaskAgentMessage message1 = await listener.GetNextMessageAsync();
-                TaskAgentMessage message2 = await listener.GetNextMessageAsync();
-                TaskAgentMessage message3 = await listener.GetNextMessageAsync();
+                TaskAgentMessage message1 = await listener.GetNextMessageAsync(tokenSource.Token);
+                TaskAgentMessage message2 = await listener.GetNextMessageAsync(tokenSource.Token);
+                TaskAgentMessage message3 = await listener.GetNextMessageAsync(tokenSource.Token);
                 Assert.Equal(arMessages[0], message1);
                 Assert.Equal(arMessages[1], message2);
                 Assert.Equal(arMessages[4], message3);
@@ -190,7 +193,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                 //Assert
                 _agentServer
                     .Verify(x => x.GetAgentMessageAsync(
-                        _settings.PoolId, expectedSession.SessionId, It.IsAny<long?>(), tc.CancellationToken), Times.Exactly(arMessages.Length));
+                        _settings.PoolId, expectedSession.SessionId, It.IsAny<long?>(), tokenSource.Token), Times.Exactly(arMessages.Length));
             }
         }
     }

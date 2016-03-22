@@ -3,6 +3,7 @@ using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
@@ -10,12 +11,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
     [ServiceLocator(Default = typeof(JobRunner))]
     public interface IJobRunner : IAgentService
     {
-        Task<TaskResult> RunAsync(JobRequestMessage message);
+        Task<TaskResult> RunAsync(JobRequestMessage message, CancellationToken jobRequestCancellationToken);
     }
 
     public sealed class JobRunner : AgentService, IJobRunner
     {
-        public async Task<TaskResult> RunAsync(JobRequestMessage message)
+        public async Task<TaskResult> RunAsync(JobRequestMessage message, CancellationToken jobRequestCancellationToken)
         {
             // Validate parameters.
             Trace.Entering();
@@ -36,7 +37,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             {
                 // Create the job execution context.
                 jobContext = HostContext.CreateService<IExecutionContext>();
-                jobContext.InitializeJob(message);
+                jobContext.InitializeJob(message, jobRequestCancellationToken);
                 Trace.Info("Starting the job execution context.");
                 jobContext.Start();
 

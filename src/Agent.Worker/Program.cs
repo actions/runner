@@ -10,15 +10,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
     {
         public static int Main(string[] args)
         {
-            var tokenSource = new CancellationTokenSource();
-            var hc = new HostContext("Worker", tokenSource.Token);
-            return RunAsync(args, hc, tokenSource).GetAwaiter().GetResult();
+            var hc = new HostContext("Worker");
+            return RunAsync(args, hc).GetAwaiter().GetResult();
         }
 
         public static async Task<int> RunAsync(
             string[] args,
-            IHostContext hc,
-            CancellationTokenSource tokenSource)
+            IHostContext hc)
         {
             Tracing trace = hc.GetTrace(nameof(Program));
             try
@@ -30,14 +28,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 ArgUtil.Equal("spawnclient", args[0].ToLowerInvariant(), $"{nameof(args)}[0]");
                 ArgUtil.NotNullOrEmpty(args[1], $"{nameof(args)}[1]");
                 ArgUtil.NotNullOrEmpty(args[2], $"{nameof(args)}[2]");
-                ArgUtil.NotNull(tokenSource, nameof(tokenSource));
                 var worker = hc.GetService<IWorker>();
 
                 // Run the worker.
                 return await worker.RunAsync(
                     pipeIn: args[1],
-                    pipeOut: args[2],
-                    hostTokenSource: tokenSource);
+                    pipeOut: args[2]);
             }
             catch (Exception ex)
             {

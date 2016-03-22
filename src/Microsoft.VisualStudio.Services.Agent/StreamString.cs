@@ -50,8 +50,12 @@ namespace Microsoft.VisualStudio.Services.Agent
         public async Task<string> ReadStringAsync(CancellationToken cancellationToken)
         {            
             Int32 len = await ReadInt32Async(cancellationToken);
-            cancellationToken.ThrowIfCancellationRequested();            
-            if (len <= 0 || len > MaxStringSize)
+            cancellationToken.ThrowIfCancellationRequested();
+            if (len == 0)
+            {
+                return string.Empty;
+            }
+            if (len < 0 || len > MaxStringSize)
             {                
                 throw new InvalidDataException();
             }
