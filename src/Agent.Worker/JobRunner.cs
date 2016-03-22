@@ -47,6 +47,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 Trace.Info("Starting the job execution context.");
                 jobContext.Start();
 
+                // Expand the endpoint data values.
+                foreach (ServiceEndpoint endpoint in jobContext.Endpoints)
+                {
+                    jobContext.Variables.ExpandValues(target: endpoint.Data);
+                }
+
                 // Get the job extensions.
                 Trace.Info("Getting job extensions.");
                 string hostType = jobContext.Variables.System_HostType;
@@ -107,8 +113,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     jobContext.Result = TaskResult.Failed;
                     return jobContext.Result.Value;
                 }
-
-                // TODO: Recursive expand variables before running the steps. Detect cycles and warn if a cyclical reference is encountered. Depth limit of 50. Use a stack, not recursive function.
 
                 // Run the steps.
                 var stepsRunner = HostContext.GetService<IStepsRunner>();

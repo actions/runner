@@ -1,40 +1,18 @@
-using Xunit;
 using System.Linq;
+using System.Text.RegularExpressions;
+using Xunit;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests
-{    
-    public sealed class ValueMaskL0
+{
+    public sealed class RegexSecretL0
     {
+        // TODO: Fix these test names.
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
-        public void ValueMaskTests_GetPositions_EmptyValue()
+        public void RegexSecretTests_GetPositions_Basic()
         {
-            var masker = new ValueSecret(null);
-            var input = "abcdefg";
-
-            var positions = masker.GetPositions(input);
-            Assert.Equal(0, positions.Count());
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Common")]
-        public void ValueMaskTests_GetPositions_EmptyInput()
-        {
-            var masker = new ValueSecret("def");
-            string input = null;
-
-            var positions = masker.GetPositions(input);
-            Assert.Equal(0, positions.Count());
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Common")]
-        public void ValueMaskTests_GetPositions_Basic()
-        {
-            var masker = new ValueSecret("def");
+            var masker = new RegexSecret("def");
             string input = "abcdefg";
 
             var positions = masker.GetPositions(input).ToList();
@@ -46,9 +24,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
-        public void ValueMaskTests_GetPositions_BeginningOfString()
+        public void RegexSecretTests_GetPositions_BeginningOfString()
         {
-            var masker = new ValueSecret("abc");
+            var masker = new RegexSecret("abc");
             string input = "abcdefg";
 
             var positions = masker.GetPositions(input).ToList();
@@ -60,9 +38,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
-        public void ValueMaskTests_GetPositions_EndOfString()
+        public void RegexSecretTests_GetPositions_EndOfString()
         {
-            var masker = new ValueSecret("efg");
+            var masker = new RegexSecret("efg");
             string input = "abcdefg";
 
             var positions = masker.GetPositions(input).ToList();
@@ -74,9 +52,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
-        public void ValueMaskTests_GetPositions_Multiple()
+        public void RegexSecretTests_GetPositions_Multiple()
         {
-            var masker = new ValueSecret("def");
+            var masker = new RegexSecret("def");
             string input = "abcdefgdefg";
 
             var positions = masker.GetPositions(input).ToList();
@@ -90,10 +68,42 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
-        public void ValueMaskTests_GetPositions_Overlap()
+        public void RegexSecretTests_GetPositions_Expression()
         {
-            var masker = new ValueSecret("cdcd");
-            string input = "abcdcdcdefg";
+            var masker = new RegexSecret("[ab]");
+            string input = "deabfgb";
+
+            var positions = masker.GetPositions(input).ToList();
+            Assert.Equal(3, positions.Count);
+            Assert.Equal(2, positions[0].Start);
+            Assert.Equal(1, positions[0].Length);
+            Assert.Equal(3, positions[1].Start);
+            Assert.Equal(1, positions[1].Length);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void RegexSecretTests_GetPositions_EscapedCharacters()
+        {
+            var regex = "a]bc[";
+            var masker = new RegexSecret(Regex.Escape(regex));
+            string input = "dfa]bc[]abcdfabc";
+
+            var positions = masker.GetPositions(input).ToList();
+            Assert.Equal(1, positions.Count);
+            Assert.Equal(2, positions[0].Start);
+            Assert.Equal(5, positions[0].Length);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void RegexSecretTests_GetPositions_Overlap()
+        {
+            var regex = "bcbc";
+            var masker = new RegexSecret(regex);
+            string input = "aabcbcbc";
 
             var positions = masker.GetPositions(input).ToList();
             Assert.Equal(2, positions.Count);

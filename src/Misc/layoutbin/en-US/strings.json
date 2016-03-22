@@ -108,6 +108,8 @@
   "SystemdDoesNotExists": "Systemd does not exist, if you are having init.d or any other init system you can manually configure it",
   "UnableToParseBuildTrackingConfig0": "Unable to parse the legacy build tracking configuration. A new build directory will be created instead. The previous directory may be left in an unreclaimed state. Legacy configuration contents: {0}",
   "UnauthorizedAccess": "You do not have access to {0} to create systemd unit file. Did you forget to run with sudo permission?",
+  "Variable0ContainsCyclicalReference": "Unable to expand variable '{0}'. A cyclical reference was detected.",
+  "Variable0ExceedsMaxDepth1": "Unable to expand variable '{0}'. The max expansion depth ({1}) was exceeded.",
   "WindowsLogonAccountNameDescription": "User account to use for the service",
   "WindowsLogonPasswordDescription": "Password for the account {0}",
   "WorkFolderDescription": "Work Folder",
