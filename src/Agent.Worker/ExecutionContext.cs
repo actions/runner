@@ -26,7 +26,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         IExecutionContext CreateChild(Guid recordId, string name);
 
         // logging
-        bool WriteDebug { get; set; }
+        bool WriteDebug { get; }
         void Write(string tag, string message);
 
         // timeline record update methods
@@ -48,6 +48,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         private IPagingLogger _logger;
         private ISecretMasker _secretMasker;
         private IJobServerQueue _jobServerQueue;
+        private IExecutionContext _parentExecutionContext;
 
         private Guid _mainTimelineId;
         private Guid _detailTimelineId;
@@ -56,7 +57,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         public CancellationToken CancellationToken { get; private set; }
         public List<ServiceEndpoint> Endpoints { get; private set; }
         public Variables Variables { get; private set; }
-        public bool WriteDebug { get; set; }
+        public bool WriteDebug { get; private set; }
 
         public TaskResult? Result
         {
@@ -101,6 +102,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             child.Variables = Variables;
             child.Endpoints = Endpoints;
             child.CancellationToken = CancellationTokenSource.CreateLinkedTokenSource(CancellationToken).Token;
+            child.WriteDebug = WriteDebug;
+            child._parentExecutionContext = this;
 
             // the job timeline record is at order 1.
             child.InitializeTimelineRecord(_mainTimelineId, recordId, _record.Id, ExecutionContextType.Task, name, _childExecutionContextCount + 2);
@@ -257,6 +260,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             {
                 this.Warning(warning);
             }
+
+            // Set system.debug
+            WriteDebug = Variables.System_Debug ?? false;
         }
 
         // Do not add a format string overload. In general, execution context messages are user facing and
@@ -268,6 +274,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             lock (_loggerLock)
             {
                 _logger.Write(msg);
+            }
+
+            // write to job level execution context's log file.
+            var parentContext = _parentExecutionContext as ExecutionContext;
+            if (parentContext != null)
+            {
+                lock (parentContext._loggerLock)
+                {
+                    parentContext._logger.Write(msg);
+                }
             }
 
             _jobServerQueue.QueueWebConsoleLine(msg);

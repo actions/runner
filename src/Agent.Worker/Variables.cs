@@ -36,6 +36,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         public string Build_DefinitionName { get { return Get(Constants.Variables.Build.DefinitionName); } }
         public bool? Build_SyncSources { get { return GetBoolean(Constants.Variables.Build.SyncSources); } }
         public string System_CollectionId { get { return Get(Constants.Variables.System.CollectionId); } }
+        public bool? System_Debug { get { return GetBoolean(Constants.Variables.System.Debug); } }
         public string System_DefinitionId { get { return Get(Constants.Variables.System.DefinitionId); } }
         public string System_HostType { get { return Get(Constants.Variables.System.HostType); } }
         public string System_TFCollectionUrl { get { return Get(WellKnownDistributedTaskVariables.TFCollectionUrl);  } }

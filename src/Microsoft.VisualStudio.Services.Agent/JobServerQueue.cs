@@ -2,6 +2,7 @@ using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -26,11 +27,6 @@ namespace Microsoft.VisualStudio.Services.Agent
         private static readonly TimeSpan _delayForTimelineUpdateDequeue = TimeSpan.FromMilliseconds(500);
         private static readonly TimeSpan _delayForFileUploadDequeue = TimeSpan.FromMilliseconds(1000);
 
-        // Threshold that enqueue method will signal a dequeue run immediately
-        private const int _webConsoleLineQueueForceProcessThreshold = 100;
-        private const int _timelineUpdateQueueForceProcessThreshold = 25;
-        private const int _fileUploadQueueForceProcessThreshold = 5;
-
         // Job message information
         private Guid _scopeIdentifier;
         private string _hubName;
@@ -39,13 +35,13 @@ namespace Microsoft.VisualStudio.Services.Agent
         private Guid _jobTimelineRecordId;
 
         // queue for web console line
-        private readonly Queue<string> _webConsoleLineQueue = new Queue<string>();
+        private readonly ConcurrentQueue<string> _webConsoleLineQueue = new ConcurrentQueue<string>();
 
         // queue for file upload (log file or attachment)
-        private readonly Queue<UploadFileInfo> _fileUploadQueue = new Queue<UploadFileInfo>();
+        private readonly ConcurrentQueue<UploadFileInfo> _fileUploadQueue = new ConcurrentQueue<UploadFileInfo>();
 
         // queue for timeline or timeline record update (one queue per timeline)
-        private readonly Dictionary<Guid, Queue<TimelineRecord>> _timelineUpdateQueue = new Dictionary<Guid, Queue<TimelineRecord>>();
+        private readonly ConcurrentDictionary<Guid, ConcurrentQueue<TimelineRecord>> _timelineUpdateQueue = new ConcurrentDictionary<Guid, ConcurrentQueue<TimelineRecord>>();
 
         // indicate how many timelines we have, we will process _timelineUpdateQueue base on the order of timeline in this list
         private readonly List<Guid> _allTimelines = new List<Guid>();
@@ -53,20 +49,10 @@ namespace Microsoft.VisualStudio.Services.Agent
         // bufferd timeline records that fail to update
         private readonly Dictionary<Guid, List<TimelineRecord>> _bufferedRetryRecords = new Dictionary<Guid, List<TimelineRecord>>();
 
-        // lock for each queue
-        private readonly object _webConsoleLineQueueLock = new object();
-        private readonly object _fileUploadQueueLock = new object();
-        private readonly object _timelineUpdateQueueLock = new object();
-
         // Task for each queue's dequeue process
         private Task _webConsoleLineDequeueTask;
         private Task _fileUploadDequeueTask;
         private Task _timelineUpdateDequeueTask;
-
-        // Semaphore for each queue
-        private readonly SemaphoreSlim _webConsoleLineQueueSemaphore = new SemaphoreSlim(0, 1);
-        private readonly SemaphoreSlim _fileUploadQueueSemaphore = new SemaphoreSlim(0, 1);
-        private readonly SemaphoreSlim _timelineUpdateQueueSemaphore = new SemaphoreSlim(0, 1);
 
         // common
         private IJobServer _jobServer;
@@ -100,7 +86,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             _jobTimelineRecordId = jobRequest.JobId;
 
             // Server already create the job timeline
-            _timelineUpdateQueue[_jobTimelineId] = new Queue<TimelineRecord>();
+            _timelineUpdateQueue[_jobTimelineId] = new ConcurrentQueue<TimelineRecord>();
             _allTimelines.Add(_jobTimelineId);
 
             // Start three dequeue task
@@ -182,138 +168,70 @@ namespace Microsoft.VisualStudio.Services.Agent
 
         public void QueueWebConsoleLine(string line)
         {
-            lock (_webConsoleLineQueueLock)
-            {
-                Trace.Verbose("Enqueue web console line queue: {0}", line);
-                _webConsoleLineQueue.Enqueue(line);
-
-                // Too many web console lines enqueued.
-                // Signal dequeue task to run immediately in case of the task is still waiting for deplay
-                if (_webConsoleLineQueue.Count >= _webConsoleLineQueueForceProcessThreshold)
-                {
-                    Trace.Verbose("Web console line queue has {0} lines enqueued, reach force process threshold {1}, signal dequeue task to process them right now.", _webConsoleLineQueue.Count, _webConsoleLineQueueForceProcessThreshold);
-                    if (_webConsoleLineQueueSemaphore.CurrentCount == 0)
-                    {
-                        _webConsoleLineQueueSemaphore.Release();
-                    }
-                }
-            }
+            Trace.Verbose("Enqueue web console line queue: {0}", line);
+            _webConsoleLineQueue.Enqueue(line);
         }
 
         public void QueueFileUpload(Guid timelineId, Guid timelineRecordId, string type, string name, string path, bool deleteSource)
         {
-            if (timelineId == Guid.Empty)
-            {
-                throw new ArgumentNullException(nameof(timelineId));
-            }
-
-            if (timelineRecordId == Guid.Empty)
-            {
-                throw new ArgumentNullException(nameof(timelineRecordId));
-            }
+            ArgUtil.NotEmpty(timelineId, nameof(timelineId));
+            ArgUtil.NotEmpty(timelineRecordId, nameof(timelineRecordId));
 
             // all parameter not null, file path exist.
-            lock (_fileUploadQueueLock)
+            var newFile = new UploadFileInfo()
             {
-                var newFile = new UploadFileInfo()
-                {
-                    TimelineId = timelineId,
-                    TimelineRecordId = timelineRecordId,
-                    Type = type,
-                    Name = name,
-                    Path = path,
-                    DeleteSource = deleteSource
-                };
+                TimelineId = timelineId,
+                TimelineRecordId = timelineRecordId,
+                Type = type,
+                Name = name,
+                Path = path,
+                DeleteSource = deleteSource
+            };
 
-                Trace.Verbose("Enqueue file upload queue: file '{0}' attach to record {1}", newFile.Path, timelineRecordId);
-                _fileUploadQueue.Enqueue(newFile);
-
-                // Too many file upload enqueued.
-                // Signal dequeue task to run immediately in case of the task is still waiting for deplay
-                if (_fileUploadQueue.Count >= _fileUploadQueueForceProcessThreshold)
-                {
-                    Trace.Verbose("file upload queue has {0} files enqueued, reach force process threshold {1}, signal dequeue task to process them right now.", _fileUploadQueue.Count, _fileUploadQueueForceProcessThreshold);
-                    if (_fileUploadQueueSemaphore.CurrentCount == 0)
-                    {
-                        _fileUploadQueueSemaphore.Release();
-                    }
-                }
-            }
+            Trace.Verbose("Enqueue file upload queue: file '{0}' attach to record {1}", newFile.Path, timelineRecordId);
+            _fileUploadQueue.Enqueue(newFile);
         }
 
         public void QueueTimelineRecordUpdate(Guid timelineId, TimelineRecord timelineRecord)
         {
-            if (timelineId == Guid.Empty ||
-                timelineRecord == null || 
-                timelineRecord.Id == Guid.Empty)
-            {
-                // TODO: throw
-                return;
-            }
+            ArgUtil.NotEmpty(timelineId, nameof(timelineId));
+            ArgUtil.NotNull(timelineRecord, nameof(timelineRecord));
+            ArgUtil.NotEmpty(timelineRecord.Id, nameof(timelineRecord.Id));
 
-            lock (_timelineUpdateQueueLock)
-            {
-                Queue<TimelineRecord> recordQueue;
-                if (!_timelineUpdateQueue.TryGetValue(timelineId, out recordQueue))
-                {
-                    _timelineUpdateQueue[timelineId] = new Queue<TimelineRecord>();
-                }
+            _timelineUpdateQueue.TryAdd(timelineId, new ConcurrentQueue<TimelineRecord>());
 
-                Trace.Verbose("Enqueue timeline {0} update queue: {1}", timelineId, timelineRecord.Id);
-                _timelineUpdateQueue[timelineId].Enqueue(timelineRecord.Clone());
-
-                // Too many timeline update enqueued.
-                // Signal dequeue task to run immediately in case of the task is still waiting for deplay
-                var totalPendingCount = _timelineUpdateQueue.Sum(q => q.Value.Count);
-                if (totalPendingCount >= _timelineUpdateQueueForceProcessThreshold)
-                {
-                    Trace.Verbose("timeline update queue has {0} updates enqueued for all timeline, reach force process threshold {1}, signal dequeue task to process them right now.", totalPendingCount, _timelineUpdateQueueForceProcessThreshold);
-                    if (_timelineUpdateQueueSemaphore.CurrentCount == 0)
-                    {
-                        _timelineUpdateQueueSemaphore.Release();
-                    }
-                }
-            }
+            Trace.Verbose("Enqueue timeline {0} update queue: {1}", timelineId, timelineRecord.Id);
+            _timelineUpdateQueue[timelineId].Enqueue(timelineRecord.Clone());
         }
 
         private async Task ProcessWebConsoleLinesQueueAsync(bool runOnce = false)
         {
             while (!_jobCompletionSource.Task.IsCompleted || runOnce)
             {
-                if (!runOnce)
-                {
-                    bool forceProcess = await _webConsoleLineQueueSemaphore.WaitAsync(_delayForWebConsoleLineDequeue);
-                    if (forceProcess)
-                    {
-                        Trace.Verbose("Process web console line queue since the force process signal been fired.");
-                    }
-                    else
-                    {
-                        Trace.Verbose("Process web console line queue since the time delay has met.");
-                    }
-                }
-
                 List<List<string>> batchedLines = new List<List<string>>();
-                lock (_webConsoleLineQueueLock)
+                List<string> currentBatch = new List<string>();
+                string line;
+                while (_webConsoleLineQueue.TryDequeue(out line))
                 {
-                    List<string> currentBatch = new List<string>();
-                    while (_webConsoleLineQueue.Count > 0)
-                    {
-                        string line = _webConsoleLineQueue.Dequeue();
-                        currentBatch.Add(line);
-
-                        if (currentBatch.Count > 100)
-                        {
-                            batchedLines.Add(currentBatch.ToList());
-                            currentBatch.Clear();
-                        }
-                    }
-
-                    if (currentBatch.Count > 0)
+                    currentBatch.Add(line);
+                    // choose 100 lines since the whole web console UI will only shows about 40 lines in a 15" monitor.
+                    if (currentBatch.Count > 100)
                     {
                         batchedLines.Add(currentBatch.ToList());
                         currentBatch.Clear();
                     }
+
+                    // process at most about 500 lines of web console line during regular timer dequeue task.
+                    if (!runOnce && batchedLines.Count > 5)
+                    {
+                        break;
+                    }
+                }
+
+                if (currentBatch.Count > 0)
+                {
+                    batchedLines.Add(currentBatch.ToList());
+                    currentBatch.Clear();
                 }
 
                 if (batchedLines.Count > 0)
@@ -355,6 +273,10 @@ namespace Microsoft.VisualStudio.Services.Agent
                 {
                     break;
                 }
+                else
+                {
+                    await Task.Delay(_delayForWebConsoleLineDequeue);
+                }
             }
         }
 
@@ -362,26 +284,15 @@ namespace Microsoft.VisualStudio.Services.Agent
         {
             while (!_jobCompletionSource.Task.IsCompleted || runOnce)
             {
-                if (!runOnce)
-                {
-                    bool forceProcess = await _fileUploadQueueSemaphore.WaitAsync(_delayForFileUploadDequeue);
-                    if (forceProcess)
-                    {
-                        Trace.Verbose("Process file upload queue since the force process signal been fired.");
-                    }
-                    else
-                    {
-                        Trace.Verbose("Process file upload queue since the time delay has met.");
-                    }
-                }
-
                 List<UploadFileInfo> filesToUpload = new List<UploadFileInfo>();
-                lock (_fileUploadQueueLock)
+                UploadFileInfo dequeueFile;
+                while (_fileUploadQueue.TryDequeue(out dequeueFile))
                 {
-                    while (_fileUploadQueue.Count > 0)
+                    filesToUpload.Add(dequeueFile);
+                    // process at most 10 file upload.
+                    if (!runOnce && filesToUpload.Count > 10)
                     {
-                        UploadFileInfo file = _fileUploadQueue.Dequeue();
-                        filesToUpload.Add(file);
+                        break;
                     }
                 }
 
@@ -431,6 +342,10 @@ namespace Microsoft.VisualStudio.Services.Agent
                 {
                     break;
                 }
+                else
+                {
+                    await Task.Delay(_delayForFileUploadDequeue);
+                }
             }
         }
 
@@ -438,42 +353,27 @@ namespace Microsoft.VisualStudio.Services.Agent
         {
             while (!_jobCompletionSource.Task.IsCompleted || runOnce)
             {
-                if (!runOnce)
-                {
-                    bool forceProcess = await _timelineUpdateQueueSemaphore.WaitAsync(_delayForTimelineUpdateDequeue);
-                    if (forceProcess)
-                    {
-                        Trace.Verbose("Process timeline update queue since the force process signal been fired.");
-                    }
-                    else
-                    {
-                        Trace.Verbose("Process timeline update queue since the time delay has met.");
-                    }
-                }
-
                 List<PendingTimelineRecord> pendingUpdates = new List<PendingTimelineRecord>();
-                lock (_timelineUpdateQueueLock)
+                foreach (var timeline in _allTimelines)
                 {
-                    foreach (var timeline in _allTimelines)
+                    ConcurrentQueue<TimelineRecord> recordQueue;
+                    if (_timelineUpdateQueue.TryGetValue(timeline, out recordQueue))
                     {
-                        Queue<TimelineRecord> recordQueue;
-                        if (_timelineUpdateQueue.TryGetValue(timeline, out recordQueue))
+                        List<TimelineRecord> records = new List<TimelineRecord>();
+                        TimelineRecord record;
+                        while (recordQueue.TryDequeue(out record))
                         {
-                            List<TimelineRecord> records = new List<TimelineRecord>();
-                            while (recordQueue.Count > 0)
+                            records.Add(record);
+                            // process at most 25 timeline records update for each timeline.
+                            if (!runOnce && records.Count > 25)
                             {
-                                TimelineRecord rec = recordQueue.Dequeue();
-                                records.Add(rec);
-                            }
-
-                            if (records.Count > 0)
-                            {
-                                pendingUpdates.Add(new PendingTimelineRecord() { TimelineId = timeline, PendingRecords = records.ToList() });
+                                break;
                             }
                         }
-                        else
+
+                        if (records.Count > 0)
                         {
-                            //TODO: trace, this should never happen.
+                            pendingUpdates.Add(new PendingTimelineRecord() { TimelineId = timeline, PendingRecords = records.ToList() });
                         }
                     }
                 }
@@ -499,7 +399,10 @@ namespace Microsoft.VisualStudio.Services.Agent
                                     Timeline newTimeline = await _jobServer.CreateTimelineAsync(_scopeIdentifier, _hubName, _planId, detailTimeline.Details.Id, default(CancellationToken));
                                     _allTimelines.Add(newTimeline.Id);
                                 }
-                                // catch timeline exist exception
+                                //catch (TimelineExistsException)
+                                //{
+                                //    ignore 
+                                //}
                                 catch (Exception ex)
                                 {
                                     Trace.Error(ex);
@@ -527,6 +430,10 @@ namespace Microsoft.VisualStudio.Services.Agent
                 if (runOnce)
                 {
                     break;
+                }
+                else
+                {
+                    await Task.Delay(_delayForTimelineUpdateDequeue);
                 }
             }
         }
