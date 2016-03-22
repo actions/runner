@@ -41,6 +41,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 return 0;
             }
 
+            if (parser.Flags.Contains("version"))
+            {
+                _term.WriteLine(Constants.Agent.Version);
+                return 0;
+            }
+
             if (parser.IsCommand("unconfigure"))
             {
                 Trace.Info("unconfigure");

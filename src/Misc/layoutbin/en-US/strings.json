@@ -67,6 +67,8 @@
     "",
     "Options:",
     "-----------------------------------------------------------------------------",
+    "--version      Print the version",
+    "--help         Display command line help",
     "--unattend     Unattended config. You will not be prompted.",
     "               All answers must be supplied on cli.",
     "--nostart      Do not start the agent after interactive configuration.",
