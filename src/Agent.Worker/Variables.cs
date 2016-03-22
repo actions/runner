@@ -25,7 +25,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             ArgUtil.NotNull(copy, nameof(copy));
             foreach (string key in copy.Keys)
             {
-                _store[key] = copy[key];
+                _store[key] = copy[key] ?? string.Empty;
             }
 
             // Recursively expand the variables.
@@ -90,7 +90,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     }
                 }
 
-                target[targetKey] = targetValue;
+                target[targetKey] = targetValue ?? string.Empty;
             }
         }
 
@@ -131,13 +131,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         public void Set(string name, string val)
         {
-            // TODO: Determine whether this line should be uncommented again: ArgUtil.NotNull(val, nameof(val));
-            // Can variables not be cleared? Can a null variable come across the wire? What if the user does ##setvariable from a script and we interpret as null instead of empty string. This feels brittle.
-
             //TODO: Determine if variable should be added to SecretMasker
 
             _trace.Verbose($"Set '{name}' = '{val}'");
-            _store[name] = val;
+            _store[name] = val ?? string.Empty;
         }
 
         public bool TryGetValue(string name, out string val)
@@ -176,7 +173,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 bool exceedsMaxDepth = false;
                 bool hasCycle = false;
                 var stack = new Stack<RecursionState>();
-                RecursionState state = new RecursionState(key: key, value: original[key]);
+                RecursionState state = new RecursionState(key: key, value: original[key] ?? string.Empty);
 
                 // The outer while loop is used to manage popping items from the stack (of state objects).
                 while (true)
@@ -227,7 +224,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                                 // of the inner while loop. It will continue processing the new current state.
                                 _trace.Verbose($"Expanding nested variable: '{nestedKey}'");
                                 stack.Push(state);
-                                state = new RecursionState(key: nestedKey, value: nestedValue);
+                                state = new RecursionState(key: nestedKey, value: nestedValue ?? string.Empty);
                             }
                         }
                         else
@@ -248,7 +245,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     if (stack.Count == 0)
                     {
                         // Store the final value and break out of the outer while loop.
-                        Set(state.Key, state.Value ?? string.Empty);
+                        Set(state.Key, state.Value);
                         break;
                     }
 
@@ -257,9 +254,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     RecursionState parent = stack.Pop();
                     parent.Value = string.Concat(
                         parent.Value.Substring(0, parent.PrefixIndex),
-                        state.Value ?? string.Empty,
+                        state.Value,
                         parent.Value.Substring(parent.SuffixIndex + Constants.Variables.MacroSuffix.Length));
-                    parent.StartIndex = parent.PrefixIndex + (state.Value ?? string.Empty).Length;
+                    parent.StartIndex = parent.PrefixIndex + (state.Value).Length;
                     state = parent;
                     _trace.Verbose($"Intermediate state '{state.Key}': '{state.Value}'");
                 } // End of outer while loop for recursively processing the variable.
@@ -280,13 +277,5 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             public int PrefixIndex { get; set; }
             public int SuffixIndex { get; set; }
         }
-    }
-
-    public enum BuildCleanOption
-    {
-        None,
-        Source,
-        Binary,
-        All,
     }
 }

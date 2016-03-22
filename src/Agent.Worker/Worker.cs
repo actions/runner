@@ -1,5 +1,6 @@
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Util;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -47,7 +48,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 SetCulture(jobMessage);
 
                 // Start the job.
-                Trace.Verbose($"JobMessage: {channelMessage.Body}");
+                Trace.Info($"Job message: {channelMessage.Body}");
                 Task<TaskResult> jobRunnerTask = jobRunner.RunAsync(jobMessage);
 
                 // Start listening for a cancel message from the channel.
@@ -89,6 +90,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 if (maskHint.Type == MaskType.Regex)
                 {
                     secretMasker.AddRegex(maskHint.Value);
+
+                    // Also add the JSON escaped string since the job message is traced in the diag log.
+                    secretMasker.AddValue(JsonConvert.ToString(maskHint.Value ?? string.Empty));
                 }
                 else if (maskHint.Type == MaskType.Variable)
                 {
@@ -97,9 +101,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                         !string.IsNullOrEmpty(value))
                     {
                         secretMasker.AddVariable(maskHint.Value, value);
+
+                        // Also add the JSON escaped string since the job message is traced in the diag log.
+                        secretMasker.AddValue(JsonConvert.ToString(value));
                     }
-                } // TODO: Else? Fail? Warn?
+                }
+                else
+                {
+                    // TODO: Should we fail instead? Do any additional pains need to be taken here? Should the job message not be traced?
+                    Trace.Warning($"Unsupported mask type '{maskHint.Type}'.");
+                }
             }
+
+            // TODO: Avoid adding redundant secrets. If the endpoint auth matches the system connection, then it's added as a value secret and as a regex secret. Once as a value secret b/c of the following code that iterates over each endpoint. Once as a regex secret due to the hint sent down in the job message.
 
             // Add masks for service endpoints
             foreach (ServiceEndpoint endpoint in message.Environment.Endpoints ?? new List<ServiceEndpoint>())
