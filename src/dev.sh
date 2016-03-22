@@ -3,11 +3,17 @@ DEV_SUBCMD=$2
 LAYOUT_DIR=`pwd`/../_layout
 DOWNLOAD_DIR=`pwd`/../_downloads
 
+PLATFORM_NAME=`uname`
+PLATFORM="windows"
+if [[ ("$PLATFORM_NAME" == "Linux") || ("$PLATFORM_NAME" == "Darwin") ]]; then
+   PLATFORM=`echo "${PLATFORM_NAME}" | awk '{print tolower($0)}'`
+fi
+
+# allow for #if defs in code
 define_os='OS_WINDOWS'
-BUILD_OS=`uname`
-if [[ "$BUILD_OS" == 'Linux' ]]; then
+if [[ "$PLATFORM" == 'linux' ]]; then
    define_os='OS_LINUX'
-elif [[ "$BUILD_OS" == 'Darwin' ]]; then
+elif [[ "$PLATFORM" == 'darwin' ]]; then
    define_os='OS_OSX'
 fi
 
@@ -113,7 +119,7 @@ function layout ()
     publish
     
     heading Layout ...
-    rm -rf ${LAYOUT_DIR}
+    rm -Rf ${LAYOUT_DIR}
     mkdir -p ${LAYOUT_DIR}/bin
     for bin_copy_dir in ${bin_layout_dirs[@]}
     do
@@ -125,6 +131,10 @@ function layout ()
 
     heading Externals ...
     bash ./Misc/externals.sh
+
+    if [[ ("$PLATFORM" == "linux") || ("$PLATFORM" == "darwin") ]]; then
+       package
+    fi
 }
 
 function update ()
@@ -164,6 +174,20 @@ function buildtest ()
     runtest
 }
 
+function package ()
+{
+    pkg_dir=`pwd`/../_package
+
+    agent_ver=`${LAYOUT_DIR}/bin/Agent.Listener --version` || "failed version"
+    agent_pkg_name="vsts-agent-${PLATFORM}-${agent_ver}-$(date +%m)$(date +%d).tar.gz"
+    rm -Rf ${LAYOUT_DIR}/_diag
+    mkdir -p $pkg_dir
+    pushd $pkg_dir > /dev/null
+    rm -Rf *
+    tar -czf ${agent_pkg_name} -C ${LAYOUT_DIR} .
+    popd > /dev/null
+}
+
 case $DEV_CMD in
    "build") build;;
    "b") build;;
@@ -178,6 +202,8 @@ case $DEV_CMD in
    "l") layout;;
    "update") update;;
    "u") update;;
+   "package") package;;
+   "p") package;;
    "validate") validate;;
    "v") validate;;
    *) echo "Invalid cmd.  Use build, restore, clean, test, or layout";;

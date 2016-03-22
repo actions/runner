@@ -28,7 +28,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 try 
                 {
                     s_trace = context.GetTrace("AgentProcess");
-                    s_trace.Info("Info Hello Agent!");
 
                     //
                     // TODO (bryanmac): Need VsoAgent.exe compat shim for SCM
