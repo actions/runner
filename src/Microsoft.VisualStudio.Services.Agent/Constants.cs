@@ -7,7 +7,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         public static class Agent
         {
             public static readonly int MaxParallelism = 1;
-            public static readonly string Version = "2.98.0";
+            public static readonly string Version = "1.999.0";
         }
 
         public static class Build
