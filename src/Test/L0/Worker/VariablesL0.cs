@@ -35,6 +35,29 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
+        public void ConstructorSetsNullAsEmpty()
+        {
+            using (TestHostContext hc = new TestHostContext(this))
+            {
+                // Arrange.
+                List<string> warnings;
+                var copy = new Dictionary<string, string>
+                {
+                    { "variable1", null },
+                };
+
+                // Act.
+                var variables = new Variables(hc, copy, out warnings);
+
+                // Assert.
+                Assert.Equal(0, warnings.Count);
+                Assert.Equal(string.Empty, variables.Get("variable1"));
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
         public void DetectsAdjacentCyclicalReference()
         {
             using (TestHostContext hc = new TestHostContext(this))
@@ -120,6 +143,85 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                 Assert.Equal("1_$(variable2)", variables.Get("variable1"));
                 Assert.Equal("2_$(variable3)", variables.Get("variable2"));
                 Assert.Equal("3_$(variable1)", variables.Get("variable3"));
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void ExpandHandlesNullValue()
+        {
+            using (TestHostContext hc = new TestHostContext(this))
+            {
+                // Arrange.
+                var copy = new Dictionary<string, string>
+                {
+                    { "variable1", null },
+                    { "variable2", "some variable 2 value" },
+                };
+
+                // Act.
+                List<string> warnings;
+                var variables = new Variables(hc, copy, out warnings);
+
+                // Assert.
+                Assert.Equal(0, warnings.Count);
+                Assert.Equal(string.Empty, variables.Get("variable1"));
+                Assert.Equal("some variable 2 value", variables.Get("variable2"));
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void ExpandHandlesNullNestedValue()
+        {
+            using (TestHostContext hc = new TestHostContext(this))
+            {
+                // Arrange.
+                var copy = new Dictionary<string, string>
+                {
+                    { "variable1", "before $(variable2) after" },
+                    { "variable2", null },
+                };
+
+                // Act.
+                List<string> warnings;
+                var variables = new Variables(hc, copy, out warnings);
+
+                // Assert.
+                Assert.Equal(0, warnings.Count);
+                Assert.Equal("before  after", variables.Get("variable1"));
+                Assert.Equal(string.Empty, variables.Get("variable2"));
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void ExpandsTargetHandlesNullValue()
+        {
+            using (TestHostContext hc = new TestHostContext(this))
+            {
+                // Arrange: Setup the variables.
+                List<string> warnings;
+                var variableDictionary = new Dictionary<string, string>
+                {
+                    { "variable1", "some variable 1 value " },
+                };
+                var variables = new Variables(hc, variableDictionary, out warnings);
+
+                // Arrange: Setup the target dictionary.
+                var targetDictionary = new Dictionary<string, string>
+                {
+                    { "some target key", null },
+                };
+
+                // Act.
+                variables.ExpandValues(target: targetDictionary);
+
+                // Assert: The consecutive macros should both have been expanded.
+                Assert.Equal(string.Empty, targetDictionary["some target key"]);
             }
         }
 
@@ -320,6 +422,26 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
 
                 // Assert.
                 Assert.Null(actual); 
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void SetsNullAsEmpty()
+        {
+            using (TestHostContext hc = new TestHostContext(this))
+            {
+                // Arrange.
+                List<string> warnings;
+                var variables = new Variables(hc, new Dictionary<string, string>(), out warnings);
+
+                // Act.
+                variables.Set("variable1", null);
+
+                // Assert.
+                Assert.Equal(0, warnings.Count);
+                Assert.Equal(string.Empty, variables.Get("variable1"));
             }
         }
 
