@@ -8,19 +8,22 @@ Supported on Windows, OSX and Linux.  Written for the .NET Core CLR as one code 
 
 Will run all existing tasks (typescript/javascript and powershell) including [our in the box](https://github.com/Microsoft/vso-agent-tasks) and your custom tasks written with our [vsts task SDK](https://github.com/Microsoft/vsts-task-lib). 
 
-> Status:  Work is just beginning on this project.  Please do not log issues yet.  You are welcome to inspect and try it out as we build it.  We are targetting a preview early in April 2016, available with VSTS soon after that and is targetting the next TFS release for on-premises.
 
-## Build Status
-|   | Debug |
-|---|:-----:|
-|**Ubuntu 15.10**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/b924d696-3eae-4116-8443-9a18392d8544/2853/badge?branch=master)|
-|**OSX 10.11**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/b924d696-3eae-4116-8443-9a18392d8544/3080/badge?branch=master)|
-|**Windows 10**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/b924d696-3eae-4116-8443-9a18392d8544/2850/badge?branch=master)|
+## Status
+
+Work is just beginning on this project.  Please do not log issues yet.  We are targetting a preview early in April 2016 for OSX/Linux.  
+
+|   | Build & Test | Preview |
+|---|:-----:|:-----:|
+|![Linux](docs/linux_med.png) **Ubuntu 14.04**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/b924d696-3eae-4116-8443-9a18392d8544/2853/badge?branch=master)| Soon |
+|![Apple](docs/apple_med.png) **OSX 10.11**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/b924d696-3eae-4116-8443-9a18392d8544/3080/badge?branch=master)| Soon |
+|![Win](docs/win_med.png) **Windows 10**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/b924d696-3eae-4116-8443-9a18392d8544/2850/badge?branch=master)| N/A |
 
 
 ## Install
 
-Not available yet.  Need to build from source.  See Contribute below.
+Early preview on OSX, Linux coming very soon.
+
 
 ## Contribute (Dev)
 
@@ -55,6 +58,7 @@ From src:
  
 `layout` (`l`): Creates a full layout in {root}/_layout  
    Does a clean, restore, build, publish and copy
+   Default is Debug.  Passing Release as argument is supported (dev l Release)
 
 `update` (`u`) {dirname}: Builds and publishes just one dir.  Patches the layout
    update {dirname}

@@ -3,6 +3,11 @@ DEV_SUBCMD=$2
 LAYOUT_DIR=`pwd`/../_layout
 DOWNLOAD_DIR=`pwd`/../_downloads
 
+BUILD_CONFIG="Debug"
+if [[ "$DEV_SUBCMD" == "Release" ]]; then
+    BUILD_CONFIG="Release"
+fi
+
 PLATFORM_NAME=`uname`
 PLATFORM="windows"
 if [[ ("$PLATFORM_NAME" == "Linux") || ("$PLATFORM_NAME" == "Darwin") ]]; then
@@ -55,14 +60,21 @@ function rundotnet ()
     dotnet_cmd=${1}
     err_handle=${2:-failed}
     run_dirs=("${!3}")
+
     heading ${1} ...
+
+    cfg_args=""
+    if [[ ("$dotnet_cmd" == "build") || ("$dotnet_cmd" == "publish") ]]; then
+        cfg_args="-c ${BUILD_CONFIG}"
+        echo "${cfg_args}"
+    fi
     
     for dir_name in ${run_dirs[@]}
     do
         echo
         echo -- Running: dotnet $dotnet_cmd $dir_name --
         echo
-        dotnet ${dotnet_cmd} $dir_name || ${err_handle} "${dotnet_cmd} $dir_name"
+        dotnet ${dotnet_cmd} $dir_name $cfg_args || ${err_handle} "${dotnet_cmd} $dir_name"
     done   
 }
 
@@ -107,11 +119,13 @@ function publish ()
 function copyBin ()
 {
     echo Copying ${1}
-    pushd ${1}/bin/Debug/dnxcore50 > /dev/null
+    pushd ${1}/bin/${BUILD_CONFIG}/dnxcore50 > /dev/null
+
     source_dir=$(ls -d */)publish/
     if [ ! -d "$source_dir" ]; then
         failed "Publish folder is missing. Please ensure you use the correct .NET Core tools (see readme for instructions)"
     fi
+
     cp -Rf ${source_dir}* ${LAYOUT_DIR}/bin
     popd > /dev/null 
 }
@@ -156,8 +170,8 @@ function runtest ()
 {
     heading Testing ...
     dotnet publish Test || failed "publishing Test"
-    rm -Rf Test/bin/Debug/dnxcore50/_diag
-    pushd Test/bin/Debug/dnxcore50 > /dev/null
+    rm -Rf Test/bin/${BUILD_CONFIG}/dnxcore50/_diag
+    pushd Test/bin/${BUILD_CONFIG}/dnxcore50 > /dev/null
     pushd $(ls -d */ | grep -v '_')publish > /dev/null
     ./corerun xunit.console.netcore.exe Test.dll -xml testresults.xml || failed "failed tests"
     popd > /dev/null
