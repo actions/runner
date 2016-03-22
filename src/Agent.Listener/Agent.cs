@@ -47,6 +47,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 return 0;
             }
 
+            if (parser.Flags.Contains("commit"))
+            {
+                _term.WriteLine(BuildConstants.Source.CommitHash);
+                return 0;
+            }            
+
             if (parser.IsCommand("unconfigure"))
             {
                 Trace.Info("unconfigure");

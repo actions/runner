@@ -13,4 +13,7 @@
 node_modules
 _downloads
 _layout
+_package
 
+#generated
+src/Microsoft.VisualStudio.Services.Agent/BuildConstants.cs

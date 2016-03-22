@@ -68,6 +68,11 @@ function rundotnet ()
 
 function build ()
 {
+    commit_token="_COMMIT_HASH_"
+    commit_hash=`git rev-parse HEAD` || "failed git commit hash"
+    echo "Building ${commit_hash}"
+    sed "s/$commit_token/$commit_hash/g" "Misc/BuildConstants.ch" > "Microsoft.VisualStudio.Services.Agent/BuildConstants.cs"
+
     rundotnet build failed build_dirs[@]
 }
 

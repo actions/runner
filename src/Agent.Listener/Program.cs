@@ -28,6 +28,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 try 
                 {
                     s_trace = context.GetTrace("AgentProcess");
+                    s_trace.Info($"Version: {Constants.Agent.Version}");
+                    s_trace.Info($"Commit: {BuildConstants.Source.CommitHash}");
 
                     //
                     // TODO (bryanmac): Need VsoAgent.exe compat shim for SCM

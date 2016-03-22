@@ -23,6 +23,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             Tracing trace = hc.GetTrace(nameof(Program));
             try
             {
+                trace.Info($"Version: {Constants.Agent.Version}");
+                trace.Info($"Commit: {BuildConstants.Source.CommitHash}");
+
                 // Validate args.
                 ArgUtil.NotNull(args, nameof(args));
                 ArgUtil.Equal(3, args.Length, nameof(args.Length));
