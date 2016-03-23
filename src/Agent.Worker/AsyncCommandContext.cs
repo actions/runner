@@ -1,0 +1,68 @@
+﻿using System;
+using System.Collections.Concurrent;
+using System.Threading.Tasks;
+
+namespace Microsoft.VisualStudio.Services.Agent.Worker
+{
+    [ServiceLocator(Default = typeof(AsyncCommandContext))]
+    public interface IAsyncCommandContext : IAgentService
+    {
+        string Name { get; }
+        Task Task { get; set; }
+        void InitializeCommandContext(IExecutionContext context, string name);
+        void Output(string message);
+        Task WaitAsync();
+    }
+
+    public class AsyncCommandContext : AgentService, IAsyncCommandContext
+    {
+        private IExecutionContext _executionContext;
+        private readonly ConcurrentQueue<string> _outputQueue = new ConcurrentQueue<string>();
+
+        public string Name { get; private set; }
+        public Task Task { get; set; }
+
+        public void InitializeCommandContext(IExecutionContext context, string name)
+        {
+            _executionContext = context;
+            Name = name;
+        }
+
+        public void Output(string message)
+        {
+            _outputQueue.Enqueue(message);
+        }
+
+        public async Task WaitAsync()
+        {
+            Trace.Entering();
+            // start flushing output queue
+            Trace.Info("Start flush buffered output.");
+            _executionContext.Section($"Async Command Start: {Name}");
+            string output;
+            while (!this.Task.IsCompleted)
+            {
+                while (_outputQueue.TryDequeue(out output))
+                {
+                    _executionContext.Output(output);
+                }
+
+                await Task.WhenAny(Task.Delay(TimeSpan.FromMilliseconds(500)), this.Task);
+            }
+
+            // Dequeue one more time make sure all outputs been flush out.
+            Trace.Verbose("Command task has finished, flush out all remaining buffered output.");
+            while (_outputQueue.TryDequeue(out output))
+            {
+                _executionContext.Output(output);
+            }
+
+            _executionContext.Section($"Async Command End: {Name}");
+            Trace.Info("Finsh flush buffered output.");
+
+            // wait for the async command task
+            Trace.Info("Wait till async command task to finish.");
+            await Task;
+        }
+    }
+}

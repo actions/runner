@@ -61,6 +61,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     try
                     {
                         handler.ProcessCommand(context, command);
+                        context.Debug($"Processed logging command: {input}");
                     }
                     catch (Exception ex)
                     {

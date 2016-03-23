@@ -111,18 +111,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     // set the job to canceled
                     Trace.Error($"Caught exception: {ex}");
                     jobContext.Error(ex);
-                    jobContext.Result = TaskResult.Canceled;
-                    jobContext.Complete();
-                    return jobContext.Result.Value;
+                    return jobContext.Complete(TaskResult.Canceled);
                 }
                 catch (Exception ex)
                 {
                     // Log the error and fail the job.
                     Trace.Error($"Caught exception from {nameof(TaskManager)}: {ex}");
                     jobContext.Error(ex);
-                    jobContext.Result = TaskResult.Failed;
-                    jobContext.Complete();
-                    return jobContext.Result.Value;
+                    return jobContext.Complete(TaskResult.Failed);
                 }
 
                 // Run the steps.
@@ -136,26 +132,21 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     // set the job to canceled
                     Trace.Error($"Caught exception: {ex}");
                     jobContext.Error(ex);
-                    jobContext.Result = TaskResult.Canceled;
-                    jobContext.Complete();
-                    return jobContext.Result.Value;
+                    return jobContext.Complete(TaskResult.Canceled);
                 }
                 catch (Exception ex)
                 {
                     // Log the error and fail the job.
                     Trace.Error($"Caught exception from {nameof(StepsRunner)}: {ex}");
                     jobContext.Error(ex);
-                    jobContext.Result = TaskResult.Failed;
-                    jobContext.Complete();
-                    return jobContext.Result.Value;
+                    return jobContext.Complete(TaskResult.Failed);
                 }
 
                 Trace.Info($"Job result: {jobContext.Result}");
 
                 // Complete the job.
                 Trace.Info("Completing the job execution context.");
-                jobContext.Complete();
-                return jobContext.Result ?? TaskResult.Succeeded;
+                return jobContext.Complete();
             }
             finally
             {

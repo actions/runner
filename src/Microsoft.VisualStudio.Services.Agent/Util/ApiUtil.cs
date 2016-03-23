@@ -23,26 +23,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
         // The server only send down OAuth token in Job Request message.
         public static VssConnection GetVssConnection(JobRequestMessage jobRequest)
         {
-            var serviceEndpoint = jobRequest.Environment.SystemConnection;
+            ArgUtil.NotNull(jobRequest, nameof(jobRequest));
+            ArgUtil.NotNull(jobRequest.Environment, nameof(jobRequest.Environment));
+            ArgUtil.NotNull(jobRequest.Environment.SystemConnection, nameof(jobRequest.Environment.SystemConnection));
+            ArgUtil.NotNull(jobRequest.Environment.SystemConnection.Url, nameof(jobRequest.Environment.SystemConnection.Url));
 
-            if (serviceEndpoint == null ||
-                serviceEndpoint.Url == null ||
-                serviceEndpoint.Authorization == null ||
-                string.IsNullOrEmpty(serviceEndpoint.Authorization.Scheme) ||
-                serviceEndpoint.Authorization.Parameters.Count == 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(jobRequest.Environment.SystemConnection));
-            }
-
-            Uri serverUrl = serviceEndpoint.Url;
-            VssCredentials credentials = null;
-            string accessToken;
-            if (serviceEndpoint.Authorization.Scheme == EndpointAuthorizationSchemes.OAuth &&
-                serviceEndpoint.Authorization.Parameters.TryGetValue(EndpointAuthorizationParameters.AccessToken, out accessToken))
-            {
-                credentials = new VssOAuthCredential(accessToken);
-            }
-
+            Uri serverUrl = jobRequest.Environment.SystemConnection.Url;
+            var credentials = GetVssCredential(jobRequest.Environment.SystemConnection);
+            
             if (credentials == null)
             {
                 throw new ArgumentNullException(nameof(credentials));
@@ -51,6 +39,28 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             {
                 return CreateConnection(serverUrl, credentials);
             }
+        }
+
+        public static VssCredentials GetVssCredential(ServiceEndpoint serviceEndpoint)
+        {
+            ArgUtil.NotNull(serviceEndpoint, nameof(serviceEndpoint));
+            ArgUtil.NotNull(serviceEndpoint.Authorization, nameof(serviceEndpoint.Authorization));
+            ArgUtil.NotNullOrEmpty(serviceEndpoint.Authorization.Scheme, nameof(serviceEndpoint.Authorization.Scheme));
+
+            if (serviceEndpoint.Authorization.Parameters.Count == 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(serviceEndpoint));
+            }
+
+            VssCredentials credentials = null;
+            string accessToken;
+            if (serviceEndpoint.Authorization.Scheme == EndpointAuthorizationSchemes.OAuth &&
+                serviceEndpoint.Authorization.Parameters.TryGetValue(EndpointAuthorizationParameters.AccessToken, out accessToken))
+            {
+                credentials = new VssOAuthCredential(accessToken);
+            }
+
+            return credentials;
         }
     }
 }
