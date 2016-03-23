@@ -148,11 +148,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             {
                 using (var workerManager = HostContext.GetService<IWorkerManager>())
                 {
-                    while (true)
+                    while (!token.IsCancellationRequested)
                     {
                         try
                         {
-                            token.ThrowIfCancellationRequested();
                             message = await listener.GetNextMessageAsync(token); //get next message
 
                             if (string.Equals(message.MessageType, AgentRefreshMessage.MessageType, StringComparison.OrdinalIgnoreCase))
@@ -187,6 +186,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 //TODO: make sure we don't mask more important exception
                 await listener.DeleteSessionAsync();
             }
+            return 0;
         }
 
         private async Task DeleteMessageAsync(TaskAgentMessage message)

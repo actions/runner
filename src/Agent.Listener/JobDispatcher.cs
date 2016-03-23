@@ -40,7 +40,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 Trace.Info("Start renew job request.");
                 Task renewJobRequest = RenewJobRequestAsync(poolId, requestId, lockToken, firstJobRequestRenewed, lockRenewalTokenSource.Token);
 
-                // wait till first renew succeed
+                // wait till first renew succeed or job request is canceled
                 // not even start worker if the first renew fail
                 await Task.WhenAny(firstJobRequestRenewed.Task, renewJobRequest, Task.Delay(-1, jobRequestCancellationToken));
 
@@ -205,6 +205,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
                     Trace.Info($"finish job request with result: {resultOnAbandonOrCancel}");
                     // complete job request with cancel result, stop renew lock, job has finished.
+                    //TODO: don't finish job request on abandon
                     await CompleteJobRequestAsync(poolId, requestId, lockToken, resultOnAbandonOrCancel);
 
                     Trace.Info("Stop renew job request.");
