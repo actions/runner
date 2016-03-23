@@ -52,7 +52,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 Task execTask = processInvoker.ExecuteAsync("", "cmd.exe", $"/c \"choice /T {SecondsToRun} /D y\"", null, tokenSource.Token);
 #endif
 #if (OS_OSX || OS_LINUX)
-                Task execTask = processInvoker.ExecuteAsync("", "bash", $"--init-file <(echo \"sleep {SecondsToRun}s\")", null, tokenSource.Token);
+                Task execTask = processInvoker.ExecuteAsync("", "bash", $"-c \"sleep {SecondsToRun}s\"", null, tokenSource.Token);
 #endif
                 tokenSource.Cancel();
                 await Task.WhenAny(new Task[] { execTask });
