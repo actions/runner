@@ -20,6 +20,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         public override bool ConfigureService(AgentSettings settings, Dictionary<string, string> args, bool enforceSupplied)
         {
             Trace.Info(nameof(ConfigureService));
+            // TODO: Fix bug that exists in the legacy Windows agent where configuration using mirrored credentials causes an error, but the agent is still functional (after restarting). Mirrored credentials is a supported scenario and shouldn't manifest any errors.
 
             var consoleWizard = HostContext.GetService<IConsoleWizard>();
             string logonAccount = string.Empty;
