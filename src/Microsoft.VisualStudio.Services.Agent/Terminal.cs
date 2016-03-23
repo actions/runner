@@ -11,7 +11,7 @@ namespace Microsoft.VisualStudio.Services.Agent
     // (2) Reroute in tests
     //
     [ServiceLocator(Default = typeof(Terminal))]
-    public interface ITerminal: IAgentService
+    public interface ITerminal : IAgentService, IDisposable
     {
         event EventHandler CancelKeyPress;
 
@@ -22,10 +22,9 @@ namespace Microsoft.VisualStudio.Services.Agent
         void WriteLine();
         void WriteLine(string line);
         void WriteError(string line);
-        void UnregisterCancelEvent();
     }
-    
-    public sealed class Terminal: AgentService, ITerminal
+
+    public sealed class Terminal : AgentService, ITerminal
     {
         public bool Silent { get; set; }
 
@@ -35,12 +34,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         {
             base.Initialize(hostContext);
 
-            Console.CancelKeyPress += Console_CancelKeyPress;            
-        }
-
-        public void UnregisterCancelEvent()
-        {
-            Console.CancelKeyPress -= Console_CancelKeyPress;
+            Console.CancelKeyPress += Console_CancelKeyPress;
         }
 
         private void Console_CancelKeyPress(object sender, ConsoleCancelEventArgs e)
@@ -120,6 +114,20 @@ namespace Microsoft.VisualStudio.Services.Agent
             {
                 Console.Error.WriteLine(line);
             }
+        }
+
+        void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                Console.CancelKeyPress -= Console_CancelKeyPress;
+            }
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
         }
     }
 }

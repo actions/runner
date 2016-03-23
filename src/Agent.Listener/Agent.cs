@@ -27,7 +27,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         {
             base.Initialize(hostContext);
             _term = HostContext.GetService<ITerminal>();
-        }        
+        }
 
         public async Task<int> ExecuteCommand(CommandLineParser parser)
         {
@@ -49,12 +49,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     return 0;
                 }
 
-                if (parser.IsCommand("unconfigure"))
-                {
-                    Trace.Info("unconfigure");
-                    // TODO: Unconfiure, remove config and exit
-                }
-
                 if (parser.Flags.Contains("version"))
                 {
                     _term.WriteLine(Constants.Agent.Version);
@@ -65,12 +59,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 {
                     _term.WriteLine(BuildConstants.Source.CommitHash);
                     return 0;
-                }            
+                }
 
                 if (parser.IsCommand("unconfigure"))
                 {
                     Trace.Info("unconfigure");
                     // TODO: Unconfiure, remove config and exit
+                }
+
+                if (parser.IsCommand("run") && !configManager.IsConfigured())
+                {
+                    Trace.Info("run");
+                    _term.WriteError(StringUtil.Loc("AgentIsNotConfigured"));
+                    PrintUsage();
+                    return 1;
                 }
 
                 // unattend mode will not prompt for args if not supplied.  Instead will error.
@@ -114,7 +116,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             finally
             {
                 _term.CancelKeyPress -= CtrlCHandler;
-                _term.UnregisterCancelEvent();
             }
         }
 

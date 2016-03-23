@@ -54,7 +54,17 @@ namespace Microsoft.VisualStudio.Services.Agent
             {
                 if (cancellationToken.IsCancellationRequested && !_proc.HasExited)
                 {
-                    _proc.Kill();
+                    Trace.Info($"Terminating process with file name '{_proc?.StartInfo?.FileName}', arguments '{_proc?.StartInfo?.Arguments}', and working directory '{_proc?.StartInfo?.WorkingDirectory}'.");
+                    try
+                    {
+                        //TODO: find out what is Process.Kill doing with child processes on OSX and Linux
+                        _proc.Kill();
+                    }
+                    catch (InvalidOperationException ex)
+                    {
+                        //process has exited, before we got a chance to kill it
+                        Trace.Error(ex);
+                    }
                 }
             }
             // Wait for process to exit without hard timeout, which will 

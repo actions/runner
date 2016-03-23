@@ -21,7 +21,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         public async Task<Int32> ReadInt32Async(CancellationToken cancellationToken)
         {
             byte[] readBytes = new byte[sizeof(Int32)];
-            int dataread = 0;            
+            int dataread = 0;
             while (sizeof(Int32) - dataread > 0 && (!cancellationToken.IsCancellationRequested))
             {
                 Task<int> op = _ioStream.ReadAsync(readBytes, dataread, sizeof(Int32) - dataread, cancellationToken);
@@ -45,18 +45,17 @@ namespace Microsoft.VisualStudio.Services.Agent
             await op.WithCancellation(cancellationToken);
         }
 
-        const int MaxStringSize = 50*1000000;
+        const int MaxStringSize = 50 * 1000000;
 
         public async Task<string> ReadStringAsync(CancellationToken cancellationToken)
-        {            
+        {
             Int32 len = await ReadInt32Async(cancellationToken);
-            cancellationToken.ThrowIfCancellationRequested();
             if (len == 0)
             {
                 return string.Empty;
             }
             if (len < 0 || len > MaxStringSize)
-            {                
+            {
                 throw new InvalidDataException();
             }
 
@@ -74,7 +73,6 @@ namespace Microsoft.VisualStudio.Services.Agent
                 }
             }
 
-            cancellationToken.ThrowIfCancellationRequested();
             return streamEncoding.GetString(inBuffer);
         }
 

@@ -10,8 +10,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
     {
         public static int Main(string[] args)
         {
-            var hc = new HostContext("Worker");
-            return RunAsync(args, hc).GetAwaiter().GetResult();
+            using (var hc = new HostContext("Worker"))
+            {
+                return RunAsync(args, hc).GetAwaiter().GetResult();
+            }
         }
 
         public static async Task<int> RunAsync(

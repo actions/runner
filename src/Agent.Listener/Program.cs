@@ -20,6 +20,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         public async static Task<int> MainAsync(string[] args)
         {
             using (HostContext context = new HostContext("Agent"))
+            using (var term = context.GetService<ITerminal>())
             {
                 int rc = 0;
                 try
@@ -36,7 +37,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     CommandLineParser parser = new CommandLineParser(context);
                     parser.Parse(args);
                     s_trace.Info("Arguments parsed");
-                    
+
                     IAgent agent = context.GetService<IAgent>();
                     using (agent.TokenSource = new CancellationTokenSource())
                     {
