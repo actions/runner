@@ -22,7 +22,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         Variables Variables { get; }
 
         // Initialize
-        void InitializeJob(JobRequestMessage message);
+        void InitializeJob(JobRequestMessage message, CancellationToken token);
         IExecutionContext CreateChild(Guid recordId, string name);
 
         // logging
@@ -237,7 +237,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             }
         }
 
-        public void InitializeJob(JobRequestMessage message)
+        public void InitializeJob(JobRequestMessage message, CancellationToken token)
         {
             // Validate/store parameters.
             Trace.Entering();
@@ -245,6 +245,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             ArgUtil.NotNull(message.Environment, nameof(message.Environment));
             ArgUtil.NotNull(message.Environment.Endpoints, nameof(message.Environment.Endpoints));
             ArgUtil.NotNull(message.Environment.Variables, nameof(message.Environment.Variables));
+
+            CancellationToken = token;
 
             // Initialize the environment.
             Endpoints = message.Environment.Endpoints;

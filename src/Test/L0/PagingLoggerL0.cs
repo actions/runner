@@ -15,12 +15,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
         public PagingLoggerL0()
         {
             _jobServerQueue = new Mock<IJobServerQueue>();
+            PagingLogger.PagingFolder = "pages_" + Guid.NewGuid().ToString();
         }
 
         private void CleanLogFolder()
         {
+            
             //clean test data if any old test forgot
-            string pagesFolder = Path.Combine(IOUtil.GetDiagPath(), "pages");
+            string pagesFolder = Path.Combine(IOUtil.GetDiagPath(), PagingLogger.PagingFolder);
             if (Directory.Exists(pagesFolder))
             {
                 Directory.Delete(pagesFolder, true);
@@ -80,9 +82,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                     //Assert
                     _jobServerQueue.Verify(x => x.QueueFileUpload(timeLineId, timeLineRecordId, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), true), Times.AtLeast(PagesToWrite));
                     Assert.Equal(bytesSent, bytesWritten);
-
-                    //cleanup
-                    CleanLogFolder();
                 }
             }
             finally

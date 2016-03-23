@@ -10,48 +10,45 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
     {
         public static int Main(string[] args)
         {
-            var tokenSource = new CancellationTokenSource();
-            var hc = new HostContext("Worker", tokenSource.Token);
-            return RunAsync(args, hc, tokenSource).GetAwaiter().GetResult();
+            return MainAsync(args).GetAwaiter().GetResult();
         }
 
-        public static async Task<int> RunAsync(
-            string[] args,
-            IHostContext hc,
-            CancellationTokenSource tokenSource)
+        public static async Task<int> MainAsync(
+            string[] args)
         {
-            Tracing trace = hc.GetTrace(nameof(Program));
-            try
+            using (var hc = new HostContext("Worker"))
             {
-                trace.Info($"Version: {Constants.Agent.Version}");
-                trace.Info($"Commit: {BuildConstants.Source.CommitHash}");
+                Tracing trace = hc.GetTrace(nameof(Program));
+                try
+                {
+                    trace.Info($"Version: {Constants.Agent.Version}");
+                    trace.Info($"Commit: {BuildConstants.Source.CommitHash}");
 
-                // Validate args.
-                ArgUtil.NotNull(args, nameof(args));
-                ArgUtil.Equal(3, args.Length, nameof(args.Length));
-                ArgUtil.NotNullOrEmpty(args[0], $"{nameof(args)}[0]");
-                ArgUtil.Equal("spawnclient", args[0].ToLowerInvariant(), $"{nameof(args)}[0]");
-                ArgUtil.NotNullOrEmpty(args[1], $"{nameof(args)}[1]");
-                ArgUtil.NotNullOrEmpty(args[2], $"{nameof(args)}[2]");
-                ArgUtil.NotNull(tokenSource, nameof(tokenSource));
-                var worker = hc.GetService<IWorker>();
+                    // Validate args.
+                    ArgUtil.NotNull(args, nameof(args));
+                    ArgUtil.Equal(3, args.Length, nameof(args.Length));
+                    ArgUtil.NotNullOrEmpty(args[0], $"{nameof(args)}[0]");
+                    ArgUtil.Equal("spawnclient", args[0].ToLowerInvariant(), $"{nameof(args)}[0]");
+                    ArgUtil.NotNullOrEmpty(args[1], $"{nameof(args)}[1]");
+                    ArgUtil.NotNullOrEmpty(args[2], $"{nameof(args)}[2]");
+                    var worker = hc.GetService<IWorker>();
 
-                // Run the worker.
-                return await worker.RunAsync(
-                    pipeIn: args[1],
-                    pipeOut: args[2],
-                    hostTokenSource: tokenSource);
-            }
-            catch (Exception ex)
-            {
-                trace.Error(ex);
-            }
-            finally
-            {
-                hc.Dispose();
-            }
+                    // Run the worker.
+                    return await worker.RunAsync(
+                        pipeIn: args[1],
+                        pipeOut: args[2]);
+                }
+                catch (Exception ex)
+                {
+                    trace.Error(ex);
+                }
+                finally
+                {
+                    hc.Dispose();
+                }
 
-            return 1;
+                return 1;
+            }
         }
     }
 }

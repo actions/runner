@@ -3,6 +3,7 @@ using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
@@ -10,12 +11,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
     [ServiceLocator(Default = typeof(JobRunner))]
     public interface IJobRunner : IAgentService
     {
-        Task<TaskResult> RunAsync(JobRequestMessage message);
+        Task<TaskResult> RunAsync(JobRequestMessage message, CancellationToken jobRequestCancellationToken);
     }
 
     public sealed class JobRunner : AgentService, IJobRunner
     {
-        public async Task<TaskResult> RunAsync(JobRequestMessage message)
+        public async Task<TaskResult> RunAsync(JobRequestMessage message, CancellationToken jobRequestCancellationToken)
         {
             // Validate parameters.
             Trace.Entering();
@@ -43,7 +44,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             {
                 // Create the job execution context.
                 jobContext = HostContext.CreateService<IExecutionContext>();
-                jobContext.InitializeJob(message);
+                jobContext.InitializeJob(message, jobRequestCancellationToken);
                 Trace.Info("Starting the job execution context.");
                 jobContext.Start();
 
@@ -105,12 +106,22 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 {
                     await taskManager.DownloadAsync(jobContext, message.Tasks);
                 }
+                catch (OperationCanceledException ex)
+                {
+                    // set the job to canceled
+                    Trace.Error($"Caught exception: {ex}");
+                    jobContext.Error(ex);
+                    jobContext.Result = TaskResult.Canceled;
+                    jobContext.Complete();
+                    return jobContext.Result.Value;
+                }
                 catch (Exception ex)
                 {
                     // Log the error and fail the job.
                     Trace.Error($"Caught exception from {nameof(TaskManager)}: {ex}");
                     jobContext.Error(ex);
                     jobContext.Result = TaskResult.Failed;
+                    jobContext.Complete();
                     return jobContext.Result.Value;
                 }
 
@@ -120,36 +131,34 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 {
                     await stepsRunner.RunAsync(jobContext, steps);
                 }
+                catch (OperationCanceledException ex) 
+                {
+                    // set the job to canceled
+                    Trace.Error($"Caught exception: {ex}");
+                    jobContext.Error(ex);
+                    jobContext.Result = TaskResult.Canceled;
+                    jobContext.Complete();
+                    return jobContext.Result.Value;
+                }
                 catch (Exception ex)
                 {
                     // Log the error and fail the job.
                     Trace.Error($"Caught exception from {nameof(StepsRunner)}: {ex}");
                     jobContext.Error(ex);
                     jobContext.Result = TaskResult.Failed;
+                    jobContext.Complete();
                     return jobContext.Result.Value;
                 }
 
                 Trace.Info($"Job result: {jobContext.Result}");
+
+                // Complete the job.
+                Trace.Info("Completing the job execution context.");
+                jobContext.Complete();
                 return jobContext.Result ?? TaskResult.Succeeded;
-            }
-            // Only handle the exception if we can set the job result. Otherwise let it bubble.
-            catch (Exception ex) when (jobContext != null)
-            {
-                // Log the error and fail the job.
-                Trace.Error($"Caught exception: {ex}");
-                jobContext.Error(ex);
-                jobContext.Result = TaskResult.Failed;
-                return jobContext.Result.Value;
             }
             finally
             {
-                // Complete the job.
-                if (jobContext != null)
-                {
-                    Trace.Info("Completing the job execution context.");
-                    jobContext.Complete();
-                }
-
                 // Drain the job server queue.
                 if (jobServerQueue != null)
                 {

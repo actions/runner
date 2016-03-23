@@ -16,6 +16,7 @@ namespace Microsoft.VisualStudio.Services.Agent
 
     public class PagingLogger : AgentService, IPagingLogger
     {
+        public static string PagingFolder = "pages";
         public const int PageSize = 8*1024*1024;
 
         private Guid _timelineId;
@@ -33,7 +34,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         {
             base.Initialize(hostContext);
             _pageId = Guid.NewGuid().ToString();
-            _pagesFolder = Path.Combine(IOUtil.GetDiagPath(), "pages");
+            _pagesFolder = Path.Combine(IOUtil.GetDiagPath(), PagingFolder);
             _jobServerQueue = HostContext.GetService<IJobServerQueue>();
             Directory.CreateDirectory(_pagesFolder);
         }

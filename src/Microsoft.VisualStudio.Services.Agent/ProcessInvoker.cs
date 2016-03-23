@@ -13,23 +13,12 @@ namespace Microsoft.VisualStudio.Services.Agent
         event EventHandler<DataReceivedEventArgs> OutputDataReceived;
         event EventHandler<DataReceivedEventArgs> ErrorDataReceived;
 
-        void Execute(
-            string workingDirectory,
-            string fileName,
-            string arguments,
-            IDictionary<string, string>
-            environment);
-
-        // TODO: fire cancellation will not kill process.
         Task<int> ExecuteAsync(
             string workingDirectory,
             string fileName,
             string arguments,
             IDictionary<string, string> environment,
             CancellationToken cancellationToken);
-
-        // TODO: fire cancellation will not kill process.
-        Task<int> WaitForExit(CancellationToken cancellationToken);
     }
 
     public sealed class ProcessInvoker : AgentService, IProcessInvoker
@@ -45,19 +34,39 @@ namespace Microsoft.VisualStudio.Services.Agent
         public event EventHandler<DataReceivedEventArgs> OutputDataReceived;
         public event EventHandler<DataReceivedEventArgs> ErrorDataReceived;
 
-        public async Task<int> WaitForExit(CancellationToken cancellationToken)
+        private async Task<int> WaitForExit(CancellationToken cancellationToken)
         {
             // Wait for the cancellation token to be set or the process to exit.
-            while (!cancellationToken.IsCancellationRequested && !_proc.HasExited)
+            try
             {
-                await _processExitedSignal.WaitAsync(TraceInterval, cancellationToken);
-                if (!_proc.HasExited)
+                while (!cancellationToken.IsCancellationRequested && !_proc.HasExited)
                 {
-                    Trace.Verbose($"Waiting on process {_proc.Id} ({_stopWatch.Elapsed} elapsed)");
+                    await _processExitedSignal.WaitAsync(TraceInterval, cancellationToken);
+                    if (!_proc.HasExited)
+                    {
+                        Trace.Verbose($"Waiting on process {_proc.Id} ({_stopWatch.Elapsed} elapsed)");
+                    }
+                }
+
+                cancellationToken.ThrowIfCancellationRequested();
+            }
+            finally
+            {
+                if (cancellationToken.IsCancellationRequested && !_proc.HasExited)
+                {
+                    Trace.Info($"Terminating process with file name '{_proc?.StartInfo?.FileName}', arguments '{_proc?.StartInfo?.Arguments}', and working directory '{_proc?.StartInfo?.WorkingDirectory}'.");
+                    try
+                    {
+                        //TODO: find out what is Process.Kill doing with child processes on OSX and Linux
+                        _proc.Kill();
+                    }
+                    catch (InvalidOperationException ex)
+                    {
+                        //process has exited, before we got a chance to kill it
+                        Trace.Error(ex);
+                    }
                 }
             }
-
-            cancellationToken.ThrowIfCancellationRequested();
             // Wait for process to exit without hard timeout, which will 
             // ensure that we've read everything from the stdout and stderr.
             _proc.WaitForExit();
@@ -71,7 +80,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             return _proc.ExitCode;
         }
 
-        public void Execute(string workingDirectory, string fileName, string arguments, IDictionary<string, string> environment)
+        private void Execute(string workingDirectory, string fileName, string arguments, IDictionary<string, string> environment)
         {
             ArgUtil.Null(_proc, nameof(_proc));
             ArgUtil.NotNullOrEmpty(fileName, nameof(fileName));

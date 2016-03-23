@@ -10,22 +10,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
     public static class Program
     {
         private static Tracing s_trace;
-        
+
         public static int Main(string[] args)
         {
-            var tokenSource = new CancellationTokenSource();
-            using (HostContext context = new HostContext("Agent", tokenSource.Token))
+            return MainAsync(args).GetAwaiter().GetResult();
+        }
+
+
+        public async static Task<int> MainAsync(string[] args)
+        {
+            using (HostContext context = new HostContext("Agent"))
+            using (var term = context.GetService<ITerminal>())
             {
-                var cancelHandler = new ConsoleCancelEventHandler((sender, e) =>
-                {
-                    Console.WriteLine("Exiting...");
-                    e.Cancel = true;
-                    tokenSource.Cancel();
-                });
-                Console.CancelKeyPress += cancelHandler;
-                
                 int rc = 0;
-                try 
+                try
                 {
                     s_trace = context.GetTrace("AgentProcess");
                     s_trace.Info($"Version: {Constants.Agent.Version}");
@@ -39,9 +37,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     CommandLineParser parser = new CommandLineParser(context);
                     parser.Parse(args);
                     s_trace.Info("Arguments parsed");
-                    
+
                     IAgent agent = context.GetService<IAgent>();
-                    rc = agent.ExecuteCommand(parser).GetAwaiter().GetResult();
+                    using (agent.TokenSource = new CancellationTokenSource())
+                    {
+                        rc = await agent.ExecuteCommand(parser);
+                    }
                 }
                 catch (Exception e)
                 {
@@ -51,10 +52,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     }
                     s_trace.Error(e);
                     rc = 1;
-                }
-                finally
-                {
-                    Console.CancelKeyPress -= cancelHandler;
                 }
 
                 return rc;

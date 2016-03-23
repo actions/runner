@@ -67,36 +67,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             }
         }
 
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Common")]
-        public void StoresCancellationToken()
-        {
-            try
-            {
-                // Arrange.
-                Setup();
-
-                // Act.
-                CancellationToken actual = _hc.CancellationToken;
-
-                // Assert.
-                Assert.Equal(_tokenSource.Token, actual);
-            }
-            finally
-            {
-                // Cleanup.
-                Teardown();
-            }
-        }
-
         public void Setup([CallerMemberName] string testName = "")
         {
             _tokenSource = new CancellationTokenSource();
             _hc = new HostContext(
                 hostType: "L0Test",
-                logFile: Path.Combine(IOUtil.GetBinPath(), $"trace_{nameof(HostContextL0)}_{testName}.log"),
-                cancellationToken: _tokenSource.Token);
+                logFile: Path.Combine(IOUtil.GetBinPath(), $"trace_{nameof(HostContextL0)}_{testName}.log"));
         }
 
         public void Teardown()

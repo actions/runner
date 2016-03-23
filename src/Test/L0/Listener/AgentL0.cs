@@ -50,9 +50,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
         public async void TestRunAsync()
         {
             using (var hc = new TestHostContext(this))
+            using (var tokenSource = new CancellationTokenSource())
             {
                 //Arrange
                 var agent = new Microsoft.VisualStudio.Services.Agent.Listener.Agent();
+                agent.TokenSource = tokenSource;
                 hc.SetSingleton<IConfigurationManager>(_configurationManager.Object);
                 hc.SetSingleton<IMessageListener>(_messageListener.Object);
                 hc.SetSingleton<IWorkerManager>(_workerManager.Object);
@@ -99,16 +101,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                     .Returns(true);
                 _configurationManager.Setup(x => x.EnsureConfiguredAsync())
                     .Returns(Task.CompletedTask);
-                _messageListener.Setup(x => x.CreateSessionAsync())
+                _messageListener.Setup(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()))
                     .Returns(Task.FromResult<bool>(true));
                 _messageListener.Setup(x => x.Session)
                     .Returns(taskAgentSession);
-                _messageListener.Setup(x => x.GetNextMessageAsync())
+                _messageListener.Setup(x => x.GetNextMessageAsync(It.IsAny<CancellationToken>()))
                     .Returns(async () =>
                         {
                             if (0 == messages.Count)
                             {
-                                await Task.Delay(2000, hc.CancellationToken);
+                                await Task.Delay(2000, tokenSource.Token);
                                 throw new TimeoutException();
                             }
 
@@ -117,27 +119,21 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                 _messageListener.Setup(x => x.DeleteSessionAsync())
                     .Returns(Task.CompletedTask);
                 _workerManager.Setup(x => x.Run(It.IsAny<JobRequestMessage>()))
-                    .Returns( (JobRequestMessage m) => 
-                        {
+                    .Callback((JobRequestMessage m) =>
+                       {
                             //last job starts the task
                             if (m.JobName.Equals("last_job"))
-                            {
-                                signalWorkerComplete.Release();
-                                return Task.CompletedTask;
-                            }                            
-                            else 
-                            {
-                                return Task.CompletedTask;
-                            }
-                            
-                        }
+                           {
+                               signalWorkerComplete.Release();
+                           }
+                       }
                     );
                 _workerManager.Setup(x => x.Cancel(It.IsAny<JobCancelMessage>()));
                 _agentServer.Setup(x => x.DeleteAgentMessageAsync(settings.PoolId, arMessages[0].MessageId, taskAgentSession.SessionId, It.IsAny<CancellationToken>()))
-                    .Returns( (Int32 poolId, Int64 messageId, Guid sessionId, CancellationToken cancellationToken) =>
-                    {
-                        return Task.CompletedTask;
-                    });
+                    .Returns((Int32 poolId, Int64 messageId, Guid sessionId, CancellationToken cancellationToken) =>
+                   {
+                       return Task.CompletedTask;
+                   });
 
                 //Act
                 var parser = new CommandLineParser(hc);
@@ -146,15 +142,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
 
                 //Assert
                 //wait for the agent to run one job
-                if (! await signalWorkerComplete.WaitAsync(2000) )                
+                if (!await signalWorkerComplete.WaitAsync(2000))
                 {
-                    Assert.True(false, $"{nameof(_messageListener.Object.GetNextMessageAsync)} was not invoked." );
+                    Assert.True(false, $"{nameof(_messageListener.Object.GetNextMessageAsync)} was not invoked.");
                 }
                 else
                 {
                     //Act
-                    hc.CancellationTokenSource.Cancel(); //stop Agent
-                    
+                    tokenSource.Cancel(); //stop Agent
+
                     //Assert
                     Task[] taskToWait2 = { agentTask, Task.Delay(2000) };
                     //wait for the Agent to exit
@@ -168,10 +164,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                          $"{nameof(_workerManager.Object.Run)} was not invoked.");
                     _workerManager.Verify(x => x.Cancel(It.IsAny<JobCancelMessage>()), Times.Once(),
                         $"{nameof(_workerManager.Object.Cancel)} was not invoked.");
-                    _messageListener.Verify(x => x.GetNextMessageAsync(), Times.AtLeast(arMessages.Length));
-                    _messageListener.Verify(x => x.CreateSessionAsync(), Times.Once());
+                    _messageListener.Verify(x => x.GetNextMessageAsync(It.IsAny<CancellationToken>()), Times.AtLeast(arMessages.Length));
+                    _messageListener.Verify(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()), Times.Once());
                     _messageListener.Verify(x => x.DeleteSessionAsync(), Times.Once());
-                    _agentServer.Verify(x => x.DeleteAgentMessageAsync(settings.PoolId, arMessages[0].MessageId, taskAgentSession.SessionId,  It.IsAny<CancellationToken>()), Times.Once());
+                    _agentServer.Verify(x => x.DeleteAgentMessageAsync(settings.PoolId, arMessages[0].MessageId, taskAgentSession.SessionId, It.IsAny<CancellationToken>()), Times.Once());
                 }
             }
         }

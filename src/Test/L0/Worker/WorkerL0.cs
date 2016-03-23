@@ -45,6 +45,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
         {
             //Arrange
             using (var hc = new TestHostContext(this))
+            using (var tokenSource = new CancellationTokenSource())
             {
                 var worker = new Microsoft.VisualStudio.Services.Agent.Worker.Worker();
                 hc.EnqueueInstance<IProcessChannel>(_processChannel.Object);
@@ -71,21 +72,21 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                             return workerMessages.Dequeue();
                         }
 
-                        // Wait for the host cancellation token to expire.
-                        await Task.Delay(-1, hc.CancellationToken);
+                        // Wait for the text to run
+                        await Task.Delay(-1, tokenSource.Token);
                         return default(WorkerMessage);
                     });
-                _jobRunner.Setup(x => x.RunAsync(It.IsAny<JobRequestMessage>()))
+                _jobRunner.Setup(x => x.RunAsync(It.IsAny<JobRequestMessage>(), It.IsAny<CancellationToken>()))
                     .Returns(Task.FromResult<TaskResult>(TaskResult.Succeeded));
 
                 //Act
-                await worker.RunAsync(pipeIn: "1", pipeOut: "2", hostTokenSource: hc.CancellationTokenSource);
+                await worker.RunAsync(pipeIn: "1", pipeOut: "2");
 
                 //Assert
                 _processChannel.Verify(x => x.StartClient("1", "2"), Times.Once());
                 _jobRunner.Verify(x => x.RunAsync(
-                    It.Is<JobRequestMessage>(y => JsonUtility.ToString(y) == arWorkerMessages[0].Body)));
-                hc.CancellationTokenSource.Cancel();
+                    It.Is<JobRequestMessage>(y => JsonUtility.ToString(y) == arWorkerMessages[0].Body), It.IsAny<CancellationToken>()));
+                tokenSource.Cancel();
             }
         }
 
@@ -121,22 +122,22 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
 
                 _processChannel.Setup(x => x.ReceiveAsync(It.IsAny<CancellationToken>()))
                     .Returns(() => Task.FromResult(workerMessages.Dequeue()));
-                _jobRunner.Setup(x => x.RunAsync(It.IsAny<JobRequestMessage>()))
+                _jobRunner.Setup(x => x.RunAsync(It.IsAny<JobRequestMessage>(), It.IsAny<CancellationToken>()))
                     .Returns(
-                    async (JobRequestMessage jm) =>
+                    async (JobRequestMessage jm, CancellationToken ct) =>
                     {
-                        await Task.Delay(-1, hc.CancellationToken);
+                        await Task.Delay(-1, ct);
                         return TaskResult.Canceled;
                     });
 
                 //Act
                 await Assert.ThrowsAsync<TaskCanceledException>(
-                    async () => await worker.RunAsync("1", "2", hc.CancellationTokenSource));
+                    async () => await worker.RunAsync("1", "2"));
 
                 //Assert
                 _processChannel.Verify(x => x.StartClient("1", "2"), Times.Once());
                 _jobRunner.Verify(x => x.RunAsync(
-                    It.Is<JobRequestMessage>(y => JsonUtility.ToString(y) == arWorkerMessages[0].Body)));
+                    It.Is<JobRequestMessage>(y => JsonUtility.ToString(y) == arWorkerMessages[0].Body), It.IsAny<CancellationToken>()));
             }
         }
     }

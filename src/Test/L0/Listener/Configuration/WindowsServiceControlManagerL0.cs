@@ -23,13 +23,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
 
             _processInvoker.Setup(
                 x =>
-                x.Execute(
+                x.ExecuteAsync(
                     It.IsAny<string>(),
                     It.IsAny<string>(),
                     It.IsAny<string>(),
-                    It.IsAny<Dictionary<string, string>>()));
-
-            _processInvoker.Setup(x => x.WaitForExit(It.IsAny<CancellationToken>())).Returns(Task.FromResult(0));
+                    It.IsAny<Dictionary<string, string>>(),
+                    It.IsAny<CancellationToken>())).Returns(Task.FromResult(0));
 
             _reader.Setup(x => x.ReadValue(
                     "windowslogonaccount",
