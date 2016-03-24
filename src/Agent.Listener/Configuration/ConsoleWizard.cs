@@ -83,7 +83,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             {
                 _terminal.WriteLine(StringUtil.Loc("InvalidConfigFor0TerminatingUnattended", argName));
                 // TODO: Don't Environment.Exit(). Makes unit testing difficult.
-                Environment.Exit(1);
+                System.Environment.Exit(1);
             }
 
             while (true)
