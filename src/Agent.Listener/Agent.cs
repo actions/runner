@@ -111,6 +111,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
                 _inConfigStage = false;
 
+                // TODO: If configured as runasservice return from here
+            
                 return await RunAsync(TokenSource.Token);
             }
             finally

@@ -34,7 +34,7 @@ var runService = function() {
             });
 
             listener.on('close', (code) => {
-                console.log(`Agent listenere exited with error code ${code}`);
+                console.log(`Agent listener exited with error code ${code}`);
 
                 if (code === 1)
                 {

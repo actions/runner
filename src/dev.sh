@@ -25,6 +25,8 @@ fi
 build_dirs=("Microsoft.VisualStudio.Services.Agent" "Agent.Listener" "Agent.Worker" "Test")
 build_clean_dirs=("Agent.Listener" "Test" "Agent.Worker" "Microsoft.VisualStudio.Services.Agent")
 bin_layout_dirs=("Agent.Listener" "Microsoft.VisualStudio.Services.Agent" "Agent.Worker")
+WINDOWSAGENTSERVICE_PROJFILE="Agent.Service/Windows/AgentService.csproj"
+WINDOWSAGENTSERVICE_BIN="Agent.Service/Windows/bin/Debug"
 
 function failed()
 {
@@ -85,7 +87,19 @@ function build ()
     echo "Building ${commit_hash}"
     sed "s/$commit_token/$commit_hash/g" "Misc/BuildConstants.ch" > "Microsoft.VisualStudio.Services.Agent/BuildConstants.cs"
 
+    if [[ "$define_os" == 'OS_WINDOWS' ]]; then
+        msbuild_location=`reg query "HKLM\SOFTWARE\Microsoft\MSBuild\ToolsVersions\4.0" /v MSBuildToolsPath | tr -d '\r\n' -s " " | cut -d' ' -f4 | tr -d '\r\n'`
+        local rc=$?
+        if [ $rc -ne 0 ]; then
+            failed "Can not find msbuild location, failing build"
+        fi
+    fi
+
     rundotnet build failed build_dirs[@]
+
+    if [[ "$define_os" == 'OS_WINDOWS' && "$msbuild_location" != "" ]]; then
+        $msbuild_location/msbuild.exe $WINDOWSAGENTSERVICE_PROJFILE
+    fi
 }
 
 function restore ()
@@ -144,6 +158,12 @@ function layout ()
     do
         copyBin ${bin_copy_dir}
     done
+
+    if [[ "$define_os" == 'OS_WINDOWS' ]]; then
+        # TODO Make sure to package Release build instead of debug build
+        echo Copying Agent.Service
+        cp -Rf $WINDOWSAGENTSERVICE_BIN/* ${LAYOUT_DIR}/bin
+    fi
     
     cp -Rf ./Misc/layoutroot/* ${LAYOUT_DIR}
     cp -Rf ./Misc/layoutbin/* ${LAYOUT_DIR}/bin
@@ -153,6 +173,17 @@ function layout ()
 
     if [[ ("$PLATFORM" == "linux") || ("$PLATFORM" == "darwin") ]]; then
        package
+    fi
+    
+    #cygwin messes up windows ACLs., adds a NULL SID with few deny permission
+    #Its important to fix this acls, without this if you try to run as service (as another user) execute permission is effectively denied
+    if [[ "$define_os" == 'OS_WINDOWS' ]]; then
+        echo Fixing layout directory ACLs 
+        pushd ${LAYOUT_DIR} > /dev/null
+
+        #Resets with default inherited acls
+        icacls . /reset /T /C /Q
+        popd > /dev/null 
     fi
 }
 

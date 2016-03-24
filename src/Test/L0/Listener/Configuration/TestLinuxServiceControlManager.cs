@@ -16,10 +16,5 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
         {
             return true;
         }
-
-        protected override bool CheckServiceExists(string serviceName)
-        {
-            return true;
-        }
     }
 }
