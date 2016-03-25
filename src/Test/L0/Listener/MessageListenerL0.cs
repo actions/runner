@@ -60,7 +60,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                         tokenSource.Token))
                     .Returns(Task.FromResult(expectedSession));
 
-                _enviroment.Setup(x => x.GetCapabilities(It.IsAny<CancellationToken>())).Returns(Task.FromResult(new Dictionary<string, string>()));
+                _enviroment.Setup(x => x.GetCapabilities(It.IsAny<string>(), It.IsAny<CancellationToken>())).Returns(Task.FromResult(new Dictionary<string, string>()));
 
                 // Act.
                 MessageListener listener = new MessageListener();
@@ -77,7 +77,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                         _settings.PoolId,
                         It.Is<TaskAgentSession>(y => y != null),
                         tokenSource.Token), Times.Once());
-                _enviroment.Verify(x => x.GetCapabilities(It.IsAny<CancellationToken>()));
+                _enviroment.Verify(x => x.GetCapabilities(It.IsAny<string>(), It.IsAny<CancellationToken>()));
             }
         }
 
@@ -104,7 +104,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                         tokenSource.Token))
                     .Returns(Task.FromResult(expectedSession));
 
-                _enviroment.Setup(x => x.GetCapabilities(It.IsAny<CancellationToken>())).Returns(Task.FromResult(new Dictionary<string, string>()));
+                _enviroment.Setup(x => x.GetCapabilities(It.IsAny<string>(), It.IsAny<CancellationToken>())).Returns(Task.FromResult(new Dictionary<string, string>()));
 
                 // Act.
                 MessageListener listener = new MessageListener();
@@ -124,7 +124,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                 _agentServer
                     .Verify(x => x.DeleteAgentSessionAsync(
                         _settings.PoolId, expectedSession.SessionId, It.IsAny<CancellationToken>()), Times.Once());
-                _enviroment.Verify(x => x.GetCapabilities(It.IsAny<CancellationToken>()));
+                _enviroment.Verify(x => x.GetCapabilities(It.IsAny<string>(), It.IsAny<CancellationToken>()));
             }
         }
 
@@ -151,7 +151,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                         tokenSource.Token))
                     .Returns(Task.FromResult(expectedSession));
 
-                _enviroment.Setup(x => x.GetCapabilities(It.IsAny<CancellationToken>())).Returns(Task.FromResult(new Dictionary<string, string>()));
+                _enviroment.Setup(x => x.GetCapabilities(It.IsAny<string>(), It.IsAny<CancellationToken>())).Returns(Task.FromResult(new Dictionary<string, string>()));
 
                 // Act.
                 MessageListener listener = new MessageListener();
@@ -205,7 +205,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                 _agentServer
                     .Verify(x => x.GetAgentMessageAsync(
                         _settings.PoolId, expectedSession.SessionId, It.IsAny<long?>(), tokenSource.Token), Times.Exactly(arMessages.Length));
-                _enviroment.Verify(x => x.GetCapabilities(It.IsAny<CancellationToken>()));
+                _enviroment.Verify(x => x.GetCapabilities(It.IsAny<string>(), It.IsAny<CancellationToken>()));
             }
         }
     }

@@ -231,8 +231,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                                                 args,
                                                 enforceSupplied);
 
-                // TODO: Scan for capabilites
-                var capabilities = new Dictionary<string, string>();
+                var environment = HostContext.GetService<IEnvironment>();
+                Dictionary<string, string> capabilities;
+                using (var ct = new CancellationTokenSource())
+                {
+                    capabilities = await environment.GetCapabilities(agentName, ct.Token);
+                }
 
                 TaskAgent agent = await GetAgent(agentName, poolId);
                 bool exists = agent != null;
@@ -260,7 +264,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                         {
                             agent = await UpdateAgent(poolId, agent);
                             _term.WriteLine(StringUtil.Loc("AgentReplaced"));
-                            registered = true;    
+                            registered = true;
                         }
                         catch (Exception e)
                         {
@@ -410,6 +414,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             _term.WriteLine();
             _term.WriteLine($">> {message}:");
             _term.WriteLine();
-        } 
+        }
     }
 }

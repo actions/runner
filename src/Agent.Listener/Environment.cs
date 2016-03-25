@@ -13,7 +13,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
     [ServiceLocator(Default = typeof(Environment))]
     public interface IEnvironment : IAgentService
     {
-        Task<Dictionary<string, string>> GetCapabilities(CancellationToken token);
+        Task<Dictionary<string, string>> GetCapabilities(string agentName, CancellationToken token);
     }
 
     struct Capability
@@ -105,17 +105,22 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 { "xcode", "xcode-select", "-p" },
             };
 
-        public async Task<Dictionary<string, string>> GetCapabilities(CancellationToken token)
+        private Dictionary<string, string> _capsCache;
+
+        public async Task<Dictionary<string, string>> GetCapabilities(string agentName, CancellationToken token)
         {
+            if (_capsCache != null)
+            {
+                return new Dictionary<string, string>(_capsCache);
+            }
+
             var caps = new Dictionary<string, string>();
 
             GetRegularCapabilities(caps, token);
 
             await GetShellCapabilities(caps, token);
 
-            var configManager = HostContext.GetService<IConfigurationManager>();
-            AgentSettings settings = configManager.LoadSettings();
-            caps["Agent.Name"] = settings.AgentName ?? string.Empty;
+            caps["Agent.Name"] = agentName ?? string.Empty;
             //TODO: figure out what should be the value of Agent.OS
             //XPLAT is using process.platform, which returns 'darwin', 'freebsd', 'linux', 'sunos' or 'win32'
             //windows agent is printing environment variable "OS", which is something like "Windows_NT" even when running Windows 10
@@ -123,6 +128,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             //"Linux 3.13.0-43-generic #72-Ubuntu SMP Mon Dec 8 19:35:06 UTC 2014", "Darwin 15.4.0 Darwin Kernel Version 15.4.0: Fri Feb 26 22:08:05 PST 2016;"
             caps["Agent.OS"] = RuntimeInformation.OSDescription ?? string.Empty;
             caps["Agent.ComputerName"] = System.Environment.MachineName ?? string.Empty;
+
+            foreach (var cap in caps)
+            {
+                Trace.Info($"Capability: {cap.Key} Value: {cap.Value}");
+            }
+
+            _capsCache = new Dictionary<string, string>(caps);
 
             return caps;
         }
