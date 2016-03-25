@@ -4,6 +4,7 @@ using Microsoft.VisualStudio.Services.Agent.Util;
 using Microsoft.VisualStudio.Services.Agent.Worker.Handlers;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -79,7 +80,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             Trace.Verbose("Expanding inputs.");
             ExecutionContext.Variables.ExpandValues(target: inputs);
 
-            // TODO: Delegate to the source provider to fixup the file path inputs.
+            // Delegate to the JobExtension to fixup the file path inputs.
+            foreach (var input in definition.Data?.Inputs ?? new TaskInputDefinition[0])
+            {
+                if (String.Equals(input.InputType, TaskInputType.FilePath, StringComparison.OrdinalIgnoreCase))
+                {
+                    Trace.Verbose($"Expanding filepath type input {input.Name}: {inputs[input.Name] ?? string.Empty}.");
+                    inputs[input.Name] = ExpandFilePathInput(inputs[input.Name] ?? string.Empty);
+                    Trace.Verbose($"Expanded filepath type input {input.Name}: {inputs[input.Name] ?? string.Empty}.");
+                }
+            }
 
             // Create the handler.
             IHandler handler = handlerFactory.Create(
@@ -90,6 +100,51 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
             // Run the task.
             await handler.RunAsync();
+        }
+
+        private string ExpandFilePathInput(string inputValue)
+        {
+            Trace.Entering();
+
+            // if inputValue is rooted, return full path.
+            string fullPath;
+            if (!string.IsNullOrEmpty(inputValue) &&
+                inputValue.IndexOfAny(Path.GetInvalidPathChars()) < 0 &&
+                Path.IsPathRooted(inputValue))
+            {
+                try
+                {
+                    fullPath = Path.GetFullPath(inputValue);
+                    Trace.Info($"The original input is a rooted path, return absolute path: {fullPath}");
+                    return fullPath;
+                }
+                catch (Exception ex)
+                {
+                    Trace.Info($"The original input is a rooted path, but it is not a full qualified path: {inputValue}");
+                    Trace.Error(ex);
+                }
+            }
+
+            // use jobextension solve inputValue, if solved result is rooted, return full path.
+            var extensionManager = HostContext.GetService<IExtensionManager>();
+            IJobExtension[] extensions =
+                (extensionManager.GetExtensions<IJobExtension>() ?? new List<IJobExtension>())
+                .Where(x => string.Equals(x.HostType, ExecutionContext.Variables.System_HostType, StringComparison.OrdinalIgnoreCase))
+                .ToArray();
+            foreach (IJobExtension extension in extensions)
+            {
+                extension.GetRootedPath(ExecutionContext, inputValue, out fullPath);
+                if (!string.IsNullOrEmpty(fullPath))
+                {
+                    // Stop on the first path root found.
+                    Trace.Info($"{extension.HostType} JobExtension resolved a rooted path:: {fullPath}");
+                    return fullPath;
+                }
+            }
+
+            // return original inputValue.
+            Trace.Info("Can't root path even by using JobExtension, return original input.");
+            return inputValue;
         }
     }
 }

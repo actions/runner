@@ -74,7 +74,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             }
             else
             {
-                context.Error($"Can't find command extension for {command.Area}. TODO: DOC aka link");
+                context.Warning(StringUtil.Loc("CommandNotFound", command.Area));
             }
 
             return true;

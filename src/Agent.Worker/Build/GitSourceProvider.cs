@@ -102,6 +102,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             await RemoveCachedCredential(executionContext, targetPath, repositoryUrl, "origin");
         }
 
+        public string GetLocalPath(ServiceEndpoint endpoint, string path)
+        {
+            // For git repositories, we don't do anything
+            // We expect the path to be a relative path within the Repository
+            return path;
+        }
+
         private async Task<bool> TrySetGitInstallationInfo(IExecutionContext executionContext)
         {
             //find git in %Path%

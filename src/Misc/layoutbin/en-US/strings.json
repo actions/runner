@@ -17,6 +17,7 @@
   "CanNotFindLoginUserName": "Can not find logged in username",
   "CanNotFindSystemd": "Can not find if systemd is installed",
   "Cleanup": "Post Job Clean Up",
+  "CommandNotFound": "Can't find command extension for ##vso[{0}.command]. TODO: DOC aka link",
   "ConnectingToServer": "Connecting to server ...",
   "DirectoryIsEmptyForArtifact": "Directory: {0} is empty, nothing will be added to build artifact {1}.",
   "EnterValidValueFor0": "Enter a valid value for {0}.",
