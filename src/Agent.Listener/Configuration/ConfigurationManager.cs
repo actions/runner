@@ -178,6 +178,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
             Trace.Info("Connect Complete.");
 
+            Trace.Verbose("Ensure env file exists");
+            var environment = HostContext.GetService<IEnvironment>();
+            environment.EnsureEnvFile();
+
             //
             // Loop getting agent name and pool
             //
@@ -231,7 +235,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                                                 args,
                                                 enforceSupplied);
 
-                var environment = HostContext.GetService<IEnvironment>();
                 Dictionary<string, string> capabilities;
                 using (var ct = new CancellationTokenSource())
                 {

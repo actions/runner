@@ -73,6 +73,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             return Path.Combine(GetRootPath(), ".Credentials");
         }
 
+        public static string GetEnvFilePath()
+        {
+            return Path.Combine(GetRootPath(), ".Env");
+        }
+
         public static string GetWorkPath(IHostContext hostContext)
         {
             var configurationStore = hostContext.GetService<IConfigurationStore>();

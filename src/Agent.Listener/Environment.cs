@@ -1,10 +1,11 @@
-using Microsoft.VisualStudio.Services.Agent.Listener.Configuration;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -14,6 +15,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
     public interface IEnvironment : IAgentService
     {
         Task<Dictionary<string, string>> GetCapabilities(string agentName, CancellationToken token);
+
+        void EnsureEnvFile();
+
+        IDictionary<string, string> GetEnv();
     }
 
     struct Capability
@@ -105,6 +110,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 { "xcode", "xcode-select", "-p" },
             };
 
+        private static readonly string[] _ignoredEnvVariables = new string[] {
+            "TERM_PROGRAM",
+            "TERM",
+            "TERM_PROGRAM_VERSION",
+            "SHLVL",
+            "ls_colors",
+            "comp_wordbreaks"
+        };
+
+        // Ignore env vars specified in the 'VSO_AGENT_IGNORE' env var
+        private const string EnvIgnore = "VSO_AGENT_IGNORE";
+
         private Dictionary<string, string> _capsCache;
 
         public async Task<Dictionary<string, string>> GetCapabilities(string agentName, CancellationToken token)
@@ -115,6 +132,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             }
 
             var caps = new Dictionary<string, string>();
+
+            GetFilteredEnvironmentVars(caps);
 
             GetRegularCapabilities(caps, token);
 
@@ -230,6 +249,90 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
                 token.ThrowIfCancellationRequested();
             }
+        }
+
+        private void GetFilteredEnvironmentVars(Dictionary<string, string> vars)
+        {
+            IDictionary envVars = System.Environment.GetEnvironmentVariables();
+
+            // Begin with ignoring env vars declared herein
+            var ignoredEnvVariables = new HashSet<string>(_ignoredEnvVariables);
+
+            // Also ignore env vars specified in the 'VSO_AGENT_IGNORE' env var
+            if (envVars.Contains(EnvIgnore))
+            {
+                var additionalIgnoredVars = ((string)envVars[EnvIgnore]).Split(',');
+                foreach (var ignored in additionalIgnoredVars)
+                {
+                    ignoredEnvVariables.Add(ignored.Trim());
+                }
+            }
+
+            // Get filtered env vars
+            foreach (DictionaryEntry envVar in envVars)
+            {
+                string varName = (string)envVar.Key;
+                string varValue = (string)envVar.Value ?? string.Empty;
+                if (!ignoredEnvVariables.Contains(varName) && varValue.Length < 1024)
+                {
+                    vars.Add(varName, varValue);
+                }
+            }
+        }
+
+        // Ensures existence of the environment file at the specified path, creating it if missing.
+        public void EnsureEnvFile()
+        {
+            string envFileName = IOUtil.GetEnvFilePath();
+            if (File.Exists(envFileName))
+            {
+                return;
+            }
+
+            var envVars = new Dictionary<string, string>();
+            GetFilteredEnvironmentVars(envVars);
+
+            var content = new StringBuilder(string.Empty);
+            foreach (var envvar in envVars)
+            {
+                content.Append($"{envvar.Key}={envvar.Value}");
+                content.AppendLine();
+            }
+
+            File.WriteAllText(envFileName, content.ToString(), System.Text.Encoding.UTF8);
+        }
+
+        // Gets the environment that the agent and worker will use when running as a service.
+        // The current process' environment is overlayed with contents of the environment file.
+        // When not running as a service, the interactive/shell process' environment is used.
+        public IDictionary<string, string> GetEnv()
+        {
+            string envFileName = IOUtil.GetEnvFilePath();
+            if (!File.Exists(envFileName))
+            {
+                throw new FileNotFoundException();
+            }
+
+            string data = File.ReadAllText(envFileName, System.Text.Encoding.UTF8);
+
+            var env = new Dictionary<string, string>();
+
+            var lines = data.Split(new string[] { System.Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
+            foreach (string line in lines)
+            {
+                var tokens = line.Split('=');
+                if (tokens.Length == 2)
+                {
+                    var envKey = (tokens[0] ?? string.Empty).Trim();
+                    var envVal = (tokens[1] ?? string.Empty).Trim();
+                    if (!string.IsNullOrEmpty(envKey) && !string.IsNullOrEmpty(envVal))
+                    {
+                        env[envKey] = envVal;
+                    }
+                }
+            }
+
+            return env;
         }
     }
 }

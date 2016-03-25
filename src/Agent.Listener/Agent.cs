@@ -2,6 +2,7 @@ using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Listener.Configuration;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -133,6 +134,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             var configManager = HostContext.GetService<IConfigurationManager>();
             AgentSettings settings = configManager.LoadSettings();
             _poolId = settings.PoolId;
+
+            //patch the enviroment variables if we run as a service (or at least the flag is set)
+            if (settings.RunAsService)
+            {
+                var environment = HostContext.GetService<IEnvironment>();
+                IDictionary<string, string> envVars = environment.GetEnv();
+                foreach (KeyValuePair<string, string> envVar in envVars)
+                {
+                    System.Environment.SetEnvironmentVariable(envVar.Key, envVar.Value);
+                }
+            }
 
             var listener = HostContext.GetService<IMessageListener>();
             if (!await listener.CreateSessionAsync(token))
