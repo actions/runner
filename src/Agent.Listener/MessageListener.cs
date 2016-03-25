@@ -46,8 +46,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             Uri uri = new Uri(serverUrl);
             VssConnection conn = ApiUtil.CreateConnection(uri, creds);
             string sessionName = $"{System.Environment.MachineName}_{Guid.NewGuid().ToString()}";
-            var enviroment = HostContext.GetService<IEnviroment>();
-            Dictionary<string, string> agentSystemCapabilities = await enviroment.GetCapabilities(token);
+            var environment = HostContext.GetService<IEnvironment>();
+            Dictionary<string, string> agentSystemCapabilities = await environment.GetCapabilities(token);
+            foreach (var cap in agentSystemCapabilities)
+            {
+                Trace.Info($"Capability: {cap.Key} Value: {cap.Value}");
+            }
 
             var agent = new TaskAgentReference
             {

@@ -11,12 +11,12 @@ using System.Threading.Tasks;
 namespace Microsoft.VisualStudio.Services.Agent.Listener
 {
     [ServiceLocator(Default = typeof(Environment))]
-    public interface IEnviroment : IAgentService
+    public interface IEnvironment : IAgentService
     {
         Task<Dictionary<string, string>> GetCapabilities(CancellationToken token);
     }
 
-    struct Capability 
+    struct Capability
     {
         public Capability(string name, string tool, string[] paths)
         {
@@ -27,8 +27,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
         //Name of the capability as requried by the task definition.
         public string Name { get; private set; }
-        
-        //Name of a executable file, which if found in the file system means the capability is present.
+
+        //Name of an executable file, which if found in the file system means the capability is present.
         public string Tool { get; private set; }
 
         //An array of paths, which if found in the file system means the capability is present.
@@ -59,7 +59,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
     static class ListExtensions
     {
         public static void Add(this IList<Capability> list, string name, string tool = null, string[] paths = null)
-        {            
+        {
             list.Add(new Capability(name, tool, paths));
         }
 
@@ -69,20 +69,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         }
     }
 
-    public sealed class Environment : AgentService, IEnviroment
+    public sealed class Environment : AgentService, IEnvironment
     {
-        private static readonly List<Capability> _regularCapabilities =
+        private List<Capability> _regularCapabilities =
             new List<Capability>
             {
-                {
-                    "AndroidSDK",
-                    "android",
-                    new string[]
-                    {
-                        System.Environment.GetEnvironmentVariable("ANDROID_STUDIO") + "/tools/android",
-                        System.Environment.GetEnvironmentVariable("HOME") + "/Library/Developer/Xamarin/android-sdk-macosx/tools/android"
-                    }
-                },
                 { "ant" },
                 { "bundler", "bundle" },
                 { "clang" },
@@ -124,20 +115,35 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
             var configManager = HostContext.GetService<IConfigurationManager>();
             AgentSettings settings = configManager.LoadSettings();
-            caps["Agent.Name"] = settings.AgentName;
+            caps["Agent.Name"] = settings.AgentName ?? string.Empty;
             //TODO: figure out what should be the value of Agent.OS
             //XPLAT is using process.platform, which returns 'darwin', 'freebsd', 'linux', 'sunos' or 'win32'
-            //windows agent is printing enviroment variable "OS", which is something like "Windows_NT" even when running Windows 10
+            //windows agent is printing environment variable "OS", which is something like "Windows_NT" even when running Windows 10
             //.Net core API RuntimeInformation.OSDescription is returning "Microsoft Windows 10.0.10586", 
             //"Linux 3.13.0-43-generic #72-Ubuntu SMP Mon Dec 8 19:35:06 UTC 2014", "Darwin 15.4.0 Darwin Kernel Version 15.4.0: Fri Feb 26 22:08:05 PST 2016;"
-            caps["Agent.OS"] = RuntimeInformation.OSDescription;
-            caps["Agent.ComputerName"] = System.Environment.MachineName;
+            caps["Agent.OS"] = RuntimeInformation.OSDescription ?? string.Empty;
+            caps["Agent.ComputerName"] = System.Environment.MachineName ?? string.Empty;
 
             return caps;
         }
 
         private void GetRegularCapabilities(Dictionary<string, string> capabilities, CancellationToken token)
         {
+            try
+            {
+                //TODO: allow paths to embed environment variables with "$VARNAME" or some other syntax and parse them
+                var paths = new string[]
+                    {
+                        Path.Combine(System.Environment.GetEnvironmentVariable("ANDROID_STUDIO") ?? string.Empty, "/tools/android"),
+                        Path.Combine(System.Environment.GetEnvironmentVariable("HOME") ?? string.Empty, "/Library/Developer/Xamarin/android-sdk-macosx/tools/android")
+                    };
+                _regularCapabilities.Add(new Capability("AndroidSDK", "android", paths));
+            }
+            catch (Exception ex)
+            {
+                Trace.Error(ex);
+            }
+
             foreach (var cap in _regularCapabilities)
             {
                 string capPath = IOUtil.Which(cap.Tool ?? cap.Name);
@@ -145,7 +151,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 {
                     capabilities.Add(cap.Name, capPath);
                 }
-
                 else if (cap.Paths != null)
                 {
                     foreach (var path in cap.Paths)
@@ -191,10 +196,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                                     arguments: cap.CommandArgs,
                                     environment: null,
                                     cancellationToken: token);
+                        //TODO: should we check if toolOutput is a valid file path? (XPLAT does not check either)
                         if (!string.IsNullOrEmpty(toolOutput))
                         {
                             capabilities.Add(cap.Name, toolOutput);
                         }
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        throw;
                     }
                     catch (Exception ex)
                     {

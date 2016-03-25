@@ -19,7 +19,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
         private Mock<IConfigurationManager> _config;
         private Mock<IAgentServer> _agentServer;
         private Mock<ICredentialManager> _credMgr;
-        private Mock<IEnviroment> _enviroment;
+        private Mock<IEnvironment> _enviroment;
 
         public MessageListenerL0()
         {
@@ -28,7 +28,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
             _config.Setup(x => x.LoadSettings()).Returns(_settings);
             _agentServer = new Mock<IAgentServer>();
             _credMgr = new Mock<ICredentialManager>();
-            _enviroment = new Mock<IEnviroment>();
+            _enviroment = new Mock<IEnvironment>();
         }
 
         private TestHostContext CreateTestContext([CallerMemberName] String testName = "")
@@ -37,7 +37,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
             tc.SetSingleton<IConfigurationManager>(_config.Object);
             tc.SetSingleton<IAgentServer>(_agentServer.Object);
             tc.SetSingleton<ICredentialManager>(_credMgr.Object);
-            tc.SetSingleton<IEnviroment>(_enviroment.Object);
+            tc.SetSingleton<IEnvironment>(_enviroment.Object);
             return tc;
         }
 
