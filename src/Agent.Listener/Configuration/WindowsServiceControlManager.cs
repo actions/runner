@@ -200,7 +200,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             Trace.Entering();
             try
             {
-                var service = TryGetServiceController(serviceName);
+                ServiceController service = TryGetServiceController(serviceName);
                 if (service != null)
                 {
                     if (service.Status == ServiceControllerStatus.Running)
@@ -249,7 +249,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             Trace.Entering();
             try
             {
-                var service = TryGetServiceController(serviceName);
+                ServiceController service = TryGetServiceController(serviceName);
                 return service != null;
             }
             catch (Exception exception)
@@ -266,7 +266,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             Trace.Entering();
             try
             {
-                var service = TryGetServiceController(serviceName);
+                ServiceController service = TryGetServiceController(serviceName);
                 if (service != null)
                 {
                     // TODO Fix this to add permission, this is to make NT Authority\Local Service run as service

@@ -253,7 +253,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             }
             finally
             {
-                var result = LsaClose(lsaPolicyHandle);
+                int result = LsaClose(lsaPolicyHandle);
                 if (result != 0)
                 {
                     Trace.Error(StringUtil.Format("Can not close LasPolicy handler. LsaClose failed with error code {0}", result));
