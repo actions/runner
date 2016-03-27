@@ -67,8 +67,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     {
                         context.Error(ex);
                         context.Error($"Unable to process command {command} successfully.");
-                        // TODO: introduct CommandResult to executionContext, this will also been used by the background command task queue.
-                        context.Result = TaskResult.Failed;
+                        context.CommandResult = TaskResult.Failed;
                     }
                 }
             }

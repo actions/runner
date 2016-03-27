@@ -24,5 +24,34 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
                 return TaskResult.Failed;
             }
         }
+
+        // Merge 2 TaskResults get the worst result.
+        // Succeeded -> SucceededWithIssues -> Failed/Canceled/Skipped/Abandoned
+        // SucceededWithIssues -> Failed/Canceled/Skipped/Abandoned
+        // Failed -> Failed
+        // Canceled -> Canceled
+        // Skipped -> Skipped
+        // Abandoned -> Abandoned
+        public static TaskResult MergeTaskResults(TaskResult? currentResult, TaskResult comingResult)
+        {
+            if (currentResult == null)
+            {
+                return comingResult;
+            }
+
+            // current result is Failed/Canceled/Skip/Abandoned
+            if (currentResult >= TaskResult.Failed)
+            {
+                return currentResult.Value;
+            }
+
+            // comming result is bad than current result
+            if (comingResult >= currentResult)
+            {
+                return comingResult;
+            }
+
+            return currentResult.Value;
+        }
     }
 }

@@ -93,6 +93,24 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             }
         }
 
+        public void ConvertLocalPath(IExecutionContext context, string localPath, out string repoName, out string sourcePath)
+        {
+            repoName = "";
+
+            // If no repo was found, send back an empty repo with original path.
+            sourcePath = localPath;
+
+            if (!String.IsNullOrEmpty(localPath) &&
+                File.Exists(localPath) && 
+                SourceEndpoint != null && 
+                SourceProvider != null)
+            {
+                // If we found a repo, calculate the relative path to the file
+                repoName = SourceEndpoint.Name;
+                sourcePath = IOUtil.MakeRelative(localPath, context.Variables.Get(Constants.Variables.Build.SourceFolder));
+            }
+        }
+
         private async Task PrepareAsync()
         {
             // Validate args.

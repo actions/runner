@@ -667,10 +667,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         private async Task<bool> IsRepositoryOriginUrlMatch(IExecutionContext context, string repositoryPath, Uri expectedRepositoryOriginUrl)
         {
             context.Debug($"Checking if the repo on {repositoryPath} matches the expected repository origin URL. expected Url: {expectedRepositoryOriginUrl.AbsoluteUri}");
-            if (!Directory.Exists(repositoryPath))
+            if (!Directory.Exists(Path.Combine(repositoryPath, ".git")))
             {
                 // There is no repo directory
-                context.Debug($"Repository is not found since directory does not exist. {repositoryPath}");
+                context.Debug($"Repository is not found since '.git' directory does not exist under. {repositoryPath}");
                 return false;
             }
 
