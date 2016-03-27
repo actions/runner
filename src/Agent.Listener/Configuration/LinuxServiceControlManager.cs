@@ -16,9 +16,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         private const string ServiceNamePattern = "vsts.agent.{0}.{1}.service";
         private const string ServiceDisplayNamePattern = "VSTS Agent ({0}.{1})";
 
-        private const string SystemdPathPrefix = "/etc/systemd/system";
-        private const string InitFileCommandLocation = "/proc/1/comm";
-
         private const int MaxUserNameLength = 32;
         private const string VstsAgentServiceTemplate = "vsts.agent.service.template";
 
@@ -29,9 +26,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         {
             Trace.Entering();
 
+            var _linuxServiceHelper = HostContext.GetService<INativeLinuxServiceHelper>();
             CalculateServiceName(settings, ServiceNamePattern, ServiceDisplayNamePattern);
 
-            if (!CheckIfSystemdExists())
+            if (!_linuxServiceHelper.CheckIfSystemdExists())
             {
                 Trace.Info("Systemd does not exists, returning");
                 _term.WriteLine(StringUtil.Loc("SystemdDoesNotExists"));
@@ -46,7 +44,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 StopService(settings.ServiceName);
             }
 
-            var unitFile = GetUnitFile(settings.ServiceName);
+            var unitFile = _linuxServiceHelper.GetUnitFile(settings.ServiceName);
 
             try
             {
@@ -136,7 +134,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
             try
             {
-                var unitFile = new FileInfo(Path.Combine(SystemdPathPrefix, serviceName));
+                var unitFile = new FileInfo(Path.Combine(NativeLinuxServiceHelper.SystemdPathPrefix, serviceName));
                 return unitFile.Exists;
             }
             catch (Exception ex)
@@ -145,28 +143,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
                 // If we can't check if the service exists we can't configure either. We can't ignore this error.
                 throw;
-            }
-        }
-
-        protected virtual string GetUnitFile(string serviceName)
-        {
-            return Path.Combine(SystemdPathPrefix, serviceName);
-        }
-
-        protected virtual bool CheckIfSystemdExists()
-        {
-            Trace.Entering();
-            try
-            {
-                var commName = File.ReadAllText(InitFileCommandLocation).Trim();
-                return commName.Equals("systemd", StringComparison.OrdinalIgnoreCase);
-            }
-            catch (Exception ex)
-            {
-                Trace.Error(ex);
-                _term.WriteError(StringUtil.Loc("CanNotFindSystemd"));
-
-                return false;
             }
         }
 

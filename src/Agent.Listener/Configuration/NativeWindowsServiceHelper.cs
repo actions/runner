@@ -1,17 +1,19 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Security.AccessControl;
 using System.Security.Cryptography;
 using System.Security.Principal;
+using System.ServiceProcess;
 using System.Text;
 
 using Microsoft.VisualStudio.Services.Agent.Util;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 {
-    [ServiceLocator (Default = typeof(WindowsSecurityManager))]
-    public interface IWindowsSecurityManager : IAgentService
+    [ServiceLocator (Default = typeof(NativeWindowsServiceHelper))]
+    public interface INativeWindowsServiceHelper : IAgentService
     {
         string GetUniqueBuildGroupName();
 
@@ -32,16 +34,36 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         NTAccount GetDefaultServiceAccount();
 
         void SetPermissionForAccount(string path, string accountName);
+
+        ServiceController TryGetServiceController(string serviceName);
+
+        void InstallService(string serviceName, string serviceDisplayName, string logonAccount, string logonPassword);
     }
 
-    public class WindowsSecurityManager : AgentService, IWindowsSecurityManager
+    public class NativeWindowsServiceHelper : AgentService, INativeWindowsServiceHelper
     {
         // TODO: Change it to VSTS_AgentService_G?
         private const string AgentServiceLocalGroupPrefix = "TFS_BuildService_G";
+        private ITerminal _term;
+
+        public override void Initialize(IHostContext hostContext)
+        {
+            base.Initialize(hostContext);
+            _term = hostContext.GetService<ITerminal>();
+        }
 
         public string GetUniqueBuildGroupName()
         {
             return AgentServiceLocalGroupPrefix + GetHashCodeForAgent().Substring(0, 5);
+        }
+
+        public ServiceController TryGetServiceController(string serviceName)
+        {
+            Trace.Entering();
+
+            return
+                ServiceController.GetServices()
+                    .FirstOrDefault(x => x.ServiceName.Equals(serviceName, StringComparison.OrdinalIgnoreCase));
         }
 
         // TODO: Make sure to remove Old agent's group and registry changes made during auto upgrade to vsts-agent.
@@ -331,6 +353,51 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             GrantFullControlToGroup(path, groupName);
         }
 
+        public void InstallService(string serviceName, string serviceDisplayName, string logonAccount, string logonPassword)
+        {
+            Trace.Entering();
+
+            string agentServiceExecutable = Path.Combine(IOUtil.GetBinPath(), WindowsServiceControlManager.WindowsServiceControllerName);
+            IntPtr scmHndl = OpenSCManager(null, null, ServiceManagerRights.AllAccess);
+
+            if (scmHndl.ToInt64() <= 0)
+            {
+                throw new Exception("Failed to Open Service Control Manager");
+            }
+
+            try
+            {
+                Trace.Verbose(StringUtil.Format("Opened SCManager. Trying to create service {0}", serviceName));
+
+                IntPtr serviceHndl = CreateService(
+                                        scmHndl,
+                                        serviceName,
+                                        serviceDisplayName,
+                                        ServiceRights.QueryStatus | ServiceRights.Start,
+                                        SERVICE_WIN32_OWN_PROCESS,
+                                        ServiceBootFlag.AutoStart,
+                                        ServiceError.Normal,
+                                        agentServiceExecutable,
+                                        null,
+                                        IntPtr.Zero,
+                                        null,
+                                        logonAccount,
+                                        logonPassword);
+
+                if (serviceHndl.ToInt64() <= 0)
+                {
+                    throw new InvalidOperationException(StringUtil.Loc("OperationFailed", nameof(CreateService), GetLastError()));
+                }
+
+                _term.WriteLine(StringUtil.Loc("ServiceConfigured", serviceName));
+                CloseServiceHandle(serviceHndl);
+            }
+            finally
+            {
+                CloseServiceHandle(scmHndl);
+            }
+        }
+
         private byte[] GetSidBinaryFromWindows(string domain, string user)
         {
             try
@@ -417,6 +484,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         private const UInt32 LOGON32_LOGON_NETWORK = 3;
         private const UInt32 LOGON32_PROVIDER_DEFAULT = 0;
 
+        private const int SERVICE_WIN32_OWN_PROCESS = 0x00000010;
+        public const int SERVICE_NO_CHANGE = -1;
+
         // TODO Fix this. This is not yet available in coreclr (newer version?)
         private const int UnicodeCharSize = 2;
 
@@ -489,6 +559,57 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             public IntPtr SecurityQualityOfService;
         }
 
+        [Flags]
+        public enum ServiceManagerRights
+        {
+            Connect = 0x0001,
+            CreateService = 0x0002,
+            EnumerateService = 0x0004,
+            Lock = 0x0008,
+            QueryLockStatus = 0x0010,
+            ModifyBootConfig = 0x0020,
+            StandardRightsRequired = 0xF0000,
+            AllAccess =
+                (StandardRightsRequired | Connect | CreateService | EnumerateService | Lock | QueryLockStatus
+                 | ModifyBootConfig)
+        }
+
+        [Flags]
+        public enum ServiceRights
+        {
+            QueryConfig = 0x1,
+            ChangeConfig = 0x2,
+            QueryStatus = 0x4,
+            EnumerateDependants = 0x8,
+            Start = 0x10,
+            Stop = 0x20,
+            PauseContinue = 0x40,
+            Interrogate = 0x80,
+            UserDefinedControl = 0x100,
+            Delete = 0x00010000,
+            StandardRightsRequired = 0xF0000,
+            AllAccess =
+                (StandardRightsRequired | QueryConfig | ChangeConfig | QueryStatus | EnumerateDependants | Start | Stop
+                 | PauseContinue | Interrogate | UserDefinedControl)
+        }
+
+        public enum ServiceError
+        {
+            Ignore = 0x00000000,
+            Normal = 0x00000001,
+            Severe = 0x00000002,
+            Critical = 0x00000003
+        }
+
+        public enum ServiceBootFlag
+        {
+            Start = 0x00000000,
+            SystemStart = 0x00000001,
+            AutoStart = 0x00000002,
+            DemandStart = 0x00000003,
+            Disabled = 0x00000004
+        }
+
         [DllImport("Netapi32.dll")]
         private extern static int NetLocalGroupGetInfo(string servername,
                                                  string groupname,
@@ -544,5 +665,37 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
         [DllImport("kernel32", SetLastError = true)]
         public static extern bool CloseHandle(IntPtr handle);
+
+        [DllImport("advapi32.dll", EntryPoint = "CreateServiceA")]
+        private static extern IntPtr CreateService(
+            IntPtr hSCManager,
+            string lpServiceName,
+            string lpDisplayName,
+            ServiceRights dwDesiredAccess,
+            int dwServiceType,
+            ServiceBootFlag dwStartType,
+            ServiceError dwErrorControl,
+            string lpBinaryPathName,
+            string lpLoadOrderGroup,
+            IntPtr lpdwTagId,
+            string lpDependencies,
+            string lp,
+            string lpPassword);
+
+        [DllImport("advapi32.dll")]
+        public static extern IntPtr OpenSCManager(string lpMachineName, string lpDatabaseName, ServiceManagerRights dwDesiredAccess);
+
+        [DllImport("advapi32.dll")]
+        public static extern IntPtr OpenService(IntPtr hSCManager, string lpServiceName, ServiceRights dwDesiredAccess);
+
+        [DllImport("advapi32.dll", SetLastError = true)]
+        public static extern int DeleteService(IntPtr hService);
+
+        [DllImport("advapi32.dll")]
+        public static extern int CloseServiceHandle(IntPtr hSCObject);
+
+        [DllImport("kernel32.dll")]
+        static extern uint GetLastError();
+
     }
 }

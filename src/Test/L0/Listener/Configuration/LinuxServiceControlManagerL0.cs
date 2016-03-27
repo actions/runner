@@ -5,6 +5,7 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 
+using Microsoft.VisualStudio.Services.Agent.Listener.Configuration;
 using Microsoft.VisualStudio.Services.Agent.Util;
 
 using Moq;
@@ -16,10 +17,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
     public sealed class LinuxServiceControlManagerL0
     {
         private Mock<IProcessInvoker> _processInvoker;
+        private Mock<INativeLinuxServiceHelper> _serviceHelper;
 
         public LinuxServiceControlManagerL0()
         {
             _processInvoker = new Mock<IProcessInvoker>();
+            _serviceHelper = new Mock<INativeLinuxServiceHelper>();
 
             _processInvoker.Setup(
                 x =>
@@ -29,12 +32,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
                     It.IsAny<string>(),
                     It.IsAny<Dictionary<string, string>>(),
                     It.IsAny<CancellationToken>())).Returns(Task.FromResult(0));
+            _serviceHelper.Setup(x => x.CheckIfSystemdExists()).Returns(true);
+            _serviceHelper.Setup(x => x.GetUnitFile("vsts.agent.server.agent.service")).Returns(Path.Combine(IOUtil.GetBinPath(), "vsts.agent.server.agent.service"));
         }
 
         private TestHostContext CreateTestContext([CallerMemberName] String testName = "")
         {
             TestHostContext tc = new TestHostContext(this, testName);
             tc.SetSingleton<IProcessInvoker>(_processInvoker.Object);
+            tc.SetSingleton<INativeLinuxServiceHelper>(_serviceHelper.Object);
             return tc;
         }
 
@@ -47,7 +53,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
         {
             using (var tc = CreateTestContext())
             {
-                var controlManager = new TestLinuxServiceControlManager();
+                var controlManager = new LinuxServiceControlManager();
                 controlManager.Initialize(tc);
                 tc.EnqueueInstance<IProcessInvoker>(_processInvoker.Object);
                 tc.EnqueueInstance<IProcessInvoker>(_processInvoker.Object);
@@ -73,10 +79,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
                     Times.Once);
 
                 _processInvoker.Verify(
-                    x => x.ExecuteAsync("/usr/bin", "systemctl", "stop vsts.agent.server.agent.service", It.IsAny<Dictionary<string, string>>(), It.IsAny<CancellationToken>()),
-                    Times.Once);
-
-                _processInvoker.Verify(
                     x =>
                     x.ExecuteAsync("/usr/bin", "systemctl", "enable vsts.agent.server.agent.service", It.IsAny<Dictionary<string, string>>(), It.IsAny<CancellationToken>()),
                     Times.Once);
@@ -93,7 +95,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
         {
             using (var tc = CreateTestContext())
             {
-                var controlManager = new TestLinuxServiceControlManager();
+                var controlManager = new LinuxServiceControlManager();
                 controlManager.Initialize(tc);
 
                 tc.EnqueueInstance<IProcessInvoker>(_processInvoker.Object);
