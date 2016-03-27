@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -14,17 +15,13 @@ namespace Microsoft.VisualStudio.Services.Agent
         void AddRegex(string expression);
 
         void AddValue(string value);
-
-        void AddVariable(string name, string value);
     }
 
     public sealed class SecretMasker : AgentService, ISecretMasker
     {
         private const string Mask = "********";
-        private readonly List<ISecret> _secrets = new List<ISecret>();
-        private readonly HashSet<string> _variableNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-        public HashSet<string> VariableNames => _variableNames;
+        private readonly ConcurrentDictionary<string, RegexSecret> _regexSecrets = new ConcurrentDictionary<string, RegexSecret>();
+        private readonly ConcurrentDictionary<string, ValueSecret> _valueSecrets = new ConcurrentDictionary<string, ValueSecret>();
 
         public override void Initialize(IHostContext hostContext)
         {
@@ -44,9 +41,14 @@ namespace Microsoft.VisualStudio.Services.Agent
 
             // get indexes and lengths of all substrings that will be replaced
             var positionsToReplace = new List<ReplacementPosition>();
-            foreach (ISecret secret in _secrets)
+            foreach (KeyValuePair<string, RegexSecret> pair in _regexSecrets) // This is faster than calling .Values.
             {
-                positionsToReplace.AddRange(secret.GetPositions(input));
+                positionsToReplace.AddRange(pair.Value.GetPositions(input));
+            }
+
+            foreach (KeyValuePair<string, ValueSecret> pair in _valueSecrets) // This is faster than calling .Values.
+            {
+                positionsToReplace.AddRange(pair.Value.GetPositions(input));
             }
 
             // short-circuit if nothing to replace
@@ -101,24 +103,15 @@ namespace Microsoft.VisualStudio.Services.Agent
 
         public void AddRegex(string expression)
         {
-            _secrets.Add(new RegexSecret(expression));
+            _regexSecrets.TryAdd(expression, new RegexSecret(expression));
         }
 
         public void AddValue(string value)
         {
             if (!string.IsNullOrEmpty(value))
             {
-                _secrets.Add(new ValueSecret(value));
-            }
-        }
-
-        // TODO: REVISIT WRT CONCURRENCY. NEED TO SWAP OUT UNDERLYING LIST TO AVOID INTERFERENCE WITH ITERATORS.
-        public void AddVariable(string name, string value)
-        {
-            _variableNames.Add(name);
-            if (!string.IsNullOrEmpty(value))
-            {
-                _secrets.Add(new ValueSecret(value));
+                // TODO: Also add json-escaped value and URI escaped value as an extra precaution?
+                _valueSecrets.TryAdd(value, new ValueSecret(value));
             }
         }
     }

@@ -30,7 +30,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
 
             // Update the env dictionary.
             AddInputsToEnvironment();
-            // TODO: What about for ad-hoc scripts? Should the system endpoint not be added?
             AddEndpointsToEnvironment();
             AddVariablesToEnvironment();
 

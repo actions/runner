@@ -277,7 +277,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             Endpoints.Add(message.Environment.SystemConnection);
 
             List<string> warnings;
-            Variables = new Variables(HostContext, message.Environment.Variables, out warnings);
+            Variables = new Variables(HostContext, message.Environment.Variables, message.Environment.MaskHints, out warnings);
 
             // Initialize the job timeline record.
             // the job timeline record is at order 1.

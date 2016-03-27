@@ -18,9 +18,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
 
     public abstract class Handler : AgentService
     {
-        protected readonly Dictionary<string, string> Environment = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-
         protected ICommandHandler CommandHandler { get; private set; }
+        protected Dictionary<string, string> Environment { get; private set; }
+
         public IExecutionContext ExecutionContext { get; set; }
         public Dictionary<string, string> Inputs { get; set; }
         public string TaskDirectory { get; set; }
@@ -28,9 +28,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
-
-            // cache command handler.
             CommandHandler = hostContext.GetService<ICommandHandler>();
+            Environment = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         }
 
         protected void AddEndpointsToEnvironment()
@@ -89,13 +88,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
         {
             // Validate args.
             Trace.Entering();
+            ArgUtil.NotNull(Environment, nameof(Environment));
             ArgUtil.NotNull(ExecutionContext, nameof(ExecutionContext));
             ArgUtil.NotNull(ExecutionContext.Variables, nameof(ExecutionContext.Variables));
 
-            // Add the variables to the environment variable dictionary.
-            foreach (KeyValuePair<string, string> pair in ExecutionContext.Variables)
+            // Add the public variables to the environment variable dictionary.
+            foreach (KeyValuePair<string, string> pair in ExecutionContext.Variables.Public)
             {
-                AddEnvironmentVariable(key: pair.Key, value: pair.Value);
+                AddEnvironmentVariable(pair.Key, pair.Value);
             }
         }
 
