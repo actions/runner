@@ -63,6 +63,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 // Run the step.
                 Trace.Info("Starting the step.");
                 step.ExecutionContext.Start();
+                List<OperationCanceledException> allCancelExceptions = new List<OperationCanceledException>();
                 try
                 {
                     await step.RunAsync();
@@ -73,8 +74,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     Trace.Error($"Caught cancellation exception from step: {ex}");
                     step.ExecutionContext.Error(ex);
                     step.ExecutionContext.Result = TaskResult.Canceled;
-                    step.ExecutionContext.Complete();
-                    throw;
+                    //save the OperationCanceledException, merge with OperationCanceledException throw from Async Commands.
+                    allCancelExceptions.Add(ex);
                 }
                 catch (Exception ex)
                 {
@@ -82,6 +83,49 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     Trace.Error($"Caught exception from step: {ex}");
                     step.ExecutionContext.Error(ex);
                     step.ExecutionContext.Result = TaskResult.Failed;
+                }
+
+                // Wait till all async commands finish.
+                foreach (var command in step.ExecutionContext.AsyncCommands ?? new List<IAsyncCommandContext>())
+                {
+                    try
+                    {
+                        // wait async command to finish.
+                        await command.WaitAsync();
+                    }
+                    catch (OperationCanceledException ex)
+                    {
+                        // log and save the OperationCanceledException, set step result to canceled if the current result is not failed.
+                        Trace.Error($"Caught cancellation exception from async command {command.Name}: {ex}");
+                        step.ExecutionContext.Error(ex);
+
+                        // if the step already failed, don't set it to canceled.
+                        if (step.ExecutionContext.Result != TaskResult.Failed)
+                        {
+                            step.ExecutionContext.Result = TaskResult.Canceled;
+                        }
+
+                        allCancelExceptions.Add(ex);
+                    }
+                    catch (Exception ex)
+                    {
+                        // Log the error, set step result to falied if the current result is not canceled.
+                        Trace.Error($"Caught exception from async command {command.Name}: {ex}");
+                        step.ExecutionContext.Error(ex);
+
+                        // if the step already canceled, don't set it to failed.
+                        if (step.ExecutionContext.Result != TaskResult.Canceled)
+                        {
+                            step.ExecutionContext.Result = TaskResult.Failed;
+                        }
+                    }
+                }
+
+                // TODO: consider use token.IsCancellationRequest determine step cancelled instead of catch OperationCancelException all over the place
+                if (step.ExecutionContext.Result == TaskResult.Canceled && allCancelExceptions.Count > 0)
+                {
+                    step.ExecutionContext.Complete();
+                    throw allCancelExceptions.First();
                 }
 
                 // Fixup the step result if ContinueOnError.

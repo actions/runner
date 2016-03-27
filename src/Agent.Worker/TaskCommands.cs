@@ -66,8 +66,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             {
                 throw new Exception($"##vso[task.{command.Event}] is not a recognized command for Task command extension. TODO: DOC aka link");
             }
-
-            return;
         }
 
         // Since we process all logging command in serialized order, everthing should be thread safe.

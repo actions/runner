@@ -7,6 +7,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using Microsoft.TeamFoundation.Build.WebApi;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
@@ -39,6 +40,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         public bool? System_Debug { get { return GetBoolean(Constants.Variables.System.Debug); } }
         public string System_DefinitionId { get { return Get(Constants.Variables.System.DefinitionId); } }
         public string System_HostType { get { return Get(Constants.Variables.System.HostType); } }
+        public int? Build_BuildId { get { return GetInt(WellKnownBuildVariables.BuildId); } }
+        public long? Build_ContainerId { get { return GetLong(WellKnownBuildVariables.ContainerId); } }
+        public Guid? System_TeamProjectId { get { return GetGuid(WellKnownBuildVariables.TeamProjectId); } }
         public string System_TFCollectionUrl { get { return Get(WellKnownDistributedTaskVariables.TFCollectionUrl);  } }
         public bool? System_EnableAccessToken { get { return GetBoolean(Constants.Variables.System.EnableAccessToken); } }
 
@@ -118,6 +122,39 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         {
             T val;
             if (Enum.TryParse(Get(name), ignoreCase: true, result: out val))
+            {
+                return val;
+            }
+
+            return null;
+        }
+
+        public Guid? GetGuid(string name)
+        {
+            Guid val;
+            if (Guid.TryParse(Get(name), out val))
+            {
+                return val;
+            }
+
+            return null;
+        }
+
+        public int? GetInt(string name)
+        {
+            int val;
+            if (int.TryParse(Get(name), out val))
+            {
+                return val;
+            }
+
+            return null;
+        }
+
+        public long? GetLong(string name)
+        {
+            long val;
+            if (long.TryParse(Get(name), out val))
             {
                 return val;
             }

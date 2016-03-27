@@ -2,7 +2,6 @@ using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
@@ -20,6 +19,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         CancellationToken CancellationToken { get; }
         List<ServiceEndpoint> Endpoints { get; }
         Variables Variables { get; }
+        List<IAsyncCommandContext> AsyncCommands { get; }
 
         // Initialize
         void InitializeJob(JobRequestMessage message, CancellationToken token);
@@ -31,7 +31,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         // timeline record update methods
         void Start(string currentOperation = null);
-        void Complete(string currentOperation = null);
+        TaskResult Complete(TaskResult? result = null, string currentOperation = null);
         void AddIssue(Issue issue);
         void Progress(int percentage, string currentOperation = null);
         void UpdateDetailTimelineRecord(TimelineRecord record);
@@ -44,6 +44,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         private readonly TimelineRecord _record = new TimelineRecord();
         private readonly Dictionary<Guid, TimelineRecord> _detailRecords = new Dictionary<Guid, TimelineRecord>();
         private readonly object _loggerLock = new object();
+        private readonly List<IAsyncCommandContext> _asyncCommands = new List<IAsyncCommandContext>();
 
         private IPagingLogger _logger;
         private ISecretMasker _secretMasker;
@@ -58,6 +59,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         public List<ServiceEndpoint> Endpoints { get; private set; }
         public Variables Variables { get; private set; }
         public bool WriteDebug { get; private set; }
+
+        public List<IAsyncCommandContext> AsyncCommands
+        {
+            get
+            {
+                return _asyncCommands;
+            }
+        }
 
         public TaskResult? Result
         {
@@ -127,8 +136,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             this.Section($"Starting: {_record.Name}");
         }
 
-        public void Complete(string currentOperation = null)
+        public TaskResult Complete(TaskResult? result = null, string currentOperation = null)
         {
+            if (result != null)
+            {
+                Result = result;
+            }
+
             _record.CurrentOperation = currentOperation ?? _record.CurrentOperation;
             _record.FinishTime = DateTime.UtcNow;
             _record.PercentComplete = 100;
@@ -155,6 +169,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             this.Section($"Finishing: {_record.Name}");
 
             _logger.End();
+
+            return Result.Value;
         }
 
         public void Progress(int percentage, string currentOperation = null)
@@ -243,6 +259,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             Trace.Entering();
             ArgUtil.NotNull(message, nameof(message));
             ArgUtil.NotNull(message.Environment, nameof(message.Environment));
+            ArgUtil.NotNull(message.Environment.SystemConnection, nameof(message.Environment.SystemConnection));
             ArgUtil.NotNull(message.Environment.Endpoints, nameof(message.Environment.Endpoints));
             ArgUtil.NotNull(message.Environment.Variables, nameof(message.Environment.Variables));
 
@@ -250,6 +267,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
             // Initialize the environment.
             Endpoints = message.Environment.Endpoints;
+
+            // add system connect to the endpoint list.
+            Endpoints.Add(message.Environment.SystemConnection);
+
             List<string> warnings;
             Variables = new Variables(HostContext, message.Environment.Variables, out warnings);
 
