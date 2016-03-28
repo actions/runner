@@ -304,11 +304,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             }
 
             // sourceToBuild is used for checkout
-            // if sourceVersion is null, sourceBranch is not empty, make sure branch name is a remote branch. we need checkout to detached head. 
+            // if sourceBranch is a PR branch or sourceVersion is null, make sure branch name is a remote branch. we need checkout to detached head. 
             // (change refs/heads to refs/remotes/origin, refs/pull to refs/remotes/pull, or leava it as it when the branch name doesn't contain refs/...)
             // if sourceVersion provide, just use that for checkout, since when you checkout a commit, it will end up in detached head.
             context.Progress(80, "Starting checkout...");
-            string sourcesToBuild = string.IsNullOrEmpty(sourceVersion) ? GetRemoteRefName(sourceBranch) : sourceVersion;
+            string sourcesToBuild;
+            if (IsPullRequest(sourceBranch) || string.IsNullOrEmpty(sourceVersion))
+            {
+                sourcesToBuild = GetRemoteRefName(sourceBranch);
+            }
+            else
+            {
+                sourcesToBuild = sourceVersion;
+            }
 
             // Finally, checkout the sourcesToBuild (if we didn't find a valid git object this will throw)
             gitCommandExitCode = await GitCheckout(context, targetPath, sourcesToBuild, cancellationToken);
@@ -364,7 +372,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             return exitCode;
         }
 
-        // git fetch --tags --progress origin [+refs/pull/*:refs/remote/pull/*]
+        // git fetch --tags --prune --progress origin [+refs/pull/*:refs/remote/pull/*]
         private async Task<int> GitFetch(IExecutionContext context, string repositoryPath, Uri repositoryUrl, string remoteName, List<string> refSpec, string username, string password, bool exposeCred, CancellationToken cancellationToken)
         {
             if (refSpec != null && refSpec.Count > 0)
@@ -400,7 +408,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 throw new InvalidOperationException($"Unable to use git.exe inject credential to git remote push url, 'git remote set-url --push' failed with exit code: {exitCode_seturl}");
             }
 
-            Int32 exitCode = await ExecuteGitCommandAsync(context, repositoryPath, "fetch", StringUtil.Format($"--tags --progress {remoteName} {string.Join(" ", refSpec)}"), cancellationToken);
+            Int32 exitCode = await ExecuteGitCommandAsync(context, repositoryPath, "fetch", StringUtil.Format($"--tags --prune --progress {remoteName} {string.Join(" ", refSpec)}"), cancellationToken);
 
             if (!exposeCred)
             {
