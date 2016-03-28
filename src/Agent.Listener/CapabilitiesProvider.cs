@@ -4,26 +4,20 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Runtime.InteropServices;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener
 {
-    [ServiceLocator(Default = typeof(Environment))]
-    public interface IEnvironment : IAgentService
+    [ServiceLocator(Default = typeof(CapabilitiesProvider))]
+    public interface ICapabilitiesProvider : IAgentService
     {
-        Task<Dictionary<string, string>> GetCapabilities(string agentName, CancellationToken token);
-
-        void EnsureEnvFile();
-
-        IDictionary<string, string> GetEnv();
+        Task<Dictionary<string, string>> GetCapabilitiesAsync(string agentName, CancellationToken token);
     }
 
-    struct Capability
+    public class Capability
     {
-        public Capability(string name, string tool, string[] paths)
+        public Capability(string name, string tool = null, string[] paths = null)
         {
             Name = name;
             Tool = tool;
@@ -40,9 +34,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         public string[] Paths { get; private set; }
     }
 
-    struct ShellCapability
+    public class ToolCapability
     {
-        public ShellCapability(string name, string command, string commandArgs)
+        public ToolCapability(string name, string command, string commandArgs = null)
         {
             Name = name;
             Command = command;
@@ -60,54 +54,40 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         public string CommandArgs { get; private set; }
     }
 
-    //extensions which simplify adding constant capabilities into a list
-    static class ListExtensions
-    {
-        public static void Add(this IList<Capability> list, string name, string tool = null, string[] paths = null)
-        {
-            list.Add(new Capability(name, tool, paths));
-        }
-
-        public static void Add(this IList<ShellCapability> list, string name, string command, string commandArgs = null)
-        {
-            list.Add(new ShellCapability(name, command, commandArgs));
-        }
-    }
-
-    public sealed class Environment : AgentService, IEnvironment
+    public sealed class CapabilitiesProvider : AgentService, ICapabilitiesProvider
     {
         private List<Capability> _regularCapabilities =
             new List<Capability>
             {
-                { "ant" },
-                { "bundler", "bundle" },
-                { "clang" },
-                { "cmake" },
-                { "curl" },
-                { "git" },
-                { "gulp" },
-                { "java" },
-                { "JDK", "javac" },
-                { "make" },
-                { "maven", "mvn" },
-                { "MSBuild", "xbuild" },
-                { "node.js", "node" },
-                { "node.js", "nodejs" },
-                { "npm" },
-                { "python" },
-                { "python3" },
-                { "sh" },
-                { "subversion", "svn" },
-                { "ruby" },
-                { "rake" },
-                { "Xamarin.iOS", "mdtool", new string[] { "/Applications/Xamarin Studio.app/Contents/MacOS/mdtool" } },
-                { "Xamarin.Android", "mandroid", new string[] { "/Library/Frameworks/Xamarin.Android.framework/Commands/mandroid" } }
+                new Capability( "ant" ),
+                new Capability( "bundler", "bundle" ),
+                new Capability( "clang" ),
+                new Capability( "cmake" ),
+                new Capability( "curl" ),
+                new Capability( "git" ),
+                new Capability( "gulp" ),
+                new Capability( "java" ),
+                new Capability( "JDK", "javac" ),
+                new Capability( "make" ),
+                new Capability( "maven", "mvn" ),
+                new Capability( "MSBuild", "xbuild" ),
+                new Capability( "node.js", "node" ),
+                new Capability( "node.js", "nodejs" ),
+                new Capability( "npm" ),
+                new Capability( "python" ),
+                new Capability( "python3" ),
+                new Capability( "sh" ),
+                new Capability( "subversion", "svn" ),
+                new Capability( "ruby" ),
+                new Capability( "rake" ),
+                new Capability( "Xamarin.iOS", "mdtool", new string[] { "/Applications/Xamarin Studio.app/Contents/MacOS/mdtool" } ),
+                new Capability( "Xamarin.Android", "mandroid", new string[] { "/Library/Frameworks/Xamarin.Android.framework/Commands/mandroid" } )
             };
 
-        private static readonly List<ShellCapability> _shellCapabilities =
-            new List<ShellCapability>
+        private static readonly List<ToolCapability> _toolCapabilities =
+            new List<ToolCapability>
             {
-                { "xcode", "xcode-select", "-p" },
+                new ToolCapability( "xcode", "xcode-select", "-p" ),
             };
 
         private static readonly string[] _ignoredEnvVariables = new string[] {
@@ -124,28 +104,50 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
         private Dictionary<string, string> _capsCache;
 
-        public async Task<Dictionary<string, string>> GetCapabilities(string agentName, CancellationToken token)
+        public List<Capability> RegularCapabilities
+        {
+            get
+            {
+                return _regularCapabilities;
+            }
+        }
+
+        public List<ToolCapability> ToolCapabilities
+        {
+            get
+            {
+                return _toolCapabilities;
+            }
+        }
+
+        public async Task<Dictionary<string, string>> GetCapabilitiesAsync(string agentName, CancellationToken token)
         {
             if (_capsCache != null)
             {
-                return new Dictionary<string, string>(_capsCache);
+                return new Dictionary<string, string>(_capsCache, StringComparer.OrdinalIgnoreCase);
             }
 
-            var caps = new Dictionary<string, string>();
+            var caps = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
             GetFilteredEnvironmentVars(caps);
 
             GetRegularCapabilities(caps, token);
 
-            await GetShellCapabilities(caps, token);
+            await GetToolCapabilities(caps, token);
 
             caps["Agent.Name"] = agentName ?? string.Empty;
-            //TODO: figure out what should be the value of Agent.OS
-            //XPLAT is using process.platform, which returns 'darwin', 'freebsd', 'linux', 'sunos' or 'win32'
-            //windows agent is printing environment variable "OS", which is something like "Windows_NT" even when running Windows 10
-            //.Net core API RuntimeInformation.OSDescription is returning "Microsoft Windows 10.0.10586", 
-            //"Linux 3.13.0-43-generic #72-Ubuntu SMP Mon Dec 8 19:35:06 UTC 2014", "Darwin 15.4.0 Darwin Kernel Version 15.4.0: Fri Feb 26 22:08:05 PST 2016;"
-            caps["Agent.OS"] = RuntimeInformation.OSDescription ?? string.Empty;
+#if OS_LINUX
+            caps["Agent.OS"] = "linux";
+#endif
+
+#if OS_OSX
+            caps["Agent.OS"] = "darwin";
+#endif
+
+#if OS_WINDOWS
+            caps["Agent.OS"] = "Windows_NT";
+#endif
+
             caps["Agent.ComputerName"] = System.Environment.MachineName ?? string.Empty;
 
             foreach (var cap in caps)
@@ -153,7 +155,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 Trace.Info($"Capability: {cap.Key} Value: {cap.Value}");
             }
 
-            _capsCache = new Dictionary<string, string>(caps);
+            _capsCache = new Dictionary<string, string>(caps, StringComparer.OrdinalIgnoreCase);
 
             return caps;
         }
@@ -177,10 +179,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
             foreach (var cap in _regularCapabilities)
             {
-                string capPath = IOUtil.Which(cap.Tool ?? cap.Name);
+                var whichTool = HostContext.GetService<IWhichUtil>();
+                string capPath = whichTool.Which(cap.Tool ?? cap.Name);
                 if (!string.IsNullOrEmpty(capPath))
                 {
-                    capabilities.Add(cap.Name, capPath);
+                    capabilities[cap.Name] = capPath;
                 }
                 else if (cap.Paths != null)
                 {
@@ -188,7 +191,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     {
                         if (File.Exists(path))
                         {
-                            capabilities.Add(cap.Name, path);
+                            capabilities[cap.Name] = path;
                             break;
                         }
                     }
@@ -198,11 +201,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             }
         }
 
-        private async Task GetShellCapabilities(Dictionary<string, string> capabilities, CancellationToken token)
+        private async Task GetToolCapabilities(Dictionary<string, string> capabilities, CancellationToken token)
         {
-            foreach (var cap in _shellCapabilities)
+            foreach (var cap in _toolCapabilities)
             {
-                var toolPath = IOUtil.Which(cap.Command);
+                var whichTool = HostContext.GetService<IWhichUtil>();
+                var toolPath = whichTool.Which(cap.Command);
                 if (string.IsNullOrEmpty(toolPath))
                 {
                     continue;
@@ -227,10 +231,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                                     arguments: cap.CommandArgs,
                                     environment: null,
                                     cancellationToken: token);
-                        //TODO: should we check if toolOutput is a valid file path? (XPLAT does not check either)
+                        //toolOutput does not to be a valid file path
                         if (!string.IsNullOrEmpty(toolOutput))
                         {
-                            capabilities.Add(cap.Name, toolOutput);
+                            capabilities[cap.Name] = toolOutput;
                         }
                     }
                     catch (OperationCanceledException)
@@ -261,10 +265,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             // Also ignore env vars specified in the 'VSO_AGENT_IGNORE' env var
             if (envVars.Contains(EnvIgnore))
             {
-                var additionalIgnoredVars = ((string)envVars[EnvIgnore]).Split(',');
+                var additionalIgnoredVars = ((string)envVars[EnvIgnore] ?? string.Empty).Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
                 foreach (var ignored in additionalIgnoredVars)
                 {
-                    ignoredEnvVariables.Add(ignored.Trim());
+                    var ignoreTrimmed = ignored.Trim();
+                    if (!string.IsNullOrEmpty(ignoreTrimmed))
+                    {
+                        ignoredEnvVariables.Add(ignoreTrimmed);
+                    }
                 }
             }
 
@@ -275,64 +283,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 string varValue = (string)envVar.Value ?? string.Empty;
                 if (!ignoredEnvVariables.Contains(varName) && varValue.Length < 1024)
                 {
-                    vars.Add(varName, varValue);
+                    vars[varName] = varValue;
                 }
             }
-        }
-
-        // Ensures existence of the environment file at the specified path, creating it if missing.
-        public void EnsureEnvFile()
-        {
-            string envFileName = IOUtil.GetEnvFilePath();
-            if (File.Exists(envFileName))
-            {
-                return;
-            }
-
-            var envVars = new Dictionary<string, string>();
-            GetFilteredEnvironmentVars(envVars);
-
-            var content = new StringBuilder(string.Empty);
-            foreach (var envvar in envVars)
-            {
-                content.Append($"{envvar.Key}={envvar.Value}");
-                content.AppendLine();
-            }
-
-            File.WriteAllText(envFileName, content.ToString(), System.Text.Encoding.UTF8);
-        }
-
-        // Gets the environment that the agent and worker will use when running as a service.
-        // The current process' environment is overlayed with contents of the environment file.
-        // When not running as a service, the interactive/shell process' environment is used.
-        public IDictionary<string, string> GetEnv()
-        {
-            string envFileName = IOUtil.GetEnvFilePath();
-            if (!File.Exists(envFileName))
-            {
-                throw new FileNotFoundException();
-            }
-
-            string data = File.ReadAllText(envFileName, System.Text.Encoding.UTF8);
-
-            var env = new Dictionary<string, string>();
-
-            var lines = data.Split(new string[] { System.Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
-            foreach (string line in lines)
-            {
-                var tokens = line.Split('=');
-                if (tokens.Length == 2)
-                {
-                    var envKey = (tokens[0] ?? string.Empty).Trim();
-                    var envVal = (tokens[1] ?? string.Empty).Trim();
-                    if (!string.IsNullOrEmpty(envKey) && !string.IsNullOrEmpty(envVal))
-                    {
-                        env[envKey] = envVal;
-                    }
-                }
-            }
-
-            return env;
         }
     }
 }

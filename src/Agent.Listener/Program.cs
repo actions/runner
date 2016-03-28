@@ -4,6 +4,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener
 {
@@ -19,6 +20,30 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
         public async static Task<int> MainAsync(string[] args)
         {
+#if OS_LINUX
+            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            {
+                Console.WriteLine("This Agent version is built for Linux. Please download a corrent build for your OS.");
+                return 1;
+            }
+#endif
+
+#if OS_OSX
+            if (!RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            {
+                Console.WriteLine("This Agent version is built for OSX. Please download a corrent build for your OS.");
+                return 1;
+            }
+#endif
+
+#if OS_WINDOWS
+            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                Console.WriteLine("This Agent version is built for Windows. Please download a corrent build for your OS.");
+                return 1;
+            }
+#endif
+
             using (HostContext context = new HostContext("Agent"))
             using (var term = context.GetService<ITerminal>())
             {

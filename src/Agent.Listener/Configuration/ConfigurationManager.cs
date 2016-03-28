@@ -2,11 +2,8 @@ using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using Microsoft.VisualStudio.Services.Client;
 using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.WebApi;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -178,10 +175,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
             Trace.Info("Connect Complete.");
 
-            Trace.Verbose("Ensure env file exists");
-            var environment = HostContext.GetService<IEnvironment>();
-            environment.EnsureEnvFile();
-
             //
             // Loop getting agent name and pool
             //
@@ -222,6 +215,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 }
             }
 
+            var capProvider = HostContext.GetService<ICapabilitiesProvider>();
             while (true)
             {
                 agentName = consoleWizard.ReadValue(CliArgs.Agent,
@@ -238,7 +232,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 Dictionary<string, string> capabilities;
                 using (var ct = new CancellationTokenSource())
                 {
-                    capabilities = await environment.GetCapabilities(agentName, ct.Token);
+                    capabilities = await capProvider.GetCapabilitiesAsync(agentName, ct.Token);
                 }
 
                 TaskAgent agent = await GetAgent(agentName, poolId);
