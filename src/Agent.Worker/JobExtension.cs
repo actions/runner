@@ -7,5 +7,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         string HostType { get; }
         IStep PrepareStep { get; }
         IStep FinallyStep { get; }
+        void GetRootedPath(IExecutionContext context, string path, out string rootedPath);
     }
 }
