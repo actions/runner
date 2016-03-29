@@ -103,17 +103,37 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
                 if (parser.IsCommand("run") && !configManager.IsConfigured())
                 {
-                    throw new InvalidOperationException("Cannot run.  Must configure first.");
+                    throw new InvalidOperationException("Cannot run. Must configure first.");
                 }
 
                 Trace.Info("Done evaluating commands");
+                bool alreadyConfigured = configManager.IsConfigured();
                 await configManager.EnsureConfiguredAsync();
 
                 _inConfigStage = false;
 
-                // TODO: If configured as runasservice return from here
-            
-                return await RunAsync(TokenSource.Token);
+                AgentSettings settings = configManager.LoadSettings();
+                if (parser.IsCommand("run") || !settings.RunAsService)
+                {
+                    // Run the agent interactively
+                    Trace.Verbose(
+                        StringUtil.Format(
+                            "Run command mentioned: {0}, run as service option mentioned:{1}",
+                            parser.IsCommand("run"),
+                            settings.RunAsService));
+
+                    return await RunAsync(TokenSource.Token, settings);
+                }
+
+                if (alreadyConfigured)
+                {
+                    // This is helpful if the user tries to start the agent.listener which is already configured or running as service
+                    // However user can execute the agent by calling the run command
+                    // TODO: Should we check if the service is running and prompt user to start the service if its not already running?
+                    _term.WriteLine(StringUtil.Loc("ConfiguredAsRunAsService", settings.ServiceName));
+                }
+
+                return 0;
             }
             finally
             {
@@ -127,13 +147,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         }
 
         //create worker manager, create message listener and start listening to the queue
-        private async Task<int> RunAsync(CancellationToken token)
+        private async Task<int> RunAsync(CancellationToken token, AgentSettings settings)
         {
             Trace.Info(nameof(RunAsync));
 
             // Load the settings.
-            var configManager = HostContext.GetService<IConfigurationManager>();
-            AgentSettings settings = configManager.LoadSettings();
             _poolId = settings.PoolId;
 
             var listener = HostContext.GetService<IMessageListener>();

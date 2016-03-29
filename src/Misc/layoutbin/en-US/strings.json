@@ -33,6 +33,7 @@
   "CanNotVerifyLogonAccountPassword": "Can not verify if the password entered is valid",
   "Cleanup": "Post Job Clean Up",
   "CommandNotFound": "Can't find command extension for ##vso[{0}.command]. TODO: DOC aka link",
+  "ConfiguredAsRunAsService": "Agent is configured to run as service {0}",
   "ConnectingToServer": "Connecting to server ...",
   "CouldNotRemoveService": "Could not delete service {0}",
   "CustomLogDoesNotExist": "Log file path is not provided or file doesn't exist: '{data}'",
