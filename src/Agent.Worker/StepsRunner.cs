@@ -1,5 +1,6 @@
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent;
+using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -100,11 +101,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                         step.ExecutionContext.Error(ex);
 
                         // if the step already failed, don't set it to canceled.
-                        if (step.ExecutionContext.Result != TaskResult.Failed)
-                        {
-                            step.ExecutionContext.Result = TaskResult.Canceled;
-                        }
-
+                        step.ExecutionContext.CommandResult = TaskResultUtil.MergeTaskResults(step.ExecutionContext.CommandResult, TaskResult.Canceled);
                         allCancelExceptions.Add(ex);
                     }
                     catch (Exception ex)
@@ -114,11 +111,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                         step.ExecutionContext.Error(ex);
 
                         // if the step already canceled, don't set it to failed.
-                        if (step.ExecutionContext.Result != TaskResult.Canceled)
-                        {
-                            step.ExecutionContext.Result = TaskResult.Failed;
-                        }
+                        step.ExecutionContext.CommandResult = TaskResultUtil.MergeTaskResults(step.ExecutionContext.CommandResult, TaskResult.Failed);
                     }
+                }
+
+                // Merge executioncontext result with command result
+                if (step.ExecutionContext.CommandResult != null)
+                {
+                    step.ExecutionContext.Result = TaskResultUtil.MergeTaskResults(step.ExecutionContext.Result, step.ExecutionContext.CommandResult.Value);
                 }
 
                 // TODO: consider use token.IsCancellationRequest determine step cancelled instead of catch OperationCancelException all over the place

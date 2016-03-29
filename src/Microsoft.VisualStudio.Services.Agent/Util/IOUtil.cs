@@ -240,6 +240,56 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             return null;
         }
 
+        //********************************************************************************************
+        /// <summary>
+        /// Given a path and directory, return the path relative to the directory.  If the path is not
+        /// under the directory the path is returned un modified.  Examples:
+        /// MakeRelative(@"d:\src\project\foo.cpp", @"d:\src") -> @"project\foo.cpp"
+        /// MakeRelative(@"d:\src\project\foo.cpp", @"d:\specs") -> @"d:\src\project\foo.cpp"
+        /// MakeRelative(@"d:\src\project\foo.cpp", @"d:\src\proj") -> @"d:\src\project\foo.cpp"
+        /// </summary>
+        /// <remarks>Safe for remote paths.  Does not access the local disk.</remarks>
+        /// <param name="path">Path to make relative.</param>
+        /// <param name="folder">Folder to make it relative to.</param>
+        /// <returns>Relative path.</returns>
+        //********************************************************************************************
+        public static String MakeRelative(String path, String folder)
+        {
+            ArgUtil.NotNullOrEmpty(path, nameof(path));
+            ArgUtil.NotNull(folder, nameof(folder));
+
+            // Replace all Path.AltDirectorySeparatorChar with Path.DirectorySeparatorChar from both inputs
+            path = path.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
+            folder = folder.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
+
+            // Check if the dir is a prefix of the path (if not, it isn't relative at all).
+            if (!path.StartsWith(folder, StringComparison.OrdinalIgnoreCase))
+            {
+                return path;
+            }
+
+            // Dir is a prefix of the path, if they are the same length then the relative path is empty.
+            if (path.Length == folder.Length)
+            {
+                return String.Empty;
+            }
+
+            // If the dir ended in a '\\' (like d:\) or '/' (like user/bin/)  then we have a relative path.
+            if (folder.Length > 0 && folder[folder.Length - 1] == Path.DirectorySeparatorChar)
+            {
+                return path.Substring(folder.Length);
+            }
+            // The next character needs to be a '\\' or they aren't really relative.
+            else if (path[folder.Length] == Path.DirectorySeparatorChar)
+            {
+                return path.Substring(folder.Length + 1);
+            }
+            else
+            {
+                return path;
+            }
+        }
+
         private static void RemoveReadOnly(FileSystemInfo item)
         {
             ArgUtil.NotNull(item, nameof(item));

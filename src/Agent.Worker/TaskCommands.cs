@@ -1,4 +1,5 @@
 ﻿using Microsoft.TeamFoundation.DistributedTask.WebApi;
+using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -10,6 +11,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
     public class TaskCommands : AgentService, ICommandExtension
     {
+        // Since we process all logging command in serialized order, everthing should be thread safe.
+        private readonly Dictionary<Guid, TimelineRecord> _timelineRecordsTracker = new Dictionary<Guid, TimelineRecord>();
+
         public Type ExtensionType
         {
             get
@@ -64,12 +68,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             }
             else
             {
-                throw new Exception($"##vso[task.{command.Event}] is not a recognized command for Task command extension. TODO: DOC aka link");
+                throw new Exception(StringUtil.Loc("TaskCommandNotFound", command.Event));
             }
         }
-
-        // Since we process all logging command in serialized order, everthing should be thread safe.
-        private readonly Dictionary<Guid, TimelineRecord> _timelineRecordsTracker = new Dictionary<Guid, TimelineRecord>();
 
         private void ProcessTaskDetailCommand(IExecutionContext context, Dictionary<string, string> eventProperties, string data)
         {
@@ -162,22 +163,35 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             if (_timelineRecordsTracker.TryGetValue(record.Id, out trackingRecord))
             {
                 // we already created this timeline record
-                // make sure parentid/order does not changed.
-                if (record.Order != null && record.Order != trackingRecord.Order)
-                {
-                    throw new Exception("Can't change order of an existing timeline record.");
-                }
-
-                if (record.ParentId != trackingRecord.ParentId &&
-                    record.ParentId != null)
+                // make sure parentid does not changed.
+                if (record.ParentId != null &&
+                    record.ParentId != trackingRecord.ParentId)
                 {
                     throw new Exception("Can't change parent timeline record of an existing timeline record.");
+                }
+                else if (record.ParentId == null)
+                {
+                    record.ParentId = trackingRecord.ParentId;
+                }
+
+                // populate default value for empty field.
+                if (record.State == TimelineRecordState.Completed)
+                {
+                    if (record.PercentComplete == null)
+                    {
+                        record.PercentComplete = 100;
+                    }
+
+                    if (record.FinishTime == null)
+                    {
+                        record.FinishTime = DateTime.UtcNow;
+                    }
                 }
             }
             else
             {
                 // we haven't created this timeline record
-                // make sure we have name/type/order and parent record has created.
+                // make sure we have name/type and parent record has created.
                 if (string.IsNullOrEmpty(record.Name))
                 {
                     throw new Exception("name is required for this new timeline record.");
@@ -188,17 +202,23 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     throw new Exception("type is required for this new timeline record.");
                 }
 
-                if (record.Order == null || record.Order < 0)
-                {
-                    throw new Exception("non-negative order is required for this new timeline record.");
-                }
-
                 if (record.ParentId != null && record.ParentId != Guid.Empty)
                 {
                     if (!_timelineRecordsTracker.ContainsKey(record.ParentId.Value))
                     {
                         throw new Exception("parent timeline record has not been created for this new timeline record.");
                     }
+                }
+
+                // populate default value for empty field.
+                if (record.StartTime == null)
+                {
+                    record.StartTime = DateTime.UtcNow;
+                }
+
+                if (record.State == null)
+                {
+                    record.State = TimelineRecordState.InProgress;
                 }
             }
 
@@ -253,8 +273,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             if (!String.IsNullOrEmpty(filePath) && File.Exists(filePath))
             {
                 // Upload attachment
-                // TODO: add uploadfile to ExecutionContext
-                // this.Logger.LogAttachment(this.Scope, type, name, filePath);
+                context.QueueAttachFile(type, name, filePath);
             }
             else
             {
@@ -323,21 +342,29 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
                 var extensionManager = HostContext.GetService<IExtensionManager>();
                 string hostType = context.Variables.System_HostType;
-                IJobExtension extensions =
+                IJobExtension extension =
                     (extensionManager.GetExtensions<IJobExtension>() ?? new List<IJobExtension>())
                     .Where(x => string.Equals(x.HostType, hostType, StringComparison.OrdinalIgnoreCase))
-                    .First();
+                    .FirstOrDefault();
 
-                if (extensions != null)
+                if (extension != null)
                 {
-                    // TODO: need source provider in place.
                     // Get the values that represent the server path given a local path
-                    //var sourcePathValues = extensions.ConvertLocalPath(null, sourcePath);
-                    // replace sourcePath with the new values
-                    //foreach (var pair in sourcePathValues)
-                    //{
-                    //    properties[pair.Key] = pair.Value;
-                    //}
+                    string repoName;
+                    string relativeSourcePath;
+                    extension.ConvertLocalPath(context, sourcePath, out repoName, out relativeSourcePath);
+
+                    // add repo info
+                    if (!string.IsNullOrEmpty(repoName))
+                    {
+                        properties["repo"] = repoName;
+                    }
+
+                    if (!string.IsNullOrEmpty(relativeSourcePath))
+                    {
+                        // replace sourcePath with the new relative path
+                        properties[ProjectIssueProperties.SourcePath] = relativeSourcePath;
+                    }
 
                     String sourcePathValue;
                     String lineNumberValue;
@@ -464,7 +491,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         }
     }
 
-    internal class WellKnownTaskCommand
+    internal static class WellKnownTaskCommand
     {
         public static readonly String AddAttachment = "addattachment";
         public static readonly String Complete = "complete";
@@ -477,28 +504,28 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         public static readonly String UploadSummary = "uploadsummary";
     }
 
-    internal class TaskProgressEventProperties
+    internal static class TaskProgressEventProperties
     {
         public static readonly String Value = "value";
     }
 
-    internal class TaskSetVariableEventProperties
+    internal static class TaskSetVariableEventProperties
     {
         public static readonly String Variable = "variable";
         public static readonly String IsSecret = "issecret";
     }
 
-    internal class TaskCompleteEventProperties
+    internal static class TaskCompleteEventProperties
     {
         public static readonly String Result = "result";
     }
 
-    internal class TaskIssueEventProperties
+    internal static class TaskIssueEventProperties
     {
         public static readonly String Type = "type";
     }
 
-    internal class ProjectIssueProperties
+    internal static class ProjectIssueProperties
     {
         public static readonly String Code = "code";
         public static readonly String ColumNumber = "columnnumber";
@@ -507,13 +534,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         public static readonly String ProjectId = "id";
     }
 
-    internal class TaskAddAttachmentEventProperties
+    internal static class TaskAddAttachmentEventProperties
     {
         public static readonly String Type = "type";
         public static readonly String Name = "name";
     }
 
-    internal class TaskDetailEventProperties
+    internal static class TaskDetailEventProperties
     {
         public static readonly String TimelineRecordId = "id";
         public static readonly String ParentTimelineRecordId = "parentid";
