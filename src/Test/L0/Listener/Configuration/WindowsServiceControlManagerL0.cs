@@ -3,8 +3,13 @@ using Moq;
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using System.Security.Principal;
+using System.ServiceProcess;
 using System.Threading;
 using System.Threading.Tasks;
+
+using Microsoft.TeamFoundation;
+
 using Xunit;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
@@ -12,14 +17,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
     public sealed class WindowsServiceControlManagerL0
     {
         private Mock<IConsoleWizard> _reader;
+
         private Mock<IProcessInvoker> _processInvoker;
+
+        private Mock<INativeWindowsServiceHelper> _windowsServiceHelper;
+
         private string _expectedLogonAccount = "NT AUTHORITY\\LOCAL SERVICE";
+
         private string _expectedLogonPassword = "test";
 
         public WindowsServiceControlManagerL0()
         {
             _reader = new Mock<IConsoleWizard>();
             _processInvoker = new Mock<IProcessInvoker>();
+            _windowsServiceHelper = new Mock<INativeWindowsServiceHelper>();
 
             _processInvoker.Setup(
                 x =>
@@ -30,25 +41,27 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
                     It.IsAny<Dictionary<string, string>>(),
                     It.IsAny<CancellationToken>())).Returns(Task.FromResult(0));
 
-            _reader.Setup(x => x.ReadValue(
+            _reader.Setup(
+                x => x.ReadValue(
                     "windowslogonaccount",
                     It.IsAny<string>(), // description
-                    It.IsAny<bool>(),   // secret
+                    It.IsAny<bool>(), // secret
                     It.IsAny<string>(), // defaultValue
                     It.IsAny<Func<string, bool>>(), // validator
                     It.IsAny<Dictionary<string, string>>(), //args
-                    It.IsAny<bool>() // unattended
-                )).Returns(_expectedLogonAccount);
+                    It.IsAny<bool>())).Returns(_expectedLogonAccount);
 
-            _reader.Setup(x => x.ReadValue(
+            _reader.Setup(
+                x => x.ReadValue(
                     "windowslogonpassword",
                     It.IsAny<string>(), // description
-                    It.IsAny<bool>(),   // secret
+                    It.IsAny<bool>(), // secret
                     It.IsAny<string>(), // defaultValue
                     It.IsAny<Func<string, bool>>(), // validator
                     It.IsAny<Dictionary<string, string>>(), //args
-                    It.IsAny<bool>() // unattended
-                )).Returns(_expectedLogonPassword);
+                    It.IsAny<bool>())).Returns(_expectedLogonPassword);
+
+            _windowsServiceHelper.Setup(x => x.GetDefaultServiceAccount()).Returns(new NTAccount(_expectedLogonAccount));
         }
 
         private TestHostContext CreateTestContext([CallerMemberName] String testName = "")
@@ -56,6 +69,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
             TestHostContext tc = new TestHostContext(this, testName);
             tc.SetSingleton<IConsoleWizard>(_reader.Object);
             tc.SetSingleton<IProcessInvoker>(_processInvoker.Object);
+            tc.SetSingleton<INativeWindowsServiceHelper>(_windowsServiceHelper.Object);
             return tc;
         }
 
@@ -70,7 +84,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
             {
                 var serviceControlManager = new WindowsServiceControlManager();
                 serviceControlManager.Initialize(tc);
-                var agentSettings = new AgentSettings { ServerUrl = "http://server.name", AgentName = "myagent"};
+                var agentSettings = new AgentSettings { ServerUrl = "http://server.name", AgentName = "myagent" };
                 serviceControlManager.ConfigureService(
                     agentSettings,
                     new Dictionary<string, string>
@@ -121,6 +135,28 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
                         It.IsAny<Dictionary<string, string>>(),
                         It.IsAny<bool>()),
                     Times.Once);
+            }
+        }
+
+
+#if OS_WINDOWS
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+#endif
+        public void CheckServiceExistsShouldWorkCorrectly()
+        {
+            using (var tc = CreateTestContext())
+            {
+                var serviceControlManager = new WindowsServiceControlManager();
+                serviceControlManager.Initialize(tc);
+
+                Assert.Equal(serviceControlManager.CheckServiceExists("NoService" + Guid.NewGuid()), false);
+                // TODO: qvoid creating testable and write a wrapper for ServiceController as it can't be mocked 
+                _windowsServiceHelper.Setup(x => x.TryGetServiceController("test"))
+                    .Returns(new ServiceController("test"));
+
+                Assert.Equal(serviceControlManager.CheckServiceExists("test"), true);
             }
         }
     }

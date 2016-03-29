@@ -71,6 +71,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         private Tracing CreateTraceSource(string name)
         {
             SourceSwitch sourceSwitch = Switch;
+
             TraceLevel sourceTraceLevel;
             if (_traceSetting.DetailTraceSetting.TryGetValue(name, out sourceTraceLevel))
             {

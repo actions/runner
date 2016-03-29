@@ -20,6 +20,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         bool ConfigureService(AgentSettings settings, Dictionary<string, string> args, bool enforceSupplied);
 
         void StartService(string serviceName);
+
+        void StopService(string serviceName);
+
+        bool CheckServiceExists(string serviceName);
     }
 
     public abstract class ServiceControlManager : AgentService, IServiceControlManager
@@ -50,5 +54,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         public abstract bool ConfigureService(AgentSettings settings, Dictionary<string, string> args, bool enforceSupplied);
 
         public abstract void StartService(string serviceName);
+
+        public abstract void StopService(string serviceName);
+
+        public abstract bool CheckServiceExists(string serviceName);
     }
 }
