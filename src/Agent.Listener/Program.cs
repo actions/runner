@@ -20,7 +20,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
         public async static Task<int> MainAsync(string[] args)
         {
-            switch (Constants.Variables.System.Platform)
+            switch (Constants.Agent.Platform)
             {
                 case Constants.OSPlatform.Linux:
                     if (!RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
@@ -37,7 +37,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     }
                     break;
                 case Constants.OSPlatform.Windows:
-                    if (Constants.Variables.System.Platform == Constants.OSPlatform.Windows && !RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                    if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                     {
                         Console.WriteLine(StringUtil.Loc("NotWindows"));
                         return 1;

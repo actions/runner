@@ -136,7 +136,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             await GetToolCapabilities(caps, token);
 
             caps["Agent.Name"] = agentName ?? string.Empty;
-            switch (Constants.Variables.System.Platform)
+            switch (Constants.Agent.Platform)
             {
                 case Constants.OSPlatform.Linux:
                     caps["Agent.OS"] = "linux";
