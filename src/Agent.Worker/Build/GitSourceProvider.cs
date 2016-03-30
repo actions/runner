@@ -102,6 +102,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             await RemoveCachedCredential(executionContext, targetPath, repositoryUrl, "origin");
         }
 
+        public string GetLocalPath(ServiceEndpoint endpoint, string path)
+        {
+            // For git repositories, we don't do anything
+            // We expect the path to be a relative path within the Repository
+            return path;
+        }
+
         private async Task<bool> TrySetGitInstallationInfo(IExecutionContext executionContext)
         {
             //find git in %Path%
@@ -661,10 +668,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         private async Task<bool> IsRepositoryOriginUrlMatch(IExecutionContext context, string repositoryPath, Uri expectedRepositoryOriginUrl)
         {
             context.Debug($"Checking if the repo on {repositoryPath} matches the expected repository origin URL. expected Url: {expectedRepositoryOriginUrl.AbsoluteUri}");
-            if (!Directory.Exists(repositoryPath))
+            if (!Directory.Exists(Path.Combine(repositoryPath, ".git")))
             {
                 // There is no repo directory
-                context.Debug($"Repository is not found since directory does not exist. {repositoryPath}");
+                context.Debug($"Repository is not found since '.git' directory does not exist under. {repositoryPath}");
                 return false;
             }
 

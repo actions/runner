@@ -2,6 +2,7 @@ using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Threading;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
@@ -16,6 +17,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
     public interface IExecutionContext : IAgentService
     {
         TaskResult? Result { get; set; }
+        TaskResult? CommandResult { get; set; }
         CancellationToken CancellationToken { get; }
         List<ServiceEndpoint> Endpoints { get; }
         Variables Variables { get; }
@@ -28,6 +30,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         // logging
         bool WriteDebug { get; }
         void Write(string tag, string message);
+        void QueueAttachFile(string type, string name, string filePath);
 
         // timeline record update methods
         void Start(string currentOperation = null);
@@ -79,6 +82,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 _record.Result = value;
             }
         }
+
+        public TaskResult? CommandResult { get; set; }
 
         private string ContextType
         {
@@ -310,6 +315,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             }
 
             _jobServerQueue.QueueWebConsoleLine(msg);
+        }
+
+        public void QueueAttachFile(string type, string name, string filePath)
+        {
+            ArgUtil.NotNullOrEmpty(type, nameof(type));
+            ArgUtil.NotNullOrEmpty(name, nameof(name));
+            ArgUtil.NotNullOrEmpty(filePath, nameof(filePath));
+
+            if (!File.Exists(filePath))
+            {
+                throw new FileNotFoundException(StringUtil.Loc("AttachFileNotExist", type, name, filePath));
+            }
+
+            _jobServerQueue.QueueFileUpload(_mainTimelineId, _record.Id, type, name, filePath, deleteSource: false);
         }
 
         public override void Initialize(IHostContext hostContext)

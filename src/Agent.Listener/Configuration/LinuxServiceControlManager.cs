@@ -16,9 +16,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         private const string ServiceNamePattern = "vsts.agent.{0}.{1}.service";
         private const string ServiceDisplayNamePattern = "VSTS Agent ({0}.{1})";
 
-        private const string SystemdPathPrefix = "/etc/systemd/system";
-        private const string InitFileCommandLocation = "/proc/1/comm";
-
         private const int MaxUserNameLength = 32;
         private const string VstsAgentServiceTemplate = "vsts.agent.service.template";
 
@@ -27,11 +24,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             Dictionary<string, string> args,
             bool enforceSupplied)
         {
-            Trace.Info(nameof(ConfigureService));
+            Trace.Entering();
 
+            var _linuxServiceHelper = HostContext.GetService<INativeLinuxServiceHelper>();
             CalculateServiceName(settings, ServiceNamePattern, ServiceDisplayNamePattern);
 
-            if (!CheckIfSystemdExists())
+            if (!_linuxServiceHelper.CheckIfSystemdExists())
             {
                 Trace.Info("Systemd does not exists, returning");
                 _term.WriteLine(StringUtil.Loc("SystemdDoesNotExists"));
@@ -46,7 +44,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 StopService(settings.ServiceName);
             }
 
-            var unitFile = GetUnitFile(settings.ServiceName);
+            var unitFile = _linuxServiceHelper.GetUnitFile(settings.ServiceName);
 
             try
             {
@@ -79,15 +77,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             }
 
             ReloadSystemd();
-            EnableService(settings.ServiceName);
+            InstallService(settings.ServiceName);
 
-            _term.WriteLine(StringUtil.Loc("LinuxServiceConfigured", settings.ServiceName));
+            _term.WriteLine(StringUtil.Loc("ServiceConfigured", settings.ServiceName));
             return true;
         }
 
         public override void StartService(string serviceName)
         {
-            Trace.Info(nameof(StartService));
+            Trace.Entering();
 
             Dictionary<string, int> filesToChange = new Dictionary<string, int>
                                                          {
@@ -101,39 +99,34 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 ChangeOwnershipToLoginUser(filesToChange);
                 ReloadSystemd();
                 ExecuteSystemdCommand("start " + serviceName);
+                _term.WriteLine(StringUtil.Loc("ServiceStartedSuccessfully", serviceName));
             }
             catch (Exception)
             {
-                _term.WriteError(StringUtil.Loc("LinuxServiceStartFailed"));
+                _term.WriteError(StringUtil.Loc("CanNotStartService"));
                 throw;
             }
         }
 
-        protected virtual string GetUnitFile(string serviceName)
+        public override void StopService(string serviceName)
         {
-            return Path.Combine(SystemdPathPrefix, serviceName);
-        }
-
-        protected virtual bool CheckIfSystemdExists()
-        {
-            Trace.Info(nameof(CheckIfSystemdExists));
+            Trace.Entering();
             try
             {
-                var commName = File.ReadAllText(InitFileCommandLocation).Trim();
-                return commName.Equals("systemd", StringComparison.OrdinalIgnoreCase);
+                ExecuteSystemdCommand("stop " + serviceName);
             }
             catch (Exception ex)
             {
-                Trace.Error(ex.ToString());
-                _term.WriteError(StringUtil.Loc("CanNotFindSystemd"));
+                Trace.Error(ex);
+                _term.WriteError(StringUtil.Loc("CanNotStopService", serviceName));
 
-                return false;
+                // We dont want to throw here. We can still replace the systemd unit file and call daemon-reload
             }
         }
 
-        protected virtual bool CheckServiceExists(string serviceName)
+        public override bool CheckServiceExists(string serviceName)
         {
-            Trace.Info(nameof(CheckServiceExists));
+            Trace.Entering();
             if (string.IsNullOrEmpty(serviceName))
             {
                 throw new ArgumentNullException("serviceName");
@@ -141,14 +134,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
             try
             {
-                var unitFile = new FileInfo(Path.Combine(SystemdPathPrefix, serviceName));
+                var unitFile = new FileInfo(Path.Combine(NativeLinuxServiceHelper.SystemdPathPrefix, serviceName));
                 return unitFile.Exists;
             }
             catch (Exception ex)
             {
                 Trace.Error(ex);
 
-                // If we can check if the service exists we can't configure either. We can't ignore this error.
+                // If we can't check if the service exists we can't configure either. We can't ignore this error.
                 throw;
             }
         }
@@ -158,7 +151,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             // Before starting the service chown/chmod the _diag and settings files to the current user.
             // Since we started with sudo, the _diag will be owned by root. Change this to current login user
 
-            Trace.Info(nameof(ChangeOwnershipToLoginUser));
+            Trace.Entering();
 
             try
             {
@@ -200,9 +193,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             }
         }
 
-        private void EnableService(string serviceName)
+        private void InstallService(string serviceName)
         {
-            Trace.Info(nameof(EnableService));
+            Trace.Entering();
             try
             {
                 ExecuteSystemdCommand("enable " + serviceName);
@@ -210,30 +203,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             catch (Exception ex)
             {
                 Trace.Error(ex);
-                _term.WriteError(StringUtil.Loc("LinuxServiceStartFailed"));
+                _term.WriteError(StringUtil.Loc("CanNotInstallService"));
 
                 throw;
             }
         }
 
-        private void StopService(string serviceName)
-        {
-            Trace.Info(nameof(StopService));
-            try
-            {
-                ExecuteSystemdCommand("stop " + serviceName);
-            }
-            catch (Exception)
-            {
-                _term.WriteError(StringUtil.Loc("LinuxServiceStartFailed"));
-
-                // We dont want to throw here. We can still replace the systemd unit file and call daemon-reload
-            }
-        }
-
         private void ReloadSystemd()
         {
-            Trace.Info(nameof(ReloadSystemd));
+            Trace.Entering();
             try
             {
                 // TODO: systemd prints any pending info message to the TTY, hide this if possible
@@ -248,7 +226,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
         private void ExecuteSystemdCommand(string command)
         {
-            Trace.Info(nameof(ExecuteSystemdCommand));
+            Trace.Entering();
             try
             {
                 var processInvoker = HostContext.CreateService<IProcessInvoker>();
@@ -268,7 +246,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
         private string GetCurrentLoginName()
         {
-            Trace.Info(nameof(GetCurrentLoginName));
+            Trace.Entering();
 
             string userName = Environment.GetEnvironmentVariable("SUDO_USER");
             Trace.Info(StringUtil.Format("Found login username as {0}", userName));

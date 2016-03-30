@@ -20,6 +20,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         Task GetSourceAsync(IExecutionContext executionContext, ServiceEndpoint endpoint, CancellationToken cancellationToken);
 
         Task PostJobCleanupAsync(IExecutionContext executionContext, ServiceEndpoint endpoint);
+
+        string GetLocalPath(ServiceEndpoint endpoint, string path);
     }
 
     public abstract class SourceProvider : AgentService

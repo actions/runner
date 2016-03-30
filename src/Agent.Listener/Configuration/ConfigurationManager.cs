@@ -352,6 +352,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
             if (runAsService && successfullyConfigured)
             {
+                Trace.Info("Configuration was successful, trying to start the service");
                 serviceControlManager.StartService(settings.ServiceName);
             }
         }

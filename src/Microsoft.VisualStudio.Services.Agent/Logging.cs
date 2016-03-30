@@ -9,7 +9,7 @@ namespace Microsoft.VisualStudio.Services.Agent
     {
         void Setup(Guid timelineId, Guid timelineRecordId);
 
-        void Write(string message);        
+        void Write(string message);
 
         void End();
     }
@@ -17,7 +17,9 @@ namespace Microsoft.VisualStudio.Services.Agent
     public class PagingLogger : AgentService, IPagingLogger
     {
         public static string PagingFolder = "pages";
-        public const int PageSize = 8*1024*1024;
+
+        // 8 MB
+        public const int PageSize = 8 * 1024 * 1024;
 
         private Guid _timelineId;
         private Guid _timelineRecordId;
@@ -95,10 +97,10 @@ namespace Microsoft.VisualStudio.Services.Agent
                 _pageData.Flush();
                 //The StreamWriter object calls Dispose() on the provided Stream object when StreamWriter.Dispose is called.
                 _pageWriter.Dispose();
-                _pageWriter = null;                
+                _pageWriter = null;
                 _pageData = null;
                 _jobServerQueue.QueueFileUpload(_timelineId, _timelineRecordId, "DistributedTask.Core.Log", "CustomToolLog", _dataFileName, true);
             }
-        }        
+        }
     }
 }

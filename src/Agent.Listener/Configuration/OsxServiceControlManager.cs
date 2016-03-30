@@ -15,5 +15,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         {
             throw new NotImplementedException();
         }
+
+        public override void StopService(string serviceName)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override bool CheckServiceExists(string serviceName)
+        {
+            throw new NotImplementedException();
+        }
     }
 }
