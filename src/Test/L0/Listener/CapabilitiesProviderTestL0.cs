@@ -1,11 +1,6 @@
-
 using Microsoft.VisualStudio.Services.Agent.Util;
 using Moq;
-using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
@@ -72,7 +67,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                 var caps = await capProvider.GetCapabilitiesAsync("IAmAgent007", tokenSource.Token);
 
                 //Assert
-                Assert.True(true);
                 _whichUtil.Verify(x => x.Which(It.IsAny<string>()),
                     Times.AtLeast(capProvider.RegularCapabilities.Count + capProvider.ToolCapabilities.Count));
                 foreach (var cap in capProvider.RegularCapabilities)

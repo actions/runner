@@ -4,6 +4,13 @@ namespace Microsoft.VisualStudio.Services.Agent
 {
     public static class Constants
     {
+        public enum OSPlatform
+        {
+            OSX,
+            Linux,
+            Windows
+        }
+
         public static class Agent
         {
             public static readonly int MaxParallelism = 1;
@@ -106,6 +113,19 @@ namespace Microsoft.VisualStudio.Services.Agent
                 public static readonly string TeamProject = "system.teamproject";
                 // back compat variable, do not document
                 public static readonly string TFServerUrl = "system.TeamFoundationServerUri";
+
+#if OS_LINUX
+                public static readonly OSPlatform Platform = OSPlatform.Linux;
+#endif
+
+#if OS_OSX
+                public static readonly OSPlatform Platform = OSPlatform.OSX;
+#endif
+
+#if OS_WINDOWS
+                public static readonly OSPlatform Platform = OSPlatform.Windows;
+#endif
+
                 public static readonly string PreferGit = "system.prefergit";
             }
         }

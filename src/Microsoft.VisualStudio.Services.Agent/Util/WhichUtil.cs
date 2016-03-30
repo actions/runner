@@ -16,6 +16,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
         {
             ArgUtil.NotNullOrEmpty(command, nameof(command));
 
+            Trace.Verbose($"{nameof(command)}={command}");
+
 #if OS_WINDOWS
             string path = Environment.GetEnvironmentVariable("Path");
 #else

@@ -162,8 +162,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
             try
             {
-                string uidValue = System.Environment.GetEnvironmentVariable("SUDO_UID");
-                string gidValue = System.Environment.GetEnvironmentVariable("SUDO_GID");
+                string uidValue = Environment.GetEnvironmentVariable("SUDO_UID");
+                string gidValue = Environment.GetEnvironmentVariable("SUDO_GID");
                 uint uid = 0, gid = 0;
 
                 if (string.IsNullOrEmpty(uidValue) || string.IsNullOrEmpty(gidValue)
@@ -270,7 +270,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         {
             Trace.Info(nameof(GetCurrentLoginName));
 
-            string userName = System.Environment.GetEnvironmentVariable("SUDO_USER");
+            string userName = Environment.GetEnvironmentVariable("SUDO_USER");
             Trace.Info(StringUtil.Format("Found login username as {0}", userName));
 
             if (string.IsNullOrEmpty(userName))

@@ -20,6 +20,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Util
                 //Arrange
                 Tracing trace = hc.GetTrace();
                 var whichTool = new WhichUtil();
+                whichTool.Initialize(hc);
 
                 // Act.
                 string gitPath = whichTool.Which("git");

@@ -45,7 +45,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             VssCredentials creds = credMgr.LoadCredentials();
             Uri uri = new Uri(serverUrl);
             VssConnection conn = ApiUtil.CreateConnection(uri, creds);
-            string sessionName = $"{System.Environment.MachineName}_{Guid.NewGuid().ToString()}";
+            string sessionName = $"{Environment.MachineName ?? string.Empty}_{Guid.NewGuid().ToString()}";
             var capProvider = HostContext.GetService<ICapabilitiesProvider>();
             Dictionary<string, string> agentSystemCapabilities = await capProvider.GetCapabilitiesAsync(_settings.AgentName, token);
 

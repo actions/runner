@@ -20,29 +20,30 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
         public async static Task<int> MainAsync(string[] args)
         {
-#if OS_LINUX
-            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            switch (Constants.Variables.System.Platform)
             {
-                Console.WriteLine("This Agent version is built for Linux. Please download a corrent build for your OS.");
-                return 1;
+                case Constants.OSPlatform.Linux:
+                    if (!RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+                    {
+                        Console.WriteLine(StringUtil.Loc("NotLinux"));
+                        return 1;
+                    }
+                    break;
+                case Constants.OSPlatform.OSX:
+                    if (!RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+                    {
+                        Console.WriteLine(StringUtil.Loc("NotOSX"));
+                        return 1;
+                    }
+                    break;
+                case Constants.OSPlatform.Windows:
+                    if (Constants.Variables.System.Platform == Constants.OSPlatform.Windows && !RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                    {
+                        Console.WriteLine(StringUtil.Loc("NotWindows"));
+                        return 1;
+                    }
+                    break;
             }
-#endif
-
-#if OS_OSX
-            if (!RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-            {
-                Console.WriteLine("This Agent version is built for OSX. Please download a corrent build for your OS.");
-                return 1;
-            }
-#endif
-
-#if OS_WINDOWS
-            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            {
-                Console.WriteLine("This Agent version is built for Windows. Please download a corrent build for your OS.");
-                return 1;
-            }
-#endif
 
             using (HostContext context = new HostContext("Agent"))
             using (var term = context.GetService<ITerminal>())

@@ -102,7 +102,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         // Ignore env vars specified in the 'VSO_AGENT_IGNORE' env var
         private const string EnvIgnore = "VSO_AGENT_IGNORE";
 
-        private Dictionary<string, string> _capsCache;
+        private Dictionary<string, string> _capabilityCache;
 
         public List<Capability> RegularCapabilities
         {
@@ -122,9 +122,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
         public async Task<Dictionary<string, string>> GetCapabilitiesAsync(string agentName, CancellationToken token)
         {
-            if (_capsCache != null)
+            if (_capabilityCache != null)
             {
-                return new Dictionary<string, string>(_capsCache, StringComparer.OrdinalIgnoreCase);
+                return new Dictionary<string, string>(_capabilityCache, StringComparer.OrdinalIgnoreCase);
             }
 
             var caps = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -136,26 +136,27 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             await GetToolCapabilities(caps, token);
 
             caps["Agent.Name"] = agentName ?? string.Empty;
-#if OS_LINUX
-            caps["Agent.OS"] = "linux";
-#endif
+            switch (Constants.Variables.System.Platform)
+            {
+                case Constants.OSPlatform.Linux:
+                    caps["Agent.OS"] = "linux";
+                    break;
+                case Constants.OSPlatform.OSX:
+                    caps["Agent.OS"] = "darwin";
+                    break;
+                case Constants.OSPlatform.Windows:
+                    caps["Agent.OS"] = "Windows_NT";
+                    break;
+            }
 
-#if OS_OSX
-            caps["Agent.OS"] = "darwin";
-#endif
+            caps["Agent.ComputerName"] = Environment.MachineName ?? string.Empty;
 
-#if OS_WINDOWS
-            caps["Agent.OS"] = "Windows_NT";
-#endif
-
-            caps["Agent.ComputerName"] = System.Environment.MachineName ?? string.Empty;
-
+            _capabilityCache = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             foreach (var cap in caps)
             {
                 Trace.Info($"Capability: {cap.Key} Value: {cap.Value}");
+                _capabilityCache.Add(cap.Key, cap.Value);
             }
-
-            _capsCache = new Dictionary<string, string>(caps, StringComparer.OrdinalIgnoreCase);
 
             return caps;
         }
@@ -167,8 +168,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 //TODO: allow paths to embed environment variables with "$VARNAME" or some other syntax and parse them
                 var paths = new string[]
                     {
-                        Path.Combine(System.Environment.GetEnvironmentVariable("ANDROID_STUDIO") ?? string.Empty, "/tools/android"),
-                        Path.Combine(System.Environment.GetEnvironmentVariable("HOME") ?? string.Empty, "/Library/Developer/Xamarin/android-sdk-macosx/tools/android")
+                        Path.Combine(Environment.GetEnvironmentVariable("ANDROID_STUDIO") ?? string.Empty, "/tools/android"),
+                        Path.Combine(Environment.GetEnvironmentVariable("HOME") ?? string.Empty, "/Library/Developer/Xamarin/android-sdk-macosx/tools/android")
                     };
                 _regularCapabilities.Add(new Capability("AndroidSDK", "android", paths));
             }
@@ -237,11 +238,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                             capabilities[cap.Name] = toolOutput;
                         }
                     }
-                    catch (OperationCanceledException)
-                    {
-                        throw;
-                    }
-                    catch (Exception ex)
+                    catch (Exception ex) when (!(ex is OperationCanceledException))
                     {
                         Trace.Error(ex);
                     }
@@ -257,7 +254,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
         private void GetFilteredEnvironmentVars(Dictionary<string, string> vars)
         {
-            IDictionary envVars = System.Environment.GetEnvironmentVariables();
+            IDictionary envVars = Environment.GetEnvironmentVariables();
 
             // Begin with ignoring env vars declared herein
             var ignoredEnvVariables = new HashSet<string>(_ignoredEnvVariables);

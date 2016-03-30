@@ -212,7 +212,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             if (_inConfigStage)
             {
                 HostContext.Dispose();
-                System.Environment.Exit(1);
+                Environment.Exit(1);
             }
             else
             {
