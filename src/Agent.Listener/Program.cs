@@ -4,6 +4,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener
 {
@@ -19,6 +20,31 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
         public async static Task<int> MainAsync(string[] args)
         {
+            switch (Constants.Variables.System.Platform)
+            {
+                case Constants.OSPlatform.Linux:
+                    if (!RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+                    {
+                        Console.WriteLine(StringUtil.Loc("NotLinux"));
+                        return 1;
+                    }
+                    break;
+                case Constants.OSPlatform.OSX:
+                    if (!RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+                    {
+                        Console.WriteLine(StringUtil.Loc("NotOSX"));
+                        return 1;
+                    }
+                    break;
+                case Constants.OSPlatform.Windows:
+                    if (Constants.Variables.System.Platform == Constants.OSPlatform.Windows && !RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                    {
+                        Console.WriteLine(StringUtil.Loc("NotWindows"));
+                        return 1;
+                    }
+                    break;
+            }
+
             using (HostContext context = new HostContext("Agent"))
             using (var term = context.GetService<ITerminal>())
             {

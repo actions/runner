@@ -5,7 +5,6 @@ using Microsoft.VisualStudio.Services.Client;
 using Microsoft.VisualStudio.Services.Common;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -46,9 +45,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             VssCredentials creds = credMgr.LoadCredentials();
             Uri uri = new Uri(serverUrl);
             VssConnection conn = ApiUtil.CreateConnection(uri, creds);
-            string sessionName = $"{Environment.MachineName}_{Guid.NewGuid().ToString()}";
-            var agentSystemCapabilities = new Dictionary<string, string>();
-            //TODO: add capabilities
+            string sessionName = $"{Environment.MachineName ?? string.Empty}_{Guid.NewGuid().ToString()}";
+            var capProvider = HostContext.GetService<ICapabilitiesProvider>();
+            Dictionary<string, string> agentSystemCapabilities = await capProvider.GetCapabilitiesAsync(_settings.AgentName, token);
 
             var agent = new TaskAgentReference
             {
@@ -116,7 +115,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         {
             var agentServer = HostContext.GetService<IAgentServer>();
             if (Session != null && Session.SessionId != Guid.Empty)
-            {                
+            {
                 using (var ts = new CancellationTokenSource(TimeSpan.FromSeconds(30)))
                 {
                     await agentServer.DeleteAgentSessionAsync(_settings.PoolId, Session.SessionId, ts.Token);

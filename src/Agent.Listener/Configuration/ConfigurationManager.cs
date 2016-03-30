@@ -2,11 +2,8 @@ using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using Microsoft.VisualStudio.Services.Client;
 using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.WebApi;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -218,6 +215,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 }
             }
 
+            var capProvider = HostContext.GetService<ICapabilitiesProvider>();
             while (true)
             {
                 agentName = consoleWizard.ReadValue(CliArgs.Agent,
@@ -231,8 +229,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                                                 args,
                                                 enforceSupplied);
 
-                // TODO: Scan for capabilites
-                var capabilities = new Dictionary<string, string>();
+                Dictionary<string, string> capabilities;
+                using (var ct = new CancellationTokenSource())
+                {
+                    capabilities = await capProvider.GetCapabilitiesAsync(agentName, ct.Token);
+                }
 
                 TaskAgent agent = await GetAgent(agentName, poolId);
                 bool exists = agent != null;
@@ -260,7 +261,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                         {
                             agent = await UpdateAgent(poolId, agent);
                             _term.WriteLine(StringUtil.Loc("AgentReplaced"));
-                            registered = true;    
+                            registered = true;
                         }
                         catch (Exception e)
                         {
@@ -411,6 +412,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             _term.WriteLine();
             _term.WriteLine($">> {message}:");
             _term.WriteLine();
-        } 
+        }
     }
 }

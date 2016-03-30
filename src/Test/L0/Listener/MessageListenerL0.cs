@@ -3,7 +3,6 @@ using Microsoft.VisualStudio.Services.Agent.Listener;
 using Microsoft.VisualStudio.Services.Agent.Listener.Configuration;
 using Moq;
 using System;
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Xunit;
@@ -19,6 +18,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
         private Mock<IConfigurationManager> _config;
         private Mock<IAgentServer> _agentServer;
         private Mock<ICredentialManager> _credMgr;
+        private Mock<ICapabilitiesProvider> _capProvider;
 
         public MessageListenerL0()
         {
@@ -27,6 +27,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
             _config.Setup(x => x.LoadSettings()).Returns(_settings);
             _agentServer = new Mock<IAgentServer>();
             _credMgr = new Mock<ICredentialManager>();
+            _capProvider = new Mock<ICapabilitiesProvider>();
         }
 
         private TestHostContext CreateTestContext([CallerMemberName] String testName = "")
@@ -35,6 +36,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
             tc.SetSingleton<IConfigurationManager>(_config.Object);
             tc.SetSingleton<IAgentServer>(_agentServer.Object);
             tc.SetSingleton<ICredentialManager>(_credMgr.Object);
+            tc.SetSingleton<ICapabilitiesProvider>(_capProvider.Object);
             return tc;
         }
 
@@ -57,6 +59,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                         tokenSource.Token))
                     .Returns(Task.FromResult(expectedSession));
 
+                _capProvider.Setup(x => x.GetCapabilitiesAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).Returns(Task.FromResult(new Dictionary<string, string>()));
+
                 // Act.
                 MessageListener listener = new MessageListener();
                 listener.Initialize(tc);
@@ -72,6 +76,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                         _settings.PoolId,
                         It.Is<TaskAgentSession>(y => y != null),
                         tokenSource.Token), Times.Once());
+                _capProvider.Verify(x => x.GetCapabilitiesAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()));
             }
         }
 
@@ -98,6 +103,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                         tokenSource.Token))
                     .Returns(Task.FromResult(expectedSession));
 
+                _capProvider.Setup(x => x.GetCapabilitiesAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).Returns(Task.FromResult(new Dictionary<string, string>()));
+
                 // Act.
                 MessageListener listener = new MessageListener();
                 listener.Initialize(tc);
@@ -116,6 +123,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                 _agentServer
                     .Verify(x => x.DeleteAgentSessionAsync(
                         _settings.PoolId, expectedSession.SessionId, It.IsAny<CancellationToken>()), Times.Once());
+                _capProvider.Verify(x => x.GetCapabilitiesAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()));
             }
         }
 
@@ -141,6 +149,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                         It.Is<TaskAgentSession>(y => y != null),
                         tokenSource.Token))
                     .Returns(Task.FromResult(expectedSession));
+
+                _capProvider.Setup(x => x.GetCapabilitiesAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).Returns(Task.FromResult(new Dictionary<string, string>()));
 
                 // Act.
                 MessageListener listener = new MessageListener();
@@ -194,6 +204,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                 _agentServer
                     .Verify(x => x.GetAgentMessageAsync(
                         _settings.PoolId, expectedSession.SessionId, It.IsAny<long?>(), tokenSource.Token), Times.Exactly(arMessages.Length));
+                _capProvider.Verify(x => x.GetCapabilitiesAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()));
             }
         }
     }

@@ -112,7 +112,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         private async Task<bool> TrySetGitInstallationInfo(IExecutionContext executionContext)
         {
             //find git in %Path%
-            _gitPath = IOUtil.Which("git");
+            var whichTool = HostContext.GetService<IWhichUtil>();
+            _gitPath = whichTool.Which("git");
 
 #if OS_WINDOWS
             //find in %ProgramFiles(x86)%\git\cmd if platform is Windows
