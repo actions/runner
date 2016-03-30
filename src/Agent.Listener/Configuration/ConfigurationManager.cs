@@ -229,11 +229,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                                                 args,
                                                 enforceSupplied);
 
-                Dictionary<string, string> capabilities;
-                using (var ct = new CancellationTokenSource())
-                {
-                    capabilities = await capProvider.GetCapabilitiesAsync(agentName, ct.Token);
-                }
+                Dictionary<string, string> capabilities = await capProvider.GetCapabilitiesAsync(agentName, CancellationToken.None);
 
                 TaskAgent agent = await GetAgent(agentName, poolId);
                 bool exists = agent != null;

@@ -136,7 +136,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             await GetToolCapabilities(caps, token);
 
             caps["Agent.Name"] = agentName ?? string.Empty;
-            switch (Constants.Variables.System.Platform)
+            switch (Constants.Agent.Platform)
             {
                 case Constants.OSPlatform.Linux:
                     caps["Agent.OS"] = "linux";
@@ -178,9 +178,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 Trace.Error(ex);
             }
 
+            var whichTool = HostContext.GetService<IWhichUtil>();
             foreach (var cap in _regularCapabilities)
             {
-                var whichTool = HostContext.GetService<IWhichUtil>();
                 string capPath = whichTool.Which(cap.Tool ?? cap.Name);
                 if (!string.IsNullOrEmpty(capPath))
                 {
@@ -204,9 +204,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
         private async Task GetToolCapabilities(Dictionary<string, string> capabilities, CancellationToken token)
         {
+            var whichTool = HostContext.GetService<IWhichUtil>();
             foreach (var cap in _toolCapabilities)
-            {
-                var whichTool = HostContext.GetService<IWhichUtil>();
+            {                
                 var toolPath = whichTool.Which(cap.Command);
                 if (string.IsNullOrEmpty(toolPath))
                 {
