@@ -87,6 +87,16 @@ function build ()
     echo "Building ${commit_hash}"
     sed "s/$commit_token/$commit_hash/g" "Misc/BuildConstants.ch" > "Microsoft.VisualStudio.Services.Agent/BuildConstants.cs"
 
+    if [[ "$define_os" == 'OS_WINDOWS' ]]; then
+        reg_out=`reg query "HKLM\SOFTWARE\Microsoft\MSBuild\ToolsVersions\4.0" -v MSBuildToolsPath`
+        msbuild_location=`echo $reg_out | tr -d '\r\n' | tr -s ' ' | cut -d' ' -f5 | tr -d '\r\n'`
+               
+        local rc=$?
+        if [ $rc -ne 0 ]; then
+            failed "Can not find msbuild location, failing build"
+        fi
+    fi
+
     rundotnet build failed build_dirs[@]
 
     if [[ "$define_os" == 'OS_WINDOWS' && "$msbuild_location" != "" ]]; then
@@ -151,6 +161,12 @@ function layout ()
         copyBin ${bin_copy_dir}
     done
 
+    if [[ "$define_os" == 'OS_WINDOWS' ]]; then
+        # TODO Make sure to package Release build instead of debug build
+        echo Copying Agent.Service
+        cp -Rf $WINDOWSAGENTSERVICE_BIN/* ${LAYOUT_DIR}/bin
+    fi
+    
     cp -Rf ./Misc/layoutroot/* ${LAYOUT_DIR}
     cp -Rf ./Misc/layoutbin/* ${LAYOUT_DIR}/bin
 
