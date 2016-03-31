@@ -190,12 +190,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
         [Trait("Category", "Agent")]
         public async void TestExecuteCommandForRunAsService(string[] args, bool configureAsService, Times expectedTimes)
         {
-            using (var thc = new TestHostContext(this))
+            using (var hc = new TestHostContext(this))
             {
-                thc.SetSingleton<IConfigurationManager>(_configurationManager.Object);
-                thc.SetSingleton<IMessageListener>(_messageListener.Object);
+                hc.SetSingleton<IConfigurationManager>(_configurationManager.Object);
+                hc.SetSingleton<IMessageListener>(_messageListener.Object);
 
-                CommandLineParser clp = new CommandLineParser(thc);
+                CommandLineParser clp = new CommandLineParser(hc);
                 clp.Parse(args);
 
                 _configurationManager.Setup(x => x.IsConfigured()).Returns(true);
@@ -205,7 +205,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                     .Returns(Task.FromResult(false));
 
                 var agent = new Agent.Listener.Agent();
-                agent.Initialize(thc);
+                agent.Initialize(hc);
                 agent.TokenSource = new CancellationTokenSource();
                 await agent.ExecuteCommand(clp);
 

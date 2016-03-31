@@ -2,10 +2,10 @@ using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using Microsoft.VisualStudio.Services.Client;
 using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.WebApi;
 
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -223,7 +223,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 agentName = consoleWizard.ReadValue(CliArgs.Agent,
                                                 StringUtil.Loc("AgentName"),
                                                 false,
-                                                Environment.MachineName,
+                                                Environment.MachineName ?? "myagent",
                                                 // can do better
                                                 Validators.NonEmptyValidator,
                                                 args,
