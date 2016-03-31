@@ -223,7 +223,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
             // Setup the execution context.
             _ec = new Mock<IExecutionContext>();
             List<string> warnings;
-            _variables = new Variables(hc, new Dictionary<string, string>(), out warnings);
+            _variables = new Variables(hc, new Dictionary<string, string>(), new List<MaskHint>(), out warnings);
             _variables.Set(Constants.Variables.System.CollectionId, CollectionId);
             _variables.Set(Constants.Variables.System.DefinitionId, DefinitionId);
             _variables.Set(Constants.Variables.Build.Clean, $"{cleanOption}");

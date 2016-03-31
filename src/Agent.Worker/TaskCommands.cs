@@ -447,8 +447,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 Boolean.TryParse(isSecretValue, out isSecret);
             }
 
-            // TODO: SetSecret
-            context.Variables.Set(name, data);
+            context.Variables.Set(name, data, isSecret);
         }
 
         private void ProcessTaskDebugCommand(IExecutionContext context, String data)

@@ -27,7 +27,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
                 List<string> warnings;
                 executionContext
                     .Setup(x => x.Variables)
-                    .Returns(new Variables(tc, copy: new Dictionary<string, string>(), warnings: out warnings));
+                    .Returns(new Variables(tc, copy: new Dictionary<string, string>(), maskHints: new List<MaskHint>(), warnings: out warnings));
                 executionContext.Object.Variables.Set(Constants.Variables.System.CollectionId, "7aee6dde-6381-4098-93e7-50a8264cf066");
                 executionContext.Object.Variables.Set(Constants.Variables.System.DefinitionId, "7");
                 var endpoint = new ServiceEndpoint

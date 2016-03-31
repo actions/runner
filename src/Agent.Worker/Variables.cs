@@ -13,20 +13,60 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
     public sealed class Variables
     {
-        private readonly ConcurrentDictionary<string, string> _store = new ConcurrentDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        private readonly ConcurrentDictionary<string, Variable> _store = new ConcurrentDictionary<string, Variable>(StringComparer.OrdinalIgnoreCase);
         private readonly IHostContext _hostContext;
+        private readonly ISecretMasker _secretMasker;
         private readonly Tracing _trace;
 
-        public Variables(IHostContext hostContext, IDictionary<string, string> copy, out List<string> warnings)
+        public IEnumerable<KeyValuePair<string, string>> Public
+        {
+            get
+            {
+                return _store.Values
+                    .Where(x => !x.Secret)
+                    .Select(x => new KeyValuePair<string, string>(x.Name, x.Value));
+            }
+        }
+
+        public Variables(IHostContext hostContext, IDictionary<string, string> copy, IList<MaskHint> maskHints, out List<string> warnings)
         {
             // Store/Validate args.
             _hostContext = hostContext;
+            _secretMasker = _hostContext.GetService<ISecretMasker>();
             _trace = _hostContext.GetTrace(nameof(Variables));
             ArgUtil.NotNull(hostContext, nameof(hostContext));
+
+            // Validate the dictionary.
             ArgUtil.NotNull(copy, nameof(copy));
-            foreach (string key in copy.Keys)
+            foreach (string variableName in copy.Keys)
             {
-                _store[key] = copy[key] ?? string.Empty;
+                ArgUtil.NotNullOrEmpty(variableName, nameof(variableName));
+            }
+
+            // Filter/validate the mask hints.
+            ArgUtil.NotNull(maskHints, nameof(maskHints));
+            MaskHint[] variableMaskHints = maskHints.Where(x => x.Type == MaskType.Variable).ToArray();
+            foreach (MaskHint maskHint in variableMaskHints)
+            {
+                string maskHintValue = maskHint.Value;
+                ArgUtil.NotNullOrEmpty(maskHintValue, nameof(maskHintValue));
+            }
+
+            // Initialize the variable dictionary.
+            IEnumerable<Variable> variables =
+                from string name in copy.Keys
+                join MaskHint maskHint in variableMaskHints // Join the variable names with the variable mask hints.
+                on name.ToUpperInvariant() equals maskHint.Value.ToUpperInvariant()
+                into maskHintGrouping
+                select new Variable(
+                    name: name,
+                    value: copy[name] ?? string.Empty,
+                    secret: maskHintGrouping.Any());
+            foreach (Variable variable in variables)
+            {
+                // Store the variable. The initial secret values have already been
+                // registered by the Worker class.
+                _store[variable.Name] = variable;
             }
 
             // Recursively expand the variables.
@@ -56,7 +96,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             // Process each key in the target dictionary.
             foreach (string targetKey in target.Keys.ToArray())
             {
-                _trace.Verbose($"Expanding key: '{targetKey}'");
+                _trace.Verbose($"Processing expansion for: '{targetKey}'");
                 int startIndex = 0;
                 int prefixIndex;
                 int suffixIndex;
@@ -101,10 +141,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         public string Get(string name)
         {
-            string val;
-            _store.TryGetValue(name, out val);
-            _trace.Verbose($"Get '{name}': '{val}'");
-            return val;
+            Variable variable;
+            if (_store.TryGetValue(name, out variable))
+            {
+                _trace.Verbose($"Get '{name}': '{variable.Value}'");
+                return variable.Value;
+            }
+
+            _trace.Verbose($"Get '{name}' (not found)");
+            return null;
         }
 
         public bool? GetBoolean(string name)
@@ -162,34 +207,54 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             return null;
         }
 
-        public IEnumerator<KeyValuePair<string, string>> GetEnumerator()
+        public void Set(string name, string val, bool secret = false)
         {
-            return _store.GetEnumerator();
-        }
+            // Validate the args.
+            ArgUtil.NotNullOrEmpty(name, nameof(name));
 
-        public void Set(string name, string val)
-        {
-            //TODO: Determine if variable should be added to SecretMasker
+            // Add or update the variable.
+            _store.AddOrUpdate(
+                key: name,
+                addValueFactory: (string key) =>
+                {
+                    var variable = new Variable(name, val, secret);
+                    if (variable.Secret && !string.IsNullOrEmpty(variable.Value))
+                    {
+                        _secretMasker.AddValue(variable.Value);
+                    }
 
+                    return variable;
+                },
+                updateValueFactory: (string key, Variable existing) =>
+                {
+                    var variable = new Variable(name, val, existing.Secret || secret);
+                    if (variable.Secret && !string.IsNullOrEmpty(variable.Value))
+                    {
+                        _secretMasker.AddValue(variable.Value);
+                    }
+
+                    return variable;
+                });
             _trace.Verbose($"Set '{name}' = '{val}'");
-            _store[name] = val ?? string.Empty;
         }
 
         public bool TryGetValue(string name, out string val)
         {
-            if (_store.TryGetValue(name, out val))
+            Variable variable;
+            if (_store.TryGetValue(name, out variable))
             {
+                val = variable.Value;
                 _trace.Verbose($"Get '{name}': '{val}'");
                 return true;
             }
 
+            val = null;
             _trace.Verbose($"Get '{name}' (not found)");
             return false;
         }
 
         private void RecursivelyExpand(out List<string> warnings)
         {
-            // TODO: Should tracing be omitted when expanding secret vales?
             const int MaxDepth = 50;
             // TODO: Max size?
             _trace.Entering();
@@ -197,12 +262,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
             // Make a copy of the original dictionary so the expansion results are predictable. Otherwise,
             // depending on the order of expansion, an actual max depth restriction may not be encountered.
-            var original = new Dictionary<string, string>(_store, StringComparer.OrdinalIgnoreCase);
+            var original = new Dictionary<string, Variable>(_store, StringComparer.OrdinalIgnoreCase);
 
             // Process each variable in the dictionary.
-            foreach (string key in original.Keys)
+            foreach (string name in original.Keys)
             {
-                _trace.Verbose($"Expanding variable: '{key}'");
+                bool secret = original[name].Secret;
+                _trace.Verbose($"Processing expansion for variable: '{name}'");
 
                 // This algorithm handles recursive replacement using a stack.
                 // 1) Max depth is enforced by leveraging the stack count.
@@ -211,7 +277,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 bool exceedsMaxDepth = false;
                 bool hasCycle = false;
                 var stack = new Stack<RecursionState>();
-                RecursionState state = new RecursionState(key: key, value: original[key] ?? string.Empty);
+                RecursionState state = new RecursionState(name: name, value: original[name].Value ?? string.Empty);
 
                 // The outer while loop is used to manage popping items from the stack (of state objects).
                 while (true)
@@ -224,17 +290,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                         (state.SuffixIndex = state.Value.IndexOf(Constants.Variables.MacroSuffix, state.PrefixIndex + Constants.Variables.MacroPrefix.Length, StringComparison.Ordinal)) >= 0)
                     {
                         // A candidate was found.
-                        string nestedKey = state.Value.Substring(
+                        string nestedName = state.Value.Substring(
                             startIndex: state.PrefixIndex + Constants.Variables.MacroPrefix.Length,
                             length: state.SuffixIndex - state.PrefixIndex - Constants.Variables.MacroPrefix.Length);
-                        _trace.Verbose($"Found macro candidate: '{nestedKey}'");
-                        string nestedValue;
-                        if (!string.IsNullOrEmpty(nestedKey) &&
-                            original.TryGetValue(nestedKey, out nestedValue))
+                        if (!secret)
+                        {
+                            _trace.Verbose($"Found macro candidate: '{nestedName}'");
+                        }
+
+                        Variable nestedVariable;
+                        if (!string.IsNullOrEmpty(nestedName) &&
+                            original.TryGetValue(nestedName, out nestedVariable))
                         {
                             // A matching variable was found.
-                            // Push the current state onto the stack.
-                            _trace.Verbose("Macro found.");
 
                             // Check for max depth.
                             int currentDepth = stack.Count + 1; // Add 1 since the current state isn't on the stack.
@@ -243,32 +311,41 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                                 // Warn and break out of the while loops.
                                 _trace.Warning("Exceeds max depth.");
                                 exceedsMaxDepth = true;
-                                warnings.Add(StringUtil.Loc("Variable0ExceedsMaxDepth1", key, MaxDepth));
+                                warnings.Add(StringUtil.Loc("Variable0ExceedsMaxDepth1", name, MaxDepth));
                                 break;
                             }
                             // Check for a cyclical reference.
-                            else if (string.Equals(state.Key, nestedKey, StringComparison.OrdinalIgnoreCase) ||
-                                stack.Any(x => string.Equals(x.Key, nestedKey, StringComparison.OrdinalIgnoreCase)))
+                            else if (string.Equals(state.Name, nestedName, StringComparison.OrdinalIgnoreCase) ||
+                                stack.Any(x => string.Equals(x.Name, nestedName, StringComparison.OrdinalIgnoreCase)))
                             {
                                 // Warn and break out of the while loops.
                                 _trace.Warning("Cyclical reference detected.");
                                 hasCycle = true;
-                                warnings.Add(StringUtil.Loc("Variable0ContainsCyclicalReference", key));
+                                warnings.Add(StringUtil.Loc("Variable0ContainsCyclicalReference", name));
                                 break;
                             }
                             else
                             {
                                 // Push the current state and start a new state. There is no need to break out
                                 // of the inner while loop. It will continue processing the new current state.
-                                _trace.Verbose($"Expanding nested variable: '{nestedKey}'");
+                                secret = secret || nestedVariable.Secret;
+                                if (!secret)
+                                {
+                                    _trace.Verbose($"Processing expansion for nested variable: '{nestedName}'");
+                                }
+
                                 stack.Push(state);
-                                state = new RecursionState(key: nestedKey, value: nestedValue ?? string.Empty);
+                                state = new RecursionState(name: nestedName, value: nestedVariable.Value ?? string.Empty);
                             }
                         }
                         else
                         {
                             // A matching variable was not found.
-                            _trace.Verbose("Macro not found.");
+                            if (!secret)
+                            {
+                                _trace.Verbose("Macro not found.");
+                            }
+
                             state.StartIndex = state.PrefixIndex + 1;
                         }
                     } // End of inner while loop for processing the variable.
@@ -283,12 +360,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     if (stack.Count == 0)
                     {
                         // Store the final value and break out of the outer while loop.
-                        Set(state.Key, state.Value);
+                        if (!string.Equals(state.Value, original[name].Value, StringComparison.Ordinal))
+                        {
+                            Set(state.Name, state.Value, secret);
+                        }
+
                         break;
                     }
 
                     // Adjust and pop the parent state.
-                    _trace.Verbose("Popping recursion state.");
+                    if (!secret)
+                    {
+                        _trace.Verbose("Popping recursion state.");
+                    }
+
                     RecursionState parent = stack.Pop();
                     parent.Value = string.Concat(
                         parent.Value.Substring(0, parent.PrefixIndex),
@@ -296,24 +381,42 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                         parent.Value.Substring(parent.SuffixIndex + Constants.Variables.MacroSuffix.Length));
                     parent.StartIndex = parent.PrefixIndex + (state.Value).Length;
                     state = parent;
-                    _trace.Verbose($"Intermediate state '{state.Key}': '{state.Value}'");
+                    if (!secret)
+                    {
+                        _trace.Verbose($"Intermediate state '{state.Name}': '{state.Value}'");
+                    }
                 } // End of outer while loop for recursively processing the variable.
             } // End of foreach loop over each key in the dictionary.
         }
 
         private sealed class RecursionState
         {
-            public RecursionState(string key, string value)
+            public RecursionState(string name, string value)
             {
-                Key = key;
+                Name = name;
                 Value = value;
             }
 
-            public string Key { get; private set; }
+            public string Name { get; private set; }
             public string Value { get; set; }
             public int StartIndex { get; set; }
             public int PrefixIndex { get; set; }
             public int SuffixIndex { get; set; }
+        }
+    }
+
+    public sealed class Variable
+    {
+        public string Name { get; private set; }
+        public bool Secret { get; private set; }
+        public string Value { get; private set; }
+
+        public Variable(string name, string value, bool secret)
+        {
+            ArgUtil.NotNullOrEmpty(name, nameof(name));
+            Name = name;
+            Value = value ?? string.Empty;
+            Secret = secret;
         }
     }
 }
