@@ -103,7 +103,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
                 if (parser.IsCommand("run") && !configManager.IsConfigured())
                 {
-                    throw new InvalidOperationException("Cannot run. Must configure first.");
+                    throw new InvalidOperationException("CanNotRunAgent");
                 }
 
                 Trace.Info("Done evaluating commands");

@@ -27,6 +27,7 @@
   "CanNotFindSystemd": "Can not find if systemd is installed",
   "CanNotGrantPermission": "Can not grant LogonAsService permission to the user {0}",
   "CanNotInstallService": "Can not install the service, check the logs for more details ",
+  "CanNotRunAgent": "Cannot run. Must configure first",
   "CanNotSetPermissionForAccount": "Can not set permission for service account, check the logs for more details",
   "CanNotStartService": "Can not start the service, check the logs for more details",
   "CanNotStopService": "Can not stop the service {0} in a timely fashion, please stop the service and reconfigure again",
