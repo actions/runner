@@ -178,7 +178,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                 var copy = new Dictionary<string, string>
                 {
                     { "variable1", "before $(variable2) after" },
-                    { "variable2", "before2 ($variable3) after2" },
+                    { "variable2", "before2 $(variable3) after2" },
                     { "variable3", "some variable 3 value" },
                 };
                 var maskHints = new List<MaskHint>
@@ -193,8 +193,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                 // Assert.
                 Assert.Equal(0, warnings.Count);
                 Assert.Equal(0, variables.Public.Count());
-                Assert.Equal("before2 before some variable 3 value after after2", variables.Get("variable1"));
-                Assert.Equal("before2 some variable 2 value after2", variables.Get("variable2"));
+                Assert.Equal("before before2 some variable 3 value after2 after", variables.Get("variable1"));
+                Assert.Equal("before2 some variable 3 value after2", variables.Get("variable2"));
                 Assert.Equal("some variable 3 value", variables.Get("variable3"));
             }
         }
