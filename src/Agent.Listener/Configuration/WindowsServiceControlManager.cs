@@ -192,7 +192,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             catch (Exception exception)
             {
                 Trace.Error(exception);
-                _term.WriteError(StringUtil.Loc("CanNotStopService"));
+                _term.WriteError(StringUtil.Loc("CanNotStopService", serviceName));
 
                 // Log the exception but do not report it as error. We can try uninstalling the service and then report it as error if something goes wrong.
             }

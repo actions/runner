@@ -8,6 +8,7 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
+using Xunit.Extensions;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
 {
@@ -17,6 +18,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
         private Mock<IMessageListener> _messageListener;
         private Mock<IWorkerManager> _workerManager;
         private Mock<IAgentServer> _agentServer;
+        private Mock<ITerminal> _term;
 
         public AgentL0()
         {
@@ -24,6 +26,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
             _messageListener = new Mock<IMessageListener>();
             _workerManager = new Mock<IWorkerManager>();
             _agentServer = new Mock<IAgentServer>();            
+            _term = new Mock<ITerminal>();
         }
 
         private JobRequestMessage CreateJobRequestMessage(string jobName)
@@ -53,7 +56,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
             using (var tokenSource = new CancellationTokenSource())
             {
                 //Arrange
-                var agent = new Microsoft.VisualStudio.Services.Agent.Listener.Agent();
+                var agent = new Agent.Listener.Agent();
                 agent.TokenSource = tokenSource;
                 hc.SetSingleton<IConfigurationManager>(_configurationManager.Object);
                 hc.SetSingleton<IMessageListener>(_messageListener.Object);
@@ -169,6 +172,44 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                     _messageListener.Verify(x => x.DeleteSessionAsync(), Times.Once());
                     _agentServer.Verify(x => x.DeleteAgentMessageAsync(settings.PoolId, arMessages[0].MessageId, taskAgentSession.SessionId, It.IsAny<CancellationToken>()), Times.Once());
                 }
+            }
+        }
+
+        public static TheoryData<string[], bool, Times> RunAsServiceTestData = new TheoryData<string[], bool, Times>()
+                                                                    {
+                                                                        // staring with run command, configured as run as service, should start the agent
+                                                                        { new [] { "run" }, true, Times.Once() },
+                                                                        // starting with no argument, configured as run as service, should not start agent
+                                                                        { new string[] { }, true, Times.Never() },
+                                                                        // starting with no argument, configured not to run as service, should start agent interactively
+                                                                        { new string[] { }, false, Times.Once() }
+                                                                    };
+        [Theory]
+        [MemberData("RunAsServiceTestData")]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Agent")]
+        public async void TestExecuteCommandForRunAsService(string[] args, bool configureAsService, Times expectedTimes)
+        {
+            using (var hc = new TestHostContext(this))
+            {
+                hc.SetSingleton<IConfigurationManager>(_configurationManager.Object);
+                hc.SetSingleton<IMessageListener>(_messageListener.Object);
+
+                CommandLineParser clp = new CommandLineParser(hc);
+                clp.Parse(args);
+
+                _configurationManager.Setup(x => x.IsConfigured()).Returns(true);
+                _configurationManager.Setup(x => x.LoadSettings())
+                    .Returns(new AgentSettings { RunAsService = configureAsService });
+                _messageListener.Setup(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()))
+                    .Returns(Task.FromResult(false));
+
+                var agent = new Agent.Listener.Agent();
+                agent.Initialize(hc);
+                agent.TokenSource = new CancellationTokenSource();
+                await agent.ExecuteCommand(clp);
+
+                _messageListener.Verify(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()), expectedTimes);
             }
         }
     }

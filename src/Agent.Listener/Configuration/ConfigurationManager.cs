@@ -2,10 +2,11 @@ using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using Microsoft.VisualStudio.Services.Client;
 using Microsoft.VisualStudio.Services.Common;
+
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
@@ -127,6 +128,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             Trace.Info("Read agent settings");
             var consoleWizard = HostContext.GetService<IConsoleWizard>();
 
+            // TODO: Check if its running with elevated permission and stop early if its not
             //
             // Loop getting url and creds until you can connect
             //
@@ -221,9 +223,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 agentName = consoleWizard.ReadValue(CliArgs.Agent,
                                                 StringUtil.Loc("AgentName"),
                                                 false,
-                                                // TODO: coreCLR doesn't expose till very recently (Jan 15)
-                                                // Environment.MachineName,
-                                                "myagent",
+                                                Environment.MachineName ?? "myagent",
                                                 // can do better
                                                 Validators.NonEmptyValidator,
                                                 args,
