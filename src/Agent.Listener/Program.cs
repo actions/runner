@@ -1,10 +1,8 @@
-﻿using Microsoft.VisualStudio.Services.Agent.Listener.Configuration;
-using Microsoft.VisualStudio.Services.Agent.Util;
+﻿using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Diagnostics;
-using System.Runtime.InteropServices;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener
 {
@@ -17,6 +15,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             return MainAsync(args).GetAwaiter().GetResult();
         }
 
+        // Return code definition: (this will be used by service host to determine whether it will re-launch agent.listener)
+        // 0: Agent exit
+        // 1: Terminate failure
+        // 2: Retriable failure
+        // 3: Exit for self update
         public async static Task<int> MainAsync(string[] args)
         {
             // Validate the binaries intended for one OS are not running on a different OS.

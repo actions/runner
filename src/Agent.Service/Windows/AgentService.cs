@@ -51,16 +51,31 @@ namespace AgentService
                                 AgentListener.WaitForExit();
                                 int exitCode = AgentListener.ExitCode;
 
-                                // Handle error code 1? 
-                                // If agent fails (because its not configured) also returns error code 1, in such case we dont want to run the service
-                                // Killing a process also returns error code 1, but we want to restart the process here.
-                                // TODO: change the error code for run method if agent is not configured?
-
-                                if (exitCode == 2)
+                                // exit code 0 and 1 need stop service
+                                // exit code 2 and 3 need restart agent
+                                switch (exitCode)
                                 {
-                                    // Agent wants to stop the service as well
-                                    Stopping = true;
-                                    WriteInfo(Resource.ServiceRequestedToStop);
+                                    case 0:
+                                        Stopping = true;
+                                        WriteInfo(Resource.AgentExitWithoutError);
+                                        break;
+                                    case 1:
+                                        Stopping = true;
+                                        WriteInfo(Resource.AgentExitWithTerminatedError);
+                                        break;
+                                    case 2:
+                                        WriteInfo(Resource.AgentExitWithError);
+                                        break;
+                                    case 3:
+                                        WriteInfo(Resource.AgentUpdateInProcess);
+                                        break;
+                                    default:
+                                        WriteInfo(Resource.AgentExitWithUndefinedReturnCode);
+                                        break;
+                                }
+
+                                if (Stopping)
+                                {
                                     ExitCode = exitCode;
                                     Stop();
                                 }
@@ -69,18 +84,19 @@ namespace AgentService
                                     // wait for few seconds before restarting the process
                                     Thread.Sleep(timeBetweenRetries);
                                 }
-                            }
 
-                            lock (ServiceLock)
-                            {
-                                AgentListener.Dispose();
-                                AgentListener = null;
+                                lock (ServiceLock)
+                                {
+                                    AgentListener.Dispose();
+                                    AgentListener = null;
+                                    stopping = Stopping;
+                                }
                             }
                         }
                         catch (Exception exception)
                         {
                             WriteException(exception);
-                            ExitCode = 1;
+                            ExitCode = 99;
                             Stop();
                         }
                     });

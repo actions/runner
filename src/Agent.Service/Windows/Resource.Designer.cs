@@ -61,11 +61,47 @@ namespace AgentService {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Agent received a message to stop the service as well..
+        ///   Looks up a localized string similar to Agent listener exit with retryable error, re-launch agent in 5 seconds..
         /// </summary>
-        internal static string ServiceRequestedToStop {
+        internal static string AgentExitWithError {
             get {
-                return ResourceManager.GetString("ServiceRequestedToStop", resourceCulture);
+                return ResourceManager.GetString("AgentExitWithError", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Agent listener exit with 0 return code, stop the service, no retry needed..
+        /// </summary>
+        internal static string AgentExitWithoutError {
+            get {
+                return ResourceManager.GetString("AgentExitWithoutError", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Agent listener exit with terminated error, stop the service, no retry needed..
+        /// </summary>
+        internal static string AgentExitWithTerminatedError {
+            get {
+                return ResourceManager.GetString("AgentExitWithTerminatedError", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Agent listener exit with undefined return code, re-launch agent in 5 seconds..
+        /// </summary>
+        internal static string AgentExitWithUndefinedReturnCode {
+            get {
+                return ResourceManager.GetString("AgentExitWithUndefinedReturnCode", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Agent listener exit because of updating, re-launch agent in 5 seconds..
+        /// </summary>
+        internal static string AgentUpdateInProcess {
+            get {
+                return ResourceManager.GetString("AgentUpdateInProcess", resourceCulture);
             }
         }
     }
