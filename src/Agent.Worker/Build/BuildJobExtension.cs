@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
@@ -40,14 +41,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         }
 
         // 1. use source provide to solve path, if solved result is rooted, return full path.
-        // 2. prefix default path root (build.sourceFolder), if result is rooted, return full path.
-        public void GetRootedPath(IExecutionContext context, string path, out string rootedPath)
+        // 2. prefix default path root (build.sourcesDirectory), if result is rooted, return full path.
+        public string GetRootedPath(IExecutionContext context, string path)
         {
-            rootedPath = null;
+            string rootedPath = null;
 
             if (SourceProvider != null && SourceEndpoint != null)
             {
-                path = SourceProvider.GetLocalPath(SourceEndpoint, path) ?? string.Empty;
+                path = SourceProvider.GetLocalPath(context, SourceEndpoint, path) ?? string.Empty;
                 Trace.Info($"Build JobExtension resolving path use source provide: {path}");
 
                 if (!string.IsNullOrEmpty(path) &&
@@ -58,7 +59,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                     {
                         rootedPath = Path.GetFullPath(path);
                         Trace.Info($"Path resolved by source provider is a rooted path, return absolute path: {rootedPath}");
-                        return;
+                        return rootedPath;
                     }
                     catch (Exception ex)
                     {
@@ -68,8 +69,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 }
             }
 
-            string defaultPathRoot = context.Variables.Get(Constants.Variables.Build.SourceFolder) ?? string.Empty;
-            Trace.Info($"The Default Path Root of Build JobExtension is build.sourceFolder: {defaultPathRoot}");
+            string defaultPathRoot = context.Variables.Get(Constants.Variables.Build.SourcesDirectory) ?? string.Empty;
+            Trace.Info($"The Default Path Root of Build JobExtension is build.sourcesDirectory: {defaultPathRoot}");
 
             if (defaultPathRoot != null && defaultPathRoot.IndexOfAny(Path.GetInvalidPathChars()) < 0 &&
                 path != null && path.IndexOfAny(Path.GetInvalidPathChars()) < 0)
@@ -82,7 +83,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                     {
                         rootedPath = Path.GetFullPath(path);
                         Trace.Info($"Return absolute path after prefix DefaultPathRoot: {rootedPath}");
-                        return;
+                        return rootedPath;
                     }
                     catch (Exception ex)
                     {
@@ -91,6 +92,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                     }
                 }
             }
+
+            return rootedPath;
         }
 
         public void ConvertLocalPath(IExecutionContext context, string localPath, out string repoName, out string sourcePath)
@@ -107,7 +110,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             {
                 // If we found a repo, calculate the relative path to the file
                 repoName = SourceEndpoint.Name;
-                sourcePath = IOUtil.MakeRelative(localPath, context.Variables.Get(Constants.Variables.Build.SourceFolder));
+                sourcePath = IOUtil.MakeRelative(localPath, context.Variables.Get(Constants.Variables.Build.SourcesDirectory));
             }
         }
 
@@ -146,15 +149,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
             executionContext.Debug("Set build variables.");
             string _workDirectory = IOUtil.GetWorkPath(HostContext);
-            executionContext.Variables.Set(Constants.Variables.Agent.BuildFolder, Path.Combine(_workDirectory, trackingConfig.BuildDirectory));
+            executionContext.Variables.Set(Constants.Variables.Agent.BuildDirectory, Path.Combine(_workDirectory, trackingConfig.BuildDirectory));
             executionContext.Variables.Set(Constants.Variables.System.ArtifactsDirectory, Path.Combine(_workDirectory, trackingConfig.ArtifactsDirectory));
             executionContext.Variables.Set(Constants.Variables.System.DefaultWorkingDirectory, Path.Combine(_workDirectory, trackingConfig.SourcesDirectory));
             executionContext.Variables.Set(Constants.Variables.Common.TestResultsDirectory, Path.Combine(_workDirectory, trackingConfig.TestResultsDirectory));
 
-            executionContext.Variables.Set(Constants.Variables.Build.BinariesFolder, Path.Combine(_workDirectory, trackingConfig.BuildDirectory, Constants.Build.Path.BinariesDirectory));
-            executionContext.Variables.Set(Constants.Variables.Build.SourceFolder, Path.Combine(_workDirectory, trackingConfig.SourcesDirectory));
-            executionContext.Variables.Set(Constants.Variables.Build.StagingFolder, Path.Combine(_workDirectory, trackingConfig.ArtifactsDirectory));
-            executionContext.Variables.Set(Constants.Variables.Build.ArtifactStagingFolder, Path.Combine(_workDirectory, trackingConfig.ArtifactsDirectory));
+            executionContext.Variables.Set(Constants.Variables.Build.BinariesDirectory, Path.Combine(_workDirectory, trackingConfig.BuildDirectory, Constants.Build.Path.BinariesDirectory));
+            executionContext.Variables.Set(Constants.Variables.Build.SourcesDirectory, Path.Combine(_workDirectory, trackingConfig.SourcesDirectory));
+            executionContext.Variables.Set(Constants.Variables.Build.StagingDirectory, Path.Combine(_workDirectory, trackingConfig.ArtifactsDirectory));
+            executionContext.Variables.Set(Constants.Variables.Build.ArtifactStagingDirectory, Path.Combine(_workDirectory, trackingConfig.ArtifactsDirectory));
 
             executionContext.Variables.Set(Constants.Variables.Build.RepoId, SourceEndpoint.Id.ToString("D"));
             executionContext.Variables.Set(Constants.Variables.Build.RepoName, SourceEndpoint.Name);

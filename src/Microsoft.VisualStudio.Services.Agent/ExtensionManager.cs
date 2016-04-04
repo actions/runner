@@ -64,8 +64,11 @@ namespace Microsoft.VisualStudio.Services.Agent
                         Add(instance, "Microsoft.VisualStudio.Services.Agent.Worker.Build.GitHubSourceProvider, Agent.Worker");
                         Add(instance, "Microsoft.VisualStudio.Services.Agent.Worker.Build.SvnSourceProvider, Agent.Worker");
                         Add(instance, "Microsoft.VisualStudio.Services.Agent.Worker.Build.TfsGitSourceProvider, Agent.Worker");
-                        Add(instance, "Microsoft.VisualStudio.Services.Agent.Worker.Build.TfsVCSourceProvider, Agent.Worker");
-
+#if WINDOWS
+                        Add(instance, "Microsoft.VisualStudio.Services.Agent.Worker.Build.TfsVCWindowsSourceProvider, Agent.Worker");
+#elif OS_LINUX || OS_OSX
+                        Add(instance, "Microsoft.VisualStudio.Services.Agent.Worker.Build.TfsVCTeeSourceProvider, Agent.Worker");
+#endif
                         _cache = instance;
                     }
                 }

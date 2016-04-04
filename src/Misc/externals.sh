@@ -1,4 +1,5 @@
 NODE_VERSION="4.3.2"
+TEE_VERSION="14.0.2-private"
 
 get_abs_path() {
   # exploits the fact that pwd will print abs path when no args
@@ -87,4 +88,50 @@ function acquireNode ()
     echo Done
 }
 
+function acquireTee ()
+{
+    echo "Downloading TEE ${TEE_VERSION}..."
+    target_dir="${LAYOUT_DIR}/externals/tee"
+    if [ -d $target_dir ]; then
+        rm -Rf $target_dir
+    fi
+    mkdir -p $target_dir
+
+    mkdir -p "${DOWNLOAD_DIR}"
+    pushd "${DOWNLOAD_DIR}" > /dev/null
+
+    if [[ "$PLATFORM" != "windows" ]]; then
+        # OSX/Linux
+
+        tee_file="TEE-CLC-${TEE_VERSION}"
+        tee_zip="${tee_file}.zip"
+
+        if [ -f ${tee_zip} ]; then
+            echo "Download exists"
+        else
+            tee_url="http://aka.ms/${tee_zip}"
+            echo "Downloading TEE ${TEE_VERSION} @ ${tee_url}"
+            curl -kSLO $tee_url &> "./tee_download.log"
+            checkRC "Download (curl)"
+        fi
+
+        if [ -d ${tee_file} ]; then
+            echo "Already extracted"
+        else
+            echo "Extracting"
+            unzip ./${tee_zip} &> "tee_unzip.log"
+            checkRC "Unzip (TEE)"
+        fi
+
+        # copy to layout
+        echo "Copying to layout"
+        cp -Rf ${tee_file}/* ${target_dir}
+    fi
+
+    popd > /dev/null
+
+    echo Done
+}
+
 acquireNode
+acquireTee

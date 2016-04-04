@@ -10,8 +10,9 @@ namespace Microsoft.VisualStudio.Services.Agent
 {
     public sealed class Tracing : IDisposable
     {
+        private readonly long _flushThreshold = TimeSpan.TicksPerSecond * 20;
+        private Stopwatch _lastFlush = Stopwatch.StartNew();
         private ISecretMasker _secretMasker;
-
         private TraceSource _traceSource;
 
         public Tracing(string name, ISecretMasker secretMasker, SourceSwitch sourceSwitch, TextWriterTraceListener traceListener)
@@ -106,6 +107,11 @@ namespace Microsoft.VisualStudio.Services.Agent
         {
             ArgUtil.NotNull(_traceSource, nameof(_traceSource));
             _traceSource.TraceEvent(eventType, 0, _secretMasker.MaskSecrets(message));
+            if (_lastFlush.ElapsedTicks > _flushThreshold)
+            {
+                _traceSource.Flush();
+                _lastFlush = Stopwatch.StartNew();
+            }
         }
 
         private void Dispose(bool disposing)

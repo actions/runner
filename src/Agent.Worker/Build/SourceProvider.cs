@@ -21,7 +21,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
         Task PostJobCleanupAsync(IExecutionContext executionContext, ServiceEndpoint endpoint);
 
-        string GetLocalPath(ServiceEndpoint endpoint, string path);
+        string GetLocalPath(IExecutionContext executionContext, ServiceEndpoint endpoint, string path);
     }
 
     public abstract class SourceProvider : AgentService
@@ -57,6 +57,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
                 return hexString.ToString();
             }
+        }
+
+        public virtual string GetLocalPath(IExecutionContext executionContext, ServiceEndpoint endpoint, string path)
+        {
+            return path;
         }
     }
 }
