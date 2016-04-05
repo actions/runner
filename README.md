@@ -32,7 +32,7 @@ OSX (darwin), Linux and soon windows
 
 ```bash
 ~/$ mkdir myagent && cd myagent
-~/myagent$ tar zxvf ~/Downloads/vsts-agent-darwin-1.999.0-0331.tar.gz
+~/myagent$ tar zxvf ~/Downloads/vsts-agent-darwin-1.999.0-0405.tar.gz
 ```
 
 ### Step 3: Run the agent
@@ -41,7 +41,7 @@ OSX (darwin), Linux and soon windows
 ~/myagent$ ./run.sh
 ```
 
-** That's It! Your agent is running interactively and ready for builds **
+**That's It! Your agent is running interactively and ready for builds**  
 
 ## Configuration
 
