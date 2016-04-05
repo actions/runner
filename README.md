@@ -20,10 +20,32 @@ Work is just beginning on this project.  Please do not log issues yet.  We are t
 |![Win](docs/win_med.png) **Windows 10**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/b924d696-3eae-4116-8443-9a18392d8544/2850/badge?branch=master)| N/A |
 
 
-## Install
+## Get Started
 
-Early preview on OSX, Linux coming very soon.
+### Step 1: Download from Releases
 
+Download the appropriate agent from [github releases](https://github.com/Microsoft/vsts-agent/releases)
+
+OSX (darwin), Linux and soon windows
+
+### Step 2: Create the agent
+
+```bash
+~/$ mkdir myagent && cd myagent
+~/myagent$ tar zxvf ~/Downloads/vsts-agent-darwin-1.999.0-0331.tar.gz
+```
+
+### Step 3: Run the agent
+
+```bash
+~/myagent$ ./run.sh
+```
+
+** That's It! Your agent is running interactively and ready for builds **
+
+## Configuration
+
+Other detailed configuration options are [covered here](docs/config.md)
 
 ## Contribute (Dev)
 
