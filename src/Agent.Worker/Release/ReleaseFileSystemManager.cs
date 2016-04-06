@@ -4,9 +4,6 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
-using Agent.Worker.Release;
-
-using Microsoft.VisualStudio.Services.Agent;
 using Microsoft.VisualStudio.Services.Agent.Util;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
@@ -19,6 +16,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
         StreamReader GetFileReader(string filePath);
 
         Task WriteStreamToFile(Stream stream, string filePath);
+
+        void DeleteDirectory(string directoryPath);
     }
 
     public class ReleaseFileSystemManager : AgentService, IReleaseFileSystemManager
@@ -48,7 +47,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
 
         public void DeleteFile(string filePath)
         {
-            this._retryExecutor.Execute(File.Delete, filePath);
+            _retryExecutor.Execute(File.Delete, filePath);
+        }
+
+        public void DeleteDirectory(string directoryPath)
+        {
+            _retryExecutor.Execute(path => { Directory.Delete(path, true); }, directoryPath);
         }
 
         public StreamReader GetFileReader(string filePath)

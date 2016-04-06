@@ -24,10 +24,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
 
         private IAgentServer _agentServer;
 
+        private IReleaseFileSystemManager _releaseFileSystemManager;
+
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
             _agentServer = hostContext.GetService<IAgentServer>();
+            _releaseFileSystemManager = HostContext.GetService<IReleaseFileSystemManager>();
         }
 
         public void GetRootedPath(IExecutionContext context, string path, out string rootedPath)
@@ -50,15 +53,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
                 displayName: StringUtil.Loc("DownloadArtifacts"),
                 enabled: true,
                 @finally: false);
-
-            //this.FinallyStep = new JobExtensionRunner(
-            //    runAsync: FinallyAsync,
-            //    alwaysRun: false,
-            //    continueOnError: false,
-            //    critical: false,
-            //    displayName: StringUtil.Loc("Cleanup"),
-            //    enabled: true,
-            //    @finally: true);
         }
 
         public async Task PrepareAsync()
@@ -78,29 +72,26 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
 
             if (!skipArtifactsDownload)
             {
-                // TODO: Create this as new task. Old agent does this. We have two task. First is initialize which does the above and download task will be added based on skipDownloadArtifact option
-                executionContext.Debug("Downloading artifact");
+                // TODO: Create this as new task. Old windows agent does this. First is initialize which does the above and download task will be added based on skipDownloadArtifact option
+                executionContext.Output("Downloading artifact");
 
                 await DownloadArtifacts(executionContext, teamProjectId, artifactsWorkingFolder, releaseId);
             }
-
-            await Task.Delay(100);
         }
 
         private async Task DownloadArtifacts(IExecutionContext executionContext, Guid teamProjectId, string artifactsWorkingFolder, int releaseId)
         {
             Trace.Entering();
-            // Get artifacts first
-            // TODO: send correct cancellation token
             try
             {
+                // TODO: send correct cancellation token
                 List<AgentArtifactDefinition> releaseArtifacts =
                     _agentServer.GetReleaseArtifactsFromService(teamProjectId, releaseId).ToList();
 
                 releaseArtifacts.ForEach(x => Trace.Info($"Found Artifact = {x.Alias}"));
 
                 CleanUpArtifactsFolder(executionContext, artifactsWorkingFolder);
-                await DownloadArtifacts(executionContext, releaseArtifacts, artifactsWorkingFolder, teamProjectId);
+                await DownloadArtifacts(executionContext, releaseArtifacts, artifactsWorkingFolder);
             }
             catch (Exception ex)
             {
@@ -109,15 +100,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
             }
         }
 
-        private async Task DownloadArtifacts(IExecutionContext executionContext, List<AgentArtifactDefinition> agentArtifactDefinitions, string artifactsWorkingFolder, Guid teamProjectId)
+        private async Task DownloadArtifacts(IExecutionContext executionContext, List<AgentArtifactDefinition> agentArtifactDefinitions, string artifactsWorkingFolder)
         {
             Trace.Entering();
 
-            var agentArtifactDefinitionService = HostContext.GetService<IAgentArtifactDefinitionService>();
             foreach (AgentArtifactDefinition agentArtifactDefinition in agentArtifactDefinitions)
             {
+                // We don't need to check if its old style artifact anymore. All the build data has been fixed and all the build artifact has Alias now.
+                ArgUtil.NotNullOrEmpty(agentArtifactDefinition.Alias, nameof(agentArtifactDefinition.Alias));
+
                 executionContext.Output(StringUtil.Loc("RMStartArtifactsDownload"));
-                ArtifactDefinition artifactDefinition = agentArtifactDefinitionService.ConvertToArtifactDefinition(agentArtifactDefinition, executionContext);
+                ArtifactDefinition artifactDefinition = ConvertToArtifactDefinition(agentArtifactDefinition, executionContext);
                 executionContext.Output(StringUtil.Loc("RMArtifactDownloadBegin", agentArtifactDefinition.Alias));
                 executionContext.Output(StringUtil.Loc("RMDownloadArtifactType", agentArtifactDefinition.ArtifactType));
 
@@ -127,6 +120,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
                 // Create the directory if it does not exist. 
                 if (!Directory.Exists(downloadFolderPath))
                 {
+                    // TODO: old windows agent has a directory cache, verify and implement it if its required.
                     Directory.CreateDirectory(downloadFolderPath);
                     executionContext.Output(StringUtil.Loc("RMArtifactFolderCreated", downloadFolderPath));
                 }
@@ -136,11 +130,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
                 await retryExecutor.ExecuteAsync(
                     async () =>
                         {
-                            if (Directory.Exists(downloadFolderPath))
-                            {
-                                //TODO:SetAttributesToNormal
-                                Directory.Delete(downloadFolderPath, true);
-                            }
+                            //TODO:SetAttributesToNormal
+                            _releaseFileSystemManager.DeleteDirectory(downloadFolderPath);
 
                             if (agentArtifactDefinition.ArtifactType == AgentArtifactType.GitHub
                                 || agentArtifactDefinition.ArtifactType == AgentArtifactType.TFGit
@@ -150,7 +141,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
                             }
                             else
                             {
-                                var buildArtifactProvider = HostContext.GetService<IBuildArtifactProvider>();
+                                var buildArtifactProvider = HostContext.GetService<IArtifactProvider>();
                                 await buildArtifactProvider.Download(executionContext, artifactDefinition, downloadFolderPath);
                             }
                         });
@@ -172,10 +163,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
             executionContext.Output(StringUtil.Loc("RMCleaningArtifactsDirectory", artifactsWorkingFolder));
             try
             {
-                if (Directory.Exists(artifactsWorkingFolder))
-                {
-                    Directory.Delete(artifactsWorkingFolder);
-                }
+                _releaseFileSystemManager.DeleteDirectory(artifactsWorkingFolder);
             }
             catch (Exception ex)
             {
@@ -202,15 +190,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
             executionContext.Output(
                 $"ReleaseId={releaseId}, TeamProjectId={teamProjectId}, ReleaseDefinitionName={releaseDefinitionName}");
 
-            var configuration = HostContext.GetService<IConfigurationStore>();
+            var configStore = HostContext.GetService<IConfigurationStore>();
             var shortHash = ReleaseFolderHelper.CreateShortHash(
-                configuration.GetSettings().AgentName,
+                configStore.GetSettings().AgentName,
                 teamProjectId.ToString(),
                 releaseDefinitionName);
             executionContext.Output($"Release folder: {shortHash}");
 
-            artifactsWorkingFolder = Path.Combine(IOUtil.GetWorkPath(this.HostContext), shortHash);
-            this.SetLocalVariables(executionContext, artifactsWorkingFolder);
+            artifactsWorkingFolder = Path.Combine(IOUtil.GetWorkPath(HostContext), shortHash);
+            SetLocalVariables(executionContext, artifactsWorkingFolder);
 
             // Log the environment variables available after populating the variable service with our variables
             LogEnvironmentVariables(executionContext);
@@ -228,18 +216,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
             }
         }
 
-        //private static IEnumerable<AgentArtifactDefinition> GetReleaseArtifactsFromService(
-        //    IJobRequest job,
-        //    CancellationToken cancellationToken,
-        //    string teamProject,
-        //    int releaseId)
-        //{
-        //    var connection = job.GetVssConnection();
-        //    var releaseManagementHttpClient = connection.GetClient<ReleaseHttpClient>();
-        //    var artifacts = releaseManagementHttpClient.GetAgentArtifactDefinitionsAsync(teamProject, releaseId, userState: null, cancellationToken: cancellationToken).Result;
-        //    return artifacts;
-        //}
-
         private void SetLocalVariables(IExecutionContext executionContext, string artifactsDirectoryPath)
         {
             Trace.Entering();
@@ -247,7 +223,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
             // Always set the AgentReleaseDirectory because this is set as the WorkingDirectory of the task.
             executionContext.Variables.Set(WellKnownReleaseVariables.AgentReleaseDirectory, artifactsDirectoryPath);
 
-            // Set the ArtifactsDirectory even when artifacts downloaded is skipped.  Reason: The task might want to access the old artifact.
+            // Set the ArtifactsDirectory even when artifacts downloaded is skipped. Reason: The task might want to access the old artifact.
             executionContext.Variables.Set(WellKnownReleaseVariables.ArtifactsDirectory, artifactsDirectoryPath);
             executionContext.Variables.Set(Constants.Variables.System.DefaultWorkingDirectory, artifactsDirectoryPath);
         }
@@ -266,10 +242,28 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
             Trace.Entering();
             if (!Directory.Exists(artifactsFolderPath))
             {
-                Trace.Info($"Creating artifacts folder: {artifactsFolderPath}");
                 executionContext.Output($"Creating artifacts folder: {artifactsFolderPath}");
                 Directory.CreateDirectory(artifactsFolderPath);
             }
+        }
+
+        ArtifactDefinition ConvertToArtifactDefinition(AgentArtifactDefinition agentArtifactDefinition, IExecutionContext executionContext)
+        {
+            Trace.Entering();
+
+            ArgUtil.NotNull(agentArtifactDefinition, nameof(agentArtifactDefinition));
+            ArgUtil.NotNull(executionContext, nameof(executionContext));
+
+            var artifactDefinition = new ArtifactDefinition
+            {
+                ArtifactType = (ArtifactType)agentArtifactDefinition.ArtifactType,
+                Name = agentArtifactDefinition.Name,
+                Version = agentArtifactDefinition.Version
+            };
+
+            var artifactProvider = HostContext.GetService<IArtifactProvider>();
+            artifactDefinition.Details = artifactProvider.GetArtifactDetails(executionContext, agentArtifactDefinition);
+            return artifactDefinition;
         }
     }
 }

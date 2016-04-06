@@ -21,9 +21,5 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
         public const string CollectionId = "system.collectionId";
 
         public const string TeamProject = "system.teamProject";
-
-        #region release variables
-        
-        #endregion
     }
 }

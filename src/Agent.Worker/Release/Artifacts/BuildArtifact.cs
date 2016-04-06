@@ -8,24 +8,40 @@ using System.Threading.Tasks;
 using Agent.Worker.Release.Artifacts.Definition;
 
 using Microsoft.TeamFoundation.Build.WebApi;
-using Microsoft.VisualStudio.Services.Agent;
+using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Util;
-using Microsoft.VisualStudio.Services.Agent.Worker;
 using Microsoft.VisualStudio.Services.Client;
+using Microsoft.VisualStudio.Services.Common;
 using Microsoft.VisualStudio.Services.FileContainer;
+using Microsoft.VisualStudio.Services.ReleaseManagement.WebApi.Contracts;
+
+using Newtonsoft.Json;
 
 using ServerBuildArtifact = Microsoft.TeamFoundation.Build.WebApi.BuildArtifact;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
 {
-    public class BuildArtifact : IArtifact
+    // TODO: Implement serviceLocator pattern to have custom attribute as we have different type of artifacts
+    [ServiceLocator(Default = typeof(BuildArtifact))]
+    public interface IBuildArtifact : IAgentService
+    {
+        Task Download(
+            ArtifactDefinition artifactDefinition,
+            IExecutionContext executionContext,
+            string localFolderPath);
+
+        BuildArtifactDetails GetArtifactDetails(
+            AgentArtifactDefinition agentArtifactDefinition,
+            IExecutionContext context);
+    }
+
+    public class BuildArtifact : AgentService, IBuildArtifact
     {
         public const string AllArtifacts = "*";
 
-        public async Task Download(ArtifactDefinition artifactDefinition, IHostContext hostContext, IExecutionContext executionContext, string localFolderPath)
+        public async Task Download(ArtifactDefinition artifactDefinition, IExecutionContext executionContext, string localFolderPath)
         {
             ArgUtil.NotNull(artifactDefinition, nameof(artifactDefinition));
-            ArgUtil.NotNull(hostContext, nameof(hostContext));
             ArgUtil.NotNull(executionContext, nameof(executionContext));
             ArgUtil.NotNullOrEmpty(localFolderPath, nameof(localFolderPath));
 
@@ -76,15 +92,58 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
             // TODO: Should we download them parallely?
             foreach (ServerBuildArtifact buildArtifact in buildArtifacts)
             {
-                if (this.Match(buildArtifact, artifactDefinition))
+                if (Match(buildArtifact, artifactDefinition))
                 {
                     executionContext.Output(StringUtil.Loc("RMPreparingToDownload", buildArtifact.Name));
-                    await this.DownloadArtifact(hostContext, executionContext, buildArtifact, artifactDefinition, localFolderPath, buildClient, xamlBuildClient, buildDefinitionType, buildId);
+                    await DownloadArtifact(executionContext, buildArtifact, artifactDefinition, localFolderPath, buildClient, xamlBuildClient, buildDefinitionType, buildId);
                 }
                 else
                 {
                     executionContext.Warning(StringUtil.Loc("RMArtifactMatchNotFound", buildArtifact.Name));
                 }
+            }
+        }
+
+        public BuildArtifactDetails GetArtifactDetails(AgentArtifactDefinition agentArtifactDefinition, IExecutionContext context)
+        {
+            Trace.Entering();
+
+            ServiceEndpoint vssEndpoint = context.Endpoints.FirstOrDefault(e => string.Equals(e.Name, ServiceEndpoints.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
+            ArgUtil.NotNull(vssEndpoint, nameof(vssEndpoint));
+            ArgUtil.NotNull(vssEndpoint.Url, nameof(vssEndpoint.Url));
+
+            // TODO Get this value from settings
+            string parallelDownloadLimit = "8";
+
+            var artifactDetails = JsonConvert.DeserializeObject<Dictionary<string, string>>(agentArtifactDefinition.Details);
+            VssCredentials vssCredentials = ApiUtil.GetVssCredential(vssEndpoint);
+            var tfsUrl = context.Variables.Get(WellKnownDistributedTaskVariables.TFCollectionUrl);
+
+            Guid projectId = context.Variables.System_TeamProjectId ?? Guid.Empty;
+            ArgUtil.NotEmpty(projectId, nameof(projectId));
+
+            string relativePath;
+            string accessToken;
+            vssEndpoint.Authorization.Parameters.TryGetValue(EndpointAuthorizationParameters.AccessToken, out accessToken);
+
+            if (artifactDetails.TryGetValue("RelativePath", out relativePath))
+            {
+                return new BuildArtifactDetails
+                {
+                    Credentials = vssCredentials,
+                    RelativePath = artifactDetails["RelativePath"],
+                    Project = projectId.ToString(),
+                    TfsUrl = new Uri(tfsUrl),
+                    AccessToken = accessToken,
+                    ParallelDownloadLimit =
+                                   Convert.ToInt32(
+                                       parallelDownloadLimit,
+                                       CultureInfo.InvariantCulture)
+                };
+            }
+            else
+            {
+                throw new InvalidOperationException(StringUtil.Loc("RMArtifactDetailsIncomplete"));
             }
         }
 
@@ -105,7 +164,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
         }
 
         private async Task DownloadArtifact(
-            IHostContext hostContext,
             IExecutionContext executionContext,
             ServerBuildArtifact buildArtifact,
             ArtifactDefinition artifactDefinition,
@@ -144,7 +202,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
                 }
 
                 var fileShareArtifact = new FileShareArtifact();
-                await fileShareArtifact.DownloadArtifact(artifactDefinition, hostContext, executionContext, fileShare, downloadFolderPath);
+                await fileShareArtifact.DownloadArtifact(artifactDefinition, executionContext, fileShare, downloadFolderPath);
             }
             else if (string.Equals(buildArtifact.Resource.Type, WellKnownArtifactResourceTypes.Container, StringComparison.OrdinalIgnoreCase))
             {
@@ -175,7 +233,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
                     throw;
                 }
 
-                var zipStreamDownloader = hostContext.GetService<IZipStreamDownloader>();
+                var zipStreamDownloader = HostContext.GetService<IZipStreamDownloader>();
                 string artifactRootFolder = StringUtil.Format("/{0}", buildArtifact.Name);
                 await zipStreamDownloader.DownloadFromStream(contentStream, artifactRootFolder, buildArtifactDetails.RelativePath, downloadFolderPath);
             }

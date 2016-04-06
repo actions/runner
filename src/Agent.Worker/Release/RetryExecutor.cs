@@ -40,7 +40,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
                 }
                 catch (Exception ex)
                 {
-                    if (retryCount == this.MaximumRetryCount - 1 || !this.ShouldRetryAction(ex))
+                    if (retryCount == MaximumRetryCount - 1 || !ShouldRetryAction(ex))
                     {
                         throw;
                     }
@@ -54,7 +54,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
         {
             ArgUtil.NotNull(action, nameof(action));
 
-            this.Execute(() => action(parameter));
+            Execute(() => action(parameter));
         }
 
         public TResult Execute<T, TResult>(Func<T, TResult> action, T parameter)
@@ -84,7 +84,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
                         throw;
                     }
 
-                    this.SleepAction(this.MillisecondsToSleepBetweenRetries);
+                    SleepAction(this.MillisecondsToSleepBetweenRetries);
                 }
             }
         }

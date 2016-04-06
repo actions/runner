@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -11,27 +12,43 @@ using System.Threading.Tasks;
 
 using Agent.Worker.Release.Artifacts.Definition;
 
+using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using Microsoft.VisualStudio.Services.Agent.Worker;
 using Microsoft.VisualStudio.Services.Agent.Worker.Release;
 using Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts;
+using Microsoft.VisualStudio.Services.ReleaseManagement.WebApi.Contracts;
+
+using Newtonsoft.Json;
 
 namespace Microsoft.VisualStudio.Agent.Worker.Release.Artifacts
 {
-    public class JenkinsArtifact : IArtifact
+    // TODO: Implement serviceLocator pattern to have custom attribute as we have different type of artifacts
+    [ServiceLocator(Default = typeof(JenkinsArtifact))]
+    public interface IJenkinsArtifact : IAgentService
+    {
+        Task Download(
+            ArtifactDefinition artifactDefinition,
+            IExecutionContext executionContext,
+            string localFolderPath);
+
+        IArtifactDetails GetArtifactDetails(
+            AgentArtifactDefinition agentArtifactDefinition,
+            IExecutionContext context);
+    }
+
+    public class JenkinsArtifact : AgentService, IJenkinsArtifact
     {
         private const char Backslash = '\\';
         private const char ForwardSlash = '/';
 
         public async Task Download(
             ArtifactDefinition artifactDefinition,
-            IHostContext hostContext,
             IExecutionContext executionContext,
             string localFolderPath)
         {
             ArgUtil.NotNull(artifactDefinition, nameof(artifactDefinition));
-            ArgUtil.NotNull(hostContext, nameof(hostContext));
             ArgUtil.NotNull(executionContext, nameof(executionContext));
             ArgUtil.NotNullOrEmpty(localFolderPath, nameof(localFolderPath));
 
@@ -74,12 +91,48 @@ namespace Microsoft.VisualStudio.Agent.Worker.Release.Artifacts
             var parentFolder = GetParentFolderName(jenkinsDetails.RelativePath);
 
             executionContext.Output(StringUtil.Loc("RMDownloadingJenkinsArtifacts"));
-            var zipStreamDownloader = hostContext.GetService<IZipStreamDownloader>();
+            var zipStreamDownloader = HostContext.GetService<IZipStreamDownloader>();
             await zipStreamDownloader.DownloadFromStream(
                 downloadedStream,
                 string.IsNullOrEmpty(parentFolder) ? "archive" : string.Empty,
                 parentFolder,
                 localFolderPath);
+        }
+
+        public IArtifactDetails GetArtifactDetails(AgentArtifactDefinition agentArtifactDefinition, IExecutionContext context)
+        {
+            Trace.Entering();
+
+            var artifactDetails =
+                JsonConvert.DeserializeObject<Dictionary<string, string>>(agentArtifactDefinition.Details);
+
+            ServiceEndpoint jenkinsEndpoint = context.Endpoints.FirstOrDefault(e => string.Equals(e.Name, artifactDetails["ConnectionName"], StringComparison.OrdinalIgnoreCase));
+            if (jenkinsEndpoint == null)
+            {
+                throw new InvalidOperationException(StringUtil.Loc("RMJenkinsEndpointNotFound", agentArtifactDefinition.Name));
+            }
+
+            string relativePath;
+            var jobName = string.Empty;
+
+            var allFieldsPresents = artifactDetails.TryGetValue("RelativePath", out relativePath)
+                                    && artifactDetails.TryGetValue("JobName", out jobName);
+            if (allFieldsPresents)
+            {
+                return new JenkinsArtifactDetails
+                {
+                    RelativePath = relativePath,
+                    AccountName = jenkinsEndpoint.Authorization.Parameters[EndpointAuthorizationParameters.Username],
+                    AccountPassword = jenkinsEndpoint.Authorization.Parameters[EndpointAuthorizationParameters.Password],
+                    BuildId = Convert.ToInt32(agentArtifactDefinition.Version, CultureInfo.InvariantCulture),
+                    JobName = jobName,
+                    Url = jenkinsEndpoint.Url
+                };
+            }
+            else
+            {
+                throw new InvalidOperationException(StringUtil.Loc("RMArtifactDetailsIncomplete"));
+            }
         }
 
         private static void SetupHttpClient(HttpClient httpClient, string userName, string password)

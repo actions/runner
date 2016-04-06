@@ -10,19 +10,29 @@ using Microsoft.VisualStudio.Services.Agent.Util;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
 {
-    public class FileShareArtifact : IArtifact
+    // TODO: Implement serviceLocator pattern to have custom attribute as we have different type of artifacts
+    [ServiceLocator(Default = typeof(FileShareArtifact))]
+    public interface IFileShareArtifact : IAgentService
     {
-        public async Task Download(ArtifactDefinition artifactDefinition, IHostContext hostContext, IExecutionContext executionContext, string localFolderPath)
+        Task Download(
+            ArtifactDefinition artifactDefinition,
+            IExecutionContext executionContext,
+            string localFolderPath);
+    }
+
+    public class FileShareArtifact : AgentService, IFileShareArtifact
+    {
+        public async Task Download(ArtifactDefinition artifactDefinition, IExecutionContext executionContext, string localFolderPath)
         {
             ArgUtil.NotNull(artifactDefinition, nameof(artifactDefinition));
             ArgUtil.NotNull(executionContext, nameof(executionContext));
             ArgUtil.NotNullOrEmpty(localFolderPath, nameof(localFolderPath));
 
             var dropLocation = GetFileShareDropLocation(artifactDefinition.Details.RelativePath, artifactDefinition.Version);
-            await this.DownloadArtifact(artifactDefinition, hostContext, executionContext, dropLocation, localFolderPath);
+            await DownloadArtifact(artifactDefinition, executionContext, dropLocation, localFolderPath);
         }
 
-        public async Task DownloadArtifact(ArtifactDefinition artifactDefinition, IHostContext hostContext, IExecutionContext executionContext, string dropLocation, string localFolderPath)
+        public async Task DownloadArtifact(ArtifactDefinition artifactDefinition, IExecutionContext executionContext, string dropLocation, string localFolderPath)
         {
             ArgUtil.NotNull(artifactDefinition, nameof(artifactDefinition));
             ArgUtil.NotNull(executionContext, nameof(executionContext));
@@ -35,7 +45,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
             // If user has specified a relative folder in the drop, change the drop location itself. 
             dropLocation = Path.Combine(dropLocation.TrimEnd(trimChars), relativePath.Trim(trimChars));
 
-            var fileSystemManager = hostContext.CreateService<IReleaseFileSystemManager>();
+            var fileSystemManager = HostContext.CreateService<IReleaseFileSystemManager>();
             List<string> filePaths = fileSystemManager.GetFiles(dropLocation, SearchOption.AllDirectories).Select(path => path.FullName).ToList();
 
             if (filePaths.Any())
@@ -62,8 +72,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
                 return null;
             }
 
-            var externallyPackageLocation = string.Format(
-                CultureInfo.InvariantCulture,
+            var externallyPackageLocation = StringUtil.Format(
                 "{0}\\{1}",
                 buildExternallyPackageLocation.TrimEnd(new[] { '\\' }),
                 buildNumber).TrimEnd(new[] { '\\' });

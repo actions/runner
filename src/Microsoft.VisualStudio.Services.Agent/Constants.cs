@@ -132,6 +132,9 @@ namespace Microsoft.VisualStudio.Services.Agent
 
             public static class Release
             {
+                //
+                // Keep alphabetical
+                //
                 public static readonly string AttemptNumber = "release.attemptNumber";
                 public static readonly string ReleaseDefinitionName = "release.definitionName";
                 public static readonly string ReleaseEnvironmentName = "release.environmentName";

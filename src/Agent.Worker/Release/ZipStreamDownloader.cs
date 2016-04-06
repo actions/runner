@@ -27,39 +27,29 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
 
         public Task<int> DownloadFromStream(Stream zipStream, string folderWithinStream, string relativePathWithinStream, string localFolderPath)
         {
-            this.Trace.Entering();
+            Trace.Entering();
 
             ArgUtil.NotNullOrEmpty(localFolderPath, nameof(localFolderPath));
             ArgUtil.NotNullOrEmpty(folderWithinStream, nameof(folderWithinStream));
 
-            return this.DownloadStreams(zipStream, localFolderPath, folderWithinStream, relativePathWithinStream, null);
+            return DownloadStreams(zipStream, localFolderPath, folderWithinStream, relativePathWithinStream);
         }
 
-        public async Task DownloadFromStream(Stream zipStream, string folderWithinStream, string relativePathWithinStream, Action<string, Stream> streamDownloaderAction)
+        private async Task<int> DownloadStreams(Stream zipStream, string localFolderPath, string folderWithinStream, string relativePathWithinStream)
         {
-            this.Trace.Entering();
-
-            ArgUtil.NotNull(streamDownloaderAction, nameof(streamDownloaderAction));
-            ArgUtil.NotNullOrEmpty(folderWithinStream, nameof(folderWithinStream));
-
-            await this.DownloadStreams(zipStream, null, folderWithinStream, relativePathWithinStream, streamDownloaderAction);
-        }
-
-        private async Task<int> DownloadStreams(Stream zipStream, string localFolderPath, string folderWithinStream, string relativePathWithinStream, Action<string, Stream> streamDownloaderAction)
-        {
-            this.Trace.Entering();
+            Trace.Entering();
 
             int streamsDownloaded = 0;
-            var fileSystemManager = this.HostContext.CreateService<IReleaseFileSystemManager>();
+            var fileSystemManager = HostContext.CreateService<IReleaseFileSystemManager>();
 
-            foreach (var stream in GetZipEntryStreams(zipStream))
+            foreach (ZipEntryStream stream in GetZipEntryStreams(zipStream))
             {
                 try
                 {
                     // Remove leading '/'s if any 
                     var path = stream.FullName.TrimStart(ForwardSlash);
 
-                    this.Trace.Verbose($"Downloading {path}");
+                    Trace.Verbose($"Downloading {path}");
                     if (!string.IsNullOrWhiteSpace(folderWithinStream))
                     {
                         var normalizedFolderWithInStream = folderWithinStream.TrimStart(ForwardSlash).TrimEnd(ForwardSlash) + ForwardSlash;
@@ -90,14 +80,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
                         path = path.Substring(normalizedRelativePath.Length);
                     }
 
-                    if (streamDownloaderAction != null)
-                    {
-                        streamDownloaderAction(path, stream.ZipStream);
-                    }
-                    else
-                    {
-                        await fileSystemManager.WriteStreamToFile(stream.ZipStream, Path.Combine(localFolderPath, path));
-                    }
+                    await fileSystemManager.WriteStreamToFile(stream.ZipStream, Path.Combine(localFolderPath, path));
 
                     streamsDownloaded++;
                 }

@@ -157,6 +157,7 @@
   "RMArtifactTypeNotSupported": "Release management does not support download of artifact type {0} in the current version",
   "RMCleanedUpArtifactsDirectory": "Cleaned artifacts directory: {0}",
   "RMCleaningArtifactsDirectory": "Cleaning artifacts directory: {0}",
+  "RMJenkinsEndpointNotFound": "Cannot find required information in the job to download the Jenkins artifact: {0}",
   "RMDownloadArtifactType": "Downloading artifact of type: {0}",
   "RMEnvironmentVariablesAvailable": "Environment variables available are below.  Note that these environment variables can be referred to in the task (in the ReleaseDefinition) by replacing \"_\" with \".\" e.g. AGENT_NAME environment variable can be referenced using Agent.Name in the ReleaseDefinition: {0}",
   "RMInitializeTask": "Initialize",
