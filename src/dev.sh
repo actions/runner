@@ -220,12 +220,13 @@ function package ()
     pkg_dir=`pwd`/../_package
 
     agent_ver=`${LAYOUT_DIR}/bin/Agent.Listener --version` || "failed version"
-    agent_pkg_name="vsts-agent-${PLATFORM}-${agent_ver}-$(date +%m)$(date +%d).tar.gz"
+    agent_pkg_name="vsts-agent-${PLATFORM}-${agent_ver}-$(date +%m)$(date +%d)"
     rm -Rf ${LAYOUT_DIR}/_diag
     mkdir -p $pkg_dir
     pushd $pkg_dir > /dev/null
     rm -Rf *
-    tar -czf ${agent_pkg_name} -C ${LAYOUT_DIR} .
+    tar -czf "${agent_pkg_name}.tar.gz" -C ${LAYOUT_DIR} .
+    zip -r "${agent_pkg_name}.zip" ${LAYOUT_DIR}
     popd > /dev/null
 }
 
