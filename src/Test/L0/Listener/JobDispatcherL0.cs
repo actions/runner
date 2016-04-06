@@ -43,14 +43,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
         {
             //Arrange
             using (var hc = new TestHostContext(this))
-            using (var jobDispatcher = new JobDispatcher())
-            {
+            { 
+                var jobDispatcher = new JobDispatcher();
                 hc.SetSingleton<IConfigurationStore>(_configurationStore.Object);
                 hc.SetSingleton<IAgentServer>(_agentServer.Object);
 
                 hc.EnqueueInstance<IProcessChannel>(_processChannel.Object);
                 hc.EnqueueInstance<IProcessInvoker>(_processInvoker.Object);
+
+                _configurationStore.Setup(x => x.GetSettings()).Returns(new AgentSettings() { PoolId = 1 });
                 jobDispatcher.Initialize(hc);
+
                 var ts = new CancellationTokenSource();
                 JobRequestMessage message = CreateJobRequestMessage();
                 string strMessage = JsonUtility.ToString(message);
@@ -63,8 +66,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                 _processChannel.Setup(x => x.SendAsync(MessageType.NewJobRequest, It.Is<string>(s => s.Equals(strMessage)), It.IsAny<CancellationToken>()))
                     .Returns(Task.CompletedTask);
 
-                _configurationStore.Setup(x => x.GetSettings()).Returns(new AgentSettings() { PoolId = 1 });
-
                 var request = new TaskAgentJobRequest();
                 PropertyInfo sessionIdProperty = request.GetType().GetProperty("LockedUntil", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
                 Assert.NotNull(sessionIdProperty);
@@ -76,10 +77,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
 
 
                 //Actt
-                int exitCode = await jobDispatcher.RunAsync(message, ts.Token);
-                
+                jobDispatcher.Run(message);
+
                 //Assert
-                Assert.Equal(exitCode, 0);
+                await jobDispatcher.WaitAsync(CancellationToken.None);
             }
         }
 
