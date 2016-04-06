@@ -20,6 +20,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
             string localFolderPath);
     }
 
+    // TODO: Add test for this
     public class FileShareArtifact : AgentService, IFileShareArtifact
     {
         public async Task Download(ArtifactDefinition artifactDefinition, IExecutionContext executionContext, string localFolderPath)

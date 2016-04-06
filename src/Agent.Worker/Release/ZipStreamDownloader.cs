@@ -19,6 +19,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
             string localFolderPath);
     }
 
+    // TODO: Add tests for this
     public class ZipStreamDownloader : AgentService, IZipStreamDownloader
     {
         private const char ForwardSlash = '/';
