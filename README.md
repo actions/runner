@@ -67,7 +67,7 @@ From src:
 
 ![*nix](docs/linux_sm.png) `./dev.sh {command}`
   
-** Commands: **
+**Commands:**  
 
 `restore` (`r`): Run first time and any time you change a project.json  
 
