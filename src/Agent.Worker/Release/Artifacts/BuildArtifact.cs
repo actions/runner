@@ -35,6 +35,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
             IExecutionContext context);
     }
 
+    // TODO: Write tests for this
     public class BuildArtifact : AgentService, IBuildArtifact
     {
         public const string AllArtifacts = "*";

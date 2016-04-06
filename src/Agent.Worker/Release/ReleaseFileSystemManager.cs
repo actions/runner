@@ -22,9 +22,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
 
     public class ReleaseFileSystemManager : AgentService, IReleaseFileSystemManager
     {
-        private readonly IDictionary<string, DirectoryInfo> directories
-            = new Dictionary<string, DirectoryInfo>(StringComparer.OrdinalIgnoreCase);
-
         private RetryExecutor _retryExecutor = new RetryExecutor();
         private const int StreamBufferSize = 1024;
 

@@ -60,6 +60,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
             ArgUtil.NotNull(executionContext, nameof(executionContext));
             ArgUtil.NotNull(agentArtifactDefinition, nameof(agentArtifactDefinition));
 
+            // TODO: Avoid this if-else case by implementing Custom ServiceLocator attribute
             // TODO: Check if we can merge ArtifactType and AgentArtifactType
             if (agentArtifactDefinition.ArtifactType == AgentArtifactType.Build)
             {

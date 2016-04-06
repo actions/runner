@@ -7,6 +7,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+
+using Agent.Worker.Release.Artifacts.Definition;
+
 using Xunit;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests
@@ -65,6 +68,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 typeof(ICommandExtension),
                 typeof(ISourceProvider),
                 typeof(IStep),
+                typeof(IArtifactDetails)
             };
             Validate(
                 assembly: typeof(IStepsRunner).GetTypeInfo().Assembly,

@@ -2,6 +2,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
 {
     public static class WellKnownReleaseVariables
     {
+        // TODO: This is just copy from Release extension, cleanup which ever is not required. Do not use system variables from here, its already been defined in other places
         public const string System = "system";
 
         public const string Build = "build";

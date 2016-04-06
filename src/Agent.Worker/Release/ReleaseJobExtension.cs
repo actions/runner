@@ -4,7 +4,6 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
-using Agent.Worker.Release;
 using Agent.Worker.Release.Artifacts.Definition;
 
 using Microsoft.VisualStudio.Services.Agent.Util;
@@ -22,17 +21,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
 
         public IStep FinallyStep { get; private set; }
 
-        private IAgentServer _agentServer;
-
-        private IReleaseFileSystemManager _releaseFileSystemManager;
-
-        public override void Initialize(IHostContext hostContext)
-        {
-            base.Initialize(hostContext);
-            _agentServer = hostContext.GetService<IAgentServer>();
-            _releaseFileSystemManager = HostContext.GetService<IReleaseFileSystemManager>();
-        }
-
+        // TODO: These methods seems not relevant to Release Extension, refactor it
         public void GetRootedPath(IExecutionContext context, string path, out string rootedPath)
         {
             throw new NotImplementedException();
@@ -84,9 +73,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
             Trace.Entering();
             try
             {
+                var agentServer = HostContext.GetService<IAgentServer>();
                 // TODO: send correct cancellation token
                 List<AgentArtifactDefinition> releaseArtifacts =
-                    _agentServer.GetReleaseArtifactsFromService(teamProjectId, releaseId).ToList();
+                    agentServer.GetReleaseArtifactsFromService(teamProjectId, releaseId).ToList();
 
                 releaseArtifacts.ForEach(x => Trace.Info($"Found Artifact = {x.Alias}"));
 
@@ -131,7 +121,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
                     async () =>
                         {
                             //TODO:SetAttributesToNormal
-                            _releaseFileSystemManager.DeleteDirectory(downloadFolderPath);
+                            var releaseFileSystemManager = HostContext.GetService<IReleaseFileSystemManager>();
+                            releaseFileSystemManager.DeleteDirectory(downloadFolderPath);
 
                             if (agentArtifactDefinition.ArtifactType == AgentArtifactType.GitHub
                                 || agentArtifactDefinition.ArtifactType == AgentArtifactType.TFGit
@@ -163,7 +154,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
             executionContext.Output(StringUtil.Loc("RMCleaningArtifactsDirectory", artifactsWorkingFolder));
             try
             {
-                _releaseFileSystemManager.DeleteDirectory(artifactsWorkingFolder);
+                var releaseFileSystemManager = HostContext.GetService<IReleaseFileSystemManager>();
+                releaseFileSystemManager.DeleteDirectory(artifactsWorkingFolder);
             }
             catch (Exception ex)
             {
@@ -231,7 +223,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
         private void LogEnvironmentVariables(IExecutionContext executionContext)
         {
             Trace.Entering();
-            string stringifiedEnvironmentVariables = AgentUtilities.GetEnvironmentVariables(executionContext.Variables.Public);
+            string stringifiedEnvironmentVariables = AgentUtilities.GetPrintableEnvironmentVariables(executionContext.Variables.Public);
 
             // Use LogMessage to ensure that the logs reach the TWA UI, but don't spam the console cmd window
             executionContext.Output(StringUtil.Loc("RMEnvironmentVariablesAvailable", stringifiedEnvironmentVariables));

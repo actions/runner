@@ -5,7 +5,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
 {
     public static class AgentUtilities
     {
-        public static string GetEnvironmentVariables(IEnumerable<KeyValuePair<string, string>> variables)
+        public static string GetPrintableEnvironmentVariables(IEnumerable<KeyValuePair<string, string>> variables)
         {
             StringBuilder builder = new StringBuilder();
 

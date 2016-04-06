@@ -38,6 +38,7 @@ namespace Microsoft.VisualStudio.Agent.Worker.Release.Artifacts
             IExecutionContext context);
     }
 
+    // TODO: Write tests for this
     public class JenkinsArtifact : AgentService, IJenkinsArtifact
     {
         private const char Backslash = '\\';
