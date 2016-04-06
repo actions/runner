@@ -13,9 +13,9 @@ Will run all existing tasks (typescript/javascript and powershell) including [ou
 
 A preview is available for Linux/OSX.  A release is coming soon with more capabilities than the deprecated node agent: Auto Update, Cancellation, Run as a svc on OSX and Linux, and Gated support.
 
-What's missing from the preview?  Run as svc on OSX, TfsVC support (finishing now)
+What's missing from the preview?  Run as svc on OSX, TfsVC support, RM, test publishing (all being worked on)
 
-A preview for windows is coming soon (finishing powershell handlers)  
+A preview for windows is coming soon (finishing powershell handlers and tfsvc support)  
 
 |   | Build & Test | Preview | Release |
 |---|:-----:|:-----:|:-----:|
