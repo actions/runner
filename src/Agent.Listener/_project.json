@@ -33,7 +33,7 @@
     "dependencies": {
         "NETStandard.Library": "1.0.0-rc3-23829",
         "Microsoft.VisualStudio.Services.Agent": { "target": "project", "version": "1.0.0-*" },
-        "vss-api-netcore": "0.5.4-private",
+        "vss-api-netcore": "0.5.5-private",
         "System.ServiceProcess.ServiceController": "4.1.0-rc3-23829",
         "System.IO.FileSystem.AccessControl": "4.0.0-rc3-23829",
         "Newtonsoft.Json": "7.0.1",

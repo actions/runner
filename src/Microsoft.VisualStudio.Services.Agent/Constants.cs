@@ -126,7 +126,25 @@ namespace Microsoft.VisualStudio.Services.Agent
                 // public static readonly string System = "system";
                 public static readonly string TeamProject = "system.teamproject";
                 public static readonly string TFServerUrl = "system.TeamFoundationServerUri"; // back compat variable, do not document
+                public const string TeamProjectId = "system.teamProjectId";
                 public static readonly string PreferGit = "system.prefergit";
+            }
+
+            public static class Release
+            {
+                public static readonly string AttemptNumber = "release.attemptNumber";
+                public static readonly string ReleaseDefinitionName = "release.definitionName";
+                public static readonly string ReleaseEnvironmentName = "release.environmentName";
+                public static readonly string ReleaseEnvironmentUri = "release.environmentUri";
+                public static readonly string ReleaseDescription = "release.releaseDescription";
+                public static readonly string ReleaseId = "release.releaseId";
+                public static readonly string ReleaseName = "release.releaseName";
+                public static readonly string ReleaseRequestedForId = "release.requestedForId";
+                public static readonly string ReleaseUri = "release.releaseUri";
+                public static readonly string ReleaseWebUrl = "release.releaseWebUrl";
+                public static readonly string RequestorId = "release.requestedFor";
+                public static readonly string SkipArtifactsDownload = "release.skipartifactsDownload";
+                public static readonly string Status = "status";
             }
         }
     }

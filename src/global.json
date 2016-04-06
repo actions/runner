@@ -1,8 +1,8 @@
 {
-    "projects": [
-        "Microsoft.VisualStudio.Services.Agent",
-        "Agent.Listener",
-        "Agent.Worker",
-        "Test"
-    ]
+  "projects": [
+    "Microsoft.VisualStudio.Services.Agent",
+    "Agent.Listener",
+    "Agent.Worker",
+    "Test"
+  ]
 }

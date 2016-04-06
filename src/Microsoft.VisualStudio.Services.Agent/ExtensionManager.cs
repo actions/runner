@@ -53,6 +53,7 @@ namespace Microsoft.VisualStudio.Services.Agent
 
                         // Add job extensions:
                         Add(instance, "Microsoft.VisualStudio.Services.Agent.Worker.Build.BuildJobExtension, Agent.Worker");
+                        Add(instance, "Microsoft.VisualStudio.Services.Agent.Worker.Release.ReleaseJobExtension, Agent.Worker");
 
                         // Add command extensions:
                         Add(instance, "Microsoft.VisualStudio.Services.Agent.Worker.TaskCommands, Agent.Worker");
