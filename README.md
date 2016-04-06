@@ -11,13 +11,17 @@ Will run all existing tasks (typescript/javascript and powershell) including [ou
 
 ## Status
 
-Work is just beginning on this project.  Please do not log issues yet.  We are targetting a preview early in April 2016 for OSX/Linux.  
+A preview is available for Linux/OSX.  A release is coming soon with more capabilities than the deprecated node agent: Auto Update, Cancellation, Run as a svc on OSX and Linux, and Gated support.
 
-|   | Build & Test | Preview |
-|---|:-----:|:-----:|
-|![Linux](docs/linux_med.png) **Ubuntu 14.04**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/b924d696-3eae-4116-8443-9a18392d8544/2853/badge?branch=master)| Soon |
-|![Apple](docs/apple_med.png) **OSX 10.11**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/b924d696-3eae-4116-8443-9a18392d8544/3080/badge?branch=master)| Soon |
-|![Win](docs/win_med.png) **Windows 10**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/b924d696-3eae-4116-8443-9a18392d8544/2850/badge?branch=master)| N/A |
+What's missing from the preview?  Run as svc on OSX, TfsVC support (finishing now)
+
+A preview for windows is coming soon (finishing powershell handlers)  
+
+|   | Build & Test | Preview | Release |
+|---|:-----:|:-----:|:-----:|
+|![Linux](docs/linux_med.png) **Ubuntu 14.04**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/b924d696-3eae-4116-8443-9a18392d8544/2853/badge?branch=master)| [v0.7](https://github.com/Microsoft/vsts-agent/releases) | Soon |
+|![Apple](docs/apple_med.png) **OSX 10.11**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/b924d696-3eae-4116-8443-9a18392d8544/3080/badge?branch=master)| [v0.7](https://github.com/Microsoft/vsts-agent/releases) | Soon
+|![Win](docs/win_med.png) **Windows 10**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/b924d696-3eae-4116-8443-9a18392d8544/2850/badge?branch=master)| Soon | |
 
 
 ## Get Started
@@ -93,7 +97,7 @@ From src:
 [Using Visual Studio 2015](docs/dev/vs.md)  
 [Using Visual Studio Code and Mono Debugger](docs/dev/code.md)  
 
-# Styling convention
+### Styling
 
 We use the dotnet foundation and CoreCLR style guidelines [located here](
 https://github.com/dotnet/corefx/blob/master/Documentation/coding-guidelines/coding-style.md)
