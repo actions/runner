@@ -66,21 +66,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
             var xamlBuildClient = vssConnection.GetClient<XamlBuildHttpClient>();
             List<ServerBuildArtifact> buildArtifacts = null;
             DefinitionType buildDefinitionType = DefinitionType.Build;
+
             try
             {
                 buildArtifacts = await buildClient.GetArtifactsAsync(buildArtifactDetails.Project, buildId);
             }
-            catch (AggregateException ex)
+            catch (BuildNotFoundException)
             {
-                if (ex.InnerException != null && ex.InnerException is BuildNotFoundException)
-                {
-                    buildArtifacts = xamlBuildClient.GetArtifactsAsync(buildArtifactDetails.Project, buildId).Result;
-                    buildDefinitionType = DefinitionType.Xaml;
-                }
-                else
-                {
-                    throw;
-                }
+                buildArtifacts = await xamlBuildClient.GetArtifactsAsync(buildArtifactDetails.Project, buildId);
+                buildDefinitionType = DefinitionType.Xaml;
             }
 
             // No artifacts found in the build => Fail it. 

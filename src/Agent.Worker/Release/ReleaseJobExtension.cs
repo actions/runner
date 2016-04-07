@@ -68,26 +68,23 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
             }
         }
 
-        private async Task DownloadArtifacts(IExecutionContext executionContext, Guid teamProjectId, string artifactsWorkingFolder, int releaseId)
+        private async Task DownloadArtifacts(
+            IExecutionContext executionContext,
+            Guid teamProjectId,
+            string artifactsWorkingFolder,
+            int releaseId)
         {
             Trace.Entering();
-            try
-            {
-                var agentServer = HostContext.GetService<IAgentServer>();
-                // TODO: send correct cancellation token
-                List<AgentArtifactDefinition> releaseArtifacts =
-                    agentServer.GetReleaseArtifactsFromService(teamProjectId, releaseId).ToList();
 
-                releaseArtifacts.ForEach(x => Trace.Info($"Found Artifact = {x.Alias}"));
+            var agentServer = HostContext.GetService<IAgentServer>();
+            // TODO: send correct cancellation token
+            List<AgentArtifactDefinition> releaseArtifacts =
+                agentServer.GetReleaseArtifactsFromService(teamProjectId, releaseId).ToList();
 
-                CleanUpArtifactsFolder(executionContext, artifactsWorkingFolder);
-                await DownloadArtifacts(executionContext, releaseArtifacts, artifactsWorkingFolder);
-            }
-            catch (Exception ex)
-            {
-                executionContext.Error(ex);
-                throw;
-            }
+            releaseArtifacts.ForEach(x => Trace.Info($"Found Artifact = {x.Alias}"));
+
+            CleanUpArtifactsFolder(executionContext, artifactsWorkingFolder);
+            await DownloadArtifacts(executionContext, releaseArtifacts, artifactsWorkingFolder);
         }
 
         private async Task DownloadArtifacts(IExecutionContext executionContext, List<AgentArtifactDefinition> agentArtifactDefinitions, string artifactsWorkingFolder)
@@ -122,7 +119,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
                         {
                             //TODO:SetAttributesToNormal
                             var releaseFileSystemManager = HostContext.GetService<IReleaseFileSystemManager>();
-                            releaseFileSystemManager.DeleteDirectory(downloadFolderPath);
+                            releaseFileSystemManager.CleanupDirectory(downloadFolderPath);
 
                             if (agentArtifactDefinition.ArtifactType == AgentArtifactType.GitHub
                                 || agentArtifactDefinition.ArtifactType == AgentArtifactType.TFGit
@@ -145,7 +142,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
 
         private static string GetLocalDownloadFolderPath(AgentArtifactDefinition artifactDefinition, string artifactsWorkingFolder)
         {
-            return  Path.Combine(artifactsWorkingFolder, artifactDefinition.Alias ?? string.Empty);
+            return  Path.GetFullPath(Path.Combine(artifactsWorkingFolder, artifactDefinition.Alias ?? string.Empty));
         }
 
         private void CleanUpArtifactsFolder(IExecutionContext executionContext, string artifactsWorkingFolder)
@@ -248,7 +245,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
 
             var artifactDefinition = new ArtifactDefinition
             {
-                ArtifactType = (ArtifactType)agentArtifactDefinition.ArtifactType,
+                ArtifactType = agentArtifactDefinition.ArtifactType,
                 Name = agentArtifactDefinition.Name,
                 Version = agentArtifactDefinition.Version
             };

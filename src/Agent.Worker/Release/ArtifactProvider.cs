@@ -29,27 +29,22 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
             ArgUtil.NotNull(artifactDefinition, nameof(artifactDefinition));
             ArgUtil.NotNullOrEmpty(workingFolder, nameof(workingFolder));
 
-            try
+            // TODO: Avoid this if-else case by implementing Custom ServiceLocator attribute
+            if (artifactDefinition.ArtifactType == AgentArtifactType.Build)
             {
-                // TODO: Avoid this if-else case by implementing Custom ServiceLocator attribute
-                if (artifactDefinition.ArtifactType == ArtifactType.Build)
-                {
-                    await 
-                        HostContext.GetService<IBuildArtifact>()
-                            .Download(artifactDefinition, executionContext, workingFolder);
-                }
-                else if (artifactDefinition.ArtifactType == ArtifactType.Jenkins)
-                {
-                    await
-                        HostContext.GetService<IJenkinsArtifact>()
-                            .Download(artifactDefinition, executionContext, workingFolder);
-                }
-
+                await 
+                    HostContext.GetService<IBuildArtifact>()
+                        .Download(artifactDefinition, executionContext, workingFolder);
             }
-            catch (Exception exception)
+            else if (artifactDefinition.ArtifactType == AgentArtifactType.Jenkins)
             {
-                Trace.Error(exception);
-                throw;
+                await
+                    HostContext.GetService<IJenkinsArtifact>()
+                        .Download(artifactDefinition, executionContext, workingFolder);
+            }
+            else
+            {
+                throw new InvalidOperationException(StringUtil.Loc("RMArtifactTypeNotSupported"));
             }
         }
 

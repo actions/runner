@@ -18,6 +18,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
         Task WriteStreamToFile(Stream stream, string filePath);
 
         void DeleteDirectory(string directoryPath);
+
+        void CleanupDirectory(string directoryPath);
     }
 
     public class ReleaseFileSystemManager : AgentService, IReleaseFileSystemManager
@@ -50,6 +52,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
         public void DeleteDirectory(string directoryPath)
         {
             _retryExecutor.Execute(path => { Directory.Delete(path, true); }, directoryPath);
+        }
+
+        public void CleanupDirectory(string directoryPath)
+        {
+            var path = ValidatePath(directoryPath);
+            if (Directory.Exists(path))
+            {
+                DeleteDirectory(path);
+            }
+
+            EnsureDirectoryExists(path);
         }
 
         public StreamReader GetFileReader(string filePath)

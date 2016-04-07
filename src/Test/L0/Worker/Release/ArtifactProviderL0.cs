@@ -54,12 +54,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 var artifactProvider = new ArtifactProvider();
                 artifactProvider.Initialize(hc);
 
-                foreach (ArtifactType type in new[] { ArtifactType.Build, ArtifactType.Jenkins })
+                foreach (AgentArtifactType type in new[] { AgentArtifactType.Build, AgentArtifactType.Jenkins })
                 {
                     artifactDefinition.ArtifactType = type;
                     await artifactProvider.Download(_executionContext.Object, artifactDefinition, "test");
 
-                    if (type == ArtifactType.Build)
+                    if (type == AgentArtifactType.Build)
                     {
                         _buildArtifact.Verify(
                             x =>
@@ -69,7 +69,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                                 It.IsAny<string>()),
                             Times.Once);
                     }
-                    if (type == ArtifactType.Jenkins)
+                    if (type == AgentArtifactType.Jenkins)
                     {
                         _jenkinsArtifact.Verify(
                             x =>

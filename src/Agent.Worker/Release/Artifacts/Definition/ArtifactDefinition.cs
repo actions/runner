@@ -7,6 +7,8 @@
 // </summary>
 // --------------------------------------------------------------------------------------------------------------------
 
+using Microsoft.VisualStudio.Services.ReleaseManagement.WebApi.Contracts;
+
 namespace Agent.Worker.Release.Artifacts.Definition
 {
     public class ArtifactDefinition
@@ -15,7 +17,7 @@ namespace Agent.Worker.Release.Artifacts.Definition
 
         public string Version { get; set; }
 
-        public ArtifactType ArtifactType { get; set; }
+        public AgentArtifactType ArtifactType { get; set; }
 
         public IArtifactDetails Details { get; set; }
     }

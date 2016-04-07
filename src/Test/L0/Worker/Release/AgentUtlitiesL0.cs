@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 
@@ -21,9 +22,9 @@ namespace Test.L0.Worker.Release
                                                                           new KeyValuePair<string, string>("key3", "value3")
                                                                       };
             string expectedResult =
-                $"\r\n\t\t\t\t[{FormatVariable(variables[0].Key)}] --> [{variables[0].Value}]"
-                + $"\r\n\t\t\t\t[{FormatVariable(variables[1].Key)}] --> [{variables[1].Value}]"
-                + $"\r\n\t\t\t\t[{FormatVariable(variables[2].Key)}] --> [{variables[2].Value}]";
+                $"{Environment.NewLine}\t\t\t\t[{FormatVariable(variables[0].Key)}] --> [{variables[0].Value}]"
+                + $"{Environment.NewLine}\t\t\t\t[{FormatVariable(variables[1].Key)}] --> [{variables[1].Value}]"
+                + $"{Environment.NewLine}\t\t\t\t[{FormatVariable(variables[2].Key)}] --> [{variables[2].Value}]";
 
             string result = AgentUtilities.GetPrintableEnvironmentVariables(variables);
             Assert.Equal(expectedResult, result);
