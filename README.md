@@ -23,8 +23,23 @@ A preview for windows is coming soon (finishing powershell handlers and tfsvc su
 |![Apple](docs/apple_med.png) **OSX 10.11**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/b924d696-3eae-4116-8443-9a18392d8544/3080/badge?branch=master)| [v0.7](https://github.com/Microsoft/vsts-agent/releases) | Soon
 |![Win](docs/win_med.png) **Windows 10**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/b924d696-3eae-4116-8443-9a18392d8544/2850/badge?branch=master)| Soon | |
 
+## Configure Account
 
-## Get Started
+Create a PAT token.  [Step by Step here](http://roadtoalm.com/2015/07/22/using-personal-access-tokens-to-access-visual-studio-online/)
+
+Add the user you created the PAT token for to *both*:
+
+  1. Agent Pool Administrators (allows to register)
+  2. Agent Pool Service Accounts (allows listening to build queue)
+
+![Agent Roles](docs/roles.png "Agent Roles")
+
+>> TIPS:
+>> You can add to roles for a specific pool or select "All Pools" on the left and grant for all pools.  This allows the account owner to delegate build administration globally or for specific pools.  [More here](https://msdn.microsoft.com/en-us/Library/vs/alm/Build/agents/admin)
+>> The PAT token is only used to listen to the message queue for a build job
+>> When a build is run, it will generate an OAuth token for the scoped identity selected on the general tab of the build definition.  That token is short lived and will be used to access resource in VSTS
+
+## Get Agent
 
 ### Step 1: Download from Releases
 
