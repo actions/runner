@@ -18,7 +18,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         public static readonly Dictionary<string, Type> CredentialTypes = new Dictionary<string, Type>(StringComparer.OrdinalIgnoreCase)
         {
             { "PAT", typeof(PersonalAccessToken)},
-            { "ALT", typeof(AlternateCredential)}
+            { "ALT", typeof(AlternateCredential)},
+            { "NTLM", typeof(NTLMCredential)}
         };
 
         public ICredentialProvider GetCredentialProvider(string credType)

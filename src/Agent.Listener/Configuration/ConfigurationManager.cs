@@ -20,6 +20,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         public const string Replace = "replace";
         public const string Work = "work";
         public const string RunAsService = "runasservice";
+        public const string UserName = "username";
+        public const string Password = "password";
     }
 
     // TODO: does initialize make sense for service locator pattern?
@@ -145,8 +147,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                                                 args,
                                                 enforceSupplied);
                 Trace.Info("serverUrl: {0}", serverUrl);
+                Dictionary<string, string> credentialArgs = (args == null) ? new Dictionary<string, string>() : new Dictionary<string, string>(args);
+                credentialArgs[CliArgs.Url] = serverUrl;
 
-                credProv = AcquireCredentials(args, enforceSupplied);
+                credProv = AcquireCredentials(credentialArgs, enforceSupplied);
                 VssCredentials creds = credProv.GetVssCredentials(HostContext);
 
                 Trace.Info("cred retrieved");

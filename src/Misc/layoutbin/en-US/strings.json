@@ -138,6 +138,8 @@
   "NotLinux": "This Agent version is built for Linux. Please install a correct build for your OS.",
   "NotOSX": "This Agent version is built for OSX. Please install a correct build for your OS.",
   "NotWindows": "This Agent version is built for Windows. Please install a correct build for your OS.",
+  "NTLMPassword": "Password",
+  "NTLMUsername": "Domain\\Username",
   "OperationFailed": "Error: Operation {0} failed with return code {1}",
   "PathNotExist": "Path not exist: {0}",
   "Prompt0": "Enter {0}",
