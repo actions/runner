@@ -30,7 +30,10 @@ A preview for windows is coming soon (finishing powershell handlers and tfsvc su
 
 Download the appropriate agent from [github releases](https://github.com/Microsoft/vsts-agent/releases)
 
-OSX (darwin), Linux and soon windows
+From the cmdline:
+```bash
+~/Downloads$ curl -kSLO https://github.com/Microsoft/vsts-agent/releases/download/v0.7/vsts-agent-linux-1.999.0-0405.tar.gz
+```
 
 ### Step 2: Create the agent
 
