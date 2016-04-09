@@ -133,7 +133,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 .ToArray();
             foreach (IJobExtension extension in extensions)
             {
-                extension.GetRootedPath(ExecutionContext, inputValue, out fullPath);
+                fullPath = extension.GetRootedPath(ExecutionContext, inputValue);
                 if (!string.IsNullOrEmpty(fullPath))
                 {
                     // Stop on the first path root found.

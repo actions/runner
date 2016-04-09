@@ -73,18 +73,22 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             RecursivelyExpand(out warnings);
         }
 
+        public string Agent_BuildDirectory { get { return Get(Constants.Variables.Agent.BuildDirectory); } }
+        public int? Build_BuildId { get { return GetInt(WellKnownBuildVariables.BuildId); } }
         public BuildCleanOption? Build_Clean { get { return GetEnum<BuildCleanOption>(Constants.Variables.Build.Clean); } }
+        public long? Build_ContainerId { get { return GetLong(WellKnownBuildVariables.ContainerId); } }
         public string Build_DefinitionName { get { return Get(Constants.Variables.Build.DefinitionName); } }
+        public string Build_RepoTfvcWorkspace { get { return Get(Constants.Variables.Build.RepoTfvcWorkspace); } }
+        public string Build_SourcesDirectory { get { return Get(Constants.Variables.Build.SourcesDirectory); } }
+        public string Build_SourceVersion { get { return Get(Constants.Variables.Build.SourceVersion); } }
         public bool? Build_SyncSources { get { return GetBoolean(Constants.Variables.Build.SyncSources); } }
         public string System_CollectionId { get { return Get(Constants.Variables.System.CollectionId); } }
         public bool? System_Debug { get { return GetBoolean(Constants.Variables.System.Debug); } }
         public string System_DefinitionId { get { return Get(Constants.Variables.System.DefinitionId); } }
+        public bool? System_EnableAccessToken { get { return GetBoolean(Constants.Variables.System.EnableAccessToken); } }
         public string System_HostType { get { return Get(Constants.Variables.System.HostType); } }
-        public int? Build_BuildId { get { return GetInt(WellKnownBuildVariables.BuildId); } }
-        public long? Build_ContainerId { get { return GetLong(WellKnownBuildVariables.ContainerId); } }
         public Guid? System_TeamProjectId { get { return GetGuid(WellKnownBuildVariables.TeamProjectId); } }
         public string System_TFCollectionUrl { get { return Get(WellKnownDistributedTaskVariables.TFCollectionUrl);  } }
-        public bool? System_EnableAccessToken { get { return GetBoolean(Constants.Variables.System.EnableAccessToken); } }
 
         public void ExpandValues(IDictionary<string, string> target)
         {

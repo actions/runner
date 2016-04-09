@@ -1,4 +1,5 @@
 using Microsoft.VisualStudio.Services.Agent;
+using System.Threading.Tasks;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
@@ -7,7 +8,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         string HostType { get; }
         IStep PrepareStep { get; }
         IStep FinallyStep { get; }
-        void GetRootedPath(IExecutionContext context, string path, out string rootedPath);
+        string GetRootedPath(IExecutionContext context, string path);
         void ConvertLocalPath(IExecutionContext context, string localPath, out string repoName, out string sourcePath);
     }
 }
