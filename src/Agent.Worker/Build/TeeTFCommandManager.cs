@@ -1,16 +1,14 @@
-using Microsoft.TeamFoundation.Build.WebApi;
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using Newtonsoft.Json;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Xml.Linq;
 using System.Xml.Serialization;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
@@ -24,9 +22,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
         Task GetAsync(string version, string directory);
         string ResolvePath(string workspace, string serverPath);
+        Task ShelveAsync(string directory, string shelveset, string commentFile);
+        Task<TeeShelveset> ShelvesetsAsync(string workspace, string shelveset);
         Task<TeeStatus> StatusAsync(string workspace);
         Task<bool> TryWorkspaceDeleteAsync(TeeWorkspace workspace);
         Task UndoAsync(string directory);
+        Task UnshelveAsync(string workspace, string shelveset);
         Task WorkfoldCloakAsync(string workspace, string serverPath);
         Task WorkfoldMapAsync(string workspace, string serverPath, string localPath);
         Task WorkspaceNewAsync(string name);
@@ -37,7 +38,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
     // TODO: Accept EULA during configure.
     public sealed class TeeTFCommandManager : AgentService, ITeeTFCommandManager
     {
-        private readonly string _tfFile = Path.Combine(IOUtil.GetExternalsPath(), "tee", "tf");
+        private readonly string _tf = Path.Combine(IOUtil.GetExternalsPath(), "tee", "tf");
 
         public CancellationToken CancellationToken { private get; set; }
         public ServiceEndpoint Endpoint { private get; set; }
@@ -66,6 +67,35 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             }
 
             return localPath;
+        }
+
+        public async Task ShelveAsync(string directory, string shelveset, string commentFile)
+        {
+            ArgUtil.NotNullOrEmpty(directory, nameof(directory));
+            ArgUtil.NotNullOrEmpty(shelveset, nameof(shelveset));
+            ArgUtil.NotNullOrEmpty(commentFile, nameof(commentFile));
+            await RunPorcelainCommandAsync(FormatFlags.OmitCollectionUrl, "shelve", "-replace", "-recursive", $"-comment:@{commentFile}", shelveset, directory);
+        }
+
+        public async Task<TeeShelveset> ShelvesetsAsync(string workspace, string shelveset)
+        {
+            ArgUtil.NotNullOrEmpty(workspace, nameof(workspace));
+            ArgUtil.NotNullOrEmpty(shelveset, nameof(shelveset));
+            string xml = await RunPorcelainCommandAsync("shelvesets", "-format:xml", $"-workspace:{workspace}", shelveset);
+
+            // Deserialize the XML.
+            // The command returns a non-zero exit code if the shelveset is not found.
+            // The assertions performed here should never fail.
+            var serializer = new XmlSerializer(typeof(TeeShelvesets));
+            ArgUtil.NotNullOrEmpty(xml, nameof(xml));
+            using (var reader = new StringReader(xml))
+            {
+                var teeShelvesets = serializer.Deserialize(reader) as TeeShelvesets;
+                ArgUtil.NotNull(teeShelvesets, nameof(teeShelvesets));
+                ArgUtil.NotNull(teeShelvesets.Shelvesets, nameof(teeShelvesets.Shelvesets));
+                ArgUtil.Equal(1, teeShelvesets.Shelvesets.Length, nameof(teeShelvesets.Shelvesets.Length));
+                return teeShelvesets.Shelvesets[0];
+            }
         }
 
         public async Task<TeeStatus> StatusAsync(string workspace)
@@ -98,6 +128,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         {
             ArgUtil.NotNullOrEmpty(directory, nameof(directory));
             await RunCommandAsync("undo", "-recursive", directory);
+        }
+
+        public async Task UnshelveAsync(string workspace, string shelveset)
+        {
+            ArgUtil.NotNullOrEmpty(workspace, nameof(workspace));
+            ArgUtil.NotNullOrEmpty(shelveset, nameof(shelveset));
+            await RunCommandAsync("unshelve", "-format:detailed", $"-workspace:{workspace}", shelveset);
         }
 
         public async Task WorkfoldCloakAsync(string workspace, string serverPath)
@@ -145,7 +182,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             await RunCommandAsync("workspace", $"-remove:{workspace.Name};{workspace.Owner}");
         }
 
-        private string FormatArguments(params string[] args)
+        private string FormatArguments(FormatFlags formatFlags, params string[] args)
         {
             // Validation.
             ArgUtil.NotNull(args, nameof(args));
@@ -157,8 +194,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             ArgUtil.NotNullOrEmpty(accessToken, EndpointAuthorizationParameters.AccessToken);
             ArgUtil.NotNull(Endpoint.Url, nameof(Endpoint.Url));
 
-            // Build the args.
-            var arguments = new StringBuilder();
+            // Format each arg.
+            var formattedArgs = new List<string>();
             foreach (string arg in args ?? new string[0])
             {
                 // Validate the arg.
@@ -169,13 +206,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 }
 
                 // Add the arg.
-                arguments.Append(arg != null && arg.Contains(" ") ? $@" ""{arg}""" : $" {arg}");
+                formattedArgs.Add(arg != null && arg.Contains(" ") ? $@"""{arg}""" : $"{arg}");
             }
 
-            // Add the collection/auth parameters.
-            arguments.Append($" -collection:{Endpoint.Url.AbsoluteUri} -login:_,{accessToken} -noprompt");
+            // Add the common parameters.
+            if (!formatFlags.HasFlag(FormatFlags.OmitCollectionUrl))
+            {
+                formattedArgs.Add($"-collection:{Endpoint.Url.AbsoluteUri}");
+            }
 
-            return arguments.ToString().Trim();
+            formattedArgs.Add($"-login:_,{accessToken}");
+            formattedArgs.Add("-noprompt");
+            return string.Join(" ", formattedArgs);
         }
 
         private async Task RunCommandAsync(params string[] args)
@@ -202,23 +244,28 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                         ExecutionContext.Output(e.Data);
                     }
                 };
-                string arguments = FormatArguments(args);
-                ExecutionContext.Command($@"{_tfFile} {arguments}");
+                string arguments = FormatArguments(FormatFlags.None, args);
+                ExecutionContext.Command($@"{_tf} {arguments}");
                 int exitCode = await processInvoker.ExecuteAsync(
                     workingDirectory: IOUtil.GetWorkPath(HostContext),
-                    fileName: _tfFile,
+                    fileName: _tf,
                     arguments: arguments,
                     environment: null,
                     cancellationToken: CancellationToken);
                 if (exitCode != 0)
                 {
                     // TODO: LOC
-                    throw new Exception($"Exit code {exitCode} returned from command: {_tfFile} {arguments}");
+                    throw new Exception($"Exit code {exitCode} returned from command: {_tf} {arguments}");
                 }
             }
         }
 
-        private async Task<string> RunPorcelainCommandAsync(params string[] args)
+        private Task<string> RunPorcelainCommandAsync(params string[] args)
+        {
+            return RunPorcelainCommandAsync(FormatFlags.None, args);
+        }
+
+        private async Task<string> RunPorcelainCommandAsync(FormatFlags formatFlags, params string[] args)
         {
             // Validation.
             ArgUtil.NotNull(args, nameof(args));
@@ -245,11 +292,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                         output.AppendLine(e.Data);
                     }
                 };
-                string arguments = FormatArguments(args);
-                ExecutionContext.Debug($@"{_tfFile} {arguments}");
+                string arguments = FormatArguments(formatFlags, args);
+                ExecutionContext.Debug($@"{_tf} {arguments}");
+                // TODO: Test whether the output encoding needs to be specified for the process.
                 int exitCode = await processInvoker.ExecuteAsync(
                     workingDirectory: IOUtil.GetWorkPath(HostContext),
-                    fileName: _tfFile,
+                    fileName: _tf,
                     arguments: arguments,
                     environment: null,
                     cancellationToken: CancellationToken);
@@ -257,17 +305,50 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 {
                     // The command failed. Dump the output and throw.
                     ExecutionContext.Output(output.ToString());
-
                     // TODO: LOC
-                    throw new Exception($"Exit code {exitCode} returned from command: {_tfFile} {arguments}");
+                    throw new Exception($"Exit code {exitCode} returned from command: {_tf} {arguments}");
                 }
 
                 return output.ToString();
             }
         }
+
+        [Flags]
+        private enum FormatFlags
+        {
+            None = 0,
+            OmitCollectionUrl = 1
+        }
     }
 
+    ////////////////////////////////////////////////////////////////////////////////
+    // tf shelvesets data objects
+    ////////////////////////////////////////////////////////////////////////////////
+    [XmlRoot(ElementName = "shelvesets", Namespace = "")]
+    public sealed class TeeShelvesets
+    {
+        [XmlElement(ElementName = "shelveset", Namespace = "")]
+        public TeeShelveset[] Shelvesets { get; set; }
+    }
 
+    public sealed class TeeShelveset
+    {
+        [XmlAttribute(AttributeName = "date", Namespace = "")]
+        public string Date { get; set; }
+
+        [XmlAttribute(AttributeName = "name", Namespace = "")]
+        public string Name { get; set; }
+
+        [XmlAttribute(AttributeName = "owner", Namespace = "")]
+        public string Owner { get; set; }
+
+        [XmlElement(ElementName = "comment", Namespace = "")]
+        public string Comment { get; set; }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+    // tf status data objects.
+    ////////////////////////////////////////////////////////////////////////////////
     [XmlRoot(ElementName = "status", Namespace = "")]
     public sealed class TeeStatus
     {
@@ -313,6 +394,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         public string Workspace { get; set; }
     }
 
+    ////////////////////////////////////////////////////////////////////////////////
+    // tf workspaces data objects.
+    ////////////////////////////////////////////////////////////////////////////////
     [XmlRoot(ElementName = "workspaces", Namespace = "")]
     public sealed class TeeWorkspaces
     {

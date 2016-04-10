@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -63,6 +64,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                     sourcesDirectory: sourcesDirectory);
 
                 // Undo any pending changes.
+                // TODO: Manually delete pending adds since they do not get deleted on undo?
                 if (existingTeeWorkspace != null)
                 {
                     TeeStatus teeStatus = await tf.StatusAsync(workspaceName);
@@ -121,12 +123,67 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 }
             }
 
-            // Sync the sources.
-            // TODO: build.sourceTfvcShelveset
-            // TODO: Gated.
+            // Get.
             await tf.GetAsync(
                 version: executionContext.Variables.Build_SourceVersion,
                 directory: sourcesDirectory);
+
+            string shelvesetName = executionContext.Variables.Build_SourceTfvcShelveset;
+            if (!string.IsNullOrEmpty(shelvesetName))
+            {
+                // Get the shelveset details.
+                TeeShelveset teeShelveset = null;
+                string gatedShelvesetName = executionContext.Variables.Build_GatedShelvesetName;
+                if (!string.IsNullOrEmpty(gatedShelvesetName))
+                {
+                    teeShelveset = await tf.ShelvesetsAsync(workspace: workspaceName, shelveset: shelvesetName);
+                    // The command throws if the shelveset is not found.
+                    // This assertion should never fail.
+                    ArgUtil.NotNull(teeShelveset, nameof(teeShelveset));
+                }
+
+                // Unshelve.
+                // TODO: Confirm Get then Unshelve is OK.
+                await tf.UnshelveAsync(workspace: workspaceName, shelveset: shelvesetName);
+
+                if (!string.IsNullOrEmpty(gatedShelvesetName))
+                {
+                    // Create the comment file for reshelve.
+                    StringBuilder comment = new StringBuilder(teeShelveset.Comment ?? string.Empty);
+                    if (!(executionContext.Variables.Build_GatedRunCI ?? true))
+                    {
+                        if (comment.Length > 0)
+                        {
+                            comment.AppendLine();
+                        }
+
+                        comment.Append(Constants.Build.NoCICheckInComment);
+                    }
+
+                    string commentFile = null;
+                    try
+                    {
+                        commentFile = Path.GetTempFileName();
+                        // TODO: FIGURE OUT WHAT ENCODING TF EXPECTS
+                        File.WriteAllText(path: commentFile, contents: comment.ToString());
+
+                        // Reshelve.
+                        // TODO: Work with TEE folks regarding support for associate work items, policy override comment, etc.
+                        await tf.ShelveAsync(
+                            directory: sourcesDirectory,
+                            shelveset: gatedShelvesetName,
+                            commentFile: commentFile);
+                    }
+                    finally
+                    {
+                        // Cleanup the comment file.
+                        if (File.Exists(commentFile))
+                        {
+                            File.Delete(commentFile);
+                        }
+                    }
+                }
+            }
         }
 
         public Task PostJobCleanupAsync(IExecutionContext executionContext, ServiceEndpoint endpoint)
