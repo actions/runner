@@ -78,8 +78,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         public BuildCleanOption? Build_Clean { get { return GetEnum<BuildCleanOption>(Constants.Variables.Build.Clean); } }
         public long? Build_ContainerId { get { return GetLong(WellKnownBuildVariables.ContainerId); } }
         public string Build_DefinitionName { get { return Get(Constants.Variables.Build.DefinitionName); } }
+        public bool? Build_GatedRunCI { get { return GetBoolean(Constants.Variables.Build.GatedRunCI); } }
+        public string Build_GatedShelvesetName { get { return Get(Constants.Variables.Build.GatedShelvesetName); } }
         public string Build_RepoTfvcWorkspace { get { return Get(Constants.Variables.Build.RepoTfvcWorkspace); } }
         public string Build_SourcesDirectory { get { return Get(Constants.Variables.Build.SourcesDirectory); } }
+        public string Build_SourceTfvcShelveset { get { return Get(Constants.Variables.Build.SourceTfvcShelveset); } }
         public string Build_SourceVersion { get { return Get(Constants.Variables.Build.SourceVersion); } }
         public bool? Build_SyncSources { get { return GetBoolean(Constants.Variables.Build.SyncSources); } }
         public string System_CollectionId { get { return Get(Constants.Variables.System.CollectionId); } }

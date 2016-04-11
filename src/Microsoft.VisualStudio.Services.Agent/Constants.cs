@@ -18,20 +18,17 @@ namespace Microsoft.VisualStudio.Services.Agent
 
 #if OS_LINUX
             public static readonly OSPlatform Platform = OSPlatform.Linux;
-#endif
-
-#if OS_OSX
+#elif OS_OSX
             public static readonly OSPlatform Platform = OSPlatform.OSX;
-#endif
-
-#if OS_WINDOWS
+#elif OS_WINDOWS
             public static readonly OSPlatform Platform = OSPlatform.Windows;
 #endif
-
         }
 
         public static class Build
         {
+            public static readonly string NoCICheckInComment = "***NO_CI***";
+
             public static class Path
             {
                 public static readonly string ArtifactsDirectory = "a";
@@ -89,6 +86,8 @@ namespace Microsoft.VisualStudio.Services.Agent
                 public static readonly string BinariesDirectory = "build.binariesdirectory";
                 public static readonly string Clean = "build.clean";
                 public static readonly string DefinitionName = "build.definitionname";
+                public static readonly string GatedRunCI = "build.gated.runci";
+                public static readonly string GatedShelvesetName = "build.gated.shelvesetname";
                 public static readonly string RepoClean = "build.repository.clean";
                 public static readonly string RepoGitSubmoduleCheckout = "build.repository.git.submodulecheckout";
                 public static readonly string RepoId = "build.repository.id";
@@ -98,6 +97,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                 public static readonly string RepoTfvcWorkspace = "build.repository.tfvc.workspace";
                 public static readonly string RepoUri = "build.repository.uri";
                 public static readonly string SourceBranch = "build.sourcebranch";
+                public static readonly string SourceTfvcShelveset = "build.sourcetfvcshelveset";
                 public static readonly string SourceVersion = "build.sourceversion";
                 public static readonly string SourcesDirectory = "build.sourcesdirectory";
                 public static readonly string StagingDirectory = "build.stagingdirectory";
@@ -125,8 +125,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                 public static readonly string HostType = "system.hosttype";
                 // public static readonly string System = "system";
                 public static readonly string TeamProject = "system.teamproject";
-                // back compat variable, do not document
-                public static readonly string TFServerUrl = "system.TeamFoundationServerUri";
+                public static readonly string TFServerUrl = "system.TeamFoundationServerUri"; // back compat variable, do not document
                 public static readonly string PreferGit = "system.prefergit";
             }
         }
