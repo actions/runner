@@ -19,7 +19,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         {
             { "PAT", typeof(PersonalAccessToken)},
             { "ALT", typeof(AlternateCredential)},
-            { "NTLM", typeof(NTLMCredential)}
+            { "Negotiate", typeof(NegotiateCredential)}
         };
 
         public ICredentialProvider GetCredentialProvider(string credType)

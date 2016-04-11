@@ -7,13 +7,13 @@ using System.Net;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 {
-    public sealed class NTLMCredential : CredentialProvider
+    public sealed class NegotiateCredential : CredentialProvider
     {
-        public NTLMCredential() : base("NTLM") { }
+        public NegotiateCredential() : base("Negotiate") { }
 
         public override VssCredentials GetVssCredentials(IHostContext context)
         {
-            Tracing trace = context.GetTrace(nameof(NTLMCredential));
+            Tracing trace = context.GetTrace(nameof(NegotiateCredential));
             trace.Info(nameof(GetVssCredentials));
 
             if (CredentialData == null || !CredentialData.Data.ContainsKey("Username")
@@ -28,11 +28,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             string password = CredentialData.Data["Password"];
             trace.Info($"password retrieved: {password.Length} chars");
 
-            //create NTLM credentials
+            //create Negotiate and NTLM credentials
             var credential = new NetworkCredential(username, password);
-            var myCache = new CredentialCache();            
-            myCache.Add(new Uri(CredentialData.Data["Url"]), "NTLM", credential);
-            VssCredentials creds = new VssClientCredentials(new WindowsCredential(myCache));
+            var credentialCache = new CredentialCache();
+            var serverUrl = new Uri(CredentialData.Data["Url"]);
+            credentialCache.Add(serverUrl, "Negotiate", credential);
+            credentialCache.Add(serverUrl, "NTLM", credential);
+            VssCredentials creds = new VssClientCredentials(new WindowsCredential(credentialCache));
 
             trace.Verbose("cred created");
 

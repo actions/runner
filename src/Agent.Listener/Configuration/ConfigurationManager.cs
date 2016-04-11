@@ -88,10 +88,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             {
                 // get from user
                 var consoleWizard = HostContext.GetService<IConsoleWizard>();
+                string serverUrl = args[CliArgs.Url];
+                //on premise defaults to negotiate authentication (Kerberos with fallback to NTLM)
+                //hosted defaults to PAT authentication
+                string defaultAuth = serverUrl.Contains("visualstudio.com") || serverUrl.Contains("tfsallin.net") ? "PAT" : "Negotiate";
                 string authType = consoleWizard.ReadValue(CliArgs.Auth,
                                                         StringUtil.Loc("AuthenticationType"),
                                                         false,
-                                                        "PAT",
+                                                        defaultAuth,
                                                         Validators.AuthSchemeValidator,
                                                         args,
                                                         enforceSupplied);
@@ -147,7 +151,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                                                 args,
                                                 enforceSupplied);
                 Trace.Info("serverUrl: {0}", serverUrl);
-                Dictionary<string, string> credentialArgs = (args == null) ? new Dictionary<string, string>() : new Dictionary<string, string>(args);
+                var credentialArgs = (args == null) ? new Dictionary<string, string>() : new Dictionary<string, string>(args);
+                //pass server url down to CredentialProvider (needed for Negotiate provider)
                 credentialArgs[CliArgs.Url] = serverUrl;
 
                 credProv = AcquireCredentials(credentialArgs, enforceSupplied);
