@@ -201,8 +201,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 // Validate the arg.
                 if (!string.IsNullOrEmpty(arg) && arg.IndexOfAny(new char[] { '"', '\r', '\n' }) >= 0)
                 {
-                    // TODO: LOC
-                    throw new Exception($@"Argument '{arg}' contains one or more of the invalid characters: "", \r, \n");
+                    throw new Exception(StringUtil.Loc("InvalidTeeTFArg", arg));
                 }
 
                 // Add the arg.
@@ -246,17 +245,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 };
                 string arguments = FormatArguments(FormatFlags.None, args);
                 ExecutionContext.Command($@"{_tf} {arguments}");
-                int exitCode = await processInvoker.ExecuteAsync(
+                await processInvoker.ExecuteAsync(
                     workingDirectory: IOUtil.GetWorkPath(HostContext),
                     fileName: _tf,
                     arguments: arguments,
                     environment: null,
+                    requireExitCodeZero: true,
                     cancellationToken: CancellationToken);
-                if (exitCode != 0)
-                {
-                    // TODO: LOC
-                    throw new Exception($"Exit code {exitCode} returned from command: {_tf} {arguments}");
-                }
             }
         }
 
@@ -274,14 +269,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             // Invoke tf.
             using(var processInvoker = HostContext.CreateService<IProcessInvoker>())
             {
-                var output = new StringBuilder();
+                var output = new List<string>();
                 var outputLock = new object();
                 processInvoker.OutputDataReceived += (object sender, DataReceivedEventArgs e) =>
                 {
                     lock (outputLock)
                     {
                         ExecutionContext.Debug(e.Data);
-                        output.AppendLine(e.Data);
+                        output.Add(e.Data);
                     }
                 };
                 processInvoker.ErrorDataReceived += (object sender, DataReceivedEventArgs e) =>
@@ -289,27 +284,31 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                     lock (outputLock)
                     {
                         ExecutionContext.Debug(e.Data);
-                        output.AppendLine(e.Data);
+                        output.Add(e.Data);
                     }
                 };
                 string arguments = FormatArguments(formatFlags, args);
                 ExecutionContext.Debug($@"{_tf} {arguments}");
-                // TODO: Test whether the output encoding needs to be specified for the process.
-                int exitCode = await processInvoker.ExecuteAsync(
-                    workingDirectory: IOUtil.GetWorkPath(HostContext),
-                    fileName: _tf,
-                    arguments: arguments,
-                    environment: null,
-                    cancellationToken: CancellationToken);
-                if (exitCode != 0)
+                // TODO: Test whether the output encoding needs to be specified on a non-Latin OS.
+                try
+                {
+                    await processInvoker.ExecuteAsync(
+                        workingDirectory: IOUtil.GetWorkPath(HostContext),
+                        fileName: _tf,
+                        arguments: arguments,
+                        environment: null,
+                        requireExitCodeZero: true,
+                        cancellationToken: CancellationToken);
+                }
+                catch (ProcessExitCodeException)
                 {
                     // The command failed. Dump the output and throw.
-                    ExecutionContext.Output(output.ToString());
-                    // TODO: LOC
-                    throw new Exception($"Exit code {exitCode} returned from command: {_tf} {arguments}");
+                    output.ForEach(x => ExecutionContext.Output(x ?? string.Empty));
+                    throw;
                 }
 
-                return output.ToString();
+                // Note, string.join gracefully handles a null element within the IEnumerable<string>.
+                return string.Join(Environment.NewLine, output);
             }
         }
 

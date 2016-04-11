@@ -151,6 +151,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             }
 
             // Set the default thread culture.
+            // TODO: Does this validation need to be removed? The variable does not exist prior to 2015 Update 2.
             ArgUtil.NotNullOrEmpty(culture, nameof(culture));
             HostContext.SetDefaultCulture(culture);
         }

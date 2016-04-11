@@ -172,13 +172,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         public T? GetEnum<T>(string name) where T : struct
         {
-            T val;
-            if (Enum.TryParse(Get(name), ignoreCase: true, result: out val))
-            {
-                return val;
-            }
-
-            return null;
+            return EnumUtil.TryParse<T>(Get(name));
         }
 
         public Guid? GetGuid(string name)
@@ -263,7 +257,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         private void RecursivelyExpand(out List<string> warnings)
         {
             const int MaxDepth = 50;
-            // TODO: Max size?
+            // TODO: Validate max size? No limit on *nix. Max of 32k per env var on Windows https://msdn.microsoft.com/en-us/library/windows/desktop/ms682653%28v=vs.85%29.aspx
             _trace.Entering();
             warnings = new List<string>();
 

@@ -135,7 +135,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             definition.Data = JsonConvert.DeserializeObject<DefinitionData>(json);
 
             // Replace the macros within the handler data sections.
-            // TODO: Do other macros need to be replaced within the handler section? Currently only the $(currentdirectory) macro is handled. Or does the handler need to deal with that.
             foreach (HandlerData handlerData in (definition.Data?.Execution?.All as IEnumerable<HandlerData> ?? new HandlerData[0]))
             {
                 handlerData?.ReplaceMacros(definition);
