@@ -4,11 +4,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
 {
     public sealed class SecretMaskerL0
     {
-        // TODO: Fix these test names.
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
-        public void SecretMasker_MaskSecrets_EmptyInput()
+        public void HandlesEmptyInput()
         {
             var secretMasker = new SecretMasker();
             secretMasker.AddValue("abcd");
@@ -23,7 +22,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
-        public void SecretMasker_MaskSecrets_NoMasks()
+        public void HandlesNoMasks()
         {
             var secretMasker = new SecretMasker();
             var input = "abcdefg";
@@ -34,7 +33,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
-        public void SecretMasker_MaskSecrets_BasicReplacement()
+        public void ReplacesValue()
         {
             var secretMasker = new SecretMasker();
             secretMasker.AddValue("def");
@@ -48,7 +47,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
-        public void SecretMasker_MaskSecrets_MultipleInstances()
+        public void ReplacesMultipleInstances()
         {
             var secretMasker = new SecretMasker();
             secretMasker.AddValue("def");
@@ -62,7 +61,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
-        public void SecretMasker_MaskSecrets_MultipleAdjacentInstances()
+        public void ReplacesMultipleAdjacentInstances()
         {
             var secretMasker = new SecretMasker();
             secretMasker.AddValue("abc");
@@ -76,7 +75,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
-        public void SecretMasker_MaskSecrets_MultipleSecrets()
+        public void ReplacesMultipleSecrets()
         {
             var secretMasker = new SecretMasker();
             secretMasker.AddValue("bcd");
@@ -91,7 +90,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
-        public void SecretMasker_MaskSecrets_OverlappingSecrets()
+        public void ReplacesOverlappingSecrets()
         {
             var secretMasker = new SecretMasker();
             secretMasker.AddValue("def");
@@ -109,7 +108,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
-        public void SecretMasker_MaskSecrets_AdjacentSecrets()
+        public void ReplacesAdjacentSecrets()
         {
             var secretMasker = new SecretMasker();
             secretMasker.AddValue("efg");

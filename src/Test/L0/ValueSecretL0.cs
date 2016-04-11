@@ -5,11 +5,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
 {
     public sealed class ValueSecretL0
     {
-        // TODO: Fix these test names.
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
-        public void ValueSecretTests_GetPositions_EmptyValue()
+        public void HandlesEmptyValue()
         {
             var masker = new ValueSecret(null);
             var input = "abcdefg";
@@ -21,7 +20,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
-        public void ValueSecretTests_GetPositions_EmptyInput()
+        public void HandlesEmptyInput()
         {
             var masker = new ValueSecret("def");
             string input = null;
@@ -33,7 +32,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
-        public void ValueSecretTests_GetPositions_Basic()
+        public void GetsPosition()
         {
             var masker = new ValueSecret("def");
             string input = "abcdefg";
@@ -47,7 +46,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
-        public void ValueSecretTests_GetPositions_BeginningOfString()
+        public void GetPositionFromBeginningOfString()
         {
             var masker = new ValueSecret("abc");
             string input = "abcdefg";
@@ -61,7 +60,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
-        public void ValueSecretTests_GetPositions_EndOfString()
+        public void GetPositionFromEndOfString()
         {
             var masker = new ValueSecret("efg");
             string input = "abcdefg";
@@ -75,7 +74,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
-        public void ValueSecretTests_GetPositions_Multiple()
+        public void GetsMultiplePositions()
         {
             var masker = new ValueSecret("def");
             string input = "abcdefgdefg";
@@ -91,7 +90,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
-        public void ValueSecretTests_GetPositions_Overlap()
+        public void GetsOverlappingPositions()
         {
             var masker = new ValueSecret("cdcd");
             string input = "abcdcdcdefg";

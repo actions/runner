@@ -19,6 +19,14 @@ namespace Microsoft.VisualStudio.Services.Agent
             string arguments,
             IDictionary<string, string> environment,
             CancellationToken cancellationToken);
+
+        Task<int> ExecuteAsync(
+            string workingDirectory,
+            string fileName,
+            string arguments,
+            IDictionary<string, string> environment,
+            bool requireExitCodeZero,
+            CancellationToken cancellationToken);
     }
 
     public sealed class ProcessInvoker : AgentService, IProcessInvoker
@@ -34,7 +42,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         public event EventHandler<DataReceivedEventArgs> OutputDataReceived;
         public event EventHandler<DataReceivedEventArgs> ErrorDataReceived;
 
-        private async Task<int> WaitForExit(CancellationToken cancellationToken)
+        private async Task<int> WaitForExitAsync(CancellationToken cancellationToken)
         {
             // Wait for the cancellation token to be set or the process to exit.
             try
@@ -80,7 +88,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             return _proc.ExitCode;
         }
 
-        private void Execute(string workingDirectory, string fileName, string arguments, IDictionary<string, string> environment)
+        private void Start(string workingDirectory, string fileName, string arguments, IDictionary<string, string> environment)
         {
             ArgUtil.Null(_proc, nameof(_proc));
             ArgUtil.NotNullOrEmpty(fileName, nameof(fileName));
@@ -146,8 +154,31 @@ namespace Microsoft.VisualStudio.Services.Agent
             IDictionary<string, string> environment,
             CancellationToken cancellationToken)
         {
-            Execute(workingDirectory, fileName, arguments, environment);
-            return WaitForExit(cancellationToken);
+            return ExecuteAsync(
+                workingDirectory: workingDirectory,
+                fileName: fileName,
+                arguments: arguments,
+                environment: environment,
+                requireExitCodeZero: false,
+                cancellationToken: cancellationToken);
+        }
+
+        public async Task<int> ExecuteAsync(
+            string workingDirectory,
+            string fileName,
+            string arguments,
+            IDictionary<string, string> environment,
+            bool requireExitCodeZero,
+            CancellationToken cancellationToken)
+        {
+            Start(workingDirectory, fileName, arguments, environment);
+            int exitCode = await WaitForExitAsync(cancellationToken);
+            if (exitCode != 0 && requireExitCodeZero)
+            {
+                throw new ProcessExitCodeException(exitCode: exitCode, fileName: fileName, arguments: arguments);
+            }
+
+            return exitCode;
         }
 
         public void Dispose()
@@ -194,6 +225,17 @@ namespace Microsoft.VisualStudio.Services.Agent
             {
                 OutputDataReceived?.Invoke(sender, e);
             }
+        }
+    }
+
+    public sealed class ProcessExitCodeException : Exception
+    {
+        public int ExitCode { get; private set; }
+
+        public ProcessExitCodeException(int exitCode, string fileName, string arguments)
+            : base(StringUtil.Loc("ProcessExitCode", exitCode, fileName, arguments))
+        {
+            ExitCode = exitCode;
         }
     }
 }

@@ -57,13 +57,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
                     value: endpoint.Url?.ToString());
                 AddEnvironmentVariable(
                     key: $"ENDPOINT_AUTH_{partialKey}",
-                    // TODO: Confirm this won't null ref if authorization is null.
+                    // Note, JsonUtility.ToString will not null ref if the auth object is null.
                     value: JsonUtility.ToString(endpoint.Authorization));
                 if (endpoint.Id != Guid.Empty)
                 {
                     AddEnvironmentVariable(
                         key: $"ENDPOINT_DATA_{partialKey}",
-                        // TODO: Confirm this won't null ref if data is null.
+                        // Note, JsonUtility.ToString will not null ref if the data object is null.
                         value: JsonUtility.ToString(endpoint.Data));
                 }
             }

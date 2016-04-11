@@ -221,8 +221,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                     {
                         //fall back
                         context.Warning("Unable to run \"git clean -fdx\" and \"git reset --hard HEAD\" successfully, delete source folder instead.");
-                        // TODO: Util.DirectoryDelete()
-                        Directory.Delete(targetPath, true);
+                        IOUtil.DeleteDirectory(targetPath, cancellationToken);
                     }
                 }
             }

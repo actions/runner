@@ -134,7 +134,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             string result;
             if (eventProperties.TryGetValue(TaskDetailEventProperties.Result, out result))
             {
-                record.Result = ParseTaskResult(result, TaskResult.Succeeded);
+                record.Result = EnumUtil.TryParse<TaskResult>(result) ?? TaskResult.Succeeded;
             }
 
             String startTime;
@@ -453,18 +453,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         private void ProcessTaskDebugCommand(IExecutionContext context, String data)
         {
             context.Debug(data);
-        }
-
-        // Parse String from ##vso command property.
-        private TaskResult ParseTaskResult(String resultText, TaskResult defaultValue)
-        {
-            TaskResult result;
-            if (!Enum.TryParse<TaskResult>(resultText, out result))
-            {
-                result = defaultValue;
-            }
-
-            return result;
         }
 
         private DateTime ParseDateTime(String dateTimeText, DateTime defaultValue)

@@ -1,5 +1,7 @@
+using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Worker;
 using System;
+using System.Collections.Generic;
 using Xunit;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
@@ -7,6 +9,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
     public class JobRunnerL0
     {
         //// TODO: Fix this test. This test hit file in use issues trying to write to the log file. My guess is it probably has to do with XUnit running tests in parallel.
+        // [Fact]
+        // [Trait("Level", "L0")]
+        // [Trait("Category", "JobRunnerL0")]
         // public JobRunnerL0()
         // {
         //     m_context = new MockHostContext();

@@ -182,7 +182,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 string cleanRepoText;
                 if(SourceEndpoint.Data.TryGetValue(WellKnownEndpointData.Clean, out cleanRepoText))
                 {
-                    // TODO: expandVariable
                     executionContext.Variables.Set(Constants.Variables.Build.RepoClean, cleanRepoText);
                 }
             }
