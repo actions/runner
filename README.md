@@ -11,9 +11,9 @@ Will run all existing tasks (typescript/javascript and powershell) including [ou
 
 ## Status
 
-A preview is available for Linux/OSX.  A release is coming soon with more capabilities than the deprecated node agent: Auto Update, Cancellation, Run as a svc on OSX and Linux, and Gated support.
+A preview is available for Linux/OSX for VSTS.  A release is coming soon with more capabilities than the deprecated node agent: Auto Update, Cancellation, Run as a svc on OSX and Linux, and Gated support.
 
-What's missing from the preview?  Run as svc on OSX, TfsVC support, RM, test publishing (all being worked on)
+What's missing from the preview?  Run as svc on OSX, TfsVC support, RM, test publishing (all being worked on).  On-prem NTLM support is in the works so preview with VSTS.
 
 A preview for windows is coming soon (finishing powershell handlers and tfsvc support)  
 
@@ -24,6 +24,8 @@ A preview for windows is coming soon (finishing powershell handlers and tfsvc su
 |![Win](docs/win_med.png) **Windows 10**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/b924d696-3eae-4116-8443-9a18392d8544/2850/badge?branch=master)| Soon | |
 
 ## Configure Account
+
+VSTS only for now.  On-prem coming with NTLM support in the works.
 
 Create a PAT token.  [Step by Step here](http://roadtoalm.com/2015/07/22/using-personal-access-tokens-to-access-visual-studio-online/)
 
