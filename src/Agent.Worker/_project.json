@@ -33,18 +33,25 @@
     "dependencies": {
         "Microsoft.VisualStudio.Services.Agent": { "target": "project", "version": "1.0.0-*" },
         "vss-api-netcore": "0.5.4-private",
-        "System.Diagnostics.TraceSource": "4.0.0-rc3-23829",
-        "System.Xml.XmlSerializer": "4.0.11-rc3-23829",
-        "System.Security.Cryptography.Algorithms": "4.0.0-rc3-23829",
-        "System.IO.Compression.ZipFile": "4.0.1-rc3-23829",
-        "System.Linq": "4.1.0-rc3-23829",
-        "NETStandard.Library": "1.0.0-rc3-23829"
+        "System.Diagnostics.TraceSource": "4.0.0-rc3-24011-00",
+        "System.Xml.XmlSerializer": "4.0.11-rc3-24011-00",
+        "System.Security.Cryptography.Algorithms": "4.1.0-rc3-24011-00",
+        "System.IO.Compression.ZipFile": "4.0.1-rc3-24011-00",
+        "System.Linq": "4.1.0-rc3-24011-00",
+        "System.Security.Cryptography.Primitives" : "4.0.0-rc3-24011-00",
+        "NETStandard.Library": "1.5.0-rc3-24011-00"
     },
 
     "frameworks": {
-         "dnxcore50": {
+        "dnxcore50": {
             "imports": "portable-net451+win8"
         }
+    },
+
+    "runtimes": {
+        "win7-x64": { },
+        "ubuntu.14.04-x64": { },
+        "osx.10.11-x64": { }
     }
 }
 

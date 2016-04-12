@@ -32,8 +32,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             var credential = new NetworkCredential(username, password);
             var credentialCache = new CredentialCache();
             var serverUrl = new Uri(CredentialData.Data["Url"]);
-            credentialCache.Add(serverUrl, "Negotiate", credential);
-            credentialCache.Add(serverUrl, "NTLM", credential);
+            switch (Constants.Agent.Platform)
+            {
+                case Constants.OSPlatform.Linux:                    
+                case Constants.OSPlatform.OSX:
+                    credentialCache.Add(serverUrl, "NTLM", credential);
+                    break;
+                case Constants.OSPlatform.Windows:
+                    credentialCache.Add(serverUrl, "Negotiate", credential);
+                    break;
+            }            
+            
             VssCredentials creds = new VssClientCredentials(new WindowsCredential(credentialCache));
 
             trace.Verbose("cred created");
