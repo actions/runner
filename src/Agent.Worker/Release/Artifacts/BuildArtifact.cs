@@ -12,7 +12,6 @@ using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using Microsoft.VisualStudio.Services.Client;
 using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.FileContainer;
 using Microsoft.VisualStudio.Services.ReleaseManagement.WebApi.Contracts;
 
 using Newtonsoft.Json;
@@ -21,26 +20,15 @@ using ServerBuildArtifact = Microsoft.TeamFoundation.Build.WebApi.BuildArtifact;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
 {
-    // TODO: Implement serviceLocator pattern to have custom attribute as we have different type of artifacts
-    [ServiceLocator(Default = typeof(BuildArtifact))]
-    public interface IBuildArtifact : IAgentService
-    {
-        Task Download(
-            ArtifactDefinition artifactDefinition,
-            IExecutionContext executionContext,
-            string localFolderPath);
-
-        BuildArtifactDetails GetArtifactDetails(
-            AgentArtifactDefinition agentArtifactDefinition,
-            IExecutionContext context);
-    }
-
     // TODO: Write tests for this
-    public class BuildArtifact : AgentService, IBuildArtifact
+    public class BuildArtifact : AgentService, IArtifactExtension
     {
-        public const string AllArtifacts = "*";
+        public Type ExtensionType => typeof(IArtifactExtension);
+        public AgentArtifactType ArtifactType => AgentArtifactType.Build;
 
-        public async Task Download(ArtifactDefinition artifactDefinition, IExecutionContext executionContext, string localFolderPath)
+        private const string AllArtifacts = "*";
+
+        public async Task DownloadAsync(IExecutionContext executionContext, ArtifactDefinition artifactDefinition, string localFolderPath)
         {
             ArgUtil.NotNull(artifactDefinition, nameof(artifactDefinition));
             ArgUtil.NotNull(executionContext, nameof(executionContext));
@@ -90,7 +78,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
                 if (Match(buildArtifact, artifactDefinition))
                 {
                     executionContext.Output(StringUtil.Loc("RMPreparingToDownload", buildArtifact.Name));
-                    await DownloadArtifact(executionContext, buildArtifact, artifactDefinition, localFolderPath, buildClient, xamlBuildClient, buildDefinitionType, buildId);
+                    await this.DownloadArtifactAsync(executionContext, buildArtifact, artifactDefinition, localFolderPath, buildClient, xamlBuildClient, buildDefinitionType, buildId);
                 }
                 else
                 {
@@ -99,16 +87,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
             }
         }
 
-        public BuildArtifactDetails GetArtifactDetails(AgentArtifactDefinition agentArtifactDefinition, IExecutionContext context)
+        public IArtifactDetails GetArtifactDetails(IExecutionContext context, AgentArtifactDefinition agentArtifactDefinition)
         {
             Trace.Entering();
 
             ServiceEndpoint vssEndpoint = context.Endpoints.FirstOrDefault(e => string.Equals(e.Name, ServiceEndpoints.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
             ArgUtil.NotNull(vssEndpoint, nameof(vssEndpoint));
             ArgUtil.NotNull(vssEndpoint.Url, nameof(vssEndpoint.Url));
-
-            // TODO Get this value from settings
-            string parallelDownloadLimit = "8";
 
             var artifactDetails = JsonConvert.DeserializeObject<Dictionary<string, string>>(agentArtifactDefinition.Details);
             VssCredentials vssCredentials = ApiUtil.GetVssCredential(vssEndpoint);
@@ -129,11 +114,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
                     RelativePath = artifactDetails["RelativePath"],
                     Project = projectId.ToString(),
                     TfsUrl = new Uri(tfsUrl),
-                    AccessToken = accessToken,
-                    ParallelDownloadLimit =
-                                   Convert.ToInt32(
-                                       parallelDownloadLimit,
-                                       CultureInfo.InvariantCulture)
                 };
             }
             else
@@ -158,7 +138,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
             return false;
         }
 
-        private async Task DownloadArtifact(
+        private async Task DownloadArtifactAsync(
             IExecutionContext executionContext,
             ServerBuildArtifact buildArtifact,
             ArtifactDefinition artifactDefinition,
@@ -197,7 +177,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
                 }
 
                 var fileShareArtifact = new FileShareArtifact();
-                await fileShareArtifact.DownloadArtifact(artifactDefinition, executionContext, fileShare, downloadFolderPath);
+                await fileShareArtifact.DownloadArtifactAsync(executionContext, HostContext, artifactDefinition, fileShare, downloadFolderPath);
             }
             else if (string.Equals(buildArtifact.Resource.Type, WellKnownArtifactResourceTypes.Container, StringComparison.OrdinalIgnoreCase))
             {
@@ -205,28 +185,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
 
                 // TODO:Get VssBinFetchclient and get away from zipstream downloader
                 Stream contentStream;
-                try
+                
+                if (definitionType == DefinitionType.Xaml)
                 {
-                    if (definitionType == DefinitionType.Xaml)
-                    {
-                        contentStream = xamlBuildClient.GetArtifactContentZipAsync(buildArtifactDetails.Project, buildId, buildArtifact.Name).Result;
-                    }
-                    else
-                    {
-                        contentStream = buildClient.GetArtifactContentZipAsync(buildArtifactDetails.Project, buildId, buildArtifact.Name).Result;
-                    }
+                    contentStream = await xamlBuildClient.GetArtifactContentZipAsync(buildArtifactDetails.Project, buildId, buildArtifact.Name);
                 }
-                catch (AggregateException ex)
+                else
                 {
-                    var containerItemNotFoundException = ex.InnerException as ContainerItemNotFoundException;
-
-                    if (containerItemNotFoundException != null)
-                    {
-                        throw new ArtifactDownloadException(StringUtil.Loc("RMNoBuildArtifactsFound"));
-                    }
-
-                    throw;
+                    contentStream = await buildClient.GetArtifactContentZipAsync(buildArtifactDetails.Project, buildId, buildArtifact.Name);
                 }
+                
 
                 var zipStreamDownloader = HostContext.GetService<IZipStreamDownloader>();
                 string artifactRootFolder = StringUtil.Format("/{0}", buildArtifact.Name);
@@ -234,8 +202,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
             }
             else
             {
-                string resouceType = buildArtifact.Resource.Type;
-                executionContext.Warning(StringUtil.Loc("RMArtifactTypeNotSupported", resouceType));
+                executionContext.Warning(StringUtil.Loc("RMArtifactTypeNotSupported", buildArtifact.Resource.Type));
             }
         }
     }

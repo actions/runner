@@ -13,40 +13,25 @@ using System.Threading.Tasks;
 using Agent.Worker.Release.Artifacts.Definition;
 
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
-using Microsoft.VisualStudio.Services.Agent;
 using Microsoft.VisualStudio.Services.Agent.Util;
-using Microsoft.VisualStudio.Services.Agent.Worker;
-using Microsoft.VisualStudio.Services.Agent.Worker.Release;
-using Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts;
 using Microsoft.VisualStudio.Services.ReleaseManagement.WebApi.Contracts;
 
 using Newtonsoft.Json;
 
-namespace Microsoft.VisualStudio.Agent.Worker.Release.Artifacts
+namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
 {
-    // TODO: Implement serviceLocator pattern to have custom attribute as we have different type of artifacts
-    [ServiceLocator(Default = typeof(JenkinsArtifact))]
-    public interface IJenkinsArtifact : IAgentService
+   // TODO: Write tests for this
+    public class JenkinsArtifact : AgentService, IArtifactExtension
     {
-        Task Download(
-            ArtifactDefinition artifactDefinition,
-            IExecutionContext executionContext,
-            string localFolderPath);
+        public Type ExtensionType => typeof(IArtifactExtension);
+        public AgentArtifactType ArtifactType => AgentArtifactType.Jenkins;
 
-        IArtifactDetails GetArtifactDetails(
-            AgentArtifactDefinition agentArtifactDefinition,
-            IExecutionContext context);
-    }
-
-    // TODO: Write tests for this
-    public class JenkinsArtifact : AgentService, IJenkinsArtifact
-    {
         private const char Backslash = '\\';
         private const char ForwardSlash = '/';
 
-        public async Task Download(
-            ArtifactDefinition artifactDefinition,
+        public async Task DownloadAsync(
             IExecutionContext executionContext,
+            ArtifactDefinition artifactDefinition,
             string localFolderPath)
         {
             ArgUtil.NotNull(artifactDefinition, nameof(artifactDefinition));
@@ -90,7 +75,8 @@ namespace Microsoft.VisualStudio.Agent.Worker.Release.Artifacts
             }
 
             var parentFolder = GetParentFolderName(jenkinsDetails.RelativePath);
-
+            Trace.Info($"Found parentFolder {parentFolder} for relative path {jenkinsDetails.RelativePath}");
+            
             executionContext.Output(StringUtil.Loc("RMDownloadingJenkinsArtifacts"));
             var zipStreamDownloader = HostContext.GetService<IZipStreamDownloader>();
             await zipStreamDownloader.DownloadFromStream(
@@ -100,7 +86,7 @@ namespace Microsoft.VisualStudio.Agent.Worker.Release.Artifacts
                 localFolderPath);
         }
 
-        public IArtifactDetails GetArtifactDetails(AgentArtifactDefinition agentArtifactDefinition, IExecutionContext context)
+        public IArtifactDetails GetArtifactDetails(IExecutionContext context, AgentArtifactDefinition agentArtifactDefinition)
         {
             Trace.Entering();
 

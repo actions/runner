@@ -21,17 +21,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
 
         public RetryExecutor()
         {
-            this.MaximumRetryCount = DefaultMaximumRetryCount;
-            this.MillisecondsToSleepBetweenRetries = DefaultMillisecondsToSleepBetweenRetries;
-            this.ShouldRetryAction = ex => true;
-            this.SleepAction = i => Task.Delay(i);
+            MaximumRetryCount = DefaultMaximumRetryCount;
+            MillisecondsToSleepBetweenRetries = DefaultMillisecondsToSleepBetweenRetries;
+            ShouldRetryAction = ex => true;
+            SleepAction = i => Task.Delay(i);
         }
 
         public void Execute(Action action)
         {
             ArgUtil.NotNull(action, nameof(action));
 
-            for (var retryCount = 0; retryCount < this.MaximumRetryCount; retryCount++)
+            for (var retryCount = 0; retryCount < MaximumRetryCount; retryCount++)
             {
                 try
                 {
@@ -45,32 +45,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
                         throw;
                     }
 
-                    this.SleepAction(this.MillisecondsToSleepBetweenRetries);
+                    SleepAction(MillisecondsToSleepBetweenRetries);
                 }
             }
-        }
-
-        public void Execute<T>(Action<T> action, T parameter)
-        {
-            ArgUtil.NotNull(action, nameof(action));
-
-            Execute(() => action(parameter));
-        }
-
-        public TResult Execute<T, TResult>(Func<T, TResult> action, T parameter)
-        {
-            ArgUtil.NotNull(action, nameof(action));
-
-            var result = default(TResult);
-            this.Execute(() => result = action(parameter));
-            return result;
         }
 
         public async Task ExecuteAsync(Func<Task> action)
         {
             ArgUtil.NotNull(action, nameof(action));
 
-            for (var retryCount = 0; retryCount < this.MaximumRetryCount; retryCount++)
+            for (var retryCount = 0; retryCount < MaximumRetryCount; retryCount++)
             {
                 try
                 {
@@ -79,20 +63,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
                 }
                 catch (Exception ex)
                 {
-                    if (retryCount == this.MaximumRetryCount - 1 || !this.ShouldRetryAction(ex))
+                    if (retryCount == MaximumRetryCount - 1 || !ShouldRetryAction(ex))
                     {
                         throw;
                     }
 
-                    SleepAction(this.MillisecondsToSleepBetweenRetries);
+                    SleepAction(MillisecondsToSleepBetweenRetries);
                 }
             }
-        }
-
-        public async Task ExecuteAsync<T>(Func<T, Task> action, T parameter)
-        {
-            ArgUtil.NotNull(action, nameof(action));
-            await this.ExecuteAsync(async () => await action(parameter));
         }
 
         public async Task<TResult> ExecuteAsync<T, TResult>(Func<T, Task<TResult>> action, T parameter)
@@ -100,7 +78,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
             ArgUtil.NotNull(action, nameof(action));
 
             var result = default(TResult);
-            await this.ExecuteAsync(async () => result = await action(parameter));
+            await ExecuteAsync(async () => result = await action(parameter));
             return result;
         }
     }

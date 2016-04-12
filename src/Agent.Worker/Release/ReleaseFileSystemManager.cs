@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.VisualStudio.Services.Agent.Util;
@@ -17,9 +18,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
 
         Task WriteStreamToFile(Stream stream, string filePath);
 
-        void DeleteDirectory(string directoryPath);
-
-        void CleanupDirectory(string directoryPath);
+        void CleanupDirectory(string directoryPath, CancellationToken cancellationToken);
     }
 
     public class ReleaseFileSystemManager : AgentService, IReleaseFileSystemManager
@@ -34,32 +33,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
                     .Select(fullPath => new FileInfo(fullPath));
         }
 
-        public IEnumerable<string> GetDirectories(string directoryPath, SearchOption searchOption)
-        {
-            return Directory.GetDirectories(ValidatePath(directoryPath), "*", searchOption);
-        }
-
         public bool FileExists(string filePath)
         {
             return File.Exists(filePath);
         }
 
-        public void DeleteFile(string filePath)
-        {
-            _retryExecutor.Execute(File.Delete, filePath);
-        }
-
-        public void DeleteDirectory(string directoryPath)
-        {
-            _retryExecutor.Execute(path => { Directory.Delete(path, true); }, directoryPath);
-        }
-
-        public void CleanupDirectory(string directoryPath)
+        public void CleanupDirectory(string directoryPath, CancellationToken cancellationToken)
         {
             var path = ValidatePath(directoryPath);
             if (Directory.Exists(path))
             {
-                DeleteDirectory(path);
+                IOUtil.DeleteDirectory(path, cancellationToken);
             }
 
             EnsureDirectoryExists(path);
@@ -74,11 +58,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
             }
 
             return new StreamReader(new FileStream(path, FileMode.Open, FileAccess.Read));
-        }
-
-        public StreamWriter GetFileWriter(string filePath)
-        {
-            return new StreamWriter(new FileStream(filePath, FileMode.Create, FileAccess.Write));
         }
 
         private static string ValidatePath(string path)

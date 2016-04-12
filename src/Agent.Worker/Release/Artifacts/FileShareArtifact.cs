@@ -10,30 +10,11 @@ using Microsoft.VisualStudio.Services.Agent.Util;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
 {
-    // TODO: Implement serviceLocator pattern to have custom attribute as we have different type of artifacts
-    [ServiceLocator(Default = typeof(FileShareArtifact))]
-    public interface IFileShareArtifact : IAgentService
-    {
-        Task Download(
-            ArtifactDefinition artifactDefinition,
-            IExecutionContext executionContext,
-            string localFolderPath);
-    }
-
     // TODO: Add test for this
-    public class FileShareArtifact : AgentService, IFileShareArtifact
+    public class FileShareArtifact
     {
-        public async Task Download(ArtifactDefinition artifactDefinition, IExecutionContext executionContext, string localFolderPath)
-        {
-            ArgUtil.NotNull(artifactDefinition, nameof(artifactDefinition));
-            ArgUtil.NotNull(executionContext, nameof(executionContext));
-            ArgUtil.NotNullOrEmpty(localFolderPath, nameof(localFolderPath));
-
-            var dropLocation = GetFileShareDropLocation(artifactDefinition.Details.RelativePath, artifactDefinition.Version);
-            await DownloadArtifact(artifactDefinition, executionContext, dropLocation, localFolderPath);
-        }
-
-        public async Task DownloadArtifact(ArtifactDefinition artifactDefinition, IExecutionContext executionContext, string dropLocation, string localFolderPath)
+        // This is only used by build artifact. This isn't a officially supported artifact type in RM
+        public async Task DownloadArtifactAsync(IExecutionContext executionContext, IHostContext hostContext, ArtifactDefinition artifactDefinition, string dropLocation, string localFolderPath)
         {
             ArgUtil.NotNull(artifactDefinition, nameof(artifactDefinition));
             ArgUtil.NotNull(executionContext, nameof(executionContext));
@@ -46,7 +27,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
             // If user has specified a relative folder in the drop, change the drop location itself. 
             dropLocation = Path.Combine(dropLocation.TrimEnd(trimChars), relativePath.Trim(trimChars));
 
-            var fileSystemManager = HostContext.CreateService<IReleaseFileSystemManager>();
+            var fileSystemManager = hostContext.CreateService<IReleaseFileSystemManager>();
             List<string> filePaths = fileSystemManager.GetFiles(dropLocation, SearchOption.AllDirectories).Select(path => path.FullName).ToList();
 
             if (filePaths.Any())
@@ -64,21 +45,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
             {
                 executionContext.Warning(StringUtil.Loc("RMNoArtifactsFound", relativePath));
             }
-        }
-
-        private static string GetFileShareDropLocation(string buildExternallyPackageLocation, string buildNumber)
-        {
-            if (string.IsNullOrWhiteSpace(buildExternallyPackageLocation))
-            {
-                return null;
-            }
-
-            var externallyPackageLocation = StringUtil.Format(
-                "{0}\\{1}",
-                buildExternallyPackageLocation.TrimEnd(new[] { '\\' }),
-                buildNumber).TrimEnd(new[] { '\\' });
-
-            return externallyPackageLocation;
         }
     }
 }

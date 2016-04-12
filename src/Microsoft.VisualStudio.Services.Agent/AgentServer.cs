@@ -31,9 +31,6 @@ namespace Microsoft.VisualStudio.Services.Agent
         // job request
         Task<TaskAgentJobRequest> RenewAgentRequestAsync(int poolId, long requestId, Guid lockToken, CancellationToken cancellationToken = default(CancellationToken));
         Task<TaskAgentJobRequest> FinishAgentRequestAsync(int poolId, long requestId, Guid lockToken, DateTime finishTime, TaskResult result, CancellationToken cancellationToken = default(CancellationToken));
-
-        // ReleaseManagement
-        IEnumerable<AgentArtifactDefinition> GetReleaseArtifactsFromService(Guid teamProject, int releaseId, CancellationToken cancellationToken = default(CancellationToken));
     }
 
     public sealed class AgentServer : AgentService, IAgentServer
@@ -144,14 +141,6 @@ namespace Microsoft.VisualStudio.Services.Agent
         {
             CheckConnection();
             return _taskAgentClient.FinishAgentRequestAsync(poolId, requestId, lockToken, finishTime, result, cancellationToken);
-        }
-
-        // Release Requests
-        public IEnumerable<AgentArtifactDefinition> GetReleaseArtifactsFromService(Guid teamProject, int releaseId, CancellationToken cancellationToken = default(CancellationToken))
-        {
-            CheckConnection();
-            var artifacts = _releaseClient.GetAgentArtifactDefinitionsAsync(teamProject, releaseId, cancellationToken: cancellationToken).Result;
-            return artifacts;
         }
     }
 }

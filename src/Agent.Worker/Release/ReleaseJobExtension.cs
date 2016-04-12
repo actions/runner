@@ -4,8 +4,10 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
+using Agent.Worker.Release;
 using Agent.Worker.Release.Artifacts.Definition;
 
+using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using Microsoft.VisualStudio.Services.ReleaseManagement.WebApi.Contracts;
 
@@ -22,7 +24,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
         public IStep FinallyStep { get; private set; }
 
         // TODO: These methods seems not relevant to Release Extension, refactor it
-        public void GetRootedPath(IExecutionContext context, string path, out string rootedPath)
+        public string GetRootedPath(IExecutionContext context, string path)
         {
             throw new NotImplementedException();
         }
@@ -76,10 +78,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
         {
             Trace.Entering();
 
-            var agentServer = HostContext.GetService<IAgentServer>();
+            ServiceEndpoint vssEndpoint = executionContext.Endpoints.FirstOrDefault(e => string.Equals(e.Name, ServiceEndpoints.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
+            ArgUtil.NotNull(vssEndpoint, nameof(vssEndpoint));
+            ArgUtil.NotNull(vssEndpoint.Url, nameof(vssEndpoint.Url));
+
+            Trace.Info($"Connecting to {vssEndpoint.Url}/{teamProjectId}");
+            var releaseServer = new ReleaseServer(vssEndpoint.Url, ApiUtil.GetVssCredential(vssEndpoint), teamProjectId);
+
             // TODO: send correct cancellation token
             List<AgentArtifactDefinition> releaseArtifacts =
-                agentServer.GetReleaseArtifactsFromService(teamProjectId, releaseId).ToList();
+                releaseServer.GetReleaseArtifactsFromService(releaseId).ToList();
 
             releaseArtifacts.ForEach(x => Trace.Info($"Found Artifact = {x.Alias}"));
 
@@ -96,13 +104,22 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
                 // We don't need to check if its old style artifact anymore. All the build data has been fixed and all the build artifact has Alias now.
                 ArgUtil.NotNullOrEmpty(agentArtifactDefinition.Alias, nameof(agentArtifactDefinition.Alias));
 
+                var extensionManager = HostContext.GetService<IExtensionManager>();
+                IArtifactExtension extension = (extensionManager.GetExtensions<IArtifactExtension>()).FirstOrDefault(x => agentArtifactDefinition.ArtifactType == x.ArtifactType);
+
+                if (extension == null)
+                {
+                    throw new InvalidOperationException(StringUtil.Loc("RMArtifactTypeNotSupported"));
+                }
+
+                Trace.Info($"Found artifact extension of type {extension.ArtifactType}");
                 executionContext.Output(StringUtil.Loc("RMStartArtifactsDownload"));
-                ArtifactDefinition artifactDefinition = ConvertToArtifactDefinition(agentArtifactDefinition, executionContext);
+                ArtifactDefinition artifactDefinition = ConvertToArtifactDefinition(agentArtifactDefinition, executionContext, extension);
                 executionContext.Output(StringUtil.Loc("RMArtifactDownloadBegin", agentArtifactDefinition.Alias));
                 executionContext.Output(StringUtil.Loc("RMDownloadArtifactType", agentArtifactDefinition.ArtifactType));
 
                 // Get the local path where this artifact should be downloaded. 
-                string downloadFolderPath = GetLocalDownloadFolderPath(agentArtifactDefinition, artifactsWorkingFolder);
+                string downloadFolderPath = Path.GetFullPath(Path.Combine(artifactsWorkingFolder, agentArtifactDefinition.Alias ?? string.Empty));
 
                 // Create the directory if it does not exist. 
                 if (!Directory.Exists(downloadFolderPath))
@@ -119,7 +136,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
                         {
                             //TODO:SetAttributesToNormal
                             var releaseFileSystemManager = HostContext.GetService<IReleaseFileSystemManager>();
-                            releaseFileSystemManager.CleanupDirectory(downloadFolderPath);
+                            releaseFileSystemManager.CleanupDirectory(downloadFolderPath, executionContext.CancellationToken);
 
                             if (agentArtifactDefinition.ArtifactType == AgentArtifactType.GitHub
                                 || agentArtifactDefinition.ArtifactType == AgentArtifactType.TFGit
@@ -129,8 +146,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
                             }
                             else
                             {
-                                var buildArtifactProvider = HostContext.GetService<IArtifactProvider>();
-                                await buildArtifactProvider.Download(executionContext, artifactDefinition, downloadFolderPath);
+                                await extension.DownloadAsync(executionContext, artifactDefinition, downloadFolderPath);
                             }
                         });
 
@@ -140,19 +156,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
             executionContext.Output(StringUtil.Loc("RMArtifactsDownloadFinished"));
         }
 
-        private static string GetLocalDownloadFolderPath(AgentArtifactDefinition artifactDefinition, string artifactsWorkingFolder)
-        {
-            return  Path.GetFullPath(Path.Combine(artifactsWorkingFolder, artifactDefinition.Alias ?? string.Empty));
-        }
-
         private void CleanUpArtifactsFolder(IExecutionContext executionContext, string artifactsWorkingFolder)
         {
             Trace.Entering();
             executionContext.Output(StringUtil.Loc("RMCleaningArtifactsDirectory", artifactsWorkingFolder));
             try
             {
-                var releaseFileSystemManager = HostContext.GetService<IReleaseFileSystemManager>();
-                releaseFileSystemManager.DeleteDirectory(artifactsWorkingFolder);
+                IOUtil.DeleteDirectory(artifactsWorkingFolder, executionContext.CancellationToken);
             }
             catch (Exception ex)
             {
@@ -179,6 +189,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
             executionContext.Output(
                 $"ReleaseId={releaseId}, TeamProjectId={teamProjectId}, ReleaseDefinitionName={releaseDefinitionName}");
 
+            // TODO: Remove shorthash, you may get into collision. Switch to increment integer
             var configStore = HostContext.GetService<IConfigurationStore>();
             var shortHash = ReleaseFolderHelper.CreateShortHash(
                 configStore.GetSettings().AgentName,
@@ -236,7 +247,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
             }
         }
 
-        ArtifactDefinition ConvertToArtifactDefinition(AgentArtifactDefinition agentArtifactDefinition, IExecutionContext executionContext)
+        private ArtifactDefinition ConvertToArtifactDefinition(AgentArtifactDefinition agentArtifactDefinition, IExecutionContext executionContext, IArtifactExtension extension)
         {
             Trace.Entering();
 
@@ -250,8 +261,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
                 Version = agentArtifactDefinition.Version
             };
 
-            var artifactProvider = HostContext.GetService<IArtifactProvider>();
-            artifactDefinition.Details = artifactProvider.GetArtifactDetails(executionContext, agentArtifactDefinition);
+            artifactDefinition.Details = extension.GetArtifactDetails(executionContext, agentArtifactDefinition);
             return artifactDefinition;
         }
     }

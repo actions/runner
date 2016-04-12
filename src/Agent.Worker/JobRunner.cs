@@ -36,13 +36,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             }
 
             // Setup the job server and job server queue.
-            var vssConnection = ApiUtil.GetVssConnection(message);
-
             var jobServer = HostContext.GetService<IJobServer>();
-            await jobServer.ConnectAsync(vssConnection);
-
-            var agentServer = HostContext.GetService<IAgentServer>();
-            await agentServer.ConnectAsync(vssConnection);
+            await jobServer.ConnectAsync(ApiUtil.GetVssConnection(message));
 
             var jobServerQueue = HostContext.GetService<IJobServerQueue>();
             jobServerQueue.Start(message);

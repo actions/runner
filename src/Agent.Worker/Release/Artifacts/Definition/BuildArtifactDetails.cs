@@ -22,9 +22,5 @@ namespace Agent.Worker.Release.Artifacts.Definition
         public VssCredentials Credentials { get; set; }
 
         public string Project { get; set; }
-
-        public string AccessToken { get; set; }
-
-        public int ParallelDownloadLimit { get; set; }
     }
 }

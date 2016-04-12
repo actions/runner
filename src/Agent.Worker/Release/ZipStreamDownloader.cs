@@ -31,7 +31,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
             Trace.Entering();
 
             ArgUtil.NotNullOrEmpty(localFolderPath, nameof(localFolderPath));
-            ArgUtil.NotNullOrEmpty(folderWithinStream, nameof(folderWithinStream));
+            ArgUtil.NotNull(folderWithinStream, nameof(folderWithinStream));
 
             return DownloadStreams(zipStream, localFolderPath, folderWithinStream, relativePathWithinStream);
         }
