@@ -11,6 +11,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
     {
         private static readonly object[] DefaultFormatArgs = new object[] { null };
         private static Dictionary<string, object> _locStrings;
+        private const string EnglishUSLocale = "en-US";
 
         public static string Format(string format, params object[] args)
         {
@@ -130,10 +131,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
         {
             if (_locStrings == null)
             {
-                string stringsPath = Path.Combine(IOUtil.GetBinPath(), 
-                                                CultureInfo.CurrentCulture.Name,
-                                                "strings.json");
-                                                
+                string localePath = Path.Combine(IOUtil.GetBinPath(), CultureInfo.CurrentCulture.Name);
+                if (!Directory.Exists(localePath))
+                {
+                    localePath = Path.Combine(IOUtil.GetBinPath(), EnglishUSLocale);
+                }
+
+                string stringsPath = Path.Combine(localePath, "strings.json");
                 _locStrings = IOUtil.LoadObject<Dictionary<string, Object>>(stringsPath);
             }
         }
