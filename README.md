@@ -43,9 +43,9 @@ Add the user you created the PAT token for to *both*:
 
 ## Get Agent
 
-[Get Started Linux](docs/startLinux.md)  
+![linux](docs/linux_sm.png)[Get Started Linux](docs/startLinux.md)  
 
-[Get Started OSX](docs/startOSX.md)  
+![osx](docs/apple_sm.png)[Get Started OSX](docs/startOSX.md)  
 
 ## Configuration
 
