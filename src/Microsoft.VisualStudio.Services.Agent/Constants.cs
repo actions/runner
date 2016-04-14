@@ -18,20 +18,17 @@ namespace Microsoft.VisualStudio.Services.Agent
 
 #if OS_LINUX
             public static readonly OSPlatform Platform = OSPlatform.Linux;
-#endif
-
-#if OS_OSX
+#elif OS_OSX
             public static readonly OSPlatform Platform = OSPlatform.OSX;
-#endif
-
-#if OS_WINDOWS
+#elif OS_WINDOWS
             public static readonly OSPlatform Platform = OSPlatform.Windows;
 #endif
-
         }
 
         public static class Build
         {
+            public static readonly string NoCICheckInComment = "***NO_CI***";
+
             public static class Path
             {
                 public static readonly string ArtifactsDirectory = "a";
@@ -73,7 +70,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                 //
                 // Keep alphabetical
                 //
-                public static readonly string BuildFolder = "agent.builddirectory";
+                public static readonly string BuildDirectory = "agent.builddirectory";
                 public static readonly string HomeDirectory = "agent.homedirectory";
                 public static readonly string Id = "agent.id";
                 public static readonly string JobName = "agent.jobname";
@@ -82,10 +79,10 @@ namespace Microsoft.VisualStudio.Services.Agent
                 public static readonly string Name = "agent.name";
                 public static readonly string OS = "agent.os";
                 public static readonly string OSVersion = "agent.osversion";
-                public static readonly string RootFolder = "agent.RootDirectory";
-                public static readonly string ServerOMFolder = "agent.ServerOMDirectory";
+                public static readonly string RootDirectory = "agent.RootDirectory";
+                public static readonly string ServerOMDirectory = "agent.ServerOMDirectory";
                 public static readonly string WorkFolder = "agent.workfolder";
-                public static readonly string WorkingFolder = "agent.WorkingDirectory";
+                public static readonly string WorkingDirectory = "agent.WorkingDirectory";
             }
 
             public static class Build
@@ -93,21 +90,25 @@ namespace Microsoft.VisualStudio.Services.Agent
                 //
                 // Keep alphabetical
                 //
-                public static readonly string ArtifactStagingFolder = "build.artifactstagingdirectory";
-                public static readonly string BinariesFolder = "build.binariesdirectory";
+                public static readonly string ArtifactStagingDirectory = "build.artifactstagingdirectory";
+                public static readonly string BinariesDirectory = "build.binariesdirectory";
                 public static readonly string Clean = "build.clean";
                 public static readonly string DefinitionName = "build.definitionname";
+                public static readonly string GatedRunCI = "build.gated.runci";
+                public static readonly string GatedShelvesetName = "build.gated.shelvesetname";
                 public static readonly string RepoClean = "build.repository.clean";
                 public static readonly string RepoGitSubmoduleCheckout = "build.repository.git.submodulecheckout";
                 public static readonly string RepoId = "build.repository.id";
                 public static readonly string RepoLocalPath = "build.repository.localpath";
                 public static readonly string RepoName = "build.Repository.name";
                 public static readonly string RepoProvider = "build.repository.provider";
+                public static readonly string RepoTfvcWorkspace = "build.repository.tfvc.workspace";
                 public static readonly string RepoUri = "build.repository.uri";
                 public static readonly string SourceBranch = "build.sourcebranch";
+                public static readonly string SourceTfvcShelveset = "build.sourcetfvcshelveset";
                 public static readonly string SourceVersion = "build.sourceversion";
-                public static readonly string SourceFolder = "build.sourcesdirectory";
-                public static readonly string StagingFolder = "build.stagingdirectory";
+                public static readonly string SourcesDirectory = "build.sourcesdirectory";
+                public static readonly string StagingDirectory = "build.stagingdirectory";
                 public static readonly string SyncSources = "build.syncSources";
             }
 
@@ -132,9 +133,28 @@ namespace Microsoft.VisualStudio.Services.Agent
                 public static readonly string HostType = "system.hosttype";
                 // public static readonly string System = "system";
                 public static readonly string TeamProject = "system.teamproject";
-                // back compat variable, do not document
-                public static readonly string TFServerUrl = "system.TeamFoundationServerUri";
+                public static readonly string TFServerUrl = "system.TeamFoundationServerUri"; // back compat variable, do not document
+                public const string TeamProjectId = "system.teamProjectId";
                 public static readonly string PreferGit = "system.prefergit";
+            }
+
+            public static class Release
+            {
+                //
+                // Keep alphabetical
+                //
+                public static readonly string AttemptNumber = "release.attemptNumber";
+                public static readonly string ReleaseDefinitionName = "release.definitionName";
+                public static readonly string ReleaseEnvironmentName = "release.environmentName";
+                public static readonly string ReleaseEnvironmentUri = "release.environmentUri";
+                public static readonly string ReleaseDescription = "release.releaseDescription";
+                public static readonly string ReleaseId = "release.releaseId";
+                public static readonly string ReleaseName = "release.releaseName";
+                public static readonly string ReleaseRequestedForId = "release.requestedForId";
+                public static readonly string ReleaseUri = "release.releaseUri";
+                public static readonly string ReleaseWebUrl = "release.releaseWebUrl";
+                public static readonly string RequestorId = "release.requestedFor";
+                public static readonly string SkipArtifactsDownload = "release.skipartifactsDownload";
             }
         }
     }

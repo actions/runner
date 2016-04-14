@@ -73,18 +73,25 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             RecursivelyExpand(out warnings);
         }
 
+        public string Agent_BuildDirectory { get { return Get(Constants.Variables.Agent.BuildDirectory); } }
+        public int? Build_BuildId { get { return GetInt(WellKnownBuildVariables.BuildId); } }
         public BuildCleanOption? Build_Clean { get { return GetEnum<BuildCleanOption>(Constants.Variables.Build.Clean); } }
+        public long? Build_ContainerId { get { return GetLong(WellKnownBuildVariables.ContainerId); } }
         public string Build_DefinitionName { get { return Get(Constants.Variables.Build.DefinitionName); } }
+        public bool? Build_GatedRunCI { get { return GetBoolean(Constants.Variables.Build.GatedRunCI); } }
+        public string Build_GatedShelvesetName { get { return Get(Constants.Variables.Build.GatedShelvesetName); } }
+        public string Build_RepoTfvcWorkspace { get { return Get(Constants.Variables.Build.RepoTfvcWorkspace); } }
+        public string Build_SourcesDirectory { get { return Get(Constants.Variables.Build.SourcesDirectory); } }
+        public string Build_SourceTfvcShelveset { get { return Get(Constants.Variables.Build.SourceTfvcShelveset); } }
+        public string Build_SourceVersion { get { return Get(Constants.Variables.Build.SourceVersion); } }
         public bool? Build_SyncSources { get { return GetBoolean(Constants.Variables.Build.SyncSources); } }
         public string System_CollectionId { get { return Get(Constants.Variables.System.CollectionId); } }
         public bool? System_Debug { get { return GetBoolean(Constants.Variables.System.Debug); } }
         public string System_DefinitionId { get { return Get(Constants.Variables.System.DefinitionId); } }
+        public bool? System_EnableAccessToken { get { return GetBoolean(Constants.Variables.System.EnableAccessToken); } }
         public string System_HostType { get { return Get(Constants.Variables.System.HostType); } }
-        public int? Build_BuildId { get { return GetInt(WellKnownBuildVariables.BuildId); } }
-        public long? Build_ContainerId { get { return GetLong(WellKnownBuildVariables.ContainerId); } }
         public Guid? System_TeamProjectId { get { return GetGuid(WellKnownBuildVariables.TeamProjectId); } }
         public string System_TFCollectionUrl { get { return Get(WellKnownDistributedTaskVariables.TFCollectionUrl);  } }
-        public bool? System_EnableAccessToken { get { return GetBoolean(Constants.Variables.System.EnableAccessToken); } }
 
         public void ExpandValues(IDictionary<string, string> target)
         {
@@ -165,13 +172,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         public T? GetEnum<T>(string name) where T : struct
         {
-            T val;
-            if (Enum.TryParse(Get(name), ignoreCase: true, result: out val))
-            {
-                return val;
-            }
-
-            return null;
+            return EnumUtil.TryParse<T>(Get(name));
         }
 
         public Guid? GetGuid(string name)
@@ -256,7 +257,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         private void RecursivelyExpand(out List<string> warnings)
         {
             const int MaxDepth = 50;
-            // TODO: Max size?
+            // TODO: Validate max size? No limit on *nix. Max of 32k per env var on Windows https://msdn.microsoft.com/en-us/library/windows/desktop/ms682653%28v=vs.85%29.aspx
             _trace.Entering();
             warnings = new List<string>();
 

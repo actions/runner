@@ -39,7 +39,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             target = Path.Combine(TaskDirectory, target);
             if (!File.Exists(target))
             {
-                throw new Exception("TODO: task script file not found message.");
+                throw new Exception(StringUtil.Loc("TaskScriptDoesNotExist", target));
             }
 
             // Resolve the working directory.
@@ -50,7 +50,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             }
             else if (!Directory.Exists(workingDirectory))
             {
-                throw new Exception("TODO: task working directory not exist message");
+                throw new Exception(StringUtil.Loc("TaskWorkingDirectoryDoesNotExist", workingDirectory));
             }
 
             // Setup the process invoker.
@@ -70,16 +70,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
                 // 2) Escape double quotes within the script file path. Double-quote is a valid
                 // file name character on Linux.
                 string arguments = StringUtil.Format(@"""{0}""", target.Replace(@"""", @"\"""));
-                int exitCode = await processInvoker.ExecuteAsync(
+
+                // Execute the process. Exit code 0 should always be returned.
+                // A non-zero exit code indicates infrastructural failure.
+                // Task failure should be communicated over STDOUT using ## commands.
+                await processInvoker.ExecuteAsync(
                     workingDirectory: workingDirectory,
                     fileName: node,
                     arguments: arguments,
                     environment: Environment,
+                    requireExitCodeZero: true,
                     cancellationToken: ExecutionContext.CancellationToken);
-                if (exitCode != 0)
-                {
-                    throw new Exception("TODO: BETTER ERROR MESSAGE");
-                }
             }
         }
 

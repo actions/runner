@@ -31,7 +31,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
             executionContext.Output($"Syncing repository: {endpoint.Name} (Git)");
 
-            string targetPath = executionContext.Variables.Get(Constants.Variables.Build.SourceFolder);
+            string targetPath = executionContext.Variables.Get(Constants.Variables.Build.SourcesDirectory);
             string sourceBranch = executionContext.Variables.Get(Constants.Variables.Build.SourceBranch);
             string sourceVersion = executionContext.Variables.Get(Constants.Variables.Build.SourceVersion);
 
@@ -88,19 +88,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             executionContext.Output($"Cleaning embeded credential from repository: {endpoint.Name} (Git)");
 
             Uri repositoryUrl = endpoint.Url;
-            string targetPath = executionContext.Variables.Get(Constants.Variables.Build.SourceFolder);
+            string targetPath = executionContext.Variables.Get(Constants.Variables.Build.SourcesDirectory);
 
             executionContext.Debug($"Repository url={endpoint.Url}");
             executionContext.Debug($"targetPath={targetPath}");
 
             await RemoveCachedCredential(executionContext, targetPath, repositoryUrl, "origin");
-        }
-
-        public string GetLocalPath(ServiceEndpoint endpoint, string path)
-        {
-            // For git repositories, we don't do anything
-            // We expect the path to be a relative path within the Repository
-            return path;
         }
 
         private bool TryGetGitLocation(IExecutionContext executionContext, out string gitPath)
@@ -228,8 +221,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                     {
                         //fall back
                         context.Warning("Unable to run \"git clean -fdx\" and \"git reset --hard HEAD\" successfully, delete source folder instead.");
-                        // TODO: Util.DirectoryDelete()
-                        Directory.Delete(targetPath, true);
+                        IOUtil.DeleteDirectory(targetPath, cancellationToken);
                     }
                 }
             }

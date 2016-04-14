@@ -20,10 +20,5 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         {
             throw new NotImplementedException();
         }
-
-        public string GetLocalPath(ServiceEndpoint endpoint, string path)
-        {
-            throw new NotImplementedException();
-        }
     }
 }

@@ -180,12 +180,20 @@ function layout ()
 
 function update ()
 {
-    update_dir=${DEV_SUBCMD} || failed "must specify directory to build and update"
-    echo Updating ${update_dir}
-    dotnet build ${update_dir} || failed "failed build"
-    echo Publishing ${update_dir}
-    dotnet publish ${update_dir} || failed "failed publish"
-    copyBin ${update_dir}
+    if [[ "$DEV_SUBCMD" != '' ]]; then
+        update_dirs=(${DEV_SUBCMD})
+    else
+        update_dirs=${bin_layout_dirs[@]}
+    fi
+
+    for update_dir in ${update_dirs[@]}
+    do
+        echo Updating ${update_dir}
+        dotnet build ${update_dir} || failed "failed build"
+        echo Publishing ${update_dir}
+        dotnet publish ${update_dir} || failed "failed publish"
+        copyBin ${update_dir}
+    done
 }
 
 function runtest ()

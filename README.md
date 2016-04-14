@@ -11,9 +11,9 @@ Will run all existing tasks (typescript/javascript and powershell) including [ou
 
 ## Status
 
-A preview is available for Linux/OSX.  A release is coming soon with more capabilities than the deprecated node agent: Auto Update, Cancellation, Run as a svc on OSX and Linux, and Gated support.
+A preview is available for Linux/OSX for VSTS.  A release is coming soon with more capabilities than the deprecated node agent: Auto Update, Cancellation, Run as a svc on OSX and Linux, and Gated support.
 
-What's missing from the preview?  Run as svc on OSX, TfsVC support, RM, test publishing (all being worked on)
+What's missing from the preview?  Run as svc on OSX, TfsVC support, RM, test publishing (all being worked on).  On-prem NTLM support is in the works so preview with VSTS.
 
 A preview for windows is coming soon (finishing powershell handlers and tfsvc support)  
 
@@ -23,29 +23,29 @@ A preview for windows is coming soon (finishing powershell handlers and tfsvc su
 |![Apple](docs/apple_med.png) **OSX 10.11**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/b924d696-3eae-4116-8443-9a18392d8544/3080/badge?branch=master)| [v0.7](https://github.com/Microsoft/vsts-agent/releases) | Soon
 |![Win](docs/win_med.png) **Windows 10**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/b924d696-3eae-4116-8443-9a18392d8544/2850/badge?branch=master)| Soon | |
 
+## Configure Account
 
-## Get Started
+VSTS only for now.  On-prem coming with NTLM support in the works.
 
-### Step 1: Download from Releases
+Create a PAT token.  [Step by Step here](http://roadtoalm.com/2015/07/22/using-personal-access-tokens-to-access-visual-studio-online/)
 
-Download the appropriate agent from [github releases](https://github.com/Microsoft/vsts-agent/releases)
+Add the user you created the PAT token for to *both*:
 
-OSX (darwin), Linux and soon windows
+  1. Agent Pool Administrators (allows to register)
+  2. Agent Pool Service Accounts (allows listening to build queue)
 
-### Step 2: Create the agent
+![Agent Roles](docs/roles.png "Agent Roles")
 
-```bash
-~/$ mkdir myagent && cd myagent
-~/myagent$ tar zxvf ~/Downloads/vsts-agent-darwin-1.999.0-0405.tar.gz
-```
+>> TIPS:
+>> You can add to roles for a specific pool or select "All Pools" on the left and grant for all pools.  This allows the account owner to delegate build administration globally or for specific pools.  [More here](https://msdn.microsoft.com/en-us/Library/vs/alm/Build/agents/admin)
+>> The PAT token is only used to listen to the message queue for a build job
+>> When a build is run, it will generate an OAuth token for the scoped identity selected on the general tab of the build definition.  That token is short lived and will be used to access resource in VSTS
 
-### Step 3: Run the agent
+## Get Agent
 
-```bash
-~/myagent$ ./run.sh
-```
+![linux](docs/linux_sm.png)  [Get Started Linux](docs/startLinux.md)  
 
-**That's It! Your agent is running interactively and ready for builds**  
+![osx](docs/apple_sm.png)  [Get Started OSX](docs/startOSX.md)  
 
 ## Configuration
 

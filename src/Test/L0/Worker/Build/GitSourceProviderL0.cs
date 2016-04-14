@@ -75,7 +75,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
             executionContext
                 .Setup(x => x.WriteDebug)
                 .Returns(true);
-            executionContext.Object.Variables.Set(Constants.Variables.Build.SourceFolder, sourceFolder);
+            executionContext.Object.Variables.Set(Constants.Variables.Build.SourcesDirectory, sourceFolder);
             executionContext.Object.Variables.Set(Constants.Variables.Build.SourceBranch, sourceBranch);
             executionContext.Object.Variables.Set(Constants.Variables.Build.SourceVersion, sourceVersion);
             executionContext.Object.Variables.Set(Constants.Variables.System.EnableAccessToken, enableAuth.ToString());

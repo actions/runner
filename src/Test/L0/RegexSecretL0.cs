@@ -6,11 +6,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
 {
     public sealed class RegexSecretL0
     {
-        // TODO: Fix these test names.
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
-        public void RegexSecretTests_GetPositions_Basic()
+        public void ReturnsPosition()
         {
             var masker = new RegexSecret("def");
             string input = "abcdefg";
@@ -24,7 +23,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
-        public void RegexSecretTests_GetPositions_BeginningOfString()
+        public void ReturnsPositionFromBeginningOfString()
         {
             var masker = new RegexSecret("abc");
             string input = "abcdefg";
@@ -38,7 +37,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
-        public void RegexSecretTests_GetPositions_EndOfString()
+        public void ReturnsPositionFromEndOfString()
         {
             var masker = new RegexSecret("efg");
             string input = "abcdefg";
@@ -52,7 +51,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
-        public void RegexSecretTests_GetPositions_Multiple()
+        public void ReturnsMultiplePositions()
         {
             var masker = new RegexSecret("def");
             string input = "abcdefgdefg";
@@ -68,7 +67,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
-        public void RegexSecretTests_GetPositions_Expression()
+        public void ReturnsMatchPosition()
         {
             var masker = new RegexSecret("[ab]");
             string input = "deabfgb";
@@ -84,7 +83,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
-        public void RegexSecretTests_GetPositions_EscapedCharacters()
+        public void ReturnsEscapedMatchPosition()
         {
             var regex = "a]bc[";
             var masker = new RegexSecret(Regex.Escape(regex));
@@ -99,7 +98,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
-        public void RegexSecretTests_GetPositions_Overlap()
+        public void ReturnsOverlappingPositions()
         {
             var regex = "bcbc";
             var masker = new RegexSecret(regex);
