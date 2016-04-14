@@ -147,7 +147,6 @@ namespace Microsoft.VisualStudio.Services.Agent
                 public static readonly string ReleaseWebUrl = "release.releaseWebUrl";
                 public static readonly string RequestorId = "release.requestedFor";
                 public static readonly string SkipArtifactsDownload = "release.skipartifactsDownload";
-                public static readonly string Status = "status";
             }
         }
     }

@@ -143,6 +143,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
 
         private static string GetParentFolderName(string relativePath)
         {
+            // Sometime the Jenkins artifact relative path would be simply / indicating read from root. This will retrun empty string at such scenarios.
             return relativePath.TrimEnd(Backslash).TrimEnd(ForwardSlash).Replace(Backslash, ForwardSlash).Split(ForwardSlash).Last();
         }
     }

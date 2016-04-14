@@ -5,9 +5,6 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-using Microsoft.VisualStudio.Services.ReleaseManagement.WebApi.Clients;
-using Microsoft.VisualStudio.Services.ReleaseManagement.WebApi.Contracts;
-
 namespace Microsoft.VisualStudio.Services.Agent
 {
     [ServiceLocator(Default = typeof(AgentServer))]
@@ -38,7 +35,6 @@ namespace Microsoft.VisualStudio.Services.Agent
         private bool _hasConnection;
         private VssConnection _connection;
         private TaskAgentHttpClient _taskAgentClient;
-        private ReleaseHttpClient _releaseClient;
 
         public async Task ConnectAsync(VssConnection agentConnection)
         {
@@ -50,7 +46,6 @@ namespace Microsoft.VisualStudio.Services.Agent
             }
 
             _taskAgentClient = _connection.GetClient<TaskAgentHttpClient>();
-            _releaseClient = _connection.GetClient<ReleaseHttpClient>();
             _hasConnection = true;
         }
 

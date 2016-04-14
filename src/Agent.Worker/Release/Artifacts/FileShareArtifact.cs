@@ -28,7 +28,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
             dropLocation = Path.Combine(dropLocation.TrimEnd(trimChars), relativePath.Trim(trimChars));
 
             var fileSystemManager = hostContext.CreateService<IReleaseFileSystemManager>();
-            List<string> filePaths = fileSystemManager.GetFiles(dropLocation, SearchOption.AllDirectories).Select(path => path.FullName).ToList();
+            List<string> filePaths =
+                new DirectoryInfo(dropLocation).EnumerateFiles("*", SearchOption.AllDirectories)
+                    .Select(path => path.FullName)
+                    .ToList();
 
             if (filePaths.Any())
             {

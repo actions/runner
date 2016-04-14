@@ -124,7 +124,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
 
         private bool Match(ServerBuildArtifact buildArtifact, ArtifactDefinition artifactDefinition)
         {
-            // If this is older , then dont force the name checks. 
+            //TODO: If editing artifactDefinitionName is not allowed then we can remove this
             if (string.Equals(artifactDefinition.Name, AllArtifacts, StringComparison.OrdinalIgnoreCase))
             {
                 return true;

@@ -12,8 +12,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
     [ServiceLocator(Default = typeof(ReleaseFileSystemManager))]
     public interface IReleaseFileSystemManager : IAgentService
     {
-        IEnumerable<FileInfo> GetFiles(string directoryPath, SearchOption searchOption);
-
         StreamReader GetFileReader(string filePath);
 
         Task WriteStreamToFile(Stream stream, string filePath);
@@ -23,20 +21,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
 
     public class ReleaseFileSystemManager : AgentService, IReleaseFileSystemManager
     {
-        private RetryExecutor _retryExecutor = new RetryExecutor();
         private const int StreamBufferSize = 1024;
-
-        public IEnumerable<FileInfo> GetFiles(string directoryPath, SearchOption searchOption)
-        {
-            return
-                Directory.GetFiles(ValidatePath(directoryPath), "*", searchOption)
-                    .Select(fullPath => new FileInfo(fullPath));
-        }
-
-        public bool FileExists(string filePath)
-        {
-            return File.Exists(filePath);
-        }
 
         public void CleanupDirectory(string directoryPath, CancellationToken cancellationToken)
         {
@@ -52,12 +37,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
         public StreamReader GetFileReader(string filePath)
         {
             string path = Path.Combine(ValidatePath(filePath));
-            if (!this.FileExists(path))
+            if (!File.Exists(path))
             {
-                throw new ArgumentOutOfRangeException("fileName");
+                throw new FileNotFoundException("fileName");
             }
 
-            return new StreamReader(new FileStream(path, FileMode.Open, FileAccess.Read));
+            return new StreamReader(new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, StreamBufferSize, true));
         }
 
         private static string ValidatePath(string path)
@@ -80,15 +65,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
             ArgUtil.NotNull(stream, nameof(stream));
             ArgUtil.NotNullOrEmpty(filePath, nameof(filePath));
 
-            this.EnsureDirectoryExists(Path.GetDirectoryName(filePath));
-            using (var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write))
+            EnsureDirectoryExists(Path.GetDirectoryName(filePath));
+            using (var targetStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None, StreamBufferSize, true))
             {
-                var buffer = new byte[StreamBufferSize];
-                int count;
-                while ((count = stream.Read(buffer, 0, buffer.Length)) != 0)
-                {
-                    await fileStream.WriteAsync(buffer, 0, count);
-                }
+                await stream.CopyToAsync(targetStream, StreamBufferSize);
             }
         }
     }
