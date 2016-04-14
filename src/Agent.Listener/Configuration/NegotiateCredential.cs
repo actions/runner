@@ -9,7 +9,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 {
     public sealed class NegotiateCredential : CredentialProvider
     {
-        public NegotiateCredential() : base("Negotiate") { }
+        public NegotiateCredential() : base(Constants.Configuration.Negotiate) { }
 
         public override VssCredentials GetVssCredentials(IHostContext context)
         {

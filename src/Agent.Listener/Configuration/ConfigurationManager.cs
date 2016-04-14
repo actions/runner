@@ -91,7 +91,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 string serverUrl = args[CliArgs.Url];
                 //on premise defaults to negotiate authentication (Kerberos with fallback to NTLM)
                 //hosted defaults to PAT authentication
-                string defaultAuth = serverUrl.Contains("visualstudio.com") || serverUrl.Contains("tfsallin.net") ? "PAT" : "Negotiate";
+                bool isHosted = serverUrl.IndexOf("visualstudio.com", StringComparison.OrdinalIgnoreCase) != -1
+                    || serverUrl.IndexOf("tfsallin.net", StringComparison.OrdinalIgnoreCase) != -1;
+                string defaultAuth = isHosted ? Constants.Configuration.PAT : 
+                    (Constants.Agent.Platform == Constants.OSPlatform.Windows ? Constants.Configuration.Integrated : Constants.Configuration.Negotiate);
                 string authType = consoleWizard.ReadValue(CliArgs.Auth,
                                                         StringUtil.Loc("AuthenticationType"),
                                                         false,
@@ -340,7 +343,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                     CliArgs.RunAsService,
                     StringUtil.Loc("RunAgentAsServiceDescription"),
                     false,
-                    null,
+                    args,
                     enforceSupplied);
             }
 

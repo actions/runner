@@ -30,7 +30,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
     public sealed class PersonalAccessToken : CredentialProvider
     {
-        public PersonalAccessToken(): base("PAT") {}
+        public PersonalAccessToken(): base(Constants.Configuration.PAT) {}
         
         public override VssCredentials GetVssCredentials(IHostContext context)
         {
@@ -74,7 +74,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
     public sealed class AlternateCredential : CredentialProvider
     {
-        public AlternateCredential(): base("ALT") {}
+        public AlternateCredential(): base(Constants.Configuration.Alternate) {}
 
         public override VssCredentials GetVssCredentials(IHostContext context)
         {
