@@ -8,12 +8,12 @@ using System.Net.Http.Headers;
 namespace Microsoft.VisualStudio.Services.Agent.Util
 {
     public static class ApiUtil
-    {        
+    {
         public static VssConnection CreateConnection(Uri serverUri, VssCredentials credentials)
         {
             VssClientHttpRequestSettings settings = VssClientHttpRequestSettings.Default.Clone();
             settings.MaxRetryRequest = 5;
-            
+
             var headerValues = new List<ProductInfoHeaderValue>();
             headerValues.Add(new ProductInfoHeaderValue("VstsAgent", Constants.Agent.Version));
             VssConnection connection = new VssConnection(serverUri, credentials, settings);
@@ -30,7 +30,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
 
             Uri serverUrl = jobRequest.Environment.SystemConnection.Url;
             var credentials = GetVssCredential(jobRequest.Environment.SystemConnection);
-            
+
             if (credentials == null)
             {
                 throw new ArgumentNullException(nameof(credentials));
@@ -57,7 +57,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             if (serviceEndpoint.Authorization.Scheme == EndpointAuthorizationSchemes.OAuth &&
                 serviceEndpoint.Authorization.Parameters.TryGetValue(EndpointAuthorizationParameters.AccessToken, out accessToken))
             {
+                //TODO: consume the new Microsoft.VisualStudio.Services.OAuth.VssOAuthAccessTokenCredential
+                //when it is available in the rest SDK
+#pragma warning disable 618
                 credentials = new VssOAuthCredential(accessToken);
+#pragma warning restore 618
             }
 
             return credentials;

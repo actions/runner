@@ -27,15 +27,18 @@
     },
     
     "dependencies": {
-        "NETStandard.Library": "1.0.0-rc3-23829",
-        "Microsoft.NETCore.TestHost": "1.0.0-rc3-23829",
+        "NETStandard.Library": "1.5.0-rc3-24011-00",
+        "Microsoft.NETCore.TestHost": "1.0.0-rc3-24011-00",
+        "System.Buffers": "4.0.0-rc3-24011-00",
+        "System.Reflection.TypeExtensions": "4.1.0-rc3-24011-00",
+        "System.Threading.ThreadPool": "4.0.10-rc3-24011-00",
         "moq.netcore": "4.4.0-beta8",
         "xunit": "2.1.0",
         "xunit.console.netcore": "1.0.2-prerelease-00101",
         "xunit.netcore.extensions": "1.0.0-prerelease-00153",
         "xunit.runner.utility": "2.1.0",
         "Agent.Listener": { "target": "project", "version": "1.0.0-*" },
-        "vss-api-netcore": "0.5.5-private",
+        "vss-api-netcore": "0.5.6-private",
         "Microsoft.VisualStudio.Services.Agent": { "target": "project", "version": "1.0.0-*" },
         "Agent.Worker": { "target": "project", "version": "1.0.0-*" } 
     },
@@ -43,5 +46,11 @@
         "dnxcore50": {
             "imports": "portable-net451+win8"
         }
+    },
+
+    "runtimes": {
+        "win7-x64": { },
+        "ubuntu.14.04-x64": { },
+        "osx.10.11-x64": { }
     }
 }

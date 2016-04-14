@@ -21,6 +21,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         public const string Replace = "replace";
         public const string Work = "work";
         public const string RunAsService = "runasservice";
+        public const string UserName = "username";
+        public const string Password = "password";
     }
 
     [ServiceLocator(Default = typeof(ConfigurationManager))]
@@ -83,12 +85,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             else
             {
                 // get from user
+                string serverUrl = args[CliArgs.Url];
+                //on premise defaults to negotiate authentication (Kerberos with fallback to NTLM)
+                //hosted defaults to PAT authentication
+                bool isHosted = serverUrl.IndexOf("visualstudio.com", StringComparison.OrdinalIgnoreCase) != -1
+                    || serverUrl.IndexOf("tfsallin.net", StringComparison.OrdinalIgnoreCase) != -1;
+                string defaultAuth = isHosted ? Constants.Configuration.PAT : 
+                    (Constants.Agent.Platform == Constants.OSPlatform.Windows ? Constants.Configuration.Integrated : Constants.Configuration.Negotiate);
                 var promptManager = HostContext.GetService<IPromptManager>();
                 string authType = promptManager.ReadValue(
                     argName: CliArgs.Auth,
                     description: StringUtil.Loc("AuthenticationType"),
                     secret: false,
-                    defaultValue: "PAT",
+                    defaultValue: defaultAuth,
                     validator: Validators.AuthSchemeValidator,
                     args: args,
                     unattended: unattended);
@@ -177,8 +186,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                     args: args,
                     unattended: unattended);
                 Trace.Info("serverUrl: {0}", serverUrl);
+                var credentialArgs = (args == null) ? new Dictionary<string, string>() : new Dictionary<string, string>(args);
+                //pass server url down to CredentialProvider (needed for Negotiate provider)
+                credentialArgs[CliArgs.Url] = serverUrl;
 
-                credProv = AcquireCredentials(args, unattended);
+                credProv = AcquireCredentials(credentialArgs, unattended);
                 VssCredentials creds = credProv.GetVssCredentials(HostContext);
 
                 Trace.Info("cred retrieved");
@@ -364,7 +376,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                     argName: CliArgs.RunAsService,
                     description: StringUtil.Loc("RunAgentAsServiceDescription"),
                     defaultValue: false,
-                    args: null,
+                    args: args,
                     unattended: unattended);
             }
 

@@ -27,22 +27,30 @@
     },
     
     "dependencies": {
-        "vss-api-netcore": "0.5.5-private",
+        "vss-api-netcore": "0.5.6-private",
         "Newtonsoft.Json": "7.0.1",
-        "System.Diagnostics.TraceSource": "4.0.0-rc3-23829",
-        "System.Diagnostics.TextWriterTraceListener": "4.0.0-rc3-23829",
-        "System.Diagnostics.Process": "4.1.0-rc3-23829",
-        "System.IO": "4.1.0-rc3-23829",
-        "System.IO.Pipes": "4.0.0-rc3-23829",
-        "System.Linq.Parallel": "4.0.0",
-        "System.Runtime": "4.1.0-rc3-23829",
-        "System.Xml.XmlSerializer": "4.0.11-rc3-23829",
-        "NETStandard.Library": "1.0.0-rc3-23829"
+        "System.Diagnostics.TraceSource": "4.0.0-rc3-24011-00",
+        "System.Diagnostics.TextWriterTraceListener": "4.0.0-rc3-24011-00",
+        "System.Diagnostics.Process": "4.1.0-rc3-24011-00",
+        "System.IO": "4.1.0-rc3-24011-00",
+        "System.IO.Pipes": "4.0.0-rc3-24011-00",
+        "System.Linq.Parallel": "4.0.1-rc3-24011-00",
+        "System.Runtime": "4.1.0-rc3-24011-00",
+        "System.Xml.XmlSerializer": "4.0.11-rc3-24011-00",
+        "System.Dynamic.Runtime": "4.0.11-rc3-24011-00",
+        "System.Net.Http": "4.0.1-rc3-24011-00",
+        "NETStandard.Library": "1.5.0-rc3-24011-00"
     },
 
     "frameworks": {
         "dnxcore50": {
             "imports": "portable-net451+win8"
         }
+    },
+
+    "runtimes": {
+        "win7-x64": { },
+        "ubuntu.14.04-x64": { },
+        "osx.10.11-x64": { }
     }
 }
