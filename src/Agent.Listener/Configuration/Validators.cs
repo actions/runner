@@ -1,3 +1,4 @@
+using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
 using System.IO;
 using System.Security.Principal;
@@ -57,10 +58,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
         public static bool BoolValidator(string value)
         {
-            return String.Equals(value, "true", StringComparison.OrdinalIgnoreCase) ||
-                   String.Equals(value, "false", StringComparison.OrdinalIgnoreCase) ||
-                   String.Equals(value, "y", StringComparison.OrdinalIgnoreCase) ||
-                   String.Equals(value, "n", StringComparison.OrdinalIgnoreCase);
+            return string.Equals(value, "true", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(value, "false", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(value, StringUtil.Loc("Y"), StringComparison.CurrentCultureIgnoreCase) ||
+                   string.Equals(value, StringUtil.Loc("N"), StringComparison.CurrentCultureIgnoreCase);
         }
 
         public static bool NonEmptyValidator(string value)

@@ -2,17 +2,18 @@ using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using Microsoft.VisualStudio.Services.Client;
 using Microsoft.VisualStudio.Services.Common;
-
 using System;
 using System.Collections.Generic;
-using System.Threading;
+using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 {
     public static class CliArgs
     {
+        public const string AcceptTeeEula = "acceptteeeula";
         public const string Auth = "auth";
         public const string Url = "url";
         public const string Pool = "pool";
@@ -22,16 +23,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         public const string RunAsService = "runasservice";
     }
 
-    // TODO: does initialize make sense for service locator pattern?
-    // should it be ensureInitialized?  Singleton?
-    //
     [ServiceLocator(Default = typeof(ConfigurationManager))]
     public interface IConfigurationManager : IAgentService
     {
         bool IsConfigured();
         Task EnsureConfiguredAsync();
-        Task ConfigureAsync(Dictionary<string, string> args, HashSet<string> flags, bool unattend);
-        ICredentialProvider AcquireCredentials(Dictionary<String, String> args, bool enforceSupplied);
+        Task ConfigureAsync(Dictionary<string, string> args, HashSet<string> flags, bool unattended);
+        ICredentialProvider AcquireCredentials(Dictionary<String, String> args, bool unattended);
         AgentSettings LoadSettings();
     }
 
@@ -69,7 +67,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             }
         }
 
-        public ICredentialProvider AcquireCredentials(Dictionary<String, String> args, bool enforceSupplied)
+        public ICredentialProvider AcquireCredentials(Dictionary<String, String> args, bool unattended)
         {
             Trace.Info(nameof(AcquireCredentials));
 
@@ -85,19 +83,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             else
             {
                 // get from user
-                var consoleWizard = HostContext.GetService<IConsoleWizard>();
-                string authType = consoleWizard.ReadValue(CliArgs.Auth,
-                                                        StringUtil.Loc("AuthenticationType"),
-                                                        false,
-                                                        "PAT",
-                                                        Validators.AuthSchemeValidator,
-                                                        args,
-                                                        enforceSupplied);
+                var promptManager = HostContext.GetService<IPromptManager>();
+                string authType = promptManager.ReadValue(
+                    argName: CliArgs.Auth,
+                    description: StringUtil.Loc("AuthenticationType"),
+                    secret: false,
+                    defaultValue: "PAT",
+                    validator: Validators.AuthSchemeValidator,
+                    args: args,
+                    unattended: unattended);
                 Trace.Info("AuthType: {0}", authType);
 
                 Trace.Verbose("Creating Credential: {0}", authType);
                 cred = credentialManager.GetCredentialProvider(authType);
-                cred.ReadCredential(HostContext, args, enforceSupplied);
+                cred.ReadCredential(HostContext, args, unattended);
             }
 
             return cred;
@@ -117,7 +116,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             return settings;
         }
 
-        public async Task ConfigureAsync(Dictionary<string, string> args, HashSet<string> flags, bool enforceSupplied)
+        public async Task ConfigureAsync(Dictionary<string, string> args, HashSet<string> flags, bool unattended)
         {
             Trace.Info(nameof(ConfigureAsync));
             if (IsConfigured())
@@ -126,27 +125,60 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             }
 
             Trace.Info("Read agent settings");
-            var consoleWizard = HostContext.GetService<IConsoleWizard>();
+            var promptManager = HostContext.GetService<IPromptManager>();
+
+            // TEE EULA
+            bool acceptTeeEula = false;
+            switch (Constants.Agent.Platform)
+            {
+                case Constants.OSPlatform.OSX:
+                case Constants.OSPlatform.Linux:
+                    // Write the section header.
+                    WriteSection(StringUtil.Loc("EulasSectionHeader"));
+
+                    // Verify the EULA exists on disk in the expected location.
+                     string eulaFile = Path.Combine(IOUtil.GetExternalsPath(), Constants.Path.TeeDirectory, "license.html");
+                    IOUtil.AssertFile(eulaFile);
+
+                    // Write elaborate verbiage about the TEE EULA.
+                    _term.WriteLine(StringUtil.Loc("TeeEula", eulaFile));
+                    _term.WriteLine();
+
+                    // Prompt to acccept the TEE EULA.
+                    acceptTeeEula =
+                        (flags?.Contains(CliArgs.AcceptTeeEula) ?? false) ||
+                        promptManager.ReadBool(
+                            argName: CliArgs.AcceptTeeEula,
+                            description: StringUtil.Loc("AcceptTeeEula"),
+                            defaultValue: false,
+                            args: null,
+                            unattended: unattended);
+                    break;
+                case Constants.OSPlatform.Windows:
+                    break;
+                default:
+                    throw new NotSupportedException();
+            }
 
             // TODO: Check if its running with elevated permission and stop early if its not
-            //
+
             // Loop getting url and creds until you can connect
-            //
             string serverUrl = null;
             ICredentialProvider credProv = null;
             while (true)
             {
-                WriteSection("Connect");
-                serverUrl = consoleWizard.ReadValue(CliArgs.Url,
-                                                StringUtil.Loc("ServerUrl"),
-                                                false,
-                                                String.Empty,
-                                                Validators.ServerUrlValidator,
-                                                args,
-                                                enforceSupplied);
+                WriteSection(StringUtil.Loc("ConnectSectionHeader"));
+                serverUrl = promptManager.ReadValue(
+                    argName: CliArgs.Url,
+                    description: StringUtil.Loc("ServerUrl"),
+                    secret: false,
+                    defaultValue: string.Empty,
+                    validator: Validators.ServerUrlValidator,
+                    args: args,
+                    unattended: unattended);
                 Trace.Info("serverUrl: {0}", serverUrl);
 
-                credProv = AcquireCredentials(args, enforceSupplied);
+                credProv = AcquireCredentials(args, unattended);
                 VssCredentials creds = credProv.GetVssCredentials(HostContext);
 
                 Trace.Info("cred retrieved");
@@ -163,8 +195,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                     connected = false;
                 }
 
-                // we don't want to loop on unattend
-                if (enforceSupplied || connected)
+                // we don't want to loop when unattended
+                if (unattended || connected)
                 {
                     break;
                 }
@@ -177,26 +209,25 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
             Trace.Info("Connect Complete.");
 
-            //
             // Loop getting agent name and pool
-            //
             string poolName = null;
             int poolId = 0;
             string agentName = null;
             int agentId = 0;
 
-            WriteSection("Register Agent");
+            WriteSection(StringUtil.Loc("RegisterAgentSectionHeader"));
 
             while (true)
             {
-                poolName = consoleWizard.ReadValue(CliArgs.Pool,
-                                                "Pool Name", // Not localized as pool name is a technical term
-                                                false,
-                                                "default",
-                                                // can do better
-                                                Validators.NonEmptyValidator,
-                                                args,
-                                                enforceSupplied);
+                poolName = promptManager.ReadValue(
+                    argName: CliArgs.Pool,
+                    description: StringUtil.Loc("AgentMachinePoolNameLabel"),
+                    secret: false,
+                    defaultValue: "default",
+                    // can do better
+                    validator: Validators.NonEmptyValidator,
+                    args: args,
+                    unattended: unattended);
 
                 try
                 {
@@ -207,7 +238,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                     Trace.Error(e);
                 }
 
-                if (enforceSupplied || poolId > 0)
+                if (unattended || poolId > 0)
                 {
                     break;
                 }
@@ -220,14 +251,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             var capProvider = HostContext.GetService<ICapabilitiesProvider>();
             while (true)
             {
-                agentName = consoleWizard.ReadValue(CliArgs.Agent,
-                                                StringUtil.Loc("AgentName"),
-                                                false,
-                                                Environment.MachineName ?? "myagent",
-                                                // can do better
-                                                Validators.NonEmptyValidator,
-                                                args,
-                                                enforceSupplied);
+                agentName = promptManager.ReadValue(
+                    argName: CliArgs.Agent,
+                    description: StringUtil.Loc("AgentName"),
+                    secret: false,
+                    defaultValue: Environment.MachineName ?? "myagent",
+                    // can do better
+                    validator: Validators.NonEmptyValidator,
+                    args: args,
+                    unattended: unattended);
 
                 Dictionary<string, string> capabilities = await capProvider.GetCapabilitiesAsync(agentName, CancellationToken.None);
 
@@ -237,15 +269,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 bool registered = false;
                 if (exists)
                 {
-                    replace = consoleWizard.ReadBool(CliArgs.Replace,
-                                                StringUtil.Loc("Replece"),
-                                                false,
-                                                args,
-                                                enforceSupplied);
+                    replace = promptManager.ReadBool(
+                        argName: CliArgs.Replace,
+                        description: StringUtil.Loc("Replace"),
+                        defaultValue: false,
+                        args: args,
+                        unattended: unattended);
                     if (replace)
                     {
                         // update - update instead of delete so we don't lose user capabilities etc...
-                        agent.MaxParallelism = Constants.Agent.MaxParallelism;
                         agent.Version = Constants.Agent.Version;
 
                         foreach (var capability in capabilities)
@@ -255,7 +287,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
                         try
                         {
-                            agent = await UpdateAgent(poolId, agent);
+                            agent = await _agentServer.UpdateAgentAsync(poolId, agent);
                             _term.WriteLine(StringUtil.Loc("AgentReplaced"));
                             registered = true;
                         }
@@ -270,7 +302,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 {
                     agent = new TaskAgent(agentName)
                     {
-                        MaxParallelism = Constants.Agent.MaxParallelism,
                         Version = Constants.Agent.Version
                     };
 
@@ -281,7 +312,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
                     try
                     {
-                        agent = await AddAgent(poolId, agent);
+                        agent = await _agentServer.AddAgentAsync(poolId, agent);
                         _term.WriteLine(StringUtil.Loc("AgentAddedSuccessfully"));
                         registered = true;
                     }
@@ -293,25 +324,27 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 }
                 agentId = agent.Id;
 
-                if (enforceSupplied || registered)
+                if (unattended || registered)
                 {
                     break;
                 }
             }
 
             // We will Combine() what's stored with root.  Defaults to string a relative path
-            string workFolder = consoleWizard.ReadValue(CliArgs.Work,
-                                                    StringUtil.Loc("WorkFolderDescription"),
-                                                    false,
-                                                    "_work",
-                                                    // can do better
-                                                    Validators.NonEmptyValidator,
-                                                    args,
-                                                    enforceSupplied);
+            string workFolder = promptManager.ReadValue(
+                argName: CliArgs.Work,
+                description: StringUtil.Loc("WorkFolderDescription"),
+                secret: false,
+                defaultValue: "_work",
+                // can do better
+                validator: Validators.NonEmptyValidator,
+                args: args,
+                unattended: unattended);
 
             // Get Agent settings
             var settings = new AgentSettings
             {
+                AcceptTeeEula = acceptTeeEula,
                 AgentId = agentId,
                 ServerUrl = serverUrl,
                 AgentName = agentName,
@@ -321,18 +354,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             };
 
             bool runAsService = false;
-            if (flags != null && flags.Contains("runasservice"))
+            if (flags != null && flags.Contains(CliArgs.RunAsService))
             {
                 runAsService = true;
             }
             else
             {
-                runAsService = consoleWizard.ReadBool(
-                    CliArgs.RunAsService,
-                    StringUtil.Loc("RunAgentAsServiceDescription"),
-                    false,
-                    null,
-                    enforceSupplied);
+                runAsService = promptManager.ReadBool(
+                    argName: CliArgs.RunAsService,
+                    description: StringUtil.Loc("RunAgentAsServiceDescription"),
+                    defaultValue: false,
+                    args: null,
+                    unattended: unattended);
             }
 
             var serviceControlManager = HostContext.GetService<IServiceControlManager>();
@@ -341,7 +374,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             {
                 settings.RunAsService = true;
                 Trace.Info("Configuring to run the agent as service");
-                successfullyConfigured = serviceControlManager.ConfigureService(settings, args, enforceSupplied);
+                successfullyConfigured = serviceControlManager.ConfigureService(settings, args, unattended);
             }
 
             _store.SaveSettings(settings);
@@ -384,23 +417,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             TaskAgent agent = agents.FirstOrDefault();
 
             return agent;
-        }
-
-        private async Task DeleteAgent(int poolId, int agentId)
-        {
-            await _agentServer.DeleteAgentAsync(poolId, agentId);
-        }
-
-        private async Task<TaskAgent> UpdateAgent(int poolId, TaskAgent agent)
-        {
-            TaskAgent created = await _agentServer.UpdateAgentAsync(poolId, agent);
-            return created;
-        }
-
-        private async Task<TaskAgent> AddAgent(int poolId, TaskAgent agent)
-        {
-            TaskAgent created = await _agentServer.AddAgentAsync(poolId, agent);
-            return created;
         }
 
         private void WriteSection(string message)

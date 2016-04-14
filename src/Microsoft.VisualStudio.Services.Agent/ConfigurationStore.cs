@@ -12,6 +12,7 @@ namespace Microsoft.VisualStudio.Services.Agent
     //
     public sealed class AgentSettings
     {
+        public bool AcceptTeeEula { get; set; }
         public int AgentId { get; set; }
         public string AgentName { get; set; }
         public int PoolId { get; set; }

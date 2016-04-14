@@ -46,8 +46,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
                         StringBuilder sb = new StringBuilder();
                         foreach (string line in lines)
                         {
+                            if (sb.Length > 0)
+                            {
+                                sb.AppendLine();
+                            }
+
                             sb.Append(line);
-                            sb.Append(Environment.NewLine);
                         }
 
                         locStr = sb.ToString();

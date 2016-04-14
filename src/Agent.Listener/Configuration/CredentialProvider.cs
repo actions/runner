@@ -58,12 +58,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             Tracing trace = context.GetTrace("PersonalAccessToken");
             trace.Info("ReadCredentials()");
 
-            var wizard = context.GetService<IConsoleWizard>();
+            var promptManager = context.GetService<IPromptManager>();
             trace.Verbose("reading token");
-            string tokenVal = wizard.ReadValue("token", 
+            string tokenVal = promptManager.ReadValue("token", 
                                             "PersonalAccessToken", 
                                             true, 
-                                            String.Empty, 
+                                            string.Empty,
                                             // can do better
                                             Validators.NonEmptyValidator,
                                             args, 
@@ -102,20 +102,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
         public override void ReadCredential(IHostContext context, Dictionary<string, string> args, bool enforceSupplied)
         {
-            var wizard = context.GetService<IConsoleWizard>();
-            CredentialData.Data["Username"] = wizard.ReadValue("username", 
+            var promptManager = context.GetService<IPromptManager>();
+            CredentialData.Data["Username"] = promptManager.ReadValue("username", 
                                             "Username", 
                                             false,
-                                            String.Empty,
+                                            string.Empty,
                                             // can do better
                                             Validators.NonEmptyValidator, 
                                             args, 
                                             enforceSupplied);
 
-            CredentialData.Data["Password"] = wizard.ReadValue("password", 
+            CredentialData.Data["Password"] = promptManager.ReadValue("password", 
                                             "Password", 
                                             true,
-                                            String.Empty,
+                                            string.Empty,
                                             // can do better
                                             Validators.NonEmptyValidator,
                                             args, 
