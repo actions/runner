@@ -72,7 +72,7 @@ namespace Microsoft.VisualStudio.Services.Agent
 
         public async Task<WorkerMessage> ReceiveAsync(CancellationToken cancellationToken)
         {
-            WorkerMessage result = new WorkerMessage(MessageType.NotInitialized, String.Empty);
+            WorkerMessage result = new WorkerMessage(MessageType.NotInitialized, string.Empty);
             result.MessageType = (MessageType)await _readStream.ReadInt32Async(cancellationToken);
             result.Body = await _readStream.ReadStringAsync(cancellationToken);
             return result;

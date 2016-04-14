@@ -23,7 +23,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             }
         }
 
-        public static void SaveObject(Object obj, string path)
+        public static void AssertFile(string fileName)
+        {
+            ArgUtil.NotNullOrEmpty(fileName, nameof(fileName));
+            if (!File.Exists(fileName))
+            {
+                throw new FileNotFoundException(
+                    message: StringUtil.Loc("FileNotFound", fileName),
+                    fileName: fileName);
+            }
+        }
+
+        public static void SaveObject(object obj, string path)
         {
             string json = JsonConvert.SerializeObject(
                 obj,
@@ -190,7 +201,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             // Dir is a prefix of the path, if they are the same length then the relative path is empty.
             if (path.Length == folder.Length)
             {
-                return String.Empty;
+                return string.Empty;
             }
 
             // If the dir ended in a '\\' (like d:\) or '/' (like user/bin/)  then we have a relative path.

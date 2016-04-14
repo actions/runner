@@ -1,0 +1,371 @@
+using Microsoft.VisualStudio.Services.Agent.Listener.Configuration;
+using Microsoft.VisualStudio.Services.Agent.Util;
+using Moq;
+using System;
+using System.Collections.Generic;
+using Xunit;
+
+namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
+{
+    public class PromptManagerTestsL0
+    {
+        private readonly Dictionary<string, string> _args = new Dictionary<string, string>();
+        private readonly string _argName = "SomeArgName";
+        private readonly string _description = "Some description";
+        private readonly PromptManager _promptManager = new PromptManager();
+        private readonly Mock<ITerminal> _terminal = new Mock<ITerminal>();
+        private readonly string _unattendedExceptionMessage = StringUtil.Loc("InvalidConfigFor0TerminatingUnattended", "SomeArgName");
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "PromptManager")]
+        public void FallsBackToDefault()
+        {
+            using (TestHostContext hc = new TestHostContext(this))
+            {
+                // Arrange.
+                _terminal
+                    .Setup(x => x.ReadLine())
+                    .Returns(string.Empty);
+                _terminal
+                    .Setup(x => x.ReadSecret())
+                    .Throws<InvalidOperationException>();
+                hc.SetSingleton(_terminal.Object);
+                _promptManager.Initialize(hc);
+
+                // Act.
+                string actual = ReadValue(defaultValue: "Some default value");
+
+                // Assert.
+                Assert.Equal("Some default value", actual);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "PromptManager")]
+        public void FallsBackToDefaultWhenTrimmed()
+        {
+            using (TestHostContext hc = new TestHostContext(this))
+            {
+                // Arrange.
+                _terminal
+                    .Setup(x => x.ReadLine())
+                    .Returns(" ");
+                _terminal
+                    .Setup(x => x.ReadSecret())
+                    .Throws<InvalidOperationException>();
+                hc.SetSingleton(_terminal.Object);
+                _promptManager.Initialize(hc);
+
+                // Act.
+                string actual = ReadValue(defaultValue: "Some default value");
+
+                // Assert.
+                Assert.Equal("Some default value", actual);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "PromptManager")]
+        public void FallsBackToDefaultWhenUnattended()
+        {
+            using (TestHostContext hc = new TestHostContext(this))
+            {
+                // Arrange.
+                _terminal
+                    .Setup(x => x.ReadLine())
+                    .Throws<InvalidOperationException>();
+                _terminal
+                    .Setup(x => x.ReadSecret())
+                    .Throws<InvalidOperationException>();
+                hc.SetSingleton(_terminal.Object);
+                _promptManager.Initialize(hc);
+
+                // Act.
+                string actual = ReadValue(
+                    defaultValue: "Some default value",
+                    unattended: true);
+
+                // Assert.
+                Assert.Equal("Some default value", actual);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "PromptManager")]
+        public void FallsBackToDefaultWhenUnattendedAndArgIsEmpty()
+        {
+            using (TestHostContext hc = new TestHostContext(this))
+            {
+                // Arrange.
+                _args[_argName] = string.Empty;
+                _terminal
+                    .Setup(x => x.ReadLine())
+                    .Throws<InvalidOperationException>();
+                _terminal
+                    .Setup(x => x.ReadSecret())
+                    .Throws<InvalidOperationException>();
+                hc.SetSingleton(_terminal.Object);
+                _promptManager.Initialize(hc);
+
+                // Act.
+                string actual = ReadValue(
+                    defaultValue: "Some default value",
+                    unattended: true);
+
+                // Assert.
+                Assert.Equal("Some default value", actual);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "PromptManager")]
+        public void Prompts()
+        {
+            using (TestHostContext hc = new TestHostContext(this))
+            {
+                // Arrange.
+                _terminal
+                    .Setup(x => x.ReadLine())
+                    .Returns("Some prompt value");
+                _terminal
+                    .Setup(x => x.ReadSecret())
+                    .Throws<InvalidOperationException>();
+                hc.SetSingleton(_terminal.Object);
+                _promptManager.Initialize(hc);
+
+                // Act.
+                string actual = ReadValue();
+
+                // Assert.
+                Assert.Equal("Some prompt value", actual);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "PromptManager")]
+        public void PromptsAgainWhenEmpty()
+        {
+            using (TestHostContext hc = new TestHostContext(this))
+            {
+                // Arrange.
+                var readLineValues = new Queue<string>(new[] { string.Empty, "Some prompt value" });
+                _terminal
+                    .Setup(x => x.ReadLine())
+                    .Returns(() => readLineValues.Dequeue());
+                _terminal
+                    .Setup(x => x.ReadSecret())
+                    .Throws<InvalidOperationException>();
+                hc.SetSingleton(_terminal.Object);
+                _promptManager.Initialize(hc);
+
+                // Act.
+                string actual = ReadValue();
+
+                // Assert.
+                Assert.Equal("Some prompt value", actual);
+                _terminal.Verify(x => x.ReadLine(), Times.Exactly(2));
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "PromptManager")]
+        public void PromptsAgainWhenFailsValidation()
+        {
+            using (TestHostContext hc = new TestHostContext(this))
+            {
+                // Arrange.
+                var readLineValues = new Queue<string>(new[] { "Some invalid prompt value", "Some valid prompt value" });
+                _terminal
+                    .Setup(x => x.ReadLine())
+                    .Returns(() => readLineValues.Dequeue());
+                _terminal
+                    .Setup(x => x.ReadSecret())
+                    .Throws<InvalidOperationException>();
+                hc.SetSingleton(_terminal.Object);
+                _promptManager.Initialize(hc);
+
+                // Act.
+                string actual = ReadValue(validator: x => x == "Some valid prompt value");
+
+                // Assert.
+                Assert.Equal("Some valid prompt value", actual);
+                _terminal.Verify(x => x.ReadLine(), Times.Exactly(2));
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "PromptManager")]
+        public void PromptsWhenArgIsEmpty()
+        {
+            using (TestHostContext hc = new TestHostContext(this))
+            {
+                // Arrange.
+                _args[_argName] = string.Empty;
+                _terminal
+                    .Setup(x => x.ReadLine())
+                    .Returns("Some prompt value");
+                _terminal
+                    .Setup(x => x.ReadSecret())
+                    .Throws<InvalidOperationException>();
+                hc.SetSingleton(_terminal.Object);
+                _promptManager.Initialize(hc);
+
+                // Act.
+                string actual = ReadValue();
+
+                // Assert.
+                Assert.Equal("Some prompt value", actual);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "PromptManager")]
+        public void PromptsWhenArgFailsValidation()
+        {
+            using (TestHostContext hc = new TestHostContext(this))
+            {
+                // Arrange.
+                _args[_argName] = "Some invalid value";
+                _terminal
+                    .Setup(x => x.ReadLine())
+                    .Returns("Some valid prompt value");
+                _terminal
+                    .Setup(x => x.ReadSecret())
+                    .Throws<InvalidOperationException>();
+                hc.SetSingleton(_terminal.Object);
+                _promptManager.Initialize(hc);
+
+                // Act.
+                string actual = ReadValue(validator: x => x == "Some valid prompt value");
+
+                // Assert.
+                Assert.Equal("Some valid prompt value", actual);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "PromptManager")]
+        public void ReturnsArg()
+        {
+            using (TestHostContext hc = new TestHostContext(this))
+            {
+                // Arrange.
+                _args[_argName] = "Some arg value";
+                _terminal
+                    .Setup(x => x.ReadLine())
+                    .Throws<InvalidOperationException>();
+                _terminal
+                    .Setup(x => x.ReadSecret())
+                    .Throws<InvalidOperationException>();
+                hc.SetSingleton(_terminal.Object);
+                _promptManager.Initialize(hc);
+
+                // Act.
+                string actual = ReadValue();
+
+                // Assert.
+                Assert.Equal("Some arg value", actual);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "PromptManager")]
+        public void ThrowsWhenUnattended()
+        {
+            using (TestHostContext hc = new TestHostContext(this))
+            {
+                // Arrange.
+                _terminal
+                    .Setup(x => x.ReadLine())
+                    .Throws<InvalidOperationException>();
+                _terminal
+                    .Setup(x => x.ReadSecret())
+                    .Throws<InvalidOperationException>();
+                hc.SetSingleton(_terminal.Object);
+                _promptManager.Initialize(hc);
+
+                try
+                {
+                    // Act.
+                    string actual = ReadValue(unattended: true);
+
+                    // Assert.
+                    throw new InvalidOperationException();
+                }
+                catch (Exception ex)
+                {
+                    // Assert.
+                    Assert.Equal(_unattendedExceptionMessage, ex.Message);
+                }
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "PromptManager")]
+        public void ThrowsWhenUnattendedAndFailsValidation()
+        {
+            using (TestHostContext hc = new TestHostContext(this))
+            {
+                // Arrange.
+                _args[_argName] = "Some arg value";
+                _terminal
+                    .Setup(x => x.ReadLine())
+                    .Throws<InvalidOperationException>();
+                _terminal
+                    .Setup(x => x.ReadSecret())
+                    .Throws<InvalidOperationException>();
+                hc.SetSingleton(_terminal.Object);
+                _promptManager.Initialize(hc);
+
+                try
+                {
+                    // Act.
+                    string actual = ReadValue(
+                        validator: x => false,
+                        unattended: true);
+
+                    // Assert.
+                    throw new InvalidOperationException();
+                }
+                catch (Exception ex)
+                {
+                    // Assert.
+                    Assert.Equal(_unattendedExceptionMessage, ex.Message);
+                }
+            }
+        }
+
+        private string ReadValue(
+            bool secret = false,
+            string defaultValue = null,
+            Func<string, bool> validator = null,
+            bool unattended = false)
+        {
+            return _promptManager.ReadValue(
+                argName: _argName,
+                description: _description,
+                secret: secret,
+                defaultValue: defaultValue,
+                validator: validator ?? DefaultValidator,
+                args: _args,
+                unattended: unattended);
+        }
+
+        private static bool DefaultValidator(string val)
+        {
+            return true;
+        }
+    }
+}

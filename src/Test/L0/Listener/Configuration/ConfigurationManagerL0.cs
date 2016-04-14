@@ -17,7 +17,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
     {
         private Mock<IAgentServer> _agentServer;
         private Mock<ICredentialManager> _credMgr;
-        private Mock<IConsoleWizard> _reader;
+        private Mock<IPromptManager> _reader;
         private Mock<IConfigurationStore> _store;
         private string _expectedToken = "expectedToken";
         private string _expectedServerUrl = "https://localhost";
@@ -30,7 +30,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
         {
             _agentServer = new Mock<IAgentServer>();
             _credMgr = new Mock<ICredentialManager>();
-            _reader = new Mock<IConsoleWizard>();
+            _reader = new Mock<IPromptManager>();
             _store = new Mock<IConfigurationStore>();
 
             _agentServer.Setup(x => x.ConnectAsync(It.IsAny<VssConnection>())).Returns(Task.FromResult<object>(null));
@@ -102,7 +102,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
         {
             TestHostContext tc = new TestHostContext(this, testName);
             tc.SetSingleton<ICredentialManager>(this._credMgr.Object);
-            tc.SetSingleton<IConsoleWizard>(_reader.Object);
+            tc.SetSingleton<IPromptManager>(_reader.Object);
             tc.SetSingleton<IConfigurationStore>(_store.Object);
             tc.EnqueueInstance<IAgentServer>(_agentServer.Object);
 

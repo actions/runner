@@ -141,9 +141,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             }
         }
 
-        void CtrlCHandler(object sender, EventArgs e)
+        private void CtrlCHandler(object sender, EventArgs e)
         {
-            Quit();
+            _term.WriteLine("Exiting...");
+            if (_inConfigStage)
+            {
+                HostContext.Dispose();
+                Environment.Exit(1);
+            }
+            else
+            {
+                TokenSource.Cancel();
+            }
         }
 
         //create worker manager, create message listener and start listening to the queue
@@ -224,20 +233,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         private void PrintUsage()
         {
             _term.WriteLine(StringUtil.Loc("ListenerHelp"));
-        }
-
-        private void Quit()
-        {
-            _term.WriteLine("Exiting...");
-            if (_inConfigStage)
-            {
-                HostContext.Dispose();
-                Environment.Exit(1);
-            }
-            else
-            {
-                TokenSource.Cancel();
-            }
         }
     }
 }

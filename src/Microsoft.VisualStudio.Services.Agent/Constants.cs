@@ -4,6 +4,8 @@ namespace Microsoft.VisualStudio.Services.Agent
 {
     public static class Constants
     {
+        public static string SecretMask = "********";
+
         public enum OSPlatform
         {
             OSX,
@@ -13,7 +15,6 @@ namespace Microsoft.VisualStudio.Services.Agent
 
         public static class Agent
         {
-            public static readonly int MaxParallelism = 1;
             public static readonly string Version = "1.999.0";
 
 #if OS_LINUX
@@ -48,6 +49,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         {
             public static readonly string DiagDirectory = "_diag";
             public static readonly string ExternalsDirectory = "externals";
+            public static readonly string TeeDirectory = "tee";
             public static readonly string TaskJsonFile = "task.json";
             public static readonly string TasksDirectory = "_tasks";
         }
