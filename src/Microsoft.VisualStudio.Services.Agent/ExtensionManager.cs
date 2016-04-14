@@ -53,6 +53,7 @@ namespace Microsoft.VisualStudio.Services.Agent
 
                         // Add job extensions:
                         Add(instance, "Microsoft.VisualStudio.Services.Agent.Worker.Build.BuildJobExtension, Agent.Worker");
+                        Add(instance, "Microsoft.VisualStudio.Services.Agent.Worker.Release.ReleaseJobExtension, Agent.Worker");
 
                         // Add command extensions:
                         Add(instance, "Microsoft.VisualStudio.Services.Agent.Worker.TaskCommands, Agent.Worker");
@@ -69,6 +70,10 @@ namespace Microsoft.VisualStudio.Services.Agent
 #elif OS_LINUX || OS_OSX
                         Add(instance, "Microsoft.VisualStudio.Services.Agent.Worker.Build.TfsVCTeeSourceProvider, Agent.Worker");
 #endif
+                        // Add Release Artifact extensions:
+                        Add(instance, "Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts.BuildArtifact, Agent.Worker");
+                        Add(instance, "Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts.JenkinsArtifact, Agent.Worker");
+
                         _cache = instance;
                     }
                 }

@@ -6,6 +6,8 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
+using Microsoft.VisualStudio.Services.Client;
+
 namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
     [ServiceLocator(Default = typeof(JobRunner))]
@@ -36,6 +38,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             // Setup the job server and job server queue.
             var jobServer = HostContext.GetService<IJobServer>();
             await jobServer.ConnectAsync(ApiUtil.GetVssConnection(message));
+
             var jobServerQueue = HostContext.GetService<IJobServerQueue>();
             jobServerQueue.Start(message);
 

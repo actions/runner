@@ -103,7 +103,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             // If no repo was found, send back an empty repo with original path.
             sourcePath = localPath;
 
-            if (!String.IsNullOrEmpty(localPath) &&
+            if (!string.IsNullOrEmpty(localPath) &&
                 File.Exists(localPath) && 
                 SourceEndpoint != null && 
                 SourceProvider != null)
