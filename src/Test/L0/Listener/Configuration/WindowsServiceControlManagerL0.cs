@@ -16,7 +16,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
 {
     public sealed class WindowsServiceControlManagerL0
     {
-        private Mock<IConsoleWizard> _reader;
+        private Mock<IPromptManager> _reader;
 
         private Mock<IProcessInvoker> _processInvoker;
 
@@ -28,7 +28,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
 
         public WindowsServiceControlManagerL0()
         {
-            _reader = new Mock<IConsoleWizard>();
+            _reader = new Mock<IPromptManager>();
             _processInvoker = new Mock<IProcessInvoker>();
             _windowsServiceHelper = new Mock<INativeWindowsServiceHelper>();
 
@@ -67,7 +67,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
         private TestHostContext CreateTestContext([CallerMemberName] String testName = "")
         {
             TestHostContext tc = new TestHostContext(this, testName);
-            tc.SetSingleton<IConsoleWizard>(_reader.Object);
+            tc.SetSingleton<IPromptManager>(_reader.Object);
             tc.SetSingleton<IProcessInvoker>(_processInvoker.Object);
             tc.SetSingleton<INativeWindowsServiceHelper>(_windowsServiceHelper.Object);
             return tc;

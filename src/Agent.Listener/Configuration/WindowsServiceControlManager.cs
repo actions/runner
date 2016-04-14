@@ -37,11 +37,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             // TODO: add entering with info level. By default the error leve would be info. Config changes can get lost with this as entering is at Verbose level. For config all the logs should be logged.
             // TODO: Fix bug that exists in the legacy Windows agent where configuration using mirrored credentials causes an error, but the agent is still functional (after restarting). Mirrored credentials is a supported scenario and shouldn't manifest any errors.
 
-            var consoleWizard = HostContext.GetService<IConsoleWizard>();
+            var promptManager = HostContext.GetService<IPromptManager>();
             string logonPassword = string.Empty;
 
             NTAccount defaultServiceAccount = _windowsServiceHelper.GetDefaultServiceAccount();
-            _logonAccount = consoleWizard.ReadValue(WindowsLogonAccount,
+            _logonAccount = promptManager.ReadValue(WindowsLogonAccount,
                                                 StringUtil.Loc("WindowsLogonAccountNameDescription"),
                                                 false,
                                                 defaultServiceAccount.ToString(),
@@ -62,7 +62,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 while (true)
                 {
                     Trace.Info("Acquiring logon account password");
-                    logonPassword = consoleWizard.ReadValue(WindowsLogonPassword,
+                    logonPassword = promptManager.ReadValue(WindowsLogonPassword,
                                                         StringUtil.Loc("WindowsLogonPasswordDescription", _logonAccount),
                                                         true,
                                                         string.Empty,

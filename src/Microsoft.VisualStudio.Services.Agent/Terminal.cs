@@ -45,12 +45,17 @@ namespace Microsoft.VisualStudio.Services.Agent
 
         public string ReadLine()
         {
-            return Console.ReadLine();
+            // Read and trace the value.
+            Trace.Info(nameof(ReadLine));
+            string value = Console.ReadLine();
+            Trace.Info($"Read value: '{value}'");
+            return value;
         }
 
         // TODO: Consider using SecureString.
         public string ReadSecret()
         {
+            Trace.Info(nameof(ReadSecret));
             var chars = new List<char>();
             while (true)
             {
@@ -75,8 +80,17 @@ namespace Microsoft.VisualStudio.Services.Agent
                 }
             }
 
+            // Trace whether a value was entered.
             string val = new String(chars.ToArray());
-            Trace.Info("Secret gathered.");
+            if (string.IsNullOrEmpty(val))
+            {
+                Trace.Info("(empty)");
+            }
+            else
+            {
+                Trace.Info($"Read value: '{Constants.SecretMask}'");
+            }
+
             return val;
         }
 

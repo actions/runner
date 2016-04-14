@@ -19,7 +19,6 @@ namespace Microsoft.VisualStudio.Services.Agent
 
     public sealed class SecretMasker : AgentService, ISecretMasker
     {
-        private const string Mask = "********";
         private readonly ConcurrentDictionary<string, RegexSecret> _regexSecrets = new ConcurrentDictionary<string, RegexSecret>();
         private readonly ConcurrentDictionary<string, ValueSecret> _valueSecrets = new ConcurrentDictionary<string, ValueSecret>();
 
@@ -89,7 +88,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             foreach (var replacement in replacementPositions)
             {
                 stringBuilder.Append(input.Substring(startIndex, replacement.Start - startIndex));
-                stringBuilder.Append(Mask);
+                stringBuilder.Append(Constants.SecretMask);
                 startIndex = replacement.Start + replacement.Length;
             }
 

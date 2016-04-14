@@ -52,8 +52,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
         public override void ReadCredential(IHostContext context, Dictionary<string, string> args, bool enforceSupplied)
         {
-            var wizard = context.GetService<IConsoleWizard>();
-            CredentialData.Data["Username"] = wizard.ReadValue(CliArgs.UserName,
+            var promptManager = context.GetService<IPromptManager>();
+            CredentialData.Data["Username"] = promptManager.ReadValue(CliArgs.UserName,
                                             StringUtil.Loc("NTLMUsername"),
                                             false,
                                             String.Empty,
@@ -62,7 +62,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                                             args,
                                             enforceSupplied);
 
-            CredentialData.Data["Password"] = wizard.ReadValue(CliArgs.Password,
+            CredentialData.Data["Password"] = promptManager.ReadValue(CliArgs.Password,
                                             StringUtil.Loc("NTLMPassword"),
                                             true,
                                             String.Empty,
