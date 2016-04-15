@@ -11,7 +11,75 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Util
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
-        public void DeletesDirectoriesRecursively()
+        public void Delete_DeletesDirectory()
+        {
+            using (TestHostContext hc = new TestHostContext(this))
+            {
+                Tracing trace = hc.GetTrace();
+
+                // Arrange: Create a directory with a file.
+                string directory = Path.Combine(IOUtil.GetBinPath(), Path.GetRandomFileName());
+                string file = Path.Combine(directory, "some file");
+                try
+                {
+                    Directory.CreateDirectory(directory);
+                    File.WriteAllText(path: file, contents: "some contents");
+
+                    // Act.
+                    IOUtil.Delete(directory, CancellationToken.None);
+
+                    // Assert.
+                    Assert.False(Directory.Exists(directory));
+                }
+                finally
+                {
+                    // Cleanup.
+                    if (Directory.Exists(directory))
+                    {
+                        Directory.Delete(directory, recursive: true);
+                    }
+                }
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void Delete_DeletesFile()
+        {
+            using (TestHostContext hc = new TestHostContext(this))
+            {
+                Tracing trace = hc.GetTrace();
+
+                // Arrange: Create a directory with a file.
+                string directory = Path.Combine(IOUtil.GetBinPath(), Path.GetRandomFileName());
+                string file = Path.Combine(directory, "some file");
+                try
+                {
+                    Directory.CreateDirectory(directory);
+                    File.WriteAllText(path: file, contents: "some contents");
+
+                    // Act.
+                    IOUtil.Delete(file, CancellationToken.None);
+
+                    // Assert.
+                    Assert.False(File.Exists(file));
+                }
+                finally
+                {
+                    // Cleanup.
+                    if (Directory.Exists(directory))
+                    {
+                        Directory.Delete(directory, recursive: true);
+                    }
+                }
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void DeleteDirectory_DeletesDirectoriesRecursively()
         {
             using (TestHostContext hc = new TestHostContext(this))
             {
@@ -43,7 +111,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Util
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
-        public void DeletesFilesRecursively()
+        public void DeleteDirectory_DeletesFilesRecursively()
         {
             using (TestHostContext hc = new TestHostContext(this))
             {
@@ -77,7 +145,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Util
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
-        public void DeletesReadOnlyDirectories()
+        public void DeleteDirectory_DeletesReadOnlyDirectories()
         {
             using (TestHostContext hc = new TestHostContext(this))
             {
@@ -118,7 +186,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Util
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
-        public void DeletesReadOnlyRootDirectory()
+        public void DeleteDirectory_DeletesReadOnlyRootDirectory()
         {
             using (TestHostContext hc = new TestHostContext(this))
             {
@@ -154,7 +222,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Util
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
-        public void DeletesReadOnlyFiles()
+        public void DeleteDirectory_DeletesReadOnlyFiles()
         {
             using (TestHostContext hc = new TestHostContext(this))
             {
@@ -183,6 +251,146 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Util
                         File.SetAttributes(file, File.GetAttributes(file) & ~FileAttributes.ReadOnly);
                     }
 
+                    if (Directory.Exists(directory))
+                    {
+                        Directory.Delete(directory, recursive: true);
+                    }
+                }
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void DeleteDirectory_IgnoresFile()
+        {
+            using (TestHostContext hc = new TestHostContext(this))
+            {
+                Tracing trace = hc.GetTrace();
+
+                // Arrange: Create a directory with a file.
+                string directory = Path.Combine(IOUtil.GetBinPath(), Path.GetRandomFileName());
+                string file = Path.Combine(directory, "some file");
+                try
+                {
+                    Directory.CreateDirectory(directory);
+                    File.WriteAllText(path: file, contents: "some contents");
+
+                    // Act.
+                    IOUtil.DeleteDirectory(file, CancellationToken.None);
+
+                    // Assert.
+                    Assert.True(File.Exists(file));
+                }
+                finally
+                {
+                    // Cleanup.
+                    if (Directory.Exists(directory))
+                    {
+                        Directory.Delete(directory, recursive: true);
+                    }
+                }
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void DeleteFile_DeletesFile()
+        {
+            using (TestHostContext hc = new TestHostContext(this))
+            {
+                Tracing trace = hc.GetTrace();
+
+                // Arrange: Create a directory with a file.
+                string directory = Path.Combine(IOUtil.GetBinPath(), Path.GetRandomFileName());
+                string file = Path.Combine(directory, "some file");
+                try
+                {
+                    Directory.CreateDirectory(directory);
+                    File.WriteAllText(path: file, contents: "some contents");
+
+                    // Act.
+                    IOUtil.DeleteFile(file);
+
+                    // Assert.
+                    Assert.False(File.Exists(file));
+                }
+                finally
+                {
+                    // Cleanup.
+                    if (Directory.Exists(directory))
+                    {
+                        Directory.Delete(directory, recursive: true);
+                    }
+                }
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void DeleteFile_DeletesReadOnlyFile()
+        {
+            using (TestHostContext hc = new TestHostContext(this))
+            {
+                Tracing trace = hc.GetTrace();
+
+                // Arrange: Create a directory with a read-only file.
+                string directory = Path.Combine(IOUtil.GetBinPath(), Path.GetRandomFileName());
+                string file = Path.Combine(directory, "some file");
+                try
+                {
+                    Directory.CreateDirectory(directory);
+                    File.WriteAllText(path: file, contents: "some contents");
+                    File.SetAttributes(file, File.GetAttributes(file) | FileAttributes.ReadOnly);
+
+                    // Act.
+                    IOUtil.DeleteFile(file);
+
+                    // Assert.
+                    Assert.False(File.Exists(file));
+                }
+                finally
+                {
+                    // Cleanup.
+                    if (File.Exists(file))
+                    {
+                        File.SetAttributes(file, File.GetAttributes(file) & ~FileAttributes.ReadOnly);
+                    }
+
+                    if (Directory.Exists(directory))
+                    {
+                        Directory.Delete(directory, recursive: true);
+                    }
+                }
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void DeleteFile_IgnoresDirectory()
+        {
+            using (TestHostContext hc = new TestHostContext(this))
+            {
+                Tracing trace = hc.GetTrace();
+
+                // Arrange: Create a directory.
+                string directory = Path.Combine(IOUtil.GetBinPath(), Path.GetRandomFileName());
+                try
+                {
+                    Directory.CreateDirectory(directory);
+
+                    // Act.
+                    IOUtil.DeleteFile(directory);
+
+                    // Assert.
+                    Assert.True(Directory.Exists(directory));
+                }
+                finally
+                {
+                    // Cleanup.
                     if (Directory.Exists(directory))
                     {
                         Directory.Delete(directory, recursive: true);

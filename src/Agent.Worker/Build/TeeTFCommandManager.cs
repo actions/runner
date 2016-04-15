@@ -23,7 +23,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         Task EulaAsync();
         Task GetAsync(string version, string directory);
         string ResolvePath(string workspace, string serverPath);
-        Task ShelveAsync(string directory, string shelveset, string commentFile);
+        Task ShelveAsync(string shelveset, string directory, string commentFile);
         Task<TeeShelveset> ShelvesetsAsync(string workspace, string shelveset);
         Task<TeeStatus> StatusAsync(string workspace);
         bool TestEulaAccepted();
@@ -78,12 +78,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             return localPath;
         }
 
-        public async Task ShelveAsync(string directory, string shelveset, string commentFile)
+        public async Task ShelveAsync(string shelveset, string directory, string commentFile)
         {
-            ArgUtil.NotNullOrEmpty(directory, nameof(directory));
             ArgUtil.NotNullOrEmpty(shelveset, nameof(shelveset));
+            ArgUtil.NotNullOrEmpty(directory, nameof(directory));
             ArgUtil.NotNullOrEmpty(commentFile, nameof(commentFile));
-            await RunPorcelainCommandAsync(FormatFlags.OmitCollectionUrl, "shelve", "-replace", "-recursive", $"-comment:@{commentFile}", shelveset, directory);
+            await RunPorcelainCommandAsync(FormatFlags.OmitCollectionUrl, "shelve", "-saved", "-replace", "-recursive", $"-comment:@{commentFile}", shelveset, directory);
         }
 
         public async Task<TeeShelveset> ShelvesetsAsync(string workspace, string shelveset)
@@ -110,7 +110,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         public async Task<TeeStatus> StatusAsync(string workspace)
         {
             ArgUtil.NotNullOrEmpty(workspace, nameof(workspace));
-            string xml = await RunPorcelainCommandAsync("status", $"-workspace:{workspace}", "-recursive", "-format:xml");
+            string xml = await RunPorcelainCommandAsync("status", $"-workspace:{workspace}", "-recursive", "-nodetect", "-format:xml");
             var serializer = new XmlSerializer(typeof(TeeStatus));
             using (var reader = new StringReader(xml ?? string.Empty))
             {
