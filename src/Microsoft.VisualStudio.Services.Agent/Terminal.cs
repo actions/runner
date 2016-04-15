@@ -21,11 +21,14 @@ namespace Microsoft.VisualStudio.Services.Agent
         void Write(string message);
         void WriteLine();
         void WriteLine(string line);
+        void WriteError(Exception ex);
         void WriteError(string line);
     }
 
     public sealed class Terminal : AgentService, ITerminal
     {
+        private ISecretMasker _secretMasker;
+
         public bool Silent { get; set; }
 
         public event EventHandler CancelKeyPress;
@@ -33,7 +36,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
-
+            _secretMasker = hostContext.GetService<ISecretMasker>();
             Console.CancelKeyPress += Console_CancelKeyPress;
         }
 
@@ -46,7 +49,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         public string ReadLine()
         {
             // Read and trace the value.
-            Trace.Info(nameof(ReadLine));
+            Trace.Info("READ LINE");
             string value = Console.ReadLine();
             Trace.Info($"Read value: '{value}'");
             return value;
@@ -55,7 +58,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         // TODO: Consider using SecureString.
         public string ReadSecret()
         {
-            Trace.Info(nameof(ReadSecret));
+            Trace.Info("READ SECRET");
             var chars = new List<char>();
             while (true)
             {
@@ -82,21 +85,18 @@ namespace Microsoft.VisualStudio.Services.Agent
 
             // Trace whether a value was entered.
             string val = new String(chars.ToArray());
-            if (string.IsNullOrEmpty(val))
+            if (!string.IsNullOrEmpty(val))
             {
-                Trace.Info("(empty)");
-            }
-            else
-            {
-                Trace.Info($"Read value: '{Constants.SecretMask}'");
+                _secretMasker.AddValue(val);
             }
 
+            Trace.Info($"Read value: '{val}'");
             return val;
         }
 
         public void Write(string message)
         {
-            Trace.Info($"term: {message}");
+            Trace.Info($"WRITE: {message}");
             if (!Silent)
             {
                 Console.Write(message);
@@ -109,28 +109,38 @@ namespace Microsoft.VisualStudio.Services.Agent
         }
 
         // Do not add a format string overload. Terminal messages are user facing and therefore
-        // should be localized. Use the Loc extension method in the TerminalExtensions class.
+        // should be localized. Use the Loc method in the StringUtil class.
         public void WriteLine(string line)
         {
-            Trace.Info($"term: {line}");
+            Trace.Info($"WRITE LINE: {line}");
             if (!Silent)
             {
                 Console.WriteLine(line);
             }
         }
 
+        public void WriteError(Exception ex)
+        {
+            Trace.Error("WRITE ERROR (exception):");
+            Trace.Error(ex);
+            if (!Silent)
+            {
+                Console.Error.WriteLine(ex.Message);
+            }
+        }
+
         // Do not add a format string overload. Terminal messages are user facing and therefore
-        // should be localized. Use the Loc methods from the TerminalExtensions class.
+        // should be localized. Use the Loc method in the StringUtil class.
         public void WriteError(string line)
         {
-            Trace.Error($"term: {line}");
+            Trace.Error($"WRITE ERROR: {line}");
             if (!Silent)
             {
                 Console.Error.WriteLine(line);
             }
         }
 
-        void Dispose(bool disposing)
+        private void Dispose(bool disposing)
         {
             if (disposing)
             {

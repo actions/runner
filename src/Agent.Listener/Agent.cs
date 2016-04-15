@@ -11,7 +11,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
     public interface IAgent : IAgentService
     {
         CancellationTokenSource TokenSource { get; set; }
-        Task<int> ExecuteCommand(CommandLineParser parser);
+        Task<int> ExecuteCommand(CommandSettings command);
     }
 
     public sealed class Agent : AgentService, IAgent
@@ -29,7 +29,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             _term = HostContext.GetService<ITerminal>();
         }
 
-        public async Task<int> ExecuteCommand(CommandLineParser parser)
+        public async Task<int> ExecuteCommand(CommandSettings command)
         {
             try
             {
@@ -43,48 +43,42 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
                 // TODO: Invalid config prints usage
 
-                if (parser.Flags.Contains("help"))
+                if (command.Help)
                 {
                     PrintUsage();
                     return 0;
                 }
 
-                if (parser.Flags.Contains("version"))
+                if (command.Version)
                 {
                     _term.WriteLine(Constants.Agent.Version);
                     return 0;
                 }
 
-                if (parser.Flags.Contains("commit"))
+                if (command.Commit)
                 {
                     _term.WriteLine(BuildConstants.Source.CommitHash);
                     return 0;
                 }
 
-                if (parser.IsCommand("unconfigure"))
+                if (command.Unconfigure)
                 {
-                    Trace.Info("unconfigure");
                     // TODO: Unconfiure, remove config and exit
                 }
 
-                if (parser.IsCommand("run") && !configManager.IsConfigured())
+                if (command.Run && !configManager.IsConfigured())
                 {
-                    Trace.Info("run");
                     _term.WriteError(StringUtil.Loc("AgentIsNotConfigured"));
                     PrintUsage();
                     return 1;
                 }
 
                 // unattend mode will not prompt for args if not supplied.  Instead will error.
-                bool isUnattended = parser.Flags.Contains("unattended");
-
-                if (parser.IsCommand("configure"))
+                if (command.Configure)
                 {
-                    Trace.Info("configure");
-
                     try
                     {
-                        await configManager.ConfigureAsync(parser.Args, parser.Flags, isUnattended);
+                        await configManager.ConfigureAsync(command);
                         return 0;
                     }
                     catch (Exception ex)
@@ -95,37 +89,31 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     }
                 }
 
-                if (parser.Flags.Contains("nostart"))
+                if (command.NoStart)
                 {
-                    Trace.Info("No start option, exiting the agent");
                     return 0;
                 }
 
-                if (parser.IsCommand("run") && !configManager.IsConfigured())
+                if (command.Run && !configManager.IsConfigured())
                 {
+                    // TODO: LOC
                     throw new InvalidOperationException("CanNotRunAgent");
                 }
 
                 Trace.Info("Done evaluating commands");
-                bool alreadyConfigured = configManager.IsConfigured();
-                await configManager.EnsureConfiguredAsync();
+                await configManager.EnsureConfiguredAsync(command);
 
                 _inConfigStage = false;
 
                 AgentSettings settings = configManager.LoadSettings();
-                if (parser.IsCommand("run") || !settings.RunAsService)
+                if (command.Run || !settings.RunAsService)
                 {
                     // Run the agent interactively
-                    Trace.Verbose(
-                        StringUtil.Format(
-                            "Run command mentioned: {0}, run as service option mentioned:{1}",
-                            parser.IsCommand("run"),
-                            settings.RunAsService));
-
+                    Trace.Verbose($"Run as service: '{settings.RunAsService}'");
                     return await RunAsync(TokenSource.Token, settings);
                 }
 
-                if (alreadyConfigured)
+                if (configManager.IsConfigured())
                 {
                     // This is helpful if the user tries to start the agent.listener which is already configured or running as service
                     // However user can execute the agent by calling the run command

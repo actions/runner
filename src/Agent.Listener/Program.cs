@@ -17,7 +17,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             return MainAsync(args).GetAwaiter().GetResult();
         }
 
-
         public async static Task<int> MainAsync(string[] args)
         {
             // Validate the binaries intended for one OS are not running on a different OS.
@@ -65,15 +64,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     //
 
                     // Parse the command line args.
-                    CommandLineParser parser = new CommandLineParser(context);
-                    parser.Parse(args);
+                    var command = new CommandSettings(context, args);
                     s_trace.Info("Arguments parsed");
 
                     // Defer to the Agent class to execute the command.
                     IAgent agent = context.GetService<IAgent>();
                     using (agent.TokenSource = new CancellationTokenSource())
                     {
-                        rc = await agent.ExecuteCommand(parser);
+                        rc = await agent.ExecuteCommand(command);
                     }
                 }
                 catch (Exception e)

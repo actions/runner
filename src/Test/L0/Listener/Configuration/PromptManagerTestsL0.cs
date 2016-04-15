@@ -9,7 +9,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
 {
     public class PromptManagerTestsL0
     {
-        private readonly Dictionary<string, string> _args = new Dictionary<string, string>();
         private readonly string _argName = "SomeArgName";
         private readonly string _description = "Some description";
         private readonly PromptManager _promptManager = new PromptManager();
@@ -74,34 +73,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
             using (TestHostContext hc = new TestHostContext(this))
             {
                 // Arrange.
-                _terminal
-                    .Setup(x => x.ReadLine())
-                    .Throws<InvalidOperationException>();
-                _terminal
-                    .Setup(x => x.ReadSecret())
-                    .Throws<InvalidOperationException>();
-                hc.SetSingleton(_terminal.Object);
-                _promptManager.Initialize(hc);
-
-                // Act.
-                string actual = ReadValue(
-                    defaultValue: "Some default value",
-                    unattended: true);
-
-                // Assert.
-                Assert.Equal("Some default value", actual);
-            }
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "PromptManager")]
-        public void FallsBackToDefaultWhenUnattendedAndArgIsEmpty()
-        {
-            using (TestHostContext hc = new TestHostContext(this))
-            {
-                // Arrange.
-                _args[_argName] = string.Empty;
                 _terminal
                     .Setup(x => x.ReadLine())
                     .Throws<InvalidOperationException>();
@@ -203,84 +174,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "PromptManager")]
-        public void PromptsWhenArgIsEmpty()
-        {
-            using (TestHostContext hc = new TestHostContext(this))
-            {
-                // Arrange.
-                _args[_argName] = string.Empty;
-                _terminal
-                    .Setup(x => x.ReadLine())
-                    .Returns("Some prompt value");
-                _terminal
-                    .Setup(x => x.ReadSecret())
-                    .Throws<InvalidOperationException>();
-                hc.SetSingleton(_terminal.Object);
-                _promptManager.Initialize(hc);
-
-                // Act.
-                string actual = ReadValue();
-
-                // Assert.
-                Assert.Equal("Some prompt value", actual);
-            }
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "PromptManager")]
-        public void PromptsWhenArgFailsValidation()
-        {
-            using (TestHostContext hc = new TestHostContext(this))
-            {
-                // Arrange.
-                _args[_argName] = "Some invalid value";
-                _terminal
-                    .Setup(x => x.ReadLine())
-                    .Returns("Some valid prompt value");
-                _terminal
-                    .Setup(x => x.ReadSecret())
-                    .Throws<InvalidOperationException>();
-                hc.SetSingleton(_terminal.Object);
-                _promptManager.Initialize(hc);
-
-                // Act.
-                string actual = ReadValue(validator: x => x == "Some valid prompt value");
-
-                // Assert.
-                Assert.Equal("Some valid prompt value", actual);
-            }
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "PromptManager")]
-        public void ReturnsArg()
-        {
-            using (TestHostContext hc = new TestHostContext(this))
-            {
-                // Arrange.
-                _args[_argName] = "Some arg value";
-                _terminal
-                    .Setup(x => x.ReadLine())
-                    .Throws<InvalidOperationException>();
-                _terminal
-                    .Setup(x => x.ReadSecret())
-                    .Throws<InvalidOperationException>();
-                hc.SetSingleton(_terminal.Object);
-                _promptManager.Initialize(hc);
-
-                // Act.
-                string actual = ReadValue();
-
-                // Assert.
-                Assert.Equal("Some arg value", actual);
-            }
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "PromptManager")]
         public void ThrowsWhenUnattended()
         {
             using (TestHostContext hc = new TestHostContext(this))
@@ -311,42 +204,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
             }
         }
 
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "PromptManager")]
-        public void ThrowsWhenUnattendedAndFailsValidation()
-        {
-            using (TestHostContext hc = new TestHostContext(this))
-            {
-                // Arrange.
-                _args[_argName] = "Some arg value";
-                _terminal
-                    .Setup(x => x.ReadLine())
-                    .Throws<InvalidOperationException>();
-                _terminal
-                    .Setup(x => x.ReadSecret())
-                    .Throws<InvalidOperationException>();
-                hc.SetSingleton(_terminal.Object);
-                _promptManager.Initialize(hc);
-
-                try
-                {
-                    // Act.
-                    string actual = ReadValue(
-                        validator: x => false,
-                        unattended: true);
-
-                    // Assert.
-                    throw new InvalidOperationException();
-                }
-                catch (Exception ex)
-                {
-                    // Assert.
-                    Assert.Equal(_unattendedExceptionMessage, ex.Message);
-                }
-            }
-        }
-
         private string ReadValue(
             bool secret = false,
             string defaultValue = null,
@@ -359,7 +216,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
                 secret: secret,
                 defaultValue: defaultValue,
                 validator: validator ?? DefaultValidator,
-                args: _args,
                 unattended: unattended);
         }
 

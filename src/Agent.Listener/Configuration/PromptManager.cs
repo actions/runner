@@ -12,7 +12,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             string argName,
             string description,
             bool defaultValue,
-            Dictionary<String, String> args,
             bool unattended);
 
         string ReadValue(
@@ -21,11 +20,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             bool secret,
             string defaultValue,
             Func<String, bool> validator,
-            Dictionary<String, String> args,
             bool unattended);
     }
 
-    public class PromptManager : AgentService, IPromptManager
+    public sealed class PromptManager : AgentService, IPromptManager
     {
         private ITerminal _terminal;
 
@@ -39,7 +37,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             string argName,
             string description,
             bool defaultValue,
-            Dictionary<String, String> args,
             bool unattended)
         {
             string answer = ReadValue(
@@ -48,7 +45,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 secret: false,
                 defaultValue: defaultValue ? StringUtil.Loc("Y") : StringUtil.Loc("N"),
                 validator: Validators.BoolValidator,
-                args: args,
                 unattended: unattended);
             return String.Equals(answer, "true", StringComparison.OrdinalIgnoreCase) ||
                 String.Equals(answer, StringUtil.Loc("Y"), StringComparison.CurrentCultureIgnoreCase);
@@ -60,30 +56,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             bool secret,
             string defaultValue,
             Func<string, bool> validator,
-            Dictionary<string, string> args,
             bool unattended)
         {
             Trace.Info(nameof(ReadValue));
             ArgUtil.NotNull(validator, nameof(validator));
             string value = string.Empty;
-
-            // Check if the value was specified on the command line.
-            if (args != null &&
-                args.TryGetValue(argName, out value) &&
-                !string.IsNullOrEmpty(value))
-            {
-                // Return the value if it is valid.
-                Trace.Info(
-                    "args['{0}']: '{1}'",
-                    argName,
-                    secret ? Constants.SecretMask : value);
-                if (validator(value))
-                {
-                    return value;
-                }
-
-                Trace.Info("Invalid value.");
-            }
 
             // Check if unattended.
             if (unattended)

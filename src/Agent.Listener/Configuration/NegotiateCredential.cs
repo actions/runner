@@ -13,64 +13,71 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
         public override VssCredentials GetVssCredentials(IHostContext context)
         {
+            ArgUtil.NotNull(context, nameof(context));
             Tracing trace = context.GetTrace(nameof(NegotiateCredential));
             trace.Info(nameof(GetVssCredentials));
+            ArgUtil.NotNull(CredentialData, nameof(CredentialData));
 
-            if (CredentialData == null || !CredentialData.Data.ContainsKey("Username")
-                || !CredentialData.Data.ContainsKey("Password") || !CredentialData.Data.ContainsKey("Url"))
+            // Get the user name from the credential data.
+            string userName;
+            if (!CredentialData.Data.TryGetValue(Constants.Agent.CommandLine.Args.UserName, out userName))
             {
-                throw new InvalidOperationException("Must call ReadCredential first.");
+                userName = null;
             }
 
-            string username = CredentialData.Data["Username"];
-            trace.Info($"username retrieved: {username.Length} chars");
+            ArgUtil.NotNullOrEmpty(userName, nameof(userName));
+            trace.Info("User name retrieved.");
 
-            string password = CredentialData.Data["Password"];
-            trace.Info($"password retrieved: {password.Length} chars");
+            // Get the password from the credential data.
+            string password;
+            if (!CredentialData.Data.TryGetValue(Constants.Agent.CommandLine.Args.Password, out password))
+            {
+                password = null;
+            }
 
-            //create Negotiate and NTLM credentials
-            var credential = new NetworkCredential(username, password);
+            ArgUtil.NotNullOrEmpty(password, nameof(password));
+            trace.Info("Password retrieved.");
+
+            // Get the URL from the credential data.
+            string url;
+            if (!CredentialData.Data.TryGetValue(Constants.Agent.CommandLine.Args.Url, out url))
+            {
+                url = null;
+            }
+
+            ArgUtil.NotNullOrEmpty(url, nameof(url));
+            trace.Info($"URL retrieved: {url}");
+
+            // Create the Negotiate and NTLM credential object.
+            var credential = new NetworkCredential(userName, password);
             var credentialCache = new CredentialCache();
-            var serverUrl = new Uri(CredentialData.Data["Url"]);
             switch (Constants.Agent.Platform)
             {
-                case Constants.OSPlatform.Linux:                    
+                case Constants.OSPlatform.Linux:
                 case Constants.OSPlatform.OSX:
-                    credentialCache.Add(serverUrl, "NTLM", credential);
+                    credentialCache.Add(new Uri(url), "NTLM", credential);
                     break;
                 case Constants.OSPlatform.Windows:
-                    credentialCache.Add(serverUrl, "Negotiate", credential);
+                    credentialCache.Add(new Uri(url), "Negotiate", credential);
                     break;
-            }            
+            }
             
             VssCredentials creds = new VssClientCredentials(new WindowsCredential(credentialCache));
-
             trace.Verbose("cred created");
-
             return creds;
         }
 
-        public override void ReadCredential(IHostContext context, Dictionary<string, string> args, bool enforceSupplied)
+        public override void EnsureCredential(IHostContext context, CommandSettings command, string serverUrl)
         {
-            var promptManager = context.GetService<IPromptManager>();
-            CredentialData.Data["Username"] = promptManager.ReadValue(CliArgs.UserName,
-                                            StringUtil.Loc("NTLMUsername"),
-                                            false,
-                                            String.Empty,
-                                            //TODO: use Validators.NTAccountValidator when it works on Linux
-                                            Validators.NonEmptyValidator,
-                                            args,
-                                            enforceSupplied);
-
-            CredentialData.Data["Password"] = promptManager.ReadValue(CliArgs.Password,
-                                            StringUtil.Loc("NTLMPassword"),
-                                            true,
-                                            String.Empty,
-                                            Validators.NonEmptyValidator,
-                                            args,
-                                            enforceSupplied);
-
-            CredentialData.Data["Url"] = args[CliArgs.Url];
+            ArgUtil.NotNull(context, nameof(context));
+            Tracing trace = context.GetTrace(nameof(PersonalAccessToken));
+            trace.Info(nameof(EnsureCredential));
+            ArgUtil.NotNull(command, nameof(command));
+            ArgUtil.NotNullOrEmpty(serverUrl, nameof(serverUrl));
+            //TODO: use Validators.NTAccountValidator when it works on Linux
+            CredentialData.Data[Constants.Agent.CommandLine.Args.UserName] = command.GetUserName();
+            CredentialData.Data[Constants.Agent.CommandLine.Args.Password] = command.GetPassword();
+            CredentialData.Data[Constants.Agent.CommandLine.Args.Url] = serverUrl;
         }
     }
 }

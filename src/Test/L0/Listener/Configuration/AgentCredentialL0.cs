@@ -1,3 +1,4 @@
+using Microsoft.VisualStudio.Services.Agent.Listener;
 using Microsoft.VisualStudio.Services.Agent.Listener.Configuration;
 using Microsoft.VisualStudio.Services.Client;
 using Microsoft.VisualStudio.Services.Common;
@@ -20,7 +21,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
 
             return creds;
         }        
-        public override void ReadCredential(IHostContext context, Dictionary<string, string> args, bool isUnattended)
+        public override void EnsureCredential(IHostContext context, CommandSettings command, string serverUrl)
         {
         }
     }

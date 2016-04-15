@@ -1,3 +1,4 @@
+using Microsoft.VisualStudio.Services.Agent.Util;
 using Microsoft.VisualStudio.Services.Common;
 using System.Collections.Generic;
 
@@ -9,7 +10,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
         public override VssCredentials GetVssCredentials(IHostContext context)
         {
-            Tracing trace = context.GetTrace(nameof(NegotiateCredential));
+            ArgUtil.NotNull(context, nameof(context));
+            Tracing trace = context.GetTrace(nameof(IntegratedCredential));
             trace.Info(nameof(GetVssCredentials));
 
             // Create instance of VssConnection using default Windows credentials (NTLM)
@@ -20,7 +22,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             return creds;
         }
 
-        public override void ReadCredential(IHostContext context, Dictionary<string, string> args, bool enforceSupplied)
+        public override void EnsureCredential(IHostContext context, CommandSettings command, string serverUrl)
         {
             //Integrated credentials do not require any configuration parameters
         }
