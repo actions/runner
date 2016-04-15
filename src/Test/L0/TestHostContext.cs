@@ -42,7 +42,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             }
 
             Stream logFile = File.Create(TraceFileName);
-            var traceListener = new TextWriterTraceListener(logFile);
+            var traceListener = new HostTraceListener(logFile);
             _secretMasker = new SecretMasker();
             _traceManager = new TraceManager(traceListener, _secretMasker);
             SetSingleton<ISecretMasker>(_secretMasker);

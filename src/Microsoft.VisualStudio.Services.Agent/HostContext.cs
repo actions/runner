@@ -49,8 +49,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                 FileAccess.ReadWrite,
                 FileShare.Read,
                 bufferSize: 4096);
-            TextWriterTraceListener traceListener = new TextWriterTraceListener(logStream);
-            _traceManager = new TraceManager(traceListener, GetService<ISecretMasker>());
+            _traceManager = new TraceManager(new HostTraceListener(logStream), GetService<ISecretMasker>());
             _trace = GetTrace(nameof(HostContext));
         }
 

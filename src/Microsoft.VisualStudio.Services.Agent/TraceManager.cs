@@ -11,19 +11,20 @@ namespace Microsoft.VisualStudio.Services.Agent
         Tracing this[string name] { get; }
     }
 
+    // TODO: Handle paging.
     public sealed class TraceManager : ITraceManager
     {
         private readonly ConcurrentDictionary<string, Tracing> _sources = new ConcurrentDictionary<string, Tracing>(StringComparer.OrdinalIgnoreCase);
-        private readonly TextWriterTraceListener _hostTraceListener;
+        private readonly HostTraceListener _hostTraceListener;
         private TraceSetting _traceSetting;
         private ISecretMasker _secretMasker;
 
-        public TraceManager(TextWriterTraceListener traceListener, ISecretMasker secretMasker)
+        public TraceManager(HostTraceListener traceListener, ISecretMasker secretMasker)
             : this(traceListener, new TraceSetting(), secretMasker)
         {
         }
         
-        public TraceManager(TextWriterTraceListener traceListener, TraceSetting traceSetting, ISecretMasker secretMasker)
+        public TraceManager(HostTraceListener traceListener, TraceSetting traceSetting, ISecretMasker secretMasker)
         {
             // Validate and store params.
             ArgUtil.NotNull(traceListener, nameof(traceListener));
