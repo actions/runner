@@ -142,18 +142,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         private void SetCulture(JobRequestMessage message)
         {
             // Extract the culture name from the job's variable dictionary.
+            // The variable does not exist for TFS 2015 RTM and Update 1.
+            // It was introduced in Update 2.
             string culture;
             ArgUtil.NotNull(message.Environment, nameof(message.Environment));
             ArgUtil.NotNull(message.Environment.Variables, nameof(message.Environment.Variables));
-            if (!message.Environment.Variables.TryGetValue(Constants.Variables.System.Culture, out culture))
+            if (message.Environment.Variables.TryGetValue(Constants.Variables.System.Culture, out culture))
             {
-                culture = null;
+                // Set the default thread culture.
+                HostContext.SetDefaultCulture(culture);
             }
-
-            // Set the default thread culture.
-            // TODO: Does this validation need to be removed? The variable does not exist prior to 2015 Update 2.
-            ArgUtil.NotNullOrEmpty(culture, nameof(culture));
-            HostContext.SetDefaultCulture(culture);
         }
     }
 }
