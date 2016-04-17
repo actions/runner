@@ -26,7 +26,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             ArgUtil.NotNull(Data, nameof(Data));
             ArgUtil.NotNull(ExecutionContext, nameof(ExecutionContext));
             ArgUtil.NotNull(Inputs, nameof(Inputs));
-            ArgUtil.NotNull(TaskDirectory, nameof(TaskDirectory));
+            ArgUtil.Directory(TaskDirectory, nameof(TaskDirectory));
 
             // Update the env dictionary.
             AddInputsToEnvironment();
@@ -37,10 +37,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             string target = Data.Target;
             ArgUtil.NotNullOrEmpty(target, nameof(target));
             target = Path.Combine(TaskDirectory, target);
-            if (!File.Exists(target))
-            {
-                throw new Exception(StringUtil.Loc("TaskScriptDoesNotExist", target));
-            }
+            ArgUtil.File(target, nameof(target));
 
             // Resolve the working directory.
             string workingDirectory = Data.WorkingDirectory;
@@ -48,15 +45,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             {
                 workingDirectory = TaskDirectory;
             }
-            else if (!Directory.Exists(workingDirectory))
-            {
-                throw new Exception(StringUtil.Loc("TaskWorkingDirectoryDoesNotExist", workingDirectory));
-            }
+
+            ArgUtil.Directory(workingDirectory, nameof(workingDirectory));
 
             // Setup the process invoker.
             using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
             {
-                object outputLock = new object();
                 processInvoker.OutputDataReceived += OnDataReceived;
                 processInvoker.ErrorDataReceived += OnDataReceived;
                 string node = Path.Combine(

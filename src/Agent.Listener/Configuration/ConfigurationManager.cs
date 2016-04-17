@@ -84,7 +84,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
                     // Verify the EULA exists on disk in the expected location.
                     string eulaFile = Path.Combine(IOUtil.GetExternalsPath(), Constants.Path.TeeDirectory, "license.html");
-                    IOUtil.AssertFile(eulaFile);
+                    ArgUtil.File(eulaFile, nameof(eulaFile));
 
                     // Write elaborate verbiage about the TEE EULA.
                     _term.WriteLine(StringUtil.Loc("TeeEula", eulaFile));

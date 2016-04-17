@@ -47,6 +47,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             {
                 Trace.Info($"Processing step: DisplayName='{step.DisplayName}', AlwaysRun={step.AlwaysRun}, ContinueOnError={step.ContinueOnError}, Critical={step.Critical}, Enabled={step.Enabled}, Finally={step.Finally}");
 
+                // TODO: Maintain agent.jobstatus.
                 // TODO: Disabled steps may have already been removed. Investigate.
 
                 // Skip the current step if it is not Enabled.

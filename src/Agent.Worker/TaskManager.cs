@@ -107,10 +107,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 from task in tasks
                 where task.Enabled
                 group task by new
-                    {
-                        task.Id,
-                        task.Version
-                    }
+                {
+                    task.Id,
+                    task.Version
+                }
                 into taskGrouping
                 select taskGrouping.First();
             foreach (TaskInstance task in uniqueTasks)
@@ -137,7 +137,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             // Replace the macros within the handler data sections.
             foreach (HandlerData handlerData in (definition.Data?.Execution?.All as IEnumerable<HandlerData> ?? new HandlerData[0]))
             {
-                handlerData?.ReplaceMacros(definition);
+                handlerData?.ReplaceMacros(HostContext, definition);
             }
 
             return definition;
@@ -159,11 +159,34 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
     public sealed class ExecutionData
     {
         private readonly List<HandlerData> _all = new List<HandlerData>();
+        //private AzurePowerShellHandlerData _powerShell;
         private NodeHandlerData _node;
+        //private PowerShellHandlerData _powerShell;
+        private PowerShell3HandlerData _powerShell3;
+        private PowerShellExeHandlerData _powerShellExe;
         private ProcessHandlerData _process;
 
         [JsonIgnore]
         public List<HandlerData> All => _all;
+
+/*
+#if !OS_WINDOWS
+        [JsonIgnore]
+#endif
+        public AzurePowerShellHandlerData AzurePowerShell
+        {
+            get
+            {
+                return _azurePowerShell;
+            }
+
+            set
+            {
+                _azurePowerShell = value;
+                Add(value);
+            }
+        }
+*/
 
         public NodeHandlerData Node
         {
@@ -175,6 +198,59 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             set
             {
                 _node = value;
+                Add(value);
+            }
+        }
+
+/*
+#if !OS_WINDOWS
+        [JsonIgnore]
+#endif
+        public PowerShellHandlerData PowerShell
+        {
+            get
+            {
+                return _powerShell;
+            }
+
+            set
+            {
+                _powerShell = value;
+                Add(value);
+            }
+        }
+*/
+
+#if !OS_WINDOWS
+        [JsonIgnore]
+#endif
+        public PowerShell3HandlerData PowerShell3
+        {
+            get
+            {
+                return _powerShell3;
+            }
+
+            set
+            {
+                _powerShell3 = value;
+                Add(value);
+            }
+        }
+
+#if !OS_WINDOWS
+        [JsonIgnore]
+#endif
+        public PowerShellExeHandlerData PowerShellExe
+        {
+            get
+            {
+                return _powerShellExe;
+            }
+
+            set
+            {
+                _powerShellExe = value;
                 Add(value);
             }
         }
@@ -207,12 +283,30 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
     public abstract class HandlerData
     {
-        public static readonly string CurrentDirectoryMacro = "$(currentdirectory)";
+        public Dictionary<string, string> Inputs { get; }
 
         public string[] Platforms { get; set; }
+
         [JsonIgnore]
         public abstract int Priority { get; }
-        public string Target { get; set; }
+
+        public string Target
+        {
+            get
+            {
+                return GetInput(nameof(Target));
+            }
+
+            set
+            {
+                SetInput(nameof(Target), value);
+            }
+        }
+
+        public HandlerData()
+        {
+            Inputs = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        }
 
         public bool PreferredOnCurrentPlatform()
         {
@@ -224,63 +318,215 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 #endif
         }
 
-        public virtual void ReplaceMacros(Definition definition)
+        public void ReplaceMacros(IHostContext context, Definition definition)
         {
-            Target = Replace(input: Target, macro: CurrentDirectoryMacro, replacement: definition.Directory);
+            var handlerVariables = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            handlerVariables["currentdirectory"] = definition.Directory;
+            VarUtil.ExpandValues(context, source: handlerVariables, target: Inputs);
         }
 
-        protected static string Replace(string input, string macro, string replacement)
+        protected string GetInput(string name)
         {
-            // Validate or coalesce args.
-            input = input ?? string.Empty;
-            ArgUtil.NotNullOrEmpty(macro, nameof(macro));
-            replacement = replacement ?? string.Empty;
-
-            // Bump the start index with each replacement to prevent recursive replacement.
-            int startIndex = 0;
-            int matchIndex;
-            while (startIndex < input.Length &&
-                (matchIndex = input.IndexOf(macro, startIndex, StringComparison.OrdinalIgnoreCase)) >= 0)
+            string value;
+            if (Inputs.TryGetValue(name, out value))
             {
-                input = string.Concat(
-                    input.Substring(0, matchIndex),
-                    replacement,
-                    input.Substring(matchIndex + macro.Length));
-                startIndex = matchIndex + replacement.Length;
+                return value ?? string.Empty;
             }
 
-            return input;
+            return string.Empty;
+        }
+
+        protected void SetInput(string name, string value)
+        {
+            Inputs[name] = value;
         }
     }
 
     public sealed class NodeHandlerData : HandlerData
     {
         public override int Priority => 1;
-        public string WorkingDirectory { get; set; }
 
-        public override void ReplaceMacros(Definition definition)
+        public string WorkingDirectory
         {
-            base.ReplaceMacros(definition);
-            WorkingDirectory = Replace(input: WorkingDirectory, macro: CurrentDirectoryMacro, replacement: definition.Directory);
+            get
+            {
+                return GetInput(nameof(WorkingDirectory));
+            }
+
+            set
+            {
+                SetInput(nameof(WorkingDirectory), value);
+            }
         }
     }
 
-    // TODO: PowerShell3
-    // TODO: PowerShell
-    // TODO: AzurePowerShell
-    // TODO: PowerShellExe
+    public sealed class PowerShell3HandlerData : HandlerData
+    {
+        public override int Priority => 2;
+    }
+
+/*
+    public sealed class PowerShellHandlerData : HandlerData
+    {
+        public string ArgumentFormat
+        {
+            get
+            {
+                return GetInput(nameof(ArgumentFormat));
+            }
+
+            set
+            {
+                SetInput(nameof(ArgumentFormat), value);
+            }
+        }
+
+        public override int Priority => 3;
+
+        public string WorkingDirectory
+        {
+            get
+            {
+                return GetInput(nameof(WorkingDirectory));
+            }
+
+            set
+            {
+                SetInput(nameof(WorkingDirectory), value);
+            }
+        }
+    }
+
+    public sealed class AzurePowerShellHandlerData : HandlerData
+    {
+        public string ArgumentFormat
+        {
+            get
+            {
+                return GetInput(nameof(ArgumentFormat));
+            }
+
+            set
+            {
+                SetInput(nameof(ArgumentFormat), value);
+            }
+        }
+
+        public override int Priority => 4;
+
+        public string WorkingDirectory
+        {
+            get
+            {
+                return GetInput(nameof(WorkingDirectory));
+            }
+
+            set
+            {
+                SetInput(nameof(WorkingDirectory), value);
+            }
+        }
+    }
+*/
+
+    public sealed class PowerShellExeHandlerData : HandlerData
+    {
+        public string ArgumentFormat
+        {
+            get
+            {
+                return GetInput(nameof(ArgumentFormat));
+            }
+
+            set
+            {
+                SetInput(nameof(ArgumentFormat), value);
+            }
+        }
+
+        public string InlineScript
+        {
+            get
+            {
+                return GetInput(nameof(InlineScript));
+            }
+
+            set
+            {
+                SetInput(nameof(InlineScript), value);
+            }
+        }
+
+        public override int Priority => 5;
+
+        public string ScriptType
+        {
+            get
+            {
+                return GetInput(nameof(ScriptType));
+            }
+
+            set
+            {
+                SetInput(nameof(ScriptType), value);
+            }
+        }
+
+        public string WorkingDirectory
+        {
+            get
+            {
+                return GetInput(nameof(WorkingDirectory));
+            }
+
+            set
+            {
+                SetInput(nameof(WorkingDirectory), value);
+            }
+        }
+    }
 
     public sealed class ProcessHandlerData : HandlerData
     {
-        public string ArgumentFormat { get; set; }
-        public override int Priority => 6;
-        public string WorkingDirectory { get; set; }
-
-        public override void ReplaceMacros(Definition definition)
+        public string ArgumentFormat
         {
-            base.ReplaceMacros(definition);
-            ArgumentFormat = Replace(input: ArgumentFormat, macro: CurrentDirectoryMacro, replacement: definition.Directory);
-            WorkingDirectory = Replace(input: WorkingDirectory, macro: CurrentDirectoryMacro, replacement: definition.Directory);
+            get
+            {
+                return GetInput(nameof(ArgumentFormat));
+            }
+
+            set
+            {
+                SetInput(nameof(ArgumentFormat), value);
+            }
+        }
+
+        public string ModifyEnvironment
+        {
+            get
+            {
+                return GetInput(nameof(ModifyEnvironment));
+            }
+
+            set
+            {
+                SetInput(nameof(ModifyEnvironment), value);
+            }
+        }
+
+        public override int Priority => 6;
+
+        public string WorkingDirectory
+        {
+            get
+            {
+                return GetInput(nameof(WorkingDirectory));
+            }
+
+            set
+            {
+                SetInput(nameof(WorkingDirectory), value);
+            }
         }
     }
 }

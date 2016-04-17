@@ -5,6 +5,7 @@ namespace Microsoft.VisualStudio.Services.Agent
     public static class Constants
     {
         public static string SecretMask = "********";
+        public static string TFBuild = "TF_BUILD";
 
         public enum OSPlatform
         {

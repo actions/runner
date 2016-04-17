@@ -82,11 +82,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
         /// <param name="value"></param>
         /// <param name="defaultValue">default result when value is null or empty or not a valid true/false string.</param>
         /// <returns></returns>
-        public static bool ConvertToBoolean(string value, bool? defaultValue = null)
+        public static bool ConvertToBoolean(string value, bool defaultValue = false)
         {
             if (string.IsNullOrEmpty(value))
             {
-                return defaultValue ?? false;
+                return defaultValue;
             }
 
             switch (value.ToLowerInvariant())
@@ -100,7 +100,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
                 case "$false":
                     return false;
                 default:
-                    return defaultValue ?? false;
+                    return defaultValue;
             }
         }
 

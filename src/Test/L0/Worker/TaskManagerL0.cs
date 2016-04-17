@@ -438,8 +438,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                 };
 
                 // Act.
-                node.ReplaceMacros(definition);
-                process.ReplaceMacros(definition);
+                node.ReplaceMacros(_hc, definition);
+                process.ReplaceMacros(_hc, definition);
 
                 // Assert.
                 Assert.Equal($@"{Directory}\Some node target", node.Target);
@@ -463,7 +463,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             {
                 // Arrange.
                 Setup();
-                string directory = $"{HandlerData.CurrentDirectoryMacro}{HandlerData.CurrentDirectoryMacro}";
+                string directory = "$(currentdirectory)$(currentdirectory)";
                 Definition definition = new Definition() { Directory = directory };
                 NodeHandlerData node = new NodeHandlerData()
                 {
@@ -471,7 +471,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                 };
 
                 // Act.
-                node.ReplaceMacros(definition);
+                node.ReplaceMacros(_hc, definition);
 
                 // Assert.
                 Assert.Equal($@"{directory}\Some node target", node.Target);
@@ -499,7 +499,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                 };
 
                 // Act.
-                node.ReplaceMacros(definition);
+                node.ReplaceMacros(_hc, definition);
 
                 // Assert.
                 Assert.Equal($@"{Directory}{Directory}\Some node target", node.Target);

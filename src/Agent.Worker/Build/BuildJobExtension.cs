@@ -159,7 +159,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             executionContext.Variables.Set(Constants.Variables.Build.StagingDirectory, Path.Combine(_workDirectory, trackingConfig.ArtifactsDirectory));
             executionContext.Variables.Set(Constants.Variables.Build.ArtifactStagingDirectory, Path.Combine(_workDirectory, trackingConfig.ArtifactsDirectory));
 
-            executionContext.Variables.Set(Constants.Variables.Build.RepoId, SourceEndpoint.Id.ToString("D"));
+            executionContext.Variables.Set(Constants.Variables.Build.RepoId, SourceEndpoint.Id.ToString("D")); // TODO: This is getting set to the empty guid.
             executionContext.Variables.Set(Constants.Variables.Build.RepoName, SourceEndpoint.Name);
             executionContext.Variables.Set(Constants.Variables.Build.RepoProvider, SourceEndpoint.Type);
             executionContext.Variables.Set(Constants.Variables.Build.RepoUri, SourceEndpoint.Url?.AbsoluteUri);

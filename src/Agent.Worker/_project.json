@@ -39,6 +39,7 @@
         "System.IO.Compression.ZipFile": "4.0.1-rc3-24011-00",
         "System.Linq": "4.1.0-rc3-24011-00",
         "System.Security.Cryptography.Primitives" : "4.0.0-rc3-24011-00",
+        "System.Security.Cryptography.ProtectedData": "4.0.0-rc3-24011-00",
         "NETStandard.Library": "1.5.0-rc3-24011-00"
     },
 

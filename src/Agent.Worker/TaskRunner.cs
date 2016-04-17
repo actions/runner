@@ -49,8 +49,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 .FirstOrDefault();
             if (handlerData == null)
             {
-                // TODO: BETTER ERROR AND LOC
-                throw new Exception("Supported handler not found.");
+                throw new Exception(StringUtil.Loc("SupportedTaskHandlerNotFound"));
             }
 
             // Load the default input values from the definition.
@@ -79,30 +78,36 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             // Expand the inputs.
             Trace.Verbose("Expanding inputs.");
             ExecutionContext.Variables.ExpandValues(target: inputs);
+            VarUtil.ExpandEnvironmentVariables(HostContext, target: inputs);
 
-            // Delegate to the JobExtension to fixup the file path inputs.
+            // Translate the server file path inputs to local paths.
             foreach (var input in definition.Data?.Inputs ?? new TaskInputDefinition[0])
             {
-                if (String.Equals(input.InputType, TaskInputType.FilePath, StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(input.InputType, TaskInputType.FilePath, StringComparison.OrdinalIgnoreCase))
                 {
-                    Trace.Verbose($"Expanding filepath type input {input.Name}: {inputs[input.Name] ?? string.Empty}.");
-                    inputs[input.Name] = ExpandFilePathInput(inputs[input.Name] ?? string.Empty);
-                    Trace.Verbose($"Expanded filepath type input {input.Name}: {inputs[input.Name] ?? string.Empty}.");
+                    Trace.Verbose($"Translating file path input '{input.Name}': '{inputs[input.Name]}'");
+                    inputs[input.Name] = TranslateFilePathInput(inputs[input.Name] ?? string.Empty);
+                    Trace.Verbose($"Translated file path input '{input.Name}': '{inputs[input.Name]}'");
                 }
             }
+
+            // Expand the handler inputs.
+            Trace.Verbose("Expanding handler inputs.");
+            VarUtil.ExpandValues(HostContext, source: inputs, target: handlerData.Inputs);
 
             // Create the handler.
             IHandler handler = handlerFactory.Create(
                 ExecutionContext,
                 handlerData,
                 inputs,
-                taskDirectory: definition.Directory);
+                taskDirectory: definition.Directory,
+                filePathInputRootDirectory: TranslateFilePathInput(string.Empty));
 
             // Run the task.
             await handler.RunAsync();
         }
 
-        private string ExpandFilePathInput(string inputValue)
+        private string TranslateFilePathInput(string inputValue)
         {
             Trace.Entering();
 
