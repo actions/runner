@@ -314,6 +314,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 {
                     agent = new TaskAgent(agentName)
                     {
+                        MaxParallelism = 1,
                         Version = Constants.Agent.Version
                     };
 
