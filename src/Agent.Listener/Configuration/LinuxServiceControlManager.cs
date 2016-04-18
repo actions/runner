@@ -21,8 +21,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
         public override bool ConfigureService(
             AgentSettings settings,
-            Dictionary<string, string> args,
-            bool enforceSupplied)
+            CommandSettings command)
         {
             Trace.Entering();
 

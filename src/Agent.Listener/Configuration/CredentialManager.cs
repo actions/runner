@@ -6,6 +6,7 @@ using System.Diagnostics;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 {
+    // TODO: Refactor extension manager to enable using it from the agent process.
     [ServiceLocator(Default = typeof(CredentialManager))]
     public interface ICredentialManager: IAgentService
     {
@@ -25,7 +26,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
         public ICredentialProvider GetCredentialProvider(string credType)
         {
-            Trace.Info("Create()");
+            Trace.Info(nameof(GetCredentialProvider));
             Trace.Info("Creating type {0}", credType);
 
             if (!CredentialTypes.ContainsKey(credType))

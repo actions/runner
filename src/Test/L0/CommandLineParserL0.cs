@@ -1,20 +1,24 @@
+using Moq;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using Xunit;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests
 {
     public sealed class CommandLineParserL0
     {
+        private readonly Mock<ISecretMasker> _secretMasker = new Mock<ISecretMasker>();
+
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
         public void CanConstruct()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = CreateTestContext())
             {
                 Tracing trace = hc.GetTrace();
 
-                CommandLineParser clp = new CommandLineParser(hc);
+                CommandLineParser clp = new CommandLineParser(hc, secretArgNames: new string[0]);
                 trace.Info("Constructed");
 
                 Assert.NotNull(clp); 
@@ -24,13 +28,44 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
+        public void MasksSecretArgs()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange.
+                CommandLineParser clp = new CommandLineParser(
+                    hc,
+                    secretArgNames: new[] { "SecretArg1", "SecretArg2" });
+
+                // Assert.
+                clp.Parse(new string[]
+                {
+                    "cmd",
+                    "--secretarg1",
+                    "secret value 1",
+                    "--publicarg",
+                    "public arg value",
+                    "--secretarg2",
+                    "secret value 2",
+                });
+
+                // Assert.
+                _secretMasker.Verify(x => x.AddValue("secret value 1"));
+                _secretMasker.Verify(x => x.AddValue("secret value 2"));
+                _secretMasker.Verify(x => x.AddValue(It.IsAny<string>()), Times.Exactly(2));
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
         public void ParsesCommands()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = CreateTestContext())
             {
                 Tracing trace = hc.GetTrace();
 
-                CommandLineParser clp = new CommandLineParser(hc);
+                CommandLineParser clp = new CommandLineParser(hc, secretArgNames: new string[0]);
                 trace.Info("Constructed.");
 
                 clp.Parse(new string[]{"cmd1", "cmd2", "--arg1", "arg1val", "badcmd"});
@@ -46,11 +81,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Trait("Category", "Common")]
         public void ParsesArgs()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = CreateTestContext())
             {
                 Tracing trace = hc.GetTrace();
 
-                CommandLineParser clp = new CommandLineParser(hc);
+                CommandLineParser clp = new CommandLineParser(hc, secretArgNames: new string[0]);
                 trace.Info("Constructed.");
 
                 clp.Parse(new string[]{"cmd1", "--arg1", "arg1val", "--arg2", "arg2val"});
@@ -70,11 +105,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Trait("Category", "Common")]
         public void ParsesFlags()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = CreateTestContext())
             {
                 Tracing trace = hc.GetTrace();
 
-                CommandLineParser clp = new CommandLineParser(hc);
+                CommandLineParser clp = new CommandLineParser(hc, secretArgNames: new string[0]);
                 trace.Info("Constructed.");
 
                 clp.Parse(new string[]{"cmd1", "--flag1", "--arg1", "arg1val", "--flag2"});
@@ -85,6 +120,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 Assert.True(clp.Flags.Contains("flag1"));
                 Assert.True(clp.Flags.Contains("flag2"));
             }
+        }
+
+        private TestHostContext CreateTestContext([CallerMemberName] string testName = "")
+        {
+            TestHostContext hc = new TestHostContext(this, testName);
+            hc.SetSingleton<ISecretMasker>(_secretMasker.Object);
+            return hc;
         }
     }
 }

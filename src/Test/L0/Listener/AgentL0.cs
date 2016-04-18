@@ -16,6 +16,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
     {
         private Mock<IConfigurationManager> _configurationManager;
         private Mock<IMessageListener> _messageListener;
+        private Mock<IPromptManager> _promptManager;
         private Mock<IWorkerManager> _workerManager;
         private Mock<IAgentServer> _agentServer;
         private Mock<ITerminal> _term;
@@ -24,8 +25,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
         {
             _configurationManager = new Mock<IConfigurationManager>();
             _messageListener = new Mock<IMessageListener>();
+            _promptManager = new Mock<IPromptManager>();
             _workerManager = new Mock<IWorkerManager>();
-            _agentServer = new Mock<IAgentServer>();            
+            _agentServer = new Mock<IAgentServer>();
             _term = new Mock<ITerminal>();
         }
 
@@ -60,6 +62,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                 agent.TokenSource = tokenSource;
                 hc.SetSingleton<IConfigurationManager>(_configurationManager.Object);
                 hc.SetSingleton<IMessageListener>(_messageListener.Object);
+                hc.SetSingleton<IPromptManager>(_promptManager.Object);
                 hc.SetSingleton<IWorkerManager>(_workerManager.Object);
                 hc.SetSingleton<IAgentServer>(_agentServer.Object);
                 agent.Initialize(hc);
@@ -102,7 +105,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                     .Returns(settings);
                 _configurationManager.Setup(x => x.IsConfigured())
                     .Returns(true);
-                _configurationManager.Setup(x => x.EnsureConfiguredAsync())
+                _configurationManager.Setup(x => x.EnsureConfiguredAsync(It.IsAny<CommandSettings>()))
                     .Returns(Task.CompletedTask);
                 _messageListener.Setup(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()))
                     .Returns(Task.FromResult<bool>(true));
@@ -139,9 +142,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                    });
 
                 //Act
-                var parser = new CommandLineParser(hc);
-                parser.Parse(new string[] { "" });
-                Task agentTask = agent.ExecuteCommand(parser);
+                var command = new CommandSettings(hc, new string[0]);
+                Task agentTask = agent.ExecuteCommand(command);
 
                 //Assert
                 //wait for the agent to run one job
@@ -193,10 +195,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
             using (var hc = new TestHostContext(this))
             {
                 hc.SetSingleton<IConfigurationManager>(_configurationManager.Object);
+                hc.SetSingleton<IPromptManager>(_promptManager.Object);
                 hc.SetSingleton<IMessageListener>(_messageListener.Object);
 
-                CommandLineParser clp = new CommandLineParser(hc);
-                clp.Parse(args);
+                var command = new CommandSettings(hc, args);
 
                 _configurationManager.Setup(x => x.IsConfigured()).Returns(true);
                 _configurationManager.Setup(x => x.LoadSettings())
@@ -207,7 +209,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                 var agent = new Agent.Listener.Agent();
                 agent.Initialize(hc);
                 agent.TokenSource = new CancellationTokenSource();
-                await agent.ExecuteCommand(clp);
+                await agent.ExecuteCommand(command);
 
                 _messageListener.Verify(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()), expectedTimes);
             }

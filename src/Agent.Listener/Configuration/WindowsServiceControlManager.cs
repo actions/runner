@@ -14,8 +14,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
     {
         public const string WindowsServiceControllerName = "AgentService.exe";
 
-        private const string WindowsLogonAccount = "windowslogonaccount";
-        private const string WindowsLogonPassword = "windowslogonpassword";
         private const string ServiceNamePattern = "vstsagent.{0}.{1}";
         private const string ServiceDisplayNamePattern = "VSTS Agent ({0}.{1})";
 
@@ -31,25 +29,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             _windowsServiceHelper = HostContext.GetService<INativeWindowsServiceHelper>();
         }
 
-        public override bool ConfigureService(AgentSettings settings, Dictionary<string, string> args, bool enforceSupplied)
+        public override bool ConfigureService(AgentSettings settings, CommandSettings command)
         {
             Trace.Entering();
             // TODO: add entering with info level. By default the error leve would be info. Config changes can get lost with this as entering is at Verbose level. For config all the logs should be logged.
             // TODO: Fix bug that exists in the legacy Windows agent where configuration using mirrored credentials causes an error, but the agent is still functional (after restarting). Mirrored credentials is a supported scenario and shouldn't manifest any errors.
 
-            var promptManager = HostContext.GetService<IPromptManager>();
             string logonPassword = string.Empty;
 
             NTAccount defaultServiceAccount = _windowsServiceHelper.GetDefaultServiceAccount();
-            _logonAccount = promptManager.ReadValue(WindowsLogonAccount,
-                                                StringUtil.Loc("WindowsLogonAccountNameDescription"),
-                                                false,
-                                                defaultServiceAccount.ToString(),
-                                                Validators.NTAccountValidator,
-                                                args,
-                                                enforceSupplied);
-            Trace.Info("Received LogonAccount: {0}", _logonAccount);
-
+            _logonAccount = command.GetWindowsLogonAccount(defaultValue: defaultServiceAccount.ToString());
             NativeWindowsServiceHelper.GetAccountSegments(_logonAccount, out _domainName, out _userName);
             if ((string.IsNullOrEmpty(_domainName) || _domainName.Equals(".", StringComparison.CurrentCultureIgnoreCase)) && !_logonAccount.Contains('@'))
             {
@@ -61,17 +50,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             {
                 while (true)
                 {
-                    Trace.Info("Acquiring logon account password");
-                    logonPassword = promptManager.ReadValue(WindowsLogonPassword,
-                                                        StringUtil.Loc("WindowsLogonPasswordDescription", _logonAccount),
-                                                        true,
-                                                        string.Empty,
-                                                        Validators.NonEmptyValidator,
-                                                        args,
-                                                        enforceSupplied);
+                    logonPassword = command.GetWindowsLogonPassword();
 
+                    // TODO: Fix this for unattended (should throw if not valid).
                     // TODO: If account is locked there is no point in retrying, translate error to useful message
-                    if (_windowsServiceHelper.IsValidCredential(_domainName, _userName, logonPassword) || enforceSupplied)
+                    if (_windowsServiceHelper.IsValidCredential(_domainName, _userName, logonPassword) || command.Unattended)
                     {
                         break;
                     }
@@ -81,7 +64,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 }
             }
 
-             CalculateServiceName(settings, ServiceNamePattern, ServiceDisplayNamePattern);
+            CalculateServiceName(settings, ServiceNamePattern, ServiceDisplayNamePattern);
 
             if (CheckServiceExists(settings.ServiceName))
             {

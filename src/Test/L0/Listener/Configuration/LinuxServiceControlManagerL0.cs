@@ -1,15 +1,12 @@
+using Microsoft.VisualStudio.Services.Agent.Listener.Configuration;
+using Microsoft.VisualStudio.Services.Agent.Util;
+using Moq;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
-
-using Microsoft.VisualStudio.Services.Agent.Listener.Configuration;
-using Microsoft.VisualStudio.Services.Agent.Util;
-
-using Moq;
-
 using Xunit;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
@@ -69,7 +66,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
                 string unitFileTemplatePath = Path.Combine(IOUtil.GetBinPath(), "vsts.agent.service.template");
                 File.WriteAllText(unitFileTemplatePath, "{User}-{Description}");
 
-                controlManager.ConfigureService(agentSettings, null, true);
+                controlManager.ConfigureService(agentSettings, null);
                 
                 Assert.Equal(agentSettings.ServiceName, "vsts.agent.server.agent.service");
                 Assert.Equal(agentSettings.ServiceDisplayName, "VSTS Agent (server.agent)");

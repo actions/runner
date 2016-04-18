@@ -24,6 +24,52 @@ namespace Microsoft.VisualStudio.Services.Agent
 #elif OS_WINDOWS
             public static readonly OSPlatform Platform = OSPlatform.Windows;
 #endif
+
+            public static class CommandLine
+            {
+                public static class Args
+                {
+                    public static readonly string Agent = "agent";
+                    public static readonly string Auth = "auth";
+                    public static readonly string Pool = "pool";
+                    public static readonly string Url = "url";
+                    public static readonly string Work = "work";
+
+                    // Secret args. Must be added to the "Secrets" getter as well.
+                    public static readonly string Password = "password";
+                    public static readonly string Token = "token";
+                    public static readonly string UserName = "username";
+                    public static readonly string WindowsLogonAccount = "windowslogonaccount";
+                    public static readonly string WindowsLogonPassword = "windowslogonpassword";
+                    public static string[] Secrets => new[]
+                    {
+                        Password,
+                        Token,
+                        UserName,
+                        WindowsLogonAccount,
+                        WindowsLogonPassword,
+                    };
+                }
+
+                public static class Commands
+                {
+                    public static readonly string Configure = "configure";
+                    public static readonly string Run = "run";
+                    public static readonly string Unconfigure = "unconfigure";
+                }
+
+                public static class Flags
+                {
+                    public static readonly string AcceptTeeEula = "acceptteeeula";
+                    public static readonly string Commit = "commit";
+                    public static readonly string Help = "help";
+                    public static readonly string NoStart = "nostart";
+                    public static readonly string Replace = "replace";
+                    public static readonly string RunAsService = "runasservice";
+                    public static readonly string Unattended = "unattended";
+                    public static readonly string Version = "version";
+                }
+            }
         }
 
         public static class Build

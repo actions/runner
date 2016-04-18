@@ -1,3 +1,4 @@
+using Microsoft.VisualStudio.Services.Agent.Util;
 using Microsoft.VisualStudio.Services.Client;
 using Microsoft.VisualStudio.Services.Common;
 using System;
@@ -10,7 +11,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
     {
         CredentialData CredentialData { get; set; }
         VssCredentials GetVssCredentials(IHostContext context);
-        void ReadCredential(IHostContext context, Dictionary<string, string> args, bool enforceSupplied);
+        void EnsureCredential(IHostContext context, CommandSettings command, string serverUrl);
     }
 
     public abstract class CredentialProvider : ICredentialProvider
@@ -25,7 +26,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         public CredentialData CredentialData { get; set; }
 
         public abstract VssCredentials GetVssCredentials(IHostContext context);
-        public abstract void ReadCredential(IHostContext context, Dictionary<string, string> args, bool enforceSupplied);
+        public abstract void EnsureCredential(IHostContext context, CommandSettings command, string serverUrl);
     }
 
     public sealed class PersonalAccessToken : CredentialProvider
@@ -34,41 +35,35 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         
         public override VssCredentials GetVssCredentials(IHostContext context)
         {
-            Tracing trace = context.GetTrace("PersonalAccessToken");
-            trace.Info("GetVssCredentials()");
-
-            if (CredentialData == null || !CredentialData.Data.ContainsKey("token"))
+            ArgUtil.NotNull(context, nameof(context));
+            Tracing trace = context.GetTrace(nameof(PersonalAccessToken));
+            trace.Info(nameof(GetVssCredentials));
+            ArgUtil.NotNull(CredentialData, nameof(CredentialData));
+            string token;
+            if (!CredentialData.Data.TryGetValue(Constants.Agent.CommandLine.Args.Token, out token))
             {
-                throw new InvalidOperationException("Must call ReadCredential first.");
+                token = null;
             }
 
-            string token = CredentialData.Data["token"];
+            ArgUtil.NotNullOrEmpty(token, nameof(token));
+
             trace.Info("token retrieved: {0} chars", token.Length);
 
             // PAT uses a basic credential
-            VssBasicCredential loginCred = new VssBasicCredential("VstsAgent", token);
-            VssCredentials creds = new VssClientCredentials(loginCred);
+            VssBasicCredential basicCred = new VssBasicCredential("VstsAgent", token);
+            VssCredentials creds = new VssClientCredentials(basicCred);
             trace.Verbose("cred created");
 
             return creds;
         }
 
-        public override void ReadCredential(IHostContext context, Dictionary<string, string> args, bool enforceSupplied)
+        public override void EnsureCredential(IHostContext context, CommandSettings command, string serverUrl)
         {
-            Tracing trace = context.GetTrace("PersonalAccessToken");
-            trace.Info("ReadCredentials()");
-
-            var promptManager = context.GetService<IPromptManager>();
-            trace.Verbose("reading token");
-            string tokenVal = promptManager.ReadValue("token", 
-                                            "PersonalAccessToken", 
-                                            true, 
-                                            string.Empty,
-                                            // can do better
-                                            Validators.NonEmptyValidator,
-                                            args, 
-                                            enforceSupplied);
-            CredentialData.Data["token"] = tokenVal;
+            ArgUtil.NotNull(context, nameof(context));
+            Tracing trace = context.GetTrace(nameof(PersonalAccessToken));
+            trace.Info(nameof(EnsureCredential));
+            ArgUtil.NotNull(command, nameof(command));
+            CredentialData.Data[Constants.Agent.CommandLine.Args.Token] = command.GetToken();
         }        
     }
 
@@ -78,9 +73,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
         public override VssCredentials GetVssCredentials(IHostContext context)
         {
-            Tracing trace = context.GetTrace("PersonalAccessToken");
-            trace.Info("GetVssCredentials()");
+            ArgUtil.NotNull(context, nameof(context));
+            Tracing trace = context.GetTrace(nameof(AlternateCredential));
+            trace.Info(nameof(GetVssCredentials));
 
+            // TODO: This is busted.
+            /*
             if (CredentialData == null || !CredentialData.Data.ContainsKey("token"))
             {
                 throw new InvalidOperationException("Must call ReadCredential first.");
@@ -98,28 +96,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             trace.Verbose("cred created");
 
             return creds;
+            */
+
+            throw new NotImplementedException();
         }
 
-        public override void ReadCredential(IHostContext context, Dictionary<string, string> args, bool enforceSupplied)
+        public override void EnsureCredential(IHostContext context, CommandSettings command, string serverUrl)
         {
-            var promptManager = context.GetService<IPromptManager>();
-            CredentialData.Data["Username"] = promptManager.ReadValue("username", 
-                                            "Username", 
-                                            false,
-                                            string.Empty,
-                                            // can do better
-                                            Validators.NonEmptyValidator, 
-                                            args, 
-                                            enforceSupplied);
-
-            CredentialData.Data["Password"] = promptManager.ReadValue("password", 
-                                            "Password", 
-                                            true,
-                                            string.Empty,
-                                            // can do better
-                                            Validators.NonEmptyValidator,
-                                            args, 
-                                            enforceSupplied);            
-        }        
-    }   
+            CredentialData.Data[Constants.Agent.CommandLine.Args.UserName] = command.GetUserName();
+            CredentialData.Data[Constants.Agent.CommandLine.Args.Password] = command.GetPassword();
+        }
+    }
 }

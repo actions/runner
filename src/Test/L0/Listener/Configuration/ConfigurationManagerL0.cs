@@ -1,4 +1,5 @@
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
+using Microsoft.VisualStudio.Services.Agent.Listener;
 using Microsoft.VisualStudio.Services.Client;
 using Moq;
 using System;
@@ -17,7 +18,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
     {
         private Mock<IAgentServer> _agentServer;
         private Mock<ICredentialManager> _credMgr;
-        private Mock<IPromptManager> _reader;
+        private Mock<IPromptManager> _promptManager;
         private Mock<IConfigurationStore> _store;
         private string _expectedToken = "expectedToken";
         private string _expectedServerUrl = "https://localhost";
@@ -30,7 +31,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
         {
             _agentServer = new Mock<IAgentServer>();
             _credMgr = new Mock<ICredentialManager>();
-            _reader = new Mock<IPromptManager>();
+            _promptManager = new Mock<IPromptManager>();
             _store = new Mock<IConfigurationStore>();
 
             _agentServer.Setup(x => x.ConnectAsync(It.IsAny<VssConnection>())).Returns(Task.FromResult<object>(null));
@@ -46,63 +47,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
                 });
 
             _credMgr.Setup(x => x.GetCredentialProvider(It.IsAny<string>())).Returns(new TestAgentCredential());
-
-            _reader.Setup(x => x.ReadValue(
-                    "work",
-                    It.IsAny<string>(), // description
-                    It.IsAny<bool>(),   // secret
-                    It.IsAny<string>(), // defaultValue
-                    It.IsAny<Func<string, bool>>(), // validator
-                    It.IsAny<Dictionary<string, string>>(), //validator
-                    false // unattended
-                )).Returns(_expectedWorkFolder);
-
-            _reader.Setup(x => x.ReadValue(
-                    "auth",
-                    It.IsAny<string>(), // description
-                    It.IsAny<bool>(),   // secret
-                    It.IsAny<string>(), // defaultValue
-                    It.IsAny<Func<string, bool>>(), // validator
-                    It.IsAny<Dictionary<String, String>>(), //validator
-                    false // unattended
-                )).Returns(_expectedAuthType);
-
-            _reader.Setup(x => x.ReadValue(
-                    "url",
-                    It.IsAny<string>(), // description
-                    It.IsAny<bool>(),   // secret
-                    It.IsAny<string>(), // defaultValue
-                    It.IsAny<Func<string, bool>>(), // validator
-                    It.IsAny<Dictionary<String, String>>(), //validator
-                    false // unattended
-                )).Returns(_expectedServerUrl);
-
-            _reader.Setup(x => x.ReadValue(
-                    "agent",
-                    It.IsAny<string>(), // description
-                    It.IsAny<bool>(),   // secret
-                    It.IsAny<string>(), // defaultValue
-                    It.IsAny<Func<string, bool>>(), // validator
-                    It.IsAny<Dictionary<String, String>>(), //validator
-                    false // unattended
-                )).Returns(_expectedAgentName);
-
-            _reader.Setup(x => x.ReadValue(
-                    "pool",
-                    It.IsAny<string>(), // description
-                    It.IsAny<bool>(),   // secret
-                    It.IsAny<string>(), // defaultValue
-                    It.IsAny<Func<string, bool>>(), // validator
-                    It.IsAny<Dictionary<String, String>>(), //validator
-                    false // unattended
-                )).Returns(_expectedPoolName);
         }
 
         private TestHostContext CreateTestContext([CallerMemberName] String testName = "")
         {
             TestHostContext tc = new TestHostContext(this, testName);
-            tc.SetSingleton<ICredentialManager>(this._credMgr.Object);
-            tc.SetSingleton<IPromptManager>(_reader.Object);
+            tc.SetSingleton<ICredentialManager>(_credMgr.Object);
+            tc.SetSingleton<IPromptManager>(_promptManager.Object);
             tc.SetSingleton<IConfigurationStore>(_store.Object);
             tc.EnqueueInstance<IAgentServer>(_agentServer.Object);
 
@@ -122,22 +73,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
                 IConfigurationManager configManager = new ConfigurationManager();
                 configManager.Initialize(tc);
 
-                trace.Info("Creating command line parser");
-                CommandLineParser clp = new CommandLineParser(tc);
-
                 trace.Info("Preparing command line arguments");
-                clp.Parse(
+                var command = new CommandSettings(
+                    tc,
                     new[]
-                        {
-                            "configure", 
-                            "--url", _expectedServerUrl, 
-                            "--agent", _expectedAgentName, 
-                            "--pool", _expectedPoolName,  
-                            "--work", _expectedWorkFolder,
-                            "--auth", _expectedAuthType,
-                            "--token", _expectedToken                            
-                        });
-                
+                    {
+                        "configure",
+                        "--url", _expectedServerUrl, 
+                        "--agent", _expectedAgentName, 
+                        "--pool", _expectedPoolName,  
+                        "--work", _expectedWorkFolder,
+                        "--auth", _expectedAuthType,
+                        "--token", _expectedToken
+                    });
                 trace.Info("Constructed.");
                 
                 var expectedPools = new List<TaskAgentPool>() { new TaskAgentPool(_expectedPoolName) { Id = 1 } };
@@ -151,7 +99,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
                 _agentServer.Setup(x => x.UpdateAgentAsync(It.IsAny<int>(), It.IsAny<TaskAgent>())).Returns(Task.FromResult(expectedAgent));
                 
                 trace.Info("Ensuring all the required parameters are available in the command line parameter");
-                configManager.ConfigureAsync(clp.Args, clp.Flags, false);
+                configManager.ConfigureAsync(command);
 
                 _store.Setup(x => x.IsConfigured()).Returns(true);
                 
