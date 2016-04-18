@@ -95,13 +95,23 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                     sourcesDirectory: sourcesDirectory);
 
                 // Undo any pending changes.
-                // TODO: Manually delete pending adds since they do not get deleted on undo?
                 if (existingTeeWorkspace != null)
                 {
                     TeeStatus teeStatus = await tf.StatusAsync(workspaceName);
                     if (teeStatus?.PendingChanges?.Any() ?? false)
                     {
                         await tf.UndoAsync(sourcesDirectory);
+
+                        // Cleanup remaining files/directories from pend adds.
+                        teeStatus.PendingChanges
+                            .Where(x => string.Equals(x.ChangeType, "add", StringComparison.OrdinalIgnoreCase))
+                            .OrderByDescending(x => x.LocalItem) // Sort descending so nested items are deleted before their parent is deleted.
+                            .ToList()
+                            .ForEach(x =>
+                            {
+                                executionContext.Output(StringUtil.Loc("Deleting", x.LocalItem));
+                                IOUtil.Delete(x.LocalItem, cancellationToken);
+                            });
                     }
                 }
             }
@@ -198,10 +208,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                         File.WriteAllText(path: commentFile, contents: comment.ToString());
 
                         // Reshelve.
-                        // TODO: Work with TEE folks regarding support for associate work items, policy override comment, etc.
                         await tf.ShelveAsync(
-                            directory: sourcesDirectory,
                             shelveset: gatedShelvesetName,
+                            directory: sourcesDirectory,
                             commentFile: commentFile);
                     }
                     finally

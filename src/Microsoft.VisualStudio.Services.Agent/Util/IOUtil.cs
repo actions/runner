@@ -100,6 +100,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
                 Constants.Path.TasksDirectory);
         }
 
+        public static void Delete(string path, CancellationToken cancellationToken)
+        {
+            DeleteDirectory(path, cancellationToken);
+            DeleteFile(path);
+        }
+
         public static void DeleteDirectory(string path, CancellationToken cancellationToken)
         {
             ArgUtil.NotNullOrEmpty(path, nameof(path));
@@ -170,6 +176,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             }
         }
 
+        public static void DeleteFile(string path)
+        {
+            ArgUtil.NotNullOrEmpty(path, nameof(path));
+            var file = new FileInfo(path);
+            if (file.Exists)
+            {
+                RemoveReadOnly(file);
+                file.Delete();
+            }
+        }
+
         //********************************************************************************************
         /// <summary>
         /// Given a path and directory, return the path relative to the directory.  If the path is not
@@ -183,7 +200,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
         /// <param name="folder">Folder to make it relative to.</param>
         /// <returns>Relative path.</returns>
         //********************************************************************************************
-        public static String MakeRelative(String path, String folder)
+        public static string MakeRelative(string path, string folder)
         {
             ArgUtil.NotNullOrEmpty(path, nameof(path));
             ArgUtil.NotNull(folder, nameof(folder));
