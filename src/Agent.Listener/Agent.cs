@@ -96,6 +96,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
                 if (command.Run && !configManager.IsConfigured())
                 {
+                    // TODO: Is it possible to reach this code? It doesn't appear so.
                     // TODO: LOC
                     throw new InvalidOperationException("CanNotRunAgent");
                 }
