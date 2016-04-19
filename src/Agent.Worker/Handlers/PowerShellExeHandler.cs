@@ -89,7 +89,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
                 {
                     workingDirectory = Path.GetDirectoryName(scriptFile);
                 }
-                else if (Path.IsPathRooted(Data.WorkingDirectory))
+                else if (!string.IsNullOrEmpty(Data.WorkingDirectory) && Path.IsPathRooted(Data.WorkingDirectory))
                 {
                     workingDirectory = Data.WorkingDirectory;
                 }
