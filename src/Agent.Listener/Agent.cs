@@ -161,38 +161,51 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             _term.WriteLine(StringUtil.Loc("ListenForJobs"));
 
             _sessionId = listener.Session.SessionId;
+            bool autoUpdateInProgress = false;
+            bool skipMessageDeletion = false;
             TaskAgentMessage message = null;
+            IJobDispatcher jobDispatcher = null;
             try
             {
-                using (var workerManager = HostContext.GetService<IWorkerManager>())
+                jobDispatcher = HostContext.CreateService<IJobDispatcher>();
+                while (!token.IsCancellationRequested)
                 {
-                    while (!token.IsCancellationRequested)
+                    try
                     {
-                        try
-                        {
-                            message = await listener.GetNextMessageAsync(token); //get next message
+                        skipMessageDeletion = false;
+                        message = await listener.GetNextMessageAsync(token); //get next message
 
-                            if (string.Equals(message.MessageType, AgentRefreshMessage.MessageType, StringComparison.OrdinalIgnoreCase))
-                            {
-                                Trace.Warning("Referesh message received, but not yet handled by agent implementation.");
-                            }
-                            else if (string.Equals(message.MessageType, JobRequestMessage.MessageType, StringComparison.OrdinalIgnoreCase))
-                            {
-                                var newJobMessage = JsonUtility.FromString<JobRequestMessage>(message.Body);
-                                workerManager.Run(newJobMessage);
-                            }
-                            else if (string.Equals(message.MessageType, JobCancelMessage.MessageType, StringComparison.OrdinalIgnoreCase))
-                            {
-                                var cancelJobMessage = JsonUtility.FromString<JobCancelMessage>(message.Body);
-                                workerManager.Cancel(cancelJobMessage);
-                            }
-                        }
-                        finally
+                        if (string.Equals(message.MessageType, AgentRefreshMessage.MessageType, StringComparison.OrdinalIgnoreCase))
                         {
-                            if (message != null)
+                            Trace.Warning("Referesh message received, but not yet handled by agent implementation.");
+                        }
+                        else if (string.Equals(message.MessageType, JobRequestMessage.MessageType, StringComparison.OrdinalIgnoreCase))
+                        {
+                            var newJobMessage = JsonUtility.FromString<JobRequestMessage>(message.Body);
+                            jobDispatcher.Run(newJobMessage);
+                        }
+                        else if (string.Equals(message.MessageType, JobCancelMessage.MessageType, StringComparison.OrdinalIgnoreCase))
+                        {
+                            var cancelJobMessage = JsonUtility.FromString<JobCancelMessage>(message.Body);
+                            bool jobCancelled = jobDispatcher.Cancel(cancelJobMessage);
+                            skipMessageDeletion = autoUpdateInProgress && !jobCancelled;
+                        }
+                    }
+                    finally
+                    {
+                        if (!skipMessageDeletion && message != null)
+                        {
+                            try
                             {
-                                //TODO: make sure we don't mask more important exception
                                 await DeleteMessageAsync(message);
+                            }
+                            catch(Exception ex)
+                            {
+                                Trace.Error($"Catch exception during delete message from message queue. message id: {message.MessageId}");
+                                Trace.Error(ex);
+                            }
+                            finally
+                            {
                                 message = null;
                             }
                         }
@@ -201,9 +214,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             }
             finally
             {
+                if (jobDispatcher != null)
+                {
+                    await jobDispatcher.ShutdownAsync();
+                }
+
                 //TODO: make sure we don't mask more important exception
                 await listener.DeleteSessionAsync();
             }
+
             return 0;
         }
 
