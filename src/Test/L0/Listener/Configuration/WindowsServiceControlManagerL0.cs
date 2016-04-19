@@ -18,16 +18,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
     public sealed class WindowsServiceControlManagerL0
     {
         private Mock<IProcessInvoker> _processInvoker;
-
+        private Mock<IPromptManager> _promptManager;
         private Mock<INativeWindowsServiceHelper> _windowsServiceHelper;
-
         private string _expectedLogonAccount = "NT AUTHORITY\\LOCAL SERVICE";
-
         private string _expectedLogonPassword = "test";
 
         public WindowsServiceControlManagerL0()
         {
             _processInvoker = new Mock<IProcessInvoker>();
+            _promptManager = new Mock<IPromptManager>();
             _windowsServiceHelper = new Mock<INativeWindowsServiceHelper>();
 
             _processInvoker.Setup(
@@ -46,6 +45,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
         {
             TestHostContext tc = new TestHostContext(this, testName);
             tc.SetSingleton<IProcessInvoker>(_processInvoker.Object);
+            tc.SetSingleton<IPromptManager>(_promptManager.Object);
             tc.SetSingleton<INativeWindowsServiceHelper>(_windowsServiceHelper.Object);
             return tc;
         }
@@ -76,6 +76,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
             }
         }
 
+/*
 #if OS_WINDOWS
         [Fact]
         [Trait("Level", "L0")]
@@ -102,7 +103,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
                 _windowsServiceHelper.Verify(x => x.IsValidCredential("domain", "randomuser", _expectedLogonPassword));
             }
         }
-
+*/
 
 #if OS_WINDOWS
         [Fact]
