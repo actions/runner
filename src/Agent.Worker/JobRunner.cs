@@ -51,10 +51,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 Trace.Info("Starting the job execution context.");
                 jobContext.Start();
 
+                // Set agent.homedirectory.
+                jobContext.Variables.Set(Constants.Variables.Agent.HomeDirectory, IOUtil.GetRootPath());
+
                 // Expand the endpoint data values.
                 foreach (ServiceEndpoint endpoint in jobContext.Endpoints)
                 {
                     jobContext.Variables.ExpandValues(target: endpoint.Data);
+                    VarUtil.ExpandEnvironmentVariables(HostContext, target: endpoint.Data);
                 }
 
                 // Get the job extensions.

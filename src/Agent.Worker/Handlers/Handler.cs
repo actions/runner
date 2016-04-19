@@ -10,6 +10,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
     public interface IHandler : IAgentService
     {
         IExecutionContext ExecutionContext { get; set; }
+        string FilePathInputRootDirectory { get; set; }
         Dictionary<string, string> Inputs { get; set; }
         string TaskDirectory { get; set; }
 
@@ -22,6 +23,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
         protected Dictionary<string, string> Environment { get; private set; }
 
         public IExecutionContext ExecutionContext { get; set; }
+        public string FilePathInputRootDirectory { get; set; }
         public Dictionary<string, string> Inputs { get; set; }
         public string TaskDirectory { get; set; }
 
@@ -42,6 +44,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             foreach (ServiceEndpoint endpoint in ExecutionContext.Endpoints)
             {
                 ArgUtil.NotNull(endpoint, nameof(endpoint));
+                // TODO: Figure out why the repo endpoint has an ID of empty-guid. What's the correct way to get the ID of the repo endpoint?
                 if (endpoint.Id == Guid.Empty &&
                     !string.Equals(endpoint.Name, ServiceEndpoints.SystemVssConnection, StringComparison.OrdinalIgnoreCase))
                 {
@@ -51,7 +54,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
 
                 string partialKey =
                     (endpoint.Id != Guid.Empty ? endpoint.Id.ToString() : ServiceEndpoints.SystemVssConnection)
-                    .ToUpperInvariant();
+                    .ToUpperInvariant(); // TODO: Should this be upper? Is this consistent with the Nodejs lib?
                 AddEnvironmentVariable(
                     key: $"ENDPOINT_URL_{partialKey}",
                     value: endpoint.Url?.ToString());
@@ -95,7 +98,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             // Add the public variables to the environment variable dictionary.
             foreach (KeyValuePair<string, string> pair in ExecutionContext.Variables.Public)
             {
-                AddEnvironmentVariable(pair.Key, pair.Value);
+                // Format all variables other than "agent.jobstatus".
+                string formattedKey = string.Equals(pair.Key, Constants.Variables.Agent.JobStatus, StringComparison.OrdinalIgnoreCase)
+                    ? pair.Key
+                    : (pair.Key ?? string.Empty).Replace('.', '_').ToUpperInvariant();
+                AddEnvironmentVariable(
+                    formattedKey,
+                    pair.Value);
             }
         }
 

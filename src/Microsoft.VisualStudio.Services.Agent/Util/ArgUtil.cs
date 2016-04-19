@@ -1,9 +1,20 @@
 using System;
+using System.IO;
 
 namespace Microsoft.VisualStudio.Services.Agent.Util
 {
     public static class ArgUtil
     {
+        public static void Directory(string directory, string name)
+        {
+            ArgUtil.NotNullOrEmpty(directory, name);
+            if (!System.IO.Directory.Exists(directory))
+            {
+                throw new DirectoryNotFoundException(
+                    message: StringUtil.Loc("DirectoryNotFound", directory));
+            }
+        }
+
         public static void Equal<T>(T expected, T actual, string name)
         {
             if (object.ReferenceEquals(expected, actual))
@@ -18,6 +29,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
                     paramName: name,
                     actualValue: actual,
                     message: $"{name} does not equal expected value. Expected '{expected}'. Actual '{actual}'.");
+            }
+        }
+
+        public static void File(string fileName, string name)
+        {
+            ArgUtil.NotNullOrEmpty(fileName, name);
+            if (!System.IO.File.Exists(fileName))
+            {
+                throw new FileNotFoundException(
+                    message: StringUtil.Loc("FileNotFound", fileName),
+                    fileName: fileName);
             }
         }
 

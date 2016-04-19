@@ -23,17 +23,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             }
         }
 
-        public static void AssertFile(string fileName)
-        {
-            ArgUtil.NotNullOrEmpty(fileName, nameof(fileName));
-            if (!File.Exists(fileName))
-            {
-                throw new FileNotFoundException(
-                    message: StringUtil.Loc("FileNotFound", fileName),
-                    fileName: fileName);
-            }
-        }
-
         public static void SaveObject(object obj, string path)
         {
             string json = JsonConvert.SerializeObject(
