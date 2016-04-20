@@ -4,5 +4,5 @@
 REM TODO: unblock files
 
 :run
-%~dp0bin\Agent.Listener.exe %*
+"%~dp0bin\Agent.Listener.exe" %*
 
