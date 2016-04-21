@@ -38,6 +38,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             var taskManager = HostContext.GetService<ITaskManager>();
             var handlerFactory = HostContext.GetService<IHandlerFactory>();
 
+            // Set the task display name variable.
+            ExecutionContext.Variables.Set(Constants.Variables.Task.DisplayName, DisplayName);
+
             // Load the task definition and choose the handler.
             // TODO: Add a try catch here to give a better error message.
             Definition definition = taskManager.Load(TaskInstance);

@@ -43,12 +43,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             //  SucceededWithIssues
             bool stepFailed = false;
             bool criticalStepFailed = false;
+            jobContext.Variables.Agent_JobStatus = TaskResult.Succeeded;
             foreach (IStep step in steps)
             {
                 Trace.Info($"Processing step: DisplayName='{step.DisplayName}', AlwaysRun={step.AlwaysRun}, ContinueOnError={step.ContinueOnError}, Critical={step.Critical}, Enabled={step.Enabled}, Finally={step.Finally}");
 
-                // TODO: Maintain agent.jobstatus.
                 // TODO: Disabled steps may have already been removed. Investigate.
+                // TODO: Run finally even if canceled?
 
                 // Skip the current step if it is not Enabled.
                 if (!step.Enabled
@@ -151,11 +152,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 if (step.ExecutionContext.Result == TaskResult.Failed)
                 {
                     jobContext.Result = TaskResult.Failed;
+                    jobContext.Variables.Agent_JobStatus = TaskResult.Failed;
                 }
                 else if ((jobContext.Result ?? TaskResult.Succeeded) == TaskResult.Succeeded &&
                     step.ExecutionContext.Result == TaskResult.SucceededWithIssues)
                 {
                     jobContext.Result = TaskResult.SucceededWithIssues;
+                    jobContext.Variables.Agent_JobStatus = TaskResult.SucceededWithIssues;
                 }
 
                 Trace.Info($"Current state: job state = '{jobContext.Result}', step failed = {stepFailed}, critical step failed = {criticalStepFailed}");

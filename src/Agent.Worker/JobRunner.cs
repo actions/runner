@@ -2,6 +2,7 @@ using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -51,8 +52,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 Trace.Info("Starting the job execution context.");
                 jobContext.Start();
 
-                // Set agent.homedirectory.
+                // Set agent variables.
+                AgentSettings settings = HostContext.GetService<IConfigurationStore>().GetSettings();
+                jobContext.Variables.Set(Constants.Variables.Agent.Id, settings.AgentId.ToString(CultureInfo.InvariantCulture));
                 jobContext.Variables.Set(Constants.Variables.Agent.HomeDirectory, IOUtil.GetRootPath());
+                jobContext.Variables.Set(Constants.Variables.Agent.JobName, message.JobName);
+                jobContext.Variables.Set(Constants.Variables.Agent.MachineName, Environment.MachineName);
+                jobContext.Variables.Set(Constants.Variables.Agent.Name, settings.AgentName);
+                jobContext.Variables.Set(Constants.Variables.Agent.RootDirectory, IOUtil.GetWorkPath(HostContext));
+                // TODO: jobContext.Variables.Set(Constants.Variables.Agent.ServerOMDirectory, ???);
+                jobContext.Variables.Set(Constants.Variables.Agent.WorkFolder, IOUtil.GetWorkPath(HostContext));
+                jobContext.Variables.Set(Constants.Variables.System.WorkFolder, IOUtil.GetWorkPath(HostContext));
 
                 // Expand the endpoint data values.
                 foreach (ServiceEndpoint endpoint in jobContext.Endpoints)
