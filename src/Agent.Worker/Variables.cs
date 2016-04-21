@@ -7,7 +7,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using Microsoft.TeamFoundation.Build.WebApi;
+using BuildWebApi = Microsoft.TeamFoundation.Build.WebApi;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
@@ -74,9 +74,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         }
 
         public string Agent_BuildDirectory { get { return Get(Constants.Variables.Agent.BuildDirectory); } }
-        public int? Build_BuildId { get { return GetInt(WellKnownBuildVariables.BuildId); } }
+        public TaskResult? Agent_JobStatus { get { return GetEnum<TaskResult>(Constants.Variables.Agent.JobStatus); } set { Set(Constants.Variables.Agent.JobStatus, $"{value}"); } }
+        public int? Build_BuildId { get { return GetInt(BuildWebApi.WellKnownBuildVariables.BuildId); } }
         public BuildCleanOption? Build_Clean { get { return GetEnum<BuildCleanOption>(Constants.Variables.Build.Clean); } }
-        public long? Build_ContainerId { get { return GetLong(WellKnownBuildVariables.ContainerId); } }
+        public long? Build_ContainerId { get { return GetLong(BuildWebApi.WellKnownBuildVariables.ContainerId); } }
         public string Build_DefinitionName { get { return Get(Constants.Variables.Build.DefinitionName); } }
         public bool? Build_GatedRunCI { get { return GetBoolean(Constants.Variables.Build.GatedRunCI); } }
         public string Build_GatedShelvesetName { get { return Get(Constants.Variables.Build.GatedShelvesetName); } }
@@ -90,7 +91,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         public string System_DefinitionId { get { return Get(Constants.Variables.System.DefinitionId); } }
         public bool? System_EnableAccessToken { get { return GetBoolean(Constants.Variables.System.EnableAccessToken); } }
         public string System_HostType { get { return Get(Constants.Variables.System.HostType); } }
-        public Guid? System_TeamProjectId { get { return GetGuid(WellKnownBuildVariables.TeamProjectId); } }
+        public Guid? System_TeamProjectId { get { return GetGuid(BuildWebApi.WellKnownBuildVariables.TeamProjectId); } }
         public string System_TFCollectionUrl { get { return Get(WellKnownDistributedTaskVariables.TFCollectionUrl);  } }
 
         public void ExpandValues(IDictionary<string, string> target)
