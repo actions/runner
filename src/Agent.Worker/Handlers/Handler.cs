@@ -1,3 +1,4 @@
+using Microsoft.TeamFoundation.Build.WebApi;
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Worker;
 using Microsoft.VisualStudio.Services.Agent.Util;
@@ -44,17 +45,24 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             foreach (ServiceEndpoint endpoint in ExecutionContext.Endpoints)
             {
                 ArgUtil.NotNull(endpoint, nameof(endpoint));
-                // TODO: Figure out why the repo endpoint has an ID of empty-guid. What's the correct way to get the ID of the repo endpoint?
-                if (endpoint.Id == Guid.Empty &&
-                    !string.Equals(endpoint.Name, ServiceEndpoints.SystemVssConnection, StringComparison.OrdinalIgnoreCase))
+
+                string partialKey = null;
+                if (endpoint.Id != Guid.Empty)
                 {
-                    // TODO: Is this a production scenario?
-                    continue;
+                    partialKey = endpoint.Id.ToString();
+                }
+                else if (string.Equals(endpoint.Name, ServiceEndpoints.SystemVssConnection, StringComparison.OrdinalIgnoreCase))
+                {
+                    partialKey = ServiceEndpoints.SystemVssConnection;
+                }
+                else if (endpoint.Data == null ||
+                    !endpoint.Data.TryGetValue(WellKnownEndpointData.RepositoryId, out partialKey) ||
+                    string.IsNullOrEmpty(partialKey))
+                {
+                    continue; // This should never happen.
                 }
 
-                string partialKey =
-                    (endpoint.Id != Guid.Empty ? endpoint.Id.ToString() : ServiceEndpoints.SystemVssConnection)
-                    .ToUpperInvariant(); // TODO: Should this be upper? Is this consistent with the Nodejs lib?
+                partialKey = partialKey.ToUpperInvariant(); // TODO: Should this be upper? Is this consistent with the Nodejs lib?
                 AddEnvironmentVariable(
                     key: $"ENDPOINT_URL_{partialKey}",
                     value: endpoint.Url?.ToString());
