@@ -21,7 +21,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
 
                 var cs2 = new CancellationTokenSource();
                 var packetReceiveTask = client.ReceiveAsync(cs2.Token);
-                Task[] taskToWait = { packetReceiveTask, Task.Delay(5000)  };
+                Task[] taskToWait = { packetReceiveTask, Task.Delay(30*1000)  };
                 //Wait up to 5 seconds for the server to call us and then reply back with the same data
                 await Task.WhenAny(taskToWait);
                 bool timedOut = !packetReceiveTask.IsCompleted;
@@ -80,7 +80,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 var cs = new CancellationTokenSource();                
                 await server.SendAsync(MessageType.NewJobRequest, JsonUtility.ToString(jobRequest), cs.Token);
                 var packetReceiveTask = server.ReceiveAsync(cs.Token);
-                Task[] taskToWait = { packetReceiveTask, Task.Delay(5000) };
+                Task[] taskToWait = { packetReceiveTask, Task.Delay(30*1000) };
                 await Task.WhenAny(taskToWait);
                 bool timedOut = !packetReceiveTask.IsCompleted;
 
