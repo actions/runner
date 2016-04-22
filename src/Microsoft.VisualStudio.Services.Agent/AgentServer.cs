@@ -29,6 +29,9 @@ namespace Microsoft.VisualStudio.Services.Agent
         Task<TaskAgentJobRequest> GetAgentRequestAsync(int poolId, long requestId, CancellationToken cancellationToken);
         Task<TaskAgentJobRequest> RenewAgentRequestAsync(int poolId, long requestId, Guid lockToken, CancellationToken cancellationToken);
         Task<TaskAgentJobRequest> FinishAgentRequestAsync(int poolId, long requestId, Guid lockToken, DateTime finishTime, TaskResult result, CancellationToken cancellationToken);
+
+        // agent package
+        Task<List<PackageMetadata>> GetPackagesAsync(string packageType, string platform, int top, CancellationToken cancellationToken);
     }
 
     public sealed class AgentServer : AgentService, IAgentServer
@@ -143,6 +146,15 @@ namespace Microsoft.VisualStudio.Services.Agent
         {
             CheckConnection();
             return _taskAgentClient.GetAgentRequestAsync(poolId, requestId, cancellationToken);
+        }
+
+        //-----------------------------------------------------------------
+        // Agent Package
+        //-----------------------------------------------------------------
+        public Task<List<PackageMetadata>> GetPackagesAsync(string packageType, string platform, int top, CancellationToken cancellationToken)
+        {
+            CheckConnection();
+            return _taskAgentClient.GetPackagesAsync(packageType, platform, top, cancellationToken);
         }
     }
 }

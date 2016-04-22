@@ -2,8 +2,12 @@ using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Listener.Configuration;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using System.IO.Compression;
+using System.Text;
+using System.Diagnostics;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener
 {
@@ -161,28 +165,72 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             _term.WriteLine(StringUtil.Loc("ListenForJobs"));
 
             _sessionId = listener.Session.SessionId;
-            bool autoUpdateInProgress = false;
-            bool skipMessageDeletion = false;
-            TaskAgentMessage message = null;
             IJobDispatcher jobDispatcher = null;
             try
             {
+                bool disableAutoUpdate = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("agent.disableupdate"));
+                bool autoUpdateInProgress = false;
+                Task<bool> selfUpdateTask = null;
                 jobDispatcher = HostContext.CreateService<IJobDispatcher>();
                 while (!token.IsCancellationRequested)
                 {
+                    TaskAgentMessage message = null;
+                    bool skipMessageDeletion = false;
                     try
                     {
-                        skipMessageDeletion = false;
-                        message = await listener.GetNextMessageAsync(token); //get next message
+                        Task<TaskAgentMessage> getNextMessage = listener.GetNextMessageAsync(token);
+                        if (autoUpdateInProgress)
+                        {
+                            Trace.Verbose("Auto update task running at backend, waiting for getNextMessage or selfUpdateTask to finish.");
+                            Task completeTask = await Task.WhenAny(getNextMessage, selfUpdateTask);
+                            if (completeTask == selfUpdateTask)
+                            {
+                                autoUpdateInProgress = false;
+                                if (await selfUpdateTask)
+                                {
+                                    Trace.Info("Auto update task finished at backend, an agent update is ready to apply exit the current agent instance.");
+                                    return 3;
+                                }
+                                else
+                                {
+                                    Trace.Info("Auto update task finished at backend, there is no available agent update needs to apply, continue message queue looping.");
+                                }
+                            }
+                        }
 
+                        message = await getNextMessage; //get next message
                         if (string.Equals(message.MessageType, AgentRefreshMessage.MessageType, StringComparison.OrdinalIgnoreCase))
                         {
-                            Trace.Warning("Referesh message received, but not yet handled by agent implementation.");
+                            if (disableAutoUpdate)
+                            {
+                                Trace.Info("Refresh message received, skip autoupdate since environment variable agent.disableupdate is set.");
+                            }
+                            else
+                            {
+                                if (autoUpdateInProgress == false)
+                                {
+                                    autoUpdateInProgress = true;
+                                    var selfUpdater = HostContext.GetService<ISelfUpdater>();
+                                    selfUpdateTask = selfUpdater.SelfUpdate(jobDispatcher, !settings.RunAsService, token);
+                                    Trace.Info("Refresh message received, kick-off selfupdate background process.");
+                                }
+                                else
+                                {
+                                    Trace.Info("Refresh message received, skip autoupdate since a previous autoupdate is already running.");
+                                }
+                            }
                         }
                         else if (string.Equals(message.MessageType, JobRequestMessage.MessageType, StringComparison.OrdinalIgnoreCase))
                         {
-                            var newJobMessage = JsonUtility.FromString<JobRequestMessage>(message.Body);
-                            jobDispatcher.Run(newJobMessage);
+                            if (autoUpdateInProgress)
+                            {
+                                skipMessageDeletion = true;
+                            }
+                            else
+                            {
+                                var newJobMessage = JsonUtility.FromString<JobRequestMessage>(message.Body);
+                                jobDispatcher.Run(newJobMessage);
+                            }
                         }
                         else if (string.Equals(message.MessageType, JobCancelMessage.MessageType, StringComparison.OrdinalIgnoreCase))
                         {
@@ -199,7 +247,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                             {
                                 await DeleteMessageAsync(message);
                             }
-                            catch(Exception ex)
+                            catch (Exception ex)
                             {
                                 Trace.Error($"Catch exception during delete message from message queue. message id: {message.MessageId}");
                                 Trace.Error(ex);

@@ -29,13 +29,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
                 return null;
             }
 
-#if OS_WINDOWS
-            char pathSep = ';';
-#else
-            char pathSep = ':';
-#endif
-
-            string[] pathSegments = path.Split(new Char[] { pathSep }, StringSplitOptions.RemoveEmptyEntries);
+            string[] pathSegments = path.Split(new Char[] { Path.PathSeparator }, StringSplitOptions.RemoveEmptyEntries);
             for (int i = 0; i < pathSegments.Length; i++)
             {
                 pathSegments[i] = Environment.ExpandEnvironmentVariables(pathSegments[i]);

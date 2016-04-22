@@ -95,6 +95,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             DeleteFile(path);
         }
 
+        public static string GetUpdatePath(IHostContext hostContext)
+        {
+            return Path.Combine(
+                GetWorkPath(hostContext),
+                Constants.Path.UpdateDirectory);
+        }
+
         public static void DeleteDirectory(string path, CancellationToken cancellationToken)
         {
             ArgUtil.NotNullOrEmpty(path, nameof(path));

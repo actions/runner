@@ -27,7 +27,7 @@
     },
     
     "dependencies": {
-        "vss-api-netcore": "0.5.6-private",
+        "vss-api-netcore": "0.5.10-private",
         "Newtonsoft.Json": "7.0.1",
         "System.Diagnostics.TraceSource": "4.0.0-rc3-24011-00",
         "System.Diagnostics.TextWriterTraceListener": "4.0.0-rc3-24011-00",

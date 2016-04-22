@@ -16,7 +16,7 @@ namespace Microsoft.VisualStudio.Services.Agent
 
         public static class Agent
         {
-            public static readonly string Version = "1.999.0";
+            public static readonly string Version = "2.99.0";
 
 #if OS_LINUX
             public static readonly OSPlatform Platform = OSPlatform.Linux;
@@ -107,6 +107,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             public static readonly string TeeDirectory = "tee";
             public static readonly string TaskJsonFile = "task.json";
             public static readonly string TasksDirectory = "_tasks";
+            public static readonly string UpdateDirectory = "_update";
         }
 
         public static class Variables
