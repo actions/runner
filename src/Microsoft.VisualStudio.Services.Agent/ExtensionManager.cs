@@ -59,7 +59,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                         Add(instance, "Microsoft.VisualStudio.Services.Agent.Worker.TaskCommands, Agent.Worker");
                         Add(instance, "Microsoft.VisualStudio.Services.Agent.Worker.Build.BuildCommands, Agent.Worker");
                         Add(instance, "Microsoft.VisualStudio.Services.Agent.Worker.Build.ArtifactCommands, Agent.Worker");
-						Add(instance, "Microsoft.VisualStudio.Services.Agent.Worker.TestResults.ResultsCommands, Agent.Worker");
+                        Add(instance, "Microsoft.VisualStudio.Services.Agent.Worker.TestResults.ResultsCommands, Agent.Worker");
 
                         // Add source provider extensions:
                         Add(instance, "Microsoft.VisualStudio.Services.Agent.Worker.Build.GitSourceProvider, Agent.Worker");

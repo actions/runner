@@ -83,13 +83,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         public bool? Build_GatedRunCI { get { return GetBoolean(Constants.Variables.Build.GatedRunCI); } }
         public string Build_GatedShelvesetName { get { return Get(Constants.Variables.Build.GatedShelvesetName); } }
         public string Build_RepoTfvcWorkspace { get { return Get(Constants.Variables.Build.RepoTfvcWorkspace); } }
-		public string Build_RequestedFor { get { return Get((BuildWebApi.WellKnownBuildVariables.RequestedFor)); } }
+        public string Build_RequestedFor { get { return Get((BuildWebApi.WellKnownBuildVariables.RequestedFor)); } }
         public string Build_SourcesDirectory { get { return Get(Constants.Variables.Build.SourcesDirectory); } }
         public string Build_SourceTfvcShelveset { get { return Get(Constants.Variables.Build.SourceTfvcShelveset); } }
         public string Build_SourceVersion { get { return Get(Constants.Variables.Build.SourceVersion); } }
         public bool? Build_SyncSources { get { return GetBoolean(Constants.Variables.Build.SyncSources); } }
-		public string Release_ReleaseEnvironmentUri { get { return Get("Release.EnvironmentUri"); } }
-		public string Release_ReleaseUri { get { return Get("Release.ReleaseUri"); } }
+        public string Release_ReleaseEnvironmentUri { get { return Get("Release.EnvironmentUri"); } }
+        public string Release_ReleaseUri { get { return Get("Release.ReleaseUri"); } }
         public string System_CollectionId { get { return Get(Constants.Variables.System.CollectionId); } }
         public bool? System_Debug { get { return GetBoolean(Constants.Variables.System.Debug); } }
         public string System_DefinitionId { get { return Get(Constants.Variables.System.DefinitionId); } }

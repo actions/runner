@@ -73,7 +73,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 typeof(IStep),
                 typeof(IArtifactDetails),
                 typeof(IArtifactExtension),
-				typeof(IResultReader)
+                typeof(IResultReader)
             };
             Validate(
                 assembly: typeof(IStepsRunner).GetTypeInfo().Assembly,
