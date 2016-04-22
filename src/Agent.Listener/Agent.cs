@@ -11,7 +11,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
     public interface IAgent : IAgentService
     {
         CancellationTokenSource TokenSource { get; set; }
-        Task<int> ExecuteCommand(CommandLineParser parser);
+        Task<int> ExecuteCommand(CommandSettings command);
     }
 
     public sealed class Agent : AgentService, IAgent
@@ -29,7 +29,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             _term = HostContext.GetService<ITerminal>();
         }
 
-        public async Task<int> ExecuteCommand(CommandLineParser parser)
+        public async Task<int> ExecuteCommand(CommandSettings command)
         {
             try
             {
@@ -43,48 +43,42 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
                 // TODO: Invalid config prints usage
 
-                if (parser.Flags.Contains("help"))
+                if (command.Help)
                 {
                     PrintUsage();
                     return 0;
                 }
 
-                if (parser.Flags.Contains("version"))
+                if (command.Version)
                 {
                     _term.WriteLine(Constants.Agent.Version);
                     return 0;
                 }
 
-                if (parser.Flags.Contains("commit"))
+                if (command.Commit)
                 {
                     _term.WriteLine(BuildConstants.Source.CommitHash);
                     return 0;
                 }
 
-                if (parser.IsCommand("unconfigure"))
+                if (command.Unconfigure)
                 {
-                    Trace.Info("unconfigure");
                     // TODO: Unconfiure, remove config and exit
                 }
 
-                if (parser.IsCommand("run") && !configManager.IsConfigured())
+                if (command.Run && !configManager.IsConfigured())
                 {
-                    Trace.Info("run");
                     _term.WriteError(StringUtil.Loc("AgentIsNotConfigured"));
                     PrintUsage();
                     return 1;
                 }
 
                 // unattend mode will not prompt for args if not supplied.  Instead will error.
-                bool isUnattended = parser.Flags.Contains("unattended");
-
-                if (parser.IsCommand("configure"))
+                if (command.Configure)
                 {
-                    Trace.Info("configure");
-
                     try
                     {
-                        await configManager.ConfigureAsync(parser.Args, parser.Flags, isUnattended);
+                        await configManager.ConfigureAsync(command);
                         return 0;
                     }
                     catch (Exception ex)
@@ -95,37 +89,32 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     }
                 }
 
-                if (parser.Flags.Contains("nostart"))
+                if (command.NoStart)
                 {
-                    Trace.Info("No start option, exiting the agent");
                     return 0;
                 }
 
-                if (parser.IsCommand("run") && !configManager.IsConfigured())
+                if (command.Run && !configManager.IsConfigured())
                 {
+                    // TODO: Is it possible to reach this code? It doesn't appear so.
+                    // TODO: LOC
                     throw new InvalidOperationException("CanNotRunAgent");
                 }
 
                 Trace.Info("Done evaluating commands");
-                bool alreadyConfigured = configManager.IsConfigured();
-                await configManager.EnsureConfiguredAsync();
+                await configManager.EnsureConfiguredAsync(command);
 
                 _inConfigStage = false;
 
                 AgentSettings settings = configManager.LoadSettings();
-                if (parser.IsCommand("run") || !settings.RunAsService)
+                if (command.Run || !settings.RunAsService)
                 {
                     // Run the agent interactively
-                    Trace.Verbose(
-                        StringUtil.Format(
-                            "Run command mentioned: {0}, run as service option mentioned:{1}",
-                            parser.IsCommand("run"),
-                            settings.RunAsService));
-
+                    Trace.Verbose($"Run as service: '{settings.RunAsService}'");
                     return await RunAsync(TokenSource.Token, settings);
                 }
 
-                if (alreadyConfigured)
+                if (configManager.IsConfigured())
                 {
                     // This is helpful if the user tries to start the agent.listener which is already configured or running as service
                     // However user can execute the agent by calling the run command
@@ -141,9 +130,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             }
         }
 
-        void CtrlCHandler(object sender, EventArgs e)
+        private void CtrlCHandler(object sender, EventArgs e)
         {
-            Quit();
+            _term.WriteLine("Exiting...");
+            if (_inConfigStage)
+            {
+                HostContext.Dispose();
+                Environment.Exit(1);
+            }
+            else
+            {
+                TokenSource.Cancel();
+            }
         }
 
         //create worker manager, create message listener and start listening to the queue
@@ -163,38 +161,51 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             _term.WriteLine(StringUtil.Loc("ListenForJobs"));
 
             _sessionId = listener.Session.SessionId;
+            bool autoUpdateInProgress = false;
+            bool skipMessageDeletion = false;
             TaskAgentMessage message = null;
+            IJobDispatcher jobDispatcher = null;
             try
             {
-                using (var workerManager = HostContext.GetService<IWorkerManager>())
+                jobDispatcher = HostContext.CreateService<IJobDispatcher>();
+                while (!token.IsCancellationRequested)
                 {
-                    while (!token.IsCancellationRequested)
+                    try
                     {
-                        try
-                        {
-                            message = await listener.GetNextMessageAsync(token); //get next message
+                        skipMessageDeletion = false;
+                        message = await listener.GetNextMessageAsync(token); //get next message
 
-                            if (string.Equals(message.MessageType, AgentRefreshMessage.MessageType, StringComparison.OrdinalIgnoreCase))
-                            {
-                                Trace.Warning("Referesh message received, but not yet handled by agent implementation.");
-                            }
-                            else if (string.Equals(message.MessageType, JobRequestMessage.MessageType, StringComparison.OrdinalIgnoreCase))
-                            {
-                                var newJobMessage = JsonUtility.FromString<JobRequestMessage>(message.Body);
-                                workerManager.Run(newJobMessage);
-                            }
-                            else if (string.Equals(message.MessageType, JobCancelMessage.MessageType, StringComparison.OrdinalIgnoreCase))
-                            {
-                                var cancelJobMessage = JsonUtility.FromString<JobCancelMessage>(message.Body);
-                                workerManager.Cancel(cancelJobMessage);
-                            }
-                        }
-                        finally
+                        if (string.Equals(message.MessageType, AgentRefreshMessage.MessageType, StringComparison.OrdinalIgnoreCase))
                         {
-                            if (message != null)
+                            Trace.Warning("Referesh message received, but not yet handled by agent implementation.");
+                        }
+                        else if (string.Equals(message.MessageType, JobRequestMessage.MessageType, StringComparison.OrdinalIgnoreCase))
+                        {
+                            var newJobMessage = JsonUtility.FromString<JobRequestMessage>(message.Body);
+                            jobDispatcher.Run(newJobMessage);
+                        }
+                        else if (string.Equals(message.MessageType, JobCancelMessage.MessageType, StringComparison.OrdinalIgnoreCase))
+                        {
+                            var cancelJobMessage = JsonUtility.FromString<JobCancelMessage>(message.Body);
+                            bool jobCancelled = jobDispatcher.Cancel(cancelJobMessage);
+                            skipMessageDeletion = autoUpdateInProgress && !jobCancelled;
+                        }
+                    }
+                    finally
+                    {
+                        if (!skipMessageDeletion && message != null)
+                        {
+                            try
                             {
-                                //TODO: make sure we don't mask more important exception
                                 await DeleteMessageAsync(message);
+                            }
+                            catch(Exception ex)
+                            {
+                                Trace.Error($"Catch exception during delete message from message queue. message id: {message.MessageId}");
+                                Trace.Error(ex);
+                            }
+                            finally
+                            {
                                 message = null;
                             }
                         }
@@ -203,9 +214,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             }
             finally
             {
+                if (jobDispatcher != null)
+                {
+                    await jobDispatcher.ShutdownAsync();
+                }
+
                 //TODO: make sure we don't mask more important exception
                 await listener.DeleteSessionAsync();
             }
+
             return 0;
         }
 
@@ -224,20 +241,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         private void PrintUsage()
         {
             _term.WriteLine(StringUtil.Loc("ListenerHelp"));
-        }
-
-        private void Quit()
-        {
-            _term.WriteLine("Exiting...");
-            if (_inConfigStage)
-            {
-                HostContext.Dispose();
-                Environment.Exit(1);
-            }
-            else
-            {
-                TokenSource.Cancel();
-            }
         }
     }
 }

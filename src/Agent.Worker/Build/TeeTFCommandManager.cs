@@ -20,11 +20,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         ServiceEndpoint Endpoint { set; }
         IExecutionContext ExecutionContext { set; }
 
+        Task EulaAsync();
         Task GetAsync(string version, string directory);
         string ResolvePath(string workspace, string serverPath);
-        Task ShelveAsync(string directory, string shelveset, string commentFile);
+        Task ShelveAsync(string shelveset, string directory, string commentFile);
         Task<TeeShelveset> ShelvesetsAsync(string workspace, string shelveset);
         Task<TeeStatus> StatusAsync(string workspace);
+        bool TestEulaAccepted();
         Task<bool> TryWorkspaceDeleteAsync(TeeWorkspace workspace);
         Task UndoAsync(string directory);
         Task UnshelveAsync(string workspace, string shelveset);
@@ -35,14 +37,21 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         Task WorkspacesRemoveAsync(TeeWorkspace workspace);
     }
 
-    // TODO: Accept EULA during configure.
     public sealed class TeeTFCommandManager : AgentService, ITeeTFCommandManager
     {
-        private readonly string _tf = Path.Combine(IOUtil.GetExternalsPath(), "tee", "tf");
+        private readonly string _tf = Path.Combine(
+            IOUtil.GetExternalsPath(),
+            Constants.Path.TeeDirectory,
+            "tf");
 
         public CancellationToken CancellationToken { private get; set; }
         public ServiceEndpoint Endpoint { private get; set; }
         public IExecutionContext ExecutionContext { private get; set; }
+
+        public async Task EulaAsync()
+        {
+            await RunCommandAsync(FormatFlags.All, "eula", "-accept");
+        }
 
         public async Task GetAsync(string version, string directory)
         {
@@ -69,12 +78,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             return localPath;
         }
 
-        public async Task ShelveAsync(string directory, string shelveset, string commentFile)
+        public async Task ShelveAsync(string shelveset, string directory, string commentFile)
         {
-            ArgUtil.NotNullOrEmpty(directory, nameof(directory));
             ArgUtil.NotNullOrEmpty(shelveset, nameof(shelveset));
+            ArgUtil.NotNullOrEmpty(directory, nameof(directory));
             ArgUtil.NotNullOrEmpty(commentFile, nameof(commentFile));
-            await RunPorcelainCommandAsync(FormatFlags.OmitCollectionUrl, "shelve", "-replace", "-recursive", $"-comment:@{commentFile}", shelveset, directory);
+            await RunPorcelainCommandAsync(FormatFlags.OmitCollectionUrl, "shelve", "-saved", "-replace", "-recursive", $"-comment:@{commentFile}", shelveset, directory);
         }
 
         public async Task<TeeShelveset> ShelvesetsAsync(string workspace, string shelveset)
@@ -101,12 +110,44 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         public async Task<TeeStatus> StatusAsync(string workspace)
         {
             ArgUtil.NotNullOrEmpty(workspace, nameof(workspace));
-            string xml = await RunPorcelainCommandAsync("status", $"-workspace:{workspace}", "-recursive", "-format:xml");
+            string xml = await RunPorcelainCommandAsync("status", $"-workspace:{workspace}", "-recursive", "-nodetect", "-format:xml");
             var serializer = new XmlSerializer(typeof(TeeStatus));
             using (var reader = new StringReader(xml ?? string.Empty))
             {
                 return serializer.Deserialize(reader) as TeeStatus;
             }
+        }
+
+        public bool TestEulaAccepted()
+        {
+            Trace.Entering();
+
+            // Resolve the path to the XML file containing the EULA-accepted flag.
+            string homeDirectory = Environment.GetEnvironmentVariable("HOME");
+            if (!string.IsNullOrEmpty(homeDirectory) && Directory.Exists(homeDirectory))
+            {
+                string xmlFile = Path.Combine(
+                    homeDirectory,
+                    ".microsoft",
+                    "Team Foundation",
+                    "4.0",
+                    "Configuration",
+                    "TEE-Mementos",
+                    "com.microsoft.tfs.client.productid.xml");
+                if (File.Exists(xmlFile))
+                {
+                    // Load and deserialize the XML.
+                    string xml = File.ReadAllText(xmlFile, Encoding.UTF8);
+                    XmlSerializer serializer = new XmlSerializer(typeof(ProductIdData));
+                    using (var reader = new StringReader(xml ?? string.Empty))
+                    {
+                        var data = serializer.Deserialize(reader) as ProductIdData;
+                        return string.Equals(data?.Eula?.Value ?? string.Empty, "true", StringComparison.OrdinalIgnoreCase);
+                    }
+                }
+            }
+
+            return false;
         }
 
         public async Task<bool> TryWorkspaceDeleteAsync(TeeWorkspace workspace)
@@ -214,12 +255,25 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 formattedArgs.Add($"-collection:{Endpoint.Url.AbsoluteUri}");
             }
 
-            formattedArgs.Add($"-login:_,{accessToken}");
-            formattedArgs.Add("-noprompt");
+            if (!formatFlags.HasFlag(FormatFlags.OmitLogin))
+            {
+                formattedArgs.Add($"-login:_,{accessToken}");
+            }
+
+            if (!formatFlags.HasFlag(FormatFlags.OmitNoPrompt))
+            {
+                formattedArgs.Add("-noprompt");
+            }
+
             return string.Join(" ", formattedArgs);
         }
 
-        private async Task RunCommandAsync(params string[] args)
+        private Task RunCommandAsync(params string[] args)
+        {
+            return RunCommandAsync(FormatFlags.None, args);
+        }
+
+        private async Task RunCommandAsync(FormatFlags formatFlags, params string[] args)
         {
             // Validation.
             ArgUtil.NotNull(args, nameof(args));
@@ -243,7 +297,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                         ExecutionContext.Output(e.Data);
                     }
                 };
-                string arguments = FormatArguments(FormatFlags.None, args);
+                string arguments = FormatArguments(formatFlags, args);
                 ExecutionContext.Command($@"{_tf} {arguments}");
                 await processInvoker.ExecuteAsync(
                     workingDirectory: IOUtil.GetWorkPath(HostContext),
@@ -316,7 +370,26 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         private enum FormatFlags
         {
             None = 0,
-            OmitCollectionUrl = 1
+            OmitCollectionUrl = 1,
+            OmitLogin = 2,
+            OmitNoPrompt = 4,
+            All = OmitCollectionUrl | OmitLogin | OmitNoPrompt,
+        }
+
+        ////////////////////////////////////////////////////////////////////////////////
+        // Product ID data objects (required for testing whether the EULA has been accepted).
+        ////////////////////////////////////////////////////////////////////////////////
+        [XmlRoot(ElementName = "ProductIdData", Namespace = "")]
+        public sealed class ProductIdData
+        {
+            [XmlElement(ElementName = "eula-14.0", Namespace = "")]
+            public Eula Eula { get; set; }
+        }
+
+        public sealed class Eula
+        {
+            [XmlAttribute(AttributeName = "value", Namespace = "")]
+            public string Value { get; set; }
         }
     }
 

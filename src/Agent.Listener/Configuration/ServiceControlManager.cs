@@ -17,7 +17,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
     // TODO: If this pattern repeats, avoid having this conditions and create WindowsServiceLocator/LinuxServiceLocator attribute
     public interface IServiceControlManager : IAgentService
     {
-        bool ConfigureService(AgentSettings settings, Dictionary<string, string> args, bool enforceSupplied);
+        bool ConfigureService(AgentSettings settings, CommandSettings command);
 
         void StartService(string serviceName);
 
@@ -51,7 +51,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             settings.ServiceDisplayName = StringUtil.Format(serviceDisplayNamePattern, accountName, settings.AgentName);
         }
 
-        public abstract bool ConfigureService(AgentSettings settings, Dictionary<string, string> args, bool enforceSupplied);
+        public abstract bool ConfigureService(AgentSettings settings, CommandSettings command);
 
         public abstract void StartService(string serviceName);
 

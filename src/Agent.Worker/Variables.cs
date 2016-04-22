@@ -7,7 +7,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using Microsoft.TeamFoundation.Build.WebApi;
+using BuildWebApi = Microsoft.TeamFoundation.Build.WebApi;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
@@ -74,76 +74,41 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         }
 
         public string Agent_BuildDirectory { get { return Get(Constants.Variables.Agent.BuildDirectory); } }
-        public int? Build_BuildId { get { return GetInt(WellKnownBuildVariables.BuildId); } }
+        public TaskResult? Agent_JobStatus { get { return GetEnum<TaskResult>(Constants.Variables.Agent.JobStatus); } set { Set(Constants.Variables.Agent.JobStatus, $"{value}"); } }
+        public int? Build_BuildId { get { return GetInt(BuildWebApi.WellKnownBuildVariables.BuildId); } }
+        public string Build_BuildUri { get { return Get(BuildWebApi.WellKnownBuildVariables.BuildUri); } }
         public BuildCleanOption? Build_Clean { get { return GetEnum<BuildCleanOption>(Constants.Variables.Build.Clean); } }
-        public long? Build_ContainerId { get { return GetLong(WellKnownBuildVariables.ContainerId); } }
+        public long? Build_ContainerId { get { return GetLong(BuildWebApi.WellKnownBuildVariables.ContainerId); } }
         public string Build_DefinitionName { get { return Get(Constants.Variables.Build.DefinitionName); } }
         public bool? Build_GatedRunCI { get { return GetBoolean(Constants.Variables.Build.GatedRunCI); } }
         public string Build_GatedShelvesetName { get { return Get(Constants.Variables.Build.GatedShelvesetName); } }
         public string Build_RepoTfvcWorkspace { get { return Get(Constants.Variables.Build.RepoTfvcWorkspace); } }
+		public string Build_RequestedFor { get { return Get((BuildWebApi.WellKnownBuildVariables.RequestedFor)); } }
         public string Build_SourcesDirectory { get { return Get(Constants.Variables.Build.SourcesDirectory); } }
         public string Build_SourceTfvcShelveset { get { return Get(Constants.Variables.Build.SourceTfvcShelveset); } }
         public string Build_SourceVersion { get { return Get(Constants.Variables.Build.SourceVersion); } }
         public bool? Build_SyncSources { get { return GetBoolean(Constants.Variables.Build.SyncSources); } }
+		public string Release_ReleaseEnvironmentUri { get { return Get("Release.EnvironmentUri"); } }
+		public string Release_ReleaseUri { get { return Get("Release.ReleaseUri"); } }
         public string System_CollectionId { get { return Get(Constants.Variables.System.CollectionId); } }
         public bool? System_Debug { get { return GetBoolean(Constants.Variables.System.Debug); } }
         public string System_DefinitionId { get { return Get(Constants.Variables.System.DefinitionId); } }
         public bool? System_EnableAccessToken { get { return GetBoolean(Constants.Variables.System.EnableAccessToken); } }
         public string System_HostType { get { return Get(Constants.Variables.System.HostType); } }
-        public Guid? System_TeamProjectId { get { return GetGuid(WellKnownBuildVariables.TeamProjectId); } }
+        public string System_TeamProject { get { return Get(BuildWebApi.WellKnownBuildVariables.TeamProject); } }
+        public Guid? System_TeamProjectId { get { return GetGuid(BuildWebApi.WellKnownBuildVariables.TeamProjectId); } }
         public string System_TFCollectionUrl { get { return Get(WellKnownDistributedTaskVariables.TFCollectionUrl);  } }
 
         public void ExpandValues(IDictionary<string, string> target)
         {
             _trace.Entering();
-            target = target ?? new Dictionary<string, string>();
-
-            // This algorithm does not perform recursive replacement.
-
-            // Process each key in the target dictionary.
-            foreach (string targetKey in target.Keys.ToArray())
+            var source = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (Variable variable in _store.Values)
             {
-                _trace.Verbose($"Processing expansion for: '{targetKey}'");
-                int startIndex = 0;
-                int prefixIndex;
-                int suffixIndex;
-                string targetValue = target[targetKey] ?? string.Empty;
-
-                // Find the next macro within the target value.
-                while (startIndex < targetValue.Length &&
-                    (prefixIndex = targetValue.IndexOf(Constants.Variables.MacroPrefix, startIndex, StringComparison.Ordinal)) >= 0 &&
-                    (suffixIndex = targetValue.IndexOf(Constants.Variables.MacroSuffix, prefixIndex + Constants.Variables.MacroPrefix.Length, StringComparison.Ordinal)) >= 0)
-                {
-                    // A candidate was found.
-                    string variableKey = targetValue.Substring(
-                        startIndex: prefixIndex + Constants.Variables.MacroPrefix.Length,
-                        length: suffixIndex - prefixIndex - Constants.Variables.MacroPrefix.Length);
-                    _trace.Verbose($"Found macro candidate: '{variableKey}'");
-                    string variableValue;
-                    if (!string.IsNullOrEmpty(variableKey) &&
-                        TryGetValue(variableKey, out variableValue))
-                    {
-                        // A matching variable was found.
-                        // Update the target value.
-                        _trace.Verbose("Macro found.");
-                        targetValue = string.Concat(
-                            targetValue.Substring(0, prefixIndex),
-                            variableValue ?? string.Empty,
-                            targetValue.Substring(suffixIndex + Constants.Variables.MacroSuffix.Length));
-
-                        // Bump the start index to prevent recursive replacement.
-                        startIndex = prefixIndex + (variableValue ?? string.Empty).Length;
-                    }
-                    else
-                    {
-                        // A matching variable was not found.
-                        _trace.Verbose("Macro not found.");
-                        startIndex = prefixIndex + 1;
-                    }
-                }
-
-                target[targetKey] = targetValue ?? string.Empty;
+                source[variable.Name] = variable.Value;
             }
+
+            VarUtil.ExpandValues(_hostContext, source, target);
         }
 
         public string Get(string name)

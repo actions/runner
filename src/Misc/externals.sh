@@ -1,4 +1,4 @@
-NODE_VERSION="4.3.2"
+NODE_VERSION="5.10.1"
 TEE_VERSION="14.0.2-private"
 
 get_abs_path() {

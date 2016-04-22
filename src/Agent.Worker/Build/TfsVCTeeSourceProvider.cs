@@ -33,11 +33,42 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             tf.Endpoint = endpoint;
             tf.ExecutionContext = executionContext;
 
+            // Check if the administrator accepted the license terms of the TEE EULA when
+            // configuring the agent.
+            AgentSettings settings = HostContext.GetService<IConfigurationStore>().GetSettings();
+            if (settings.AcceptTeeEula)
+            {
+                // Check if the "tf eula -accept" command needs to be run for the current security user.
+                bool skipEula = false;
+                try
+                {
+                    skipEula = tf.TestEulaAccepted();
+                }
+                catch (Exception ex)
+                {
+                    Trace.Error("Unexpected exception while testing whether the TEE EULA has been accepted for the current security user.");
+                    Trace.Error(ex);
+                }
+
+                if (!skipEula)
+                {
+                    // Run the command "tf eula -accept".
+                    try
+                    {
+                        await tf.EulaAsync();
+                    }
+                    catch (Exception ex)
+                    {
+                        Trace.Error(ex);
+                        executionContext.Warning(ex.Message);
+                    }
+                }
+            }
+
             // Get the TEE workspaces.
             TeeWorkspace[] teeWorkspaces = await tf.WorkspacesAsync();
 
             // Determine the workspace name.
-            AgentSettings settings = HostContext.GetService<IConfigurationStore>().GetSettings();
             string buildDirectory = executionContext.Variables.Agent_BuildDirectory;
             ArgUtil.NotNullOrEmpty(buildDirectory, nameof(buildDirectory));
             string workspaceName = $"ws_{Path.GetFileName(buildDirectory)}_{settings.AgentId}";
@@ -64,13 +95,23 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                     sourcesDirectory: sourcesDirectory);
 
                 // Undo any pending changes.
-                // TODO: Manually delete pending adds since they do not get deleted on undo?
                 if (existingTeeWorkspace != null)
                 {
                     TeeStatus teeStatus = await tf.StatusAsync(workspaceName);
                     if (teeStatus?.PendingChanges?.Any() ?? false)
                     {
                         await tf.UndoAsync(sourcesDirectory);
+
+                        // Cleanup remaining files/directories from pend adds.
+                        teeStatus.PendingChanges
+                            .Where(x => string.Equals(x.ChangeType, "add", StringComparison.OrdinalIgnoreCase))
+                            .OrderByDescending(x => x.LocalItem) // Sort descending so nested items are deleted before their parent is deleted.
+                            .ToList()
+                            .ForEach(x =>
+                            {
+                                executionContext.Output(StringUtil.Loc("Deleting", x.LocalItem));
+                                IOUtil.Delete(x.LocalItem, cancellationToken);
+                            });
                     }
                 }
             }
@@ -143,7 +184,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 }
 
                 // Unshelve.
-                // TODO: Confirm Get then Unshelve is OK.
                 await tf.UnshelveAsync(workspace: workspaceName, shelveset: shelvesetName);
 
                 if (!string.IsNullOrEmpty(gatedShelvesetName))
@@ -168,10 +208,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                         File.WriteAllText(path: commentFile, contents: comment.ToString());
 
                         // Reshelve.
-                        // TODO: Work with TEE folks regarding support for associate work items, policy override comment, etc.
                         await tf.ShelveAsync(
-                            directory: sourcesDirectory,
                             shelveset: gatedShelvesetName,
+                            directory: sourcesDirectory,
                             commentFile: commentFile);
                     }
                     finally

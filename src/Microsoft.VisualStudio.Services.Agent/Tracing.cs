@@ -15,7 +15,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         private ISecretMasker _secretMasker;
         private TraceSource _traceSource;
 
-        public Tracing(string name, ISecretMasker secretMasker, SourceSwitch sourceSwitch, TextWriterTraceListener traceListener)
+        public Tracing(string name, ISecretMasker secretMasker, SourceSwitch sourceSwitch, HostTraceListener traceListener)
         {
             ArgUtil.NotNull(secretMasker, nameof(secretMasker));
             _secretMasker = secretMasker;
@@ -106,7 +106,10 @@ namespace Microsoft.VisualStudio.Services.Agent
         private void Trace(TraceEventType eventType, string message)
         {
             ArgUtil.NotNull(_traceSource, nameof(_traceSource));
-            _traceSource.TraceEvent(eventType, 0, _secretMasker.MaskSecrets(message));
+            _traceSource.TraceEvent(
+                eventType: eventType,
+                id: 0,
+                message: _secretMasker.MaskSecrets(message));
             if (_lastFlush.ElapsedTicks > _flushThreshold)
             {
                 _traceSource.Flush();

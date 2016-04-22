@@ -42,7 +42,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             }
 
             Stream logFile = File.Create(TraceFileName);
-            var traceListener = new TextWriterTraceListener(logFile);
+            var traceListener = new HostTraceListener(logFile);
             _secretMasker = new SecretMasker();
             _traceManager = new TraceManager(traceListener, _secretMasker);
             SetSingleton<ISecretMasker>(_secretMasker);
@@ -68,8 +68,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         {
             // Dequeue a registered instance.
             object service;
-            ConcurrentQueue<object> queue = _serviceInstances[typeof(T)];
-            if (queue == null || !queue.TryDequeue(out service))
+            ConcurrentQueue<object> queue;
+            if (!_serviceInstances.TryGetValue(typeof(T), out queue) ||
+                !queue.TryDequeue(out service))
             {
                 throw new Exception($"Unable to dequeue a registered instance for type '{typeof(T).FullName}'.");
             }
@@ -82,14 +83,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         public T GetService<T>() where T : class, IAgentService
         {
             // Get the registered singleton instance.
-            T service = _serviceSingletons[typeof(T)] as T;
-            if (object.ReferenceEquals(service, null))
+            object service;
+            if (!_serviceSingletons.TryGetValue(typeof(T), out service))
             {
                 throw new Exception($"Singleton instance not registered for type '{typeof(T).FullName}'.");
             }
 
-            service.Initialize(this);
-            return service;
+            T s = service as T;
+            s.Initialize(this);
+            return s;
         }
 
         public void EnqueueInstance<T>(T instance) where T : class, IAgentService

@@ -15,12 +15,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
     {
         private Mock<IExecutionContext> _ec;
         private StepsRunner _stepsRunner;
+        private Variables _variables;
 
         private TestHostContext CreateTestContext([CallerMemberName] String testName = "")
         {
             var hc = new TestHostContext(this, testName);
+            List<string> warnings;
+            _variables = new Variables(
+                hostContext: hc,
+                copy: new Dictionary<string, string>(),
+                maskHints: new List<MaskHint>(),
+                warnings: out warnings);
             _ec = new Mock<IExecutionContext>();
             _ec.SetupAllProperties();
+            _ec.Setup(x => x.Variables).Returns(_variables);
             _stepsRunner = new StepsRunner();
             _stepsRunner.Initialize(hc);
             return hc;

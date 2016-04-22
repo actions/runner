@@ -39,7 +39,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
             using (TestHostContext hc = new TestHostContext(this))
             {
                 Assert.True(Validators.NonEmptyValidator("test"));
-                Assert.False(Validators.NonEmptyValidator(String.Empty));
+                Assert.False(Validators.NonEmptyValidator(string.Empty));
             }
         }
 

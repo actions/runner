@@ -17,9 +17,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             return MainAsync(args).GetAwaiter().GetResult();
         }
 
-
         public async static Task<int> MainAsync(string[] args)
         {
+            // Validate the binaries intended for one OS are not running on a different OS.
             switch (Constants.Agent.Platform)
             {
                 case Constants.OSPlatform.Linux:
@@ -43,6 +43,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                         return 1;
                     }
                     break;
+                default:
+                    throw new NotSupportedException(Constants.Agent.Platform.ToString());
             }
 
             using (HostContext context = new HostContext("Agent"))
@@ -60,14 +62,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     //                  That shim will also provide a compat arg parse 
                     //                  and translate / to -- etc...
                     //
-                    CommandLineParser parser = new CommandLineParser(context);
-                    parser.Parse(args);
+
+                    // Parse the command line args.
+                    var command = new CommandSettings(context, args);
                     s_trace.Info("Arguments parsed");
 
+                    // Defer to the Agent class to execute the command.
                     IAgent agent = context.GetService<IAgent>();
                     using (agent.TokenSource = new CancellationTokenSource())
                     {
-                        rc = await agent.ExecuteCommand(parser);
+                        rc = await agent.ExecuteCommand(command);
                     }
                 }
                 catch (Exception e)
@@ -76,6 +80,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     {
                         Console.Error.WriteLine(StringUtil.Format("An error occured.  {0}", e.Message));
                     }
+
                     s_trace.Error(e);
                     rc = 1;
                 }

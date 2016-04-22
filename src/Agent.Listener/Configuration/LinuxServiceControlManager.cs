@@ -21,8 +21,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
         public override bool ConfigureService(
             AgentSettings settings,
-            Dictionary<string, string> args,
-            bool enforceSupplied)
+            CommandSettings command)
         {
             Trace.Entering();
 
@@ -53,6 +52,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                                           {
                                               { "{Description}", settings.ServiceDisplayName },
                                               { "{BinDirectory}", IOUtil.GetBinPath() },
+                                              { "{ExternalsDirectory}", IOUtil.GetExternalsPath() },
                                               { "{User}", GetCurrentLoginName() }
                                           };
 

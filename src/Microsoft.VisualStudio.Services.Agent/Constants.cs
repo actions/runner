@@ -4,6 +4,9 @@ namespace Microsoft.VisualStudio.Services.Agent
 {
     public static class Constants
     {
+        public static string SecretMask = "********";
+        public static string TFBuild = "TF_BUILD";
+
         public enum OSPlatform
         {
             OSX,
@@ -13,7 +16,6 @@ namespace Microsoft.VisualStudio.Services.Agent
 
         public static class Agent
         {
-            public static readonly int MaxParallelism = 1;
             public static readonly string Version = "1.999.0";
 
 #if OS_LINUX
@@ -23,6 +25,52 @@ namespace Microsoft.VisualStudio.Services.Agent
 #elif OS_WINDOWS
             public static readonly OSPlatform Platform = OSPlatform.Windows;
 #endif
+
+            public static class CommandLine
+            {
+                public static class Args
+                {
+                    public static readonly string Agent = "agent";
+                    public static readonly string Auth = "auth";
+                    public static readonly string Pool = "pool";
+                    public static readonly string Url = "url";
+                    public static readonly string Work = "work";
+
+                    // Secret args. Must be added to the "Secrets" getter as well.
+                    public static readonly string Password = "password";
+                    public static readonly string Token = "token";
+                    public static readonly string UserName = "username";
+                    public static readonly string WindowsLogonAccount = "windowslogonaccount";
+                    public static readonly string WindowsLogonPassword = "windowslogonpassword";
+                    public static string[] Secrets => new[]
+                    {
+                        Password,
+                        Token,
+                        UserName,
+                        WindowsLogonAccount,
+                        WindowsLogonPassword,
+                    };
+                }
+
+                public static class Commands
+                {
+                    public static readonly string Configure = "configure";
+                    public static readonly string Run = "run";
+                    public static readonly string Unconfigure = "unconfigure";
+                }
+
+                public static class Flags
+                {
+                    public static readonly string AcceptTeeEula = "acceptteeeula";
+                    public static readonly string Commit = "commit";
+                    public static readonly string Help = "help";
+                    public static readonly string NoStart = "nostart";
+                    public static readonly string Replace = "replace";
+                    public static readonly string RunAsService = "runasservice";
+                    public static readonly string Unattended = "unattended";
+                    public static readonly string Version = "version";
+                }
+            }
         }
 
         public static class Build
@@ -44,10 +92,19 @@ namespace Microsoft.VisualStudio.Services.Agent
             }
         }
 
+        public static class Configuration
+        {
+            public static readonly string PAT = "PAT";
+            public static readonly string Alternate = "ALT";
+            public static readonly string Negotiate = "Negotiate";
+            public static readonly string Integrated = "Integrated";
+        }
+
         public static class Path
         {
             public static readonly string DiagDirectory = "_diag";
             public static readonly string ExternalsDirectory = "externals";
+            public static readonly string TeeDirectory = "tee";
             public static readonly string TaskJsonFile = "task.json";
             public static readonly string TasksDirectory = "_tasks";
         }
@@ -123,10 +180,35 @@ namespace Microsoft.VisualStudio.Services.Agent
                 public static readonly string DefinitionId = "system.definitionid";
                 public static readonly string EnableAccessToken = "system.enableAccessToken";
                 public static readonly string HostType = "system.hosttype";
-                // public static readonly string System = "system";
-                public static readonly string TeamProject = "system.teamproject";
-                public static readonly string TFServerUrl = "system.TeamFoundationServerUri"; // back compat variable, do not document
                 public static readonly string PreferGit = "system.prefergit";
+                public static readonly string TFServerUrl = "system.TeamFoundationServerUri"; // back compat variable, do not document
+                public static readonly string TeamProject = "system.teamproject";
+                public static readonly string TeamProjectId = "system.teamProjectId";
+                public static readonly string WorkFolder = "system.workfolder";
+            }
+
+            public static class Task
+            {
+                public static readonly string DisplayName = "task.displayname";
+            }
+
+            public static class Release
+            {
+                //
+                // Keep alphabetical
+                //
+                public static readonly string AttemptNumber = "release.attemptNumber";
+                public static readonly string ReleaseDefinitionName = "release.definitionName";
+                public static readonly string ReleaseEnvironmentName = "release.environmentName";
+                public static readonly string ReleaseEnvironmentUri = "release.environmentUri";
+                public static readonly string ReleaseDescription = "release.releaseDescription";
+                public static readonly string ReleaseId = "release.releaseId";
+                public static readonly string ReleaseName = "release.releaseName";
+                public static readonly string ReleaseRequestedForId = "release.requestedForId";
+                public static readonly string ReleaseUri = "release.releaseUri";
+                public static readonly string ReleaseWebUrl = "release.releaseWebUrl";
+                public static readonly string RequestorId = "release.requestedFor";
+                public static readonly string SkipArtifactsDownload = "release.skipartifactsDownload";
             }
         }
     }

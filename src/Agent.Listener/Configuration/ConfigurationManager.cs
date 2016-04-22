@@ -2,36 +2,21 @@ using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using Microsoft.VisualStudio.Services.Client;
 using Microsoft.VisualStudio.Services.Common;
-
 using System;
 using System.Collections.Generic;
-using System.Threading;
+using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 {
-    public static class CliArgs
-    {
-        public const string Auth = "auth";
-        public const string Url = "url";
-        public const string Pool = "pool";
-        public const string Agent = "agent";
-        public const string Replace = "replace";
-        public const string Work = "work";
-        public const string RunAsService = "runasservice";
-    }
-
-    // TODO: does initialize make sense for service locator pattern?
-    // should it be ensureInitialized?  Singleton?
-    //
     [ServiceLocator(Default = typeof(ConfigurationManager))]
     public interface IConfigurationManager : IAgentService
     {
         bool IsConfigured();
-        Task EnsureConfiguredAsync();
-        Task ConfigureAsync(Dictionary<string, string> args, HashSet<string> flags, bool unattend);
-        ICredentialProvider AcquireCredentials(Dictionary<String, String> args, bool enforceSupplied);
+        Task EnsureConfiguredAsync(CommandSettings command);
+        Task ConfigureAsync(CommandSettings command);
         AgentSettings LoadSettings();
     }
 
@@ -46,61 +31,24 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             base.Initialize(hostContext);
             Trace.Verbose("Creating _store");
             _store = hostContext.GetService<IConfigurationStore>();
-            _term = hostContext.GetService<ITerminal>();
             Trace.Verbose("store created");
+            _term = hostContext.GetService<ITerminal>();
         }
 
         public bool IsConfigured()
         {
-            return _store.IsConfigured();
+            bool result = _store.IsConfigured();
+            Trace.Info($"Is configured: {result}");
+            return result;
         }
 
-        public async Task EnsureConfiguredAsync()
+        public async Task EnsureConfiguredAsync(CommandSettings command)
         {
             Trace.Info(nameof(EnsureConfiguredAsync));
-
-            bool configured = _store.IsConfigured();
-
-            Trace.Info("configured? {0}", configured);
-
-            if (!configured)
+            if (!IsConfigured())
             {
-                await ConfigureAsync(null, null, false);
+                await ConfigureAsync(command);
             }
-        }
-
-        public ICredentialProvider AcquireCredentials(Dictionary<String, String> args, bool enforceSupplied)
-        {
-            Trace.Info(nameof(AcquireCredentials));
-
-            var credentialManager = HostContext.GetService<ICredentialManager>();
-            ICredentialProvider cred = null;
-
-            if (_store.HasCredentials())
-            {
-                CredentialData data = _store.GetCredentials();
-                cred = credentialManager.GetCredentialProvider(data.Scheme);
-                cred.CredentialData = data;
-            }
-            else
-            {
-                // get from user
-                var consoleWizard = HostContext.GetService<IConsoleWizard>();
-                string authType = consoleWizard.ReadValue(CliArgs.Auth,
-                                                        StringUtil.Loc("AuthenticationType"),
-                                                        false,
-                                                        "PAT",
-                                                        Validators.AuthSchemeValidator,
-                                                        args,
-                                                        enforceSupplied);
-                Trace.Info("AuthType: {0}", authType);
-
-                Trace.Verbose("Creating Credential: {0}", authType);
-                cred = credentialManager.GetCredentialProvider(authType);
-                cred.ReadCredential(HostContext, args, enforceSupplied);
-            }
-
-            return cred;
         }
 
         public AgentSettings LoadSettings()
@@ -117,7 +65,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             return settings;
         }
 
-        public async Task ConfigureAsync(Dictionary<string, string> args, HashSet<string> flags, bool enforceSupplied)
+        public async Task ConfigureAsync(CommandSettings command)
         {
             Trace.Info(nameof(ConfigureAsync));
             if (IsConfigured())
@@ -125,127 +73,103 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 throw new InvalidOperationException(StringUtil.Loc("AlreadyConfiguredError"));
             }
 
-            Trace.Info("Read agent settings");
-            var consoleWizard = HostContext.GetService<IConsoleWizard>();
+            // TEE EULA
+            bool acceptTeeEula = false;
+            switch (Constants.Agent.Platform)
+            {
+                case Constants.OSPlatform.OSX:
+                case Constants.OSPlatform.Linux:
+                    // Write the section header.
+                    WriteSection(StringUtil.Loc("EulasSectionHeader"));
+
+                    // Verify the EULA exists on disk in the expected location.
+                    string eulaFile = Path.Combine(IOUtil.GetExternalsPath(), Constants.Path.TeeDirectory, "license.html");
+                    ArgUtil.File(eulaFile, nameof(eulaFile));
+
+                    // Write elaborate verbiage about the TEE EULA.
+                    _term.WriteLine(StringUtil.Loc("TeeEula", eulaFile));
+                    _term.WriteLine();
+
+                    // Prompt to acccept the TEE EULA.
+                    acceptTeeEula = command.GetAcceptTeeEula();
+                    break;
+                case Constants.OSPlatform.Windows:
+                    break;
+                default:
+                    throw new NotSupportedException();
+            }
 
             // TODO: Check if its running with elevated permission and stop early if its not
-            //
+
             // Loop getting url and creds until you can connect
-            //
             string serverUrl = null;
-            ICredentialProvider credProv = null;
+            ICredentialProvider credProvider = null;
+            WriteSection(StringUtil.Loc("ConnectSectionHeader"));
             while (true)
             {
-                WriteSection("Connect");
-                serverUrl = consoleWizard.ReadValue(CliArgs.Url,
-                                                StringUtil.Loc("ServerUrl"),
-                                                false,
-                                                String.Empty,
-                                                Validators.ServerUrlValidator,
-                                                args,
-                                                enforceSupplied);
-                Trace.Info("serverUrl: {0}", serverUrl);
+                // Get the URL
+                serverUrl = command.GetUrl();
 
-                credProv = AcquireCredentials(args, enforceSupplied);
-                VssCredentials creds = credProv.GetVssCredentials(HostContext);
-
+                // Get the credentials
+                credProvider = GetCredentialProvider(command, serverUrl);
+                VssCredentials creds = credProvider.GetVssCredentials(HostContext);
                 Trace.Info("cred retrieved");
-
-                bool connected = true;
                 try
                 {
+                    // Validate can connect.
                     await TestConnectAsync(serverUrl, creds);
-                }
-                catch (Exception e)
-                {
-                    Trace.Error(e);
-                    _term.WriteLine(StringUtil.Loc("FailedToConnect"));
-                    connected = false;
-                }
-
-                // we don't want to loop on unattend
-                if (enforceSupplied || connected)
-                {
+                    Trace.Info("Connect complete.");
                     break;
+                }
+                catch (Exception e) when (!command.Unattended)
+                {
+                    _term.WriteError(e);
+                    _term.WriteError(StringUtil.Loc("FailedToConnect"));
+                    // TODO: If the connection fails, shouldn't the URL/creds be cleared from the command line parser? Otherwise retry may be immediately attempted using the same values without prompting the user for new values. The same general problem applies to every retry loop during configure.
                 }
             }
 
-            // TODO: Create console agent service so we can hide in testing etc... and trace
             _term.WriteLine(StringUtil.Loc("SavingCredential"));
             Trace.Verbose("Saving credential");
-            _store.SaveCredential(credProv.CredentialData);
+            _store.SaveCredential(credProvider.CredentialData);
 
-            Trace.Info("Connect Complete.");
-
-            //
             // Loop getting agent name and pool
-            //
             string poolName = null;
             int poolId = 0;
             string agentName = null;
-            int agentId = 0;
-
-            WriteSection("Register Agent");
-
+            WriteSection(StringUtil.Loc("RegisterAgentSectionHeader"));
             while (true)
             {
-                poolName = consoleWizard.ReadValue(CliArgs.Pool,
-                                                "Pool Name", // Not localized as pool name is a technical term
-                                                false,
-                                                "default",
-                                                // can do better
-                                                Validators.NonEmptyValidator,
-                                                args,
-                                                enforceSupplied);
-
+                poolName = command.GetPool();
                 try
                 {
                     poolId = await GetPoolId(poolName);
                 }
-                catch (Exception e)
+                catch (Exception e) when (!command.Unattended)
                 {
-                    Trace.Error(e);
+                    _term.WriteError(e);
                 }
 
-                if (enforceSupplied || poolId > 0)
+                if (poolId > 0)
                 {
                     break;
                 }
-                else
-                {
-                    _term.WriteLine(StringUtil.Loc("FailedToFindPool"));
-                }
+
+                _term.WriteError(StringUtil.Loc("FailedToFindPool"));
             }
 
             var capProvider = HostContext.GetService<ICapabilitiesProvider>();
+            TaskAgent agent;
             while (true)
             {
-                agentName = consoleWizard.ReadValue(CliArgs.Agent,
-                                                StringUtil.Loc("AgentName"),
-                                                false,
-                                                Environment.MachineName ?? "myagent",
-                                                // can do better
-                                                Validators.NonEmptyValidator,
-                                                args,
-                                                enforceSupplied);
-
+                agentName = command.GetAgent();
                 Dictionary<string, string> capabilities = await capProvider.GetCapabilitiesAsync(agentName, CancellationToken.None);
-
-                TaskAgent agent = await GetAgent(agentName, poolId);
-                bool exists = agent != null;
-                bool replace = false;
-                bool registered = false;
-                if (exists)
+                agent = await GetAgent(agentName, poolId);
+                if (agent != null)
                 {
-                    replace = consoleWizard.ReadBool(CliArgs.Replace,
-                                                StringUtil.Loc("Replece"),
-                                                false,
-                                                args,
-                                                enforceSupplied);
-                    if (replace)
+                    if (command.GetReplace())
                     {
                         // update - update instead of delete so we don't lose user capabilities etc...
-                        agent.MaxParallelism = Constants.Agent.MaxParallelism;
                         agent.Version = Constants.Agent.Version;
 
                         foreach (var capability in capabilities)
@@ -255,64 +179,56 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
                         try
                         {
-                            agent = await UpdateAgent(poolId, agent);
+                            agent = await _agentServer.UpdateAgentAsync(poolId, agent);
                             _term.WriteLine(StringUtil.Loc("AgentReplaced"));
-                            registered = true;
+                            break;
                         }
-                        catch (Exception e)
+                        catch (Exception e) when (!command.Unattended)
                         {
-                            Trace.Error(e);
-                            _term.WriteLine(StringUtil.Loc("FailedToReplaceAgent"));
+                            _term.WriteError(e);
+                            _term.WriteError(StringUtil.Loc("FailedToReplaceAgent"));
                         }
+                    }
+                    else
+                    {
+                        // TODO: ?
                     }
                 }
                 else
                 {
                     agent = new TaskAgent(agentName)
                     {
-                        MaxParallelism = Constants.Agent.MaxParallelism,
+                        MaxParallelism = 1,
                         Version = Constants.Agent.Version
                     };
 
                     foreach (var capability in capabilities)
                     {
-                        agent.SystemCapabilities.Add(capability.Key, capability.Value);
+                        agent.SystemCapabilities[capability.Key] = capability.Value;
                     }
 
                     try
                     {
-                        agent = await AddAgent(poolId, agent);
+                        agent = await _agentServer.AddAgentAsync(poolId, agent);
                         _term.WriteLine(StringUtil.Loc("AgentAddedSuccessfully"));
-                        registered = true;
+                        break;
                     }
-                    catch (Exception e)
+                    catch (Exception e) when (!command.Unattended)
                     {
-                        Trace.Error(e);
-                        _term.WriteLine(StringUtil.Loc("AddAgentFailed"));
+                        _term.WriteError(e);
+                        _term.WriteError(StringUtil.Loc("AddAgentFailed"));
                     }
-                }
-                agentId = agent.Id;
-
-                if (enforceSupplied || registered)
-                {
-                    break;
                 }
             }
 
             // We will Combine() what's stored with root.  Defaults to string a relative path
-            string workFolder = consoleWizard.ReadValue(CliArgs.Work,
-                                                    StringUtil.Loc("WorkFolderDescription"),
-                                                    false,
-                                                    "_work",
-                                                    // can do better
-                                                    Validators.NonEmptyValidator,
-                                                    args,
-                                                    enforceSupplied);
+            string workFolder = command.GetWork();
 
             // Get Agent settings
             var settings = new AgentSettings
             {
-                AgentId = agentId,
+                AcceptTeeEula = acceptTeeEula,
+                AgentId = agent.Id,
                 ServerUrl = serverUrl,
                 AgentName = agentName,
                 PoolName = poolName,
@@ -320,28 +236,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 WorkFolder = workFolder,
             };
 
-            bool runAsService = false;
-            if (flags != null && flags.Contains("runasservice"))
-            {
-                runAsService = true;
-            }
-            else
-            {
-                runAsService = consoleWizard.ReadBool(
-                    CliArgs.RunAsService,
-                    StringUtil.Loc("RunAgentAsServiceDescription"),
-                    false,
-                    null,
-                    enforceSupplied);
-            }
-
+            bool runAsService = command.GetRunAsService();
             var serviceControlManager = HostContext.GetService<IServiceControlManager>();
             bool successfullyConfigured = false;
             if (runAsService)
             {
                 settings.RunAsService = true;
                 Trace.Info("Configuring to run the agent as service");
-                successfullyConfigured = serviceControlManager.ConfigureService(settings, args, enforceSupplied);
+                successfullyConfigured = serviceControlManager.ConfigureService(settings, command);
             }
 
             _store.SaveSettings(settings);
@@ -351,6 +253,37 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 Trace.Info("Configuration was successful, trying to start the service");
                 serviceControlManager.StartService(settings.ServiceName);
             }
+        }
+
+        private ICredentialProvider GetCredentialProvider(CommandSettings command, string serverUrl)
+        {
+            Trace.Info(nameof(GetCredentialProvider));
+
+            var credentialManager = HostContext.GetService<ICredentialManager>();
+            ICredentialProvider provider = null;
+            if (_store.HasCredentials())
+            {
+                CredentialData data = _store.GetCredentials();
+                provider = credentialManager.GetCredentialProvider(data.Scheme);
+                provider.CredentialData = data;
+            }
+            else
+            {
+                // Get the auth type. On premise defaults to negotiate (Kerberos with fallback to NTLM).
+                // Hosted defaults to PAT authentication.
+                bool isHosted = serverUrl.IndexOf("visualstudio.com", StringComparison.OrdinalIgnoreCase) != -1
+                    || serverUrl.IndexOf("tfsallin.net", StringComparison.OrdinalIgnoreCase) != -1;
+                string defaultAuth = isHosted ? Constants.Configuration.PAT : 
+                    (Constants.Agent.Platform == Constants.OSPlatform.Windows ? Constants.Configuration.Integrated : Constants.Configuration.Negotiate);
+                string authType = command.GetAuth(defaultValue: defaultAuth);
+
+                // Create the credential.
+                Trace.Info("Creating credential for auth: {0}", authType);
+                provider = credentialManager.GetCredentialProvider(authType);
+                provider.EnsureCredential(HostContext, command, serverUrl);
+            }
+
+            return provider;
         }
 
         private async Task TestConnectAsync(string url, VssCredentials creds)
@@ -384,23 +317,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             TaskAgent agent = agents.FirstOrDefault();
 
             return agent;
-        }
-
-        private async Task DeleteAgent(int poolId, int agentId)
-        {
-            await _agentServer.DeleteAgentAsync(poolId, agentId);
-        }
-
-        private async Task<TaskAgent> UpdateAgent(int poolId, TaskAgent agent)
-        {
-            TaskAgent created = await _agentServer.UpdateAgentAsync(poolId, agent);
-            return created;
-        }
-
-        private async Task<TaskAgent> AddAgent(int poolId, TaskAgent agent)
-        {
-            TaskAgent created = await _agentServer.AddAgentAsync(poolId, agent);
-            return created;
         }
 
         private void WriteSection(string message)

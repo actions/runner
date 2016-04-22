@@ -1,15 +1,12 @@
+using Microsoft.VisualStudio.Services.Agent.Listener.Configuration;
+using Microsoft.VisualStudio.Services.Agent.Util;
+using Moq;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
-
-using Microsoft.VisualStudio.Services.Agent.Listener.Configuration;
-using Microsoft.VisualStudio.Services.Agent.Util;
-
-using Moq;
-
 using Xunit;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
@@ -18,6 +15,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
     {
         private Mock<IProcessInvoker> _processInvoker;
         private Mock<INativeLinuxServiceHelper> _serviceHelper;
+        private const string LinuxServiceName = "vsts.agent.server.agent.service";
 
         public LinuxServiceControlManagerL0()
         {
@@ -33,7 +31,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
                     It.IsAny<Dictionary<string, string>>(),
                     It.IsAny<CancellationToken>())).Returns(Task.FromResult(0));
             _serviceHelper.Setup(x => x.CheckIfSystemdExists()).Returns(true);
-            _serviceHelper.Setup(x => x.GetUnitFile("vsts.agent.server.agent.service")).Returns(Path.Combine(IOUtil.GetBinPath(), "vsts.agent.server.agent.service"));
+            _serviceHelper.Setup(x => x.GetUnitFile(LinuxServiceName)).Returns(Path.Combine(IOUtil.GetBinPath(), LinuxServiceName));
         }
 
         private TestHostContext CreateTestContext([CallerMemberName] String testName = "")
@@ -69,9 +67,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
                 string unitFileTemplatePath = Path.Combine(IOUtil.GetBinPath(), "vsts.agent.service.template");
                 File.WriteAllText(unitFileTemplatePath, "{User}-{Description}");
 
-                controlManager.ConfigureService(agentSettings, null, true);
+                controlManager.ConfigureService(agentSettings, null);
+
                 
-                Assert.Equal(agentSettings.ServiceName, "vsts.agent.server.agent.service");
+                Assert.Equal(agentSettings.ServiceName, LinuxServiceName);
                 Assert.Equal(agentSettings.ServiceDisplayName, "VSTS Agent (server.agent)");
 
                 _processInvoker.Verify(
@@ -85,6 +84,55 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
             }
         }
 
+#if OS_LINUX
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+#endif
+        public void VerifyLinuxServiceConfigurationFileContent()
+        {
+            using (var tc = CreateTestContext())
+            {
+                var controlManager = new LinuxServiceControlManager();
+                controlManager.Initialize(tc);
+                tc.EnqueueInstance<IProcessInvoker>(_processInvoker.Object);
+                tc.EnqueueInstance<IProcessInvoker>(_processInvoker.Object);
+                tc.EnqueueInstance<IProcessInvoker>(_processInvoker.Object);
+
+                var testUser = "testuser";
+                Environment.SetEnvironmentVariable("SUDO_USER", testUser);
+                string expectedUnitContent = string.Format(@"[Unit]
+Description=VSTS Agent (server.agent)
+After=network.target
+
+[Service]
+ExecStart={0}/node/bin/node {1}/AgentService.js
+User={3}
+Environment=PATH=/user/bin:/usr/local/bin
+Environment=NODE_ENV=production
+WorkingDirectory={2}
+
+[Install]
+WantedBy=multi-user.target
+", IOUtil.GetExternalsPath(), IOUtil.GetBinPath(), IOUtil.GetBinPath(), testUser);
+
+                var agentSettings = new AgentSettings
+                                        {
+                                            AgentName = "agent",
+                                            ServiceName = "testservice",
+                                            ServiceDisplayName = "testservice",
+                                            ServerUrl = "http://server.name"
+                                        };
+                string unitFileTemplatePath = Path.Combine(TestUtil.GetSrcPath(), "Misc", "layoutbin", "vsts.agent.service.template");
+                string unitFilePath = _serviceHelper.Object.GetUnitFile(LinuxServiceName);
+                File.Copy(unitFileTemplatePath, IOUtil.GetBinPath(), true);
+                _serviceHelper.Setup(x => x.CheckIfSystemdExists()).Returns(true);
+
+                controlManager.ConfigureService(agentSettings, null);
+
+                Assert.Equal(File.ReadAllText(unitFilePath), expectedUnitContent);
+            }
+        }
 
 #if OS_LINUX
         [Fact]

@@ -1,3 +1,4 @@
+using Microsoft.TeamFoundation.Build.WebApi;
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Worker;
 using Microsoft.VisualStudio.Services.Agent.Util;
@@ -10,6 +11,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
     public interface IHandler : IAgentService
     {
         IExecutionContext ExecutionContext { get; set; }
+        string FilePathInputRootDirectory { get; set; }
         Dictionary<string, string> Inputs { get; set; }
         string TaskDirectory { get; set; }
 
@@ -22,6 +24,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
         protected Dictionary<string, string> Environment { get; private set; }
 
         public IExecutionContext ExecutionContext { get; set; }
+        public string FilePathInputRootDirectory { get; set; }
         public Dictionary<string, string> Inputs { get; set; }
         public string TaskDirectory { get; set; }
 
@@ -42,16 +45,24 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             foreach (ServiceEndpoint endpoint in ExecutionContext.Endpoints)
             {
                 ArgUtil.NotNull(endpoint, nameof(endpoint));
-                if (endpoint.Id == Guid.Empty &&
-                    !string.Equals(endpoint.Name, ServiceEndpoints.SystemVssConnection, StringComparison.OrdinalIgnoreCase))
+
+                string partialKey = null;
+                if (endpoint.Id != Guid.Empty)
                 {
-                    // TODO: Is this a production scenario?
-                    continue;
+                    partialKey = endpoint.Id.ToString();
+                }
+                else if (string.Equals(endpoint.Name, ServiceEndpoints.SystemVssConnection, StringComparison.OrdinalIgnoreCase))
+                {
+                    partialKey = ServiceEndpoints.SystemVssConnection;
+                }
+                else if (endpoint.Data == null ||
+                    !endpoint.Data.TryGetValue(WellKnownEndpointData.RepositoryId, out partialKey) ||
+                    string.IsNullOrEmpty(partialKey))
+                {
+                    continue; // This should never happen.
                 }
 
-                string partialKey =
-                    (endpoint.Id != Guid.Empty ? endpoint.Id.ToString() : ServiceEndpoints.SystemVssConnection)
-                    .ToUpperInvariant();
+                partialKey = partialKey.ToUpperInvariant(); // TODO: Should this be upper? Is this consistent with the Nodejs lib?
                 AddEnvironmentVariable(
                     key: $"ENDPOINT_URL_{partialKey}",
                     value: endpoint.Url?.ToString());
@@ -95,7 +106,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             // Add the public variables to the environment variable dictionary.
             foreach (KeyValuePair<string, string> pair in ExecutionContext.Variables.Public)
             {
-                AddEnvironmentVariable(pair.Key, pair.Value);
+                // Format all variables other than "agent.jobstatus".
+                string formattedKey = string.Equals(pair.Key, Constants.Variables.Agent.JobStatus, StringComparison.OrdinalIgnoreCase)
+                    ? pair.Key
+                    : (pair.Key ?? string.Empty).Replace('.', '_').ToUpperInvariant();
+                AddEnvironmentVariable(
+                    formattedKey,
+                    pair.Value);
             }
         }
 

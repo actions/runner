@@ -114,6 +114,9 @@ namespace Microsoft.VisualStudio.Services.Agent
                 }
             }
 
+            // Set the TF_BUILD env variable.
+            _proc.StartInfo.Environment[Constants.TFBuild] = "True";
+
             // Hook up the events.
             _proc.EnableRaisingEvents = true;
             _proc.Exited += OnExited;

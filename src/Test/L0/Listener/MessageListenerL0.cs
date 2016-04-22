@@ -61,6 +61,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
 
                 _capProvider.Setup(x => x.GetCapabilitiesAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).Returns(Task.FromResult(new Dictionary<string, string>()));
 
+                _credMgr.Setup(x => x.LoadCredentials()).Returns(new Common.VssCredentials());
+
                 // Act.
                 MessageListener listener = new MessageListener();
                 listener.Initialize(tc);
@@ -104,6 +106,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                     .Returns(Task.FromResult(expectedSession));
 
                 _capProvider.Setup(x => x.GetCapabilitiesAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).Returns(Task.FromResult(new Dictionary<string, string>()));
+
+                _credMgr.Setup(x => x.LoadCredentials()).Returns(new Common.VssCredentials());
 
                 // Act.
                 MessageListener listener = new MessageListener();
@@ -151,6 +155,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                     .Returns(Task.FromResult(expectedSession));
 
                 _capProvider.Setup(x => x.GetCapabilitiesAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).Returns(Task.FromResult(new Dictionary<string, string>()));
+
+                _credMgr.Setup(x => x.LoadCredentials()).Returns(new Common.VssCredentials());
 
                 // Act.
                 MessageListener listener = new MessageListener();

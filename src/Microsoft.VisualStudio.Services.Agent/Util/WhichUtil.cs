@@ -10,6 +10,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
         string Which(string command);
     }
 
+    // TODO: Should also search for a file with the exact file name match regardless of extension. For example, should be able to resolve a PowerShell script from the PATH even though ps1 is not included in PATHEXT.
     public sealed class WhichUtil : AgentService, IWhichUtil
     {
         public string Which(string command)

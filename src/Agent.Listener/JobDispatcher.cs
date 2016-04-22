@@ -1,6 +1,8 @@
 ﻿using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -8,20 +10,228 @@ using System.Threading.Tasks;
 namespace Microsoft.VisualStudio.Services.Agent.Listener
 {
     [ServiceLocator(Default = typeof(JobDispatcher))]
-    public interface IJobDispatcher : IDisposable, IAgentService
+    public interface IJobDispatcher : IAgentService
     {
-        Task<int> RunAsync(JobRequestMessage message, CancellationToken jobRequestCancellationToken);
+        void Run(JobRequestMessage message);
+        bool Cancel(JobCancelMessage message);
+        Task WaitAsync(CancellationToken token);
+        Task ShutdownAsync();
     }
 
+    // This implementation of IDobDispatcher is not thread safe.
+    // It is base on the fact that the current design of agent is dequeue
+    // and process one message from message queue everytime.
+    // In addition, it only execute one job every time, 
+    // and server will not send another job while this one is still running.
     public sealed class JobDispatcher : AgentService, IJobDispatcher
     {
+        private int _poolId;
         private static readonly string _workerProcessName = $"Agent.Worker{IOUtil.ExeExtension}";
+
+        // this is not thread-safe
+        private readonly Queue<Guid> _jobDispatchedQueue = new Queue<Guid>();
+        private readonly ConcurrentDictionary<Guid, WorkerDispatcher> _jobInfos = new ConcurrentDictionary<Guid, WorkerDispatcher>();
 
         //allow up to 30sec for any data to be transmitted over the process channel
         private readonly TimeSpan ChannelTimeout = TimeSpan.FromSeconds(30);
 
-        public async Task<int> RunAsync(JobRequestMessage message, CancellationToken jobRequestCancellationToken)
+        public override void Initialize(IHostContext hostContext)
         {
+            base.Initialize(hostContext);
+
+            // get pool id from config
+            var configurationStore = hostContext.GetService<IConfigurationStore>();
+            AgentSettings agentSetting = configurationStore.GetSettings();
+            _poolId = agentSetting.PoolId;
+        }
+
+        public void Run(JobRequestMessage jobRequestMessage)
+        {
+            Trace.Info($"Job request {jobRequestMessage.JobId} received.");
+
+            WorkerDispatcher currentDispatch = null;
+            if (_jobDispatchedQueue.Count > 0)
+            {
+                Guid dispatchedJobId = _jobDispatchedQueue.Dequeue();
+                if (_jobInfos.TryGetValue(dispatchedJobId, out currentDispatch))
+                {
+                    Trace.Verbose($"Retrive previous WorkerDispather for job {currentDispatch.JobId}.");
+                }
+            }
+
+            WorkerDispatcher newDispatch = new WorkerDispatcher(jobRequestMessage.JobId, jobRequestMessage.RequestId);
+            newDispatch.WorkerDispatch = RunAsync(jobRequestMessage, currentDispatch, newDispatch.WorkerCancellationTokenSource.Token);
+
+            _jobInfos.TryAdd(newDispatch.JobId, newDispatch);
+            _jobDispatchedQueue.Enqueue(newDispatch.JobId);
+        }
+
+        public bool Cancel(JobCancelMessage jobCancelMessage)
+        {
+            Trace.Info($"Job cancellation request {jobCancelMessage.JobId} received.");
+
+            WorkerDispatcher workerDispatcher;
+            if (!_jobInfos.TryGetValue(jobCancelMessage.JobId, out workerDispatcher))
+            {
+                Trace.Verbose($"Job request {jobCancelMessage.JobId} is not a current running job, ignore cancllation request.");
+                return false;
+            }
+            else
+            {
+                if (workerDispatcher.Cancel())
+                {
+                    Trace.Verbose($"Fired cancellation token for job request {workerDispatcher.JobId}.");
+                }
+
+                return true;
+            }
+        }
+
+        public async Task WaitAsync(CancellationToken token)
+        {
+            WorkerDispatcher currentDispatch = null;
+            Guid dispatchedJobId;
+            if (_jobDispatchedQueue.Count > 0)
+            {
+                dispatchedJobId = _jobDispatchedQueue.Dequeue();
+                if (_jobInfos.TryGetValue(dispatchedJobId, out currentDispatch))
+                {
+                    Trace.Verbose($"Retrive previous WorkerDispather for job {currentDispatch.JobId}.");
+                }
+            }
+            else
+            {
+                Trace.Verbose($"There is no running WorkerDispather needs to await.");
+            }
+
+            if (currentDispatch != null)
+            {
+                using (var registration = token.Register(() => { if (currentDispatch.Cancel()) { Trace.Verbose($"Fired cancellation token for job request {currentDispatch.JobId}."); } }))
+                {
+                    try
+                    {
+                        Trace.Info($"Waiting WorkerDispather for job {currentDispatch.JobId} run to finish.");
+                        await currentDispatch.WorkerDispatch;
+                        Trace.Info($"Job request {currentDispatch.JobId} processed succeed.");
+                    }
+                    catch (Exception ex)
+                    {
+                        Trace.Error($"Worker Dispatch failed witn an exception for job request {currentDispatch.JobId}.");
+                        Trace.Error(ex);
+                    }
+                    finally
+                    {
+                        WorkerDispatcher workerDispatcher;
+                        if (_jobInfos.TryRemove(currentDispatch.JobId, out workerDispatcher))
+                        {
+                            Trace.Verbose($"Remove WorkerDispather from {nameof(_jobInfos)} dictionary for job {currentDispatch.JobId}.");
+                            workerDispatcher.Dispose();
+                        }
+                    }
+                }
+            }
+        }
+
+        public async Task ShutdownAsync()
+        {
+            Trace.Info($"Shutting down JobDispather. Make sure all WorkerDispatcher has finished.");
+            WorkerDispatcher currentDispatch = null;
+            if (_jobDispatchedQueue.Count > 0)
+            {
+                Guid dispatchedJobId = _jobDispatchedQueue.Dequeue();
+                if (_jobInfos.TryGetValue(dispatchedJobId, out currentDispatch))
+                {
+                    try
+                    {
+                        Trace.Info($"Ensure WorkerDispather for job {currentDispatch.JobId} run to finish.");
+                        await EnsureDispatchFinished(currentDispatch);
+                    }
+                    catch (Exception ex)
+                    {
+                        Trace.Error($"Catching worker dispatch exception for job request {currentDispatch.JobId} durning job dispatcher shut down.");
+                        Trace.Error(ex);
+                    }
+                    finally
+                    {
+                        WorkerDispatcher workerDispatcher;
+                        if (_jobInfos.TryRemove(currentDispatch.JobId, out workerDispatcher))
+                        {
+                            Trace.Verbose($"Remove WorkerDispather from {nameof(_jobInfos)} dictionary for job {currentDispatch.JobId}.");
+                            workerDispatcher.Dispose();
+                        }
+                    }
+                }
+            }
+        }
+
+        private async Task EnsureDispatchFinished(WorkerDispatcher jobDispatch)
+        {
+            if (!jobDispatch.WorkerDispatch.IsCompleted)
+            {
+                // base on the current design, server will only send one job for a given agent everytime.
+                // if the agent received a new job request while a previous job request is still running, this typically indicate two situations
+                // 1. an agent bug cause server and agent mismatch on the state of the job request, ex. agent not renew jobrequest properly but think it still own the job reqest, however server already abandon the jobrequest.
+                // 2. a server bug or design change that allow server send more than one job request to an given agent that haven't finish previous job request.
+                var agentServer = HostContext.GetService<IAgentServer>();
+                TaskAgentJobRequest request = await agentServer.GetAgentRequestAsync(_poolId, jobDispatch.RequestId, CancellationToken.None);
+                if (request.Result != null)
+                {
+                    // job request has been finished, the server already has result.
+                    // this means agent is busted since it still running that request.
+                    // cancel the zombie worker, run next job request.
+                    Trace.Error($"Received job request while previous job {jobDispatch.JobId} still running on worker. Cancel the previous job since the job request have been finished on server side with result: {request.Result.Value}.");
+                    jobDispatch.WorkerCancellationTokenSource.Cancel();
+
+                    // wait 45 sec for worker to finish.
+                    Task completedTask = await Task.WhenAny(jobDispatch.WorkerDispatch, Task.Delay(TimeSpan.FromSeconds(45)));
+                    if (completedTask != jobDispatch.WorkerDispatch)
+                    {
+                        // at this point, the job exectuion might encounter some dead lock and even not able to be canclled.
+                        // no need to localize the exception string should never happen.
+                        throw new InvalidOperationException("Job dispatch process has encountered unexpected error, the dispatch task is not able to be canceled within 45 seconds.");
+                    }
+                }
+                else
+                {
+                    // something seriously wrong on server side. stop agent from continue running.
+                    // no need to localize the exception string should never happen.
+                    throw new InvalidOperationException("Server send a new job request while the previous job request haven't finished.");
+                }
+            }
+
+            try
+            {
+                await jobDispatch.WorkerDispatch;
+                Trace.Info($"Job request {jobDispatch.JobId} processed succeed.");
+            }
+            catch (Exception ex)
+            {
+                Trace.Error($"Worker Dispatch failed witn an exception for job request {jobDispatch.JobId}.");
+                Trace.Error(ex);
+            }
+            finally
+            {
+                WorkerDispatcher workerDispatcher;
+                if (_jobInfos.TryRemove(jobDispatch.JobId, out workerDispatcher))
+                {
+                    Trace.Verbose($"Remove WorkerDispather from {nameof(_jobInfos)} dictionary for job {jobDispatch.JobId}.");
+                    workerDispatcher.Dispose();
+                }
+            }
+        }
+
+        private async Task RunAsync(JobRequestMessage message, WorkerDispatcher previousJobDispatch, CancellationToken jobRequestCancellationToken)
+        {
+            if (previousJobDispatch != null)
+            {
+                Trace.Verbose($"Make sure the previous job request {previousJobDispatch.JobId} has successfully finished on worker.");
+                await EnsureDispatchFinished(previousJobDispatch);
+            }
+            else
+            {
+                Trace.Verbose($"This is the first job request.");
+            }
+
             // first job request renew succeed.
             TaskCompletionSource<int> firstJobRequestRenewed = new TaskCompletionSource<int>();
 
@@ -29,16 +239,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             using (var lockRenewalTokenSource = new CancellationTokenSource())
             using (var workerProcessCancelTokenSource = new CancellationTokenSource())
             {
-                // get pool id from config
-                var configurationStore = HostContext.GetService<IConfigurationStore>();
-                AgentSettings agentSetting = configurationStore.GetSettings();
-                int poolId = agentSetting.PoolId;
                 long requestId = message.RequestId;
                 Guid lockToken = message.LockToken;
 
                 // start renew job request
                 Trace.Info("Start renew job request.");
-                Task renewJobRequest = RenewJobRequestAsync(poolId, requestId, lockToken, firstJobRequestRenewed, lockRenewalTokenSource.Token);
+                Task renewJobRequest = RenewJobRequestAsync(_poolId, requestId, lockToken, firstJobRequestRenewed, lockRenewalTokenSource.Token);
 
                 // wait till first renew succeed or job request is canceled
                 // not even start worker if the first renew fail
@@ -49,13 +255,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     // renew job request task complete means we run out of retry for the first job request renew.
                     // TODO: not need to return anything.
                     Trace.Info("Unable to renew job request for the first time, stop dispatching job to worker.");
-                    return 0;
+                    return;
                 }
 
                 if (jobRequestCancellationToken.IsCancellationRequested)
                 {
-                    await CompleteJobRequestAsync(poolId, requestId, lockToken, TaskResult.Canceled);
-                    return 0;
+                    await CompleteJobRequestAsync(_poolId, requestId, lockToken, TaskResult.Canceled);
+                    return;
                 }
 
                 Task<int> workerProcessTask = null;
@@ -100,7 +306,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     }
                     catch (OperationCanceledException)
                     {
-                        // message send been cancelled.                    
+                        // message send been cancelled.
                         // timeout 45 sec. kill worker.
                         Trace.Info("Job request message sending been cancelled, kill running worker.");
                         workerProcessCancelTokenSource.Cancel();
@@ -120,7 +326,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                         await renewJobRequest;
 
                         // not finish the job request since the job haven't run on worker at all, we will not going to set a result to server.
-                        return 0;
+                        return;
                     }
 
                     TaskResult resultOnAbandonOrCancel = TaskResult.Succeeded;
@@ -135,7 +341,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                         TaskResult result = TaskResultUtil.TranslateFromReturnCode(returnCode);
                         Trace.Info($"finish job request with result: {result}");
                         // complete job request
-                        await CompleteJobRequestAsync(poolId, requestId, lockToken, result);
+                        await CompleteJobRequestAsync(_poolId, requestId, lockToken, result);
 
                         Trace.Info("Stop renew job request.");
                         // stop renew lock
@@ -143,7 +349,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                         // renew job request should never blows up.
                         await renewJobRequest;
 
-                        return 0;
+                        return;
                     }
                     else if (completedTask == renewJobRequest)
                     {
@@ -206,15 +412,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     Trace.Info($"finish job request with result: {resultOnAbandonOrCancel}");
                     // complete job request with cancel result, stop renew lock, job has finished.
                     //TODO: don't finish job request on abandon
-                    await CompleteJobRequestAsync(poolId, requestId, lockToken, resultOnAbandonOrCancel);
+                    await CompleteJobRequestAsync(_poolId, requestId, lockToken, resultOnAbandonOrCancel);
 
                     Trace.Info("Stop renew job request.");
                     // stop renew lock
                     lockRenewalTokenSource.Cancel();
                     // renew job request should never blows up.
                     await renewJobRequest;
-
-                    return 0;
                 }
             }
         }
@@ -235,7 +439,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
                     Trace.Info($"Successfully renew job request, job is valid till {request.LockedUntil.Value}");
 
-                    if(!firstJobRequestRenewed.Task.IsCompleted)
+                    if (!firstJobRequestRenewed.Task.IsCompleted)
                     {
                         // fire first renew successed event.
                         firstJobRequestRenewed.TrySetResult(0);
@@ -320,17 +524,60 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             }
         }
 
-        // TODO: REMOVE DEAD CODE.
-        public void Dispose()
+        private class WorkerDispatcher : IDisposable
         {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
+            public long RequestId { get; }
+            public Guid JobId { get; }
+            public Task WorkerDispatch { get; set; }
+            public CancellationTokenSource WorkerCancellationTokenSource { get; private set; }
+            private readonly object _lock = new object();
 
-        private void Dispose(bool disposing)
-        {
-            if (disposing)
+            public WorkerDispatcher(Guid jobId, long requestId)
             {
+                JobId = jobId;
+                RequestId = requestId;
+                WorkerCancellationTokenSource = new CancellationTokenSource();
+            }
+
+            public bool Cancel()
+            {
+                if (WorkerCancellationTokenSource != null)
+                {
+                    lock (_lock)
+                    {
+                        if (WorkerCancellationTokenSource != null)
+                        {
+                            WorkerCancellationTokenSource.Cancel();
+                            return true;
+                        }
+                    }
+                }
+
+                return false;
+            }
+
+            public void Dispose()
+            {
+                Dispose(true);
+                GC.SuppressFinalize(this);
+            }
+
+            private void Dispose(bool disposing)
+            {
+                if (disposing)
+                {
+                    if (WorkerCancellationTokenSource != null)
+                    {
+                        lock (_lock)
+                        {
+                            if (WorkerCancellationTokenSource != null)
+                            {
+                                WorkerCancellationTokenSource.Dispose();
+                                WorkerCancellationTokenSource = null;
+                            }
+                        }
+                    }
+                }
             }
         }
     }
