@@ -174,6 +174,7 @@
   "ProcessExitCode": "Exit code {0} returned from process: file name '{1}', arguments '{2}'.",
   "Prompt0": "Enter {0}",
   "Prompt0Default1": "Enter {0} (press enter for {1})",
+  "PublishTestResults": "Publish test results",
   "RegisterAgentSectionHeader": "Register Agent",
   "Replace": "replace? (Y/N)",
   "ResultsCommandNotFound": "##vso[results.{0}] is not a recognized command for Task command extension. TODO: DOC aka link",
