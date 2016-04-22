@@ -76,6 +76,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             Trace.Info($"Git version={gitVersion}");
             _gitCommandManager.Version = gitVersion;
 
+            string customizeUserAgent = $"git/{gitVersion.ToString()} (vsts-agent-git/{Constants.Agent.Version})";
+            Trace.Info($"Git useragent={customizeUserAgent}");
+            _gitCommandManager.GitHttpUserAgent = customizeUserAgent;
+
             // sync source
             await SyncAndCheckout(executionContext, endpoint, targetPath, clean, sourceBranch, sourceVersion, checkoutSubmodules, exposeCred, cancellationToken);
         }
