@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
 {
@@ -106,21 +107,24 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
 
             var publisher = HostContext.GetService<ITestRunPublisher>();
             publisher.InitializePublisher(_executionContext, connection, teamProject, runContext, resultReader);
+            var commandContext = HostContext.CreateService<IAsyncCommandContext>();
+            commandContext.InitializeCommandContext(_executionContext, StringUtil.Loc("PublishTestResults"));
 
             if (_mergeResults)
             {
-                PublishAllTestResultsToSingleTestRun(_testResultFiles, publisher, buildId, runContext);
+                commandContext.Task = PublishAllTestResultsToSingleTestRun(_testResultFiles, publisher, buildId, runContext);
             }
             else
             {
-                PublishToNewTestRunPerTestResultFile(_testResultFiles, publisher);
+                commandContext.Task = PublishToNewTestRunPerTestResultFile(_testResultFiles, publisher);
             }
+            _executionContext.AsyncCommands.Add(commandContext);
         }
 
         /// <summary>
         /// Publish single test run
         /// </summary>
-        private void PublishAllTestResultsToSingleTestRun(List<string> resultFiles, ITestRunPublisher publisher, int buildId, TestRunContext runContext)
+        private async Task PublishAllTestResultsToSingleTestRun(List<string> resultFiles, ITestRunPublisher publisher, int buildId, TestRunContext runContext)
         {
             DateTime startTime = DateTime.Now; //use local time since TestRunData defaults to local times
             TimeSpan totalTestCaseDuration = TimeSpan.Zero;
@@ -176,16 +180,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
             //publish run if there are results.
             if (runResults.Count > 0)
             {
-                publisher.StartTestRun(testRunData);
-                publisher.AddResults(runResults.ToArray());
-                publisher.EndTestRun(publishAttachmentsAsArchive: true);
+                publisher.StartTestRun(testRunData).Wait();
+                publisher.AddResults(runResults.ToArray()).Wait();
+                await publisher.EndTestRun(publishAttachmentsAsArchive: true);
             }
         }
 
         /// <summary>
         /// Publish separate test run for each result file that has results.
         /// </summary>
-        private void PublishToNewTestRunPerTestResultFile(List<string> resultFiles, ITestRunPublisher publisher)
+        private async Task PublishToNewTestRunPerTestResultFile(List<string> resultFiles, ITestRunPublisher publisher)
         {
             int runCount = 1;
             // Publish separate test run for each result file that has results.
@@ -201,9 +205,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
 
                 if (testRunData != null && testRunData.Results != null && testRunData.Results.Length > 0)
                 {
-                    publisher.StartTestRun(testRunData);
-                    publisher.AddResults(testRunData.Results);
-                    publisher.EndTestRun();
+                    publisher.StartTestRun(testRunData).Wait();
+                    publisher.AddResults(testRunData.Results).Wait();
+                    await publisher.EndTestRun();
                 }
                 else
                 {

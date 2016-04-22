@@ -14,10 +14,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
     [ServiceLocator(Default = typeof(TestRunPublisher))]
     public interface ITestRunPublisher : IAgentService
     {
-        void StartTestRun(TestRunData testRunData);
-        void AddResults(TestCaseResultData[] testResults);
+        Task StartTestRun(TestRunData testRunData);
+        Task AddResults(TestCaseResultData[] testResults);
         TestRunData ReadResultsFromFile(string filePath);
-        void EndTestRun(bool publishAttachmentsAsArchive = false);
+        Task EndTestRun(bool publishAttachmentsAsArchive = false);
         void InitializePublisher(IExecutionContext executionContext, VssConnection connection, string projectName, TestRunContext runContext, IResultReader resultReader);
         TestRunData ReadResultsFromFile(string filePath, string runName);
     }
@@ -52,7 +52,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
         /// Publishes the given results to the test run.
         /// </summary>
         /// <param name="testResults">Results to be published.</param>
-        public async void AddResults(TestCaseResultData[] testResults)
+        public async Task AddResults(TestCaseResultData[] testResults)
         {
             int noOfResultsToBePublished = BATCH_SIZE;
 
@@ -103,7 +103,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
         /// <summary>
         /// Start a test run  
         /// </summary>
-        public async void StartTestRun(TestRunData testRun)
+        public async Task StartTestRun(TestRunData testRun)
         {
             _testRunData = testRun;
 
@@ -113,7 +113,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
         /// <summary>
         /// Mark the test run as completed 
         /// </summary>
-        public async void EndTestRun(bool publishAttachmentsAsArchive = false)
+        public async Task EndTestRun(bool publishAttachmentsAsArchive = false)
         {
             RunUpdateModel updateModel = new RunUpdateModel(
                 completedDate: _testRunData.CompleteDate,
