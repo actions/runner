@@ -53,7 +53,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
                 }
                 else if (string.Equals(endpoint.Name, ServiceEndpoints.SystemVssConnection, StringComparison.OrdinalIgnoreCase))
                 {
-                    partialKey = ServiceEndpoints.SystemVssConnection;
+                    partialKey = ServiceEndpoints.SystemVssConnection.ToUpperInvariant();
                 }
                 else if (endpoint.Data == null ||
                     !endpoint.Data.TryGetValue(WellKnownEndpointData.RepositoryId, out partialKey) ||
@@ -62,7 +62,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
                     continue; // This should never happen.
                 }
 
-                partialKey = partialKey.ToUpperInvariant(); // TODO: Should this be upper? Is this consistent with the Nodejs lib?
                 AddEnvironmentVariable(
                     key: $"ENDPOINT_URL_{partialKey}",
                     value: endpoint.Url?.ToString());
