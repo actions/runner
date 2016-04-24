@@ -22,10 +22,6 @@ namespace Microsoft.VisualStudio.Services.Agent
         Task<TaskLog> CreateLogAsync(Guid scopeIdentifier, string hubName, Guid planId, TaskLog log, CancellationToken cancellationToken);
         Task<Timeline> CreateTimelineAsync(Guid scopeIdentifier, string hubName, Guid planId, Guid timelineId, CancellationToken cancellationToken);
         Task<List<TimelineRecord>> UpdateTimelineRecordsAsync(Guid scopeIdentifier, string hubName, Guid planId, Guid timelineId, IEnumerable<TimelineRecord> records, CancellationToken cancellationToken);
-
-        // task download
-        Task<Stream> GetTaskContentZipAsync(Guid taskId, TaskVersion taskVersion, CancellationToken token);
-        Task<TaskDefinition> GetTaskDefinitionAsync(Guid taskId, TaskVersion taskVersion, CancellationToken token);
     }
 
     public sealed class JobServer : AgentService, IJobServer
@@ -95,21 +91,6 @@ namespace Microsoft.VisualStudio.Services.Agent
         {
             CheckConnection();
             return _taskClient.UpdateTimelineRecordsAsync(scopeIdentifier, hubName, planId, timelineId, records, cancellationToken);
-        }
-
-
-        //-----------------------------------------------------------------
-        // Task Manager: Query and Download Task
-        //-----------------------------------------------------------------
-
-        public Task<TaskDefinition> GetTaskDefinitionAsync(Guid taskId, TaskVersion taskVersion, CancellationToken token)
-        {
-            return _taskAgentClient.GetTaskDefinitionAsync(taskId, taskVersion, null, null, null, token);
-        }
-
-        public Task<Stream> GetTaskContentZipAsync(Guid taskId, TaskVersion taskVersion, CancellationToken token)
-        {
-            return _taskAgentClient.GetTaskContentZipAsync(taskId, taskVersion, null, token);
         }
     }
 }

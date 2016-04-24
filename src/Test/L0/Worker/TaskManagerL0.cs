@@ -18,6 +18,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
         private const string TestDataFolderName = "TestData";
         private readonly CancellationTokenSource _ecTokenSource = new CancellationTokenSource();
         private Mock<IJobServer> _jobServer;
+        private Mock<ITaskServer> _taskServer;
         private Mock<IConfigurationStore> _configurationStore;
         private Mock<IExecutionContext> _ec;
         private TestHostContext _hc;
@@ -52,7 +53,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                 var bingVersion = new TaskVersion(bingTask.Version);
                 var pingVersion = new TaskVersion(pingTask.Version);
 
-                _jobServer
+                _taskServer
                     .Setup(x => x.GetTaskContentZipAsync(It.IsAny<Guid>(), It.IsAny<TaskVersion>(), _ec.Object.CancellationToken))
                     .Returns((Guid taskId, TaskVersion taskVersion, CancellationToken token) =>
                     {
@@ -80,7 +81,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                     0,
                     Directory.GetFiles(IOUtil.GetTasksPath(_hc), "*", SearchOption.AllDirectories).Length);
                 //assert download was invoked only once, because the first task cancelled the second task download
-                _jobServer
+                _taskServer
                     .Verify(x => x.GetTaskContentZipAsync(It.IsAny<Guid>(), It.IsAny<TaskVersion>(), _ec.Object.CancellationToken), Times.Once());
             }
             finally
@@ -109,7 +110,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
 
                 var pingVersion = new TaskVersion(pingTask.Version);
                 Exception expectedException = new System.Net.Http.HttpRequestException("simulated network error");
-                _jobServer
+                _taskServer
                     .Setup(x => x.GetTaskContentZipAsync(It.IsAny<Guid>(), It.IsAny<TaskVersion>(), _ec.Object.CancellationToken))
                     .Returns((Guid taskId, TaskVersion taskVersion, CancellationToken token) =>
                     {
@@ -223,7 +224,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                         Id = bingGuid
                     }
                 };
-                _jobServer
+                _taskServer
                     .Setup(x => x.GetTaskContentZipAsync(
                         bingGuid,
                         It.Is<TaskVersion>(y => string.Equals(y.ToString(), bingVersion, StringComparison.Ordinal)),
@@ -245,7 +246,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                     bingVersion);
                 Assert.True(File.Exists(Path.Combine(destDirectory, Constants.Path.TaskJsonFile)));
                 //assert download has happened only once, because disabled, duplicate and cached tasks are not downloaded
-                _jobServer
+                _taskServer
                     .Verify(x => x.GetTaskContentZipAsync(It.IsAny<Guid>(), It.IsAny<TaskVersion>(), It.IsAny<CancellationToken>()), Times.Once());
             }
             finally
@@ -550,6 +551,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
 
             // Mocks.
             _jobServer = new Mock<IJobServer>();
+            _taskServer = new Mock<ITaskServer>();
             _configurationStore = new Mock<IConfigurationStore>();
             _configurationStore
                 .Setup(x => x.GetSettings())
@@ -564,6 +566,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             // Test host context.
             _hc = new TestHostContext(this, name);
             _hc.SetSingleton<IJobServer>(_jobServer.Object);
+            _hc.SetSingleton<ITaskServer>(_taskServer.Object);
             _hc.SetSingleton<IConfigurationStore>(_configurationStore.Object);
 
             // Instance to test.

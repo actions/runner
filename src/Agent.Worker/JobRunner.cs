@@ -64,6 +64,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 jobContext.Variables.Set(Constants.Variables.Agent.WorkFolder, IOUtil.GetWorkPath(HostContext));
                 jobContext.Variables.Set(Constants.Variables.System.WorkFolder, IOUtil.GetWorkPath(HostContext));
 
+                // prefer task definitions url, then TFS url
+                var taskServer = HostContext.GetService<ITaskServer>();
+                string taskUrl = jobContext.Variables.System_TaskDefinitionsUri;
+                if (string.IsNullOrEmpty(taskUrl))
+                {
+                    Trace.Info("Creating task server with tfs server url");
+                    await taskServer.ConnectAsync(ApiUtil.GetVssConnection(message));
+                }
+                else
+                {
+                    Trace.Info($"Creating task server with {taskUrl}");
+                    await taskServer.ConnectAsync(ApiUtil.CreateConnection(new Uri(taskUrl), ApiUtil.GetVssCredential(message.Environment.SystemConnection)));
+                }
+
                 // Expand the endpoint data values.
                 foreach (ServiceEndpoint endpoint in jobContext.Endpoints)
                 {

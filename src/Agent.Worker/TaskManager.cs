@@ -28,7 +28,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             ArgUtil.NotNull(executionContext, nameof(executionContext));
             ArgUtil.NotNull(task, nameof(task));
             ArgUtil.NotNullOrEmpty(task.Version, nameof(task.Version));
-            var jobServer = HostContext.GetService<IJobServer>();
+            var taskServer = HostContext.GetService<ITaskServer>();
 
             // first check to see if we already have the task
             string destDirectory = GetDirectory(task);
@@ -52,7 +52,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 //open zip stream in async mode
                 using (FileStream fs = new FileStream(zipFile, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 4096, useAsync: true))
                 {
-                    using (Stream result = await jobServer.GetTaskContentZipAsync(task.Id, version, executionContext.CancellationToken))
+                    using (Stream result = await taskServer.GetTaskContentZipAsync(task.Id, version, executionContext.CancellationToken))
                     {
                         //81920 is the default used by System.IO.Stream.CopyTo and is under the large object heap threshold (85k). 
                         await result.CopyToAsync(fs, 81920, executionContext.CancellationToken);

@@ -182,6 +182,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                 public static readonly string EnableAccessToken = "system.enableAccessToken";
                 public static readonly string HostType = "system.hosttype";
                 public static readonly string PreferGit = "system.prefergit";
+                public static readonly string TaskDefinitionsUri = "system.taskDefinitionsUri";
                 public static readonly string TFServerUrl = "system.TeamFoundationServerUri"; // back compat variable, do not document
                 public static readonly string TeamProject = "system.teamproject";
                 public static readonly string TeamProjectId = "system.teamProjectId";
@@ -198,6 +199,8 @@ namespace Microsoft.VisualStudio.Services.Agent
                 //
                 // Keep alphabetical
                 //
+                public static readonly string AgentReleaseDirectory = "agent.releaseDirectory";
+                public static readonly string ArtifactsDirectory = "system.artifactsDirectory";
                 public static readonly string AttemptNumber = "release.attemptNumber";
                 public static readonly string ReleaseDefinitionName = "release.definitionName";
                 public static readonly string ReleaseEnvironmentName = "release.environmentName";
