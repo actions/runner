@@ -534,7 +534,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                     .Setup(x => x.ReadValue(
                         Constants.Agent.CommandLine.Args.UserName, // argName
                         StringUtil.Loc("UserName"), // description
-                        true, // secret
+                        false, // not secret
                         string.Empty, // defaultValue
                         Validators.NonEmptyValidator, // validator
                         false)) // unattended
@@ -561,7 +561,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                     .Setup(x => x.ReadValue(
                         Constants.Agent.CommandLine.Args.WindowsLogonAccount, // argName
                         StringUtil.Loc("WindowsLogonAccountNameDescription"), // description
-                        true, // secret
+                        false, // not secret
                         "some default account", // defaultValue
                         Validators.NTAccountValidator, // validator
                         false)) // unattended
