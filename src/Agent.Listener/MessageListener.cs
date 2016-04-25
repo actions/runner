@@ -23,13 +23,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
     {
         private long? _lastMessageId;
         private AgentSettings _settings;
+        private ITerminal _term;
 
         public TaskAgentSession Session { get; set; }
+
+        public override void Initialize(IHostContext hostContext)
+        {
+            base.Initialize(hostContext);
+
+            _term = HostContext.GetService<ITerminal>();
+        }
 
         public async Task<Boolean> CreateSessionAsync(CancellationToken token)
         {
             Trace.Entering();
-            const int MaxAttempts = 10;
             int attempt = 0;
 
             // Settings
@@ -59,11 +66,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             var taskAgentSession = new TaskAgentSession(sessionName, agent, agentSystemCapabilities);
 
             var agentSvr = HostContext.GetService<IAgentServer>();
-            while (++attempt <= MaxAttempts)
+            int consecutiveErrors = 0; //number of consecutive exceptions
+            string errorMessage = string.Empty;
+            while (true)
             {
-                Trace.Info("Create session attempt {0} of {1}.", attempt, MaxAttempts);
+                attempt++;
+                Trace.Info($"Create session attempt {attempt}.");
                 try
                 {
+                    consecutiveErrors++;
                     Trace.Info("Connecting to the Agent Server...");
                     await agentSvr.ConnectAsync(conn);
 
@@ -71,12 +82,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                                                         _settings.PoolId,
                                                         taskAgentSession,
                                                         token);
+                    if (consecutiveErrors > 1)
+                    {
+                        _term.WriteLine(StringUtil.Loc("QueueConnected"));
+                    }
                     return true;
                 }
-                catch (OperationCanceledException)
+                catch (OperationCanceledException ex)
                 {
-                    Trace.Info("Cancelled");
-                    throw;
+                    if (token.IsCancellationRequested) //Distinguish timeout from user cancellation
+                    {
+                        Trace.Info("Cancelled");
+                        throw;
+                    }
+                    errorMessage = ex.Message;
                 }
                 catch (Exception ex)
                 {
@@ -84,31 +103,29 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     if (ex is TaskAgentNotFoundException)
                     {
                         Trace.Error("The agent no longer exists on the server. Stopping the agent.");
-                        Trace.Error(ex);
-                        return false;
                     }
-                    else if (ex is TaskAgentSessionConflictException)
+
+                    if (ex is TaskAgentSessionConflictException)
                     {
                         Trace.Error("The session for this agent already exists.");
                     }
-                    else
-                    {
-                        Trace.Error(ex);
-                    }
 
-                    if (attempt >= MaxAttempts)
+                    Trace.Error(ex);
+                    if (IsFatalException(ex))
                     {
-                        Trace.Error("Retries exhausted. Terminating the agent.");
                         return false;
                     }
-
-                    TimeSpan interval = TimeSpan.FromSeconds(30);
-                    Trace.Info("Sleeping for {0} seconds before retrying.", interval.TotalSeconds);
-                    await HostContext.Delay(interval, token);
+                    errorMessage = ex.Message;
                 }
-            }
 
-            return false;
+                TimeSpan interval = TimeSpan.FromSeconds(30);
+                if (consecutiveErrors == 1) //print the message only on the first error
+                {
+                    _term.WriteLine(StringUtil.Loc("QueueConError", errorMessage, interval.TotalSeconds));
+                }
+                Trace.Info("Sleeping for {0} seconds before retrying.", interval.TotalSeconds);
+                await HostContext.Delay(interval, token);
+            }
         }
 
         public async Task DeleteSessionAsync()
@@ -129,12 +146,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             ArgUtil.NotNull(Session, nameof(Session));
             ArgUtil.NotNull(_settings, nameof(_settings));
             var agentServer = HostContext.GetService<IAgentServer>();
+            int consecutiveErrors = 0; //number of consecutive exceptions thrown by GetAgentMessageAsync
+            string errorMessage = string.Empty;
             while (true)
             {
                 token.ThrowIfCancellationRequested();
                 TaskAgentMessage message = null;
                 try
                 {
+                    consecutiveErrors++;
                     message = await agentServer.GetAgentMessageAsync(_settings.PoolId,
                                                                 Session.SessionId,
                                                                 _lastMessageId,
@@ -143,30 +163,66 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     {
                         _lastMessageId = message.MessageId;
                     }
+
+                    if (consecutiveErrors > 1) //print the message once only if there was an error
+                    {
+                        _term.WriteLine(StringUtil.Loc("QueueRestored"));
+                    }
+
+                    consecutiveErrors = 0;
                 }
-                catch (TimeoutException)
+                catch (TimeoutException ex)
                 {
                     Trace.Verbose($"{nameof(TimeoutException)} received.");
-                }
-                catch (TaskCanceledException)
-                {
-                    Trace.Verbose($"{nameof(TaskCanceledException)} received.");
+                    //retry after a delay
+                    errorMessage = ex.Message;
                 }
                 catch (TaskAgentSessionExpiredException)
                 {
                     Trace.Verbose($"{nameof(TaskAgentSessionExpiredException)} received.");
-                    // TODO: Throw a specific exception so the caller can control the flow appropriately.
-                    throw;
+                    if (!await CreateSessionAsync(token))
+                    {
+                        throw;
+                    }
+
+                    consecutiveErrors = 0;
                 }
-                catch (OperationCanceledException)
+                catch (OperationCanceledException ex)
                 {
-                    throw;
+                    Trace.Verbose($"{nameof(OperationCanceledException)} received.");
+                    //we get here when the agent is stopped with CTRL-C or service is stopped or HttpClient has timed out                     
+                    if (token.IsCancellationRequested) //Distinguish timeout from user cancellation
+                    {
+                        throw;
+                    }
+
+                    //retry after a delay
+                    errorMessage = ex.Message;
                 }
                 catch (Exception ex)
                 {
                     Trace.Error(ex);
-                    // TODO: Throw a specific exception so the caller can control the flow appropriately.
-                    throw;
+                    if (IsFatalException(ex))
+                    {
+                        throw;
+                    }
+
+                    //retry after a delay
+                    errorMessage = ex.Message;
+                }
+
+                //print an error and add a delay
+                if (consecutiveErrors > 0)
+                {
+                    TimeSpan interval = TimeSpan.FromSeconds(15);
+                    if (consecutiveErrors == 1)
+                    {
+                        //print error only on the first consecutive error
+                        _term.WriteLine(StringUtil.Loc("QueueError", errorMessage, interval.TotalSeconds));
+                    }
+
+                    Trace.Info("Sleeping for {0} seconds before retrying.", interval.TotalSeconds);
+                    await HostContext.Delay(interval, token);
                 }
 
                 if (message == null)
@@ -178,6 +234,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 Trace.Verbose($"Message '{message.MessageId}' received from session '{Session.SessionId}'.");
                 return message;
             }
+        }
+
+        private bool IsFatalException(Exception ex)
+        {
+            return ex is TaskAgentPoolNotFoundException || ex is AccessDeniedException || ex is TaskAgentNotFoundException;
         }
     }
 }
