@@ -15,7 +15,6 @@ namespace Microsoft.VisualStudio.Services.Agent
 
         // task download
         Task<Stream> GetTaskContentZipAsync(Guid taskId, TaskVersion taskVersion, CancellationToken token);
-        Task<TaskDefinition> GetTaskDefinitionAsync(Guid taskId, TaskVersion taskVersion, CancellationToken token);
     }
 
     public sealed class TaskServer : AgentService, ITaskServer
@@ -23,8 +22,6 @@ namespace Microsoft.VisualStudio.Services.Agent
         private bool _hasConnection;
 
         private VssConnection _connection;
-
-        private TaskHttpClient _taskClient;
 
         private TaskAgentHttpClient _taskAgentClient;
 
@@ -37,7 +34,6 @@ namespace Microsoft.VisualStudio.Services.Agent
                 await _connection.ConnectAsync();
             }
 
-            _taskClient = _connection.GetClient<TaskHttpClient>();
             _taskAgentClient = _connection.GetClient<TaskAgentHttpClient>();
             _hasConnection = true;
         }
@@ -53,13 +49,6 @@ namespace Microsoft.VisualStudio.Services.Agent
         //-----------------------------------------------------------------
         // Task Manager: Query and Download Task
         //-----------------------------------------------------------------
-
-        public Task<TaskDefinition> GetTaskDefinitionAsync(Guid taskId, TaskVersion taskVersion, CancellationToken token)
-        {
-            CheckConnection();
-            return _taskAgentClient.GetTaskDefinitionAsync(taskId, taskVersion, null, null, null, token);
-        }
-
         public Task<Stream> GetTaskContentZipAsync(Guid taskId, TaskVersion taskVersion, CancellationToken token)
         {
             CheckConnection();
