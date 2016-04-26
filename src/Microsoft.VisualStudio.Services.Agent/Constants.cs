@@ -34,13 +34,13 @@ namespace Microsoft.VisualStudio.Services.Agent
                     public static readonly string Auth = "auth";
                     public static readonly string Pool = "pool";
                     public static readonly string Url = "url";
+                    public static readonly string UserName = "username";
+                    public static readonly string WindowsLogonAccount = "windowslogonaccount";
                     public static readonly string Work = "work";
 
                     // Secret args. Must be added to the "Secrets" getter as well.
                     public static readonly string Password = "password";
                     public static readonly string Token = "token";
-                    public static readonly string UserName = "username";
-                    public static readonly string WindowsLogonAccount = "windowslogonaccount";
                     public static readonly string WindowsLogonPassword = "windowslogonpassword";
                     public static string[] Secrets => new[]
                     {
