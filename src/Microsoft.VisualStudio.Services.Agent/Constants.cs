@@ -26,6 +26,14 @@ namespace Microsoft.VisualStudio.Services.Agent
             public static readonly OSPlatform Platform = OSPlatform.Windows;
 #endif
 
+            public static class ReturnCode
+            {
+                public const int Success = 0;
+                public const int TerminatedError = 1;
+                public const int RetryableError = 2;
+                public const int AgentUpdating = 3;
+            }
+
             public static class CommandLine
             {
                 public static class Args
@@ -100,6 +108,7 @@ namespace Microsoft.VisualStudio.Services.Agent
 
         public static class Path
         {
+            public static readonly string BinDirectory = "bin";
             public static readonly string DiagDirectory = "_diag";
             public static readonly string ExternalsDirectory = "externals";
             public static readonly string TeeDirectory = "tee";

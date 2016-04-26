@@ -16,6 +16,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
         Version Version { get; set; }
 
+        string GitHttpUserAgent { get; set; }
+
         // git clone --progress --no-checkout <URL> <LocalDir>
         Task<int> GitClone(IExecutionContext context, string repositoryPath, Uri repositoryUrl, string username, string password, bool exposeCred, CancellationToken cancellationToken);
 
@@ -74,6 +76,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
         public string GitPath { get; set; }
         public Version Version { get; set; }
+        public string GitHttpUserAgent { get; set; }
 
         // git clone --progress --no-checkout <URL> <LocalDir>
         public async Task<int> GitClone(IExecutionContext context, string repositoryPath, Uri repositoryUrl, string username, string password, bool exposeCred, CancellationToken cancellationToken)
@@ -318,7 +321,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 context.Output(message.Data);
             };
 
-            return await processInvoker.ExecuteAsync(repoRoot, GitPath, arg, null, cancellationToken);
+            Dictionary<string, string> _userAgentEnv = new Dictionary<string, string>();
+            if (!string.IsNullOrEmpty(GitHttpUserAgent))
+            {
+                _userAgentEnv["GIT_HTTP_USER_AGENT"] = GitHttpUserAgent;
+            }
+
+            return await processInvoker.ExecuteAsync(repoRoot, GitPath, arg, _userAgentEnv, cancellationToken);
         }
 
         private async Task<int> ExecuteGitCommandAsync(IExecutionContext context, string repoRoot, string command, string options, IList<string> output)
@@ -349,7 +358,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 }
             };
 
-            return await processInvoker.ExecuteAsync(repoRoot, GitPath, arg, null, default(CancellationToken));
+            Dictionary<string, string> _userAgentEnv = new Dictionary<string, string>();
+            if (!string.IsNullOrEmpty(GitHttpUserAgent))
+            {
+                _userAgentEnv["GIT_HTTP_USER_AGENT"] = GitHttpUserAgent;
+            }
+
+            return await processInvoker.ExecuteAsync(repoRoot, GitPath, arg, _userAgentEnv, default(CancellationToken));
         }
     }
 }
