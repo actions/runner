@@ -39,7 +39,9 @@
         "System.IO.FileSystem.AccessControl": "4.0.0-rc3-24011-00",
         "Newtonsoft.Json": "7.0.1",
         "System.Diagnostics.TraceSource": "4.0.0-rc3-24011-00",
-        "System.Security.AccessControl": "4.0.0-rc3-24011-00"
+        "System.Security.AccessControl": "4.0.0-rc3-24011-00",
+        "System.Runtime.InteropServices": "4.1.0-rc3-24011-00",
+        "System.Security.Cryptography.Cng": "4.1.0-rc3-24011-00"
     },
 
     "frameworks": {
