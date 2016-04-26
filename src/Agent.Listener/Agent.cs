@@ -162,7 +162,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 return 1;
             }
 
-            _term.WriteLine(StringUtil.Loc("ListenForJobs"));
+            _term.WriteLine(StringUtil.Loc("ListenForJobs", DateTime.UtcNow));
 
             _sessionId = listener.Session.SessionId;
             IJobDispatcher jobDispatcher = null;

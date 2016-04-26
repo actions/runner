@@ -66,15 +66,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             var taskAgentSession = new TaskAgentSession(sessionName, agent, agentSystemCapabilities);
 
             var agentSvr = HostContext.GetService<IAgentServer>();
-            int consecutiveErrors = 0; //number of consecutive exceptions
             string errorMessage = string.Empty;
+            bool firstAttempt = true; //tells us if this is the first time we try to connect
             while (true)
             {
                 attempt++;
                 Trace.Info($"Create session attempt {attempt}.");
                 try
                 {
-                    consecutiveErrors++;
                     Trace.Info("Connecting to the Agent Server...");
                     await agentSvr.ConnectAsync(conn);
 
@@ -82,10 +81,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                                                         _settings.PoolId,
                                                         taskAgentSession,
                                                         token);
-                    if (consecutiveErrors > 1)
+                    if (!firstAttempt)
                     {
-                        _term.WriteLine(StringUtil.Loc("QueueConnected"));
+                        _term.WriteLine(StringUtil.Loc("QueueConnected", DateTime.UtcNow));
                     }
+
                     return true;
                 }
                 catch (OperationCanceledException ex)
@@ -119,9 +119,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 }
 
                 TimeSpan interval = TimeSpan.FromSeconds(30);
-                if (consecutiveErrors == 1) //print the message only on the first error
+                if (firstAttempt) //print the message only on the first error
                 {
-                    _term.WriteLine(StringUtil.Loc("QueueConError", errorMessage, interval.TotalSeconds));
+                    _term.WriteError(StringUtil.Loc("QueueConError", DateTime.UtcNow, errorMessage, interval.TotalSeconds));
+                    firstAttempt = false;
                 }
                 Trace.Info("Sleeping for {0} seconds before retrying.", interval.TotalSeconds);
                 await HostContext.Delay(interval, token);
@@ -166,7 +167,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
                     if (consecutiveErrors > 1) //print the message once only if there was an error
                     {
-                        _term.WriteLine(StringUtil.Loc("QueueRestored"));
+                        _term.WriteLine(StringUtil.Loc("QueueConnected", DateTime.UtcNow));
                     }
 
                     consecutiveErrors = 0;
@@ -218,7 +219,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     if (consecutiveErrors == 1)
                     {
                         //print error only on the first consecutive error
-                        _term.WriteLine(StringUtil.Loc("QueueError", errorMessage, interval.TotalSeconds));
+                        _term.WriteError(StringUtil.Loc("QueueConError", DateTime.UtcNow, errorMessage, interval.TotalSeconds));
                     }
 
                     Trace.Info("Sleeping for {0} seconds before retrying.", interval.TotalSeconds);

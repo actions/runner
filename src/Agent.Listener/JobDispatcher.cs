@@ -26,7 +26,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
     public sealed class JobDispatcher : AgentService, IJobDispatcher
     {
         private int _poolId;
-        private ITerminal _term;
         private static readonly string _workerProcessName = $"Agent.Worker{IOUtil.ExeExtension}";
 
         // this is not thread-safe
@@ -40,7 +39,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         {
             base.Initialize(hostContext);
 
-            _term = HostContext.GetService<ITerminal>();
             // get pool id from config
             var configurationStore = hostContext.GetService<IConfigurationStore>();
             AgentSettings agentSetting = configurationStore.GetSettings();
@@ -234,7 +232,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 Trace.Verbose($"This is the first job request.");
             }
 
-            _term.WriteLine(StringUtil.Loc("RunningJob", message.JobName));
+            var term = HostContext.GetService<ITerminal>();
+            term.WriteLine(StringUtil.Loc("RunningJob", DateTime.UtcNow, message.JobName));
 
             // first job request renew succeed.
             TaskCompletionSource<int> firstJobRequestRenewed = new TaskCompletionSource<int>();
@@ -344,7 +343,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
                         TaskResult result = TaskResultUtil.TranslateFromReturnCode(returnCode);
                         Trace.Info($"finish job request with result: {result}");
-                        _term.WriteLine(StringUtil.Loc("JobCompleted", message.JobName, result));
+                        term.WriteLine(StringUtil.Loc("JobCompleted", DateTime.UtcNow, message.JobName, result));
                         // complete job request
                         await CompleteJobRequestAsync(_poolId, requestId, lockToken, result);
 
@@ -415,7 +414,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     }
 
                     Trace.Info($"finish job request with result: {resultOnAbandonOrCancel}");
-                    _term.WriteLine(StringUtil.Loc("JobCompleted", message.JobName, resultOnAbandonOrCancel));
+                    term.WriteLine(StringUtil.Loc("JobCompleted", DateTime.UtcNow, message.JobName, resultOnAbandonOrCancel));
                     // complete job request with cancel result, stop renew lock, job has finished.
                     //TODO: don't finish job request on abandon
                     await CompleteJobRequestAsync(_poolId, requestId, lockToken, resultOnAbandonOrCancel);
