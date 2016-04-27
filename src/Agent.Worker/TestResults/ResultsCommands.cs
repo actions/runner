@@ -284,7 +284,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
 
     internal static class WellKnownResultsCommand
     {
-        public static readonly String PublishTestResults = "publish";
+        public static readonly string PublishTestResults = "publish";
     }
 
     internal static class PublishTestResultsEventProperties

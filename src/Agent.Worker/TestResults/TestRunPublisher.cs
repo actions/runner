@@ -30,7 +30,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
         const int TCM_MAX_FILESIZE = 104857600;
         private IExecutionContext _executionContext;
         private string _projectName;
-        private TestResultsServer _testResultsServer;
+        private ITestResultsServer _testResultsServer;
         private TestRun _testRun;
         private TestRunData _testRunData;
         private IResultReader _resultReader;
@@ -45,7 +45,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
             _runContext = runContext;
             _resultReader = resultReader;
             connection.InnerHandler.Settings.SendTimeout = TimeSpan.FromSeconds(PUBLISH_TIMEOUT);
-            _testResultsServer = new TestResultsServer(connection);
+            _testResultsServer = HostContext.GetService<ITestResultsServer>();
+            _testResultsServer.InitializeServer(connection);
         }
 
         /// <summary>
