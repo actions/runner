@@ -4,14 +4,14 @@
     {
         public TestRunContext(string owner, string platform, string configuration, int buildId, string buildUri, string releaseUri, string releaseEnvironmentUri, string runName = null)
         {
-            this.Owner = owner;
-            this.Platform = platform;
-            this.Configuration = configuration;
-            this.BuildId = buildId;
-            this.BuildUri = buildUri;
-            this.ReleaseUri = releaseUri;
-            this.ReleaseEnvironmentUri = releaseEnvironmentUri;
-            this.RunName = runName;
+            Owner = owner;
+            Platform = platform;
+            Configuration = configuration;
+            BuildId = buildId;
+            BuildUri = buildUri;
+            ReleaseUri = releaseUri;
+            ReleaseEnvironmentUri = releaseEnvironmentUri;
+            RunName = runName;
         }
 
         public string Owner { get; }

@@ -112,11 +112,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
 
             if (_mergeResults)
             {
-                commandContext.Task = PublishAllTestResultsToSingleTestRun(_testResultFiles, publisher, buildId, runContext);
+                commandContext.Task = PublishAllTestResultsToSingleTestRunAsync(_testResultFiles, publisher, buildId, runContext);
             }
             else
             {
-                commandContext.Task = PublishToNewTestRunPerTestResultFile(_testResultFiles, publisher);
+                commandContext.Task = PublishToNewTestRunPerTestResultFileAsync(_testResultFiles, publisher);
             }
             _executionContext.AsyncCommands.Add(commandContext);
         }
@@ -124,7 +124,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
         /// <summary>
         /// Publish single test run
         /// </summary>
-        private async Task PublishAllTestResultsToSingleTestRun(List<string> resultFiles, ITestRunPublisher publisher, int buildId, TestRunContext runContext)
+        private async Task PublishAllTestResultsToSingleTestRunAsync(List<string> resultFiles, ITestRunPublisher publisher, int buildId, TestRunContext runContext)
         {
             DateTime startTime = DateTime.Now; //use local time since TestRunData defaults to local times
             TimeSpan totalTestCaseDuration = TimeSpan.Zero;
@@ -180,16 +180,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
             //publish run if there are results.
             if (runResults.Count > 0)
             {
-                publisher.StartTestRun(testRunData).Wait();
-                publisher.AddResults(runResults.ToArray()).Wait();
-                await publisher.EndTestRun(publishAttachmentsAsArchive: true);
+                publisher.StartTestRunAsync(testRunData).Wait();
+                publisher.AddResultsAsync(runResults.ToArray()).Wait();
+                await publisher.EndTestRunAsync(publishAttachmentsAsArchive: true);
             }
         }
 
         /// <summary>
         /// Publish separate test run for each result file that has results.
         /// </summary>
-        private async Task PublishToNewTestRunPerTestResultFile(List<string> resultFiles, ITestRunPublisher publisher)
+        private async Task PublishToNewTestRunPerTestResultFileAsync(List<string> resultFiles, ITestRunPublisher publisher)
         {
             int runCount = 1;
             // Publish separate test run for each result file that has results.
@@ -205,9 +205,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
 
                 if (testRunData != null && testRunData.Results != null && testRunData.Results.Length > 0)
                 {
-                    publisher.StartTestRun(testRunData).Wait();
-                    publisher.AddResults(testRunData.Results).Wait();
-                    await publisher.EndTestRun();
+                    publisher.StartTestRunAsync(testRunData).Wait();
+                    publisher.AddResultsAsync(testRunData.Results).Wait();
+                    await publisher.EndTestRunAsync();
                 }
                 else
                 {

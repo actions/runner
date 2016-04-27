@@ -29,6 +29,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void Publish_NullTestRunner()
         {
             SetupMocks();
@@ -43,6 +44,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void Publish_InvalidTestRunner()
         {
             SetupMocks();
@@ -59,6 +61,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void Publish_NullTestResultFiles()
         {
             SetupMocks();
@@ -73,6 +76,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void Publish_NoTestResultFile()
         {
             SetupMocks();
@@ -89,6 +93,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void Publish_InvalidJUnitResultFile()
         {
             SetupMocks();
@@ -116,6 +121,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void Publish_InvalidNUnitResultFile()
         {
             SetupMocks();
@@ -143,6 +149,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void VerifyResultsAreMergedWhenPublishingToSingleTestRun()
         {
             SetupMocks();
@@ -157,19 +164,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
             testRunData.Results = new TestCaseResultData[] { new TestCaseResultData(), new TestCaseResultData() };
             testRunData.Attachments = new string[] { "attachment1", "attachment2" };
 
-            _mockTestRunPublisher.Setup(q => q.StartTestRun(It.IsAny<TestRunData>()))
+            _mockTestRunPublisher.Setup(q => q.StartTestRunAsync(It.IsAny<TestRunData>()))
                 .Callback((TestRunData trd) =>
                 {
                     Assert.Equal(resultsFiles.Count * testRunData.Attachments.Length, trd.Attachments.Length);
                 });
-            _mockTestRunPublisher.Setup(q => q.AddResults(It.IsAny<TestCaseResultData[]>()))
+            _mockTestRunPublisher.Setup(q => q.AddResultsAsync(It.IsAny<TestCaseResultData[]>()))
                 .Callback((TestCaseResultData[] tcrd) =>
                 {
                     Assert.Equal(resultsFiles.Count * testRunData.Results.Length, tcrd.Length);
                 });
             _mockTestRunPublisher.Setup(q => q.ReadResultsFromFile(It.IsAny<string>()))
                 .Returns(testRunData);
-            _mockTestRunPublisher.Setup(q => q.EndTestRun(false))
+            _mockTestRunPublisher.Setup(q => q.EndTestRunAsync(false))
                 .Returns(Task.Factory.StartNew(() => { }));
 
             resultCommand.ProcessCommand(_ec.Object, command);
@@ -177,6 +184,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void VerifyStartEndTestRunTimeWhenPublishingToSingleTestRun()
         {
             SetupMocks();
@@ -194,20 +202,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
             testRunData.Results = new TestCaseResultData[] { testCaseResultData, testCaseResultData };
             testRunData.Attachments = new string[] { "attachment1", "attachment2" };
 
-            _mockTestRunPublisher.Setup(q => q.StartTestRun(It.IsAny<TestRunData>()))
+            _mockTestRunPublisher.Setup(q => q.StartTestRunAsync(It.IsAny<TestRunData>()))
                 .Callback((TestRunData trd) =>
                 {
                     var startedDate = DateTime.Parse(trd.StartDate, null, DateTimeStyles.RoundtripKind);
                     var endedDate = DateTime.Parse(trd.CompleteDate, null, DateTimeStyles.RoundtripKind);
                     Assert.Equal(resultsFiles.Count * testRunData.Results.Length * durationInMs, (endedDate - startedDate).TotalMilliseconds);
                 });
-            _mockTestRunPublisher.Setup(q => q.AddResults(It.IsAny<TestCaseResultData[]>()))
+            _mockTestRunPublisher.Setup(q => q.AddResultsAsync(It.IsAny<TestCaseResultData[]>()))
                 .Callback((TestCaseResultData[] tcrd) =>
                 {
                 });
             _mockTestRunPublisher.Setup(q => q.ReadResultsFromFile(It.IsAny<string>()))
                 .Returns(testRunData);
-            _mockTestRunPublisher.Setup(q => q.EndTestRun(false))
+            _mockTestRunPublisher.Setup(q => q.EndTestRunAsync(false))
                 .Returns(Task.Factory.StartNew(() => { }));
 
             resultCommand.ProcessCommand(_ec.Object, command);

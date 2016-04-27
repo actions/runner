@@ -62,6 +62,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void ResultsWithoutMandatoryFieldsAreSkipped()
         {
             SetupMocks();
@@ -86,6 +87,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void ReadResultsReturnsCorrectValues()
         {
             SetupMocks();
@@ -175,6 +177,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void CustomRunTitleIsHonoured()
         {
             SetupMocks();
@@ -185,6 +188,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void ReadResultsDoesNotFailForV1()
         {
             SetupMocks();
@@ -209,6 +213,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void ReadResultsDoesNotFailForBadXml()
         {
             SetupMocks();
@@ -226,6 +231,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void ReadResultsDoesNotFailForBareMinimumXml()
         {
             SetupMocks();
@@ -235,6 +241,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void VerifyRunTypeIsSet()
         {
             SetupMocks();
@@ -244,6 +251,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void PublishBasicXUnitResultsAddsResultsFileByDefault()
         {
             SetupMocks();
@@ -254,6 +262,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void PublishBasicXUnitResultsSkipsAddingResultsFileWhenFlagged()
         {
             SetupMocks();
@@ -264,6 +273,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void VerifyTestCaseStartDate()
         {
             SetupMocks();
@@ -274,6 +284,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void VerifyTestCaseCompletedDate()
         {
             SetupMocks();
@@ -286,6 +297,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void VerifyLastTestCaseEndDateNotGreaterThanTestRunTotalTime()
         {
             SetupMocks();
@@ -298,6 +310,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void VerifyStartDateIsEmptyWhenNoRunTimeIsAvailable()
         {
             SetupMocks();
@@ -308,6 +321,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void VerifyEndDateIsEmptyWhenNoRunTimeIsAvailable()
         {
             SetupMocks();
@@ -318,6 +332,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void Xunit_DtdProhibitedXmlShouldReturnNull()
         {
             SetupMocks();

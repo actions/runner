@@ -14,13 +14,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
         public Type ExtensionType => typeof(IResultReader);
         public string Name => "XUnit";
 
-        private IExecutionContext _executionContext;
-        private bool _addResultsFileToRunLevelAttachments = true;
-
+        public XUnitResultReader()
+        {
+            AddResultsFileToRunLevelAttachments = true;
+        }
         //Based on the XUnit V2 format: http://xunit.github.io/docs/format-xml-v2.html
         public TestRunData ReadResults(IExecutionContext executionContext, string filePath, TestRunContext runContext = null)
         {
-            _executionContext = executionContext;
             List<TestCaseResultData> results = new List<TestCaseResultData>();
 
             XmlDocument doc = new XmlDocument();
@@ -38,7 +38,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
             }
             catch (XmlException ex)
             {
-                _executionContext.Warning(StringUtil.Loc("FailedToReadFile", filePath, ex.Message));
+                executionContext.Warning(StringUtil.Loc("FailedToReadFile", filePath, ex.Message));
                 return null;
             }
 
@@ -214,14 +214,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
 
         public bool AddResultsFileToRunLevelAttachments
         {
-            get
-            {
-                return _addResultsFileToRunLevelAttachments;
-            }
-            set
-            {
-                _addResultsFileToRunLevelAttachments = value;
-            }
+            get;
+            set;
         }
     }
 }

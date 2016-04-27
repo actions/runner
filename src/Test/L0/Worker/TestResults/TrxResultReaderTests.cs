@@ -17,6 +17,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void ResultsWithoutTestNamesAreSkipped()
         {
             SetupMocks();
@@ -45,6 +46,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void ThereAreNoResultsWithInvalidGuid()
         {
             SetupMocks();
@@ -73,6 +75,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void ResultsWithoutMandatoryFieldsAreSkipped()
         {
             SetupMocks();
@@ -101,6 +104,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void ReadsResultsReturnsCorrectValues()
         {
             SetupMocks();
@@ -213,6 +217,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void CustomRunTitleIsHonoured()
         {
             SetupMocks();
@@ -238,6 +243,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void ReadResultsDoesNotFailForBareMinimumTrx()
         {
             SetupMocks();
@@ -263,6 +269,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void ReadResultsDoesNotFailWithoutStartTime()
         {
             SetupMocks();
@@ -287,6 +294,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void ReadResultsDoesNotFailWithoutFinishTime()
         {
             SetupMocks();
@@ -311,6 +319,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void ReadResultsDoesNotFailWithFinishTimeLessThanStartTime()
         {
             SetupMocks();
@@ -320,6 +329,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void VerifyRunLevelResultsFilePresentByDefault()
         {
             SetupMocks();
@@ -329,6 +339,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void VerifyRunLevelResultsFileAbsentIfSkipFlagIsSet()
         {
             SetupMocks();
@@ -339,6 +350,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void VerifyResultsFilesAreAddedAsRunLevelAttachments()
         {
             SetupMocks();
@@ -348,6 +360,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void VerifyCoverageSourceFilesAndPdbsAreAddedAsRunLevelAttachments()
         {
             SetupMocks();
@@ -358,6 +371,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void VerifyDataCollectorFilesAndPdbsAreAddedAsRunLevelAttachments()
         {
             SetupMocks();
@@ -367,6 +381,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void VerifyNoDataCollectorFilesAndPdbsAreAddedAsRunLevelAttachmentsIfSkipFlagIsSet()
         {
             SetupMocks();
@@ -377,6 +392,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void VerifyNoResultsFilesAreAddedAsRunLevelAttachmentsIfSkipFlagIsSet()
         {
             SetupMocks();
@@ -387,6 +403,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void VerifyNoCoverageSourceFilesAndPdbsAreAddedAsRunLevelAttachmentsIfSkipFlagIsSet()
         {
             SetupMocks();
@@ -397,6 +414,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void VerifyRunTypeIsSet()
         {
             SetupMocks();

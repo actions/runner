@@ -11,11 +11,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
     public interface ITestResultsServer : IAgentService
     {
         void InitializeServer(VssConnection connection);
-        Task<List<TestCaseResult>> AddTestResultsToTestRun(TestResultCreateModel[] currentBatch, string projectName, int testRunId, CancellationToken cancellationToken = default(CancellationToken));
-        Task<TestRun> CreateTestRun(string projectName, RunCreateModel testRunData, CancellationToken cancellationToken = default(CancellationToken));
-        Task<TestRun> UpdateTestRun(string projectName, int testRunId, RunUpdateModel updateModel, CancellationToken cancellationToken = default(CancellationToken));
-        Task<TestAttachmentReference> CreateTestRunAttachment(TestAttachmentRequestModel reqModel, string projectName, int testRunId, CancellationToken cancellationToken = default(CancellationToken));
-        Task<TestAttachmentReference> CreateTestResultAttachment(TestAttachmentRequestModel reqModel, string projectName, int testRunId, int testCaseResultId, CancellationToken cancellationToken = default(CancellationToken));
+        Task<List<TestCaseResult>> AddTestResultsToTestRunAsync(TestResultCreateModel[] currentBatch, string projectName, int testRunId, CancellationToken cancellationToken = default(CancellationToken));
+        Task<TestRun> CreateTestRunAsync(string projectName, RunCreateModel testRunData, CancellationToken cancellationToken = default(CancellationToken));
+        Task<TestRun> UpdateTestRunAsync(string projectName, int testRunId, RunUpdateModel updateModel, CancellationToken cancellationToken = default(CancellationToken));
+        Task<TestAttachmentReference> CreateTestRunAttachmentAsync(TestAttachmentRequestModel reqModel, string projectName, int testRunId, CancellationToken cancellationToken = default(CancellationToken));
+        Task<TestAttachmentReference> CreateTestResultAttachmentAsync(TestAttachmentRequestModel reqModel, string projectName, int testRunId, int testCaseResultId, CancellationToken cancellationToken = default(CancellationToken));
     }
 
     public class TestResultsServer : AgentService, ITestResultsServer
@@ -32,7 +32,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
             TestHttpClient = connection.GetClient<TestManagementHttpClient>();
         }
 
-        public async Task<List<TestCaseResult>> AddTestResultsToTestRun(
+        public async Task<List<TestCaseResult>> AddTestResultsToTestRunAsync(
             TestResultCreateModel[] currentBatch,
             string projectName,
             int testRunId,
@@ -41,7 +41,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
             return await TestHttpClient.AddTestResultsToTestRunAsync(currentBatch, projectName, testRunId, cancellationToken);
         }
 
-        public async Task<TestRun> CreateTestRun(
+        public async Task<TestRun> CreateTestRunAsync(
            string projectName,
            RunCreateModel testRunData,
            CancellationToken cancellationToken = default(CancellationToken))
@@ -49,7 +49,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
             return await TestHttpClient.CreateTestRunAsync(projectName, testRunData, cancellationToken);
         }
 
-        public async Task<TestRun> UpdateTestRun(
+        public async Task<TestRun> UpdateTestRunAsync(
          string projectName,
          int testRunId,
          RunUpdateModel updateModel,
@@ -58,7 +58,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
             return await TestHttpClient.UpdateTestRunAsync(projectName, testRunId, updateModel, cancellationToken);
         }
 
-        public async Task<TestAttachmentReference> CreateTestRunAttachment(
+        public async Task<TestAttachmentReference> CreateTestRunAttachmentAsync(
             TestAttachmentRequestModel reqModel,
             string projectName,
             int testRunId,
@@ -67,7 +67,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
             return await TestHttpClient.CreateTestRunAttachmentAsync(reqModel, projectName, testRunId, cancellationToken);
         }
 
-        public async Task<TestAttachmentReference> CreateTestResultAttachment(
+        public async Task<TestAttachmentReference> CreateTestResultAttachmentAsync(
             TestAttachmentRequestModel reqModel,
             string projectName,
             int testRunId,

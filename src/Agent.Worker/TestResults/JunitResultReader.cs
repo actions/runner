@@ -14,8 +14,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
         public Type ExtensionType => typeof(IResultReader);
         public string Name => "JUnit";
 
-        private IExecutionContext _executionContext;
-        private bool _addResultsFileToRunLevelAttachments = true;
+        public JUnitResultReader()
+        {
+            AddResultsFileToRunLevelAttachments = true;
+        }
 
         /// <summary>
         /// Reads a JUnit results file from disk, converts it into a TestRunData object.        
@@ -25,7 +27,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
         /// <returns></returns>
         public TestRunData ReadResults(IExecutionContext executionContext, string filePath, TestRunContext runContext = null)
         {
-            _executionContext = executionContext;
             // http://windyroad.com.au/dl/Open%20Source/JUnit.xsd
 
             XmlDocument doc = new XmlDocument();
@@ -43,7 +44,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
             }
             catch (XmlException ex)
             {
-                _executionContext.Warning(StringUtil.Loc("FailedToReadFile", filePath, ex.Message));
+                executionContext.Warning(StringUtil.Loc("FailedToReadFile", filePath, ex.Message));
                 return null;
             }
 
@@ -125,14 +126,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
 
         public bool AddResultsFileToRunLevelAttachments
         {
-            get
-            {
-                return _addResultsFileToRunLevelAttachments;
-            }
-            set
-            {
-                _addResultsFileToRunLevelAttachments = value;
-            }
+            get;
+            set;
         }
 
         /// <summary>

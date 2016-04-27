@@ -69,7 +69,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
             _testResultServer = new Mock<ITestResultsServer>();
             _testResultServer.Setup(x => x.InitializeServer(It.IsAny<Client.VssConnection>()));
-            _testResultServer.Setup(x => x.AddTestResultsToTestRun(It.IsAny<TestResultCreateModel[]>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            _testResultServer.Setup(x => x.AddTestResultsToTestRunAsync(It.IsAny<TestResultCreateModel[]>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
                         .Callback<TestResultCreateModel[], string, int, CancellationToken>
                         ((currentBatch, projectName, testRunId, cancellationToken) =>
                         {
@@ -87,7 +87,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
                             return resultsList;
                         }));
 
-            _testResultServer.Setup(x => x.CreateTestRun(It.IsAny<string>(), It.IsAny<RunCreateModel>(), It.IsAny<CancellationToken>()))
+            _testResultServer.Setup(x => x.CreateTestRunAsync(It.IsAny<string>(), It.IsAny<RunCreateModel>(), It.IsAny<CancellationToken>()))
                         .Callback<string, RunCreateModel, CancellationToken>
                         ((projectName, testRunData, cancellationToken) =>
                         {
@@ -96,7 +96,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
                         })
                         .Returns(Task.Factory.StartNew(() => { return new TestRun() { Name = "TestRun", Id = 1 }; }));
 
-            _testResultServer.Setup(x => x.UpdateTestRun(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<RunUpdateModel>(), It.IsAny<CancellationToken>()))
+            _testResultServer.Setup(x => x.UpdateTestRunAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<RunUpdateModel>(), It.IsAny<CancellationToken>()))
                         .Callback<string, int, RunUpdateModel, CancellationToken>
                         ((projectName, testRunId, updateModel, cancellationToken) =>
                         {
@@ -106,7 +106,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
                         })
                         .Returns(Task.Factory.StartNew(() => { return new TestRun() { Name = "TestRun", Id = 1 }; }));
 
-            _testResultServer.Setup(x => x.CreateTestRunAttachment(
+            _testResultServer.Setup(x => x.CreateTestRunAttachmentAsync(
                         It.IsAny<TestAttachmentRequestModel>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
                         .Callback<TestAttachmentRequestModel, string, int, CancellationToken>
                         ((reqModel, projectName, testRunId, cancellationToken) =>
@@ -117,7 +117,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
                         })
                         .Returns(Task.Factory.StartNew(() => { return new TestAttachmentReference(); }));
 
-            _testResultServer.Setup(x => x.CreateTestResultAttachment(It.IsAny<TestAttachmentRequestModel>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            _testResultServer.Setup(x => x.CreateTestResultAttachmentAsync(It.IsAny<TestAttachmentRequestModel>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
                         .Callback<TestAttachmentRequestModel, string, int, int, CancellationToken>
                         ((reqModel, projectName, testRunId, testCaseResultId, cancellationToken) =>
                         {
@@ -135,6 +135,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void ReadResultsSendsRunTitleToReader()
         {
             SetupMocks();
@@ -144,15 +145,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void AddResultsWithAttachmentsCallsRightApi()
         {
             SetupMocks();
             //Add results
             _testRunData = _publisher.ReadResultsFromFile("filepath");
-            _publisher.StartTestRun(_testRunData);
+            _publisher.StartTestRunAsync(_testRunData);
             TestCaseResultData result = new TestCaseResultData();
             result.Attachments = new string[] { "attachment.txt" };
-            _publisher.AddResults(new TestCaseResultData[] { result }).Wait();
+            _publisher.AddResultsAsync(new TestCaseResultData[] { result }).Wait();
 
             Assert.Equal(_resultsLevelAttachments.Count, 1);
             Assert.Equal(_resultsLevelAttachments[1].Count, 1);
@@ -163,6 +165,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void TrxFileUploadsWithCorrectAttachmentType()
         {
             SetupMocks();
@@ -170,10 +173,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
             ResetValues();
 
             _testRunData = _publisher.ReadResultsFromFile("filepath");
-            _publisher.StartTestRun(_testRunData).Wait();
+            _publisher.StartTestRunAsync(_testRunData).Wait();
             TestCaseResultData result = new TestCaseResultData();
             result.Attachments = new string[] { "sampleTrx.trx" };
-            _publisher.AddResults(new TestCaseResultData[] { result }).Wait();
+            _publisher.AddResultsAsync(new TestCaseResultData[] { result }).Wait();
             Assert.Equal(_resultsLevelAttachments.Count, 1);
             Assert.Equal(_resultsLevelAttachments[1].Count, 1);
             Assert.Equal(_resultsLevelAttachments[1][0].AttachmentType, AttachmentType.TmiTestRunSummary.ToString());
@@ -187,6 +190,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void TestImpactFileUploadsWithCorrectAttachmentType()
         {
             SetupMocks();
@@ -194,10 +198,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
             ResetValues();
 
             _testRunData = _publisher.ReadResultsFromFile("filepath");
-            _publisher.StartTestRun(_testRunData).Wait();
+            _publisher.StartTestRunAsync(_testRunData).Wait();
             TestCaseResultData result = new TestCaseResultData();
             result.Attachments = new string[] { "testimpact.xml" };
-            _publisher.AddResults(new TestCaseResultData[] { result }).Wait();
+            _publisher.AddResultsAsync(new TestCaseResultData[] { result }).Wait();
             Assert.Equal(_resultsLevelAttachments.Count, 1);
             Assert.Equal(_resultsLevelAttachments[1].Count, 1);
             Assert.Equal(_resultsLevelAttachments[1][0].AttachmentType, AttachmentType.TestImpactDetails.ToString());
@@ -211,6 +215,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void SystemInformationFileUploadsWithCorrectAttachmentType()
         {
             SetupMocks();
@@ -218,10 +223,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
             ResetValues();
 
             _testRunData = _publisher.ReadResultsFromFile("filepath");
-            _publisher.StartTestRun(_testRunData).Wait();
+            _publisher.StartTestRunAsync(_testRunData).Wait();
             TestCaseResultData result = new TestCaseResultData();
             result.Attachments = new string[] { "SystemInformation.xml" };
-            _publisher.AddResults(new TestCaseResultData[] { result }).Wait();
+            _publisher.AddResultsAsync(new TestCaseResultData[] { result }).Wait();
             Assert.Equal(_resultsLevelAttachments.Count, 1);
             Assert.Equal(_resultsLevelAttachments[1].Count, 1);
             Assert.Equal(_resultsLevelAttachments[1][0].AttachmentType, AttachmentType.IntermediateCollectorData.ToString());
@@ -235,6 +240,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void StartTestRunCallsRightApi()
         {
             SetupMocks();
@@ -243,7 +249,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
             Assert.Equal("filepath", _resultsFilepath);
 
             //Start run 
-            _publisher.StartTestRun(_testRunData).Wait();
+            _publisher.StartTestRunAsync(_testRunData).Wait();
             Assert.Equal(_projectId, "Project1");
             Assert.Equal(_testRunData, _testRun);
             Assert.Equal(_projectId, "Project1");
@@ -252,14 +258,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void EndTestRunCallsRightApi()
         {
             SetupMocks();
             _testRunData = _publisher.ReadResultsFromFile("filepath");
-            _publisher.StartTestRun(_testRunData).Wait();
+            _publisher.StartTestRunAsync(_testRunData).Wait();
             _projectId = "";
             //End run.
-            _publisher.EndTestRun().Wait();
+            _publisher.EndTestRunAsync().Wait();
             Assert.Equal(_runId, 1);
             Assert.Equal(_projectId, "Project1");
             Assert.Equal(_updateProperties.State, "Completed");
@@ -270,14 +277,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void EndTestRunWithArchiveCallsRightApi()
         {
             SetupMocks();
             _testRunData = _publisher.ReadResultsFromFile("filepath");
-            _publisher.StartTestRun(_testRunData).Wait();
+            _publisher.StartTestRunAsync(_testRunData).Wait();
             _projectId = "";
             //End run.
-            _publisher.EndTestRun(publishAttachmentsAsArchive: true).Wait();
+            _publisher.EndTestRunAsync(publishAttachmentsAsArchive: true).Wait();
             Assert.Equal(_runId, 1);
             Assert.Equal(_projectId, "Project1");
             Assert.Equal(_updateProperties.State, "Completed");
@@ -288,15 +296,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void BatchSizeIsCorrect()
         {
             SetupMocks();
             int batchSize = 1000;
             ResetValues();
-            _publisher.StartTestRun(new TestRunData()).Wait();
+            _publisher.StartTestRunAsync(new TestRunData()).Wait();
             List<TestCaseResultData> testCaseResultData = new List<TestCaseResultData>();
             for (int i = 0; i < batchSize + 1; i++) { testCaseResultData.Add(new TestCaseResultData()); }
-            _publisher.AddResults(testCaseResultData.ToArray()).Wait();
+            _publisher.AddResultsAsync(testCaseResultData.ToArray()).Wait();
             Assert.Equal(2, _batchSizes.Count);
             Assert.Equal(batchSize, _batchSizes[0]);
             Assert.Equal(1, _batchSizes[1]);
@@ -304,6 +313,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void PublishConsoleLogIsSuccessful()
         {
             SetupMocks();
@@ -321,9 +331,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
             // execute publish task
             _testRunData = _publisher.ReadResultsFromFile("filepath");
-            _publisher.StartTestRun(_testRunData).Wait();
-            _publisher.AddResults(testResults.ToArray()).Wait();
-            _publisher.EndTestRun().Wait();
+            _publisher.StartTestRunAsync(_testRunData).Wait();
+            _publisher.AddResultsAsync(testResults.ToArray()).Wait();
+            _publisher.EndTestRunAsync().Wait();
 
             // validate
             Assert.Equal(_resultsLevelAttachments.Count, 1);

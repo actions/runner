@@ -89,6 +89,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void ResultsWithoutMandatoryFieldsAreSkipped()
         {
             SetupMocks();
@@ -102,6 +103,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void VerifyTestRunDurationWhenTotalTimeIsInMilliseconds()
         {
             SetupMocks();
@@ -114,6 +116,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void VerifyTestCaseDurationWhenTestCaseTimeIsInMilliseconds()
         {
             SetupMocks();
@@ -126,6 +129,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void PublishBasicJUnitResults()
         {
             SetupMocks();
@@ -146,6 +150,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void PublishBasicJUnitResultsAddsResultsFileByDefault()
         {
             SetupMocks();
@@ -157,6 +162,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void PublishBasicJUnitResultsSkipsAddingResultsFileWhenFlagged()
         {
             SetupMocks();
@@ -167,6 +173,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void CustomRunTitleIsHonoured()
         {
             SetupMocks();
@@ -179,6 +186,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void DefaultRunTitleIsHonouredForMultiSuiteRuns()
         {
             SetupMocks();
@@ -191,6 +199,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void PublishJUnitKarmaResultFile()
         {
             SetupMocks();
@@ -205,6 +214,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void VerifyRunTypeIsSet()
         {
             SetupMocks();
@@ -215,6 +225,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void VerifyTestCaseStartDate()
         {
             SetupMocks();
@@ -225,6 +236,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void VerifyTestCaseCompletedDate()
         {
             SetupMocks();
@@ -238,6 +250,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void VerifyLastTestCaseEndDateNotGreaterThanTestRunTotalTime()
         {
             SetupMocks();
@@ -251,6 +264,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void VerifyWithJustTestSuite()
         {
             SetupMocks();
@@ -261,6 +275,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
         [Fact]
         [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void Junit_DtdProhibitedXmlShouldReturnNull()
         {
             SetupMocks();

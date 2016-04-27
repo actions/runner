@@ -19,7 +19,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
         private IdentityRef _runUserIdRef;
         private Dictionary<string, TestCaseDefinition> _definitions;
         private IExecutionContext _executionContext;
-        private bool _addResultsFileToRunLevelAttachments = true;
+
+        public TrxResultReader()
+        {
+            AddResultsFileToRunLevelAttachments = true;
+        }
 
         /// <summary>
         /// Reads a trx file from disk, converts it into a TestRunData object.
@@ -165,14 +169,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
 
         public bool AddResultsFileToRunLevelAttachments
         {
-            get
-            {
-                return _addResultsFileToRunLevelAttachments;
-            }
-            set
-            {
-                _addResultsFileToRunLevelAttachments = value;
-            }
+            get;
+            set;
         }
 
         public string Name => "VSTest";
@@ -439,10 +437,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
 
         public TestCaseDefinition(string automatedTestName, IdentityRef owner, string priority, string storage)
         {
-            this.AutomatedTestName = automatedTestName;
-            this.Storage = storage;
-            this.Owner = owner;
-            this.Priority = priority;
+            AutomatedTestName = automatedTestName;
+            Storage = storage;
+            Owner = owner;
+            Priority = priority;
         }
     }
 }
