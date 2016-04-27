@@ -114,7 +114,7 @@ WorkingDirectory={2}
 
 [Install]
 WantedBy=multi-user.target
-", IOUtil.GetExternalsPath(), IOUtil.GetBinPath(), IOUtil.GetBinPath(), testUser);
+", IOUtil.GetExternalsPath(), IOUtil.GetBinPath(), IOUtil.GetRootPath(), testUser);
 
                 var agentSettings = new AgentSettings
                                         {

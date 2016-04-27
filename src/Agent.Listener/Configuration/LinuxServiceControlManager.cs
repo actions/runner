@@ -52,6 +52,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                                           {
                                               { "{Description}", settings.ServiceDisplayName },
                                               { "{BinDirectory}", IOUtil.GetBinPath() },
+                                              { "{AgentRoot}", IOUtil.GetRootPath() },
                                               { "{ExternalsDirectory}", IOUtil.GetExternalsPath() },
                                               { "{User}", GetCurrentLoginName() }
                                           };
