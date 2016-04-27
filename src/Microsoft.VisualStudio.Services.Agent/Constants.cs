@@ -16,7 +16,7 @@ namespace Microsoft.VisualStudio.Services.Agent
 
         public static class Agent
         {
-            public static readonly string Version = "1.999.0";
+            public static readonly string Version = "2.99.0";
 
 #if OS_LINUX
             public static readonly OSPlatform Platform = OSPlatform.Linux;
@@ -26,6 +26,14 @@ namespace Microsoft.VisualStudio.Services.Agent
             public static readonly OSPlatform Platform = OSPlatform.Windows;
 #endif
 
+            public static class ReturnCode
+            {
+                public const int Success = 0;
+                public const int TerminatedError = 1;
+                public const int RetryableError = 2;
+                public const int AgentUpdating = 3;
+            }
+
             public static class CommandLine
             {
                 public static class Args
@@ -34,20 +42,18 @@ namespace Microsoft.VisualStudio.Services.Agent
                     public static readonly string Auth = "auth";
                     public static readonly string Pool = "pool";
                     public static readonly string Url = "url";
+                    public static readonly string UserName = "username";
+                    public static readonly string WindowsLogonAccount = "windowslogonaccount";
                     public static readonly string Work = "work";
 
                     // Secret args. Must be added to the "Secrets" getter as well.
                     public static readonly string Password = "password";
                     public static readonly string Token = "token";
-                    public static readonly string UserName = "username";
-                    public static readonly string WindowsLogonAccount = "windowslogonaccount";
                     public static readonly string WindowsLogonPassword = "windowslogonpassword";
                     public static string[] Secrets => new[]
                     {
                         Password,
                         Token,
-                        UserName,
-                        WindowsLogonAccount,
                         WindowsLogonPassword,
                     };
                 }
@@ -102,11 +108,13 @@ namespace Microsoft.VisualStudio.Services.Agent
 
         public static class Path
         {
+            public static readonly string BinDirectory = "bin";
             public static readonly string DiagDirectory = "_diag";
             public static readonly string ExternalsDirectory = "externals";
             public static readonly string TeeDirectory = "tee";
             public static readonly string TaskJsonFile = "task.json";
             public static readonly string TasksDirectory = "_tasks";
+            public static readonly string UpdateDirectory = "_update";
         }
 
         public static class Variables
@@ -181,6 +189,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                 public static readonly string EnableAccessToken = "system.enableAccessToken";
                 public static readonly string HostType = "system.hosttype";
                 public static readonly string PreferGit = "system.prefergit";
+                public static readonly string TaskDefinitionsUri = "system.taskDefinitionsUri";
                 public static readonly string TFServerUrl = "system.TeamFoundationServerUri"; // back compat variable, do not document
                 public static readonly string TeamProject = "system.teamproject";
                 public static readonly string TeamProjectId = "system.teamProjectId";
@@ -197,6 +206,8 @@ namespace Microsoft.VisualStudio.Services.Agent
                 //
                 // Keep alphabetical
                 //
+                public static readonly string AgentReleaseDirectory = "agent.releaseDirectory";
+                public static readonly string ArtifactsDirectory = "system.artifactsDirectory";
                 public static readonly string AttemptNumber = "release.attemptNumber";
                 public static readonly string ReleaseDefinitionName = "release.definitionName";
                 public static readonly string ReleaseEnvironmentName = "release.environmentName";

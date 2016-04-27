@@ -1,10 +1,8 @@
-﻿using Microsoft.VisualStudio.Services.Agent.Listener.Configuration;
-using Microsoft.VisualStudio.Services.Agent.Util;
+﻿using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Diagnostics;
-using System.Runtime.InteropServices;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener
 {
@@ -17,6 +15,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             return MainAsync(args).GetAwaiter().GetResult();
         }
 
+        // Return code definition: (this will be used by service host to determine whether it will re-launch agent.listener)
+        // 0: Agent exit
+        // 1: Terminate failure
+        // 2: Retriable failure
+        // 3: Exit for self update
         public async static Task<int> MainAsync(string[] args)
         {
             // Validate the binaries intended for one OS are not running on a different OS.
@@ -26,31 +29,32 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     if (!RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
                     {
                         Console.WriteLine(StringUtil.Loc("NotLinux"));
-                        return 1;
+                        return Constants.Agent.ReturnCode.TerminatedError;
                     }
                     break;
                 case Constants.OSPlatform.OSX:
                     if (!RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
                     {
                         Console.WriteLine(StringUtil.Loc("NotOSX"));
-                        return 1;
+                        return Constants.Agent.ReturnCode.TerminatedError;
                     }
                     break;
                 case Constants.OSPlatform.Windows:
                     if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                     {
                         Console.WriteLine(StringUtil.Loc("NotWindows"));
-                        return 1;
+                        return Constants.Agent.ReturnCode.TerminatedError;
                     }
                     break;
                 default:
-                    throw new NotSupportedException(Constants.Agent.Platform.ToString());
+                    Console.WriteLine(StringUtil.Loc("PlatformNotSupport", RuntimeInformation.OSDescription, Constants.Agent.Platform.ToString()));
+                    return Constants.Agent.ReturnCode.TerminatedError;
             }
 
             using (HostContext context = new HostContext("Agent"))
             using (var term = context.GetService<ITerminal>())
             {
-                int rc = 0;
+                int rc = Constants.Agent.ReturnCode.Success;
                 try
                 {
                     s_trace = context.GetTrace("AgentProcess");
@@ -71,18 +75,21 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     IAgent agent = context.GetService<IAgent>();
                     using (agent.TokenSource = new CancellationTokenSource())
                     {
-                        rc = await agent.ExecuteCommand(command);
+                        try
+                        {
+                            rc = await agent.ExecuteCommand(command);
+                        }
+                        catch (OperationCanceledException) when (agent.TokenSource.IsCancellationRequested)
+                        {
+                            s_trace.Info("Agent execution been cancelled.");
+                        }
                     }
                 }
                 catch (Exception e)
                 {
-                    if (!(e is OperationCanceledException))
-                    {
-                        Console.Error.WriteLine(StringUtil.Format("An error occured.  {0}", e.Message));
-                    }
-
+                    Console.Error.WriteLine(StringUtil.Format("An error occured.  {0}", e.Message));
                     s_trace.Error(e);
-                    rc = 1;
+                    rc = Constants.Agent.ReturnCode.RetryableError;
                 }
 
                 return rc;

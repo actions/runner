@@ -36,19 +36,23 @@ var runService = function() {
             listener.on('close', (code) => {
                 console.log(`Agent listener exited with error code ${code}`);
 
-                if (code === 1)
-                {
-                    console.log('Can not start agent listener process, check logs for error detail');
+                if (code === 0) {
+                    console.log('Agent listener exit with 0 return code, stop the service, no retry needed.');
                     stopping = true;
-                }
-
-                if (code === 2)
-                {
-                    console.log('Received message from agent listener to stop the service');
+                } else if (code === 1) {
+                    console.log('Agent listener exit with terminated error, stop the service, no retry needed.');
                     stopping = true;
+                } else if (code === 2) {
+                    console.log('Agent listener exit with retryable error, re-launch agent in 5 seconds.');
+                } else if (code === 3) {
+                    console.log('Agent listener exit because of updating, re-launch agent in 5 seconds.');
+                } else {
+                    console.log('Agent listener exit with undefined return code, re-launch agent in 5 seconds.');
                 }
-
-                setTimeout(runService, 0);
+                
+                if(!stopping) {
+                    setTimeout(runService, 5000);
+                }
             });
 
         } catch(ex) {

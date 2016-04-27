@@ -88,16 +88,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         public string Build_SourceTfvcShelveset { get { return Get(Constants.Variables.Build.SourceTfvcShelveset); } }
         public string Build_SourceVersion { get { return Get(Constants.Variables.Build.SourceVersion); } }
         public bool? Build_SyncSources { get { return GetBoolean(Constants.Variables.Build.SyncSources); } }
-        public string Release_ReleaseEnvironmentUri { get { return Get("Release.EnvironmentUri"); } }
-        public string Release_ReleaseUri { get { return Get("Release.ReleaseUri"); } }
+        public string Release_ArtifactsDirectory { get { return Get(Constants.Variables.Release.ArtifactsDirectory); } }
+        public string Release_ReleaseEnvironmentUri { get { return Get(Constants.Variables.Release.ReleaseEnvironmentUri); } }
+        public string Release_ReleaseUri { get { return Get(Constants.Variables.Release.ReleaseUri); } }
         public string System_CollectionId { get { return Get(Constants.Variables.System.CollectionId); } }
         public bool? System_Debug { get { return GetBoolean(Constants.Variables.System.Debug); } }
         public string System_DefinitionId { get { return Get(Constants.Variables.System.DefinitionId); } }
         public bool? System_EnableAccessToken { get { return GetBoolean(Constants.Variables.System.EnableAccessToken); } }
         public string System_HostType { get { return Get(Constants.Variables.System.HostType); } }
+        public string System_TaskDefinitionsUri { get { return Get(Constants.Variables.System.TaskDefinitionsUri); } }
         public string System_TeamProject { get { return Get(BuildWebApi.WellKnownBuildVariables.TeamProject); } }
         public Guid? System_TeamProjectId { get { return GetGuid(BuildWebApi.WellKnownBuildVariables.TeamProjectId); } }
-        public string System_TFCollectionUrl { get { return Get(WellKnownDistributedTaskVariables.TFCollectionUrl);  } }
+        public string System_TFCollectionUrl { get { return Get(WellKnownDistributedTaskVariables.TFCollectionUrl); } }
 
         public void ExpandValues(IDictionary<string, string> target)
         {

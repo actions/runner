@@ -5,7 +5,7 @@ After=network.target
 [Service]
 ExecStart={ExternalsDirectory}/node/bin/node {BinDirectory}/AgentService.js
 User={User}
-Environment=PATH=/user/bin:/usr/local/bin
+Environment=PATH=/usr/bin:/usr/local/bin
 Environment=NODE_ENV=production
 WorkingDirectory={BinDirectory}
 

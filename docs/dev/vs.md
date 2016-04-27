@@ -2,9 +2,9 @@
 
 Install Visual Studio 2015 update 1 or later
 
-Replace %USERPROFILE%\.dnx\packages folder with a symbolic link to %USERPROFILE%\.nuget\packages
-First delete %USERPROFILE%\.dnx\packages, then run cmd.exe as Administrator and execute the following command:
-mklink /D %USERPROFILE%\.dnx\packages %USERPROFILE%\.nuget\packages
+Replace %USERPROFILE%\\.dnx\\packages folder with a symbolic link to %USERPROFILE%\\.nuget\\packages
+First delete %USERPROFILE%\\.dnx\\packages, then run cmd.exe as Administrator and execute the following command:
+mklink /D %USERPROFILE%\\.dnx\\packages %USERPROFILE%\\.nuget\\packages
 
 restore the packages using the commands documented above, because VS won't be able to do it
 

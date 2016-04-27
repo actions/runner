@@ -2,8 +2,12 @@ using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Listener.Configuration;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using System.IO.Compression;
+using System.Text;
+using System.Diagnostics;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener
 {
@@ -46,31 +50,32 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 if (command.Help)
                 {
                     PrintUsage();
-                    return 0;
+                    return Constants.Agent.ReturnCode.Success;
                 }
 
                 if (command.Version)
                 {
                     _term.WriteLine(Constants.Agent.Version);
-                    return 0;
+                    return Constants.Agent.ReturnCode.Success;
                 }
 
                 if (command.Commit)
                 {
                     _term.WriteLine(BuildConstants.Source.CommitHash);
-                    return 0;
+                    return Constants.Agent.ReturnCode.Success;
                 }
 
                 if (command.Unconfigure)
                 {
                     // TODO: Unconfiure, remove config and exit
+                    return Constants.Agent.ReturnCode.Success;
                 }
 
                 if (command.Run && !configManager.IsConfigured())
                 {
                     _term.WriteError(StringUtil.Loc("AgentIsNotConfigured"));
                     PrintUsage();
-                    return 1;
+                    return Constants.Agent.ReturnCode.TerminatedError;
                 }
 
                 // unattend mode will not prompt for args if not supplied.  Instead will error.
@@ -79,26 +84,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     try
                     {
                         await configManager.ConfigureAsync(command);
-                        return 0;
+                        return Constants.Agent.ReturnCode.Success;
                     }
                     catch (Exception ex)
                     {
                         Trace.Error(ex);
                         _term.WriteError(ex.Message);
-                        return 1;
+                        return Constants.Agent.ReturnCode.TerminatedError;
                     }
                 }
 
                 if (command.NoStart)
                 {
-                    return 0;
-                }
-
-                if (command.Run && !configManager.IsConfigured())
-                {
-                    // TODO: Is it possible to reach this code? It doesn't appear so.
-                    // TODO: LOC
-                    throw new InvalidOperationException("CanNotRunAgent");
+                    return Constants.Agent.ReturnCode.Success;
                 }
 
                 Trace.Info("Done evaluating commands");
@@ -122,7 +120,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     _term.WriteLine(StringUtil.Loc("ConfiguredAsRunAsService", settings.ServiceName));
                 }
 
-                return 0;
+                return Constants.Agent.ReturnCode.Success;
             }
             finally
             {
@@ -155,34 +153,78 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             var listener = HostContext.GetService<IMessageListener>();
             if (!await listener.CreateSessionAsync(token))
             {
-                return 1;
+                return Constants.Agent.ReturnCode.TerminatedError;
             }
 
-            _term.WriteLine(StringUtil.Loc("ListenForJobs"));
+            _term.WriteLine(StringUtil.Loc("ListenForJobs", DateTime.UtcNow));
 
             _sessionId = listener.Session.SessionId;
-            bool autoUpdateInProgress = false;
-            bool skipMessageDeletion = false;
-            TaskAgentMessage message = null;
             IJobDispatcher jobDispatcher = null;
             try
             {
+                bool disableAutoUpdate = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("agent.disableupdate"));
+                bool autoUpdateInProgress = false;
+                Task<bool> selfUpdateTask = null;
                 jobDispatcher = HostContext.CreateService<IJobDispatcher>();
                 while (!token.IsCancellationRequested)
                 {
+                    TaskAgentMessage message = null;
+                    bool skipMessageDeletion = false;
                     try
                     {
-                        skipMessageDeletion = false;
-                        message = await listener.GetNextMessageAsync(token); //get next message
+                        Task<TaskAgentMessage> getNextMessage = listener.GetNextMessageAsync(token);
+                        if (autoUpdateInProgress)
+                        {
+                            Trace.Verbose("Auto update task running at backend, waiting for getNextMessage or selfUpdateTask to finish.");
+                            Task completeTask = await Task.WhenAny(getNextMessage, selfUpdateTask);
+                            if (completeTask == selfUpdateTask)
+                            {
+                                autoUpdateInProgress = false;
+                                if (await selfUpdateTask)
+                                {
+                                    Trace.Info("Auto update task finished at backend, an agent update is ready to apply exit the current agent instance.");
+                                    return Constants.Agent.ReturnCode.AgentUpdating;
+                                }
+                                else
+                                {
+                                    Trace.Info("Auto update task finished at backend, there is no available agent update needs to apply, continue message queue looping.");
+                                }
+                            }
+                        }
 
+                        message = await getNextMessage; //get next message
                         if (string.Equals(message.MessageType, AgentRefreshMessage.MessageType, StringComparison.OrdinalIgnoreCase))
                         {
-                            Trace.Warning("Referesh message received, but not yet handled by agent implementation.");
+                            if (disableAutoUpdate)
+                            {
+                                Trace.Info("Refresh message received, skip autoupdate since environment variable agent.disableupdate is set.");
+                            }
+                            else
+                            {
+                                if (autoUpdateInProgress == false)
+                                {
+                                    autoUpdateInProgress = true;
+                                    var selfUpdater = HostContext.GetService<ISelfUpdater>();
+                                    selfUpdateTask = selfUpdater.SelfUpdate(jobDispatcher, !settings.RunAsService, token);
+                                    Trace.Info("Refresh message received, kick-off selfupdate background process.");
+                                }
+                                else
+                                {
+                                    Trace.Info("Refresh message received, skip autoupdate since a previous autoupdate is already running.");
+                                }
+                            }
                         }
                         else if (string.Equals(message.MessageType, JobRequestMessage.MessageType, StringComparison.OrdinalIgnoreCase))
                         {
-                            var newJobMessage = JsonUtility.FromString<JobRequestMessage>(message.Body);
-                            jobDispatcher.Run(newJobMessage);
+                            if (autoUpdateInProgress)
+                            {
+                                skipMessageDeletion = true;
+                            }
+                            else
+                            {
+                                var newJobMessage = JsonUtility.FromString<JobRequestMessage>(message.Body);
+                                jobDispatcher.Run(newJobMessage);
+                            }
                         }
                         else if (string.Equals(message.MessageType, JobCancelMessage.MessageType, StringComparison.OrdinalIgnoreCase))
                         {
@@ -199,7 +241,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                             {
                                 await DeleteMessageAsync(message);
                             }
-                            catch(Exception ex)
+                            catch (Exception ex)
                             {
                                 Trace.Error($"Catch exception during delete message from message queue. message id: {message.MessageId}");
                                 Trace.Error(ex);
@@ -223,7 +265,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 await listener.DeleteSessionAsync();
             }
 
-            return 0;
+            return Constants.Agent.ReturnCode.Success;
         }
 
         private async Task DeleteMessageAsync(TaskAgentMessage message)

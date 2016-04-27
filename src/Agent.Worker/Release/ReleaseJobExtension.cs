@@ -23,12 +23,55 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
 
         public IStep FinallyStep { get; private set; }
 
-        // TODO: These methods seems not relevant to Release Extension, refactor it
         public string GetRootedPath(IExecutionContext context, string path)
         {
-            throw new NotImplementedException();
+            string rootedPath = null;
+
+            if (!string.IsNullOrEmpty(path) &&
+                   path.IndexOfAny(Path.GetInvalidPathChars()) < 0 &&
+                   Path.IsPathRooted(path))
+            {
+                try
+                {
+                    rootedPath = Path.GetFullPath(path);
+                    Trace.Info($"Path resolved by source provider is a rooted path, return absolute path: {rootedPath}");
+                    return rootedPath;
+                }
+                catch (Exception ex)
+                {
+                    Trace.Info($"Path resolved is a rooted path, but it is not a full qualified path: {path}");
+                    Trace.Error(ex);
+                }
+            }
+
+            string artifactRootPath = context.Variables.Release_ArtifactsDirectory ?? string.Empty;
+            Trace.Info($"Artifact root path is system.artifactsDirectory: {artifactRootPath}");
+
+            if (!string.IsNullOrEmpty(artifactRootPath) && artifactRootPath.IndexOfAny(Path.GetInvalidPathChars()) < 0 &&
+                path != null && path.IndexOfAny(Path.GetInvalidPathChars()) < 0)
+            {
+                path = Path.Combine(artifactRootPath, path);
+                Trace.Info($"After prefix Artifact Path Root provide by JobExtension: {path}");
+                if (Path.IsPathRooted(path))
+                {
+                    try
+                    {
+                        rootedPath = Path.GetFullPath(path);
+                        Trace.Info($"Return absolute path after prefix ArtifactPathRoot: {rootedPath}");
+                        return rootedPath;
+                    }
+                    catch (Exception ex)
+                    {
+                        Trace.Info($"After prefix Artifact Path Root provide by JobExtension, the Path is a rooted path, but it is not a full qualified path: {path}");
+                        Trace.Error(ex);
+                    }
+                }
+            }
+
+            return rootedPath;
         }
 
+        // TODO: This method seems not relevant to Release Extension, refactor it
         public void ConvertLocalPath(IExecutionContext context, string localPath, out string repoName, out string sourcePath)
         {
             throw new NotImplementedException();
@@ -221,10 +264,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
             Trace.Entering();
 
             // Always set the AgentReleaseDirectory because this is set as the WorkingDirectory of the task.
-            executionContext.Variables.Set(WellKnownReleaseVariables.AgentReleaseDirectory, artifactsDirectoryPath);
+            executionContext.Variables.Set(Constants.Variables.Release.AgentReleaseDirectory, artifactsDirectoryPath);
 
             // Set the ArtifactsDirectory even when artifacts downloaded is skipped. Reason: The task might want to access the old artifact.
-            executionContext.Variables.Set(WellKnownReleaseVariables.ArtifactsDirectory, artifactsDirectoryPath);
+            executionContext.Variables.Set(Constants.Variables.Release.ArtifactsDirectory, artifactsDirectoryPath);
             executionContext.Variables.Set(Constants.Variables.System.DefaultWorkingDirectory, artifactsDirectoryPath);
         }
 
