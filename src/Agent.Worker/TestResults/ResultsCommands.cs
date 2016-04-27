@@ -41,7 +41,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                     string message = ex.Message;
                     if (ex.InnerException != null)
                     {
-                        message += "\n";
+                        message += Environment.NewLine;
                         message += ex.InnerException.Message;
                     }
                     context.Warning(StringUtil.Loc("FailedToPublishTestResults", message));
