@@ -1,0 +1,100 @@
+#!/bin/bash
+
+AGENT_NAME="{{AgentName}}"
+
+SVC_NAME="vsts.agent.${USER}.${AGENT_NAME}"
+
+SVC_CMD=$1
+AGENT_ROOT=`pwd`
+
+PLIST_PATH=${HOME}/Library/LaunchAgents/vsts.agent.${USER}.${AGENT_NAME}.plist
+TEMPLATE_PATH=./bin/vsts.agent.plist.template
+TEMP_PATH=./bin/vsts.agent.plist.temp
+
+function failed()
+{
+   local error=${1:-Undefined error}
+   echo "Failed: $error" >&2
+   exit 1
+}
+
+if [ ! -f "${TEMPLATE_PATH}" ]; then
+    failed "Must run from agent root or install is corrupt"
+fi
+
+function install()
+{
+    echo "Creating launch agent in ${PLIST_PATH}"
+    if [ -f "${PLIST_PATH}" ]; then
+        failed "error: exists ${PLIST_PATH}"
+    fi
+
+    if [ -f "" ]; then
+      rm "${TEMP_PATH}"
+    fi
+
+    sed "s/{{User}}/$USER/g; s/{{AgentName}}/$AGENT_NAME/g; s@{{AgentRoot}}@${AGENT_ROOT}@g; s@{{UserHome}}@$HOME@g;" "${TEMPLATE_PATH}" > "${TEMP_PATH}" || failed "failed to create replacement temp file"
+    cp "${TEMP_PATH}" "${PLIST_PATH}" || "failed to copy plist"
+}
+
+function start()
+{
+    launchctl load "${PLIST_PATH}" || "failed to load ${PLIST_PATH}"
+    status
+}
+
+function stop()
+{
+    launchctl unload "${PLIST_PATH}" || "failed to unload ${PLIST_PATH}"
+    status
+}
+
+function uninstall()
+{
+    stop
+    rm "${PLIST_PATH}"
+}
+
+function status()
+{
+    if [ -f "${PLIST_PATH}" ]; then
+        echo
+        echo "${PLIST_PATH}"
+    else
+        echo
+        echo "not installed"
+        echo
+        exit
+    fi
+
+    echo
+    status_out=`launchctl list | grep "${SVC_NAME}"`
+    if [ ! -z "$status_out" ]; then
+        echo Started:
+        echo $status_out
+        echo
+    else
+        echo Stopped
+        echo
+    fi
+}
+
+function usage()
+{
+    echo
+    echo Usage:
+    echo "./svc.sh [install, start, stop, status, uninstall]"
+    echo
+}
+
+case $SVC_CMD in
+   "install") install;;
+   "status") status;;
+   "uninstall") uninstall;;
+   "start") start;;
+   "stop") stop;;
+   "status") status;;
+   *) usage;;
+esac
+
+
