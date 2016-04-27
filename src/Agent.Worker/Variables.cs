@@ -13,16 +13,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
     public sealed class Variables
     {
-        private readonly ConcurrentDictionary<string, Variable> _store = new ConcurrentDictionary<string, Variable>(StringComparer.OrdinalIgnoreCase);
         private readonly IHostContext _hostContext;
+        private readonly ConcurrentDictionary<string, Variable> _nonexpanded = new ConcurrentDictionary<string, Variable>(StringComparer.OrdinalIgnoreCase);
         private readonly ISecretMasker _secretMasker;
+        private readonly object _setLock = new object();
         private readonly Tracing _trace;
+        private ConcurrentDictionary<string, Variable> _expanded;
 
         public IEnumerable<KeyValuePair<string, string>> Public
         {
             get
             {
-                return _store.Values
+                return _expanded.Values
                     .Where(x => !x.Secret)
                     .Select(x => new KeyValuePair<string, string>(x.Name, x.Value));
             }
@@ -66,11 +68,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             {
                 // Store the variable. The initial secret values have already been
                 // registered by the Worker class.
-                _store[variable.Name] = variable;
+                _nonexpanded[variable.Name] = variable;
             }
 
             // Recursively expand the variables.
-            RecursivelyExpand(out warnings);
+            RecalculateExpanded(out warnings);
         }
 
         public string Agent_BuildDirectory { get { return Get(Constants.Variables.Agent.BuildDirectory); } }
@@ -105,7 +107,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         {
             _trace.Entering();
             var source = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            foreach (Variable variable in _store.Values)
+            foreach (Variable variable in _expanded.Values)
             {
                 source[variable.Name] = variable.Value;
             }
@@ -116,7 +118,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         public string Get(string name)
         {
             Variable variable;
-            if (_store.TryGetValue(name, out variable))
+            if (_expanded.TryGetValue(name, out variable))
             {
                 _trace.Verbose($"Get '{name}': '{variable.Value}'");
                 return variable.Value;
@@ -181,35 +183,40 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             ArgUtil.NotNullOrEmpty(name, nameof(name));
 
             // Add or update the variable.
-            _store.AddOrUpdate(
-                key: name,
-                addValueFactory: (string key) =>
-                {
-                    var variable = new Variable(name, val, secret);
-                    if (variable.Secret && !string.IsNullOrEmpty(variable.Value))
-                    {
-                        _secretMasker.AddValue(variable.Value);
-                    }
+            lock (_setLock)
+            {
+                // Determine whether the value should be a secret. The approach taken here is somewhat
+                // conservative. If the previous expanded variable is a secret, then assume the new
+                // value should be a secret as well.
+                //
+                // Keep in mind, the two goals of flagging variables as secret:
+                // 1) Mask secrets from the logs.
+                // 2) Keep secrets out of environment variables for tasks. Secrets must be passed into
+                //    tasks via inputs. It's better to take a conservative approach when determining
+                //    whether a variable should be marked secret. Otherwise nested secret values may
+                //    inadvertantly end up in public environment variables.
+                secret = secret || (_expanded.ContainsKey(name) && _expanded[name].Secret);
 
-                    return variable;
-                },
-                updateValueFactory: (string key, Variable existing) =>
+                // Register the secret. Secret masker handles duplicates gracefully.
+                if (secret && !string.IsNullOrEmpty(val))
                 {
-                    var variable = new Variable(name, val, existing.Secret || secret);
-                    if (variable.Secret && !string.IsNullOrEmpty(variable.Value))
-                    {
-                        _secretMasker.AddValue(variable.Value);
-                    }
+                    _secretMasker.AddValue(val);
+                }
 
-                    return variable;
-                });
-            _trace.Verbose($"Set '{name}' = '{val}'");
+                // Store the value as-is to the expanded dictionary and the non-expanded dictionary.
+                // It is not expected that the caller needs to store an non-expanded value and then
+                // retrieve the expanded value in the same context.
+                var variable = new Variable(name, val, secret);
+                _expanded[name] = variable;
+                _nonexpanded[name] = variable;
+                _trace.Verbose($"Set '{name}' = '{val}'");
+            }
         }
 
         public bool TryGetValue(string name, out string val)
         {
             Variable variable;
-            if (_store.TryGetValue(name, out variable))
+            if (_expanded.TryGetValue(name, out variable))
             {
                 val = variable.Value;
                 _trace.Verbose($"Get '{name}': '{val}'");
@@ -221,140 +228,155 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             return false;
         }
 
-        private void RecursivelyExpand(out List<string> warnings)
+        public void RecalculateExpanded(out List<string> warnings)
         {
-            const int MaxDepth = 50;
-            // TODO: Validate max size? No limit on *nix. Max of 32k per env var on Windows https://msdn.microsoft.com/en-us/library/windows/desktop/ms682653%28v=vs.85%29.aspx
-            _trace.Entering();
-            warnings = new List<string>();
+            // TODO: A performance improvement could be made by short-circuiting if the non-expanded values are not dirty. It's unclear whether it would make a significant difference.
 
-            // Make a copy of the original dictionary so the expansion results are predictable. Otherwise,
-            // depending on the order of expansion, an actual max depth restriction may not be encountered.
-            var original = new Dictionary<string, Variable>(_store, StringComparer.OrdinalIgnoreCase);
-
-            // Process each variable in the dictionary.
-            foreach (string name in original.Keys)
+            // Take a lock to prevent the variables from changing while expansion is being processed.
+            lock (_setLock)
             {
-                bool secret = original[name].Secret;
-                _trace.Verbose($"Processing expansion for variable: '{name}'");
+                const int MaxDepth = 50;
+                // TODO: Validate max size? No limit on *nix. Max of 32k per env var on Windows https://msdn.microsoft.com/en-us/library/windows/desktop/ms682653%28v=vs.85%29.aspx
+                _trace.Entering();
+                warnings = new List<string>();
 
-                // This algorithm handles recursive replacement using a stack.
-                // 1) Max depth is enforced by leveraging the stack count.
-                // 2) Cyclical references are detected by walking the stack.
-                // 3) Additional call frames are avoided.
-                bool exceedsMaxDepth = false;
-                bool hasCycle = false;
-                var stack = new Stack<RecursionState>();
-                RecursionState state = new RecursionState(name: name, value: original[name].Value ?? string.Empty);
+                // Create a new expanded instance.
+                var expanded = new ConcurrentDictionary<string, Variable>(_nonexpanded, StringComparer.OrdinalIgnoreCase);
 
-                // The outer while loop is used to manage popping items from the stack (of state objects).
-                while (true)
+                // Process each variable in the dictionary.
+                foreach (string name in _nonexpanded.Keys)
                 {
-                    // The inner while loop is used to manage replacement within the current state object.
+                    bool secret = _nonexpanded[name].Secret;
+                    _trace.Verbose($"Processing expansion for variable: '{name}'");
 
-                    // Find the next macro within the current value.
-                    while (state.StartIndex < state.Value.Length &&
-                        (state.PrefixIndex = state.Value.IndexOf(Constants.Variables.MacroPrefix, state.StartIndex, StringComparison.Ordinal)) >= 0 &&
-                        (state.SuffixIndex = state.Value.IndexOf(Constants.Variables.MacroSuffix, state.PrefixIndex + Constants.Variables.MacroPrefix.Length, StringComparison.Ordinal)) >= 0)
+                    // This algorithm handles recursive replacement using a stack.
+                    // 1) Max depth is enforced by leveraging the stack count.
+                    // 2) Cyclical references are detected by walking the stack.
+                    // 3) Additional call frames are avoided.
+                    bool exceedsMaxDepth = false;
+                    bool hasCycle = false;
+                    var stack = new Stack<RecursionState>();
+                    RecursionState state = new RecursionState(name: name, value: _nonexpanded[name].Value ?? string.Empty);
+
+                    // The outer while loop is used to manage popping items from the stack (of state objects).
+                    while (true)
                     {
-                        // A candidate was found.
-                        string nestedName = state.Value.Substring(
-                            startIndex: state.PrefixIndex + Constants.Variables.MacroPrefix.Length,
-                            length: state.SuffixIndex - state.PrefixIndex - Constants.Variables.MacroPrefix.Length);
-                        if (!secret)
-                        {
-                            _trace.Verbose($"Found macro candidate: '{nestedName}'");
-                        }
+                        // The inner while loop is used to manage replacement within the current state object.
 
-                        Variable nestedVariable;
-                        if (!string.IsNullOrEmpty(nestedName) &&
-                            original.TryGetValue(nestedName, out nestedVariable))
+                        // Find the next macro within the current value.
+                        while (state.StartIndex < state.Value.Length &&
+                            (state.PrefixIndex = state.Value.IndexOf(Constants.Variables.MacroPrefix, state.StartIndex, StringComparison.Ordinal)) >= 0 &&
+                            (state.SuffixIndex = state.Value.IndexOf(Constants.Variables.MacroSuffix, state.PrefixIndex + Constants.Variables.MacroPrefix.Length, StringComparison.Ordinal)) >= 0)
                         {
-                            // A matching variable was found.
-
-                            // Check for max depth.
-                            int currentDepth = stack.Count + 1; // Add 1 since the current state isn't on the stack.
-                            if (currentDepth == MaxDepth)
+                            // A candidate was found.
+                            string nestedName = state.Value.Substring(
+                                startIndex: state.PrefixIndex + Constants.Variables.MacroPrefix.Length,
+                                length: state.SuffixIndex - state.PrefixIndex - Constants.Variables.MacroPrefix.Length);
+                            if (!secret)
                             {
-                                // Warn and break out of the while loops.
-                                _trace.Warning("Exceeds max depth.");
-                                exceedsMaxDepth = true;
-                                warnings.Add(StringUtil.Loc("Variable0ExceedsMaxDepth1", name, MaxDepth));
-                                break;
+                                _trace.Verbose($"Found macro candidate: '{nestedName}'");
                             }
-                            // Check for a cyclical reference.
-                            else if (string.Equals(state.Name, nestedName, StringComparison.OrdinalIgnoreCase) ||
-                                stack.Any(x => string.Equals(x.Name, nestedName, StringComparison.OrdinalIgnoreCase)))
+
+                            Variable nestedVariable;
+                            if (!string.IsNullOrEmpty(nestedName) &&
+                                _nonexpanded.TryGetValue(nestedName, out nestedVariable))
                             {
-                                // Warn and break out of the while loops.
-                                _trace.Warning("Cyclical reference detected.");
-                                hasCycle = true;
-                                warnings.Add(StringUtil.Loc("Variable0ContainsCyclicalReference", name));
-                                break;
+                                // A matching variable was found.
+
+                                // Check for max depth.
+                                int currentDepth = stack.Count + 1; // Add 1 since the current state isn't on the stack.
+                                if (currentDepth == MaxDepth)
+                                {
+                                    // Warn and break out of the while loops.
+                                    _trace.Warning("Exceeds max depth.");
+                                    exceedsMaxDepth = true;
+                                    warnings.Add(StringUtil.Loc("Variable0ExceedsMaxDepth1", name, MaxDepth));
+                                    break;
+                                }
+                                // Check for a cyclical reference.
+                                else if (string.Equals(state.Name, nestedName, StringComparison.OrdinalIgnoreCase) ||
+                                    stack.Any(x => string.Equals(x.Name, nestedName, StringComparison.OrdinalIgnoreCase)))
+                                {
+                                    // Warn and break out of the while loops.
+                                    _trace.Warning("Cyclical reference detected.");
+                                    hasCycle = true;
+                                    warnings.Add(StringUtil.Loc("Variable0ContainsCyclicalReference", name));
+                                    break;
+                                }
+                                else
+                                {
+                                    // Push the current state and start a new state. There is no need to break out
+                                    // of the inner while loop. It will continue processing the new current state.
+                                    secret = secret || nestedVariable.Secret;
+                                    if (!secret)
+                                    {
+                                        _trace.Verbose($"Processing expansion for nested variable: '{nestedName}'");
+                                    }
+
+                                    stack.Push(state);
+                                    state = new RecursionState(name: nestedName, value: nestedVariable.Value ?? string.Empty);
+                                }
                             }
                             else
                             {
-                                // Push the current state and start a new state. There is no need to break out
-                                // of the inner while loop. It will continue processing the new current state.
-                                secret = secret || nestedVariable.Secret;
+                                // A matching variable was not found.
                                 if (!secret)
                                 {
-                                    _trace.Verbose($"Processing expansion for nested variable: '{nestedName}'");
+                                    _trace.Verbose("Macro not found.");
                                 }
 
-                                stack.Push(state);
-                                state = new RecursionState(name: nestedName, value: nestedVariable.Value ?? string.Empty);
+                                state.StartIndex = state.PrefixIndex + 1;
                             }
-                        }
-                        else
+                        } // End of inner while loop for processing the variable.
+
+                        // No replacement is performed if something went wrong.
+                        if (exceedsMaxDepth || hasCycle)
                         {
-                            // A matching variable was not found.
-                            if (!secret)
+                            break;
+                        }
+
+                        // Check if finished processing the stack.
+                        if (stack.Count == 0)
+                        {
+                            // Store the final value and break out of the outer while loop.
+                            if (!string.Equals(state.Value, _nonexpanded[name].Value, StringComparison.Ordinal))
                             {
-                                _trace.Verbose("Macro not found.");
+                                // Register the secret.
+                                if (secret && !string.IsNullOrEmpty(state.Value))
+                                {
+                                    _secretMasker.AddValue(state.Value);
+                                }
+
+                                // Set the expanded value.
+                                expanded[state.Name] = new Variable(state.Name, state.Value, secret);
+                                _trace.Verbose($"Set '{state.Name}' = '{state.Value}'");
                             }
 
-                            state.StartIndex = state.PrefixIndex + 1;
+                            break;
                         }
-                    } // End of inner while loop for processing the variable.
 
-                    // No replacement is performed if something went wrong.
-                    if (exceedsMaxDepth || hasCycle)
-                    {
-                        break;
-                    }
-
-                    // Check if finished processing the stack.
-                    if (stack.Count == 0)
-                    {
-                        // Store the final value and break out of the outer while loop.
-                        if (!string.Equals(state.Value, original[name].Value, StringComparison.Ordinal))
+                        // Adjust and pop the parent state.
+                        if (!secret)
                         {
-                            Set(state.Name, state.Value, secret);
+                            _trace.Verbose("Popping recursion state.");
                         }
 
-                        break;
-                    }
+                        RecursionState parent = stack.Pop();
+                        parent.Value = string.Concat(
+                            parent.Value.Substring(0, parent.PrefixIndex),
+                            state.Value,
+                            parent.Value.Substring(parent.SuffixIndex + Constants.Variables.MacroSuffix.Length));
+                        parent.StartIndex = parent.PrefixIndex + (state.Value).Length;
+                        state = parent;
+                        if (!secret)
+                        {
+                            _trace.Verbose($"Intermediate state '{state.Name}': '{state.Value}'");
+                        }
+                    } // End of outer while loop for recursively processing the variable.
+                } // End of foreach loop over each key in the dictionary.
 
-                    // Adjust and pop the parent state.
-                    if (!secret)
-                    {
-                        _trace.Verbose("Popping recursion state.");
-                    }
-
-                    RecursionState parent = stack.Pop();
-                    parent.Value = string.Concat(
-                        parent.Value.Substring(0, parent.PrefixIndex),
-                        state.Value,
-                        parent.Value.Substring(parent.SuffixIndex + Constants.Variables.MacroSuffix.Length));
-                    parent.StartIndex = parent.PrefixIndex + (state.Value).Length;
-                    state = parent;
-                    if (!secret)
-                    {
-                        _trace.Verbose($"Intermediate state '{state.Name}': '{state.Value}'");
-                    }
-                } // End of outer while loop for recursively processing the variable.
-            } // End of foreach loop over each key in the dictionary.
+                _expanded = expanded;
+            } // End of critical section.
         }
 
         private sealed class RecursionState

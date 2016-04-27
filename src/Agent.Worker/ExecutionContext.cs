@@ -273,23 +273,26 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             // Initialize the environment.
             Endpoints = message.Environment.Endpoints;
 
-            // add system connect to the endpoint list.
+            // Add the system connection to the endpoint list.
             Endpoints.Add(message.Environment.SystemConnection);
 
+            // Initialize the variables. The constructor handles the initial recursive expansion.
             List<string> warnings;
             Variables = new Variables(HostContext, message.Environment.Variables, message.Environment.MaskHints, out warnings);
 
             // Initialize the job timeline record.
-            // the job timeline record is at order 1.
-            InitializeTimelineRecord(message.Timeline.Id, message.JobId, null, ExecutionContextType.Job, message.JobName, 1);
+            InitializeTimelineRecord(
+                timelineId: message.Timeline.Id,
+                timelineRecordId: message.JobId,
+                parentTimelineRecordId: null,
+                recordType: ExecutionContextType.Job,
+                name: message.JobName,
+                order: 1); // The job timeline record must be at order 1.
 
-            // Log any warnings.
-            foreach (string warning in (warnings ?? new List<string>()))
-            {
-                this.Warning(warning);
-            }
+            // Log any warnings from recursive variable expansion.
+            warnings?.ForEach(x => this.Warning(x));
 
-            // Set system.debug
+            // Initialize the verbosity (based on system.debug).
             WriteDebug = Variables.System_Debug ?? false;
         }
 
@@ -363,6 +366,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         }
     }
 
+    // The Error/Warning/etc methods are created as extension methods to simplify unit testing.
+    // Otherwise individual overloads would need to be implemented (depending on the unit test).
     public static class ExecutionContextExtension
     {
         public static void Error(this IExecutionContext context, Exception ex)

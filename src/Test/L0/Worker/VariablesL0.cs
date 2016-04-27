@@ -589,6 +589,64 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
+        public void RecalculateExpanded_PerformsRecalculation()
+        {
+            using (TestHostContext hc = new TestHostContext(this))
+            {
+                // Arrange.
+                List<string> warnings;
+                var original = new Dictionary<string, string>
+                {
+                    { "topLevelVariable", "$(nestedVariable1) $(nestedVariable2)" },
+                    { "nestedVariable1", "Some nested value 1" },
+                };
+                var variables = new Variables(hc, original, new List<MaskHint>(), out warnings);
+                Assert.Equal(0, warnings.Count);
+                Assert.Equal(2, variables.Public.Count());
+                Assert.Equal("Some nested value 1 $(nestedVariable2)", variables.Get("topLevelVariable"));
+                Assert.Equal("Some nested value 1", variables.Get("nestedVariable1"));
+
+                // Act.
+                variables.Set("nestedVariable2", "Some nested value 2", secret: false);
+                variables.RecalculateExpanded(out warnings);
+
+                // Assert.
+                Assert.Equal(0, warnings.Count);
+                Assert.Equal(3, variables.Public.Count());
+                Assert.Equal("Some nested value 1 Some nested value 2", variables.Get("topLevelVariable"));
+                Assert.Equal("Some nested value 1", variables.Get("nestedVariable1"));
+                Assert.Equal("Some nested value 2", variables.Get("nestedVariable2"));
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void RecalculateExpanded_RetainsUpdatedSecretness()
+        {
+            using (TestHostContext hc = new TestHostContext(this))
+            {
+                // Arrange.
+                List<string> warnings;
+                var variables = new Variables(hc, new Dictionary<string, string>(), new List<MaskHint>(), out warnings);
+                Assert.Equal(0, warnings.Count);
+                variables.Set("foo", "bar");
+                Assert.Equal(1, variables.Public.Count());
+
+                // Act.
+                variables.Set("foo", "baz", secret: true);
+                variables.RecalculateExpanded(out warnings);
+
+                // Assert.
+                Assert.Equal(0, warnings.Count);
+                Assert.Equal(0, variables.Public.Count());
+                Assert.Equal("baz", variables.Get("foo"));
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
         public void Set_CanConvertAPublicValueIntoASecretValue()
         {
             using (TestHostContext hc = new TestHostContext(this))
