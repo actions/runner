@@ -93,7 +93,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
             SetupMocks();
             string xunitResults = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
             "<assemblies>" +
-            "<assembly name=\"C:\\Users\\kaadhina\\Source\\Workspaces\\p1\\ClassLibrary2\\ClassLibrary2\\bin\\Debug\\ClassLibrary2.DLL\" environment=\"64-bit .NET 4.0.30319.42000 [collection-per-class, parallel]\" test-framework=\"xUnit.net 2.0.0.2929\" run-date=\"2015-08-18\" run-time=\"06:17:15\" config-file=\"C:\\Users\\kaadhina\\Source\\Workspaces\\p1\\ClassLibrary2\\packages\\xunit.runner.console.2.0.0\\tools\\xunit.console.exe.Config\" total=\"2\" passed=\"1\" failed=\"1\" skipped=\"0\" time=\"0.233\" errors=\"0\">" +
+            "<assembly name=\"C:/Users/kaadhina/Source/Workspaces/p1/ClassLibrary2/ClassLibrary2/bin/Debug/ClassLibrary2.DLL\" environment=\"64-bit .NET 4.0.30319.42000 [collection-per-class, parallel]\" test-framework=\"xUnit.net 2.0.0.2929\" run-date=\"2015-08-18\" run-time=\"06:17:15\" config-file=\"C:\\Users\\kaadhina\\Source\\Workspaces\\p1\\ClassLibrary2\\packages\\xunit.runner.console.2.0.0\\tools\\xunit.console.exe.Config\" total=\"2\" passed=\"1\" failed=\"1\" skipped=\"0\" time=\"0.233\" errors=\"0\">" +
             "<errors />" +
             "<collection total=\"2\" passed=\"1\" failed=\"1\" skipped=\"0\" name=\"Test collection for MyFirstUnitTests.Class1\" time=\"0.044\">" +
             "<test name=\"MyFirstUnitTests.Class1.FailingTest\" type=\"MyFirstUnitTests.Class1\" method=\"FailingTest\" time=\"1.0422319\" result=\"Fail\">" +
