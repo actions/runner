@@ -50,11 +50,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 var unitContent = File.ReadAllText(Path.Combine(IOUtil.GetBinPath(), VstsAgentServiceTemplate));
                 var tokensToReplace = new Dictionary<string, string>
                                           {
-                                              { "{Description}", settings.ServiceDisplayName },
-                                              { "{BinDirectory}", IOUtil.GetBinPath() },
-                                              { "{AgentRoot}", IOUtil.GetRootPath() },
-                                              { "{ExternalsDirectory}", IOUtil.GetExternalsPath() },
-                                              { "{User}", GetCurrentLoginName() }
+                                              { "{{Description}}", settings.ServiceDisplayName },
+                                              { "{{BinDirectory}}", IOUtil.GetBinPath() },
+                                              { "{{AgentRoot}}", IOUtil.GetRootPath() },
+                                              { "{{ExternalsDirectory}}", IOUtil.GetExternalsPath() },
+                                              { "{{User}}", GetCurrentLoginName() },
+                                              { "{{Path}}", Environment.GetEnvironmentVariable("PATH") }
                                           };
 
                 unitContent = tokensToReplace.Aggregate(
