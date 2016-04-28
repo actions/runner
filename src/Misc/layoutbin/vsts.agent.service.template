@@ -1,13 +1,13 @@
 [Unit]
-Description={Description}
+Description={{Description}}
 After=network.target
 
 [Service]
-ExecStart={ExternalsDirectory}/node/bin/node {BinDirectory}/AgentService.js
-User={User}
-Environment=PATH=/usr/bin:/usr/local/bin
+ExecStart={{ExternalsDirectory}}/node/bin/node {{BinDirectory}}/AgentService.js
+User={{User}}
+Environment=PATH={{Path}}
 Environment=NODE_ENV=production
-WorkingDirectory={AgentRoot}
+WorkingDirectory={{AgentRoot}}
 
 [Install]
 WantedBy=multi-user.target
