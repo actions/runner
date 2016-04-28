@@ -34,6 +34,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
     {
         public async Task RunAsync(IExecutionContext jobContext, IList<IStep> steps)
         {
+            ArgUtil.NotNull(jobContext, nameof(jobContext));
+            ArgUtil.NotNull(steps, nameof(steps));
+
             // TaskResult:
             //  Abandoned
             //  Canceled
@@ -47,14 +50,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             foreach (IStep step in steps)
             {
                 Trace.Info($"Processing step: DisplayName='{step.DisplayName}', AlwaysRun={step.AlwaysRun}, ContinueOnError={step.ContinueOnError}, Critical={step.Critical}, Enabled={step.Enabled}, Finally={step.Finally}");
+                ArgUtil.Equal(true, step.Enabled, nameof(step.Enabled));
+                ArgUtil.NotNull(step.ExecutionContext, nameof(step.ExecutionContext));
+                ArgUtil.NotNull(step.ExecutionContext.Variables, nameof(step.ExecutionContext.Variables));
 
-                // TODO: Disabled steps may have already been removed. Investigate.
                 // TODO: Run finally even if canceled?
 
-                // Skip the current step if it is not Enabled.
-                if (!step.Enabled
-                    // Or if a previous step failed and the current step is not AlwaysRun.
-                    || (stepFailed && !step.AlwaysRun && !step.Finally)
+                // Skip if a previous step failed and the current step is not AlwaysRun.
+                if ((stepFailed && !step.AlwaysRun && !step.Finally)
                     // Or if a previous Critical step failed and the current step is not Finally.
                     || (criticalStepFailed && !step.Finally))
                 {
@@ -66,6 +69,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 // Run the step.
                 Trace.Info("Starting the step.");
                 step.ExecutionContext.Start();
+                List<string> expansionWarnings;
+                step.ExecutionContext.Variables.RecalculateExpanded(out expansionWarnings);
+                expansionWarnings?.ForEach(x => step.ExecutionContext.Warning(x));
                 List<OperationCanceledException> allCancelExceptions = new List<OperationCanceledException>();
                 try
                 {

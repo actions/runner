@@ -330,43 +330,21 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             }
         }
 
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Worker")]
-        public async Task SkipsDisabledTasks()
-        {
-            using (TestHostContext hc = CreateTestContext())
-            {
-                // Arrange.
-                Mock<IStep> disabledStep = CreateStep(TaskResult.Succeeded, enabled: false);
-                Mock<IStep> enabledStep = CreateStep(TaskResult.Succeeded, enabled: true);
-
-                // Act.
-                await _stepsRunner.RunAsync(
-                    jobContext: _ec.Object,
-                    steps: new[] { disabledStep.Object, enabledStep.Object }.ToList());
-
-                // Assert.
-                Assert.Equal(TaskResult.Succeeded, _ec.Object.Result ?? TaskResult.Succeeded);
-                disabledStep.Verify(x => x.RunAsync(), Times.Never());
-                enabledStep.Verify(x => x.RunAsync());
-            }
-        }
-
-        private Mock<IStep> CreateStep(TaskResult result, Boolean alwaysRun = false, Boolean continueOnError = false, Boolean critical = false, Boolean enabled = true, Boolean isFinally = false)
+        private Mock<IStep> CreateStep(TaskResult result, Boolean alwaysRun = false, Boolean continueOnError = false, Boolean critical = false, Boolean isFinally = false)
         {
             // Setup the step.
             var step = new Mock<IStep>();
             step.Setup(x => x.AlwaysRun).Returns(alwaysRun);
             step.Setup(x => x.ContinueOnError).Returns(continueOnError);
             step.Setup(x => x.Critical).Returns(critical);
-            step.Setup(x => x.Enabled).Returns(enabled);
+            step.Setup(x => x.Enabled).Returns(true);
             step.Setup(x => x.Finally).Returns(isFinally);
             step.Setup(x => x.RunAsync()).Returns(Task.CompletedTask);
 
             // Setup the step execution context.
             var stepContext = new Mock<IExecutionContext>();
             stepContext.SetupAllProperties();
+            stepContext.Setup(x => x.Variables).Returns(_variables);
             stepContext.Object.Result = result;
             step.Setup(x => x.ExecutionContext).Returns(stepContext.Object);
             return step;
