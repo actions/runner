@@ -46,6 +46,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             //  SucceededWithIssues
             bool stepFailed = false;
             bool criticalStepFailed = false;
+            int stepCount = 0;
             jobContext.Variables.Agent_JobStatus = TaskResult.Succeeded;
             foreach (IStep step in steps)
             {
@@ -53,6 +54,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 ArgUtil.Equal(true, step.Enabled, nameof(step.Enabled));
                 ArgUtil.NotNull(step.ExecutionContext, nameof(step.ExecutionContext));
                 ArgUtil.NotNull(step.ExecutionContext.Variables, nameof(step.ExecutionContext.Variables));
+
+                jobContext.Progress(stepCount++ * 100 / steps.Count);
 
                 // TODO: Run finally even if canceled?
 

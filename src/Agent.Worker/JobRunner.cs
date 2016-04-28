@@ -3,11 +3,10 @@ using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-
-using Microsoft.VisualStudio.Services.Client;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
@@ -62,7 +61,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 jobContext.Variables.Set(Constants.Variables.Agent.MachineName, Environment.MachineName);
                 jobContext.Variables.Set(Constants.Variables.Agent.Name, settings.AgentName);
                 jobContext.Variables.Set(Constants.Variables.Agent.RootDirectory, IOUtil.GetWorkPath(HostContext));
-                // TODO: jobContext.Variables.Set(Constants.Variables.Agent.ServerOMDirectory, ???);
+                jobContext.Variables.Set(Constants.Variables.Agent.ServerOMDirectory, Path.Combine(IOUtil.GetExternalsPath(), "vstsom"));
                 jobContext.Variables.Set(Constants.Variables.Agent.WorkFolder, IOUtil.GetWorkPath(HostContext));
                 jobContext.Variables.Set(Constants.Variables.System.WorkFolder, IOUtil.GetWorkPath(HostContext));
 

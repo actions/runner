@@ -159,9 +159,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
     public sealed class ExecutionData
     {
         private readonly List<HandlerData> _all = new List<HandlerData>();
-        //private AzurePowerShellHandlerData _powerShell;
+        private AzurePowerShellHandlerData _azurePowerShell;
         private NodeHandlerData _node;
-        //private PowerShellHandlerData _powerShell;
+        private PowerShellHandlerData _powerShell;
         private PowerShell3HandlerData _powerShell3;
         private PowerShellExeHandlerData _powerShellExe;
         private ProcessHandlerData _process;
@@ -169,7 +169,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         [JsonIgnore]
         public List<HandlerData> All => _all;
 
-/*
 #if !OS_WINDOWS
         [JsonIgnore]
 #endif
@@ -186,7 +185,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 Add(value);
             }
         }
-*/
 
         public NodeHandlerData Node
         {
@@ -202,7 +200,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             }
         }
 
-/*
 #if !OS_WINDOWS
         [JsonIgnore]
 #endif
@@ -219,7 +216,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 Add(value);
             }
         }
-*/
 
 #if !OS_WINDOWS
         [JsonIgnore]
@@ -365,7 +361,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         public override int Priority => 2;
     }
 
-/*
     public sealed class PowerShellHandlerData : HandlerData
     {
         public string ArgumentFormat
@@ -427,7 +422,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             }
         }
     }
-*/
 
     public sealed class PowerShellExeHandlerData : HandlerData
     {

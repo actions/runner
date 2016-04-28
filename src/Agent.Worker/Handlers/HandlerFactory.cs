@@ -58,6 +58,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
                 handler = HostContext.CreateService<IProcessHandler>();
                 (handler as IProcessHandler).Data = data as ProcessHandlerData;
             }
+            else if (data is PowerShellHandlerData)
+            {
+                // PowerShell.
+                handler = HostContext.CreateService<IPowerShellHandler>();
+                (handler as IPowerShellHandler).Data = data as PowerShellHandlerData;
+            }
+            else if (data is AzurePowerShellHandlerData)
+            {
+                // AzurePowerShell.
+                handler = HostContext.CreateService<IAzurePowerShellHandler>();
+                (handler as IAzurePowerShellHandler).Data = data as AzurePowerShellHandlerData;
+            }
             else
             {
                 // This should never happen.
