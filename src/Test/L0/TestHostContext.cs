@@ -20,6 +20,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         private readonly SecretMasker _secretMasker;
         private string _suiteName;
         private string _testName;
+        private Tracing _trace;
 
         public TestHostContext(object testClass, [CallerMemberName] string testName = "")
         {
@@ -45,6 +46,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             var traceListener = new HostTraceListener(logFile);
             _secretMasker = new SecretMasker();
             _traceManager = new TraceManager(traceListener, _secretMasker);
+            _trace = GetTrace(nameof(TestHostContext));
             SetSingleton<ISecretMasker>(_secretMasker);
 
             // inject a terminal in silent mode so all console output
@@ -66,6 +68,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
 
         public T CreateService<T>() where T: class, IAgentService
         {
+            _trace.Verbose($"Create service: '{typeof(T).Name}'");
+
             // Dequeue a registered instance.
             object service;
             ConcurrentQueue<object> queue;
@@ -82,6 +86,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
 
         public T GetService<T>() where T : class, IAgentService
         {
+            _trace.Verbose($"Get service: '{typeof(T).Name}'");
+
             // Get the registered singleton instance.
             object service;
             if (!_serviceSingletons.TryGetValue(typeof(T), out service))

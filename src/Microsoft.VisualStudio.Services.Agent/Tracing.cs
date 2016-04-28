@@ -10,6 +10,7 @@ namespace Microsoft.VisualStudio.Services.Agent
 {
     public sealed class Tracing : IDisposable
     {
+        // TODO: Either the flush threshold should be static or the host trace listener should be bound to a timer that flushes the log.
         private readonly long _flushThreshold = TimeSpan.TicksPerSecond * 20;
         private Stopwatch _lastFlush = Stopwatch.StartNew();
         private ISecretMasker _secretMasker;
@@ -94,7 +95,12 @@ namespace Microsoft.VisualStudio.Services.Agent
 
         public void Entering([CallerMemberName] string name = "")
         {
-            Trace(TraceEventType.Verbose, name);
+            Trace(TraceEventType.Verbose, $"Entering {name}");
+        }
+
+        public void Leaving([CallerMemberName] string name = "")
+        {
+            Trace(TraceEventType.Verbose, $"Leaving {name}");
         }
 
         public void Dispose()

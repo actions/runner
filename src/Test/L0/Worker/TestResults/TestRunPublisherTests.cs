@@ -76,7 +76,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
                             _batchSizes.Add(currentBatch.Length);
                             _resultCreateModels = currentBatch;
                         })
-                        .Returns(() => Task.Factory.StartNew(() =>
+                        .Returns(() =>
                         {
                             List<TestCaseResult> resultsList = new List<TestCaseResult>();
                             int i = 0;
@@ -84,8 +84,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
                             {
                                 resultsList.Add(new TestCaseResult() { Id = ++i });
                             }
-                            return resultsList;
-                        }));
+                            return Task.FromResult(resultsList);
+                        });
 
             _testResultServer.Setup(x => x.CreateTestRunAsync(It.IsAny<string>(), It.IsAny<RunCreateModel>(), It.IsAny<CancellationToken>()))
                         .Callback<string, RunCreateModel, CancellationToken>
@@ -94,7 +94,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
                             _projectId = projectName;
                             _testRun = (TestRunData)testRunData;
                         })
-                        .Returns(Task.Factory.StartNew(() => { return new TestRun() { Name = "TestRun", Id = 1 }; }));
+                        .Returns(Task.FromResult(new TestRun() { Name = "TestRun", Id = 1 }));
 
             _testResultServer.Setup(x => x.UpdateTestRunAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<RunUpdateModel>(), It.IsAny<CancellationToken>()))
                         .Callback<string, int, RunUpdateModel, CancellationToken>
@@ -104,7 +104,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
                             _projectId = projectName;
                             _updateProperties = updateModel;
                         })
-                        .Returns(Task.Factory.StartNew(() => { return new TestRun() { Name = "TestRun", Id = 1 }; }));
+                        .Returns(Task.FromResult(new TestRun() { Name = "TestRun", Id = 1 }));
 
             _testResultServer.Setup(x => x.CreateTestRunAttachmentAsync(
                         It.IsAny<TestAttachmentRequestModel>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
@@ -115,7 +115,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
                             _projectId = projectName;
                             _runId = testRunId;
                         })
-                        .Returns(Task.Factory.StartNew(() => { return new TestAttachmentReference(); }));
+                        .Returns(Task.FromResult(new TestAttachmentReference()));
 
             _testResultServer.Setup(x => x.CreateTestResultAttachmentAsync(It.IsAny<TestAttachmentRequestModel>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
                         .Callback<TestAttachmentRequestModel, string, int, int, CancellationToken>
@@ -130,7 +130,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
                                 _resultsLevelAttachments.Add(testCaseResultId, new List<TestAttachmentRequestModel>() { reqModel });
                             }
                         })
-                        .Returns(Task.Factory.StartNew(() => { return new TestAttachmentReference(); }));
+                        .Returns(Task.FromResult(new TestAttachmentReference()));
         }
 
         [Fact]
