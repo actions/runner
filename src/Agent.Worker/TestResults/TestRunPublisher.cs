@@ -40,6 +40,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
         #region Public API
         public void InitializePublisher(IExecutionContext executionContext, VssConnection connection, string projectName, TestRunContext runContext, IResultReader resultReader)
         {
+            Trace.Entering();
             _executionContext = executionContext;
             _projectName = projectName;
             _runContext = runContext;
@@ -47,6 +48,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
             connection.InnerHandler.Settings.SendTimeout = TimeSpan.FromSeconds(PUBLISH_TIMEOUT);
             _testResultsServer = HostContext.GetService<ITestResultsServer>();
             _testResultsServer.InitializeServer(connection);
+            Trace.Leaving();
         }
 
         /// <summary>
@@ -55,6 +57,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
         /// <param name="testResults">Results to be published.</param>
         public async Task AddResultsAsync(TestCaseResultData[] testResults)
         {
+            Trace.Entering();
             int noOfResultsToBePublished = BATCH_SIZE;
 
             for (int i = 0; i < testResults.Length; i += BATCH_SIZE)
@@ -99,6 +102,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                     }
                 }
             }
+
+            Trace.Leaving();
         }
 
         /// <summary>
@@ -106,9 +111,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
         /// </summary>
         public async Task StartTestRunAsync(TestRunData testRun)
         {
+            Trace.Entering();
             _testRunData = testRun;
 
             _testRun = await _testResultsServer.CreateTestRunAsync(_projectName, _testRunData, _executionContext.CancellationToken);
+            Trace.Leaving();
         }
 
         /// <summary>
@@ -116,6 +123,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
         /// </summary>
         public async Task EndTestRunAsync(bool publishAttachmentsAsArchive = false)
         {
+            Trace.Entering();
             RunUpdateModel updateModel = new RunUpdateModel(
                 completedDate: _testRunData.CompleteDate,
                 state: TestRunState.Completed.ToString()
@@ -144,6 +152,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
         /// <returns>TestRunData</returns>
         public TestRunData ReadResultsFromFile(string filePath)
         {
+            Trace.Entering();
             return _resultReader.ReadResults(_executionContext, filePath, _runContext);
         }
 
@@ -155,6 +164,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
         /// <returns>TestRunData</returns>
         public TestRunData ReadResultsFromFile(string filePath, string runName)
         {
+            Trace.Entering();
             _runContext.RunName = runName;
             return _resultReader.ReadResults(_executionContext, filePath, _runContext);
         }
@@ -162,6 +172,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
 
         private void UploadTestRunAttachmentsAsArchive()
         {
+            Trace.Entering();
             // Do not upload duplicate entries 
             HashSet<string> attachedFiles = UniqueTestRunFiles;
             try
@@ -183,6 +194,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
 
         private void CreateZipFile(string zipfileName, IEnumerable<string> files)
         {
+            Trace.Entering();
             // Create and open a new ZIP file
             using (ZipArchive zip = ZipFile.Open(zipfileName, ZipArchiveMode.Create))
             {
@@ -196,6 +208,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
 
         private void UploadTestRunAttachmentsIndividual()
         {
+            Trace.Entering();
             _executionContext.Debug("Uploading test run attachements individually");
             // Do not upload duplicate entries 
             HashSet<string> attachedFiles = UniqueTestRunFiles;
@@ -207,6 +220,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
 
         private void CreateTestRunAttachment(string zipFile)
         {
+            Trace.Entering();
             TestAttachmentRequestModel reqModel = GetAttachmentRequestModel(zipFile);
             if (reqModel != null)
             {
@@ -217,6 +231,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
 
         private string GetAttachmentType(string file)
         {
+            Trace.Entering();
             string fileName = Path.GetFileNameWithoutExtension(file);
 
             if (string.Compare(Path.GetExtension(file), ".coverage", StringComparison.OrdinalIgnoreCase) == 0)
@@ -243,6 +258,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
 
         private TestAttachmentRequestModel GetAttachmentRequestModel(string attachment)
         {
+            Trace.Entering();
             if (File.Exists(attachment) && new FileInfo(attachment).Length <= TCM_MAX_FILESIZE)
             {
                 byte[] bytes = File.ReadAllBytes(attachment);
@@ -266,6 +282,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
 
         private TestAttachmentRequestModel GetConsoleLogAttachmentRequestModel(string consoleLog)
         {
+            Trace.Entering();
             if (!string.IsNullOrWhiteSpace(consoleLog))
             {
                 string consoleLogFileName = "Standard Console Output.log";

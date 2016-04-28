@@ -136,6 +136,7 @@ namespace Microsoft.VisualStudio.Services.Agent
 
         private void Dispose(bool disposing)
         {
+            // TODO: Dispose the trace listener also.
             if (disposing)
             {
                 _traceManager?.Dispose();

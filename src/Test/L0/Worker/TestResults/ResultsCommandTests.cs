@@ -177,7 +177,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
             _mockTestRunPublisher.Setup(q => q.ReadResultsFromFile(It.IsAny<string>()))
                 .Returns(testRunData);
             _mockTestRunPublisher.Setup(q => q.EndTestRunAsync(false))
-                .Returns(Task.Factory.StartNew(() => { }));
+                .Returns(Task.CompletedTask);
 
             resultCommand.ProcessCommand(_ec.Object, command);
         }
@@ -216,7 +216,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
             _mockTestRunPublisher.Setup(q => q.ReadResultsFromFile(It.IsAny<string>()))
                 .Returns(testRunData);
             _mockTestRunPublisher.Setup(q => q.EndTestRunAsync(false))
-                .Returns(Task.Factory.StartNew(() => { }));
+                .Returns(Task.CompletedTask);
 
             resultCommand.ProcessCommand(_ec.Object, command);
         }
