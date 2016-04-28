@@ -6,8 +6,8 @@
     <string>{{SvcName}}</string>
     <key>ProgramArguments</key>
     <array>
+      <string>{{AgentRoot}}/externals/node/bin/node</string>
       <string>{{AgentRoot}}/bin/AgentService.js</string>
-      <string>run</string>
     </array>
     <key>UserName</key>
     <string>{{User}}</string>
