@@ -1,4 +1,4 @@
-# VSTS Cross Platform Agent (CoreCLR)
+# VSTS Cross Platform Agent (.NET Core)
 
 ## Overview
 

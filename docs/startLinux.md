@@ -2,7 +2,7 @@
 
 ## System Information
 
-[Read here](docs/preview/latebreaking.md) to ensure system packages are installed
+[Read here](preview/latebreaking.md) to ensure system packages are installed
 
 ## Step 1: Download from Releases
 
