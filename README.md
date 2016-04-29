@@ -11,16 +11,14 @@ Will run all existing tasks (typescript/javascript and powershell) including [ou
 
 ## Status
 
-A preview is available for Linux/OSX for VSTS.  A release is coming soon with more capabilities than the deprecated node agent: Auto Update, Cancellation, Run as a svc on OSX and Linux, and Gated support.
+A preview is available for Ubuntu and OSX for VSTS.  The current preview is more feature complete than the node agent bringing Auto Update, Cancellation, Run as a svc on OSX and Linux, and Gated support.
 
-What's missing from the preview?  Run as svc on OSX, TfsVC support, RM, test publishing (all being worked on).  On-prem NTLM support is in the works so preview with VSTS.
-
-A preview for windows is coming soon (finishing powershell handlers and tfsvc support)  
+What's missing from the preview? On-prem NTLM support is in the works so preview with VSTS.  Windows preview coming soon.
 
 |   | Build & Test | Preview | Release |
 |---|:-----:|:-----:|:-----:|
-|![Linux](docs/linux_med.png) **Ubuntu 14.04**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/b924d696-3eae-4116-8443-9a18392d8544/2853/badge?branch=master)| [v0.7](https://github.com/Microsoft/vsts-agent/releases) | Soon |
-|![Apple](docs/apple_med.png) **OSX 10.11**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/b924d696-3eae-4116-8443-9a18392d8544/3080/badge?branch=master)| [v0.7](https://github.com/Microsoft/vsts-agent/releases) | Soon
+|![Linux](docs/linux_med.png) **Ubuntu 14.04**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/b924d696-3eae-4116-8443-9a18392d8544/2853/badge?branch=master)| [v2.99.0](https://github.com/Microsoft/vsts-agent/releases/tag/v2.99.0) | Soon |
+|![Apple](docs/apple_med.png) **OSX 10.11**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/b924d696-3eae-4116-8443-9a18392d8544/3080/badge?branch=master)| [v2.99.0](https://github.com/Microsoft/vsts-agent/releases/tag/v2.99.0) | Soon
 |![Win](docs/win_med.png) **Windows 10**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/b924d696-3eae-4116-8443-9a18392d8544/2850/badge?branch=master)| Soon | |
 
 ## Configure Account
@@ -43,7 +41,7 @@ Add the user you created the PAT token for to *both*:
 
 ## Get Agent
 
-![linux](docs/linux_sm.png)  [Get Started Linux](docs/startLinux.md)  
+![linux](docs/linux_sm.png)  [Get Started Ubuntu](docs/startLinux.md)  
 
 ![osx](docs/apple_sm.png)  [Get Started OSX](docs/startOSX.md)  
 
@@ -51,53 +49,6 @@ Add the user you created the PAT token for to *both*:
 
 Other detailed configuration options are [covered here](docs/config.md)
 
-## Contribute (Dev)
+## Contribute
 
-### Dev Dependencies
-
-![Win](docs/win_sm.png)![*nix](docs/linux_sm.png) [Install .NET Core Required for our Build](docs/dev/netcore.md)
-
-![Win](docs/win_sm.png) Git for Windows [Install Here](https://git-scm.com/downloads) _(needed for dev sh script)
-
-### Build, Test, Clean, Restore 
-
-From src:
-
-![Win](docs/win_sm.png) `dev {command}`  
-
-![*nix](docs/linux_sm.png) `./dev.sh {command}`
-  
-**Commands:**  
-
-`restore` (`r`): Run first time and any time you change a project.json  
-
-`build` (`b`):   build everything  
-
-`test` (`t`):    run unit tests
-        
-  results in: 
-  Test/bin/Debug/dnxcore50/{platform}/testResults.xml
-
-`buildtest` (`bt`): build and test
-
-`clean` (`c`):   deletes build output for each projects
- 
-`layout` (`l`): Creates a full layout in {root}/_layout  
-   Does a clean, restore, build, publish and copy
-   Default is Debug.  Passing Release as argument is supported (dev l Release)
-
-`update` (`u`) {dirname}: Builds and publishes just one dir.  Patches the layout
-   update {dirname}
-   Use if you change code in an assembly and don't want to wait for the full layout.
-
-`validate` (`v`): Precheckin validation.  Runs git clean, layout and test.
-
-### Editors
-
-[Using Visual Studio 2015](docs/dev/vs.md)  
-[Using Visual Studio Code and Mono Debugger](docs/dev/code.md)  
-
-### Styling
-
-We use the dotnet foundation and CoreCLR style guidelines [located here](
-https://github.com/dotnet/corefx/blob/master/Documentation/coding-guidelines/coding-style.md)
+For developers that want to contribute, [read here](docs/contribute.md) on how to build and test.
