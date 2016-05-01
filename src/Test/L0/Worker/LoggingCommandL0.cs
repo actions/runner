@@ -15,7 +15,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             //Arrange
             using (var hc = new TestHostContext(this))
             {
-                String vso;
+                string vso;
                 Command test;
                 Command verify;
                 //##vso[area.event k1=v1;]msg
@@ -25,8 +25,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                     Data = "msg",
                 };
                 test.Properties.Add("k1", "v1");
-                Assert.True(String.Equals(vso, test.ToString(), StringComparison.OrdinalIgnoreCase));
-                Command.TryParse(vso, out verify);
+                Assert.True(Command.TryParse(vso, out verify));
                 Assert.True(IsEqualCommand(hc, test, verify));
 
                 vso = "";
@@ -35,9 +34,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                 //##vso[area.event]
                 vso = "##vso[area.event]";
                 test = new Command("area", "event");
-                Assert.True(String.Equals(vso, test.ToString(), StringComparison.OrdinalIgnoreCase),
-                    String.Format("Expect:{0}\nActual:{1}", vso, test.ToString()));
-                Command.TryParse(vso, out verify);
+                Assert.True(Command.TryParse(vso, out verify));
                 Assert.True(IsEqualCommand(hc, test, verify));
 
                 vso = "";
@@ -50,8 +47,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                     Data = ";-\r-\n",
                 };
                 test.Properties.Add("k1", ";=\r=\n");
-                Assert.True(String.Equals(vso, test.ToString(), StringComparison.OrdinalIgnoreCase));
-                Command.TryParse(vso, out verify);
+                Assert.True(Command.TryParse(vso, out verify));
                 Assert.True(IsEqualCommand(hc, test, verify));
 
                 vso = "";
@@ -62,8 +58,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                 test = new Command("area", "event");
                 test.Properties.Add("k1", "");
                 test.Properties.Add("k2", null);
-                Assert.True(String.Equals("##vso[area.event]", test.ToString(), StringComparison.OrdinalIgnoreCase));
-                Command.TryParse(vso, out verify);
+                Assert.True(Command.TryParse(vso, out verify));
                 test = new Command("area", "event");
                 Assert.True(IsEqualCommand(hc, test, verify));
 
@@ -77,28 +72,28 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                     Data = "msg",
                 };
                 test.Properties.Add("k1", "v1");
-                Command.TryParse(vso, out verify);
+                Assert.True(Command.TryParse(vso, out verify));
                 Assert.True(IsEqualCommand(hc, test, verify));
             }
         }
 
-        private Boolean IsEqualCommand(IHostContext hc, Command e1, Command e2)
+        private bool IsEqualCommand(IHostContext hc, Command e1, Command e2)
         {
             try
             {
-                if (!String.Equals(e1.Area, e2.Area, StringComparison.OrdinalIgnoreCase))
+                if (!string.Equals(e1.Area, e2.Area, StringComparison.OrdinalIgnoreCase))
                 {
                     hc.GetTrace("CommandEqual").Info("Area 1={0}, Area 2={1}", e1.Area, e2.Area);
                     return false;
                 }
 
-                if (!String.Equals(e1.Event, e2.Event, StringComparison.OrdinalIgnoreCase))
+                if (!string.Equals(e1.Event, e2.Event, StringComparison.OrdinalIgnoreCase))
                 {
                     hc.GetTrace("CommandEqual").Info("Event 1={0}, Event 2={1}", e1.Event, e2.Event);
                     return false;
                 }
 
-                if (!String.Equals(e1.Data, e2.Data, StringComparison.OrdinalIgnoreCase) && (!String.IsNullOrEmpty(e1.Data) && !String.IsNullOrEmpty(e2.Data)))
+                if (!string.Equals(e1.Data, e2.Data, StringComparison.OrdinalIgnoreCase) && (!string.IsNullOrEmpty(e1.Data) && !string.IsNullOrEmpty(e2.Data)))
                 {
                     hc.GetTrace("CommandEqual").Info("Data 1={0}, Data 2={1}", e1.Data, e2.Data);
                     return false;

@@ -79,7 +79,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
                     "-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -Command \"try {{ $null = [System.Security.Cryptography.ProtectedData] }} catch {{ Write-Verbose 'Adding assemly: System.Security' ; Add-Type -AssemblyName 'System.Security' ; $null = [System.Security.Cryptography.ProtectedData] }} ; Invoke-Expression -Command ([System.Text.Encoding]::UTF8.GetString([System.Security.Cryptography.ProtectedData]::Unprotect([System.Convert]::FromBase64String('{0}'), [System.Convert]::FromBase64String('{1}'), [System.Security.Cryptography.DataProtectionScope]::CurrentUser))) ; if (!(Test-Path -LiteralPath variable:\\LastExitCode)) {{ Write-Verbose 'Last exit code is not set.' }} else {{ Write-Verbose ('$LastExitCode: {{0}}' -f $LastExitCode) ; exit $LastExitCode }}\"",
                     Encrypt(nestedExpression, out entropy),
                     entropy);
-                // TODO: Resolve path to powershell.exe in a different way and verify minimum 3.0.
+
+                // Resolve powershell.exe.
+                string powerShellExe = HostContext.GetService<IPowerShellExeUtil>().GetPath();
+                ArgUtil.NotNullOrEmpty(powerShellExe, nameof(powerShellExe));
 
                 // Determine the working directory.
                 string workingDirectory;
@@ -102,7 +105,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
                 Directory.CreateDirectory(workingDirectory);
 
                 // Invoke the process.
-                string powerShellExe = "powershell.exe";
                 ExecutionContext.Debug($"{powerShellExe} {powerShellExeArgs}");
                 ExecutionContext.Command(nestedExpression);
                 using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
