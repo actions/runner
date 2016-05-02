@@ -66,7 +66,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                 {
                     noOfResultsToBePublished = testResults.Length - i;
                 }
-                _executionContext.Debug($"Test results remaining: {(testResults.Length - i)}");
+                _executionContext.Output($"Test results remaining: {(testResults.Length - i)}");
 
                 var currentBatch = new TestCaseResultData[noOfResultsToBePublished];
                 Array.Copy(testResults, i, currentBatch, 0, noOfResultsToBePublished);
@@ -142,7 +142,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                 UploadTestRunAttachmentsIndividual();
             }
 
-            _executionContext.Debug(string.Format(CultureInfo.CurrentCulture, "Published Test Run : {0}", _testRun.WebAccessUrl));
+            _executionContext.Output(string.Format(CultureInfo.CurrentCulture, "Published Test Run : {0}", _testRun.WebAccessUrl));
         }
 
         /// <summary>

@@ -38,13 +38,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                 catch (Exception ex)
                 {
                     //Do not fail the task.
-                    string message = ex.Message;
-                    if (ex.InnerException != null)
-                    {
-                        message += Environment.NewLine;
-                        message += ex.InnerException.Message;
-                    }
-                    context.Warning(StringUtil.Loc("FailedToPublishTestResults", message));
+                    LogPublishTestResultsFailureWarning(ex);
                 }
             }
             else
@@ -112,11 +106,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
 
             if (_mergeResults)
             {
-                commandContext.Task = PublishAllTestResultsToSingleTestRunAsync(_testResultFiles, publisher, buildId, runContext);
+                commandContext.Task = PublishAllTestResultsToSingleTestRunAsync(_testResultFiles, publisher, buildId, runContext, resultReader.Name);
             }
             else
             {
-                commandContext.Task = PublishToNewTestRunPerTestResultFileAsync(_testResultFiles, publisher);
+                commandContext.Task = PublishToNewTestRunPerTestResultFileAsync(_testResultFiles, publisher, resultReader.Name);
             }
             _executionContext.AsyncCommands.Add(commandContext);
         }
@@ -124,95 +118,113 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
         /// <summary>
         /// Publish single test run
         /// </summary>
-        private async Task PublishAllTestResultsToSingleTestRunAsync(List<string> resultFiles, ITestRunPublisher publisher, int buildId, TestRunContext runContext)
+        private async Task PublishAllTestResultsToSingleTestRunAsync(List<string> resultFiles, ITestRunPublisher publisher, int buildId, TestRunContext runContext, string resultReader)
         {
-            DateTime startTime = DateTime.Now; //use local time since TestRunData defaults to local times
-            TimeSpan totalTestCaseDuration = TimeSpan.Zero;
-            List<string> runAttachments = new List<string>();
-            List<TestCaseResultData> runResults = new List<TestCaseResultData>();
-
-            //read results from each file
-            foreach (string resultFile in resultFiles)
+            try
             {
-                //test case results
-                TestRunData resultFileRunData = publisher.ReadResultsFromFile(resultFile);
+                DateTime startTime = DateTime.Now; //use local time since TestRunData defaults to local times
+                TimeSpan totalTestCaseDuration = TimeSpan.Zero;
+                List<string> runAttachments = new List<string>();
+                List<TestCaseResultData> runResults = new List<TestCaseResultData>();
 
-                if (resultFileRunData != null && resultFileRunData.Results != null && resultFileRunData.Results.Length > 0)
+                //read results from each file
+                foreach (string resultFile in resultFiles)
                 {
-                    foreach (TestCaseResultData tcResult in resultFileRunData.Results)
-                    {
-                        int durationInMs = 0;
-                        int.TryParse(tcResult.DurationInMs, out durationInMs);
-                        totalTestCaseDuration = totalTestCaseDuration.Add(TimeSpan.FromMilliseconds(durationInMs));
-                    }
-                    runResults.AddRange(resultFileRunData.Results);
+                    //test case results
+                    _executionContext.Debug(StringUtil.Format("Reading test results from file '{0}'", resultFile));
+                    TestRunData resultFileRunData = publisher.ReadResultsFromFile(resultFile);
 
-                    //run attachments
-                    if (resultFileRunData.Attachments != null)
+                    if (resultFileRunData != null && resultFileRunData.Results != null && resultFileRunData.Results.Length > 0)
                     {
-                        runAttachments.AddRange(resultFileRunData.Attachments);
+                        foreach (TestCaseResultData tcResult in resultFileRunData.Results)
+                        {
+                            int durationInMs = 0;
+                            int.TryParse(tcResult.DurationInMs, out durationInMs);
+                            totalTestCaseDuration = totalTestCaseDuration.Add(TimeSpan.FromMilliseconds(durationInMs));
+                        }
+                        runResults.AddRange(resultFileRunData.Results);
+
+                        //run attachments
+                        if (resultFileRunData.Attachments != null)
+                        {
+                            runAttachments.AddRange(resultFileRunData.Attachments);
+                        }
+                    }
+                    else
+                    {
+                        _executionContext.Warning(StringUtil.Loc("InvalidResultFiles", resultFile, resultReader));
                     }
                 }
-                else
+
+                string runName = string.IsNullOrWhiteSpace(_runTitle)
+                    ? string.Format("{0}_TestResults_{1}", _testRunner, buildId)
+                    : _runTitle;
+
+                //creat test run
+                TestRunData testRunData = new TestRunData(
+                    name: runName,
+                    startedDate: startTime.ToString("o"),
+                    completedDate: startTime.Add(totalTestCaseDuration).ToString("o"),
+                    state: "InProgress",
+                    isAutomated: true,
+                    buildId: runContext != null ? runContext.BuildId : 0,
+                    buildFlavor: runContext != null ? runContext.Configuration : string.Empty,
+                    buildPlatform: runContext != null ? runContext.Platform : string.Empty
+                    );
+
+                testRunData.Attachments = runAttachments.ToArray();
+
+                //publish run if there are results.
+                if (runResults.Count > 0)
                 {
-                    _executionContext.Warning(StringUtil.Loc("InvalidResultFiles", resultFile));
+                    publisher.StartTestRunAsync(testRunData).Wait();
+                    publisher.AddResultsAsync(runResults.ToArray()).Wait();
+                    await publisher.EndTestRunAsync(publishAttachmentsAsArchive: true);
                 }
             }
-
-            string runName = string.IsNullOrWhiteSpace(_runTitle)
-                ? string.Format("{0}_TestResults_{1}", _testRunner, buildId)
-                : _runTitle;
-
-            //creat test run
-            TestRunData testRunData = new TestRunData(
-                name: runName,
-                startedDate: startTime.ToString("o"),
-                completedDate: startTime.Add(totalTestCaseDuration).ToString("o"),
-                state: "InProgress",
-                isAutomated: true,
-                buildId: runContext != null ? runContext.BuildId : 0,
-                buildFlavor: runContext != null ? runContext.Configuration : string.Empty,
-                buildPlatform: runContext != null ? runContext.Platform : string.Empty
-                );
-
-            testRunData.Attachments = runAttachments.ToArray();
-
-            //publish run if there are results.
-            if (runResults.Count > 0)
+            catch (Exception ex)
             {
-                publisher.StartTestRunAsync(testRunData).Wait();
-                publisher.AddResultsAsync(runResults.ToArray()).Wait();
-                await publisher.EndTestRunAsync(publishAttachmentsAsArchive: true);
+                //Do not fail the task.
+                LogPublishTestResultsFailureWarning(ex);
             }
         }
 
         /// <summary>
         /// Publish separate test run for each result file that has results.
         /// </summary>
-        private async Task PublishToNewTestRunPerTestResultFileAsync(List<string> resultFiles, ITestRunPublisher publisher)
+        private async Task PublishToNewTestRunPerTestResultFileAsync(List<string> resultFiles, ITestRunPublisher publisher, string resultReader)
         {
-            int runCount = 1;
-            // Publish separate test run for each result file that has results.
-            foreach (string resultFile in resultFiles)
+            try
             {
-                string runName = null;
-                if (!string.IsNullOrWhiteSpace(_runTitle))
+                int runCount = 1;
+                // Publish separate test run for each result file that has results.
+                foreach (string resultFile in resultFiles)
                 {
-                    runName = resultFiles.Count > 1 ? string.Format(CultureInfo.InvariantCulture, "{0} {1}", _runTitle, runCount++) : _runTitle;
-                }
+                    string runName = null;
+                    if (!string.IsNullOrWhiteSpace(_runTitle))
+                    {
+                        runName = resultFiles.Count > 1 ? string.Format(CultureInfo.InvariantCulture, "{0} {1}", _runTitle, runCount++) : _runTitle;
+                    }
 
-                TestRunData testRunData = publisher.ReadResultsFromFile(resultFile, runName);
+                    _executionContext.Debug(StringUtil.Format("Reading test results from file '{0}'", resultFile));
+                    TestRunData testRunData = publisher.ReadResultsFromFile(resultFile, runName);
 
-                if (testRunData != null && testRunData.Results != null && testRunData.Results.Length > 0)
-                {
-                    publisher.StartTestRunAsync(testRunData).Wait();
-                    publisher.AddResultsAsync(testRunData.Results).Wait();
-                    await publisher.EndTestRunAsync();
+                    if (testRunData != null && testRunData.Results != null && testRunData.Results.Length > 0)
+                    {
+                        publisher.StartTestRunAsync(testRunData).Wait();
+                        publisher.AddResultsAsync(testRunData.Results).Wait();
+                        await publisher.EndTestRunAsync();
+                    }
+                    else
+                    {
+                        _executionContext.Warning(StringUtil.Loc("InvalidResultFiles", resultFile, resultReader));
+                    }
                 }
-                else
-                {
-                    _executionContext.Warning(StringUtil.Loc("InvalidResultFiles", resultFile));
-                }
+            }
+            catch (Exception ex)
+            {
+                //Do not fail the task.
+                LogPublishTestResultsFailureWarning(ex);
             }
         }
 
@@ -279,6 +291,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                 // if no proper input is provided by default we publish attachments.
                 _publishRunLevelAttachments = true;
             }
+        }
+
+        private void LogPublishTestResultsFailureWarning(Exception ex)
+        {
+            string message = ex.Message;
+            if (ex.InnerException != null)
+            {
+                message += Environment.NewLine;
+                message += ex.InnerException.Message;
+            }
+            _executionContext.Warning(StringUtil.Loc("FailedToPublishTestResults", message));
         }
     }
 
