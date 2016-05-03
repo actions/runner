@@ -60,6 +60,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                         Add(instance, "Microsoft.VisualStudio.Services.Agent.Worker.Build.BuildCommands, Agent.Worker");
                         Add(instance, "Microsoft.VisualStudio.Services.Agent.Worker.Build.ArtifactCommands, Agent.Worker");
                         Add(instance, "Microsoft.VisualStudio.Services.Agent.Worker.TestResults.ResultsCommands, Agent.Worker");
+                        Add(instance, "Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage.CodeCoverageCommands, Agent.Worker");
 
                         // Add source provider extensions:
                         Add(instance, "Microsoft.VisualStudio.Services.Agent.Worker.Build.GitSourceProvider, Agent.Worker");
@@ -75,11 +76,15 @@ namespace Microsoft.VisualStudio.Services.Agent
                         Add(instance, "Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts.BuildArtifact, Agent.Worker");
                         Add(instance, "Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts.JenkinsArtifact, Agent.Worker");
 
-                        // Add Result reader extensions:
+                        // Add test result reader extensions:
                         Add(instance, "Microsoft.VisualStudio.Services.Agent.Worker.TestResults.JUnitResultReader, Agent.Worker");
                         Add(instance, "Microsoft.VisualStudio.Services.Agent.Worker.TestResults.NUnitResultReader, Agent.Worker");
                         Add(instance, "Microsoft.VisualStudio.Services.Agent.Worker.TestResults.TrxResultReader, Agent.Worker");
                         Add(instance, "Microsoft.VisualStudio.Services.Agent.Worker.TestResults.XUnitResultReader, Agent.Worker");
+
+                        // Add code coverage result reader extensions
+                        Add(instance, "Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage.JaCoCoSummaryReader, Agent.Worker");
+                        Add(instance, "Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage.CoberturaSummaryReader, Agent.Worker");
 
                         _cache = instance;
                     }

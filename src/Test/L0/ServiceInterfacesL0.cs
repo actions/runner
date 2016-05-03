@@ -14,6 +14,7 @@ using Agent.Worker.Release.Artifacts.Definition;
 using Microsoft.VisualStudio.Services.Agent.Worker.Release;
 
 using Xunit;
+using Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests
 {
@@ -73,7 +74,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 typeof(IStep),
                 typeof(IArtifactDetails),
                 typeof(IArtifactExtension),
-                typeof(IResultReader)
+                typeof(IResultReader),
+                typeof(ICodeCoverageSummaryReader)
             };
             Validate(
                 assembly: typeof(IStepsRunner).GetTypeInfo().Assembly,
