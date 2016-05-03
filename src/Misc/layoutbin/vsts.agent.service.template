@@ -8,6 +8,9 @@ User={{User}}
 Environment=PATH={{Path}}
 Environment=NODE_ENV=production
 WorkingDirectory={{AgentRoot}}
+KillMode=process
+KillSignal=SIGTERM
+TimeoutStopSec=5min
 
 [Install]
 WantedBy=multi-user.target
