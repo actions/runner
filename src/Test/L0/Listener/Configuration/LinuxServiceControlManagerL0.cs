@@ -111,6 +111,9 @@ User={3}
 Environment=PATH={4}
 Environment=NODE_ENV=production
 WorkingDirectory={2}
+KillMode=process
+KillSignal=SIGTERM
+TimeoutStopSec=5min
 
 [Install]
 WantedBy=multi-user.target
