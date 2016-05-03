@@ -69,7 +69,7 @@
   "InvalidConfigFor0TerminatingUnattended": "Invalid configuration provided for {0}. Terminating unattended configuration.",
   "InvalidGroupName": "Invalid Group Name - {0}",
   "InvalidMember": "A new member could not be added to a local group because the member has the wrong account type. If you are configuring on a domain controller, built-in machine accounts cannot be added to local groups. You must use a domain user account instead",
-  "InvalidResultFiles": "Invalid results file. Make sure the Test Result Format field in the task matches the result format of the file: {0}",
+  "InvalidResultFiles": "Invalid results file. Make sure the result format of the file '{0}' matches '{1}' test results format.",
   "InvalidTeeTFArg": "Command argument '{0}' contains one or more of the following invalid characters: \", \\r, \\n",
   "InvalidWindowsCredential": "Invalid windows credentials entered. Try again or ctrl-c to quit",
   "JobCompleted": "{0:u}: Job {1} completed with result: {2}",
