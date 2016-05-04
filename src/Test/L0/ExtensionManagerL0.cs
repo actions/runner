@@ -30,5 +30,46 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                     $"Expected {nameof(BuildJobExtension)} extension to be returned as a job extension.");
             }
         }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void LoadsTypes()
+        {
+            using (TestHostContext tc = new TestHostContext(this))
+            {
+                // Arrange.
+                var manager = new ExtensionManager();
+                manager.Initialize(tc);
+
+                // Act/Assert.
+                AssertContains<Microsoft.VisualStudio.Services.Agent.Worker.ICommandExtension>(
+                    manager,
+                    concreteType: typeof(Microsoft.VisualStudio.Services.Agent.Worker.TaskCommands));
+                AssertContains<Microsoft.VisualStudio.Services.Agent.Worker.IJobExtension>(
+                    manager,
+                    concreteType: typeof(Microsoft.VisualStudio.Services.Agent.Worker.Build.BuildJobExtension));
+                AssertContains<Microsoft.VisualStudio.Services.Agent.Worker.Build.ISourceProvider>(
+                    manager,
+                    concreteType: typeof(Microsoft.VisualStudio.Services.Agent.Worker.Build.GitSourceProvider));
+                AssertContains<Microsoft.VisualStudio.Services.Agent.Worker.Release.IArtifactExtension>(
+                    manager,
+                    concreteType: typeof(Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts.BuildArtifact));
+                AssertContains<Microsoft.VisualStudio.Services.Agent.Worker.TestResults.IResultReader>(
+                    manager,
+                    concreteType: typeof(Microsoft.VisualStudio.Services.Agent.Worker.TestResults.JUnitResultReader));
+            }
+        }
+
+        private static void AssertContains<T>(ExtensionManager manager, Type concreteType) where T : class, IExtension
+        {
+            // Act.
+            List<T> extensions = manager.GetExtensions<T>();
+
+            // Assert.
+            Assert.True(
+                extensions.Any(x => x.GetType() == concreteType),
+                $"Expected '{typeof(T).FullName}' extensions to contain concrete type '{concreteType.FullName}'.");
+        }
     }
 }

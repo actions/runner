@@ -49,8 +49,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             Trace.Info($"All running job has exited.");
 
             // delete previous backup agent
-            string existBackUp = Directory.GetDirectories(IOUtil.GetRootPath(), "bin.bak.*").FirstOrDefault();
-            if (!string.IsNullOrEmpty(existBackUp))
+            // bin.bak.2.99.0
+            // externals.bak.2.99.0
+            foreach (string existBackUp in Directory.GetDirectories(IOUtil.GetRootPath(), "*.bak.*"))
             {
                 Trace.Info($"Delete existing agent backup at {existBackUp}.");
                 IOUtil.DeleteDirectory(existBackUp, token);
@@ -104,6 +105,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         /// _work
         ///     \_update
         ///            \bin
+        ///            \externals
         ///            \run.sh
         ///            \run.cmd
         ///            \package.zip //temp download .zip/.tar.gz
@@ -214,10 +216,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             scriptBuilder.AppendLine($"set agentpid={processId}");
             scriptBuilder.AppendLine($"set agentprocessname=\"{agentProcessName}\"");
             scriptBuilder.AppendLine($"set downloadagentfolder=\"{latestAgent}\"");
-            scriptBuilder.AppendLine($"set downloadagentbinfolder=\"{latestAgent}\\bin\"");
+            scriptBuilder.AppendLine($"set downloadagentbinfolder=\"{Path.Combine(latestAgent, Constants.Path.BinDirectory)}\"");
+            scriptBuilder.AppendLine($"set downloadagentexternalsfolder=\"{Path.Combine(latestAgent, Constants.Path.ExternalsDirectory)}\"");
             scriptBuilder.AppendLine($"set existingagentfolder=\"{currentAgent}\"");
-            scriptBuilder.AppendLine($"set existingagentbinfolder=\"{currentAgent}\\bin\"");
-            scriptBuilder.AppendLine($"set backupbinfolder=\"{currentAgent}\\bin.bak.{Constants.Agent.Version}\"");
+            scriptBuilder.AppendLine($"set existingagentbinfolder=\"{Path.Combine(currentAgent, Constants.Path.BinDirectory)}\"");
+            scriptBuilder.AppendLine($"set existingagentexternalsfolder=\"{Path.Combine(currentAgent, Constants.Path.ExternalsDirectory)}\"");
+            scriptBuilder.AppendLine($"set backupbinfolder=\"{Path.Combine(currentAgent, $"{Constants.Path.BinDirectory}.bak.{Constants.Agent.Version}")}\"");
+            scriptBuilder.AppendLine($"set backupexternalsfolder=\"{Path.Combine(currentAgent, $"{Constants.Path.ExternalsDirectory}.bak.{Constants.Agent.Version}")}\"");
             scriptBuilder.AppendLine($"set logfile=\"{updateLog}\"");
 
             scriptBuilder.AppendLine("echo --------env-------- >> %logfile% 2>&1");
@@ -238,15 +243,23 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
             scriptBuilder.AppendLine(":copy");
             scriptBuilder.AppendLine("echo Process %agentpid% finished running >> %logfile% 2>&1");
-            scriptBuilder.AppendLine("echo Copying files >> %logfile% 2>&1");
+            scriptBuilder.AppendLine("echo Renameing folders and copying files >> %logfile% 2>&1");
 
             scriptBuilder.AppendLine("echo move %existingagentbinfolder% %backupbinfolder% >> %logfile% 2>&1");
             scriptBuilder.AppendLine("move %existingagentbinfolder% %backupbinfolder% >> %logfile% 2>&1");
             scriptBuilder.AppendLine("if \"%errorlevel%\" gtr \"0\" (echo Can't move %existingagentbinfolder% to %backupbinfolder% >> %logfile% 2>&1 & goto end)");
 
+            scriptBuilder.AppendLine("echo move %existingagentexternalsfolder% %backupexternalsfolder% >> %logfile% 2>&1");
+            scriptBuilder.AppendLine("move %existingagentexternalsfolder% %backupexternalsfolder% >> %logfile% 2>&1");
+            scriptBuilder.AppendLine("if \"%errorlevel%\" gtr \"0\" (echo Can't move %existingagentexternalsfolder% to %backupexternalsfolder% >> %logfile% 2>&1 & goto end)");
+
             scriptBuilder.AppendLine("echo move %downloadagentbinfolder% %existingagentbinfolder% >> %logfile% 2>&1");
             scriptBuilder.AppendLine("move %downloadagentbinfolder% %existingagentbinfolder% >> %logfile% 2>&1");
             scriptBuilder.AppendLine("if \"%errorlevel%\" gtr \"0\" (echo Can't move %downloadagentbinfolder% to %existingagentbinfolder% >> %logfile% 2>&1 & goto end)");
+
+            scriptBuilder.AppendLine("echo move %downloadagentexternalsfolder% %existingagentexternalsfolder% >> %logfile% 2>&1");
+            scriptBuilder.AppendLine("move %downloadagentexternalsfolder% %existingagentexternalsfolder% >> %logfile% 2>&1");
+            scriptBuilder.AppendLine("if \"%errorlevel%\" gtr \"0\" (echo Can't move %downloadagentexternalsfolder% to %existingagentexternalsfolder% >> %logfile% 2>&1 & goto end)");
 
             scriptBuilder.AppendLine("echo copy %downloadagentfolder%\\*.* %existingagentfolder%\\*.* /Y >> %logfile% 2>&1");
             scriptBuilder.AppendLine("copy %downloadagentfolder%\\*.* %existingagentfolder%\\*.* /Y >> %logfile% 2>&1");
@@ -256,7 +269,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             {
                 scriptBuilder.AppendLine("echo Restart interactive agent >> %logfile% 2>&1");
                 scriptBuilder.AppendLine("endlocal");
-                scriptBuilder.AppendLine($"start \"Vsts Agent\" cmd.exe /k \"{Path.Combine(currentAgent, "bin", agentProcessName)}\"");
+                scriptBuilder.AppendLine($"start \"Vsts Agent\" cmd.exe /k \"{Path.Combine(currentAgent, Constants.Path.BinDirectory, agentProcessName)}\"");
             }
             else
             {
@@ -287,10 +300,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             scriptBuilder.AppendLine($"agentpid={processId}");
             scriptBuilder.AppendLine($"agentprocessname=\"{agentProcessName}\"");
             scriptBuilder.AppendLine($"downloadagentfolder=\"{latestAgent}\"");
-            scriptBuilder.AppendLine($"downloadagentbinfolder=\"{latestAgent}\\bin\"");
+            scriptBuilder.AppendLine($"downloadagentbinfolder=\"{Path.Combine(latestAgent, Constants.Path.BinDirectory)}\"");
+            scriptBuilder.AppendLine($"downloadagentexternalsfolder=\"{Path.Combine(latestAgent, Constants.Path.ExternalsDirectory)}\"");
             scriptBuilder.AppendLine($"existingagentfolder=\"{currentAgent}\"");
-            scriptBuilder.AppendLine($"existingagentbinfolder=\"{currentAgent}\\bin\"");
-            scriptBuilder.AppendLine($"backupbinfolder=\"{currentAgent}\\bin.bak.{Constants.Agent.Version}\"");
+            scriptBuilder.AppendLine($"existingagentbinfolder=\"{Path.Combine(currentAgent, Constants.Path.BinDirectory)}\"");
+            scriptBuilder.AppendLine($"existingagentexternalsfolder=\"{Path.Combine(currentAgent, Constants.Path.ExternalsDirectory)}\"");
+            scriptBuilder.AppendLine($"backupbinfolder=\"{Path.Combine(currentAgent, $"{Constants.Path.BinDirectory}.bak.{Constants.Agent.Version}")}\"");
+            scriptBuilder.AppendLine($"backupexternalsfolder=\"{Path.Combine(currentAgent, $"{Constants.Path.ExternalsDirectory}.bak.{Constants.Agent.Version}")}\"");
             scriptBuilder.AppendLine($"logfile=\"{updateLog}\"");
 
             scriptBuilder.AppendLine("echo \"--------env--------\" >> \"$logfile\" 2>&1");
@@ -309,12 +325,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             scriptBuilder.AppendLine("done");
             scriptBuilder.AppendLine("echo \"Process $agentpid finished running\" >> \"$logfile\" 2>&1");
 
-            scriptBuilder.AppendLine("echo \"Copying files\" >> \"$logfile\"");
+            scriptBuilder.AppendLine("echo \"Renaming folders and copying files\" >> \"$logfile\"");
             scriptBuilder.AppendLine("echo \"move $existingagentbinfolder $backupbinfolder\" >> \"$logfile\" 2>&1");
             scriptBuilder.AppendLine("mv -f \"$existingagentbinfolder\" \"$backupbinfolder\" >> \"$logfile\" 2>&1");
             scriptBuilder.AppendLine("if [ $? -ne 0 ]");
             scriptBuilder.AppendLine("    then");
             scriptBuilder.AppendLine("        echo \"Can't move $existingagentbinfolder to $backupbinfolder\" >> \"$logfile\" 2>&1");
+            scriptBuilder.AppendLine("        exit 1");
+            scriptBuilder.AppendLine("fi");
+
+            scriptBuilder.AppendLine("echo \"move $existingagentexternalsfolder $backupexternalsfolder\" >> \"$logfile\" 2>&1");
+            scriptBuilder.AppendLine("mv -f \"$existingagentexternalsfolder\" \"$backupexternalsfolder\" >> \"$logfile\" 2>&1");
+            scriptBuilder.AppendLine("if [ $? -ne 0 ]");
+            scriptBuilder.AppendLine("    then");
+            scriptBuilder.AppendLine("        echo \"Can't move $existingagentexternalsfolder to $backupexternalsfolder\" >> \"$logfile\" 2>&1");
             scriptBuilder.AppendLine("        exit 1");
             scriptBuilder.AppendLine("fi");
 
@@ -326,11 +350,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             scriptBuilder.AppendLine("        exit 1");
             scriptBuilder.AppendLine("fi");
 
-            scriptBuilder.AppendLine("echo copy \"$downloadagentfolder\"/* \"$existingagentfolder\" >> \"$logfile\" 2>&1");
-            scriptBuilder.AppendLine("cp -f \"$downloadagentfolder\"/* \"$existingagentfolder\" >> \"$logfile\" 2>&1");
+            scriptBuilder.AppendLine("echo \"move $downloadagentexternalsfolder $existingagentexternalsfolder\" >> \"$logfile\" 2>&1");
+            scriptBuilder.AppendLine("mv -f \"$downloadagentexternalsfolder\" \"$existingagentexternalsfolder\" >> \"$logfile\" 2>&1");
             scriptBuilder.AppendLine("if [ $? -ne 0 ]");
             scriptBuilder.AppendLine("    then");
-            scriptBuilder.AppendLine("        echo \"Can't copy $downloadagentfolder/* to $existingagentfolder\" >> \"$logfile\" 2>&1");
+            scriptBuilder.AppendLine("        echo \"Can't move $downloadagentexternalsfolder to $existingagentexternalsfolder\" >> \"$logfile\" 2>&1");
+            scriptBuilder.AppendLine("        exit 1");
+            scriptBuilder.AppendLine("fi");
+
+            scriptBuilder.AppendLine("echo copy \"$downloadagentfolder\"/*.* \"$existingagentfolder\" >> \"$logfile\" 2>&1");
+            scriptBuilder.AppendLine("cp -f \"$downloadagentfolder\"/*.* \"$existingagentfolder\" >> \"$logfile\" 2>&1");
+            scriptBuilder.AppendLine("if [ $? -ne 0 ]");
+            scriptBuilder.AppendLine("    then");
+            scriptBuilder.AppendLine("        echo \"Can't copy $downloadagentfolder/*.* to $existingagentfolder\" >> \"$logfile\" 2>&1");
             scriptBuilder.AppendLine("        exit 1");
             scriptBuilder.AppendLine("fi");
 

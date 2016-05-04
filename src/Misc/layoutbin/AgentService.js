@@ -5,7 +5,7 @@
 var childProcess = require("child_process");
 var path = require("path")
 
-var supported = ['linux']
+var supported = ['linux', 'darwin']
 
 if (supported.indexOf(process.platform) == -1) {
     console.log('Unsupported platform: ' + process.platform);
@@ -73,8 +73,6 @@ var gracefulShutdown = function(code) {
 
         // TODO wait for 30 seconds and send a SIGKILL
     }
-
-    process.exit(code);
 }
 
 process.on('SIGINT', () => {

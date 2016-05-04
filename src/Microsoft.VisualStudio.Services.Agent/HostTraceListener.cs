@@ -9,14 +9,59 @@ using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Text;
 
 namespace Microsoft.VisualStudio.Services.Agent
 {
     public sealed class HostTraceListener : TextWriterTraceListener
     {
-        public HostTraceListener(Stream stream)
-            : base(stream)
+        private const string _logFileNamingPattern = "{0}_{1:yyyyMMdd-HHmmss}-utc.log";
+        private string _logFilePrefix;
+        private bool _enablePageLog = false;
+        private bool _enableLogRetention = false;
+        private bool _enableLogTimerFlush = false;
+        private int _currentPageSize;
+        private int _pageSizeLimit;
+        private int _retentionDays;
+        private TimeSpan _flushFrequency;
+        private Stopwatch _lastFlush;
+
+        public HostTraceListener(string logFilePrefix, int pageSizeLimit, int retentionDays, int flushFrequency)
+            : base()
         {
+            ArgUtil.NotNullOrEmpty(logFilePrefix, nameof(logFilePrefix));
+            _logFilePrefix = logFilePrefix;
+
+            if (pageSizeLimit > 0)
+            {
+                _enablePageLog = true;
+                _pageSizeLimit = pageSizeLimit * 1024 * 1024;
+                _currentPageSize = 0;
+            }
+
+            if (retentionDays > 0)
+            {
+                _enableLogRetention = true;
+                _retentionDays = retentionDays;
+            }
+
+            if (flushFrequency > 0)
+            {
+                _enableLogTimerFlush = true;
+                _flushFrequency = TimeSpan.FromSeconds(flushFrequency);
+                _lastFlush = Stopwatch.StartNew();
+            }
+
+            Writer = CreatePageLogWriter();
+        }
+
+        public HostTraceListener(string logFile)
+            : base()
+        {
+            ArgUtil.NotNullOrEmpty(logFile, nameof(logFile));
+            Directory.CreateDirectory(Path.GetDirectoryName(logFile));
+            Stream logStream = new FileStream(logFile, FileMode.Create, FileAccess.ReadWrite, FileShare.Read, bufferSize: 4096);
+            Writer = new StreamWriter(logStream);
         }
 
         // Copied and modified slightly from .Net Core source code. Modification was required to make it compile.
@@ -31,6 +76,59 @@ namespace Microsoft.VisualStudio.Services.Agent
             WriteHeader(source, eventType, id);
             WriteLine(message);
             WriteFooter(eventCache);
+        }
+
+        public override void WriteLine(string message)
+        {
+            base.WriteLine(message);
+            if (_enablePageLog)
+            {
+                int messageSize = UTF8Encoding.UTF8.GetByteCount(message);
+                _currentPageSize += messageSize;
+                if (_currentPageSize > _pageSizeLimit)
+                {
+                    Flush();
+                    if (Writer != null)
+                    {
+                        Writer.Dispose();
+                        Writer = null;
+                    }
+
+                    Writer = CreatePageLogWriter();
+                    _currentPageSize = 0;
+                }
+            }
+
+            if (!_enableLogTimerFlush ||
+                (_enableLogTimerFlush && _lastFlush.Elapsed > _flushFrequency))
+            {
+                Flush();
+            }
+        }
+
+        public override void Write(string message)
+        {
+            base.Write(message);
+            if (_enablePageLog)
+            {
+                int messageSize = UTF8Encoding.UTF8.GetByteCount(message);
+                _currentPageSize += messageSize;
+            }
+
+            if (!_enableLogTimerFlush ||
+                (_enableLogTimerFlush && _lastFlush.Elapsed > _flushFrequency))
+            {
+                Flush();
+            }
+        }
+
+        public override void Flush()
+        {
+            base.Flush();
+            if (_enableLogTimerFlush)
+            {
+                _lastFlush = Stopwatch.StartNew();
+            }
         }
 
         internal bool IsEnabled(TraceOptions opts)
@@ -88,6 +186,38 @@ namespace Microsoft.VisualStudio.Services.Agent
                 WriteLine("Timestamp=" + eventCache.Timestamp);
 
             IndentLevel--;
+        }
+
+        private StreamWriter CreatePageLogWriter()
+        {
+            string diagDirectory = IOUtil.GetDiagPath();
+            Directory.CreateDirectory(diagDirectory);
+            if (_enableLogRetention)
+            {
+                DirectoryInfo diags = new DirectoryInfo(diagDirectory);
+                var logs = diags.GetFiles($"{_logFilePrefix}*.log");
+                foreach (var log in logs)
+                {
+                    if (log.LastWriteTimeUtc.AddDays(_retentionDays) < DateTime.UtcNow)
+                    {
+                        log.Delete();
+                    }
+                }
+            }
+
+            string fileName = StringUtil.Format(_logFileNamingPattern, _logFilePrefix, DateTime.UtcNow);
+            string logFile = Path.Combine(diagDirectory, fileName);
+            Stream logStream;
+            if (File.Exists(logFile))
+            {
+                logStream = new FileStream(logFile, FileMode.Append, FileAccess.Write, FileShare.Read, bufferSize: 4096);
+            }
+            else
+            {
+                logStream = new FileStream(logFile, FileMode.Create, FileAccess.ReadWrite, FileShare.Read, bufferSize: 4096);
+            }
+
+            return new StreamWriter(logStream);
         }
     }
 }

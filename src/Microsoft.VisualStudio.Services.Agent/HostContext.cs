@@ -23,33 +23,50 @@ namespace Microsoft.VisualStudio.Services.Agent
 
     public sealed class HostContext : IHostContext, IDisposable
     {
+        private const int _defaultLogPageSize = 8;  //MB
+        private static int _defaultLogRetentionDays = 30;
+        private static int _defaultLogFlushSeconds = 20;
         private readonly ConcurrentDictionary<Type, object> _serviceInstances = new ConcurrentDictionary<Type, object>();
         private readonly ConcurrentDictionary<Type, Type> _serviceTypes = new ConcurrentDictionary<Type, Type>();
         private Tracing _trace;
         private ITraceManager _traceManager;
 
-        public HostContext(string hostType)
-            : this(
-                hostType: hostType,
-                logFile: Path.Combine(IOUtil.GetDiagPath(), StringUtil.Format("{0}_{1:yyyyMMdd-HHmmss}-utc.log", hostType, DateTime.UtcNow)))
-        {
-        }
-
-        public HostContext(string hostType, string logFile)
+        public HostContext(string hostType, string logFile = null)
         {
             // Validate args.
             ArgUtil.NotNullOrEmpty(hostType, nameof(hostType));
-            ArgUtil.NotNullOrEmpty(logFile, nameof(logFile));
 
             // Create the trace manager.
-            Directory.CreateDirectory(Path.GetDirectoryName(logFile));
-            Stream logStream = new FileStream(
-                logFile,
-                FileMode.Create,
-                FileAccess.ReadWrite,
-                FileShare.Read,
-                bufferSize: 4096);
-            _traceManager = new TraceManager(new HostTraceListener(logStream), GetService<ISecretMasker>());
+            if (string.IsNullOrEmpty(logFile))
+            {
+                int logPageSize;
+                string logSizeEnv = Environment.GetEnvironmentVariable($"{hostType.ToLower()}.logsize");
+                if (!string.IsNullOrEmpty(logSizeEnv) || !int.TryParse(logSizeEnv, out logPageSize))
+                {
+                    logPageSize = _defaultLogPageSize;
+                }
+
+                int logRetentionDays;
+                string logRetentionDaysEnv = Environment.GetEnvironmentVariable($"{hostType.ToLower()}.logretention");
+                if (!string.IsNullOrEmpty(logRetentionDaysEnv) || !int.TryParse(logRetentionDaysEnv, out logRetentionDays))
+                {
+                    logRetentionDays = _defaultLogRetentionDays;
+                }
+
+                int logFlushSeconds;
+                string flushSecondsEnv = Environment.GetEnvironmentVariable($"{hostType.ToLower()}.logflush");
+                if (!string.IsNullOrEmpty(flushSecondsEnv) || !int.TryParse(flushSecondsEnv, out logFlushSeconds))
+                {
+                    logFlushSeconds = _defaultLogFlushSeconds;
+                }
+
+                _traceManager = new TraceManager(new HostTraceListener(hostType, logPageSize, logRetentionDays, logFlushSeconds), GetService<ISecretMasker>());
+            }
+            else
+            {
+                _traceManager = new TraceManager(new HostTraceListener(logFile), GetService<ISecretMasker>());
+            }
+
             _trace = GetTrace(nameof(HostContext));
         }
 
@@ -136,11 +153,12 @@ namespace Microsoft.VisualStudio.Services.Agent
 
         private void Dispose(bool disposing)
         {
+            // TODO: Dispose the trace listener also.
             if (disposing)
             {
                 _traceManager?.Dispose();
                 _traceManager = null;
             }
         }
-   }
+    }
 }

@@ -24,9 +24,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Util
                 // Trace
                 foreach (var ua in connect.Settings.UserAgent ?? new List<ProductInfoHeaderValue>())
                 {
-                    trace.Info(ua.Product.Name);
-                    trace.Info(ua.Product.Version);
-                    trace.Info(ua.Comment);
+                    if (ua.Product != null)
+                    {
+                        trace.Info(ua.Product.Name);
+                        trace.Info(ua.Product.Version);
+                    }
+
+                    if (!string.IsNullOrEmpty(ua.Comment))
+                    {
+                        trace.Info(ua.Comment);
+                    }
                 }
 
                 // Assert.

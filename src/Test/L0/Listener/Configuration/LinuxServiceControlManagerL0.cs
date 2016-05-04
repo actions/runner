@@ -108,13 +108,16 @@ After=network.target
 [Service]
 ExecStart={0}/node/bin/node {1}/AgentService.js
 User={3}
-Environment=PATH=/usr/bin:/usr/local/bin
+Environment=PATH={4}
 Environment=NODE_ENV=production
 WorkingDirectory={2}
+KillMode=process
+KillSignal=SIGTERM
+TimeoutStopSec=5min
 
 [Install]
 WantedBy=multi-user.target
-", IOUtil.GetExternalsPath(), IOUtil.GetBinPath(), IOUtil.GetBinPath(), testUser);
+", IOUtil.GetExternalsPath(), IOUtil.GetBinPath(), IOUtil.GetRootPath(), testUser, Environment.GetEnvironmentVariable("PATH"));
 
                 var agentSettings = new AgentSettings
                                         {

@@ -4,6 +4,7 @@ using Microsoft.VisualStudio.Services.Common;
 using System;
 using System.Collections.Generic;
 using System.Net.Http.Headers;
+using System.Runtime.InteropServices;
 
 namespace Microsoft.VisualStudio.Services.Agent.Util
 {
@@ -22,9 +23,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
 #elif OS_LINUX
             headerValues.Add(new ProductInfoHeaderValue("VstsAgentCore-linux", Constants.Agent.Version));
 #endif
+            headerValues.Add(new ProductInfoHeaderValue($"({RuntimeInformation.OSDescription.Trim()})"));
+            
             if (settings.UserAgent != null && settings.UserAgent.Count > 0)
             {
-                headerValues.Add(settings.UserAgent[0]);
+                headerValues.AddRange(settings.UserAgent);
             }
 
             settings.UserAgent = headerValues;

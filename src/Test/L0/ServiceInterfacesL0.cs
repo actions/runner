@@ -3,6 +3,7 @@ using Microsoft.VisualStudio.Services.Agent.Listener.Configuration;
 using Microsoft.VisualStudio.Services.Agent.Worker;
 using Microsoft.VisualStudio.Services.Agent.Worker.Build;
 using Microsoft.VisualStudio.Services.Agent.Worker.Handlers;
+using Microsoft.VisualStudio.Services.Agent.Worker.TestResults;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -71,7 +72,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 typeof(ISourceProvider),
                 typeof(IStep),
                 typeof(IArtifactDetails),
-                typeof(IArtifactExtension)
+                typeof(IArtifactExtension),
+                typeof(IResultReader)
             };
             Validate(
                 assembly: typeof(IStepsRunner).GetTypeInfo().Assembly,
