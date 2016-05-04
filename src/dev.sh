@@ -52,9 +52,9 @@ function heading()
 {
     echo
     echo
-    echo -------------------------------
+    echo -----------------------------------------
     echo   ${1}
-    echo -------------------------------
+    echo -----------------------------------------
 }
 
 function rundotnet ()
@@ -225,16 +225,39 @@ function buildtest ()
 
 function package ()
 {
+    # get the runtime we are build for
+    # if exist Agent.Listener/bin/${BUILD_CONFIG}/dnxcore50
+    build_folder="Agent.Listener/bin/${BUILD_CONFIG}/dnxcore50"
+    if [ ! -d "${build_folder}" ]; then
+        echo "You must build first.  Expecting to find ${build_folder}"
+    fi
+
+    pushd "${build_folder}" > /dev/null
+    pwd
+    runtime_folder=`ls -d */`
+
+    pkg_runtime=${runtime_folder%/}
+    popd > /dev/null
+
     pkg_dir=`pwd`/../_package
 
     agent_ver=`${LAYOUT_DIR}/bin/Agent.Listener --version` || "failed version"
-    agent_pkg_name="vsts-agent-${PLATFORM}-${agent_ver}-$(date +%m)$(date +%d)"
+    agent_pkg_name="vsts-agent-${pkg_runtime}-${agent_ver}"
+    # -$(date +%m)$(date +%d)"
+
+    heading "Packaging ${agent_pkg_name}"
+
     rm -Rf ${LAYOUT_DIR}/_diag
     mkdir -p $pkg_dir
     pushd $pkg_dir > /dev/null
     rm -Rf *
-    tar -czf "${agent_pkg_name}.tar.gz" -C ${LAYOUT_DIR} .
-    zip -r "${agent_pkg_name}.zip" ${LAYOUT_DIR}
+
+    tar_name="${agent_pkg_name}.tar.gz"
+    echo "Creating $tar_name in ${LAYOUT_DIR}"
+    tar -czf "${tar_name}" -C ${LAYOUT_DIR} .
+    
+    # TODO: create package on windows with powershell.
+    # zip -r "${agent_pkg_name}.zip" ${LAYOUT_DIR}
     popd > /dev/null
 }
 

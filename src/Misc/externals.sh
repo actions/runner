@@ -97,7 +97,7 @@ function acquireNode ()
             echo "Already extracted"
         else
             echo "Extracting"
-            tar zxvf ${node_zip} &> "node_tar.log"
+            tar zxf ${node_zip} > "node_tar.log"
             checkRC "Unzip (node)"
         fi   
         
@@ -151,7 +151,7 @@ function acquireExternalTools ()
         checkRC "Download (curl)"
 
         echo "Extracting to layout"
-        unzip ${tool}.zip -d ${target_dir}
+        unzip ${tool}.zip -d ${target_dir} > /dev/null
 
         popd > /dev/null        
     done
