@@ -49,7 +49,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
         {
             var publishCCTasks = files.Select(file =>
             {
-                return _codeCoverageServer.CreateArtifactAsync(context, _connection, projectId, _buildId, containerId, WellKnownArtifactResourceTypes.Container, file.Item2, file.Item1, browsable, cancellationToken);
+                return _codeCoverageServer.CreateArtifactAsync(context, _connection, projectId, _buildId, containerId, file.Item2, file.Item1, browsable, cancellationToken);
             });
             await Task.WhenAll(publishCCTasks);
         }

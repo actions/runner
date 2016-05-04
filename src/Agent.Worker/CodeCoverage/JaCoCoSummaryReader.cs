@@ -45,7 +45,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
                         {
                             if (counterNode.Attributes["type"] != null)
                             {
-                                coverageStatistics.Label = counterNode.Attributes["type"].Value;
+                                coverageStatistics.Label = ToTitleCase(counterNode.Attributes["type"].Value);
                                 coverageStatistics.Position = CodeCoverageUtilities.GetPriorityOrder(coverageStatistics.Label);
                             }
 
@@ -76,7 +76,36 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
             return listCoverageStats.AsEnumerable();
         }
 
+        private string ToTitleCase(string inputString)
+        {
+            if (string.IsNullOrWhiteSpace(inputString))
+            {
+                return inputString;
+            }
 
+            string outputString = string.Empty;
+            var newWord = true;
+            for (int i = 0; i < inputString.Length; i++)
+            {
+                if (inputString[i] == ' ')
+                {
+                    newWord = true;
+                    outputString += inputString[i];
+                    continue;
+                }
+                if (newWord)
+                {
+                    outputString += char.ToUpper(inputString[i]);
+                }
+                else
+                {
+                    outputString += char.ToLower(inputString[i]);
+                }
+
+                newWord = false;
+            }
+            return outputString;
+        }
 
         private const string c_covered = "covered";
         private const string c_missed = "missed";

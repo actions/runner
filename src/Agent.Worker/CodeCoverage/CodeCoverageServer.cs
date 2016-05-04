@@ -18,7 +18,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
         /// <summary>
         /// Publish Artifact to build
         /// </summary>
-        Task CreateArtifactAsync(IAsyncCommandContext context, VssConnection connection, Guid projectId, int buildId, long containerId, string type, string name, string fileContainerPath, bool browsable, CancellationToken cancellationToken);
+        Task CreateArtifactAsync(IAsyncCommandContext context, VssConnection connection, Guid projectId, int buildId, long containerId, string name, string fileContainerPath, bool browsable, CancellationToken cancellationToken);
 
         /// <summary>
         /// Publish code coverage summary
@@ -28,29 +28,23 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
 
     internal class CodeCoverageServer : AgentService, ICodeCoverageServer
     {
-        public async Task CreateArtifactAsync(IAsyncCommandContext context, VssConnection connection, Guid projectId, int buildId, long containerId, string type, string name, string source, bool browsable, CancellationToken cancellationToken)
+        public async Task CreateArtifactAsync(IAsyncCommandContext context, VssConnection connection, Guid projectId, int buildId, long containerId, string name, string source, bool browsable, CancellationToken cancellationToken)
         {
             var browsableProperty = (browsable) ? bool.TrueString : bool.FalseString;
-            var uploadArtifactCommand = new Command("Artifact", "Upload")
-            {
-                Properties =
-                {
-                    { "containerfolder", name},
-                    { "artifactname", name },
-                    { "artifacttype", type },
-                    { "browsable", browsableProperty },
-                },
-                Data = source
-            };
+            var artifactProperties = new Dictionary<string, string> {
+                    { ArtifactUploadEventProperties.ContainerFolder, name},
+                    { ArtifactUploadEventProperties.ArtifactName, name },
+                    { ArtifactAssociateEventProperties.ArtifactType, WellKnownArtifactResourceTypes.Container },
+                    { ArtifactAssociateEventProperties.Browsable, browsableProperty },
+                };
 
             FileContainerServer fileContainerHelper = new FileContainerServer(connection.Uri, connection.Credentials, projectId, containerId, name);
             await fileContainerHelper.CopyToContainerAsync(context, source, cancellationToken);
             string fileContainerFullPath = StringUtil.Format($"#/{containerId}/{name}");
-            context.Output(StringUtil.Loc("UploadToFileContainer", source, fileContainerFullPath));
 
             Build.BuildServer buildHelper = new Build.BuildServer(connection.Uri, connection.Credentials, projectId);
-            var artifact = await buildHelper.AssociateArtifact(buildId, name, WellKnownArtifactResourceTypes.Container, fileContainerFullPath, uploadArtifactCommand.Properties, cancellationToken);
-            context.Output(StringUtil.Loc("AssociateArtifactWithBuild", artifact.Id, buildId));
+            var artifact = await buildHelper.AssociateArtifact(buildId, name, WellKnownArtifactResourceTypes.Container, fileContainerFullPath, artifactProperties, cancellationToken);
+            context.Output(StringUtil.Loc("PublishedCodeCoverageArtifact", source, name));
         }
 
         public async Task PublishCoverageSummaryAsync(VssConnection connection, string project, int buildId, IEnumerable<CodeCoverageStatistics> coverageData, CancellationToken cancellationToken)

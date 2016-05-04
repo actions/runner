@@ -73,14 +73,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
             context.Output(StringUtil.Loc("ReadingCodeCoverageSummary", _summaryFileLocation));
             var coverageData = reader.GetCodeCoverageSummary(context, _summaryFileLocation);
 
-            if (coverageData == null)
+            if (coverageData == null || coverageData.Count() == 0)
             {
                 context.Warning(StringUtil.Loc("CodeCoverageDataIsNull"));
-            }
-
-            foreach (var coverage in coverageData)
-            {
-                context.Debug(StringUtil.Format(" {0}- {1} of {2} covered.", coverage.Label, coverage.Covered, coverage.Total));
             }
 
             Client.VssConnection connection = WorkerUtilies.GetVssConnection(context);
@@ -89,47 +84,66 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
 
             var commandContext = HostContext.CreateService<IAsyncCommandContext>();
             commandContext.InitializeCommandContext(context, StringUtil.Loc("PublishCodeCoverage"));
-            commandContext.Task = PublishCodeCoverageAsync(commandContext, codeCoveragePublisher, coverageData, project, projectId, containerId.Value, context.CancellationToken);
+            commandContext.Task = PublishCodeCoverageAsync(context, commandContext, codeCoveragePublisher, coverageData, project, projectId, containerId.Value, context.CancellationToken);
             context.AsyncCommands.Add(commandContext);
         }
 
-        private async Task PublishCodeCoverageAsync(IAsyncCommandContext commandContext, ICodeCoveragePublisher codeCoveragePublisher, IEnumerable<CodeCoverageStatistics> coverageData,
+        private async Task PublishCodeCoverageAsync(IExecutionContext executionContext, IAsyncCommandContext commandContext, ICodeCoveragePublisher codeCoveragePublisher, IEnumerable<CodeCoverageStatistics> coverageData,
                                                     string project, Guid projectId, long containerId, CancellationToken cancellationToken)
         {
             //step 2: publish code coverage summary to TFS
-            commandContext.Output(StringUtil.Loc("PublishingCodeCoverage"));
-            await codeCoveragePublisher.PublishCodeCoverageSummaryAsync(coverageData, project, cancellationToken);
+            if (coverageData != null && coverageData.Count() > 0)
+            {
+                commandContext.Output(StringUtil.Loc("PublishingCodeCoverage"));
+                foreach (var coverage in coverageData)
+                {
+                    commandContext.Output(StringUtil.Format(" {0}- {1} of {2} covered.", coverage.Label, coverage.Covered, coverage.Total));
+                }
+                await codeCoveragePublisher.PublishCodeCoverageSummaryAsync(coverageData, project, cancellationToken);
+            }
 
             // step 3: publish code coverage files as build artifacts
-            var filesToPublish = new List<Tuple<string, string>>();
+
             string additionalCodeCoverageFilePath = null;
+            string destinationSummaryFile = null;
             var newReportDirectory = _reportDirectory;
-
-            if (!Directory.Exists(newReportDirectory))
-            {
-                newReportDirectory = GetCoverageDirectory(_buildId.ToString(), CodeCoverageUtilities.ReportDirectory);
-                Directory.CreateDirectory(newReportDirectory);
-            }
-
-            var summaryFileName = Path.GetFileName(_summaryFileLocation);
-            var destinationSummaryFile = Path.Combine(newReportDirectory, CodeCoverageUtilities.SummaryFileDirectory + _buildId, summaryFileName);
-            Directory.CreateDirectory(Path.GetDirectoryName(destinationSummaryFile));
-            File.Copy(_summaryFileLocation, destinationSummaryFile, true);
-
-
-            filesToPublish.Add(new Tuple<string, string>(newReportDirectory, GetCoverageDirectoryName(_buildId.ToString(), CodeCoverageUtilities.ReportDirectory)));
-
-            if (_additionalCodeCoverageFiles != null && _additionalCodeCoverageFiles.Count != 0)
-            {
-                additionalCodeCoverageFilePath = GetCoverageDirectory(_buildId.ToString(), CodeCoverageUtilities.RawFilesDirectory);
-                CodeCoverageUtilities.CopyFilesFromFileListWithDirStructure(_additionalCodeCoverageFiles, ref additionalCodeCoverageFilePath);
-                filesToPublish.Add(new Tuple<string, string>(additionalCodeCoverageFilePath, GetCoverageDirectoryName(_buildId.ToString(), CodeCoverageUtilities.RawFilesDirectory)));
-            }
-            commandContext.Output(StringUtil.Loc("PublishingCodeCoverageFiles"));
-
             try
             {
+                var filesToPublish = new List<Tuple<string, string>>();
+
+                if (!Directory.Exists(newReportDirectory))
+                {
+                    if (!string.IsNullOrWhiteSpace(newReportDirectory))
+                    {
+                        // user gave a invalid report directory. Write warning and continue.
+                        executionContext.Warning(StringUtil.Loc("DirectoryNotFound", newReportDirectory));
+                    }
+                    newReportDirectory = GetCoverageDirectory(_buildId.ToString(), CodeCoverageUtilities.ReportDirectory);
+                    Directory.CreateDirectory(newReportDirectory);
+                }
+
+                var summaryFileName = Path.GetFileName(_summaryFileLocation);
+                destinationSummaryFile = Path.Combine(newReportDirectory, CodeCoverageUtilities.SummaryFileDirectory + _buildId, summaryFileName);
+                Directory.CreateDirectory(Path.GetDirectoryName(destinationSummaryFile));
+                File.Copy(_summaryFileLocation, destinationSummaryFile, true);
+
+
+                filesToPublish.Add(new Tuple<string, string>(newReportDirectory, GetCoverageDirectoryName(_buildId.ToString(), CodeCoverageUtilities.ReportDirectory)));
+
+                if (_additionalCodeCoverageFiles != null && _additionalCodeCoverageFiles.Count != 0)
+                {
+                    additionalCodeCoverageFilePath = GetCoverageDirectory(_buildId.ToString(), CodeCoverageUtilities.RawFilesDirectory);
+                    CodeCoverageUtilities.CopyFilesFromFileListWithDirStructure(_additionalCodeCoverageFiles, ref additionalCodeCoverageFilePath);
+                    filesToPublish.Add(new Tuple<string, string>(additionalCodeCoverageFilePath, GetCoverageDirectoryName(_buildId.ToString(), CodeCoverageUtilities.RawFilesDirectory)));
+                }
+                commandContext.Output(StringUtil.Loc("PublishingCodeCoverageFiles"));
+
+
                 await codeCoveragePublisher.PublishCodeCoverageFilesAsync(commandContext, projectId, containerId, filesToPublish, File.Exists(Path.Combine(newReportDirectory, CodeCoverageUtilities.DefaultIndexFile)), cancellationToken);
+            }
+            catch (IOException ex)
+            {
+                executionContext.Warning(StringUtil.Loc("ErrorOccuredWhilePublishingCCFiles", ex.Message));
             }
             finally
             {
@@ -142,16 +156,22 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
                     }
                 }
 
-                var summaryFileDirectory = Path.GetDirectoryName(destinationSummaryFile);
-                if (Directory.Exists(summaryFileDirectory))
+                if (!string.IsNullOrEmpty(destinationSummaryFile))
                 {
-                    Directory.Delete(path: summaryFileDirectory, recursive: true);
+                    var summaryFileDirectory = Path.GetDirectoryName(destinationSummaryFile);
+                    if (Directory.Exists(summaryFileDirectory))
+                    {
+                        Directory.Delete(path: summaryFileDirectory, recursive: true);
+                    }
                 }
 
                 if (!Directory.Exists(_reportDirectory))
                 {
-                    //delete the generated report directory
-                    Directory.Delete(path: newReportDirectory, recursive: true);
+                    if (Directory.Exists(newReportDirectory))
+                    {
+                        //delete the generated report directory
+                        Directory.Delete(path: newReportDirectory, recursive: true);
+                    }
                 }
             }
         }
