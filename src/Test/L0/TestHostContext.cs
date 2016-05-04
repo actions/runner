@@ -42,8 +42,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 File.Delete(TraceFileName);
             }
 
-            Stream logFile = File.Create(TraceFileName);
-            var traceListener = new HostTraceListener(logFile);
+            var traceListener = new HostTraceListener(TraceFileName);
             _secretMasker = new SecretMasker();
             _traceManager = new TraceManager(traceListener, _secretMasker);
             _trace = GetTrace(nameof(TestHostContext));
