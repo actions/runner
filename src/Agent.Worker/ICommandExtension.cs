@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.VisualStudio.Services.Agent.Util;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -14,181 +15,135 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         void ProcessCommand(IExecutionContext context, Command command);
     }
 
-    public class Command
+    public sealed class Command
     {
-        private Dictionary<string, string> _properties;
-        private const string _loggingCommandPrefix = "##vso";
-
-        private static string[] _escapeCharactersToken = new string[] { ";", "\r", "\n" };
-        private static string[] _escapeCharactersReplacement = new string[] { "%3B", "%0D", "%0A" };
+        private const string LoggingCommandPrefix = "##vso[";
+        private static readonly EscapeMapping[] s_escapeMappings = new[]
+        {
+            // TODO: What about % and ]?
+            new EscapeMapping(token: ";", replacement: "%3B"),
+            new EscapeMapping(token: "\r", replacement: "%0D"),
+            new EscapeMapping(token: "\n", replacement: "%0A"),
+        };
+        private readonly Dictionary<string, string> _properties = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
         public Command(string area, string eventName)
         {
+            ArgUtil.NotNullOrEmpty(area, nameof(area));
+            ArgUtil.NotNullOrEmpty(eventName, nameof(eventName));
             Area = area;
             Event = eventName;
         }
 
-        public string Area
-        {
-            get;
-            private set;
-        }
+        public string Area { get; }
 
-        public string Event
-        {
-            get;
-            private set;
-        }
+        public string Event { get; }
 
-        public Dictionary<string, string> Properties
-        {
-            get
-            {
-                if (_properties == null)
-                {
-                    _properties = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                }
+        public Dictionary<string, string> Properties => _properties;
 
-                return _properties;
-            }
-        }
+        public string Data { get; set; }
 
-        public string Data
-        {
-            get;
-            set;
-        }
-
-        // TODO: Simplify the logic.
-        public override String ToString()
-        {
-            StringBuilder sb = new StringBuilder();
-            sb.AppendFormat(CultureInfo.InvariantCulture, "{0}[{1}.{2}", _loggingCommandPrefix, this.Area, this.Event);
-
-            Boolean splitSpace = false;
-            foreach (var parameter in this.Properties)
-            {
-                String value = parameter.Value;
-                if (!String.IsNullOrEmpty(value))
-                {
-                    for (int index = 0; index < _escapeCharactersToken.Length; index++)
-                    {
-                        value = value.Replace(_escapeCharactersToken[index], _escapeCharactersReplacement[index]);
-                    }
-
-                    if (!splitSpace)
-                    {
-                        sb.AppendFormat(CultureInfo.InvariantCulture, " ");
-                        splitSpace = true;
-                    }
-
-                    sb.AppendFormat(CultureInfo.InvariantCulture, "{0}={1};", parameter.Key, value);
-                }
-            }
-
-            String data = this.Data;
-            if (!String.IsNullOrEmpty(data))
-            {
-                for (int index = 0; index < _escapeCharactersToken.Length; index++)
-                {
-                    data = data.Replace(_escapeCharactersToken[index], _escapeCharactersReplacement[index]);
-                }
-            }
-
-            return String.Format("{0}]{1}", sb.ToString(), data);
-        }
-
-        // TODO: Simplify the logic.
-        public static Boolean TryParse(String message, out Command command)
+        public static bool TryParse(string message, out Command command)
         {
             command = null;
-            if (String.IsNullOrEmpty(message))
+            if (string.IsNullOrEmpty(message))
             {
                 return false;
             }
 
             try
             {
-                int prePos = message.IndexOf(_loggingCommandPrefix);
-                if (prePos == -1)
+                // Get the index of the prefix.
+                int prefixIndex = message.IndexOf(LoggingCommandPrefix);
+                if (prefixIndex < 0)
                 {
                     return false;
                 }
 
-                message = message.Substring(prePos);
-
-                int lbPos = message.IndexOf('[');
-                int rbPos = message.IndexOf(']');
-
-                if (lbPos == -1 || rbPos == -1 || rbPos - lbPos < 3)
+                // Get the index of the separator between the command info and the data.
+                int rbIndex = message.IndexOf(']', prefixIndex);
+                if (rbIndex < 0)
                 {
                     return false;
                 }
 
-                String prefix = message.Substring(0, lbPos);
-                if (!String.Equals(prefix, _loggingCommandPrefix, StringComparison.OrdinalIgnoreCase))
-                {
-                    return false;
-                }
+                // Get the command info (area.event and properties).
+                int cmdIndex = prefixIndex + LoggingCommandPrefix.Length;
+                string cmdInfo = message.Substring(cmdIndex, rbIndex - cmdIndex);
 
-                var cmdInfo = message.Substring(lbPos + 1, rbPos - lbPos - 1);
-                int spPos = cmdInfo.IndexOf(' ');
-                String commandInfo;
-                if (spPos == -1)
-                {
-                    commandInfo = cmdInfo;
-                }
-                else
-                {
-                    commandInfo = cmdInfo.Substring(0, spPos);
-                }
+                // Get the command name (area.event).
+                int spaceIndex = cmdInfo.IndexOf(' ');
+                string commandName = 
+                    spaceIndex < 0
+                    ? cmdInfo
+                    : cmdInfo.Substring(0, spaceIndex);
 
-                String[] areaEvent = commandInfo.Split(new Char[] { '.' }, StringSplitOptions.RemoveEmptyEntries);
+                // Get the area and event.
+                string[] areaEvent = commandName.Split(new[] { '.' }, StringSplitOptions.RemoveEmptyEntries);
                 if (areaEvent.Length != 2)
                 {
                     return false;
                 }
 
-                String areaName = areaEvent[0];
-                String eventName = areaEvent[1];
+                string areaName = areaEvent[0];
+                string eventName = areaEvent[1];
+
+                // Initialize the command.
                 command = new Command(areaName, eventName);
 
-                if (spPos != -1)
+                // Set the properties.
+                if (spaceIndex > 0)
                 {
-                    String properties = cmdInfo.Substring(spPos + 1);
-                    String[] propLines = properties.Split(new Char[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
-                    foreach (var prop in propLines)
+                    string propertiesStr = cmdInfo.Substring(spaceIndex + 1);
+                    string[] splitProperties = propertiesStr.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
+                    foreach (string propertyStr in splitProperties)
                     {
-                        String[] pair = prop.Split(new Char[] { '=' }, 2, StringSplitOptions.RemoveEmptyEntries);
-
+                        string[] pair = propertyStr.Split(new[] { '=' }, count: 2, options: StringSplitOptions.RemoveEmptyEntries);
                         if (pair.Length == 2)
                         {
-                            for (int index = 0; index < _escapeCharactersReplacement.Length; index++)
-                            {
-                                pair[1] = pair[1].Replace(_escapeCharactersReplacement[index], _escapeCharactersToken[index]);
-                            }
-
-                            command.Properties[pair[0]] = pair[1];
+                            command.Properties[pair[0]] = Unescape(pair[1]);
                         }
                     }
                 }
 
-                command.Data = message.Substring(rbPos + 1);
-
-                if (!String.IsNullOrEmpty(command.Data))
-                {
-                    for (int index = 0; index < _escapeCharactersReplacement.Length; index++)
-                    {
-                        command.Data = command.Data.Replace(_escapeCharactersReplacement[index], _escapeCharactersToken[index]);
-                    }
-                }
+                command.Data = Unescape(message.Substring(rbIndex + 1));
+                return true;
             }
-            catch (Exception)
+            catch
             {
+                command = null;
                 return false;
             }
+        }
 
-            return true;
+        private static string Unescape(string escaped)
+        {
+            if (string.IsNullOrEmpty(escaped))
+            {
+                return string.Empty;
+            }
+
+            string unescaped = escaped;
+            foreach (EscapeMapping mapping in s_escapeMappings)
+            {
+                unescaped = unescaped.Replace(mapping.Replacement, mapping.Token);
+            }
+
+            return unescaped;
+        }
+
+        private sealed class EscapeMapping
+        {
+            public string Replacement { get; }
+            public string Token { get; }
+
+            public EscapeMapping(string token, string replacement)
+            {
+                ArgUtil.NotNullOrEmpty(token, nameof(token));
+                ArgUtil.NotNullOrEmpty(replacement, nameof(replacement));
+                Token = token;
+                Replacement = replacement;
+            }
         }
     }
 }
