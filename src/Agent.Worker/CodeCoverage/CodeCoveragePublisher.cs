@@ -1,56 +1,57 @@
 ﻿using Microsoft.TeamFoundation.Build.WebApi;
 using Microsoft.TeamFoundation.TestManagement.WebApi;
+using Microsoft.VisualStudio.Services.Agent.Util;
 using Microsoft.VisualStudio.Services.Client;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
 {
     [ServiceLocator(Default = typeof(CodeCoveragePublisher))]
     public interface ICodeCoveragePublisher : IAgentService
     {
-        void InitializePublisher(IExecutionContext context, int buildId, string project, string projectCollectionUri, VssConnection connection);
+        void InitializePublisher(int buildId, VssConnection connection);
 
         /// <summary>
         /// publish codecoverage summary data to server
         /// </summary>
-        void PublishCodeCoverageSummary(IEnumerable<CodeCoverageStatistics> coverageData, CancellationToken cancellationToken);
+        Task PublishCodeCoverageSummaryAsync(IEnumerable<CodeCoverageStatistics> coverageData, string project, CancellationToken cancellationToken);
 
         /// <summary>
         /// publish codecoverage files to server
         /// </summary>
-        void PublishCodeCoverageFiles(IEnumerable<Tuple<string, string>> files, CancellationToken cancellationToken, bool browsable);
+        Task PublishCodeCoverageFilesAsync(IAsyncCommandContext context, Guid projectId, long containerId, IEnumerable<Tuple<string, string>> files, bool browsable, CancellationToken cancellationToken);
     }
 
     internal class CodeCoveragePublisher : AgentService, ICodeCoveragePublisher
     {
         private ICodeCoverageServer _codeCoverageServer;
-        private string _projectCollectionUri;
-        private string _project;
         private int _buildId;
+        private VssConnection _connection;
 
-        public void InitializePublisher(IExecutionContext context, int buildId, string project, string projectCollectionUri, VssConnection connection)
+        public void InitializePublisher(int buildId, VssConnection connection)
         {
-            _projectCollectionUri = projectCollectionUri;
+            ArgUtil.NotNull(connection, nameof(connection));
+            _connection = connection;
             _buildId = buildId;
-            _project = project;
             _codeCoverageServer = HostContext.GetService<ICodeCoverageServer>();
-            _codeCoverageServer.InitializeServer(context, connection);
         }
 
-        public void PublishCodeCoverageSummary(IEnumerable<CodeCoverageStatistics> coverageData, CancellationToken cancellationToken)
+        public async Task PublishCodeCoverageSummaryAsync(IEnumerable<CodeCoverageStatistics> coverageData, string project, CancellationToken cancellationToken)
         {
-            _codeCoverageServer.PublishCoverageSummary(_project, _buildId, coverageData, cancellationToken);
+            await _codeCoverageServer.PublishCoverageSummaryAsync(_connection, project, _buildId, coverageData, cancellationToken);
         }
 
-        public void PublishCodeCoverageFiles(IEnumerable<Tuple<string, string>> files, CancellationToken cancellationToken, bool browsable)
+        public async Task PublishCodeCoverageFilesAsync(IAsyncCommandContext context, Guid projectId, long containerId, IEnumerable<Tuple<string, string>> files, bool browsable, CancellationToken cancellationToken)
         {
-            //Call Rest Api for uploading each of these files
-            foreach (var file in files)
+            var publishCCTasks = files.Select(file =>
             {
-                _codeCoverageServer.CreateArtifact(_project, _buildId, WellKnownArtifactResourceTypes.Container, file.Item2, file.Item1, browsable, cancellationToken);
-            }
+                return _codeCoverageServer.CreateArtifactAsync(context, _connection, projectId, _buildId, containerId, WellKnownArtifactResourceTypes.Container, file.Item2, file.Item1, browsable, cancellationToken);
+            });
+            await Task.WhenAll(publishCCTasks);
         }
     }
 }
