@@ -161,6 +161,7 @@
   "ListenForJobs": "{0:u}: Listening for Jobs",
   "LocalServiceNotFound": "Can not find local service account",
   "MemberDoesNotExists": "Member: {0} does not Exist",
+  "MissingAgent": "The agent no longer exists on the server. Please reconfigure the agent.",
   "N": "N",
   "NoSpaceOnDisk": "Skipping attachment as it exceeded the maximum allowed size or not available on disk: {0}",
   "NotLinux": "This Agent version is built for Linux. Please install a correct build for your OS.",
