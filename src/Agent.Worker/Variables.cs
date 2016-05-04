@@ -86,6 +86,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         public string Build_GatedShelvesetName { get { return Get(Constants.Variables.Build.GatedShelvesetName); } }
         public string Build_RepoTfvcWorkspace { get { return Get(Constants.Variables.Build.RepoTfvcWorkspace); } }
         public string Build_RequestedFor { get { return Get((BuildWebApi.WellKnownBuildVariables.RequestedFor)); } }
+        public string Build_SourceBranch { get { return Get(Constants.Variables.Build.SourceBranch); } }
         public string Build_SourcesDirectory { get { return Get(Constants.Variables.Build.SourcesDirectory); } }
         public string Build_SourceTfvcShelveset { get { return Get(Constants.Variables.Build.SourceTfvcShelveset); } }
         public string Build_SourceVersion { get { return Get(Constants.Variables.Build.SourceVersion); } }

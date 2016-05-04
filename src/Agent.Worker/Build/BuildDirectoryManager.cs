@@ -15,6 +15,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             IExecutionContext executionContext,
             ServiceEndpoint endpoint,
             ISourceProvider sourceProvider);
+
+        void CreateDirectory(
+            IExecutionContext executionContext, 
+            string description, string path, 
+            bool deleteExisting);
     }
 
     public sealed class BuildDirectoryManager : AgentService, IBuildDirectoryManager
@@ -172,7 +177,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             return newConfig;
         }
 
-        private void CreateDirectory(IExecutionContext executionContext, string description, string path, bool deleteExisting)
+        public void CreateDirectory(IExecutionContext executionContext, string description, string path, bool deleteExisting)
         {
             // Delete.
             if (deleteExisting)
