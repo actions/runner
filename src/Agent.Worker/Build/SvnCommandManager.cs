@@ -96,7 +96,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             _endpoint = endpoint;
             _cancellationToken = cancellationToken;
 
-            //find git in %Path%
+            // Find svn in %Path%
             IWhichUtil whichTool = HostContext.GetService<IWhichUtil>();
             string svnPath = whichTool.Which("svn");
 
@@ -114,6 +114,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             endpoint.Authorization.Parameters.TryGetValue(EndpointAuthorizationParameters.Username, out _username);
             endpoint.Authorization.Parameters.TryGetValue(EndpointAuthorizationParameters.Password, out _password);
 
+            // TODO: replace explicit string literals with WellKnownEndpointData constants 
+            // as soon as the latters are available thru the Microsoft.TeamFoundation.Build.WebApi package
+
             _acceptUntrusted = endpoint.Data.ContainsKey(/* WellKnownEndpointData.SvnAcceptUntrustedCertificates */ "acceptUntrustedCerts") &&
             StringUtil.ConvertToBoolean(endpoint.Data[/* WellKnownEndpointData.SvnAcceptUntrustedCertificates */ "acceptUntrustedCerts"], defaultValue: false);
         }
@@ -127,22 +130,27 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         {
             if (cleanRepository)
             {
-                RecreateDirectory(rootPath);
+                // A clean build has been requested, if the $(build.Clean) variable didn't force 
+                // the BuildDirectoryManager to re-create the source directory earlier,
+                // let's do it now explicitly.
+
+                IBuildDirectoryManager buildDirectoryManager = HostContext.GetService<IBuildDirectoryManager>();
+                BuildCleanOption? cleanOption = _context.Variables.Build_Clean;
+
+                buildDirectoryManager.CreateDirectory(
+                _context,
+                description: "source directory",
+                path: rootPath,
+                deleteExisting: !(cleanOption == BuildCleanOption.All || cleanOption == BuildCleanOption.Source));
             }
 
             Dictionary<string, Uri> oldMappings = await GetOldMappings(rootPath);
-            if (_context.Variables.System_Debug.HasValue && _context.Variables.System_Debug.Value)
-            {
-                _context.Debug($"oldMappings.Count: {oldMappings.Count}");
-                oldMappings.ToList().ForEach(p => _context.Debug($"   [{p.Key}] {p.Value}"));
-            }
+            _context.Debug($"oldMappings.Count: {oldMappings.Count}");
+            oldMappings.ToList().ForEach(p => _context.Debug($"   [{p.Key}] {p.Value}"));
 
             Dictionary<string, SvnMappingDetails> newMappings = BuildNewMappings(rootPath, sourceBranch, distinctMappings);
-            if (_context.Variables.System_Debug.HasValue && _context.Variables.System_Debug.Value)
-            {
-                _context.Debug($"newMappings.Count: {newMappings.Count}");
-                newMappings.ToList().ForEach(p => _context.Debug($"    [{p.Key}] ServerPath: {p.Value.ServerPath}, LocalPath: {p.Value.LocalPath}, Depth: {p.Value.Depth}, Revision: {p.Value.Revision}, IgnoreExternals: {p.Value.IgnoreExternals}"));
-            }
+            _context.Debug($"newMappings.Count: {newMappings.Count}");
+            newMappings.ToList().ForEach(p => _context.Debug($"    [{p.Key}] ServerPath: {p.Value.ServerPath}, LocalPath: {p.Value.LocalPath}, Depth: {p.Value.Depth}, Revision: {p.Value.Revision}, IgnoreExternals: {p.Value.IgnoreExternals}"));
 
             CleanUpSvnWorkspace(oldMappings, newMappings);
 
@@ -160,19 +168,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             await UpdateToRevisionAsync(oldMappings, newMappings, maxRevision);
 
             return maxRevision > 0 ? maxRevision.ToString() : "HEAD";
-        }
-
-        private void RecreateDirectory(string path)
-        {
-            if (Directory.Exists(path) && Directory.EnumerateFileSystemEntries(path, "*", SearchOption.TopDirectoryOnly).Any())
-            {
-                IOUtil.DeleteDirectory(path, _cancellationToken);
-            }
-
-            if (!Directory.Exists(path))
-            {
-                Directory.CreateDirectory(path);
-            }
         }
 
         private async Task<Dictionary<string, Uri>> GetOldMappings(string rootPath)
@@ -367,6 +362,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             }
             catch (ProcessExitCodeException)
             {
+                Trace.Verbose($@"The folder '{localPath}.svn' seems not to be a subversion system directory.");
                 return null;
             }
         }
