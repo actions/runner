@@ -23,6 +23,8 @@
     <string>{{UserHome}}/Library/Logs/{{SvcName}}/stdout.log</string>
     <key>EnvironmentVariables</key>
     <dict>
+      <key>PATH</key>
+      <string>{{PathVar}}</string>    
       <key>VSTS_AGENT_SVC</key>
       <string>1</string>
     </dict>
