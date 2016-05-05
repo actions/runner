@@ -50,15 +50,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
         private void ProcessPublishCodeCoverageCommand(IExecutionContext context, Dictionary<string, string> eventProperties)
         {
             ArgUtil.NotNull(context, nameof(context));
-            LoadPublishCodeCoverageInputs(eventProperties);
 
             _buildId = context.Variables.Build_BuildId ?? -1;
-            if (_buildId < 0)
+            if (!IsHostTypeBuild(context) || _buildId < 0)
             {
                 //In case the publishing codecoverage is not applicable for current Host type we continue without publishing
                 context.Warning(StringUtil.Loc("CodeCoveragePublishIsValidOnlyForBuild"));
                 return;
             }
+            
+            LoadPublishCodeCoverageInputs(eventProperties);
 
             string project = context.Variables.System_TeamProject;
 
@@ -186,6 +187,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
                 throw new ArgumentException(StringUtil.Loc("UnknownCodeCoverageTool", codeCoverageTool));
             }
             return summaryReader;
+        }
+
+        private bool IsHostTypeBuild(IExecutionContext context)
+        {
+            var hostType = context.Variables.System_HostType;
+
+            if (hostType != null && String.Equals(hostType.ToString(), "build", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+            return false;
         }
 
         private void LoadPublishCodeCoverageInputs(Dictionary<string, string> eventProperties)
