@@ -242,7 +242,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 // Validate the arg.
                 if (!string.IsNullOrEmpty(arg) && arg.IndexOfAny(new char[] { '"', '\r', '\n' }) >= 0)
                 {
-                    throw new Exception(StringUtil.Loc("InvalidTeeTFArg", arg));
+                    throw new Exception(StringUtil.Loc("InvalidCommandArg", arg));
                 }
 
                 // Add the arg.

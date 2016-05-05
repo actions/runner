@@ -38,7 +38,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
             // Setup the job server and job server queue.
             var jobServer = HostContext.GetService<IJobServer>();
-            await jobServer.ConnectAsync(ApiUtil.GetVssConnection(message));
+            var jobServerCredential = ApiUtil.GetVssCredential(message.Environment.SystemConnection);
+            var jobConnection = ApiUtil.CreateConnection(ReplaceWithConfigUriBase(message.Environment.SystemConnection.Url), jobServerCredential);
+            await jobServer.ConnectAsync(jobConnection);
 
             var jobServerQueue = HostContext.GetService<IJobServerQueue>();
             jobServerQueue.Start(message);
@@ -67,16 +69,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 // prefer task definitions url, then TFS url
                 var taskServer = HostContext.GetService<ITaskServer>();
                 string taskUrl = jobContext.Variables.System_TaskDefinitionsUri;
+                Uri taskServerUri;
                 if (string.IsNullOrEmpty(taskUrl))
                 {
-                    Trace.Info("Creating task server with tfs server url");
-                    await taskServer.ConnectAsync(ApiUtil.GetVssConnection(message));
+                    taskServerUri = ReplaceWithConfigUriBase(message.Environment.SystemConnection.Url);
+                    Trace.Info($"Creating task server with tfs server url {taskServerUri.ToString()}");
                 }
                 else
                 {
-                    Trace.Info($"Creating task server with {taskUrl}");
-                    await taskServer.ConnectAsync(ApiUtil.CreateConnection(new Uri(taskUrl), ApiUtil.GetVssCredential(message.Environment.SystemConnection)));
+                    taskServerUri = ReplaceWithConfigUriBase(new Uri(taskUrl));
+                    Trace.Info($"Creating task server with {taskServerUri.ToString()}");
                 }
+
+                var taskServerCredential = ApiUtil.GetVssCredential(message.Environment.SystemConnection);
+                await taskServer.ConnectAsync(ApiUtil.CreateConnection(taskServerUri, taskServerCredential));
 
                 // Expand the endpoint data values.
                 foreach (ServiceEndpoint endpoint in jobContext.Endpoints)
@@ -158,7 +164,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 {
                     await stepsRunner.RunAsync(jobContext, steps);
                 }
-                catch (OperationCanceledException ex) 
+                catch (OperationCanceledException ex)
                 {
                     // set the job to canceled
                     Trace.Error($"Caught exception: {ex}");
@@ -195,6 +201,38 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     }
                 }
             }
+        }
+
+        // the hostname (how the agent knows the server) is external to our server
+        // in other words, an agent may have it's own way (DNS, hostname) of refering
+        // to the server.  it owns that.  That's the hostname we will use
+        private Uri ReplaceWithConfigUriBase(Uri messageUri)
+        {
+            AgentSettings settings = HostContext.GetService<IConfigurationStore>().GetSettings();
+            try
+            {
+                var configUri = new Uri(settings.ServerUrl);
+                Uri result = null;
+                var configBaseUri = new Uri(configUri.GetComponents(UriComponents.SchemeAndServer, UriFormat.Unescaped));
+                if (Uri.TryCreate(configBaseUri, messageUri.PathAndQuery, out result))
+                {
+                    //replace the schema and host portion of messageUri with the host from the
+                    //server URI (which was set at config time)
+                    return result;
+                }
+            }
+            catch (InvalidOperationException ex)
+            {
+                //cannot parse the Uri - not a fatal error
+                Trace.Error(ex);
+            }
+            catch (UriFormatException ex)
+            {
+                //cannot parse the Uri - not a fatal error
+                Trace.Error(ex);
+            }
+
+            return messageUri;
         }
     }
 }

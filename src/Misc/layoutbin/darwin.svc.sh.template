@@ -36,7 +36,7 @@ function install()
     mkdir -p "${log_path}"
     chown "${USER}" "${log_path}"
 
-    sed "s/{{User}}/$USER/g; s/{{SvcName}}/$SVC_NAME/g; s@{{AgentRoot}}@${AGENT_ROOT}@g; s@{{UserHome}}@$HOME@g;" "${TEMPLATE_PATH}" > "${TEMP_PATH}" || failed "failed to create replacement temp file"
+    sed "s/{{PathVar}}/$(echo $PATH | sed -e 's/[\/&]/\\&/g')/g; s/{{User}}/$USER/g; s/{{SvcName}}/$SVC_NAME/g; s@{{AgentRoot}}@${AGENT_ROOT}@g; s@{{UserHome}}@$HOME@g;" "${TEMPLATE_PATH}" > "${TEMP_PATH}" || failed "failed to create replacement temp file"
     cp "${TEMP_PATH}" "${PLIST_PATH}" || "failed to copy plist"
 }
 

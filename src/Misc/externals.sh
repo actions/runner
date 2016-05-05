@@ -1,5 +1,28 @@
 NODE_VERSION="5.10.1"
-TEE_VERSION="14.0.2-private"
+
+EXTERNALTOOLSNAME=(
+    vstshost 
+    nuget #3.3.0.212
+    azcopy #3.1.0.93
+    pdbstr #6.4.9841.3
+    symstore #6.4.9841.3
+    tee #TEE-CLC-14.0.3
+    )
+    
+EXTERNALTOOLSLOCATION=(
+    /vstshost/1/vstshost.zip 
+    /nuget/1/nuget.zip 
+    /azcopy/1/azcopy.zip 
+    /pdbstr/1/pdbstr.zip 
+    /symstore/1/symstore.zip 
+    /tee/1/tee.zip
+    )
+    
+EXTERNALTOOLS_WINDOWS=(vstshost nuget azcopy pdbstr symstore)
+EXTERNALTOOLS_LINUX=(tee)
+EXTERNALTOOLS_DARWIN=(tee)
+
+CONTAINER_URL=https://vstsagenttools.blob.core.windows.net/tools
 
 get_abs_path() {
   # exploits the fact that pwd will print abs path when no args
@@ -88,50 +111,62 @@ function acquireNode ()
     echo Done
 }
 
-function acquireTee ()
+function getExternalToolsDownloadUrl()
 {
-    echo "Downloading TEE ${TEE_VERSION}..."
-    target_dir="${LAYOUT_DIR}/externals/tee"
-    if [ -d $target_dir ]; then
-        rm -Rf $target_dir
-    fi
-    mkdir -p $target_dir
-
-    mkdir -p "${DOWNLOAD_DIR}"
-    pushd "${DOWNLOAD_DIR}" > /dev/null
-
-    if [[ "$PLATFORM" != "windows" ]]; then
-        # OSX/Linux
-
-        tee_file="TEE-CLC-${TEE_VERSION}"
-        tee_zip="${tee_file}.zip"
-
-        if [ -f ${tee_zip} ]; then
-            echo "Download exists"
-        else
-            tee_url="http://aka.ms/${tee_zip}"
-            echo "Downloading TEE ${TEE_VERSION} @ ${tee_url}"
-            curl -kSLO $tee_url &> "./tee_download.log"
-            checkRC "Download (curl)"
+    local toolName=$1
+    for index in "${!EXTERNALTOOLSNAME[@]}"; do
+        if [[ "${EXTERNALTOOLSNAME[$index]}" = "${tool}" ]]; then
+            echo "$CONTAINER_URL${EXTERNALTOOLSLOCATION[${index}]}";
         fi
+    done
+}
 
-        if [ -d ${tee_file} ]; then
-            echo "Already extracted"
-        else
-            echo "Extracting"
-            unzip ./${tee_zip} &> "tee_unzip.log"
-            checkRC "Unzip (TEE)"
+function acquireExternalTools ()
+{
+    local tools=$1
+    local toolsinfo=$tools[@]
+    for tool in "${!toolsinfo}"
+    do
+        local download_url=$(getExternalToolsDownloadUrl $tool)
+        echo "Downloading ${tool} from ${download_url}"
+        
+        local target_dir="${LAYOUT_DIR}/externals/${tool}"
+        if [ -d $target_dir ]; then
+            rm -Rf $target_dir
         fi
+        mkdir -p $target_dir
 
-        # copy to layout
-        echo "Copying to layout"
-        cp -Rf ${tee_file}/* ${target_dir}
-    fi
+        mkdir -p "${DOWNLOAD_DIR}"
+        pushd "${DOWNLOAD_DIR}" > /dev/null
+        
+        tool_download_dir="${DOWNLOAD_DIR}/${tool}"
+        if [ -d $tool_download_dir ]; then
+            rm -Rf $tool_download_dir
+        fi
+        
+        mkdir -p $tool_download_dir        
+        pushd "${tool_download_dir}" > /dev/null
 
-    popd > /dev/null
+        curl -kSLO $download_url &> "./${tool}_download.log"
+        checkRC "Download (curl)"
+
+        echo "Extracting to layout"
+        unzip ${tool}.zip -d ${target_dir}
+
+        popd > /dev/null        
+    done
 
     echo Done
 }
 
 acquireNode
-acquireTee
+
+if [[ "$PLATFORM" == "windows" ]]; then
+    acquireExternalTools EXTERNALTOOLS_WINDOWS
+elif [[ "$PLATFORM" == "linux" ]]; then
+    acquireExternalTools EXTERNALTOOLS_LINUX
+elif [[ "$PLATFORM" == "darwin" ]]; then
+    acquireExternalTools EXTERNALTOOLS_DARWIN
+else
+    echo "Unknown platform $PLATFORM"
+fi

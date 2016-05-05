@@ -73,8 +73,6 @@ var gracefulShutdown = function(code) {
 
         // TODO wait for 30 seconds and send a SIGKILL
     }
-
-    process.exit(code);
 }
 
 process.on('SIGINT', () => {

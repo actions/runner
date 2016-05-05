@@ -50,19 +50,22 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
                 ExecutionContext.Variables.System_Debug == true ? "Continue" : "SilentlyContinue",
                 scriptFile.Replace("'", "''"));
 
+            // Resolve powershell.exe.
+            string powerShellExe = HostContext.GetService<IPowerShellExeUtil>().GetPath();
+            ArgUtil.NotNullOrEmpty(powerShellExe, nameof(powerShellExe));
+
             // Invoke the process.
             using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
             {
                 processInvoker.OutputDataReceived += OnDataReceived;
                 processInvoker.ErrorDataReceived += OnDataReceived;
 
-                // TODO: Resolve path to powershell.exe in a different way and verify minimum 3.0.
                 // Execute the process. Exit code 0 should always be returned.
                 // A non-zero exit code indicates infrastructural failure.
                 // Task failure should be communicated over STDOUT using ## commands.
                 await processInvoker.ExecuteAsync(
                     workingDirectory: scriptDirectory,
-                    fileName: "powershell.exe",
+                    fileName: powerShellExe,
                     arguments: powerShellExeArgs,
                     environment: Environment,
                     requireExitCodeZero: true,
