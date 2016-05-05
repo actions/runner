@@ -1,15 +1,14 @@
-﻿using System;
+﻿using Microsoft.TeamFoundation.TestManagement.WebApi;
+using Microsoft.VisualStudio.Services.Agent.Util;
+using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Xml;
-using Microsoft.TeamFoundation.TestManagement.WebApi;
-using Microsoft.VisualStudio.Services.Agent.Util;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
 {
-    internal class CoberturaSummaryReader : AgentService, ICodeCoverageSummaryReader
+    public class CoberturaSummaryReader : AgentService, ICodeCoverageSummaryReader
     {
         public Type ExtensionType => typeof(ICodeCoverageSummaryReader);
         public string Name => "Cobertura";

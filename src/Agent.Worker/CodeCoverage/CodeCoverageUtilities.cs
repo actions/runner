@@ -6,7 +6,7 @@ using System.Xml;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
 {
-    internal static class CodeCoverageUtilities
+    public static class CodeCoverageUtilities
     {
         public const string RawFilesDirectory = "Code Coverage Files";
         public const string ReportDirectory = "Code Coverage Report";
@@ -16,30 +16,33 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
         public static void CopyFilesFromFileListWithDirStructure(List<string> files, ref string destinatonFilePath)
         {
             string commonPath = null;
-            files.RemoveAll(q => q == null);
-
-            if (files.Count > 1)
+            if (files != null)
             {
-                files.Sort();
-                commonPath = SharedSubstring(files[0], files[files.Count - 1]);
-            }
+                files.RemoveAll(q => q == null);
 
-            foreach (var file in files)
-            {
-                string newFile = null;
-
-                if (!string.IsNullOrEmpty(commonPath))
+                if (files.Count > 1)
                 {
-                    newFile = file.Replace(commonPath, "");
-                }
-                else
-                {
-                    newFile = Path.GetFileName(file);
+                    files.Sort();
+                    commonPath = SharedSubstring(files[0], files[files.Count - 1]);
                 }
 
-                newFile = Path.Combine(destinatonFilePath, newFile);
-                Directory.CreateDirectory(Path.GetDirectoryName(newFile));
-                File.Copy(file, newFile, true);
+                foreach (var file in files)
+                {
+                    string newFile = null;
+
+                    if (!string.IsNullOrEmpty(commonPath))
+                    {
+                        newFile = file.Replace(commonPath, "");
+                    }
+                    else
+                    {
+                        newFile = Path.GetFileName(file);
+                    }
+
+                    newFile = Path.Combine(destinatonFilePath, newFile);
+                    Directory.CreateDirectory(Path.GetDirectoryName(newFile));
+                    File.Copy(file, newFile, true);
+                }
             }
         }
 
@@ -59,7 +62,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
             if (string.IsNullOrWhiteSpace(xmlContents))
             {
                 return null;
-            }           
+            }
 
             XmlDocument doc = new XmlDocument();
             try

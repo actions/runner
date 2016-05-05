@@ -1,6 +1,7 @@
 ﻿using Microsoft.TeamFoundation.Build.WebApi;
 using Microsoft.TeamFoundation.TestManagement.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Util;
+using Microsoft.VisualStudio.Services.Agent.Worker.Build;
 using Microsoft.VisualStudio.Services.Client;
 using System;
 using System.Collections.Generic;
@@ -23,10 +24,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
         /// <summary>
         /// publish codecoverage files to server
         /// </summary>
-        Task PublishCodeCoverageFilesAsync(IAsyncCommandContext context, Guid projectId, long containerId, IEnumerable<Tuple<string, string>> files, bool browsable, CancellationToken cancellationToken);
+        Task PublishCodeCoverageFilesAsync(IAsyncCommandContext context, Guid projectId, long containerId, List<Tuple<string, string>> files, bool browsable, CancellationToken cancellationToken);
     }
 
-    internal class CodeCoveragePublisher : AgentService, ICodeCoveragePublisher
+    public class CodeCoveragePublisher : AgentService, ICodeCoveragePublisher
     {
         private ICodeCoverageServer _codeCoverageServer;
         private int _buildId;
@@ -45,12 +46,27 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
             await _codeCoverageServer.PublishCoverageSummaryAsync(_connection, project, _buildId, coverageData, cancellationToken);
         }
 
-        public async Task PublishCodeCoverageFilesAsync(IAsyncCommandContext context, Guid projectId, long containerId, IEnumerable<Tuple<string, string>> files, bool browsable, CancellationToken cancellationToken)
+        public async Task PublishCodeCoverageFilesAsync(IAsyncCommandContext context, Guid projectId, long containerId, List<Tuple<string, string>> files, bool browsable, CancellationToken cancellationToken)
         {
-            var publishCCTasks = files.Select(file =>
+            var publishCCTasks = files.Select(async file =>
             {
-                return _codeCoverageServer.CreateArtifactAsync(context, _connection, projectId, _buildId, containerId, file.Item2, file.Item1, browsable, cancellationToken);
+                var browsableProperty = (browsable) ? bool.TrueString : bool.FalseString;
+                var artifactProperties = new Dictionary<string, string> {
+                    { ArtifactUploadEventProperties.ContainerFolder, file.Item2},
+                    { ArtifactUploadEventProperties.ArtifactName, file.Item2 },
+                    { ArtifactAssociateEventProperties.ArtifactType, WellKnownArtifactResourceTypes.Container },
+                    { ArtifactAssociateEventProperties.Browsable, browsableProperty },
+                };
+
+                FileContainerServer fileContainerHelper = new FileContainerServer(_connection.Uri, _connection.Credentials, projectId, containerId, file.Item2);
+                await fileContainerHelper.CopyToContainerAsync(context, file.Item1, cancellationToken);
+                string fileContainerFullPath = StringUtil.Format($"#/{containerId}/{file.Item2}");
+
+                Build.BuildServer buildHelper = new Build.BuildServer(_connection.Uri, _connection.Credentials, projectId);
+                var artifact = await buildHelper.AssociateArtifact(_buildId, file.Item2, WellKnownArtifactResourceTypes.Container, fileContainerFullPath, artifactProperties, cancellationToken);
+                context.Output(StringUtil.Loc("PublishedCodeCoverageArtifact", file.Item1, file.Item2));
             });
+
             await Task.WhenAll(publishCCTasks);
         }
     }
