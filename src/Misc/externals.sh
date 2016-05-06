@@ -1,7 +1,7 @@
 NODE_VERSION="5.10.1"
 
 EXTERNALTOOLSNAME=(
-    vstshost 
+    vstshost #VSO.Package.RealSign_20160504.3
     nuget #3.3.0.212
     azcopy #3.1.0.93
     pdbstr #6.4.9841.3
@@ -10,12 +10,12 @@ EXTERNALTOOLSNAME=(
     )
     
 EXTERNALTOOLSLOCATION=(
-    /vstshost/1/vstshost.zip 
-    /nuget/1/nuget.zip 
-    /azcopy/1/azcopy.zip 
-    /pdbstr/1/pdbstr.zip 
-    /symstore/1/symstore.zip 
-    /tee/1/tee.zip
+    vstshost/1
+    nuget/1
+    azcopy/1
+    pdbstr/1
+    symstore/1
+    tee/1
     )
     
 EXTERNALTOOLS_WINDOWS=(vstshost nuget azcopy pdbstr symstore)
@@ -111,12 +111,12 @@ function acquireNode ()
     echo Done
 }
 
-function getExternalToolsDownloadUrl()
+function getExternalToolsRelativeDownloadUrl()
 {
     local toolName=$1
     for index in "${!EXTERNALTOOLSNAME[@]}"; do
         if [[ "${EXTERNALTOOLSNAME[$index]}" = "${tool}" ]]; then
-            echo "$CONTAINER_URL${EXTERNALTOOLSLOCATION[${index}]}";
+            echo "${EXTERNALTOOLSLOCATION[${index}]}";
         fi
     done
 }
@@ -127,29 +127,29 @@ function acquireExternalTools ()
     local toolsinfo=$tools[@]
     for tool in "${!toolsinfo}"
     do
-        local download_url=$(getExternalToolsDownloadUrl $tool)
-        echo "Downloading ${tool} from ${download_url}"
-        
+        local relative_url=$(getExternalToolsRelativeDownloadUrl $tool)
+        local download_url="${CONTAINER_URL}/${relative_url}/${tool}.zip"
+
         local target_dir="${LAYOUT_DIR}/externals/${tool}"
         if [ -d $target_dir ]; then
             rm -Rf $target_dir
         fi
         mkdir -p $target_dir
-
+        
         mkdir -p "${DOWNLOAD_DIR}"
-        pushd "${DOWNLOAD_DIR}" > /dev/null
         
-        tool_download_dir="${DOWNLOAD_DIR}/${tool}"
-        if [ -d $tool_download_dir ]; then
-            rm -Rf $tool_download_dir
-        fi
-        
+        tool_download_dir="${DOWNLOAD_DIR}/${relative_url}"
         mkdir -p $tool_download_dir        
         pushd "${tool_download_dir}" > /dev/null
 
-        curl -kSLO $download_url &> "./${tool}_download.log"
-        checkRC "Download (curl)"
-
+        if [ -f $tool.zip ]; then
+            echo "Download exists"
+        else
+            echo "Downloading ${tool} from ${download_url}"
+            curl -kSLO $download_url &> "./${tool}_download.log"
+            checkRC "Download (curl)"
+        fi
+        
         echo "Extracting to layout"
         unzip ${tool}.zip -d ${target_dir} > /dev/null
 
