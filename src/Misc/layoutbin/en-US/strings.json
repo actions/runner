@@ -221,6 +221,8 @@
   "ServiceAlreadyExists": "The service already exists: {0}",
   "ServiceConfigured": "Service {0} successfully configured",
   "ServiceStartedSuccessfully": "Service {0} started successfully",
+  "SessionCreateFailed": "Failed to create session.",
+  "SessionExist": "A session for this agent already exists.",
   "SupportedRepositoryEndpointNotFound": "Unable to match any source repository endpoints with any of the supported source providers.",
   "SupportedTaskHandlerNotFound": "Supported task execution handler not found.",
   "SvnBranchCheckedOut": "Checked out branch {0} for repository {1} at revision {2}",

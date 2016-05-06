@@ -109,13 +109,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     if (ex is TaskAgentSessionConflictException)
                     {
                         Trace.Error("The session for this agent already exists.");
+                        _term.WriteError(StringUtil.Loc("SessionExist"));
                     }
 
                     Trace.Error(ex);
                     if (IsFatalException(ex))
                     {
+                        _term.WriteError(StringUtil.Loc("SessionCreateFailed"));
                         return false;
                     }
+
                     errorMessage = ex.Message;
                 }
 
