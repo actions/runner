@@ -41,3 +41,26 @@ sudo dpkg -i ~/dotnetpackages/dotnet-sdk-ubuntu-x64.1.0.0-rc2-002416.deb
 ```
 
 > <sub><sup>TIP: Uninstall any existing version first by listing existing packages containing "dotnet" in the name with "dpkg --get-selections | grep dotnet" and then uninstall one by one with "sudo apt-get purge dotnet_package_name".</sup></sub>
+
+## ![Redhat](../redhat.png) Red Hat Enterprise Linux 7.2
+
+On Red Hat we download .Net Core in a folder ~/dotnet. Please add this folder to your PATH by editing your ~/.bash_profile (this is where PATH is usually defined).  
+
+```bash
+mkdir ~/dotnet  
+
+cd ~/dotnet  
+
+wget https://dotnetcli.blob.core.windows.net/dotnet/beta/Binaries/1.0.0-rc2-002416/dotnet-dev-rhel-x64.1.0.0-rc2-002416.tar.gz  
+
+tar zxfv dotnet-dev-rhel-x64.1.0.0-rc2-002416.tar.gz
+
+sudo yum -y install libunwind.x86_64 icu git curl zip unzip
+
+?
+
+sudo rpm -Uvh http://www.city-fan.org/ftp/contrib/yum-repo/rhel6/x86_64/city-fan.org-release-1-13.rhel6.noarch.rpm
+
+sudo yum -y install libcurl
+```
+
