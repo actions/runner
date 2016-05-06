@@ -27,7 +27,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
         Task PublishCodeCoverageFilesAsync(IAsyncCommandContext context, Guid projectId, long containerId, List<Tuple<string, string>> files, bool browsable, CancellationToken cancellationToken);
     }
 
-    public class CodeCoveragePublisher : AgentService, ICodeCoveragePublisher
+    public sealed class CodeCoveragePublisher : AgentService, ICodeCoveragePublisher
     {
         private ICodeCoverageServer _codeCoverageServer;
         private int _buildId;

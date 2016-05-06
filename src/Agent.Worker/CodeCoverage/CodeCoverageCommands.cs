@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
 {
-    public class CodeCoverageCommands : AgentService, ICommandExtension
+    public sealed class CodeCoverageCommands : AgentService, ICommandExtension
     {
         private int _buildId;
         // publish code coverage inputs

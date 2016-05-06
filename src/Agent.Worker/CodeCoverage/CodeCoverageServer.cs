@@ -16,7 +16,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
         Task PublishCoverageSummaryAsync(VssConnection connection, string project, int buildId, IEnumerable<CodeCoverageStatistics> coverageData, CancellationToken cancellationToken);
     }
 
-    internal class CodeCoverageServer : AgentService, ICodeCoverageServer
+    internal sealed class CodeCoverageServer : AgentService, ICodeCoverageServer
     {
         public async Task PublishCoverageSummaryAsync(VssConnection connection, string project, int buildId, IEnumerable<CodeCoverageStatistics> coverageData, CancellationToken cancellationToken)
         {

@@ -8,7 +8,7 @@ using System.Xml;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
 {
-    public class JaCoCoSummaryReader : AgentService, ICodeCoverageSummaryReader
+    public sealed class JaCoCoSummaryReader : AgentService, ICodeCoverageSummaryReader
     {
         public Type ExtensionType => typeof(ICodeCoverageSummaryReader);
         public string Name => "JaCoCo";

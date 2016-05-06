@@ -8,7 +8,7 @@ using System.Xml;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
 {
-    public class CoberturaSummaryReader : AgentService, ICodeCoverageSummaryReader
+    public sealed class CoberturaSummaryReader : AgentService, ICodeCoverageSummaryReader
     {
         public Type ExtensionType => typeof(ICodeCoverageSummaryReader);
         public string Name => "Cobertura";
