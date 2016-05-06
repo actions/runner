@@ -68,7 +68,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
             // No artifacts found in the build => Fail it. 
             if (buildArtifacts == null || !buildArtifacts.Any())
             {
-                throw new ArtifactDownloadException(StringUtil.Loc("RMNoBuildArtifactsFound"));
+                throw new ArtifactDownloadException(StringUtil.Loc("RMNoBuildArtifactsFound", buildId));
             }
 
             // DownloadFromStream each of the artifact sequentially. 
