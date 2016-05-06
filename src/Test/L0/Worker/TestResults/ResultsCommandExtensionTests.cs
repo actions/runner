@@ -15,7 +15,7 @@ using Xunit;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 {
-    public class ResultsCommandTests
+    public sealed class ResultsCommandTests
     {
         private Mock<IExecutionContext> _ec;
         private List<string> _warnings = new List<string>();
@@ -33,7 +33,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
         public void Publish_NullTestRunner()
         {
             SetupMocks();
-            var resultCommand = new ResultsCommands();
+            var resultCommand = new ResultsCommandExtension();
             var command = new Command("results", "publish");
             command.Properties.Add("resultFiles", "ResultFile.txt");
             resultCommand.ProcessCommand(_ec.Object, command);
@@ -48,7 +48,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
         public void Publish_InvalidTestRunner()
         {
             SetupMocks();
-            var resultCommand = new ResultsCommands();
+            var resultCommand = new ResultsCommandExtension();
             var command = new Command("results", "publish");
             command.Properties.Add("resultFiles", "ResultFile.txt");
             command.Properties.Add("type", "MyTestRunner");
@@ -65,7 +65,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
         public void Publish_NullTestResultFiles()
         {
             SetupMocks();
-            var resultCommand = new ResultsCommands();
+            var resultCommand = new ResultsCommandExtension();
             var command = new Command("results", "publish");
             resultCommand.ProcessCommand(_ec.Object, command);
 
@@ -80,7 +80,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
         public void Publish_NoTestResultFile()
         {
             SetupMocks();
-            var resultCommand = new ResultsCommands();
+            var resultCommand = new ResultsCommandExtension();
             var command = new Command("results", "publish");
             command.Properties.Add("resultFiles", "NoFiles.txt");
             command.Properties.Add("type", "JUnit");
@@ -101,7 +101,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
             string jUnitFilePath = "JUnitSampleResults.txt";
             File.WriteAllText(jUnitFilePath, "badformat", Encoding.UTF8);
 
-            var resultCommand = new ResultsCommands();
+            var resultCommand = new ResultsCommandExtension();
             var command = new Command("results", "publish");
             command.Properties.Add("resultFiles", jUnitFilePath);
             command.Properties.Add("type", "JUnit");
@@ -129,7 +129,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
             string jUnitFilePath = "NUnitSampleResults.txt";
             File.WriteAllText(jUnitFilePath, "badformat", Encoding.UTF8);
 
-            var resultCommand = new ResultsCommands();
+            var resultCommand = new ResultsCommandExtension();
             var command = new Command("results", "publish");
             command.Properties.Add("resultFiles", jUnitFilePath);
             command.Properties.Add("type", "NUnit");
@@ -153,7 +153,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
         public void VerifyResultsAreMergedWhenPublishingToSingleTestRun()
         {
             SetupMocks();
-            var resultCommand = new ResultsCommands();
+            var resultCommand = new ResultsCommandExtension();
             var command = new Command("results", "publish");
             command.Properties.Add("resultFiles", "file1.trx,file2.trx");
             command.Properties.Add("type", "NUnit");
@@ -188,7 +188,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
         public void VerifyStartEndTestRunTimeWhenPublishingToSingleTestRun()
         {
             SetupMocks();
-            var resultCommand = new ResultsCommands();
+            var resultCommand = new ResultsCommandExtension();
             var command = new Command("results", "publish");
             command.Properties.Add("resultFiles", "file1.trx,file2.trx");
             command.Properties.Add("type", "NUnit");

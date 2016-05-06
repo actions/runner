@@ -225,7 +225,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
                 } // if (_modifyEnvironment)
 
                 // The line is output from the process that was invoked.
-                if (!CommandHandler.TryProcessCommand(ExecutionContext, line))
+                if (!CommandManager.TryProcessCommand(ExecutionContext, line))
                 {
                     ExecutionContext.Output(line);
                 }

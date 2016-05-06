@@ -1,4 +1,5 @@
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
+using Microsoft.VisualStudio.Services.Agent.Listener.Capabilities;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using Microsoft.VisualStudio.Services.Client;
 using Microsoft.VisualStudio.Services.Common;
@@ -158,12 +159,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 _term.WriteError(StringUtil.Loc("FailedToFindPool"));
             }
 
-            var capProvider = HostContext.GetService<ICapabilitiesProvider>();
             TaskAgent agent;
             while (true)
             {
                 agentName = command.GetAgent();
-                Dictionary<string, string> capabilities = await capProvider.GetCapabilitiesAsync(agentName, CancellationToken.None);
+
+                // Get the system capabilities.
+                // TODO: Hook up to ctrl+c cancellation token.
+                // TODO: LOC
+                _term.WriteLine("Scanning for tool capabilities.");
+                Dictionary<string, string> systemCapabilities = await HostContext.GetService<ICapabilitiesManager>().GetCapabilitiesAsync(
+                    new AgentSettings { AgentName = agentName }, CancellationToken.None);
+
+                // TODO: LOC
+                _term.WriteLine("Connecting to the server.");
                 agent = await GetAgent(agentName, poolId);
                 if (agent != null)
                 {
@@ -172,9 +181,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                         // update - update instead of delete so we don't lose user capabilities etc...
                         agent.Version = Constants.Agent.Version;
 
-                        foreach (var capability in capabilities)
+                        foreach (KeyValuePair<string, string> capability in systemCapabilities)
                         {
-                            agent.SystemCapabilities.Add(capability.Key, capability.Value);
+                            agent.SystemCapabilities[capability.Key] = capability.Value ?? string.Empty;
                         }
 
                         try
@@ -202,9 +211,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                         Version = Constants.Agent.Version
                     };
 
-                    foreach (var capability in capabilities)
+                    foreach (KeyValuePair<string, string> capability in systemCapabilities)
                     {
-                        agent.SystemCapabilities[capability.Key] = capability.Value;
+                        agent.SystemCapabilities[capability.Key] = capability.Value ?? string.Empty;
                     }
 
                     try

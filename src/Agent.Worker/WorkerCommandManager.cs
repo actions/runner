@@ -7,15 +7,15 @@ using System.Threading.Tasks;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
-    [ServiceLocator(Default = typeof(CommandHandler))]
-    public interface ICommandHandler : IAgentService
+    [ServiceLocator(Default = typeof(WorkerCommandManager))]
+    public interface IWorkerCommandManager : IAgentService
     {
         bool TryProcessCommand(IExecutionContext context, string input);
     }
 
-    public class CommandHandler : AgentService, ICommandHandler
+    public sealed class WorkerCommandManager : AgentService, IWorkerCommandManager
     {
-        private readonly Dictionary<String, ICommandExtension> _commandHandlers = new Dictionary<String, ICommandExtension>(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, IWorkerCommandExtension> _commandExtensions = new Dictionary<string, IWorkerCommandExtension>(StringComparer.OrdinalIgnoreCase);
         private readonly object _commandSerializeLock = new object();
 
         public override void Initialize(IHostContext hostContext)
@@ -24,10 +24,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
             // Register all command extensions
             var extensionManager = hostContext.GetService<IExtensionManager>();
-            foreach (var commandExt in extensionManager.GetExtensions<ICommandExtension>() ?? new List<ICommandExtension>())
+            foreach (var commandExt in extensionManager.GetExtensions<IWorkerCommandExtension>() ?? new List<IWorkerCommandExtension>())
             {
                 Trace.Info($"Register command extension for area {commandExt.CommandArea}");
-                _commandHandlers[commandExt.CommandArea] = commandExt;
+                _commandExtensions[commandExt.CommandArea] = commandExt;
             }
         }
 
@@ -51,16 +51,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 return false;
             }
 
-            Trace.Info($"Process logging commnad ##vso[{command.Area}.{command.Event}]");
-            ICommandExtension handler;
-            if (_commandHandlers.TryGetValue(command.Area, out handler))
+            Trace.Info($"Process logging command ##vso[{command.Area}.{command.Event}]");
+            IWorkerCommandExtension extension;
+            if (_commandExtensions.TryGetValue(command.Area, out extension))
             {
                 // process logging command in serialize oreder.
-                lock(_commandSerializeLock)
+                lock (_commandSerializeLock)
                 {
                     try
                     {
-                        handler.ProcessCommand(context, command);
+                        extension.ProcessCommand(context, command);
                         context.Debug($"Processed logging command: {input}");
                     }
                     catch (Exception ex)
@@ -78,5 +78,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
             return true;
         }
+    }
+
+    public interface IWorkerCommandExtension : IExtension
+    {
+        string CommandArea { get; }
+
+        void ProcessCommand(IExecutionContext context, Command command);
     }
 }

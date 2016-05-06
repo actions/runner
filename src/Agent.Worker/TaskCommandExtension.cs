@@ -9,26 +9,14 @@ using System.Text;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
-    public class TaskCommands : AgentService, ICommandExtension
+    public sealed class TaskCommandExtension : AgentService, IWorkerCommandExtension
     {
         // Since we process all logging command in serialized order, everthing should be thread safe.
         private readonly Dictionary<Guid, TimelineRecord> _timelineRecordsTracker = new Dictionary<Guid, TimelineRecord>();
 
-        public Type ExtensionType
-        {
-            get
-            {
-                return typeof(ICommandExtension);
-            }
-        }
+        public Type ExtensionType => typeof(IWorkerCommandExtension);
 
-        public String CommandArea
-        {
-            get
-            {
-                return "task";
-            }
-        }
+        public string CommandArea => "task";
 
         public void ProcessCommand(IExecutionContext context, Command command)
         {

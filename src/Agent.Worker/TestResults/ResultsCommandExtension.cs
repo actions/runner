@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
 {
-    public class ResultsCommands : AgentService, ICommandExtension
+    public sealed class ResultsCommandExtension : AgentService, IWorkerCommandExtension
     {
         private IExecutionContext _executionContext;
         //publish test results inputs
@@ -18,6 +18,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
         private string _configuration;
         private string _runTitle;
         private bool _publishRunLevelAttachments;
+
+        public Type ExtensionType => typeof(IWorkerCommandExtension);
+
+        public string CommandArea => "results";
 
         public void ProcessCommand(IExecutionContext context, Command command)
         {
@@ -44,22 +48,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
             else
             {
                 throw new Exception(StringUtil.Loc("ResultsCommandNotFound", command.Event));
-            }
-        }
-
-        public Type ExtensionType
-        {
-            get
-            {
-                return typeof(ICommandExtension);
-            }
-        }
-
-        public string CommandArea
-        {
-            get
-            {
-                return "results";
             }
         }
 
