@@ -7,7 +7,7 @@
         /// </summary>
         /// <param name="filePath">File path</param>
         /// <returns>TestCaseResultData Array</returns>
-        TestRunData ReadResults(IExecutionContext executionContext, string filePath, TestRunContext runContext = null);
+        TestRunData ReadResults(IExecutionContext executionContext, string filePath, TestRunContext runContext);
 
         /// <summary>
         /// Should the run level attachments be uploaded
