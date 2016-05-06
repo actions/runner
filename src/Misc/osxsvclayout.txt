@@ -1,0 +1,44 @@
+Agent:
+-rwxr--r--    1 bryanmac  staff   309 May  6 08:14 .Agent
+-rwxr--r--    1 bryanmac  staff   106 May  6 08:14 .Credentials
+-rwxr-xr-x    1 bryanmac  staff  2052 May  6 08:14 svc.sh
+
+-=B=- ~/Testing/2100$ ls -la ~/Library/LaunchAgents/vsts.agent.btest.2100.plist 
+-rw-r--r--  1 bryanmac  staff  1265 May  6 08:14 /Users/bryanmac/Library/LaunchAgents/vsts.agent.btest.2100.plist
+
+-=B=- ~/Testing/2100$ ls -la ~/Library/Logs/vsts.agent.btest.2100/
+-rw-r--r--   1 bryanmac  staff   205 May  6 08:15 stdout.log
+
+-=B=- ~/Testing/2100$ cat ~/Library/LaunchAgents/vsts.agent.btest.2100.plist 
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>Label</key>
+    <string>vsts.agent.btest.2100</string>
+    <key>ProgramArguments</key>
+    <array>
+      <string>/Users/bryanmac/Testing/2100/externals/node/bin/node</string>
+      <string>/Users/bryanmac/Testing/2100/bin/AgentService.js</string>
+    </array>
+    <key>UserName</key>
+    <string>bryanmac</string>
+    <key>WorkingDirectory</key>
+    <string>/Users/bryanmac/Testing/2100</string>
+    <key>RunAtLoad</key>
+    <true/>    
+    <key>SessionCreate</key>
+    <true/>    
+    <key>StandardOutPath</key>
+    <string>/Users/bryanmac/Library/Logs/vsts.agent.btest.2100/stdout.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/bryanmac/Library/Logs/vsts.agent.btest.2100/stdout.log</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+      <key>PATH</key>
+      <string>/Users/bryanmac/.nvm/versions/node/v5.10.1/bin:/Library/Frameworks/Python.framework/Versions/3.4/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/opt/X11/bin:/usr/local/share/dotnet/bin</string>    
+      <key>VSTS_AGENT_SVC</key>
+      <string>1</string>
+    </dict>
+  </dict>
+</plist>
