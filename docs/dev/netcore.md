@@ -44,7 +44,7 @@ sudo dpkg -i ~/dotnetpackages/dotnet-sdk-ubuntu-x64.1.0.0-rc2-002416.deb
 
 ## ![Redhat](../redhat.png) Red Hat Enterprise Linux 7.2
 
-On Red Hat we download .Net Core in a folder ~/dotnet. Please add this folder to your PATH by editing your ~/.bash_profile (this is where PATH is usually defined).  
+The script below downloads and extracts .Net Core in a folder ~/dotnet. Please add this folder to your PATH (usually by editing ~/.bash_profile).  We install several yum packages needed by .Net Core and our dev.sh script. The libcurl that is installed by default on redhat 7.2 contains a bug, which may fail git cloning during a vsts-agent build. We install a new yum repository with a more recent libcurl.  
 
 ```bash
 mkdir ~/dotnet  
@@ -56,8 +56,6 @@ wget https://dotnetcli.blob.core.windows.net/dotnet/beta/Binaries/1.0.0-rc2-0024
 tar zxfv dotnet-dev-rhel-x64.1.0.0-rc2-002416.tar.gz
 
 sudo yum -y install libunwind.x86_64 icu git curl zip unzip
-
-?
 
 sudo rpm -Uvh http://www.city-fan.org/ftp/contrib/yum-repo/rhel6/x86_64/city-fan.org-release-1-13.rhel6.noarch.rpm
 
