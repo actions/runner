@@ -36,4 +36,13 @@ sudo dpkg -i libicu52_52.1-8ubuntu0.2_amd64.deb
 
 ## RedHat and CentOS
 
-Not yet supported or tested in this preview
+Update curl  
+```bash
+sudo rpm -Uvh http://www.city-fan.org/ftp/contrib/yum-repo/rhel6/x86_64/city-fan.org-release-1-13.rhel6.noarch.rpm
+sudo yum -y install libcurl
+```
+
+Install dependencies  
+```bash
+sudo yum -y install libunwind.x86_64 icu git
+```
