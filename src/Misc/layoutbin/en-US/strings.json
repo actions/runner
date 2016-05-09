@@ -215,6 +215,7 @@
   "RMUserChoseToSkipArtifactDownload": "Skipping artifact download based on the setting specified.",
   "RunAgentAsServiceDescription": "run agent as service? (Y/N)",
   "RunningJob": "{0:u}: Running job: {1}",
+  "SavedSettings": "{0:u}: Settings Saved.",
   "SavingCredential": "Saving credentials...",
   "ServerUrl": "server URL",
   "ServiceAleadyExists": "Service already exists, it will be replaced",

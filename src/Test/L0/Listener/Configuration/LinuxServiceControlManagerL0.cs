@@ -106,18 +106,17 @@ Description=VSTS Agent (server.agent)
 After=network.target
 
 [Service]
-ExecStart={0}/node/bin/node {1}/AgentService.js
-User={3}
-Environment=PATH={4}
+ExecStart={0}/runsvc.sh
+User={1}
 Environment=NODE_ENV=production
-WorkingDirectory={2}
+WorkingDirectory={0}
 KillMode=process
 KillSignal=SIGTERM
 TimeoutStopSec=5min
 
 [Install]
 WantedBy=multi-user.target
-", IOUtil.GetExternalsPath(), IOUtil.GetBinPath(), IOUtil.GetRootPath(), testUser, Environment.GetEnvironmentVariable("PATH"));
+", IOUtil.GetRootPath(), testUser);
 
                 var agentSettings = new AgentSettings
                                         {

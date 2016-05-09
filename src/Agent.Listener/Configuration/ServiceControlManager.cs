@@ -10,7 +10,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 #if OS_WINDOWS
     [ServiceLocator(Default = typeof(WindowsServiceControlManager))]
 #elif OS_LINUX
-    [ServiceLocator(Default = typeof(LinuxServiceControlManager))]
+    [ServiceLocator(Default = typeof(SystemDControlManager))]
 #elif OS_OSX
     [ServiceLocator(Default = typeof(OsxServiceControlManager))]
 #endif

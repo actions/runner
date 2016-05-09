@@ -50,7 +50,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 //TODO: encoding?
                 File.WriteAllText(svcShPath, svcShContent);
 
-                Chmod("755", svcShPath);
+                var unixUtil = HostContext.CreateService<IUnixUtil>();
+                unixUtil.Chmod("755", svcShPath).GetAwaiter().GetResult();
 
                 SvcSh("install");
                 _term.WriteLine(StringUtil.Loc("ServiceConfigured", settings.ServiceName));
@@ -102,51 +103,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             Trace.Entering();
 
             string argLine = StringUtil.Format("{0} {1}", _shName, command);
-            Exec(IOUtil.GetRootPath(), "bash", argLine);
-        }
-
-        // TODO: move to a common nix util after I close with Kalyan on not using pinvoke
-        private void Chmod(string mode, string file)
-        {
-            Trace.Entering();
-
-            string argLine = StringUtil.Format("{0} {1}", mode, file);
-            Exec(IOUtil.GetRootPath(), "chmod", argLine);
-        }
-
-        private void Exec(string workingDirectory, string toolName, string argLine)
-        {
-            Trace.Entering();
-
-            var whichUtil = HostContext.GetService<IWhichUtil>();
-            string toolPath = whichUtil.Which(toolName);
-            Trace.Info($"Running {toolPath} {argLine}");
-
-            var processInvoker = HostContext.CreateService<IProcessInvoker>();
-            processInvoker.OutputDataReceived += OnOutputDataReceived;
-            processInvoker.ErrorDataReceived += OnErrorDataReceived;
-
-            using (var cs = new CancellationTokenSource(TimeSpan.FromSeconds(45)))
-            {
-                // TODO: the service classes here are not async
-                processInvoker.ExecuteAsync(workingDirectory, toolPath, argLine, null, true, cs.Token).GetAwaiter().GetResult();
-            }
-        }
-
-        private void OnOutputDataReceived(object sender, DataReceivedEventArgs e)
-        {
-            if (!string.IsNullOrEmpty(e.Data))
-            {
-                _term.WriteLine(e.Data);
-            }
-        }
-
-        private void OnErrorDataReceived(object sender, DataReceivedEventArgs e)
-        {
-            if (!string.IsNullOrEmpty(e.Data))
-            {
-                _term.WriteLine(e.Data);
-            }
-        }
+            var unixUtil = HostContext.CreateService<IUnixUtil>();
+            unixUtil.Exec(IOUtil.GetRootPath(), "bash", argLine).GetAwaiter().GetResult();
+        }        
     }
 }

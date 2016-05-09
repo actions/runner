@@ -247,6 +247,31 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             }
 
             _store.SaveSettings(settings);
+            _term.WriteLine(StringUtil.Loc("SavedSettings", DateTime.UtcNow));
+
+            // chown/chmod the _diag and settings files to the current user, if we started with sudo.
+            // Also if we started with sudo, the _diag will be owned by root. Change this to current login user
+            if (Constants.Agent.Platform == Constants.OSPlatform.Linux)
+            {
+                string uidValue = Environment.GetEnvironmentVariable("SUDO_UID");
+                string gidValue = Environment.GetEnvironmentVariable("SUDO_GID");
+
+                if (!string.IsNullOrEmpty(uidValue) && !string.IsNullOrEmpty(gidValue))
+                {
+                    var filesToChange = new Dictionary<string, string>
+                                                         {
+                                                             { IOUtil.GetDiagPath(), "775" },
+                                                             { IOUtil.GetConfigFilePath(), "770"},
+                                                             { IOUtil.GetCredFilePath(), "770" },
+                                                         };
+                    var unixUtil = HostContext.CreateService<IUnixUtil>();
+                    foreach (var file in filesToChange)
+                    {
+                        await unixUtil.Chown(uidValue, gidValue, file.Key);
+                        await unixUtil.Chmod(file.Value, file.Key);
+                    }
+                }
+            }
 
             if (runAsService && successfullyConfigured)
             {
