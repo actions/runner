@@ -20,8 +20,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
         private string _configuration;
         private string _runTitle;
         private bool _publishRunLevelAttachments;
-        private int runCounter = 0;
-        object sync = new object();
+        private int _runCounter = 0;
+        private readonly object _sync = new object();
 
         public void ProcessCommand(IExecutionContext context, Command command)
         {
@@ -220,9 +220,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
 
         private string GetRunTitle()
         {
-            lock (sync)
+            lock (_sync)
             {
-                return StringUtil.Format("{0}_{1}", _runTitle, ++runCounter);
+                return StringUtil.Format("{0}_{1}", _runTitle, ++_runCounter);
             }
         }
 
