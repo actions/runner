@@ -13,6 +13,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
         public Type ExtensionType => typeof(ICodeCoverageSummaryReader);
         public string Name => "Cobertura";
 
+        private const string _linesCovered = "Lines";
+        private const string _linesTotal = "Total Lines";
+        private const string _branchesCovered = "Branches";
+        private const string _branchesTotal = "Total Branches";
+        private const string _linesCoveredTag = "lines-covered";
+        private const string _branchesCoveredTag = "branches-covered";
+        private const string _linesValidTag = "lines-valid";
+        private const string _branchesValidTag = "branches-valid";
+
         public IEnumerable<CodeCoverageStatistics> GetCodeCoverageSummary(IExecutionContext context, string summaryXmlLocation)
         {
             var doc = CodeCoverageUtilities.ReadSummaryFile(context, summaryXmlLocation);
@@ -35,14 +44,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
             {
                 if (reportNode.Attributes != null)
                 {
-                    CodeCoverageStatistics coverageStatisticsForLines = GetCCStats(linesCovered, linesCoveredTag, linesValidTag, "line", summaryXmlLocation, reportNode);
+                    CodeCoverageStatistics coverageStatisticsForLines = GetCCStats(labelTag: _linesCovered, coveredTag: _linesCoveredTag, validTag: _linesValidTag,
+                                                                                    priorityTag: "line", summaryXmlLocation: summaryXmlLocation, reportNode: reportNode);
 
                     if (coverageStatisticsForLines != null)
                     {
                         listCoverageStats.Add(coverageStatisticsForLines);
                     }
 
-                    CodeCoverageStatistics coverageStatisticsForBranches = GetCCStats(branchesCovered, branchesCoveredTag, branchesValidTag, "branch", summaryXmlLocation, reportNode);
+                    CodeCoverageStatistics coverageStatisticsForBranches = GetCCStats(labelTag: _branchesCovered, coveredTag: _branchesCoveredTag, validTag: _branchesValidTag,
+                                                                                        priorityTag: "branch", summaryXmlLocation: summaryXmlLocation, reportNode: reportNode);
 
                     if (coverageStatisticsForBranches != null)
                     {
@@ -82,15 +93,5 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
 
             return value;
         }
-
-        private const string linesCovered = "Lines";
-        private const string linesTotal = "Total Lines";
-        private const string branchesCovered = "Branches";
-        private const string branchesTotal = "Total Branches";
-        private const string linesCoveredTag = "lines-covered";
-        private const string branchesCoveredTag = "branches-covered";
-        private const string linesValidTag = "lines-valid";
-        private const string branchesValidTag = "branches-valid";
-
     }
 }

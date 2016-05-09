@@ -13,6 +13,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
         public Type ExtensionType => typeof(ICodeCoverageSummaryReader);
         public string Name => "JaCoCo";
 
+        private const string _covered = "covered";
+        private const string _missed = "missed";
+
         public IEnumerable<CodeCoverageStatistics> GetCodeCoverageSummary(IExecutionContext context, string summaryXmlLocation)
         {
             var doc = CodeCoverageUtilities.ReadSummaryFile(context, summaryXmlLocation);
@@ -48,20 +51,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
                                 coverageStatistics.Position = CodeCoverageUtilities.GetPriorityOrder(coverageStatistics.Label);
                             }
 
-                            if (counterNode.Attributes[c_covered] != null)
+                            if (counterNode.Attributes[_covered] != null)
                             {
                                 float covered;
-                                if (!float.TryParse(counterNode.Attributes[c_covered].Value, out covered))
+                                if (!float.TryParse(counterNode.Attributes[_covered].Value, out covered))
                                 {
-                                    throw new InvalidDataException(StringUtil.Loc("InvalidValueInXml", c_covered, summaryXmlLocation));
+                                    throw new InvalidDataException(StringUtil.Loc("InvalidValueInXml", _covered, summaryXmlLocation));
                                 }
                                 coverageStatistics.Covered = (int)covered;
-                                if (counterNode.Attributes[c_missed] != null)
+                                if (counterNode.Attributes[_missed] != null)
                                 {
                                     float missed;
-                                    if (!float.TryParse(counterNode.Attributes[c_missed].Value, out missed))
+                                    if (!float.TryParse(counterNode.Attributes[_missed].Value, out missed))
                                     {
-                                        throw new InvalidDataException(StringUtil.Loc("InvalidValueInXml", c_missed, summaryXmlLocation));
+                                        throw new InvalidDataException(StringUtil.Loc("InvalidValueInXml", _missed, summaryXmlLocation));
                                     }
                                     coverageStatistics.Total = (int)missed + (int)covered;
                                 }
@@ -105,8 +108,5 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
             }
             return outputString;
         }
-
-        private const string c_covered = "covered";
-        private const string c_missed = "missed";
     }
 }
