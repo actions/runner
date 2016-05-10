@@ -1,26 +1,28 @@
 NODE_VERSION="5.10.1"
 
 EXTERNALTOOLSNAME=(
-    vstshost
-    vstsom
-    nuget
     azcopy
+    nuget
     pdbstr
+    portablegit
     symstore
     tee
+    vstshost
+    vstsom
     )
     
 EXTERNALTOOLSLOCATION=(
-    vstshost/1
-    vstsom/1
-    nuget/1
     azcopy/1
+    nuget/1
     pdbstr/1
+    portablegit/1
     symstore/1
     tee/1
+    vstshost/1
+    vstsom/1
     )
     
-EXTERNALTOOLS_WINDOWS=(vstshost vstsom nuget azcopy pdbstr symstore)
+EXTERNALTOOLS_WINDOWS=(azcopy nuget pdbstr portablegit symstore vstshost vstsom)
 EXTERNALTOOLS_LINUX=(tee)
 EXTERNALTOOLS_DARWIN=(tee)
 
