@@ -30,6 +30,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             }
         }
 
+        // This should only used by AzurePowerShell/PowerShell handler
+        public IEnumerable<KeyValuePair<string, string>> Private
+        {
+            get
+            {
+                return _expanded.Values
+                    .Where(x => x.Secret)
+                    .Select(x => new KeyValuePair<string, string>(x.Name, x.Value));
+            }
+        }
+
         public Variables(IHostContext hostContext, IDictionary<string, string> copy, IList<MaskHint> maskHints, out List<string> warnings)
         {
             // Store/Validate args.
