@@ -75,6 +75,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 typeof(IArtifactDetails),
                 typeof(IArtifactExtension),
                 typeof(IResultReader),
+                typeof(ICodeCoverageEnabler),
                 typeof(ICodeCoverageSummaryReader)
             };
             Validate(
