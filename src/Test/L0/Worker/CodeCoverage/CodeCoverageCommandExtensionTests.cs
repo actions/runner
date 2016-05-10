@@ -12,7 +12,7 @@ using Xunit;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
 {
-    public class CodeCoverageCommandsTests
+    public class CodeCoverageCommandExtensionTests
     {
         private Mock<IExecutionContext> _ec;
         private List<string> _warnings = new List<string>();
@@ -31,7 +31,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         public void PublishCodeCoverageWithNoCCTool()
         {
             SetupMocks();
-            var publishCCCommand = new CodeCoverageCommands();
+            var publishCCCommand = new CodeCoverageCommandExtension();
             publishCCCommand.Initialize(hc);
             var command = new Command("codecoverage", "publish");
             command.Properties.Add("summaryfile", "a.xml");
@@ -44,7 +44,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         public void PublishCodeCoverageWithRelease()
         {
             SetupMocks();
-            var publishCCCommand = new CodeCoverageCommands();
+            var publishCCCommand = new CodeCoverageCommandExtension();
             publishCCCommand.Initialize(hc);
             var command = new Command("codecoverage", "publish");
             _variables.Set("system.hostType", "release");
@@ -59,7 +59,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         public void PublishCodeCoverageWithNoSummaryFileInput()
         {
             SetupMocks();
-            var publishCCCommand = new CodeCoverageCommands();
+            var publishCCCommand = new CodeCoverageCommandExtension();
             publishCCCommand.Initialize(hc);
             var command = new Command("codecoverage", "publish");
             Assert.Throws<ArgumentException>(() => publishCCCommand.ProcessCommand(_ec.Object, command));
@@ -71,7 +71,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         public void PublishCodeCoverageWithInvalidCCTool()
         {
             SetupMocks();
-            var publishCCCommand = new CodeCoverageCommands();
+            var publishCCCommand = new CodeCoverageCommandExtension();
             publishCCCommand.Initialize(hc);
             var command = new Command("codecoverage", "publish");
             command.Properties.Add("codecoveragetool", "InvalidTool");
@@ -89,7 +89,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
             try
             {
                 File.WriteAllText(summaryFile, "test");
-                var publishCCCommand = new CodeCoverageCommands();
+                var publishCCCommand = new CodeCoverageCommandExtension();
                 publishCCCommand.Initialize(hc);
                 var command = new Command("codecoverage", "publish");
                 command.Properties.Add("codecoveragetool", "mockCCTool");
@@ -119,7 +119,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
             {
                 Directory.CreateDirectory(reportDirectory);
                 File.WriteAllText(summaryFile, "test");
-                var publishCCCommand = new CodeCoverageCommands();
+                var publishCCCommand = new CodeCoverageCommandExtension();
                 publishCCCommand.Initialize(hc);
                 var command = new Command("codecoverage", "publish");
                 command.Properties.Add("codecoveragetool", "mockCCTool");
@@ -148,7 +148,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
             try
             {
                 File.WriteAllText(summaryFile, "test");
-                var publishCCCommand = new CodeCoverageCommands();
+                var publishCCCommand = new CodeCoverageCommandExtension();
                 publishCCCommand.Initialize(hc);
                 var command = new Command("codecoverage", "publish");
                 command.Properties.Add("codecoveragetool", "mockCCTool");
@@ -179,7 +179,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
             {
                 Directory.CreateDirectory(reportDirectory);
                 File.WriteAllText(summaryFile, "test");
-                var publishCCCommand = new CodeCoverageCommands();
+                var publishCCCommand = new CodeCoverageCommandExtension();
                 publishCCCommand.Initialize(hc);
                 var command = new Command("codecoverage", "publish");
                 command.Properties.Add("codecoveragetool", "mockCCTool");

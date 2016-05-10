@@ -43,12 +43,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 manager.Initialize(tc);
 
                 // Act/Assert.
-                AssertContains<Microsoft.VisualStudio.Services.Agent.Worker.ICommandExtension>(
+                AssertContains<Microsoft.VisualStudio.Services.Agent.Listener.Capabilities.ICapabilitiesProvider>(
                     manager,
-                    concreteType: typeof(Microsoft.VisualStudio.Services.Agent.Worker.TaskCommands));
+                    concreteType: typeof(Microsoft.VisualStudio.Services.Agent.Listener.Capabilities.AgentCapabilitiesProvider));
                 AssertContains<Microsoft.VisualStudio.Services.Agent.Worker.IJobExtension>(
                     manager,
                     concreteType: typeof(Microsoft.VisualStudio.Services.Agent.Worker.Build.BuildJobExtension));
+                AssertContains<Microsoft.VisualStudio.Services.Agent.Worker.IWorkerCommandExtension>(
+                    manager,
+                    concreteType: typeof(Microsoft.VisualStudio.Services.Agent.Worker.TaskCommandExtension));
                 AssertContains<Microsoft.VisualStudio.Services.Agent.Worker.Build.ISourceProvider>(
                     manager,
                     concreteType: typeof(Microsoft.VisualStudio.Services.Agent.Worker.Build.GitSourceProvider));

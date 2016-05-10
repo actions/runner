@@ -1,4 +1,5 @@
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
+using Microsoft.VisualStudio.Services.Agent.Listener.Capabilities;
 using Microsoft.VisualStudio.Services.Agent.Listener.Configuration;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using Microsoft.VisualStudio.Services.Client;
@@ -46,15 +47,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             var serverUrl = _settings.ServerUrl;
             Trace.Info(_settings);
 
-            // Load Credentials
+            // Capabilities.
+            // TODO: LOC
+            _term.WriteLine("Scanning for tool capabilities.");
+            Dictionary<string, string> systemCapabilities = await HostContext.GetService<ICapabilitiesManager>().GetCapabilitiesAsync(_settings, token);
+
+            // Create connection.
             Trace.Verbose("Loading Credentials");
             var credMgr = HostContext.GetService<ICredentialManager>();
             VssCredentials creds = credMgr.LoadCredentials();
             Uri uri = new Uri(serverUrl);
             VssConnection conn = ApiUtil.CreateConnection(uri, creds);
-            string sessionName = $"{Environment.MachineName ?? string.Empty}_{Guid.NewGuid().ToString()}";
-            var capProvider = HostContext.GetService<ICapabilitiesProvider>();
-            Dictionary<string, string> agentSystemCapabilities = await capProvider.GetCapabilitiesAsync(_settings.AgentName, token);
 
             var agent = new TaskAgentReference
             {
@@ -63,11 +66,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 Version = Constants.Agent.Version,
                 Enabled = true
             };
-            var taskAgentSession = new TaskAgentSession(sessionName, agent, agentSystemCapabilities);
+            string sessionName = $"{Environment.MachineName ?? "AGENT"}";
+            var taskAgentSession = new TaskAgentSession(sessionName, agent, systemCapabilities);
 
             var agentSvr = HostContext.GetService<IAgentServer>();
             string errorMessage = string.Empty;
             bool firstAttempt = true; //tells us if this is the first time we try to connect
+            // TODO: LOC
+            _term.WriteLine("Connecting to the server.");
             while (true)
             {
                 attempt++;

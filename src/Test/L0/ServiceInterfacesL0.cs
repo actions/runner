@@ -1,18 +1,16 @@
+using Agent.Worker.Release.Artifacts.Definition;
 using Microsoft.VisualStudio.Services.Agent.Listener;
+using Microsoft.VisualStudio.Services.Agent.Listener.Capabilities;
 using Microsoft.VisualStudio.Services.Agent.Listener.Configuration;
 using Microsoft.VisualStudio.Services.Agent.Worker;
 using Microsoft.VisualStudio.Services.Agent.Worker.Build;
 using Microsoft.VisualStudio.Services.Agent.Worker.Handlers;
+using Microsoft.VisualStudio.Services.Agent.Worker.Release;
 using Microsoft.VisualStudio.Services.Agent.Worker.TestResults;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-
-using Agent.Worker.Release.Artifacts.Definition;
-
-using Microsoft.VisualStudio.Services.Agent.Worker.Release;
-
 using Xunit;
 using Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage;
 
@@ -29,6 +27,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             // Otherwise, the interface needs to whitelisted.
             var whitelist = new[]
             {
+                typeof(ICapabilitiesProvider),
                 typeof(ICredentialProvider),
             };
             Validate(
@@ -66,16 +65,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             // Otherwise, the interface needs to whitelisted.
             var whitelist = new[]
             {
+                typeof(IArtifactDetails),
+                typeof(IArtifactExtension),
+                typeof(ICodeCoverageSummaryReader),
                 typeof(IExecutionContext),
                 typeof(IHandler),
                 typeof(IJobExtension),
-                typeof(ICommandExtension),
+                typeof(IResultReader),
                 typeof(ISourceProvider),
                 typeof(IStep),
-                typeof(IArtifactDetails),
-                typeof(IArtifactExtension),
-                typeof(IResultReader),
-                typeof(ICodeCoverageSummaryReader)
+                typeof(IWorkerCommandExtension),
             };
             Validate(
                 assembly: typeof(IStepsRunner).GetTypeInfo().Assembly,
