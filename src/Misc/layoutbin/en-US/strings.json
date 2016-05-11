@@ -41,7 +41,7 @@
   "CodeCoverageDataIsNull": "No coverage data found. Check the build errors/warnings for more details.",
   "CodeCoveragePublishIsValidOnlyForBuild": "Publishing code coverage works only for 'build'.",
   "CommandNotFound": "Can't find command extension for ##vso[{0}.command]. TODO: DOC aka link",
-  "ConfiguredAsRunAsService": "Agent is configured to run as service {0}",
+  "ConfiguredAsRunAsService": "Agent is configured to run as service.",
   "ConnectingToServer": "Connecting to server ...",
   "ConnectSectionHeader": "Connect",
   "CouldNotRemoveService": "Could not delete service '{0}'",

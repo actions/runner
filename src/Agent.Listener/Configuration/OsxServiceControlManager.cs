@@ -24,8 +24,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
             CalculateServiceName(settings, _svcNamePattern, _svcDisplayPattern);
 
-            string plistPath = GetPlistPath(settings.ServiceName);
-            if (this.CheckServiceExists(settings.ServiceName))
+            string plistPath = GetPlistPath(ServiceName);
+            if (this.CheckServiceExists(ServiceName))
             {
                 _term.WriteError(StringUtil.Loc("ServiceAlreadyExists", plistPath));
                 throw new InvalidOperationException(StringUtil.Loc("CanNotInstallService"));
@@ -40,7 +40,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 string svcShContent = File.ReadAllText(Path.Combine(IOUtil.GetBinPath(), _shTemplate));
                 var tokensToReplace = new Dictionary<string, string>
                                           {
-                                              { "{{SvcNameVar}}", settings.ServiceName }
+                                              { "{{SvcDescription}}", ServiceDisplayName },
+                                              { "{{SvcNameVar}}", ServiceName }
                                           };
 
                 svcShContent = tokensToReplace.Aggregate(
@@ -54,7 +55,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 unixUtil.Chmod("755", svcShPath).GetAwaiter().GetResult();
 
                 SvcSh("install");
-                _term.WriteLine(StringUtil.Loc("ServiceConfigured", settings.ServiceName));
+                _term.WriteLine(StringUtil.Loc("ServiceConfigured", ServiceName));
             }
             catch (Exception e)
             {
@@ -73,12 +74,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             return true;            
         }
 
-        public override void StartService(string serviceName)
+        public override void StartService()
         {
             SvcSh("start");
         }
 
-        public override void StopService(string serviceName)
+        public override void StopService()
         {
             SvcSh("stop");
         }

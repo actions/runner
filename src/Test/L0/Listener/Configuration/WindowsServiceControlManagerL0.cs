@@ -71,8 +71,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
                         "--unattended"
                     });
                 serviceControlManager.ConfigureService(agentSettings, command);
-                Assert.Equal("vstsagent.server.myagent", agentSettings.ServiceName);
-                Assert.Equal("VSTS Agent (server.myagent)", agentSettings.ServiceDisplayName);
+                Assert.Equal("vstsagent.server.myagent", serviceControlManager.ServiceName);
+                Assert.Equal("VSTS Agent (server.myagent)", serviceControlManager.ServiceDisplayName);
             }
         }
 

@@ -38,9 +38,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 return false;
             }
 
-            var unitFile = _linuxServiceHelper.GetUnitFile(settings.ServiceName);
+            var unitFile = _linuxServiceHelper.GetUnitFile(ServiceName);
 
-            if (CheckServiceExists(settings.ServiceName))
+            if (CheckServiceExists(ServiceName))
             {
                 _term.WriteError(StringUtil.Loc("ServiceAlreadyExists", unitFile));
                 throw new InvalidOperationException(StringUtil.Loc("CanNotInstallService"));
@@ -53,21 +53,21 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 string svcShContent = File.ReadAllText(Path.Combine(IOUtil.GetBinPath(), _shTemplate));
                 var tokensToReplace = new Dictionary<string, string>
                                           {
-                                              { "{{SvcDescription}}", settings.ServiceDisplayName },
-                                              { "{{SvcNameVar}}", settings.ServiceName }
+                                              { "{{SvcDescription}}", ServiceDisplayName },
+                                              { "{{SvcNameVar}}", ServiceName }
                                           };
 
                 svcShContent = tokensToReplace.Aggregate(
                     svcShContent,
                     (current, item) => current.Replace(item.Key, item.Value));
 
-                File.WriteAllText(svcShPath, svcShContent, Encoding.UTF8);
+                File.WriteAllText(svcShPath, svcShContent, new UTF8Encoding(false));
 
                 var unixUtil = HostContext.CreateService<IUnixUtil>();
                 unixUtil.Chmod("755", svcShPath).GetAwaiter().GetResult();
 
                 SvcSh("install");
-                _term.WriteLine(StringUtil.Loc("ServiceConfigured", settings.ServiceName));
+                _term.WriteLine(StringUtil.Loc("ServiceConfigured", ServiceName));
             }
             catch (UnauthorizedAccessException ex)
             {
@@ -84,13 +84,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             return true;
         }
 
-        public override void StartService(string serviceName)
+        public override void StartService()
         {
             Trace.Entering();
             try
             {
                 SvcSh("start");
-                _term.WriteLine(StringUtil.Loc("ServiceStartedSuccessfully", serviceName));
+                _term.WriteLine(StringUtil.Loc("ServiceStartedSuccessfully", ServiceName));
             }
             catch (Exception)
             {
@@ -99,7 +99,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             }
         }
 
-        public override void StopService(string serviceName)
+        public override void StopService()
         {
             Trace.Entering();
             try
@@ -109,7 +109,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             catch (Exception ex)
             {
                 Trace.Error(ex);
-                _term.WriteError(StringUtil.Loc("CanNotStopService", serviceName));
+                _term.WriteError(StringUtil.Loc("CanNotStopService", ServiceName));
                 // We dont want to throw here. We can still replace the systemd unit file and call daemon-reload
             }
         }

@@ -8,7 +8,8 @@ AGENT_ROOT=`pwd`
 
 UNIT_PATH=/etc/systemd/system/${SVC_NAME}
 TEMPLATE_PATH=./bin/vsts.agent.service.template
-TEMP_PATH=./binvsts.agent.service.temp
+TEMP_PATH=./bin/vsts.agent.service.temp
+CONFIG_PATH=.Service
 
 function failed()
 {
@@ -45,6 +46,14 @@ function install()
     chmod 755 ./runsvc.sh
 
     systemctl enable ${SVC_NAME} || "failed to enable ${SVC_NAME}"
+
+    echo '
+    {
+        "RunAsService": true,
+        "ServiceName": "'${SVC_NAME}'",
+        "ServiceDisplayName": "'${SVC_DESCRIPTION}'"
+    }
+    ' > ${CONFIG_PATH}
 }
 
 function start()
@@ -64,6 +73,9 @@ function uninstall()
     stop
     systemctl disable ${SVC_NAME} || "failed to enable ${SVC_NAME}"
     rm "${UNIT_PATH}"
+    if [ -f "${CONFIG_PATH}" ]; then
+      rm "${CONFIG_PATH}"
+    fi
     systemctl daemon-reload
 }
 

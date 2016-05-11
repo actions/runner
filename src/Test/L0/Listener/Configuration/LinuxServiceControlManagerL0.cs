@@ -60,8 +60,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
                 var agentSettings = new AgentSettings
                                         {
                                             AgentName = "agent",
-                                            ServiceName = "testservice",
-                                            ServiceDisplayName = "testservice",
                                             ServerUrl = "http://server.name"
                                         };
                 string unitFileTemplatePath = Path.Combine(IOUtil.GetBinPath(), "vsts.agent.service.template");
@@ -70,8 +68,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
                 controlManager.ConfigureService(agentSettings, null);
 
                 
-                Assert.Equal(agentSettings.ServiceName, LinuxServiceName);
-                Assert.Equal(agentSettings.ServiceDisplayName, "VSTS Agent (server.agent)");
+                Assert.Equal(controlManager.ServiceName, LinuxServiceName);
+                Assert.Equal(controlManager.ServiceDisplayName, "VSTS Agent (server.agent)");
 
                 _processInvoker.Verify(
                     x => x.ExecuteAsync("/usr/bin", "systemctl", "daemon-reload", It.IsAny<Dictionary<string, string>>(), It.IsAny<CancellationToken>()),
@@ -121,8 +119,6 @@ WantedBy=multi-user.target
                 var agentSettings = new AgentSettings
                                         {
                                             AgentName = "agent",
-                                            ServiceName = "testservice",
-                                            ServiceDisplayName = "testservice",
                                             ServerUrl = "http://server.name"
                                         };
                 string unitFileTemplatePath = Path.Combine(TestUtil.GetSrcPath(), "Misc", "layoutbin", "vsts.agent.service.template");
@@ -153,14 +149,13 @@ WantedBy=multi-user.target
                 var agentSettings = new AgentSettings
                                         {
                                             AgentName = "agent",
-                                            ServiceName = "testservice",
-                                            ServiceDisplayName = "testservice",
                                             ServerUrl = "http://server.name"
                                         };
 
                 // Tests dont run with sudo permission
                 Environment.SetEnvironmentVariable("SUDO_USER", Environment.GetEnvironmentVariable("USER"));
-                controlManager.StartService(agentSettings.ServiceName);
+                controlManager.ServiceName = "testservice";
+                controlManager.StartService();
 
                 _processInvoker.Verify(
                     x => x.ExecuteAsync("/usr/bin", "systemctl", "daemon-reload", It.IsAny<Dictionary<string, string>>(), It.IsAny<CancellationToken>()),
