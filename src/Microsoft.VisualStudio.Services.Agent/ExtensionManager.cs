@@ -13,7 +13,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         List<T> GetExtensions<T>() where T : class, IExtension;
     }
 
-    public class ExtensionManager : AgentService, IExtensionManager
+    public sealed class ExtensionManager : AgentService, IExtensionManager
     {
         private readonly ConcurrentDictionary<Type, List<IExtension>> _cache = new ConcurrentDictionary<Type, List<IExtension>>();
 
@@ -39,19 +39,30 @@ namespace Microsoft.VisualStudio.Services.Agent
             var extensions = new List<IExtension>();
             switch (typeof(T).FullName)
             {
-                // Worker command extensions.
-                case "Microsoft.VisualStudio.Services.Agent.Worker.ICommandExtension":
-                    Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.TaskCommands, Agent.Worker");
-                    Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.Build.BuildCommands, Agent.Worker");
-                    Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.Build.ArtifactCommands, Agent.Worker");
-                    Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.TestResults.ResultsCommands, Agent.Worker");
+                // Listener capabilities providers.
+                case "Microsoft.VisualStudio.Services.Agent.Listener.Capabilities.ICapabilitiesProvider":
+                    Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Listener.Capabilities.AgentCapabilitiesProvider, Agent.Listener");
+                    Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Listener.Capabilities.EnvironmentCapabilitiesProvider, Agent.Listener");
+#if OS_LINUX || OS_OSX
+                    Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Listener.Capabilities.NixCapabilitiesProvider, Agent.Listener");
+#elif OS_WINDOWS
+                    Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Listener.Capabilities.PowerShellCapabilitiesProvider, Agent.Listener");
+#endif
                     break;
                 // Worker job extensions.
                 case "Microsoft.VisualStudio.Services.Agent.Worker.IJobExtension":
                     Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.Build.BuildJobExtension, Agent.Worker");
                     Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.Release.ReleaseJobExtension, Agent.Worker");
                     break;
-                // Worker build source provider extensions.
+                // Worker command extensions.
+                case "Microsoft.VisualStudio.Services.Agent.Worker.IWorkerCommandExtension":
+                    Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.TaskCommandExtension, Agent.Worker");
+                    Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.Build.ArtifactCommandExtension, Agent.Worker");
+                    Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.Build.BuildCommandExtension, Agent.Worker");
+                    Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage.CodeCoverageCommandExtension, Agent.Worker");
+                    Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.TestResults.ResultsCommandExtension, Agent.Worker");
+                    break;
+                // Worker build source providers.
                 case "Microsoft.VisualStudio.Services.Agent.Worker.Build.ISourceProvider":
                     Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.Build.GitSourceProvider, Agent.Worker");
                     Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.Build.GitHubSourceProvider, Agent.Worker");
@@ -68,12 +79,17 @@ namespace Microsoft.VisualStudio.Services.Agent
                     Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts.BuildArtifact, Agent.Worker");
                     Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts.JenkinsArtifact, Agent.Worker");
                     break;
-                // Worker test result reader extensions.
+                // Worker test result readers.
                 case "Microsoft.VisualStudio.Services.Agent.Worker.TestResults.IResultReader":
                     Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.TestResults.JUnitResultReader, Agent.Worker");
                     Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.TestResults.NUnitResultReader, Agent.Worker");
                     Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.TestResults.TrxResultReader, Agent.Worker");
                     Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.TestResults.XUnitResultReader, Agent.Worker");
+                    break;
+                // Worker code coverage summary reader extensions.
+                case "Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage.ICodeCoverageSummaryReader":
+                    Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage.JaCoCoSummaryReader, Agent.Worker");
+                    Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage.CoberturaSummaryReader, Agent.Worker");
                     break;
                 default:
                     // This should never happen.

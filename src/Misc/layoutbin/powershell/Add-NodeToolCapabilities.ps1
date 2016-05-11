@@ -1,0 +1,8 @@
+[CmdletBinding()]
+param()
+
+Add-CapabilityFromApplication -Name 'npm' -ApplicationName 'npm'
+Add-CapabilityFromApplication -Name 'gulp' -ApplicationName 'gulp'
+Add-CapabilityFromApplication -Name 'node.js' -ApplicationName 'node'
+Add-CapabilityFromApplication -Name 'bower' -ApplicationName 'bower'
+Add-CapabilityFromApplication -Name 'grunt' -ApplicationName 'grunt'

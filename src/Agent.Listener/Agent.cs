@@ -94,15 +94,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     }
                 }
 
-                if (command.NoStart)
-                {
-                    return Constants.Agent.ReturnCode.Success;
-                }
-
                 Trace.Info("Done evaluating commands");
                 await configManager.EnsureConfiguredAsync(command);
 
                 _inConfigStage = false;
+
+                if (command.NoStart)
+                {
+                    Trace.Info("No start.");
+                    return Constants.Agent.ReturnCode.Success;
+                }
 
                 AgentSettings settings = configManager.LoadSettings();
                 if (command.Run || !settings.RunAsService)

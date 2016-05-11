@@ -11,23 +11,11 @@ using System.Threading.Tasks;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 {
-    public sealed class ArtifactCommands : AgentService, ICommandExtension
+    public sealed class ArtifactCommandExtension : AgentService, IWorkerCommandExtension
     {
-        public Type ExtensionType
-        {
-            get
-            {
-                return typeof(ICommandExtension);
-            }
-        }
+        public Type ExtensionType => typeof(IWorkerCommandExtension);
 
-        public string CommandArea
-        {
-            get
-            {
-                return "artifact";
-            }
-        }
+        public string CommandArea => "artifact";
 
         public void ProcessCommand(IExecutionContext context, Command command)
         {
