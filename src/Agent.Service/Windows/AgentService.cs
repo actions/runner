@@ -45,7 +45,11 @@ namespace AgentService
                                 lock (ServiceLock)
                                 {
                                     AgentListener = CreateAgentListener();
+                                    AgentListener.OutputDataReceived += AgentListener_OutputDataReceived;
+                                    AgentListener.ErrorDataReceived += AgentListener_ErrorDataReceived;
                                     AgentListener.Start();
+                                    AgentListener.BeginOutputReadLine();
+                                    AgentListener.BeginErrorReadLine();
                                 }
 
                                 AgentListener.WaitForExit();
@@ -87,6 +91,8 @@ namespace AgentService
 
                                 lock (ServiceLock)
                                 {
+                                    AgentListener.OutputDataReceived -= AgentListener_OutputDataReceived;
+                                    AgentListener.ErrorDataReceived -= AgentListener_ErrorDataReceived;
                                     AgentListener.Dispose();
                                     AgentListener = null;
                                     stopping = Stopping;
@@ -102,6 +108,16 @@ namespace AgentService
                     });
         }
 
+        private void AgentListener_ErrorDataReceived(object sender, DataReceivedEventArgs e)
+        {
+            WriteToEventLog(e.Data, EventLogEntryType.Error);
+        }
+
+        private void AgentListener_OutputDataReceived(object sender, DataReceivedEventArgs e)
+        {
+            WriteToEventLog(e.Data, EventLogEntryType.Information);
+        }
+
         private Process CreateAgentListener()
         {
             string exeLocation = Assembly.GetEntryAssembly().Location;
@@ -111,6 +127,8 @@ namespace AgentService
             newProcess.StartInfo.CreateNoWindow = true;
             newProcess.StartInfo.UseShellExecute = false;
             newProcess.StartInfo.RedirectStandardInput = true;
+            newProcess.StartInfo.RedirectStandardOutput = true;
+            newProcess.StartInfo.RedirectStandardError = true;
             return newProcess;
         }
 
@@ -150,7 +168,7 @@ namespace AgentService
 
         private static void WriteToEventLog(string eventText, EventLogEntryType entryType)
         {
-            String source = "vstsAgentService";
+            String source = "VstsAgentService";
             EventLog.WriteEntry(source, eventText, entryType, 100);
         }
 

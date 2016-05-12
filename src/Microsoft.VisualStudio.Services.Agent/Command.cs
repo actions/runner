@@ -6,15 +6,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Microsoft.VisualStudio.Services.Agent.Worker
+namespace Microsoft.VisualStudio.Services.Agent
 {
-    public interface ICommandExtension : IExtension
-    {
-        string CommandArea { get; }
-
-        void ProcessCommand(IExecutionContext context, Command command);
-    }
-
     public sealed class Command
     {
         private const string LoggingCommandPrefix = "##vso[";

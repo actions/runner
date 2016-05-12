@@ -19,9 +19,6 @@ namespace Microsoft.VisualStudio.Services.Agent
         public string PoolName { get; set; }
         public string ServerUrl { get; set; }
         public string WorkFolder { get; set; }
-        public bool RunAsService { get; set; }
-        public string ServiceName { get; set; }
-        public string ServiceDisplayName { get; set; }
     }
 
     [ServiceLocator(Default = typeof(ConfigurationStore))]
@@ -29,6 +26,7 @@ namespace Microsoft.VisualStudio.Services.Agent
     {
         string RootFolder { get; }
         bool IsConfigured();
+        bool IsServiceConfigured();
         bool HasCredentials();
         CredentialData GetCredentials();
         AgentSettings GetSettings();
@@ -41,6 +39,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         private string _binPath;
         private string _configFilePath;
         private string _credFilePath;
+        private string _serviceConfigFilePath;
         private CredentialData _creds;
         private AgentSettings _settings;
 
@@ -62,17 +61,20 @@ namespace Microsoft.VisualStudio.Services.Agent
 
             _credFilePath = IOUtil.GetCredFilePath();
             Trace.Info("CredFilePath: {0}", _credFilePath);
+
+            _serviceConfigFilePath = IOUtil.GetServiceConfigFilePath();
+            Trace.Info("ServiceConfigFilePath: {0}", _serviceConfigFilePath);
         }
 
         public string RootFolder { get; private set; }
-                     
+
         public bool HasCredentials()
         {
             Trace.Info("HasCredentials()");
             bool credsStored = (new FileInfo(_credFilePath)).Exists;
             Trace.Info("stored {0}", credsStored);
             return credsStored;
-        }        
+        }
 
         public bool IsConfigured()
         {
@@ -80,6 +82,14 @@ namespace Microsoft.VisualStudio.Services.Agent
             bool configured = (new FileInfo(_configFilePath)).Exists;
             Trace.Info("IsConfigured: {0}", configured);
             return configured;
+        }
+
+        public bool IsServiceConfigured()
+        {
+            Trace.Info("IsServiceConfigured()");
+            bool serviceConfigured = (new FileInfo(_serviceConfigFilePath)).Exists;
+            Trace.Info($"IsServiceConfigured: {serviceConfigured}");
+            return serviceConfigured;
         }
 
         public CredentialData GetCredentials()
@@ -98,12 +108,12 @@ namespace Microsoft.VisualStudio.Services.Agent
             {
                 _settings = IOUtil.LoadObject<AgentSettings>(_configFilePath);
             }
-            
+
             return _settings;
         }
 
         public void SaveCredential(CredentialData credential)
-        {   
+        {
             Trace.Info("Saving {0} credential @ {1}", credential.Scheme, _credFilePath);
             IOUtil.SaveObject(credential, _credFilePath);
             Trace.Info("Credentials Saved.");

@@ -6,7 +6,7 @@
     },
     
     "commands": {
-        "Agent.Listener": "Agent.Listener"        
+        "Agent.Listener": "Agent.Listener"
     },
 
     "configurations": {
@@ -33,6 +33,7 @@
     "dependencies": {
         "NETStandard.Library": "1.5.0-rc3-24011-00",
         "Microsoft.VisualStudio.Services.Agent": { "target": "project", "version": "1.0.0-*" },
+        "Microsoft.Win32.Registry": "4.0.0-rc3-24011-00",
         "vss-api-netcore": "0.5.10-private",
         "System.ServiceProcess.ServiceController": "4.1.0-rc3-24011-00",
         "System.IO.Compression.ZipFile": "4.0.1-rc3-24011-00",

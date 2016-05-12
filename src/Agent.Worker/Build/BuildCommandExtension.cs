@@ -10,23 +10,11 @@ using System.Threading.Tasks;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 {
-    public class BuildCommands : AgentService, ICommandExtension
+    public sealed class BuildCommandExtension : AgentService, IWorkerCommandExtension
     {
-        public Type ExtensionType
-        {
-            get
-            {
-                return typeof(ICommandExtension);
-            }
-        }
+        public Type ExtensionType => typeof(IWorkerCommandExtension);
 
-        public string CommandArea
-        {
-            get
-            {
-                return "build";
-            }
-        }
+        public string CommandArea => "build";
 
         public void ProcessCommand(IExecutionContext context, Command command)
         {

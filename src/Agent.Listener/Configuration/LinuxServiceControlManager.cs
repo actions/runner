@@ -36,21 +36,21 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 return false;
             }
 
-            if (CheckServiceExists(settings.ServiceName))
+            if (CheckServiceExists(ServiceName))
             {
                 Trace.Info("Service already exists");
                 _term.WriteLine(StringUtil.Loc("ServiceAleadyExists"));
-                StopService(settings.ServiceName);
+                StopService();
             }
 
-            var unitFile = _linuxServiceHelper.GetUnitFile(settings.ServiceName);
+            var unitFile = _linuxServiceHelper.GetUnitFile(ServiceName);
 
             try
             {
                 var unitContent = File.ReadAllText(Path.Combine(IOUtil.GetBinPath(), VstsAgentServiceTemplate));
                 var tokensToReplace = new Dictionary<string, string>
                                           {
-                                              { "{{Description}}", settings.ServiceDisplayName },
+                                              { "{{Description}}", ServiceDisplayName },
                                               { "{{BinDirectory}}", IOUtil.GetBinPath() },
                                               { "{{AgentRoot}}", IOUtil.GetRootPath() },
                                               { "{{ExternalsDirectory}}", IOUtil.GetExternalsPath() },
@@ -79,13 +79,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             }
 
             ReloadSystemd();
-            InstallService(settings.ServiceName);
+            InstallService(ServiceName);
 
-            _term.WriteLine(StringUtil.Loc("ServiceConfigured", settings.ServiceName));
+            _term.WriteLine(StringUtil.Loc("ServiceConfigured", ServiceName));
             return true;
         }
 
-        public override void StartService(string serviceName)
+        public override void StartService()
         {
             Trace.Entering();
 
@@ -100,8 +100,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             {
                 ChangeOwnershipToLoginUser(filesToChange);
                 ReloadSystemd();
-                ExecuteSystemdCommand("start " + serviceName);
-                _term.WriteLine(StringUtil.Loc("ServiceStartedSuccessfully", serviceName));
+                ExecuteSystemdCommand("start " + ServiceName);
+                _term.WriteLine(StringUtil.Loc("ServiceStartedSuccessfully", ServiceName));
             }
             catch (Exception)
             {
@@ -110,17 +110,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             }
         }
 
-        public override void StopService(string serviceName)
+        public override void StopService()
         {
             Trace.Entering();
             try
             {
-                ExecuteSystemdCommand("stop " + serviceName);
+                ExecuteSystemdCommand("stop " + ServiceName);
             }
             catch (Exception ex)
             {
                 Trace.Error(ex);
-                _term.WriteError(StringUtil.Loc("CanNotStopService", serviceName));
+                _term.WriteError(StringUtil.Loc("CanNotStopService", ServiceName));
 
                 // We dont want to throw here. We can still replace the systemd unit file and call daemon-reload
             }

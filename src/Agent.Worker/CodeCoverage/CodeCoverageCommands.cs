@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
 {
-    public sealed class CodeCoverageCommands : AgentService, ICommandExtension
+    public sealed class CodeCoverageCommandExtension : AgentService, IWorkerCommandExtension
     {
         private int _buildId;
         // publish code coverage inputs
@@ -34,7 +34,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
         {
             get
             {
-                return typeof(ICommandExtension);
+                return typeof(IWorkerCommandExtension);
             }
         }
 

@@ -16,9 +16,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
         public string Which(string command)
         {
             ArgUtil.NotNullOrEmpty(command, nameof(command));
-
-            Trace.Verbose($"{nameof(command)}={command}");
-
+            Trace.Info($"Which: '{command}'");
 #if OS_WINDOWS
             string path = Environment.GetEnvironmentVariable("Path");
 #else
@@ -26,6 +24,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
 #endif
             if (string.IsNullOrEmpty(path))
             {
+                Trace.Info("PATH environment variable not defined.");
                 return null;
             }
 
@@ -56,6 +55,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
                         matches = Directory.GetFiles(pathSegment, command);
                         if (matches != null && matches.Length > 0)
                         {
+                            Trace.Info("Location: '{0}'", matches.First());
                             return matches.First();
                         }
                     }
@@ -69,9 +69,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
                             // add extension.
                             for (int i = 0; i < pathExtSegments.Length; i++)
                             {
-                                string fullPath = Path.Combine(pathSegment, StringUtil.Format($"{command}{pathExtSegments[i]}"));
+                                string fullPath = Path.Combine(pathSegment, $"{command}{pathExtSegments[i]}");
                                 if (matches.Any(p => p.Equals(fullPath, StringComparison.OrdinalIgnoreCase)))
                                 {
+                                    Trace.Info($"Location: '{fullPath}'");
                                     return fullPath;
                                 }
                             }
@@ -81,12 +82,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
                     matches = Directory.GetFiles(pathSegment, command);
                     if (matches != null && matches.Length > 0)
                     {
+                        Trace.Info("Location: '{0}'", matches.First());
                         return matches.First();
                     }
 #endif
                 }
             }
 
+            Trace.Info("Not found.");
             return null;
         }
     }

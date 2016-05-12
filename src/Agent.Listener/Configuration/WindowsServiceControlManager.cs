@@ -66,12 +66,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
             CalculateServiceName(settings, ServiceNamePattern, ServiceDisplayNamePattern);
 
-            if (CheckServiceExists(settings.ServiceName))
+            if (CheckServiceExists(ServiceName))
             {
                 _term.WriteLine(StringUtil.Loc("ServiceAleadyExists"));
 
-                StopService(settings.ServiceName);
-                UninstallService(settings.ServiceName);
+                StopService();
+                UninstallService(ServiceName);
             }
 
             Trace.Info("Verifying if the account has LogonAsService permission");
@@ -87,7 +87,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 }
             }
 
-            _windowsServiceHelper.InstallService(settings.ServiceName, settings.ServiceDisplayName, _logonAccount, logonPassword);
+            _windowsServiceHelper.InstallService(ServiceName, ServiceDisplayName, _logonAccount, logonPassword);
+
+            SaveServiceSettings();
 
             // TODO: If its service identity add it to appropriate PoolGroup
             // TODO: Add registry key after installation
@@ -141,12 +143,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             }
         }
 
-        public override void StopService(string serviceName)
+        public override void StopService()
         {
             Trace.Entering();
             try
             {
-                ServiceController service = _windowsServiceHelper.TryGetServiceController(serviceName);
+                ServiceController service = _windowsServiceHelper.TryGetServiceController(ServiceName);
                 if (service != null)
                 {
                     if (service.Status == ServiceControllerStatus.Running)
@@ -161,7 +163,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                         }
                         catch (System.ServiceProcess.TimeoutException)
                         {
-                            throw new InvalidOperationException(StringUtil.Loc("CanNotStopService", serviceName));
+                            throw new InvalidOperationException(StringUtil.Loc("CanNotStopService", ServiceName));
                         }
                     }
 
@@ -169,13 +171,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 }
                 else
                 {
-                    Trace.Info(StringUtil.Loc("CanNotFindService", serviceName));
+                    Trace.Info(StringUtil.Loc("CanNotFindService", ServiceName));
                 }
             }
             catch (Exception exception)
             {
                 Trace.Error(exception);
-                _term.WriteError(StringUtil.Loc("CanNotStopService", serviceName));
+                _term.WriteError(StringUtil.Loc("CanNotStopService", ServiceName));
 
                 // Log the exception but do not report it as error. We can try uninstalling the service and then report it as error if something goes wrong.
             }
@@ -198,12 +200,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             }
         }
 
-        public override void StartService(string serviceName)
+        public override void StartService()
         {
             Trace.Entering();
             try
             {
-                ServiceController service = _windowsServiceHelper.TryGetServiceController(serviceName);
+                ServiceController service = _windowsServiceHelper.TryGetServiceController(ServiceName);
                 if (service != null)
                 {
                     // TODO Fix this to add permission, this is to make NT Authority\Local Service run as service
@@ -211,11 +213,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                     windowsSecurityManager.SetPermissionForAccount(IOUtil.GetRootPath(), _logonAccount);
 
                     service.Start();
-                    _term.WriteLine(StringUtil.Loc("ServiceStartedSuccessfully", serviceName));
+                    _term.WriteLine(StringUtil.Loc("ServiceStartedSuccessfully", ServiceName));
                 }
                 else
                 {
-                    throw new InvalidOperationException(StringUtil.Loc("CanNotFindService", serviceName));
+                    throw new InvalidOperationException(StringUtil.Loc("CanNotFindService", ServiceName));
                 }
             }
             catch (Exception exception)
