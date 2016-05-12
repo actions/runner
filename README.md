@@ -42,9 +42,11 @@ Add the user you created the PAT token for to *both*:
 
 ## Get Started
 
-![osx](docs/apple_sm.png)  [Start OSX](docs/start/startosx.md)
-![ubuntu](docs/ubuntu_sm.png)  [Start Ubuntu](docs/start/startubuntu.md)
-![redhat](docs/redhat_sm.png)  [Start RedHat](docs/start/startredhat.md)
+![osx](docs/apple_sm.png)  [Start OSX](docs/start/startosx.md)  
+
+![ubuntu](docs/ubuntu_sm.png)  [Start Ubuntu](docs/start/startubuntu.md)  
+
+![redhat](docs/redhat_sm.png)  [Start RedHat](docs/start/startredhat.md)  
 
 ## Configuration
 

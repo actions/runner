@@ -1,4 +1,4 @@
-# OSX Agent
+# Ubuntu Agent
 
 ## System Information
 

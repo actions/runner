@@ -1,4 +1,4 @@
-# OSX Agent
+# RedHat Agent
 
 ## System Information
 
