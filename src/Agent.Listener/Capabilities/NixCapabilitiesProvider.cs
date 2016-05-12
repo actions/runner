@@ -139,7 +139,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Capabilities
                 {
                     // Attempt to locate the tool.
                     string filePath = _whichUtil.Which(fileName);
-                    if (!string.IsNullOrEmpty(filePath))
+                    if (string.IsNullOrEmpty(filePath))
                     {
                         return;
                     }
