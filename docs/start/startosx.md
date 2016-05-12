@@ -1,4 +1,4 @@
-# OSX Agent
+# ![osx](../apple_med.png) OSX Agent
 
 ## System Information
 
@@ -6,12 +6,7 @@
 
 ## Step 1: Download from Releases
 
-Download the appropriate agent from [github releases](https://github.com/Microsoft/vsts-agent/releases)
-
-From the cmdline:
-```bash
-~/Downloads$ curl -kSLO https://github.com/Microsoft/vsts-agent/releases/download/v2.100.1/vsts-agent-osx.10.11-x64-2.100.1.tar.gz
-```
+Download the agent from [github releases](https://github.com/Microsoft/vsts-agent/releases/tag/v2.100.1)
 
 ## Step 2: Create the agent
 
