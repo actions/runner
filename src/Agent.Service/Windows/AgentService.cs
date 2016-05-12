@@ -11,6 +11,7 @@ namespace AgentService
 {
     public partial class AgentService : ServiceBase
     {
+        public const string EventSourceName = "VstsAgentService";
         private Process AgentListener { get; set; }
         private bool Stopping { get; set; }
         private object ServiceLock { get; set; }
@@ -168,8 +169,7 @@ namespace AgentService
 
         private static void WriteToEventLog(string eventText, EventLogEntryType entryType)
         {
-            String source = "VstsAgentService";
-            EventLog.WriteEntry(source, eventText, entryType, 100);
+            EventLog.WriteEntry(EventSourceName, eventText, entryType, 100);
         }
 
         private static string GetDiagnosticFolderPath()

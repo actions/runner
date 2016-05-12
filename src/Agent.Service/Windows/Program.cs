@@ -10,10 +10,9 @@ namespace AgentService
         /// </summary>
         static void Main(String[] args)
         {
-            if (args != null && args.Length == 2 && args[0].Equals("init", StringComparison.InvariantCultureIgnoreCase))
-            {
-                string source = "VstsAgentService";
-                System.Diagnostics.EventLog.WriteEntry(source, $"create event log trace source for service {args[1]}", System.Diagnostics.EventLogEntryType.Information, 100);
+            if (args != null && args.Length == 1 && args[0].Equals("init", StringComparison.InvariantCultureIgnoreCase))
+            {                
+                System.Diagnostics.EventLog.WriteEntry(AgentService.EventSourceName, "create event log trace source for vsts-agent service", System.Diagnostics.EventLogEntryType.Information, 100);
                 return;
             }            
             ServiceBase[] ServicesToRun;

@@ -392,7 +392,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 //invoke the service with special argument, that tells it to register an event log trace source (need to run as an admin)
                 using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
                 {
-                    processInvoker.ExecuteAsync(string.Empty, agentServiceExecutable, $"init \"{serviceDisplayName}\"", null, default(System.Threading.CancellationToken)).GetAwaiter().GetResult();                    
+                    processInvoker.ExecuteAsync(string.Empty, agentServiceExecutable, "init", null, default(System.Threading.CancellationToken)).GetAwaiter().GetResult();                    
                 }
 
                 _term.WriteLine(StringUtil.Loc("ServiceConfigured", serviceName));
