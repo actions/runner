@@ -180,7 +180,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
 
                 _configurationManager.Setup(x => x.IsConfigured()).Returns(true);
                 _configurationManager.Setup(x => x.LoadSettings())
-                    .Returns(new AgentSettings { RunAsService = configureAsService });
+                    .Returns(new AgentSettings { });
+                _configurationManager.Setup(x => x.IsServiceConfigured()).Returns(configureAsService);
                 _messageListener.Setup(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()))
                     .Returns(Task.FromResult(false));
 

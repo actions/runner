@@ -82,7 +82,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
         {
             // This does not need to be inside of a critical section.
             // The logging queues and command handlers are thread-safe.
-            if (!CommandHandler.TryProcessCommand(ExecutionContext, e.Data))
+            if (!CommandManager.TryProcessCommand(ExecutionContext, e.Data))
             {
                 ExecutionContext.Output(e.Data);
             }

@@ -200,7 +200,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             lock (_outputLock)
             {
                 FlushErrorData();
-                if (!CommandHandler.TryProcessCommand(ExecutionContext, e.Data))
+                if (!CommandManager.TryProcessCommand(ExecutionContext, e.Data))
                 {
                     ExecutionContext.Output(e.Data);
                 }

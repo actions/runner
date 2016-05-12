@@ -164,7 +164,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     record.Value.FinishTime = record.Value.FinishTime ?? DateTime.UtcNow;
                     record.Value.PercentComplete = record.Value.PercentComplete ?? 100;
                     record.Value.Result = record.Value.Result ?? TaskResult.Succeeded;
-                    record.Value.State = record.Value.State ?? TimelineRecordState.Completed;
+                    record.Value.State = TimelineRecordState.Completed;
 
                     _jobServerQueue.QueueTimelineRecordUpdate(_detailTimelineId, record.Value);
                 }

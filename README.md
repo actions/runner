@@ -1,4 +1,4 @@
-# VSTS Cross Platform Agent (.NET Core)
+# Microsoft Team Services Build and Release Agent
 
 ## Overview
 
@@ -11,15 +11,16 @@ Will run all existing tasks (typescript/javascript and powershell) including [ou
 
 ## Status
 
-A preview is available for Ubuntu and OSX for VSTS.  The current preview is more feature complete than the node agent bringing Auto Update, Cancellation, Run as a svc on OSX and Linux, and Gated support.
+A preview is available for Ubuntu, RedHat and OSX for VSTS.  The current preview is more feature complete than the node agent bringing Auto Update, Cancellation, Run as a svc on OSX and Linux, and Gated support.
 
-What's missing from the preview? On-prem NTLM support is in the works so preview with VSTS.  Windows preview coming soon.
+What's missing from the preview? On-prem NTLM support is in the works so preview with VSTS.  Windows preview in days.
 
 |   | Build & Test | Preview | Release |
 |---|:-----:|:-----:|:-----:|
-|![Linux](docs/linux_med.png) **Ubuntu 14.04**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/b924d696-3eae-4116-8443-9a18392d8544/2853/badge?branch=master)| [v2.99.0](https://github.com/Microsoft/vsts-agent/releases/tag/v2.99.0) | Soon |
-|![Apple](docs/apple_med.png) **OSX 10.11**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/b924d696-3eae-4116-8443-9a18392d8544/3080/badge?branch=master)| [v2.99.0](https://github.com/Microsoft/vsts-agent/releases/tag/v2.99.0) | Soon
-|![Win](docs/win_med.png) **Windows 10**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/b924d696-3eae-4116-8443-9a18392d8544/2850/badge?branch=master)| Soon | |
+|![Apple](docs/apple_med.png) **OSX**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/b924d696-3eae-4116-8443-9a18392d8544/3080/badge?branch=master)| [Release 4 v2.100.1](https://github.com/Microsoft/vsts-agent/releases/tag/v2.100.1) | June |
+|![Ubuntu](docs/ubuntu_med.png) **Ubuntu**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/b924d696-3eae-4116-8443-9a18392d8544/2853/badge?branch=master)| [Release 4 v2.100.1](https://github.com/Microsoft/vsts-agent/releases/tag/v2.100.1) | June |
+|![RedHat](docs/redhat_med.png) **RedHat**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/b924d696-3eae-4116-8443-9a18392d8544/3418/badge?branch=master)| [Release 4 v2.100.1](https://github.com/Microsoft/vsts-agent/releases/tag/v2.100.1) | June |
+|![Win](docs/win_med.png) **Windows**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/b924d696-3eae-4116-8443-9a18392d8544/2850/badge?branch=master)| Preview 1 This Week | |
 
 ## Configure Account
 
@@ -39,15 +40,17 @@ Add the user you created the PAT token for to *both*:
 >> The PAT token is only used to listen to the message queue for a build job
 >> When a build is run, it will generate an OAuth token for the scoped identity selected on the general tab of the build definition.  That token is short lived and will be used to access resource in VSTS
 
-## Get Agent
+## Get Started
 
-![linux](docs/linux_sm.png)  [Get Started Ubuntu](docs/startLinux.md)  
+![osx](docs/apple_sm.png)  [Start OSX](docs/start/startosx.md)  
 
-![osx](docs/apple_sm.png)  [Get Started OSX](docs/startOSX.md)  
+![ubuntu](docs/ubuntu_sm.png)  [Start Ubuntu](docs/start/startubuntu.md)  
+
+![redhat](docs/redhat_sm.png)  [Start RedHat](docs/start/startredhat.md)  
 
 ## Configuration
 
-Other detailed configuration options are [covered here](docs/config.md)
+More detailed configuration options are [covered here](docs/config.md)
 
 ## Contribute
 

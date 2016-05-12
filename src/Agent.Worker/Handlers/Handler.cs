@@ -20,7 +20,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
 
     public abstract class Handler : AgentService
     {
-        protected ICommandHandler CommandHandler { get; private set; }
+        protected IWorkerCommandManager CommandManager { get; private set; }
         protected Dictionary<string, string> Environment { get; private set; }
 
         public IExecutionContext ExecutionContext { get; set; }
@@ -31,7 +31,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
-            CommandHandler = hostContext.GetService<ICommandHandler>();
+            CommandManager = hostContext.GetService<IWorkerCommandManager>();
             Environment = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         }
 
@@ -115,7 +115,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             }
         }
 
-        private void AddEnvironmentVariable(string key, string value)
+        protected void AddEnvironmentVariable(string key, string value)
         {
             ArgUtil.NotNullOrEmpty(key, nameof(key));
             Trace.Verbose($"Setting env '{key}' to '{value}'.");

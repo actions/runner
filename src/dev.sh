@@ -170,12 +170,17 @@ function layout ()
     cp -Rf ./Misc/layoutroot/* ${LAYOUT_DIR}
     cp -Rf ./Misc/layoutbin/* ${LAYOUT_DIR}/bin
 
+    # clean up files not meant for platform
+    if [[ ("$PLATFORM_NAME" == "Linux") || ("$PLATFORM_NAME" == "Darwin") ]]; then
+        rm ${LAYOUT_DIR}/run.cmd
+    else
+        rm ${LAYOUT_DIR}/*.sh
+    fi
+    
     heading Externals ...
     bash ./Misc/externals.sh
 
-    if [[ ("$PLATFORM" == "linux") || ("$PLATFORM" == "darwin") ]]; then
-       package
-    fi
+    package
 }
 
 function update ()
@@ -252,12 +257,19 @@ function package ()
     pushd $pkg_dir > /dev/null
     rm -Rf *
 
-    tar_name="${agent_pkg_name}.tar.gz"
-    echo "Creating $tar_name in ${LAYOUT_DIR}"
-    tar -czf "${tar_name}" -C ${LAYOUT_DIR} .
-    
-    # TODO: create package on windows with powershell.
-    # zip -r "${agent_pkg_name}.zip" ${LAYOUT_DIR}
+    if [[ ("$PLATFORM" == "linux") || ("$PLATFORM" == "darwin") ]]; then
+        tar_name="${agent_pkg_name}.tar.gz"
+        echo "Creating $tar_name in ${LAYOUT_DIR}"
+        tar -czf "${tar_name}" -C ${LAYOUT_DIR} .
+    elif [[ ("$PLATFORM" == "windows") ]]; then
+        zip_name="${agent_pkg_name}.zip"
+        echo "Convert ${LAYOUT_DIR} to Windows style path"
+        window_path=${LAYOUT_DIR:1}
+        window_path=${window_path:0:1}:${window_path:1}
+        echo "Creating $zip_name in ${window_path}"
+        powershell -NoProfile -ExecutionPolicy RemoteSigned -Command "Add-Type -Assembly \"System.IO.Compression.FileSystem\"; [System.IO.Compression.ZipFile]::CreateFromDirectory(\"${window_path}\", \"${zip_name}\")"
+    fi
+
     popd > /dev/null
 }
 

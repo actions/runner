@@ -1,4 +1,5 @@
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
+using Microsoft.VisualStudio.Services.Agent.Listener.Capabilities;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using Microsoft.VisualStudio.Services.Client;
 using Microsoft.VisualStudio.Services.Common;
@@ -15,6 +16,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
     public interface IConfigurationManager : IAgentService
     {
         bool IsConfigured();
+        bool IsServiceConfigured();
         Task EnsureConfiguredAsync(CommandSettings command);
         Task ConfigureAsync(CommandSettings command);
         AgentSettings LoadSettings();
@@ -33,6 +35,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             _store = hostContext.GetService<IConfigurationStore>();
             Trace.Verbose("store created");
             _term = hostContext.GetService<ITerminal>();
+        }
+
+        public bool IsServiceConfigured()
+        {
+            bool result = _store.IsServiceConfigured();
+            Trace.Info($"Is service configured: {result}");
+            return result;
         }
 
         public bool IsConfigured()
@@ -158,12 +167,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 _term.WriteError(StringUtil.Loc("FailedToFindPool"));
             }
 
-            var capProvider = HostContext.GetService<ICapabilitiesProvider>();
             TaskAgent agent;
             while (true)
             {
                 agentName = command.GetAgent();
-                Dictionary<string, string> capabilities = await capProvider.GetCapabilitiesAsync(agentName, CancellationToken.None);
+
+                // Get the system capabilities.
+                // TODO: Hook up to ctrl+c cancellation token.
+                // TODO: LOC
+                _term.WriteLine("Scanning for tool capabilities.");
+                Dictionary<string, string> systemCapabilities = await HostContext.GetService<ICapabilitiesManager>().GetCapabilitiesAsync(
+                    new AgentSettings { AgentName = agentName }, CancellationToken.None);
+
+                // TODO: LOC
+                _term.WriteLine("Connecting to the server.");
                 agent = await GetAgent(agentName, poolId);
                 if (agent != null)
                 {
@@ -172,9 +189,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                         // update - update instead of delete so we don't lose user capabilities etc...
                         agent.Version = Constants.Agent.Version;
 
-                        foreach (var capability in capabilities)
+                        foreach (KeyValuePair<string, string> capability in systemCapabilities)
                         {
-                            agent.SystemCapabilities.Add(capability.Key, capability.Value);
+                            agent.SystemCapabilities[capability.Key] = capability.Value ?? string.Empty;
                         }
 
                         try
@@ -202,9 +219,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                         Version = Constants.Agent.Version
                     };
 
-                    foreach (var capability in capabilities)
+                    foreach (KeyValuePair<string, string> capability in systemCapabilities)
                     {
-                        agent.SystemCapabilities[capability.Key] = capability.Value;
+                        agent.SystemCapabilities[capability.Key] = capability.Value ?? string.Empty;
                     }
 
                     try
@@ -236,22 +253,47 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 WorkFolder = workFolder,
             };
 
+            _store.SaveSettings(settings);
+            _term.WriteLine(StringUtil.Loc("SavedSettings", DateTime.UtcNow));
+
             bool runAsService = command.GetRunAsService();
             var serviceControlManager = HostContext.GetService<IServiceControlManager>();
             bool successfullyConfigured = false;
             if (runAsService)
             {
-                settings.RunAsService = true;
                 Trace.Info("Configuring to run the agent as service");
                 successfullyConfigured = serviceControlManager.ConfigureService(settings, command);
-            }
+            }            
 
-            _store.SaveSettings(settings);
+            // chown/chmod the _diag and settings files to the current user, if we started with sudo.
+            // Also if we started with sudo, the _diag will be owned by root. Change this to current login user
+            if (Constants.Agent.Platform == Constants.OSPlatform.Linux ||
+               Constants.Agent.Platform == Constants.OSPlatform.OSX)
+            {
+                string uidValue = Environment.GetEnvironmentVariable("SUDO_UID");
+                string gidValue = Environment.GetEnvironmentVariable("SUDO_GID");
+
+                if (!string.IsNullOrEmpty(uidValue) && !string.IsNullOrEmpty(gidValue))
+                {
+                    var filesToChange = new Dictionary<string, string>
+                                                         {
+                                                             { IOUtil.GetDiagPath(), "775" },
+                                                             { IOUtil.GetConfigFilePath(), "770"},
+                                                             { IOUtil.GetCredFilePath(), "770" },
+                                                         };
+                    var unixUtil = HostContext.CreateService<IUnixUtil>();
+                    foreach (var file in filesToChange)
+                    {
+                        await unixUtil.Chown(uidValue, gidValue, file.Key);
+                        await unixUtil.Chmod(file.Value, file.Key);
+                    }
+                }
+            }
 
             if (runAsService && successfullyConfigured)
             {
                 Trace.Info("Configuration was successful, trying to start the service");
-                serviceControlManager.StartService(settings.ServiceName);
+                serviceControlManager.StartService();
             }
         }
 
