@@ -26,6 +26,8 @@ From the cmdline:
 
 ```
 
+> NOTE: running as a service [details here](nixsvc.md)
+
 ## Step 4: Optionally run the agent interactively
 
 If you didn't run as a service above:
