@@ -1,9 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.ServiceProcess;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace AgentService
 {
@@ -14,6 +10,12 @@ namespace AgentService
         /// </summary>
         static void Main(String[] args)
         {
+            if (args != null && args.Length == 2 && args[0].Equals("init", StringComparison.InvariantCultureIgnoreCase))
+            {
+                string source = "VstsAgentService";
+                System.Diagnostics.EventLog.WriteEntry(source, $"create event log trace source for service {args[1]}", System.Diagnostics.EventLogEntryType.Information, 100);
+                return;
+            }            
             ServiceBase[] ServicesToRun;
             ServicesToRun = new ServiceBase[]
             {
