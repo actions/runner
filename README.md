@@ -1,4 +1,4 @@
-# VSTS Cross Platform Agent (.NET Core)
+# Microsoft Team Services Build and Release Agent
 
 ## Overview
 
@@ -11,9 +11,9 @@ Will run all existing tasks (typescript/javascript and powershell) including [ou
 
 ## Status
 
-A preview is available for Ubuntu and OSX for VSTS.  The current preview is more feature complete than the node agent bringing Auto Update, Cancellation, Run as a svc on OSX and Linux, and Gated support.
+A preview is available for Ubuntu, RedHat and OSX for VSTS.  The current preview is more feature complete than the node agent bringing Auto Update, Cancellation, Run as a svc on OSX and Linux, and Gated support.
 
-What's missing from the preview? On-prem NTLM support is in the works so preview with VSTS.  Windows preview coming soon.
+What's missing from the preview? On-prem NTLM support is in the works so preview with VSTS.  Windows preview in days.
 
 |   | Build & Test | Preview | Release |
 |---|:-----:|:-----:|:-----:|
