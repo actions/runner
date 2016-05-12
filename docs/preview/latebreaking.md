@@ -42,7 +42,10 @@ sudo rpm -Uvh http://www.city-fan.org/ftp/contrib/yum-repo/rhel6/x86_64/city-fan
 sudo yum -y install libcurl
 ```
 
+Update git  
+The default git 1.8.3.1, which is in redhat 7.2 repository is not compatible. Please install git 1.9.1 or latter. If git binary is not available you can build from sources following instructions on http://tecadmin.net/install-git-2-x-on-centos-rhel-and-fedora/
+
 Install dependencies  
 ```bash
-sudo yum -y install libunwind.x86_64 icu git
+sudo yum -y install libunwind.x86_64 icu
 ```
