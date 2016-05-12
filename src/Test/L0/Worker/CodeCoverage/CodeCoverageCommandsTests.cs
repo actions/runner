@@ -326,6 +326,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
             command.Properties.Add("buildfile", Path.GetTempFileName());
             enableCCCommand.ProcessCommand(_ec.Object, command);
             _mockCodeCoverageEnabler.Verify(x => x.EnableCodeCoverage(It.IsAny<IExecutionContext>(), It.Is<CodeCoverageEnablerInputs>(ccInputs => ccInputs.Include == _includes && ccInputs.Exclude == _excludes)));
+            Assert.Equal(0, _warnings.Count);
+            Assert.Equal(0, _errors.Count);
         }
 
         [Fact]
@@ -343,6 +345,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
             command.Properties.Add("buildfile", Path.GetTempFileName());
             enableCCCommand.ProcessCommand(_ec.Object, command);
             _mockCodeCoverageEnabler.Verify(x => x.EnableCodeCoverage(It.IsAny<IExecutionContext>(), It.Is<CodeCoverageEnablerInputs>(ccInputs => ccInputs.Include == _includes && string.IsNullOrWhiteSpace(ccInputs.Exclude))));
+            Assert.Equal(0, _warnings.Count);
+            Assert.Equal(0, _errors.Count);
         }
 
         [Fact]
@@ -360,6 +364,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
             command.Properties.Add("buildfile", Path.GetTempFileName());
             enableCCCommand.ProcessCommand(_ec.Object, command);
             _mockCodeCoverageEnabler.Verify(x => x.EnableCodeCoverage(It.IsAny<IExecutionContext>(), It.Is<CodeCoverageEnablerInputs>(ccInputs => ccInputs.Exclude == _excludes && string.IsNullOrWhiteSpace(ccInputs.Include))));
+            Assert.Equal(0, _warnings.Count);
+            Assert.Equal(0, _errors.Count);
         }
         #endregion
 
