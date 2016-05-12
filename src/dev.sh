@@ -170,6 +170,13 @@ function layout ()
     cp -Rf ./Misc/layoutroot/* ${LAYOUT_DIR}
     cp -Rf ./Misc/layoutbin/* ${LAYOUT_DIR}/bin
 
+    # clean up files not meant for platform
+    if [[ ("$PLATFORM_NAME" == "Linux") || ("$PLATFORM_NAME" == "Darwin") ]]; then
+        rm ${LAYOUT_DIR}/run.cmd
+    else
+        rm ${LAYOUT_DIR}/*.sh
+    fi
+    
     heading Externals ...
     bash ./Misc/externals.sh
 

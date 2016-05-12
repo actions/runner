@@ -267,7 +267,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
             // chown/chmod the _diag and settings files to the current user, if we started with sudo.
             // Also if we started with sudo, the _diag will be owned by root. Change this to current login user
-            if (Constants.Agent.Platform == Constants.OSPlatform.Linux)
+            if (Constants.Agent.Platform == Constants.OSPlatform.Linux ||
+               Constants.Agent.Platform == Constants.OSPlatform.OSX)
             {
                 string uidValue = Environment.GetEnvironmentVariable("SUDO_UID");
                 string gidValue = Environment.GetEnvironmentVariable("SUDO_GID");

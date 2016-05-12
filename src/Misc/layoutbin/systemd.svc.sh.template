@@ -47,13 +47,7 @@ function install()
 
     systemctl enable ${SVC_NAME} || "failed to enable ${SVC_NAME}"
 
-    echo '
-    {
-        "RunAsService": true,
-        "ServiceName": "'${SVC_NAME}'",
-        "ServiceDisplayName": "'${SVC_DESCRIPTION}'"
-    }
-    ' > ${CONFIG_PATH}
+    echo "${SVC_NAME}" > ${CONFIG_PATH}
 }
 
 function start()

@@ -3,10 +3,18 @@
 SVC_NAME="{{SvcNameVar}}"
 SVC_DESCRIPTION="{{SvcDescription}}"
 
+user_id=`id -u`
+
+if [ $user_id -ne 0 ]; then
+    echo "Must run as sudo"
+    exit 1
+fi
+
 SVC_CMD=$1
 AGENT_ROOT=`pwd`
 
-PLIST_PATH=${HOME}/Library/LaunchAgents/${SVC_NAME}.plist
+LAUNCH_PATH="${HOME}/Library/LaunchAgents"
+PLIST_PATH="${LAUNCH_PATH}/${SVC_NAME}.plist"
 TEMPLATE_PATH=./bin/vsts.agent.plist.template
 TEMP_PATH=./bin/vsts.agent.plist.temp
 CONFIG_PATH=.Service
@@ -25,47 +33,59 @@ fi
 function install()
 {
     echo "Creating launch agent in ${PLIST_PATH}"
+
+    if [ ! -d  "${LAUNCH_PATH}" ]; then
+        failed "${LAUNCH_PATH} does not exist.  OSX system dir expected"
+    fi
+
     if [ -f "${PLIST_PATH}" ]; then
         failed "error: exists ${PLIST_PATH}"
     fi
 
-    if [ -f "" ]; then
+    if [ -f "${TEMP_PATH}" ]; then
       rm "${TEMP_PATH}"
     fi
 
     log_path="${HOME}/Library/Logs/${SVC_NAME}"
-    echo "creating ${log_path}"
+    echo "Creating ${log_path}"
     mkdir -p "${log_path}"
-    chown "${USER}" "${log_path}"
+    chown ${SUDO_UID:-$UID}:${SUDO_GID} "${log_path}"
 
-    sed "s/{{User}}/$USER/g; s/{{SvcName}}/$SVC_NAME/g; s@{{AgentRoot}}@${AGENT_ROOT}@g; s@{{UserHome}}@$HOME@g;" "${TEMPLATE_PATH}" > "${TEMP_PATH}" || failed "failed to create replacement temp file"
+    echo Creating ${PLIST_PATH}
+    sed "s/{{User}}/${SUDO_USER:-$USER}/g; s/{{SvcName}}/$SVC_NAME/g; s@{{AgentRoot}}@${AGENT_ROOT}@g; s@{{UserHome}}@$HOME@g;" "${TEMPLATE_PATH}" > "${TEMP_PATH}" || failed "failed to create replacement temp file"
     cp "${TEMP_PATH}" "${PLIST_PATH}" || "failed to copy plist"
+    chown ${SUDO_UID:-$UID}:${SUDO_GID} "${PLIST_PATH}"
+
+    # Since we started with sudo, runsvc.sh will be owned by root. Change this to current login user.
+    echo Creating runsvc.sh    
     cp ./bin/runsvc.sh ./runsvc.sh
+    chown ${SUDO_UID:-$UID}:${SUDO_GID} ./runsvc.sh
     chmod 755 ./runsvc.sh
 
-    echo '
-    {
-        "RunAsService": true,
-        "ServiceName": "'${SVC_NAME}'",
-        "ServiceDisplayName": "'${SVC_DESCRIPTION}'"
-    }
-    ' > ${CONFIG_PATH}
+    echo Creating ${CONFIG_PATH}
+    echo "${PLIST_PATH}" > ${CONFIG_PATH}
+    chown ${SUDO_UID:-$UID}:${SUDO_GID} ${CONFIG_PATH}
+
+    echo "svc install complete"
 }
 
 function start()
 {
-    launchctl load -w "${PLIST_PATH}" || "failed to load ${PLIST_PATH}"
+    echo "starting ${SVC_NAME}"
+    sudo -u "${SUDO_USER}" launchctl load -w "${PLIST_PATH}" || "failed to load ${PLIST_PATH}"
     status
 }
 
 function stop()
 {
-    launchctl unload "${PLIST_PATH}" || "failed to unload ${PLIST_PATH}"
+    echo "stopping ${SVC_NAME}"
+    sudo -u "${SUDO_USER}" launchctl unload "${PLIST_PATH}" || "failed to unload ${PLIST_PATH}"
     status
 }
 
 function uninstall()
 {
+    echo "uninstalling ${SVC_NAME}"
     stop
     rm "${PLIST_PATH}"
     if [ -f "${CONFIG_PATH}" ]; then
@@ -75,6 +95,7 @@ function uninstall()
 
 function status()
 {
+    echo "status ${SVC_NAME}:"
     if [ -f "${PLIST_PATH}" ]; then
         echo
         echo "${PLIST_PATH}"
@@ -86,7 +107,7 @@ function status()
     fi
 
     echo
-    status_out=`launchctl list | grep "${SVC_NAME}"`
+    status_out=`sudo -u "${SUDO_USER}" launchctl list | grep "${SVC_NAME}"`
     if [ ! -z "$status_out" ]; then
         echo Started:
         echo $status_out
