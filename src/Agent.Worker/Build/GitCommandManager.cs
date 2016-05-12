@@ -18,11 +18,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
         string GitHttpUserAgent { get; set; }
 
-        // git clone --progress --no-checkout <URL> <LocalDir>
-        Task<int> GitClone(IExecutionContext context, string repositoryPath, Uri repositoryUrl, string username, string password, bool exposeCred, CancellationToken cancellationToken);
+        // git init <LocalDir>
+        Task<int> GitInit(IExecutionContext context, string repositoryPath);
 
         // git fetch --tags --prune --progress origin [+refs/pull/*:refs/remote/pull/*]
-        Task<int> GitFetch(IExecutionContext context, string repositoryPath, string remoteName, List<string> refSpec, string username, string password, bool exposeCred, CancellationToken cancellationToken);
+        Task<int> GitFetch(IExecutionContext context, string repositoryPath, string remoteName, List<string> refSpec, string additionalCommandLine, CancellationToken cancellationToken);
 
         // git checkout -f --progress <commitId/branch>
         Task<int> GitCheckout(IExecutionContext context, string repositoryPath, string committishOrBranchSpec, CancellationToken cancellationToken);
@@ -32,6 +32,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
         // git reset --hard HEAD
         Task<int> GitReset(IExecutionContext context, string repositoryPath);
+
+        // get remote add <origin> <url>
+        Task<int> GitRemoteAdd(IExecutionContext context, string repositoryPath, string remoteName, string remoteUrl);
 
         // get remote set-url <origin> <url>
         Task<int> GitRemoteSetUrl(IExecutionContext context, string repositoryPath, string remoteName, string remoteUrl);
@@ -43,17 +46,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         Task<int> GitSubmoduleInit(IExecutionContext context, string repositoryPath);
 
         // git submodule update -f
-        Task<int> GitSubmoduleUpdate(IExecutionContext context, string repositoryPath, CancellationToken cancellationToken);
+        Task<int> GitSubmoduleUpdate(IExecutionContext context, string repositoryPath, string additionalCommandLine, CancellationToken cancellationToken);
 
         // git config --get remote.origin.url
         Task<Uri> GitGetFetchUrl(IExecutionContext context, string repositoryPath);
 
-        // git config --get-regexp submodule.*.url
-        Task<Dictionary<string, Uri>> GitGetSubmoduleUrls(IExecutionContext context, string repoRoot);
-
         // git config <key> <value>
-        Task<int> GitUpdateSubmoduleUrls(IExecutionContext context, string repositoryPath, Dictionary<string, Uri> updateSubmoduleUrls);
+        Task<int> GitConfig(IExecutionContext context, string repositoryPath, string configKey, string configValue);
 
+        // git config --unset-all <key>
+        Task<int> GitConfigUnset(IExecutionContext context, string repositoryPath, string configKey);
+        
         // git config gc.auto 0
         Task<int> GitDisableAutoGC(IExecutionContext context, string repositoryPath);
 
@@ -78,16 +81,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         public Version Version { get; set; }
         public string GitHttpUserAgent { get; set; }
 
-        // git clone --progress --no-checkout <URL> <LocalDir>
-        public async Task<int> GitClone(IExecutionContext context, string repositoryPath, Uri repositoryUrl, string username, string password, bool exposeCred, CancellationToken cancellationToken)
+        // git init <LocalDir>
+        public async Task<int> GitInit(IExecutionContext context, string repositoryPath)
         {
-            context.Debug($"Clone git repository: {repositoryUrl.AbsoluteUri} into: {repositoryPath}.");
+            context.Debug($"Init git repository at: {repositoryPath}.");
             string repoRootEscapeSpace = StringUtil.Format(@"""{0}""", repositoryPath.Replace(@"""", @"\"""));
-            return await ExecuteGitCommandAsync(context, repositoryPath, "clone", StringUtil.Format($"--progress --no-checkout {repositoryUrl.AbsoluteUri} {repoRootEscapeSpace}"), cancellationToken);
+            return await ExecuteGitCommandAsync(context, repositoryPath, "init", StringUtil.Format($"{repoRootEscapeSpace}"));
         }
 
         // git fetch --tags --prune --progress origin [+refs/pull/*:refs/remote/pull/*]
-        public async Task<int> GitFetch(IExecutionContext context, string repositoryPath, string remoteName, List<string> refSpec, string username, string password, bool exposeCred, CancellationToken cancellationToken)
+        public async Task<int> GitFetch(IExecutionContext context, string repositoryPath, string remoteName, List<string> refSpec, string additionalCommandLine, CancellationToken cancellationToken)
         {
             context.Debug($"Fetch git repository at: {repositoryPath} remote: {remoteName}.");
             if (refSpec != null && refSpec.Count > 0)
@@ -95,11 +98,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 refSpec = refSpec.Where(r => !string.IsNullOrEmpty(r)).ToList();
             }
 
-            return await ExecuteGitCommandAsync(context, repositoryPath, "fetch", StringUtil.Format($"--tags --prune --progress {remoteName} {string.Join(" ", refSpec)}"), cancellationToken);
+            return await ExecuteGitCommandAsync(context, repositoryPath, "fetch", StringUtil.Format($"--tags --prune --progress {remoteName} {string.Join(" ", refSpec)}"), additionalCommandLine, cancellationToken);
         }
 
         // git checkout -f --progress <commitId/branch>
-        public async Task<int> GitCheckout(IExecutionContext context, string repositoryPath, string committishOrBranchSpec, CancellationToken cancellationToken = default(CancellationToken))
+        public async Task<int> GitCheckout(IExecutionContext context, string repositoryPath, string committishOrBranchSpec, CancellationToken cancellationToken)
         {
             context.Debug($"Checkout {committishOrBranchSpec}.");
             string checkoutOption = GetCommandOption("checkout");
@@ -118,6 +121,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         {
             context.Debug($"Undo any changes to tracked files in the working tree for repository at {repositoryPath}.");
             return await ExecuteGitCommandAsync(context, repositoryPath, "reset", "--hard HEAD");
+        }
+
+        // get remote set-url <origin> <url>
+        public async Task<int> GitRemoteAdd(IExecutionContext context, string repositoryPath, string remoteName, string remoteUrl)
+        {
+            context.Debug($"Add git remote: {remoteName} to url: {remoteUrl} for repository under: {repositoryPath}.");
+            return await ExecuteGitCommandAsync(context, repositoryPath, "remote", StringUtil.Format($"add {remoteName} {remoteUrl}"));
         }
 
         // get remote set-url <origin> <url>
@@ -142,10 +152,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         }
 
         // git submodule update -f
-        public async Task<int> GitSubmoduleUpdate(IExecutionContext context, string repositoryPath, CancellationToken cancellationToken = default(CancellationToken))
+        public async Task<int> GitSubmoduleUpdate(IExecutionContext context, string repositoryPath, string additionalCommandLine, CancellationToken cancellationToken)
         {
             context.Debug("Update the registered git submodules.");
-            return await ExecuteGitCommandAsync(context, repositoryPath, "submodule", "update -f", cancellationToken);
+            return await ExecuteGitCommandAsync(context, repositoryPath, "submodule", "update -f", additionalCommandLine, cancellationToken);
         }
 
         // git config --get remote.origin.url
@@ -187,59 +197,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             return fetchUrl;
         }
 
-        // git config --get-regexp submodule.*.url
-        public async Task<Dictionary<string, Uri>> GitGetSubmoduleUrls(IExecutionContext context, string repoRoot)
+        // git config <key> <value>
+        public async Task<int> GitConfig(IExecutionContext context, string repositoryPath, string configKey, string configValue)
         {
-            context.Debug($"Inspect all submodule.<name>.url for submodules under {repoRoot}");
-
-            Dictionary<string, Uri> submoduleUrls = new Dictionary<string, Uri>(StringComparer.OrdinalIgnoreCase);
-
-            List<string> outputStrings = new List<string>();
-            int exitCode = await ExecuteGitCommandAsync(context, repoRoot, "config", "--get-regexp submodule.?*.url", outputStrings);
-
-            if (exitCode != 0)
-            {
-                context.Debug($"'git config --get-regexp submodule.?*.url' failed with exit code: {exitCode}, output: '{string.Join(Environment.NewLine, outputStrings)}'");
-            }
-            else
-            {
-                // remove empty strings
-                outputStrings = outputStrings.Where(o => !string.IsNullOrEmpty(o)).ToList();
-                foreach (var urlString in outputStrings)
-                {
-                    context.Debug($"Potential git submodule name and fetch url: {urlString}.");
-                    string[] submoduleUrl = urlString.Split(new Char[] { ' ' }, 2, StringSplitOptions.RemoveEmptyEntries);
-                    if (submoduleUrl.Length == 2 && Uri.IsWellFormedUriString(submoduleUrl[1], UriKind.Absolute))
-                    {
-                        submoduleUrls[submoduleUrl[0]] = new Uri(submoduleUrl[1]);
-                    }
-                    else
-                    {
-                        context.Debug($"Can't parse git submodule name and submodule fetch url from output: '{urlString}'.");
-                    }
-                }
-            }
-
-            return submoduleUrls;
+            context.Debug($"Set git config {configKey} {configValue}");
+            return await ExecuteGitCommandAsync(context, repositoryPath, "config", StringUtil.Format($"{configKey} {configValue}"));
         }
 
-        // git config <key> <value>
-        public async Task<int> GitUpdateSubmoduleUrls(IExecutionContext context, string repositoryPath, Dictionary<string, Uri> updateSubmoduleUrls)
+        // git config --unset-all <key>
+        public async Task<int> GitConfigUnset(IExecutionContext context, string repositoryPath, string configKey)
         {
-            context.Debug("Update all submodule.<name>.url with credential embeded url.");
-
-            int overallExitCode = 0;
-            foreach (var submodule in updateSubmoduleUrls)
-            {
-                Int32 exitCode = await ExecuteGitCommandAsync(context, repositoryPath, "config", StringUtil.Format($"{submodule.Key} {submodule.Value.ToString()}"));
-                if (exitCode != 0)
-                {
-                    context.Debug($"Unable update: {submodule.Key}.");
-                    overallExitCode = exitCode;
-                }
-            }
-
-            return overallExitCode;
+            context.Debug($"Unset git config --unset-all {configKey}");
+            return await ExecuteGitCommandAsync(context, repositoryPath, "config", StringUtil.Format($"--unset-all {configKey}"));
         }
 
         // git config gc.auto 0
@@ -263,8 +232,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 if (outputStrings.Count == 1 && !string.IsNullOrEmpty(outputStrings.First()))
                 {
                     string verString = outputStrings.First();
-                    // we might only interested about major.minor version
-                    Regex verRegex = new Regex("\\d+\\.\\d+", RegexOptions.IgnoreCase);
+                    // we interested about major.minor.patch version
+                    Regex verRegex = new Regex("\\d+\\.\\d+(\\.\\d+)?", RegexOptions.IgnoreCase);
                     var matchResult = verRegex.Match(verString);
                     if (matchResult.Success && !string.IsNullOrEmpty(matchResult.Value))
                     {
@@ -365,6 +334,31 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             }
 
             return await processInvoker.ExecuteAsync(repoRoot, GitPath, arg, _userAgentEnv, default(CancellationToken));
+        }
+
+        private async Task<int> ExecuteGitCommandAsync(IExecutionContext context, string repoRoot, string command, string options, string additionalCommandLine, CancellationToken cancellationToken)
+        {
+            string arg = StringUtil.Format($"{additionalCommandLine} {command} {options}").Trim();
+            context.Command($"git {arg}");
+
+            var processInvoker = HostContext.CreateService<IProcessInvoker>();
+            processInvoker.OutputDataReceived += delegate (object sender, DataReceivedEventArgs message)
+            {
+                context.Output(message.Data);
+            };
+
+            processInvoker.ErrorDataReceived += delegate (object sender, DataReceivedEventArgs message)
+            {
+                context.Output(message.Data);
+            };
+
+            Dictionary<string, string> _userAgentEnv = new Dictionary<string, string>();
+            if (!string.IsNullOrEmpty(GitHttpUserAgent))
+            {
+                _userAgentEnv["GIT_HTTP_USER_AGENT"] = GitHttpUserAgent;
+            }
+
+            return await processInvoker.ExecuteAsync(repoRoot, GitPath, arg, _userAgentEnv, cancellationToken);
         }
     }
 }

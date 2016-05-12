@@ -18,13 +18,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         private const string _pullRefsPrefix = "refs/pull/";
         private const string _remotePullRefsPrefix = "refs/remotes/pull/";
 
-        private static Version _minSupportGitVersion = new Version(1, 8);
+        private static Version _minSupportGitVersion = new Version(1, 9, 1);
         private readonly Dictionary<string, Uri> _credentialUrlCache = new Dictionary<string, Uri>();
-        private IGitCommandManager _gitCommandManager;
+
+        protected IGitCommandManager _gitCommandManager;
 
         public override string RepositoryType => WellKnownRepositoryTypes.Git;
 
-        public async Task GetSourceAsync(IExecutionContext executionContext, ServiceEndpoint endpoint, CancellationToken cancellationToken)
+        public virtual async Task GetSourceAsync(IExecutionContext executionContext, ServiceEndpoint endpoint, CancellationToken cancellationToken)
         {
             Trace.Entering();
             ArgUtil.NotNull(endpoint, nameof(endpoint));
@@ -80,11 +81,219 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             Trace.Info($"Git useragent={customizeUserAgent}");
             _gitCommandManager.GitHttpUserAgent = customizeUserAgent;
 
-            // sync source
-            await SyncAndCheckout(executionContext, endpoint, targetPath, clean, sourceBranch, sourceVersion, checkoutSubmodules, exposeCred, cancellationToken);
+            // retrieve credential from endpoint.
+            Uri repositoryUrl = endpoint.Url;
+            if (!repositoryUrl.IsAbsoluteUri)
+            {
+                throw new InvalidOperationException("Repository url need to be an absolute uri.");
+            }
+
+            string username = string.Empty;
+            string password = string.Empty;
+            if (endpoint.Authorization != null)
+            {
+                switch (endpoint.Authorization.Scheme)
+                {
+                    case EndpointAuthorizationSchemes.OAuth:
+                        username = EndpointAuthorizationSchemes.OAuth;
+                        if (!endpoint.Authorization.Parameters.TryGetValue(EndpointAuthorizationParameters.AccessToken, out password))
+                        {
+                            password = string.Empty;
+                        }
+                        break;
+                    case EndpointAuthorizationSchemes.UsernamePassword:
+                        if (!endpoint.Authorization.Parameters.TryGetValue(EndpointAuthorizationParameters.Username, out username))
+                        {
+                            // leave the username as empty, the username might in the url, like: http://username@repository.git
+                            username = string.Empty;
+                        }
+                        if (!endpoint.Authorization.Parameters.TryGetValue(EndpointAuthorizationParameters.Password, out password))
+                        {
+                            // we have username, but no password
+                            password = string.Empty;
+                        }
+                        break;
+                    default:
+                        executionContext.Warning($"Unsupport endpoint authorization schemes: {endpoint.Authorization.Scheme}");
+                        break;
+                }
+            }
+
+            // Check the current contents of the root folder to see if there is already a repo
+            // If there is a repo, see if it matches the one we are expecting to be there based on the remote fetch url
+            // if the repo is not what we expect, remove the folder
+            if (!await IsRepositoryOriginUrlMatch(executionContext, targetPath, repositoryUrl))
+            {
+                // Delete source folder
+                IOUtil.DeleteDirectory(targetPath, cancellationToken);
+            }
+            else
+            {
+                // delete the index.lock file left by previous canceled build or any operation casue git.exe crash last time.
+                string lockFile = Path.Combine(targetPath, ".git\\index.lock");
+                if (File.Exists(lockFile))
+                {
+                    try
+                    {
+                        File.Delete(lockFile);
+                    }
+                    catch (Exception ex)
+                    {
+                        executionContext.Debug($"Unable to delete the index.lock file: {lockFile}");
+                        executionContext.Debug(ex.ToString());
+                    }
+                }
+
+                // When repo.clean is selected for a git repo, execute git clean -fdx and git reset --hard HEAD on the current repo.
+                // This will help us save the time to reclone the entire repo.
+                // If any git commands exit with non-zero return code or any exception happened during git.exe invoke, fall back to delete the repo folder.
+                if (clean)
+                {
+                    Boolean softClean = false;
+                    // git clean -fdx
+                    // git reset --hard HEAD
+                    int exitCode_clean = await _gitCommandManager.GitClean(executionContext, targetPath);
+                    if (exitCode_clean != 0)
+                    {
+                        executionContext.Debug($"'git clean -fdx' failed with exit code {exitCode_clean}, this normally caused by:\n    1) Path too long\n    2) Permission issue\n    3) File in use\nFor futher investigation, manually run 'git clean -fdx' on repo root: {targetPath} after each build.");
+                    }
+                    else
+                    {
+                        int exitCode_reset = await _gitCommandManager.GitReset(executionContext, targetPath);
+                        if (exitCode_reset != 0)
+                        {
+                            executionContext.Debug($"'git reset --hard HEAD' failed with exit code {exitCode_reset}\nFor futher investigation, manually run 'git reset --hard HEAD' on repo root: {targetPath} after each build.");
+                        }
+                        else
+                        {
+                            softClean = true;
+                        }
+                    }
+
+                    if (!softClean)
+                    {
+                        //fall back
+                        executionContext.Warning("Unable to run \"git clean -fdx\" and \"git reset --hard HEAD\" successfully, delete source folder instead.");
+                        IOUtil.DeleteDirectory(targetPath, cancellationToken);
+                    }
+                }
+            }
+
+            // if the folder is missing, create it
+            if (!Directory.Exists(targetPath))
+            {
+                Directory.CreateDirectory(targetPath);
+            }
+
+            // if the folder contains a .git folder, it means the folder contains a git repo that matches the remote url and in a clean state.
+            // we will run git fetch to update the repo.
+            if (!Directory.Exists(Path.Combine(targetPath, ".git")))
+            {
+                // init git repository
+                int exitCode_init = await _gitCommandManager.GitInit(executionContext, targetPath);
+                if (exitCode_init != 0)
+                {
+                    throw new InvalidOperationException($"Unable to use git.exe init repository under {targetPath}, 'git init' failed with exit code: {exitCode_init}");
+                }
+
+                int exitCode_addremote = await _gitCommandManager.GitRemoteAdd(executionContext, targetPath, "origin", repositoryUrl.AbsoluteUri);
+                if (exitCode_addremote != 0)
+                {
+                    throw new InvalidOperationException($"Unable to use git.exe add remote 'origin', 'git remote add' failed with exit code: {exitCode_addremote}");
+                }
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+            executionContext.Progress(0, "Starting fetch...");
+
+            // disable git auto gc
+            int exitCode_disableGC = await _gitCommandManager.GitDisableAutoGC(executionContext, targetPath);
+            if (exitCode_disableGC != 0)
+            {
+                executionContext.Warning("Unable turn off git auto garbage collection, git fetch operation may trigger auto garbage collection which will affect the performence of fetching.");
+            }
+
+            // inject credential into fetch url
+            executionContext.Debug("Inject credential into git remote url.");
+            Uri urlWithCred = null;
+            urlWithCred = GetCredentialEmbeddedRepoUrl(repositoryUrl, username, password);
+
+            // inject credential into fetch url
+            executionContext.Debug("Inject credential into git remote fetch url.");
+            int exitCode_seturl = await _gitCommandManager.GitRemoteSetUrl(executionContext, targetPath, "origin", urlWithCred.AbsoluteUri);
+            if (exitCode_seturl != 0)
+            {
+                throw new InvalidOperationException($"Unable to use git.exe inject credential to git remote fetch url, 'git remote set-url' failed with exit code: {exitCode_seturl}");
+            }
+
+            // inject credential into push url
+            executionContext.Debug("Inject credential into git remote push url.");
+            exitCode_seturl = await _gitCommandManager.GitRemoteSetPushUrl(executionContext, targetPath, "origin", urlWithCred.AbsoluteUri);
+            if (exitCode_seturl != 0)
+            {
+                throw new InvalidOperationException($"Unable to use git.exe inject credential to git remote push url, 'git remote set-url --push' failed with exit code: {exitCode_seturl}");
+            }
+
+            // If this is a build for a pull request, then include
+            // the pull request reference as an additional ref.
+            string fetchSpec = IsPullRequest(sourceBranch) ? StringUtil.Format("+{0}:{1}", sourceBranch, GetRemoteRefName(sourceBranch)) : null;
+
+            int exitCode_fetch = await _gitCommandManager.GitFetch(executionContext, targetPath, "origin", new List<string>() { fetchSpec }, string.Empty, cancellationToken);
+            if (exitCode_fetch != 0)
+            {
+                throw new InvalidOperationException($"Git fetch failed with exit code: {exitCode_fetch}");
+            }
+
+            if (!exposeCred)
+            {
+                // remove cached credential from origin's fetch/push url.
+                await RemoveCachedCredential(executionContext, targetPath, repositoryUrl, "origin");
+            }
+
+            // Checkout
+            // sourceToBuild is used for checkout
+            // if sourceBranch is a PR branch or sourceVersion is null, make sure branch name is a remote branch. we need checkout to detached head. 
+            // (change refs/heads to refs/remotes/origin, refs/pull to refs/remotes/pull, or leava it as it when the branch name doesn't contain refs/...)
+            // if sourceVersion provide, just use that for checkout, since when you checkout a commit, it will end up in detached head.
+            cancellationToken.ThrowIfCancellationRequested();
+            executionContext.Progress(80, "Starting checkout...");
+            string sourcesToBuild;
+            if (IsPullRequest(sourceBranch) || string.IsNullOrEmpty(sourceVersion))
+            {
+                sourcesToBuild = GetRemoteRefName(sourceBranch);
+            }
+            else
+            {
+                sourcesToBuild = sourceVersion;
+            }
+
+            // Finally, checkout the sourcesToBuild (if we didn't find a valid git object this will throw)
+            int exitCode_checkout = await _gitCommandManager.GitCheckout(executionContext, targetPath, sourcesToBuild, cancellationToken);
+            if (exitCode_checkout != 0)
+            {
+                throw new InvalidOperationException($"Git checkout failed with exit code: {exitCode_checkout}");
+            }
+
+            // Submodule update
+            if (checkoutSubmodules)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                executionContext.Progress(90, "Updating submodules...");
+                int exitCode_submoduleInit = await _gitCommandManager.GitSubmoduleInit(executionContext, targetPath);
+                if (exitCode_submoduleInit != 0)
+                {
+                    throw new InvalidOperationException($"Git submodule init failed with exit code: {exitCode_submoduleInit}");
+                }
+
+                int exitCode_submoduleUpdate = await _gitCommandManager.GitSubmoduleUpdate(executionContext, targetPath, string.Empty, cancellationToken);
+                if (exitCode_submoduleUpdate != 0)
+                {
+                    throw new InvalidOperationException($"Git submodule update failed with exit code: {exitCode_submoduleUpdate}");
+                }
+            }
         }
 
-        public async Task PostJobCleanupAsync(IExecutionContext executionContext, ServiceEndpoint endpoint)
+        public virtual async Task PostJobCleanupAsync(IExecutionContext executionContext, ServiceEndpoint endpoint)
         {
             Trace.Entering();
             ArgUtil.NotNull(endpoint, nameof(endpoint));
@@ -132,247 +341,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             }
         }
 
-        private async Task SyncAndCheckout(
-            IExecutionContext context,
-            ServiceEndpoint endpoint,
-            string targetPath,
-            bool clean,
-            string sourceBranch,
-            string sourceVersion,
-            bool checkoutSubmodules,
-            bool exposeCred,
-            CancellationToken cancellationToken = default(CancellationToken))
-        {
-            Trace.Entering();
-            cancellationToken.ThrowIfCancellationRequested();
-            int gitCommandExitCode;
-
-            // retrieve credential from endpoint.
-            Uri repositoryUrl = endpoint.Url;
-            if (!repositoryUrl.IsAbsoluteUri)
-            {
-                throw new InvalidOperationException("Repository url need to be an absolute uri.");
-            }
-
-            string username = string.Empty;
-            string password = string.Empty;
-            if (endpoint.Authorization != null)
-            {
-                switch (endpoint.Authorization.Scheme)
-                {
-                    case EndpointAuthorizationSchemes.OAuth:
-                        username = EndpointAuthorizationSchemes.OAuth;
-                        if (!endpoint.Authorization.Parameters.TryGetValue(EndpointAuthorizationParameters.AccessToken, out password))
-                        {
-                            password = string.Empty;
-                        }
-                        break;
-                    case EndpointAuthorizationSchemes.UsernamePassword:
-                        if (!endpoint.Authorization.Parameters.TryGetValue(EndpointAuthorizationParameters.Username, out username))
-                        {
-                            // leave the username as empty, the username might in the url, like: http://username@repository.git
-                            username = string.Empty;
-                        }
-                        if (!endpoint.Authorization.Parameters.TryGetValue(EndpointAuthorizationParameters.Password, out password))
-                        {
-                            // we have username, but no password
-                            password = string.Empty;
-                        }
-                        break;
-                    default:
-                        context.Warning($"Unsupport endpoint authorization schemes: {endpoint.Authorization.Scheme}");
-                        break;
-                }
-            }
-
-            // Check the current contents of the root folder to see if there is already a repo
-            // If there is a repo, see if it matches the one we are expecting to be there based on the remote fetch url
-            // if the repo is not what we expect, remove the folder
-            if (!await IsRepositoryOriginUrlMatch(context, targetPath, repositoryUrl))
-            {
-                // Delete source folder
-                IOUtil.DeleteDirectory(targetPath, cancellationToken);
-            }
-            else
-            {
-                // When repo.clean is selected for a git repo, execute git clean -fdx and git reset --hard HEAD on the current repo.
-                // This will help us save the time to reclone the entire repo.
-                // If any git commands exit with non-zero return code or any exception happened during git.exe invoke, fall back to delete the repo folder.
-                if (clean)
-                {
-                    Boolean softClean = false;
-                    // git clean -fdx
-                    // git reset --hard HEAD
-                    gitCommandExitCode = await _gitCommandManager.GitClean(context, targetPath);
-                    if (gitCommandExitCode != 0)
-                    {
-                        context.Debug($"'git clean -fdx' failed with exit code {gitCommandExitCode}, this normally caused by:\n    1) Path too long\n    2) Permission issue\n    3) File in use\nFor futher investigation, manually run 'git clean -fdx' on repo root: {targetPath} after each build.");
-                    }
-                    else
-                    {
-                        gitCommandExitCode = await _gitCommandManager.GitReset(context, targetPath);
-                        if (gitCommandExitCode != 0)
-                        {
-                            context.Debug($"'git reset --hard HEAD' failed with exit code {gitCommandExitCode}\nFor futher investigation, manually run 'git reset --hard HEAD' on repo root: {targetPath} after each build.");
-                        }
-                        else
-                        {
-                            softClean = true;
-                        }
-                    }
-
-                    if (!softClean)
-                    {
-                        //fall back
-                        context.Warning("Unable to run \"git clean -fdx\" and \"git reset --hard HEAD\" successfully, delete source folder instead.");
-                        IOUtil.DeleteDirectory(targetPath, cancellationToken);
-                    }
-                }
-            }
-
-            // if the folder is missing, create it
-            if (!Directory.Exists(targetPath))
-            {
-                Directory.CreateDirectory(targetPath);
-            }
-
-            // inject credential into fetch url
-            context.Debug("Inject credential into git remote url.");
-            Uri urlWithCred = null;
-            urlWithCred = GetCredentialEmbeddedRepoUrl(repositoryUrl, username, password);
-
-            // if the folder contains a .git folder, it means the folder contains a git repo that matches the remote url and in a clean state.
-            // we will run git fetch to update the repo.
-            if (Directory.Exists(Path.Combine(targetPath, ".git")))
-            {
-                // disable git auto gc
-                int exitCode_disableGC = await _gitCommandManager.GitDisableAutoGC(context, targetPath);
-                if (exitCode_disableGC != 0)
-                {
-                    context.Warning("Unable turn off git auto garbage collection, git fetch operation may trigger auto garbage collection which will affect the performence of fetching.");
-                }
-
-                // inject credential into fetch url
-                context.Debug("Inject credential into git remote fetch url.");
-                int exitCode_seturl = await _gitCommandManager.GitRemoteSetUrl(context, targetPath, "origin", urlWithCred.AbsoluteUri);
-                if (exitCode_seturl != 0)
-                {
-                    throw new InvalidOperationException($"Unable to use git.exe inject credential to git remote fetch url, 'git remote set-url' failed with exit code: {exitCode_seturl}");
-                }
-
-                // inject credential into push url
-                context.Debug("Inject credential into git remote push url.");
-                exitCode_seturl = await _gitCommandManager.GitRemoteSetPushUrl(context, targetPath, "origin", urlWithCred.AbsoluteUri);
-                if (exitCode_seturl != 0)
-                {
-                    throw new InvalidOperationException($"Unable to use git.exe inject credential to git remote push url, 'git remote set-url --push' failed with exit code: {exitCode_seturl}");
-                }
-
-                // If this is a build for a pull request, then include
-                // the pull request reference as an additional ref.
-                string fetchSpec = IsPullRequest(sourceBranch) ? StringUtil.Format("+{0}:{1}", sourceBranch, GetRemoteRefName(sourceBranch)) : null;
-
-                context.Progress(0, "Starting fetch...");
-                gitCommandExitCode = await _gitCommandManager.GitFetch(context, targetPath, "origin", new List<string>() { fetchSpec }, username, password, exposeCred, cancellationToken);
-                if (gitCommandExitCode != 0)
-                {
-                    throw new InvalidOperationException($"Git fetch failed with exit code: {gitCommandExitCode}");
-                }
-            }
-            else
-            {
-                context.Progress(0, "Starting clone...");
-                gitCommandExitCode = await _gitCommandManager.GitClone(context, targetPath, urlWithCred, username, password, exposeCred, cancellationToken);
-                if (gitCommandExitCode != 0)
-                {
-                    throw new InvalidOperationException($"Git clone failed with exit code: {gitCommandExitCode}");
-                }
-
-                if (IsPullRequest(sourceBranch))
-                {
-                    // Clone doesn't pull the refs/pull namespace so we need to Fetch the appropriate ref
-                    string fetchSpec = StringUtil.Format("+{0}:{1}", sourceBranch, GetRemoteRefName(sourceBranch));
-
-                    context.Progress(76, $"Starting fetch pull request ref... {fetchSpec}");
-                    context.Output("Starting fetch pull request ref");
-                    gitCommandExitCode = await _gitCommandManager.GitFetch(context, targetPath, "origin", new List<string>() { fetchSpec }, username, password, exposeCred, cancellationToken);
-                    if (gitCommandExitCode != 0)
-                    {
-                        throw new InvalidOperationException($"Git fetch failed with exit code: {gitCommandExitCode}");
-                    }
-                }
-            }
-
-            if (!exposeCred)
-            {
-                // remove cached credential from origin's fetch/push url.
-                await RemoveCachedCredential(context, targetPath, repositoryUrl, "origin");
-            }
-
-            // Checkout
-            // delete the index.lock file left by previous canceled build or any operation casue git.exe crash last time.
-            string lockFile = Path.Combine(targetPath, ".git\\index.lock");
-            if (File.Exists(lockFile))
-            {
-                try
-                {
-                    File.Delete(lockFile);
-                }
-                catch (Exception ex)
-                {
-                    context.Debug($"Unable to delete the index.lock file: {lockFile}");
-                    context.Debug(ex.ToString());
-                }
-            }
-
-            // sourceToBuild is used for checkout
-            // if sourceBranch is a PR branch or sourceVersion is null, make sure branch name is a remote branch. we need checkout to detached head. 
-            // (change refs/heads to refs/remotes/origin, refs/pull to refs/remotes/pull, or leava it as it when the branch name doesn't contain refs/...)
-            // if sourceVersion provide, just use that for checkout, since when you checkout a commit, it will end up in detached head.
-            context.Progress(80, "Starting checkout...");
-            string sourcesToBuild;
-            if (IsPullRequest(sourceBranch) || string.IsNullOrEmpty(sourceVersion))
-            {
-                sourcesToBuild = GetRemoteRefName(sourceBranch);
-            }
-            else
-            {
-                sourcesToBuild = sourceVersion;
-            }
-
-            // Finally, checkout the sourcesToBuild (if we didn't find a valid git object this will throw)
-            gitCommandExitCode = await _gitCommandManager.GitCheckout(context, targetPath, sourcesToBuild, cancellationToken);
-            if (gitCommandExitCode != 0)
-            {
-                throw new InvalidOperationException($"Git checkout failed with exit code: {gitCommandExitCode}");
-            }
-
-            // Submodule update
-            if (checkoutSubmodules)
-            {
-                context.Progress(90, "Updating submodules...");
-                gitCommandExitCode = await _gitCommandManager.GitSubmoduleInit(context, targetPath);
-                if (gitCommandExitCode != 0)
-                {
-                    throw new InvalidOperationException($"Git submodule init failed with exit code: {gitCommandExitCode}");
-                }
-
-                // we can use the following code if we want to inject different credential for different submodules.
-                // inject credentials for each submodule
-                // Dictionary<string, Uri> submoduleUrls = GitGetSubmoduleUrls(m_rootPath);
-                // inject credentials into submoduleUrls
-                // GitUpdateSubmoduleUrls(m_rootPath, submoduleUrls);
-
-                context.Command("git submodule update");
-                gitCommandExitCode = await _gitCommandManager.GitSubmoduleUpdate(context, targetPath, cancellationToken);
-                if (gitCommandExitCode != 0)
-                {
-                    throw new InvalidOperationException($"Git submodule update failed with exit code: {gitCommandExitCode}");
-                }
-            }
-        }
-
-        private async Task<bool> IsRepositoryOriginUrlMatch(IExecutionContext context, string repositoryPath, Uri expectedRepositoryOriginUrl)
+        protected async Task<bool> IsRepositoryOriginUrlMatch(IExecutionContext context, string repositoryPath, Uri expectedRepositoryOriginUrl)
         {
             context.Debug($"Checking if the repo on {repositoryPath} matches the expected repository origin URL. expected Url: {expectedRepositoryOriginUrl.AbsoluteUri}");
             if (!Directory.Exists(Path.Combine(repositoryPath, ".git")))
@@ -475,11 +444,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             if (exitCode_seturl != 0 || exitCode_setpushurl != 0)
             {
                 // if unable to use git.exe set fetch url back, modify git config file on disk. make sure we don't left credential.
-                context.Debug("Unable to use git.exe remove injected credential from git remote fetch url, modify git config file on disk to remove injected credential.");
+                context.Warning("Unable to use git.exe remove injected credential from git remote fetch url, modify git config file on disk to remove injected credential.");
                 string gitConfig = Path.Combine(repositoryPath, ".git/config");
                 if (File.Exists(gitConfig))
                 {
-                    // TODO: async read/write ?
                     string gitConfigContent = File.ReadAllText(Path.Combine(repositoryPath, ".git", "config"));
                     Uri urlWithCred;
                     if (_credentialUrlCache.TryGetValue(repositoryUrl.AbsoluteUri, out urlWithCred))
@@ -491,14 +459,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             }
         }
 
-        private bool IsPullRequest(string sourceBranch)
+        protected bool IsPullRequest(string sourceBranch)
         {
             return !string.IsNullOrEmpty(sourceBranch) &&
                 (sourceBranch.StartsWith(_pullRefsPrefix, StringComparison.OrdinalIgnoreCase) ||
                  sourceBranch.StartsWith(_remotePullRefsPrefix, StringComparison.OrdinalIgnoreCase));
         }
 
-        private string GetRemoteRefName(string refName)
+        protected string GetRemoteRefName(string refName)
         {
             if (string.IsNullOrEmpty(refName))
             {

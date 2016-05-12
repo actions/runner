@@ -30,7 +30,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             ArgUtil.NotNull(ExecutionContext, nameof(ExecutionContext));
             ArgUtil.NotNull(Inputs, nameof(Inputs));
             ArgUtil.Directory(TaskDirectory, nameof(TaskDirectory));
-            
+
             // Resolve the target script.
             ArgUtil.NotNullOrEmpty(Data.Target, nameof(Data.Target));
             string scriptFile = Path.Combine(TaskDirectory, Data.Target);
