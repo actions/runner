@@ -123,7 +123,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
             {
                 throw new ArgumentException(StringUtil.Loc("InvalidClassFilesDirectory"));
             }
-
         }
 
         public static string SetCurrentDirectoryIfDirectoriesParameterIsEmpty(IExecutionContext context, string directoriesParameter, string warningMessage)

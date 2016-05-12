@@ -14,7 +14,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
             //validatebuild file exists
             if (!File.Exists(BuildFile))
             {
-                throw new ArgumentException(StringUtil.Loc("FileDoesNotExist", BuildFile));
+                throw new FileNotFoundException(StringUtil.Loc("FileDoesNotExist", BuildFile));
             }
 
             ClassFilesDirectories = classFilesDirectories;

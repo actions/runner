@@ -113,7 +113,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
                         buildXml.DocumentElement.InsertAfter(taskDefTag, pathTag);
                     }
 
-                    using (FileStream stream = new FileStream(buildFile, FileMode.OpenOrCreate))
+                    using (FileStream stream = new FileStream(buildFile, FileMode.Create))
                     {
                         buildXml.Save(stream);
                     }
@@ -150,7 +150,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
                 {
                     XmlDocument xdoc = new XmlDocument();
                     xdoc.Load(reader);
-                    using (FileStream stream = new FileStream(ccInputs.ReportBuildFile, FileMode.OpenOrCreate))
+                    using (FileStream stream = new FileStream(ccInputs.ReportBuildFile, FileMode.Create))
                     {
                         xdoc.Save(stream);
                     }

@@ -105,7 +105,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
                     // buildFile is edited
                     _executionContext.Debug(StringUtil.Format(CodeCoverageConstants.EnablingEditingTemplate, "jacoco", "ant", buildFile));
                 }
-                using (FileStream stream = new FileStream(buildFile, FileMode.OpenOrCreate))
+                using (FileStream stream = new FileStream(buildFile, FileMode.Create))
                 {
                     buildXml.Save(stream);
                 }
@@ -137,7 +137,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
                 {
                     XmlDocument xdoc = new XmlDocument();
                     xdoc.Load(reader);
-                    using (FileStream stream = new FileStream(antCCParams.ReportBuildFile, FileMode.OpenOrCreate))
+                    using (FileStream stream = new FileStream(antCCParams.ReportBuildFile, FileMode.Create))
                     {
                         xdoc.Save(stream);
                     }

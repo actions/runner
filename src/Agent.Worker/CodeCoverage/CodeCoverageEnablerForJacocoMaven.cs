@@ -68,7 +68,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
                 e.Name = xNameSpace + e.Name.LocalName;
             }
 
-            using (FileStream stream = new FileStream(ccInputs.BuildFile, FileMode.OpenOrCreate))
+            using (FileStream stream = new FileStream(ccInputs.BuildFile, FileMode.Create))
             {
                 pomXml.Save(stream);
             }
@@ -244,7 +244,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
                 {
                     XmlDocument xdoc = new XmlDocument();
                     xdoc.Load(reader);
-                    using (FileStream stream = new FileStream(multiModulePomFilePath, FileMode.OpenOrCreate))
+                    using (FileStream stream = new FileStream(multiModulePomFilePath, FileMode.Create))
                     {
                         xdoc.Save(stream);
                     }

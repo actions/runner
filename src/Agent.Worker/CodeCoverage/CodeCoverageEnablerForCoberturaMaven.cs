@@ -99,7 +99,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
                 e.Name = xNameSpace + e.Name.LocalName;
             }
 
-            using (FileStream stream = new FileStream(ccInputs.BuildFile, FileMode.OpenOrCreate))
+            using (FileStream stream = new FileStream(ccInputs.BuildFile, FileMode.Create))
             {
                 pomXml.Save(stream);
             }
