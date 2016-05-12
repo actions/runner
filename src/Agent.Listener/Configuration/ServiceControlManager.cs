@@ -1,8 +1,5 @@
 using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using System.Linq;
-
 using Microsoft.VisualStudio.Services.Agent.Util;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
@@ -10,7 +7,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 #if OS_WINDOWS
     [ServiceLocator(Default = typeof(WindowsServiceControlManager))]
 #elif OS_LINUX
-    [ServiceLocator(Default = typeof(LinuxServiceControlManager))]
+    [ServiceLocator(Default = typeof(SystemDControlManager))]
 #elif OS_OSX
     [ServiceLocator(Default = typeof(OsxServiceControlManager))]
 #endif
@@ -19,15 +16,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
     {
         bool ConfigureService(AgentSettings settings, CommandSettings command);
 
-        void StartService(string serviceName);
+        void StartService();
 
-        void StopService(string serviceName);
+        void StopService();
 
         bool CheckServiceExists(string serviceName);
     }
 
     public abstract class ServiceControlManager : AgentService, IServiceControlManager
     {
+        public string ServiceName { get; set; }
+        public string ServiceDisplayName { get; set; }
+
         protected ITerminal _term;
 
         public override void Initialize(IHostContext hostContext)
@@ -47,15 +47,21 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 throw new InvalidOperationException("CannotFindHostName");
             }
 
-            settings.ServiceName = StringUtil.Format(serviceNamePattern, accountName, settings.AgentName);
-            settings.ServiceDisplayName = StringUtil.Format(serviceDisplayNamePattern, accountName, settings.AgentName);
+            ServiceName = StringUtil.Format(serviceNamePattern, accountName, settings.AgentName);
+            ServiceDisplayName = StringUtil.Format(serviceDisplayNamePattern, accountName, settings.AgentName);
+        }
+
+        protected void SaveServiceSettings()
+        {
+            IOUtil.SaveObject(new { RunAsService = true, ServiceName = ServiceName, ServiceDisplayName = ServiceDisplayName },
+                IOUtil.GetServiceConfigFilePath());
         }
 
         public abstract bool ConfigureService(AgentSettings settings, CommandSettings command);
 
-        public abstract void StartService(string serviceName);
+        public abstract void StartService();
 
-        public abstract void StopService(string serviceName);
+        public abstract void StopService();
 
         public abstract bool CheckServiceExists(string serviceName);
     }

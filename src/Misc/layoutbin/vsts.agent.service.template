@@ -3,9 +3,8 @@ Description={{Description}}
 After=network.target
 
 [Service]
-ExecStart={{ExternalsDirectory}}/node/bin/node {{BinDirectory}}/AgentService.js
+ExecStart={{AgentRoot}}/runsvc.sh
 User={{User}}
-Environment=PATH={{Path}}
 Environment=NODE_ENV=production
 WorkingDirectory={{AgentRoot}}
 KillMode=process

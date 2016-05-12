@@ -106,19 +106,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 }
 
                 AgentSettings settings = configManager.LoadSettings();
-                if (command.Run || !settings.RunAsService)
+                bool runAsService = configManager.IsServiceConfigured();
+                if (command.Run || !runAsService)
                 {
                     // Run the agent interactively
-                    Trace.Verbose($"Run as service: '{settings.RunAsService}'");
-                    return await RunAsync(TokenSource.Token, settings);
+                    Trace.Verbose($"Run as service: '{runAsService}'");
+                    return await RunAsync(TokenSource.Token, settings, runAsService);
                 }
 
-                if (configManager.IsConfigured())
+                if (runAsService)
                 {
                     // This is helpful if the user tries to start the agent.listener which is already configured or running as service
                     // However user can execute the agent by calling the run command
                     // TODO: Should we check if the service is running and prompt user to start the service if its not already running?
-                    _term.WriteLine(StringUtil.Loc("ConfiguredAsRunAsService", settings.ServiceName));
+                    _term.WriteLine(StringUtil.Loc("ConfiguredAsRunAsService"));
                 }
 
                 return Constants.Agent.ReturnCode.Success;
@@ -144,7 +145,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         }
 
         //create worker manager, create message listener and start listening to the queue
-        private async Task<int> RunAsync(CancellationToken token, AgentSettings settings)
+        private async Task<int> RunAsync(CancellationToken token, AgentSettings settings, bool runAsService)
         {
             Trace.Info(nameof(RunAsync));
 
@@ -206,7 +207,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                                 {
                                     autoUpdateInProgress = true;
                                     var selfUpdater = HostContext.GetService<ISelfUpdater>();
-                                    selfUpdateTask = selfUpdater.SelfUpdate(jobDispatcher, !settings.RunAsService, token);
+                                    selfUpdateTask = selfUpdater.SelfUpdate(jobDispatcher, !runAsService, token);
                                     Trace.Info("Refresh message received, kick-off selfupdate background process.");
                                 }
                                 else

@@ -1,0 +1,114 @@
+#!/bin/bash
+
+SVC_NAME="{{SvcNameVar}}"
+SVC_DESCRIPTION="{{SvcDescription}}"
+
+SVC_CMD=$1
+AGENT_ROOT=`pwd`
+
+UNIT_PATH=/etc/systemd/system/${SVC_NAME}
+TEMPLATE_PATH=./bin/vsts.agent.service.template
+TEMP_PATH=./bin/vsts.agent.service.temp
+CONFIG_PATH=.Service
+
+function failed()
+{
+   local error=${1:-Undefined error}
+   echo "Failed: $error" >&2
+   exit 1
+}
+
+if [ ! -f "${TEMPLATE_PATH}" ]; then
+    failed "Must run from agent root or install is corrupt"
+fi
+
+function install()
+{
+    echo "Creating launch agent in ${UNIT_PATH}"
+    if [ -f "${UNIT_PATH}" ]; then
+        failed "error: exists ${UNIT_PATH}"
+    fi
+
+    if [ -f "${TEMP_PATH}" ]; then
+      rm "${TEMP_PATH}"
+    fi
+
+    sed "s/{{User}}/${SUDO_USER:-$USER}/g; s/{{Description}}/$(echo ${SVC_DESCRIPTION} | sed -e 's/[\/&]/\\&/g')/g; s/{{AgentRoot}}/$(echo ${AGENT_ROOT} | sed -e 's/[\/&]/\\&/g')/g;" "${TEMPLATE_PATH}" > "${TEMP_PATH}" || failed "failed to create replacement temp file"
+    cp "${TEMP_PATH}" "${UNIT_PATH}" || "failed to copy unit file"
+    
+    # unit file should not be executable and world writable
+    chmod 664 ${UNIT_PATH}
+    systemctl daemon-reload
+    
+	# Since we started with sudo, runsvc.sh will be owned by root. Change this to current login user.    
+    cp ./bin/runsvc.sh ./runsvc.sh
+    chown ${SUDO_UID:-$UID}:${SUDO_GID} ./runsvc.sh
+    chmod 755 ./runsvc.sh
+
+    systemctl enable ${SVC_NAME} || "failed to enable ${SVC_NAME}"
+
+    echo '
+    {
+        "RunAsService": true,
+        "ServiceName": "'${SVC_NAME}'",
+        "ServiceDisplayName": "'${SVC_DESCRIPTION}'"
+    }
+    ' > ${CONFIG_PATH}
+}
+
+function start()
+{
+    systemctl start ${SVC_NAME} || "failed to start ${SVC_NAME}"
+    status    
+}
+
+function stop()
+{
+    systemctl stop ${SVC_NAME} || "failed to stop ${SVC_NAME}"    
+    status
+}
+
+function uninstall()
+{
+    stop
+    systemctl disable ${SVC_NAME} || "failed to enable ${SVC_NAME}"
+    rm "${UNIT_PATH}"
+    if [ -f "${CONFIG_PATH}" ]; then
+      rm "${CONFIG_PATH}"
+    fi
+    systemctl daemon-reload
+}
+
+function status()
+{
+    if [ -f "${UNIT_PATH}" ]; then
+        echo
+        echo "${UNIT_PATH}"
+    else
+        echo
+        echo "not installed"
+        echo
+        exit
+    fi
+
+    systemctl status ${SVC_NAME}
+}
+
+function usage()
+{
+    echo
+    echo Usage:
+    echo "./svc.sh [install, start, stop, status, uninstall]"
+    echo
+}
+
+case $SVC_CMD in
+   "install") install;;
+   "status") status;;
+   "uninstall") uninstall;;
+   "start") start;;
+   "stop") stop;;
+   "status") status;;
+   *) usage;;
+esac
+

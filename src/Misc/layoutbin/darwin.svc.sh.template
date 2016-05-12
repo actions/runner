@@ -1,6 +1,7 @@
 #!/bin/bash
 
 SVC_NAME="{{SvcNameVar}}"
+SVC_DESCRIPTION="{{SvcDescription}}"
 
 SVC_CMD=$1
 AGENT_ROOT=`pwd`
@@ -8,6 +9,7 @@ AGENT_ROOT=`pwd`
 PLIST_PATH=${HOME}/Library/LaunchAgents/${SVC_NAME}.plist
 TEMPLATE_PATH=./bin/vsts.agent.plist.template
 TEMP_PATH=./bin/vsts.agent.plist.temp
+CONFIG_PATH=.Service
 
 function failed()
 {
@@ -40,6 +42,14 @@ function install()
     cp "${TEMP_PATH}" "${PLIST_PATH}" || "failed to copy plist"
     cp ./bin/runsvc.sh ./runsvc.sh
     chmod 755 ./runsvc.sh
+
+    echo '
+    {
+        "RunAsService": true,
+        "ServiceName": "'${SVC_NAME}'",
+        "ServiceDisplayName": "'${SVC_DESCRIPTION}'"
+    }
+    ' > ${CONFIG_PATH}
 }
 
 function start()
@@ -58,6 +68,9 @@ function uninstall()
 {
     stop
     rm "${PLIST_PATH}"
+    if [ -f "${CONFIG_PATH}" ]; then
+      rm "${CONFIG_PATH}"
+    fi
 }
 
 function status()
