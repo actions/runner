@@ -7,6 +7,8 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.IO.Compression;
+using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
@@ -14,12 +16,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
     [ServiceLocator(Default = typeof(TestRunPublisher))]
     public interface ITestRunPublisher : IAgentService
     {
-        Task StartTestRunAsync(TestRunData testRunData);
-        Task AddResultsAsync(TestCaseResultData[] testResults);
-        TestRunData ReadResultsFromFile(string filePath);
-        Task EndTestRunAsync(bool publishAttachmentsAsArchive = false);
-        void InitializePublisher(IExecutionContext executionContext, VssConnection connection, string projectName, TestRunContext runContext, IResultReader resultReader);
-        TestRunData ReadResultsFromFile(string filePath, string runName);
+        void InitializePublisher(IExecutionContext executionContext, VssConnection connection, string projectName, IResultReader resultReader);
+        Task<TestRun> StartTestRunAsync(TestRunData testRunData, CancellationToken cancellationToken = default(CancellationToken));
+        Task AddResultsAsync(TestRun testRun, TestCaseResultData[] testResults, CancellationToken cancellationToken = default(CancellationToken));
+        Task EndTestRunAsync(TestRunData testRunData, int testRunId, bool publishAttachmentsAsArchive = false, CancellationToken cancellationToken = default(CancellationToken));
+        TestRunData ReadResultsFromFile(TestRunContext runContext, string filePath, string runName);
+        TestRunData ReadResultsFromFile(TestRunContext runContext, string filePath);
     }
 
     public class TestRunPublisher : AgentService, ITestRunPublisher
@@ -31,19 +33,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
         private IExecutionContext _executionContext;
         private string _projectName;
         private ITestResultsServer _testResultsServer;
-        private TestRun _testRun;
-        private TestRunData _testRunData;
         private IResultReader _resultReader;
-        private TestRunContext _runContext;
         #endregion
 
         #region Public API
-        public void InitializePublisher(IExecutionContext executionContext, VssConnection connection, string projectName, TestRunContext runContext, IResultReader resultReader)
+        public void InitializePublisher(IExecutionContext executionContext, VssConnection connection, string projectName, IResultReader resultReader)
         {
             Trace.Entering();
             _executionContext = executionContext;
             _projectName = projectName;
-            _runContext = runContext;
             _resultReader = resultReader;
             connection.InnerHandler.Settings.SendTimeout = TimeSpan.FromSeconds(PUBLISH_TIMEOUT);
             _testResultsServer = HostContext.GetService<ITestResultsServer>();
@@ -55,50 +53,56 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
         /// Publishes the given results to the test run.
         /// </summary>
         /// <param name="testResults">Results to be published.</param>
-        public async Task AddResultsAsync(TestCaseResultData[] testResults)
+        public async Task AddResultsAsync(TestRun testRun, TestCaseResultData[] testResults, CancellationToken cancellationToken)
         {
             Trace.Entering();
             int noOfResultsToBePublished = BATCH_SIZE;
 
+            _executionContext.Output(StringUtil.Loc("PublishingTestResults", testRun.Id));
+
             for (int i = 0; i < testResults.Length; i += BATCH_SIZE)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 if (i + BATCH_SIZE >= testResults.Length)
                 {
                     noOfResultsToBePublished = testResults.Length - i;
                 }
-                _executionContext.Output($"Test results remaining: {(testResults.Length - i)}");
+                _executionContext.Output(StringUtil.Loc("TestResultsRemaining", (testResults.Length - i), testRun.Id));
 
                 var currentBatch = new TestCaseResultData[noOfResultsToBePublished];
                 Array.Copy(testResults, i, currentBatch, 0, noOfResultsToBePublished);
 
-                List<TestCaseResult> testresults = await _testResultsServer.AddTestResultsToTestRunAsync(currentBatch, _projectName, _testRun.Id, _executionContext.CancellationToken);
+                List<TestCaseResult> testresults = await _testResultsServer.AddTestResultsToTestRunAsync(currentBatch, _projectName, testRun.Id, cancellationToken);
 
                 for (int j = 0; j < noOfResultsToBePublished; j++)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     // Do not upload duplicate entries 
                     string[] attachments = testResults[i + j].Attachments;
                     if (attachments != null)
                     {
                         Hashtable attachedFiles = new Hashtable(StringComparer.CurrentCultureIgnoreCase);
-                        foreach (string attachment in attachments)
+                        var createAttachmentsTasks = attachments.Select(async attachment =>
                         {
                             if (!attachedFiles.ContainsKey(attachment))
                             {
                                 TestAttachmentRequestModel reqModel = GetAttachmentRequestModel(attachment);
                                 if (reqModel != null)
                                 {
-                                    await _testResultsServer.CreateTestResultAttachmentAsync(reqModel, _projectName, _testRun.Id, testresults[j].Id, _executionContext.CancellationToken);
+                                    await _testResultsServer.CreateTestResultAttachmentAsync(reqModel, _projectName, testRun.Id, testresults[j].Id, cancellationToken);
                                 }
                                 attachedFiles.Add(attachment, null);
                             }
-                        }
+                        });
+                        await Task.WhenAll(createAttachmentsTasks);
                     }
+
                     // Upload console log as attachment
                     string consoleLog = testResults[i + j].ConsoleLog;
                     TestAttachmentRequestModel attachmentRequestModel = GetConsoleLogAttachmentRequestModel(consoleLog);
                     if (attachmentRequestModel != null)
                     {
-                        await _testResultsServer.CreateTestResultAttachmentAsync(attachmentRequestModel, _projectName, _testRun.Id, testresults[j].Id, _executionContext.CancellationToken);
+                        await _testResultsServer.CreateTestResultAttachmentAsync(attachmentRequestModel, _projectName, testRun.Id, testresults[j].Id, cancellationToken);
                     }
                 }
             }
@@ -109,40 +113,41 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
         /// <summary>
         /// Start a test run  
         /// </summary>
-        public async Task StartTestRunAsync(TestRunData testRun)
+        public async Task<TestRun> StartTestRunAsync(TestRunData testRunData, CancellationToken cancellationToken)
         {
             Trace.Entering();
-            _testRunData = testRun;
 
-            _testRun = await _testResultsServer.CreateTestRunAsync(_projectName, _testRunData, _executionContext.CancellationToken);
+            var testRun = await _testResultsServer.CreateTestRunAsync(_projectName, testRunData, cancellationToken);
             Trace.Leaving();
+            return testRun;
         }
 
         /// <summary>
         /// Mark the test run as completed 
         /// </summary>
-        public async Task EndTestRunAsync(bool publishAttachmentsAsArchive = false)
+        public async Task EndTestRunAsync(TestRunData testRunData, int testRunId, bool publishAttachmentsAsArchive = false, CancellationToken cancellationToken = default(CancellationToken))
         {
             Trace.Entering();
             RunUpdateModel updateModel = new RunUpdateModel(
-                completedDate: _testRunData.CompleteDate,
+                completedDate: testRunData.CompleteDate,
                 state: TestRunState.Completed.ToString()
                 );
-            _testRun = await _testResultsServer.UpdateTestRunAsync(_projectName, _testRun.Id, updateModel, _executionContext.CancellationToken);
+            TestRun testRun = await _testResultsServer.UpdateTestRunAsync(_projectName, testRunId, updateModel, cancellationToken);
 
             // Uploading run level attachments, only after run is marked completed;
             // so as to make sure that any server jobs that acts on the uploaded data (like CoverAn job does for Coverage files)  
             // have a fully published test run results, in case it wants to iterate over results 
+
             if (publishAttachmentsAsArchive)
             {
-                UploadTestRunAttachmentsAsArchive();
+                await UploadTestRunAttachmentsAsArchiveAsync(testRunId, testRunData.Attachments, cancellationToken);
             }
             else
             {
-                UploadTestRunAttachmentsIndividual();
+                await UploadTestRunAttachmentsIndividualAsync(testRunId, testRunData.Attachments, cancellationToken);
             }
 
-            _executionContext.Output(string.Format(CultureInfo.CurrentCulture, "Published Test Run : {0}", _testRun.WebAccessUrl));
+            _executionContext.Output(string.Format(CultureInfo.CurrentCulture, "Published Test Run : {0}", testRun.WebAccessUrl));
         }
 
         /// <summary>
@@ -150,10 +155,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
         /// </summary>
         /// <param name="filePath">File path</param>
         /// <returns>TestRunData</returns>
-        public TestRunData ReadResultsFromFile(string filePath)
+        public TestRunData ReadResultsFromFile(TestRunContext runContext, string filePath)
         {
             Trace.Entering();
-            return _resultReader.ReadResults(_executionContext, filePath, _runContext);
+            return _resultReader.ReadResults(_executionContext, filePath, runContext);
         }
 
         /// <summary>
@@ -162,33 +167,33 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
         /// <param name="filePath">File path</param>
         /// <param name="runName">Run Name</param>
         /// <returns>TestRunData</returns>
-        public TestRunData ReadResultsFromFile(string filePath, string runName)
+        public TestRunData ReadResultsFromFile(TestRunContext runContext, string filePath, string runName)
         {
             Trace.Entering();
-            _runContext.RunName = runName;
-            return _resultReader.ReadResults(_executionContext, filePath, _runContext);
+            runContext.RunName = runName;
+            return _resultReader.ReadResults(_executionContext, filePath, runContext);
         }
         #endregion
 
-        private void UploadTestRunAttachmentsAsArchive()
+        private async Task UploadTestRunAttachmentsAsArchiveAsync(int testRunId, string[] attachments, CancellationToken cancellationToken)
         {
             Trace.Entering();
             // Do not upload duplicate entries 
-            HashSet<string> attachedFiles = UniqueTestRunFiles;
+            HashSet<string> attachedFiles = GetUniqueTestRunFiles(attachments);
             try
             {
                 string tempDirectory = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
                 Directory.CreateDirectory(tempDirectory);
-                string zipFile = Path.Combine(tempDirectory, "TestResults_" + _testRun.Id + ".zip");
+                string zipFile = Path.Combine(tempDirectory, "TestResults_" + testRunId + ".zip");
 
                 File.Delete(zipFile); //if there's already file. remove silently without exception
                 CreateZipFile(zipFile, attachedFiles);
-                CreateTestRunAttachment(zipFile);
+                await CreateTestRunAttachmentAsync(testRunId, zipFile, cancellationToken);
             }
             catch (Exception ex)
             {
                 _executionContext.Warning(StringUtil.Loc("UnableToArchiveResults", ex));
-                UploadTestRunAttachmentsIndividual();
+                await UploadTestRunAttachmentsIndividualAsync(testRunId, attachments, cancellationToken);
             }
         }
 
@@ -206,26 +211,26 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
             }
         }
 
-        private void UploadTestRunAttachmentsIndividual()
+        private async Task UploadTestRunAttachmentsIndividualAsync(int testRunId, string[] attachments, CancellationToken cancellationToken)
         {
             Trace.Entering();
             _executionContext.Debug("Uploading test run attachements individually");
             // Do not upload duplicate entries 
-            HashSet<string> attachedFiles = UniqueTestRunFiles;
-            foreach (string file in attachedFiles)
-            {
-                CreateTestRunAttachment(file);
-            }
+            HashSet<string> attachedFiles = GetUniqueTestRunFiles(attachments);
+            var attachFilesTasks = attachedFiles.Select(async file =>
+             {
+                 await CreateTestRunAttachmentAsync(testRunId, file, cancellationToken);
+             });
+            await Task.WhenAll(attachFilesTasks);
         }
 
-        private void CreateTestRunAttachment(string zipFile)
+        private async Task CreateTestRunAttachmentAsync(int testRunId, string zipFile, CancellationToken cancellationToken)
         {
             Trace.Entering();
             TestAttachmentRequestModel reqModel = GetAttachmentRequestModel(zipFile);
             if (reqModel != null)
             {
-                Task<TestAttachmentReference> trTask = _testResultsServer.CreateTestRunAttachmentAsync(reqModel, _projectName, _testRun.Id, _executionContext.CancellationToken);
-                trTask.Wait();
+                await _testResultsServer.CreateTestRunAttachmentAsync(reqModel, _projectName, testRunId, cancellationToken);
             }
         }
 
@@ -303,20 +308,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
             return null;
         }
 
-        private HashSet<string> UniqueTestRunFiles
+        private HashSet<string> GetUniqueTestRunFiles(string[] attachments)
         {
-            get
+            var attachedFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            if (attachments != null)
             {
-                var attachedFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                if (_testRunData.Attachments != null)
+                foreach (string attachment in attachments)
                 {
-                    foreach (string attachment in _testRunData.Attachments)
-                    {
-                        attachedFiles.Add(attachment);
-                    }
+                    attachedFiles.Add(attachment);
                 }
-                return attachedFiles;
             }
+            return attachedFiles;
         }
     }
 }

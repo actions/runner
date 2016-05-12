@@ -190,6 +190,7 @@
   "PublishedCodeCoverageArtifact": "Published '{0}' as artifact '{1}'",
   "PublishingCodeCoverage": "Publishing coverage summary data to TFS server.",
   "PublishingCodeCoverageFiles": "Publishing code coverage files to TFS server.",
+  "PublishingTestResults": "Publishing test results to test run '{0}'",
   "PublishTestResults": "Publish test results",
   "QueueConError": "{0:u}: Agent connect error: {1}. Retrying every {2} seconds until reconnected.",
   "QueueConnected": "{0:u}: Agent reconnected.",
@@ -257,6 +258,7 @@
     "A copy of the Team Explorer Everywhere license agreement can be found at:",
     "  {0}"
   ],
+  "TestResultsRemaining": "Test results remaining: {0}. Test run id: {1}",
   "TFSConnectionDownRetrying": "The TFS service is currently unavailable. Error: '{1}'. Retrying to establing a connection - attempt '{0}'.",
   "TotalUploadFiles": "Total files need to uploads {0}",
   "UnableResolveArtifactType": "Can't infer artifact type from artifact location: {0}.",

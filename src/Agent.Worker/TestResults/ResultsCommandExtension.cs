@@ -1,8 +1,10 @@
-﻿using Microsoft.VisualStudio.Services.Agent.Util;
+﻿using Microsoft.TeamFoundation.TestManagement.WebApi;
+using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
@@ -18,6 +20,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
         private string _configuration;
         private string _runTitle;
         private bool _publishRunLevelAttachments;
+        private int _runCounter = 0;
+        private readonly object _sync = new object();
 
         public Type ExtensionType => typeof(IWorkerCommandExtension);
 
@@ -27,23 +31,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
         {
             if (string.Equals(command.Event, WellKnownResultsCommand.PublishTestResults, StringComparison.OrdinalIgnoreCase))
             {
-                try
-                {
-                    ArgUtil.NotNull(context, nameof(context));
-                    _executionContext = context;
-
-                    LoadPublishTestResultsInputs(command.Properties);
-
-                    // publish test results to VSO using the reader based on the test runner specified
-                    IResultReader resultsReader = GetTestResultReader(_testRunner);
-                    resultsReader.AddResultsFileToRunLevelAttachments = _publishRunLevelAttachments;
-                    PublishTestResults(resultsReader);
-                }
-                catch (Exception ex)
-                {
-                    //Do not fail the task.
-                    LogPublishTestResultsFailureWarning(ex);
-                }
+                ProcessPublishTestResultsCommand(context, command.Properties, command.Data);
             }
             else
             {
@@ -51,14 +39,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
             }
         }
 
-        private void PublishTestResults(IResultReader resultReader)
+        private void ProcessPublishTestResultsCommand(IExecutionContext context, Dictionary<string, string> eventProperties, string data)
         {
-            Client.VssConnection connection = WorkerUtilies.GetVssConnection(_executionContext);
+            ArgUtil.NotNull(context, nameof(context));
+            _executionContext = context;
 
-            string teamProject = _executionContext.Variables.System_TeamProject;
-            string owner = _executionContext.Variables.Build_RequestedFor;
-            string buildUri = _executionContext.Variables.Build_BuildUri;
-            int buildId = _executionContext.Variables.Build_BuildId ?? 0;
+            LoadPublishTestResultsInputs(eventProperties, data);
+
+            string teamProject = context.Variables.System_TeamProject;
+            string owner = context.Variables.Build_RequestedFor;
+            string buildUri = context.Variables.Build_BuildUri;
+            int buildId = context.Variables.Build_BuildId ?? 0;
 
             //Temporary fix to support publish in RM scenarios where there might not be a valid Build ID associated.
             //TODO: Make a cleaner fix after TCM User Story 401703 is completed.
@@ -71,34 +62,29 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
             string releaseEnvironmentUri = null;
 
             // Check to identify if we are in the Release management flow; if not, then release fields will be kept null while publishing to TCM 
-            if (!string.IsNullOrWhiteSpace(_executionContext.Variables.Release_ReleaseUri))
+            if (!string.IsNullOrWhiteSpace(context.Variables.Release_ReleaseUri))
             {
-                releaseUri = _executionContext.Variables.Release_ReleaseUri;
-                releaseEnvironmentUri = _executionContext.Variables.Release_ReleaseEnvironmentUri;
+                releaseUri = context.Variables.Release_ReleaseUri;
+                releaseEnvironmentUri = context.Variables.Release_ReleaseEnvironmentUri;
             }
 
-            TestRunContext runContext = new TestRunContext(
-                                                owner,
-                                                _platform,
-                                                _configuration,
-                                                buildId,
-                                                buildUri,
-                                                releaseUri,
-                                                releaseEnvironmentUri
-                                                );
+            IResultReader resultReader = GetTestResultReader(_testRunner);
+            TestRunContext runContext = new TestRunContext(owner, _platform, _configuration, buildId, buildUri, releaseUri, releaseEnvironmentUri);
+            Client.VssConnection connection = WorkerUtilies.GetVssConnection(_executionContext);
 
             var publisher = HostContext.GetService<ITestRunPublisher>();
-            publisher.InitializePublisher(_executionContext, connection, teamProject, runContext, resultReader);
+            publisher.InitializePublisher(context, connection, teamProject, resultReader);
+
             var commandContext = HostContext.CreateService<IAsyncCommandContext>();
-            commandContext.InitializeCommandContext(_executionContext, StringUtil.Loc("PublishTestResults"));
+            commandContext.InitializeCommandContext(context, StringUtil.Loc("PublishTestResults"));
 
             if (_mergeResults)
             {
-                commandContext.Task = PublishAllTestResultsToSingleTestRunAsync(_testResultFiles, publisher, buildId, runContext, resultReader.Name);
+                commandContext.Task = PublishAllTestResultsToSingleTestRunAsync(_testResultFiles, publisher, buildId, runContext, resultReader.Name, context.CancellationToken);
             }
             else
             {
-                commandContext.Task = PublishToNewTestRunPerTestResultFileAsync(_testResultFiles, publisher, resultReader.Name);
+                commandContext.Task = PublishToNewTestRunPerTestResultFileAsync(_testResultFiles, publisher, runContext, resultReader.Name, context.CancellationToken);
             }
             _executionContext.AsyncCommands.Add(commandContext);
         }
@@ -106,7 +92,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
         /// <summary>
         /// Publish single test run
         /// </summary>
-        private async Task PublishAllTestResultsToSingleTestRunAsync(List<string> resultFiles, ITestRunPublisher publisher, int buildId, TestRunContext runContext, string resultReader)
+        private async Task PublishAllTestResultsToSingleTestRunAsync(List<string> resultFiles, ITestRunPublisher publisher, int buildId, TestRunContext runContext, string resultReader, CancellationToken cancellationToken)
         {
             try
             {
@@ -118,9 +104,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                 //read results from each file
                 foreach (string resultFile in resultFiles)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     //test case results
                     _executionContext.Debug(StringUtil.Format("Reading test results from file '{0}'", resultFile));
-                    TestRunData resultFileRunData = publisher.ReadResultsFromFile(resultFile);
+                    TestRunData resultFileRunData = publisher.ReadResultsFromFile(runContext, resultFile);
 
                     if (resultFileRunData != null && resultFileRunData.Results != null && resultFileRunData.Results.Length > 0)
                     {
@@ -145,7 +132,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                 }
 
                 string runName = string.IsNullOrWhiteSpace(_runTitle)
-                    ? string.Format("{0}_TestResults_{1}", _testRunner, buildId)
+                    ? StringUtil.Format("{0}_TestResults_{1}", _testRunner, buildId)
                     : _runTitle;
 
                 //creat test run
@@ -165,12 +152,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                 //publish run if there are results.
                 if (runResults.Count > 0)
                 {
-                    publisher.StartTestRunAsync(testRunData).Wait();
-                    publisher.AddResultsAsync(runResults.ToArray()).Wait();
-                    await publisher.EndTestRunAsync(publishAttachmentsAsArchive: true);
+                    TestRun testRun = await publisher.StartTestRunAsync(testRunData, _executionContext.CancellationToken);
+                    await publisher.AddResultsAsync(testRun, runResults.ToArray(), _executionContext.CancellationToken);
+                    await publisher.EndTestRunAsync(testRunData, testRun.Id, true, _executionContext.CancellationToken);
                 }
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!(ex is OperationCanceledException))
             {
                 //Do not fail the task.
                 LogPublishTestResultsFailureWarning(ex);
@@ -180,39 +167,50 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
         /// <summary>
         /// Publish separate test run for each result file that has results.
         /// </summary>
-        private async Task PublishToNewTestRunPerTestResultFileAsync(List<string> resultFiles, ITestRunPublisher publisher, string resultReader)
+        private async Task PublishToNewTestRunPerTestResultFileAsync(List<string> resultFiles, ITestRunPublisher publisher, TestRunContext runContext, string resultReader, CancellationToken cancellationToken)
         {
             try
             {
-                int runCount = 1;
                 // Publish separate test run for each result file that has results.
-                foreach (string resultFile in resultFiles)
+                var publishTasks = resultFiles.Select(async resultFile =>
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     string runName = null;
                     if (!string.IsNullOrWhiteSpace(_runTitle))
                     {
-                        runName = resultFiles.Count > 1 ? string.Format(CultureInfo.InvariantCulture, "{0} {1}", _runTitle, runCount++) : _runTitle;
+                        runName = GetRunTitle();
                     }
 
                     _executionContext.Debug(StringUtil.Format("Reading test results from file '{0}'", resultFile));
-                    TestRunData testRunData = publisher.ReadResultsFromFile(resultFile, runName);
+                    TestRunData testRunData = publisher.ReadResultsFromFile(runContext, resultFile, runName);
+
+                    cancellationToken.ThrowIfCancellationRequested();
 
                     if (testRunData != null && testRunData.Results != null && testRunData.Results.Length > 0)
                     {
-                        publisher.StartTestRunAsync(testRunData).Wait();
-                        publisher.AddResultsAsync(testRunData.Results).Wait();
-                        await publisher.EndTestRunAsync();
+                        TestRun testRun = await publisher.StartTestRunAsync(testRunData, _executionContext.CancellationToken);
+                        await publisher.AddResultsAsync(testRun, testRunData.Results, _executionContext.CancellationToken);
+                        await publisher.EndTestRunAsync(testRunData, testRun.Id, cancellationToken: _executionContext.CancellationToken);
                     }
                     else
                     {
                         _executionContext.Warning(StringUtil.Loc("InvalidResultFiles", resultFile, resultReader));
                     }
-                }
+                });
+                await Task.WhenAll(publishTasks);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!(ex is OperationCanceledException))
             {
                 //Do not fail the task.
                 LogPublishTestResultsFailureWarning(ex);
+            }
+        }
+
+        private string GetRunTitle()
+        {
+            lock (_sync)
+            {
+                return StringUtil.Format("{0}_{1}", _runTitle, ++_runCounter);
             }
         }
 
@@ -225,19 +223,29 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
             {
                 throw new ArgumentException("Unknown Test Runner.");
             }
+
+            reader.AddResultsFileToRunLevelAttachments = _publishRunLevelAttachments;
             return reader;
         }
 
-        private void LoadPublishTestResultsInputs(Dictionary<string, string> eventProperties)
+        private void LoadPublishTestResultsInputs(Dictionary<string, string> eventProperties, string data)
         {
             // Validate input test results files
             string resultFilesInput;
             eventProperties.TryGetValue(PublishTestResultsEventProperties.ResultFiles, out resultFilesInput);
-            if (string.IsNullOrEmpty(resultFilesInput) || resultFilesInput.Split(',').Count() == 0)
+            // To support compat we parse data first. If data is empty parse 'TestResults' parameter
+            if (!string.IsNullOrWhiteSpace(data) && data.Split(',').Count() != 0)
             {
-                throw new ArgumentException(StringUtil.Loc("ArgumentNeeded", "TestResults"));
+                _testResultFiles = data.Split(',').ToList();
             }
-            _testResultFiles = resultFilesInput.Split(',').ToList<string>();
+            else
+            {
+                if (string.IsNullOrEmpty(resultFilesInput) || resultFilesInput.Split(',').Count() == 0)
+                {
+                    throw new ArgumentException(StringUtil.Loc("ArgumentNeeded", "TestResults"));
+                }
+                _testResultFiles = resultFilesInput.Split(',').ToList();
+            }
 
             //validate testrunner input
             eventProperties.TryGetValue(PublishTestResultsEventProperties.Type, out _testRunner);
