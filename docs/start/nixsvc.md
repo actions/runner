@@ -61,3 +61,9 @@ status vsts.agent.bryanmac.testsvc:
 Started:
 25324 0 vsts.agent.bryanmac.testsvc
 ```
+
+### Uninstall
+```bash
+$ sudo ./svc.sh uninstall
+
+```
