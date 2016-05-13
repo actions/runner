@@ -44,6 +44,41 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             // TODO: WHICH the command?
             string command = Data.Target;
 
+            // Determine whether the command is rooted.
+            // TODO: If command begins and ends with a double-quote, trim quotes before making determination. Likewise when determining whether the file exists.
+            bool isCommandRooted = false;
+            try
+            {
+                // Path.IsPathRooted throws if illegal characters are in the path.
+                isCommandRooted = Path.IsPathRooted(command);
+            }
+            catch (Exception ex)
+            {
+                Trace.Info($"Unable to determine whether the command is rooted: {ex.Message}");
+            }
+
+            Trace.Info($"Command is rooted: {isCommandRooted}");
+
+            // Determine the working directory.
+            string workingDirectory;
+            if (isCommandRooted &&
+                File.Exists(command) && // File.Exists does not throw if illegal characters are in the path.
+                (string.IsNullOrEmpty(Data.WorkingDirectory) || string.Equals(Data.WorkingDirectory, FilePathInputRootDirectory, StringComparison.OrdinalIgnoreCase)))
+            {
+                workingDirectory = Path.GetDirectoryName(command);
+            }
+            else if (!string.IsNullOrEmpty(Data.WorkingDirectory) && Path.IsPathRooted(Data.WorkingDirectory))
+            {
+                workingDirectory = Data.WorkingDirectory;
+            }
+            else
+            {
+                workingDirectory = TaskDirectory;
+            }
+
+            ExecutionContext.Debug($"Working directory: '{workingDirectory}'");
+            Directory.CreateDirectory(workingDirectory);
+
             // Wrap the command in quotes if required.
             //
             // This is guess-work but is probably mostly accurate. The problem is that the command text
@@ -62,26 +97,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
 
             // Get the arguments.
             string arguments = Data.ArgumentFormat ?? string.Empty;
-
-            // Determine the working directory.
-            string workingDirectory;
-            if (Path.IsPathRooted(command) &&
-                File.Exists(command) &&
-                (string.IsNullOrEmpty(Data.WorkingDirectory) || string.Equals(Data.WorkingDirectory, FilePathInputRootDirectory, StringComparison.OrdinalIgnoreCase)))
-            {
-                workingDirectory = Path.GetDirectoryName(command);
-            }
-            else if (!string.IsNullOrEmpty(Data.WorkingDirectory) && Path.IsPathRooted(Data.WorkingDirectory))
-            {
-                workingDirectory = Data.WorkingDirectory;
-            }
-            else
-            {
-                workingDirectory = TaskDirectory;
-            }
-
-            ExecutionContext.Debug($"Working directory: '{workingDirectory}'");
-            Directory.CreateDirectory(workingDirectory);
 
             // Get the fail on standard error flag.
             bool failOnStandardError = true;

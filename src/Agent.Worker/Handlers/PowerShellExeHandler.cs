@@ -47,7 +47,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
                     string tempDirectory = Path.GetTempPath();
                     ArgUtil.Directory(tempDirectory, nameof(tempDirectory));
                     scriptFile = Path.Combine(tempDirectory, $"{Guid.NewGuid()}.ps1");
-                    Trace.Verbose("Writing inline script to temp file: '{0}'", scriptFile);
+                    Trace.Info("Writing inline script to temp file: '{0}'", scriptFile);
                     File.WriteAllText(scriptFile, Data.InlineScript ?? string.Empty, Encoding.UTF8);
                 }
                 else
@@ -84,10 +84,25 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
                 string powerShellExe = HostContext.GetService<IPowerShellExeUtil>().GetPath();
                 ArgUtil.NotNullOrEmpty(powerShellExe, nameof(powerShellExe));
 
+                // Determine whether the script file is rooted.
+                // TODO: If script file begins and ends with a double-quote, trim quotes before making determination. Likewise when determining whether the file exists.
+                bool isScriptFileRooted = false;
+                try
+                {
+                    // Path.IsPathRooted throws if illegal characters are in the path.
+                    isScriptFileRooted = Path.IsPathRooted(scriptFile);
+                }
+                catch (Exception ex)
+                {
+                    Trace.Info($"Unable to determine whether the script file is rooted: {ex.Message}");
+                }
+
+                Trace.Info($"Script file is rooted: {isScriptFileRooted}");
+
                 // Determine the working directory.
                 string workingDirectory;
-                if (Path.IsPathRooted(scriptFile) &&
-                    File.Exists(scriptFile) &&
+                if (isScriptFileRooted &&
+                    File.Exists(scriptFile) && // File.Exists does not throw if illegal characters are in the path.
                     (string.IsNullOrEmpty(Data.WorkingDirectory) || string.Equals(Data.WorkingDirectory, FilePathInputRootDirectory, StringComparison.OrdinalIgnoreCase)))
                 {
                     workingDirectory = Path.GetDirectoryName(scriptFile);
