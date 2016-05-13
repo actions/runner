@@ -1,5 +1,11 @@
 # VSTS Agent Preview - Late breaking instructions
 
+## Windows
+
+Preview 1 on tested on Windows 10 so far.
+
+Even though the agent has no pre-requisites, many of the tasks we run require Visual Studio 2015
+
 ## OSX
 
 Tested on 10.10 (Yosemite) and 11.11 (El Capitan)
