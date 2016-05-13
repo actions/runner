@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.ServiceProcess;
 using System.Threading;
 using System.Threading.Tasks;
@@ -12,6 +13,7 @@ namespace AgentService
     public partial class AgentService : ServiceBase
     {
         public const string EventSourceName = "VstsAgentService";
+        private const int CTRL_C_EVENT = 0;
         private Process AgentListener { get; set; }
         private bool Stopping { get; set; }
         private object ServiceLock { get; set; }
@@ -111,12 +113,18 @@ namespace AgentService
 
         private void AgentListener_ErrorDataReceived(object sender, DataReceivedEventArgs e)
         {
-            WriteToEventLog(e.Data, EventLogEntryType.Error);
+            if (!string.IsNullOrEmpty(e.Data))
+            {
+                WriteToEventLog(e.Data, EventLogEntryType.Error);
+            }
         }
 
         private void AgentListener_OutputDataReceived(object sender, DataReceivedEventArgs e)
         {
-            WriteToEventLog(e.Data, EventLogEntryType.Information);
+            if (!string.IsNullOrEmpty(e.Data))
+            {
+                WriteToEventLog(e.Data, EventLogEntryType.Information);
+            }
         }
 
         private Process CreateAgentListener()
@@ -145,11 +153,27 @@ namespace AgentService
                     if (AgentListener != null && !AgentListener.HasExited)
                     {
                         // Try to let the agent process know that we are stopping
-                        // TODO: This is not working, fix it
-                        AgentListener.StandardInput.WriteLine("\x03");
+                        //Attach service process to console of Agent.Listener process. This is needed,
+                        //because windows service doesn't use its own console.
+                        if (AttachConsole((uint)AgentListener.Id))
+                        {
+                            //Prevent main service process from stopping because of Ctrl + C event with SetConsoleCtrlHandler
+                            SetConsoleCtrlHandler(null, true);
+                            try
+                            {
+                                //Generate console event for current console with GenerateConsoleCtrlEvent (processGroupId should be zero)
+                                GenerateConsoleCtrlEvent(CTRL_C_EVENT, 0);
+                                //Wait for the process to finish (give it up to 30 seconds)
+                                AgentListener.WaitForExit(30000);
+                            }
+                            finally
+                            {
+                                //Disconnect from console and restore Ctrl+C handling by main process
+                                FreeConsole();
+                                SetConsoleCtrlHandler(null, false);
+                            }
+                        }
 
-                        // Wait for the process to finish (give it up to 30 seconds)
-                        AgentListener.WaitForExit(30000);
                         // if agent is still running, kill it
                         if (!AgentListener.HasExited)
                         {
@@ -198,5 +222,20 @@ namespace AgentService
         {
             WriteToEventLog(exception.ToString(), EventLogEntryType.Error);
         }
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool GenerateConsoleCtrlEvent(uint dwCtrlEvent, uint dwProcessGroupId);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool AttachConsole(uint dwProcessId);
+
+        [DllImport("kernel32.dll", SetLastError = true, ExactSpelling = true)]
+        private static extern bool FreeConsole();
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool SetConsoleCtrlHandler(ConsoleCtrlDelegate HandlerRoutine, bool Add);
+
+        // Delegate type to be used as the Handler Routine for SetConsoleCtrlHandler
+        delegate Boolean ConsoleCtrlDelegate(uint CtrlType);
     }
 }
