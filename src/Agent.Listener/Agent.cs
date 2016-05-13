@@ -136,7 +136,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             if (_inConfigStage)
             {
                 HostContext.Dispose();
-                Environment.Exit(1);
+                Environment.Exit(Constants.Agent.ReturnCode.TerminatedError);
             }
             else
             {

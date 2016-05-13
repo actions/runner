@@ -25,7 +25,6 @@ namespace Microsoft.VisualStudio.Services.Agent
     {
         private const int _defaultLogPageSize = 8;  //MB
         private static int _defaultLogRetentionDays = 30;
-        private static int _defaultLogFlushSeconds = 20;
         private readonly ConcurrentDictionary<Type, object> _serviceInstances = new ConcurrentDictionary<Type, object>();
         private readonly ConcurrentDictionary<Type, Type> _serviceTypes = new ConcurrentDictionary<Type, Type>();
         private Tracing _trace;
@@ -53,14 +52,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                     logRetentionDays = _defaultLogRetentionDays;
                 }
 
-                int logFlushSeconds;
-                string flushSecondsEnv = Environment.GetEnvironmentVariable($"{hostType.ToLower()}.logflush");
-                if (!string.IsNullOrEmpty(flushSecondsEnv) || !int.TryParse(flushSecondsEnv, out logFlushSeconds))
-                {
-                    logFlushSeconds = _defaultLogFlushSeconds;
-                }
-
-                _traceManager = new TraceManager(new HostTraceListener(hostType, logPageSize, logRetentionDays, logFlushSeconds), GetService<ISecretMasker>());
+                _traceManager = new TraceManager(new HostTraceListener(hostType, logPageSize, logRetentionDays), GetService<ISecretMasker>());
             }
             else
             {

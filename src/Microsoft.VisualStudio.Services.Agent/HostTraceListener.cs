@@ -19,14 +19,11 @@ namespace Microsoft.VisualStudio.Services.Agent
         private string _logFilePrefix;
         private bool _enablePageLog = false;
         private bool _enableLogRetention = false;
-        private bool _enableLogTimerFlush = false;
         private int _currentPageSize;
         private int _pageSizeLimit;
         private int _retentionDays;
-        private TimeSpan _flushFrequency;
-        private Stopwatch _lastFlush;
 
-        public HostTraceListener(string logFilePrefix, int pageSizeLimit, int retentionDays, int flushFrequency)
+        public HostTraceListener(string logFilePrefix, int pageSizeLimit, int retentionDays)
             : base()
         {
             ArgUtil.NotNullOrEmpty(logFilePrefix, nameof(logFilePrefix));
@@ -43,13 +40,6 @@ namespace Microsoft.VisualStudio.Services.Agent
             {
                 _enableLogRetention = true;
                 _retentionDays = retentionDays;
-            }
-
-            if (flushFrequency > 0)
-            {
-                _enableLogTimerFlush = true;
-                _flushFrequency = TimeSpan.FromSeconds(flushFrequency);
-                _lastFlush = Stopwatch.StartNew();
             }
 
             Writer = CreatePageLogWriter();
@@ -99,11 +89,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                 }
             }
 
-            if (!_enableLogTimerFlush ||
-                (_enableLogTimerFlush && _lastFlush.Elapsed > _flushFrequency))
-            {
-                Flush();
-            }
+            Flush();
         }
 
         public override void Write(string message)
@@ -115,20 +101,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                 _currentPageSize += messageSize;
             }
 
-            if (!_enableLogTimerFlush ||
-                (_enableLogTimerFlush && _lastFlush.Elapsed > _flushFrequency))
-            {
-                Flush();
-            }
-        }
-
-        public override void Flush()
-        {
-            base.Flush();
-            if (_enableLogTimerFlush)
-            {
-                _lastFlush = Stopwatch.StartNew();
-            }
+            Flush();
         }
 
         internal bool IsEnabled(TraceOptions opts)
