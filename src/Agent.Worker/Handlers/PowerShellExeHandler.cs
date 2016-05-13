@@ -74,9 +74,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
                 // issues can be avoided. The data needs to be encrypted because base 64 encoding the
                 // data circumvents the logger's secret-masking behavior.
                 string entropy;
-                // TODO: Add legacy PS handler's module path?
                 string powerShellExeArgs = StringUtil.Format(
-                    "-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -Command \"try {{ $null = [System.Security.Cryptography.ProtectedData] }} catch {{ Write-Verbose 'Adding assemly: System.Security' ; Add-Type -AssemblyName 'System.Security' ; $null = [System.Security.Cryptography.ProtectedData] }} ; Invoke-Expression -Command ([System.Text.Encoding]::UTF8.GetString([System.Security.Cryptography.ProtectedData]::Unprotect([System.Convert]::FromBase64String('{0}'), [System.Convert]::FromBase64String('{1}'), [System.Security.Cryptography.DataProtectionScope]::CurrentUser))) ; if (!(Test-Path -LiteralPath variable:\\LastExitCode)) {{ Write-Verbose 'Last exit code is not set.' }} else {{ Write-Verbose ('$LastExitCode: {{0}}' -f $LastExitCode) ; exit $LastExitCode }}\"",
+                    "-NoLogo -Sta -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -Command \"try {{ $null = [System.Security.Cryptography.ProtectedData] }} catch {{ Write-Verbose 'Adding assemly: System.Security' ; Add-Type -AssemblyName 'System.Security' ; $null = [System.Security.Cryptography.ProtectedData] }} ; Invoke-Expression -Command ([System.Text.Encoding]::UTF8.GetString([System.Security.Cryptography.ProtectedData]::Unprotect([System.Convert]::FromBase64String('{0}'), [System.Convert]::FromBase64String('{1}'), [System.Security.Cryptography.DataProtectionScope]::CurrentUser))) ; if (!(Test-Path -LiteralPath variable:\\LastExitCode)) {{ Write-Verbose 'Last exit code is not set.' }} else {{ Write-Verbose ('$LastExitCode: {{0}}' -f $LastExitCode) ; exit $LastExitCode }}\"",
                     Encrypt(nestedExpression, out entropy),
                     entropy);
 

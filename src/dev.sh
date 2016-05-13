@@ -267,7 +267,7 @@ function package ()
         window_path=${LAYOUT_DIR:1}
         window_path=${window_path:0:1}:${window_path:1}
         echo "Creating $zip_name in ${window_path}"
-        powershell -NoProfile -ExecutionPolicy RemoteSigned -Command "Add-Type -Assembly \"System.IO.Compression.FileSystem\"; [System.IO.Compression.ZipFile]::CreateFromDirectory(\"${window_path}\", \"${zip_name}\")"
+        powershell -NoLogo -Sta -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -Command "Add-Type -Assembly \"System.IO.Compression.FileSystem\"; [System.IO.Compression.ZipFile]::CreateFromDirectory(\"${window_path}\", \"${zip_name}\")"
     fi
 
     popd > /dev/null
