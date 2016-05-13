@@ -14,15 +14,20 @@ namespace Microsoft.VisualStudio.Services.Agent
 #if DEBUG
             DefaultTraceLevel = TraceLevel.Verbose;
 #endif            
+            string vstsAgentTrace = Environment.GetEnvironmentVariable("VSTSAGENT_TRACE");
+            if (!string.IsNullOrEmpty(vstsAgentTrace))
+            {
+                DefaultTraceLevel = TraceLevel.Verbose;
+            }
         }
-        
+
         [DataMember(EmitDefaultValue = false)]
         public TraceLevel DefaultTraceLevel
         {
             get;
-            set;            
+            set;
         }
-        
+
         public Dictionary<String, TraceLevel> DetailTraceSetting
         {
             get
@@ -34,11 +39,11 @@ namespace Microsoft.VisualStudio.Services.Agent
                 return m_detailTraceSetting;
             }
         }
-        
+
         [DataMember(EmitDefaultValue = false, Name = "DetailTraceSetting")]
         private Dictionary<String, TraceLevel> m_detailTraceSetting;
     }
-    
+
     [DataContract]
     public enum TraceLevel
     {
@@ -47,20 +52,20 @@ namespace Microsoft.VisualStudio.Services.Agent
 
         [EnumMember]
         Critical = 1,
-        
+
         [EnumMember]
         Error = 2,
 
         [EnumMember]
         Warning = 3,
-        
+
         [EnumMember]
         Info = 4,
 
         [EnumMember]
         Verbose = 5,
     }
-    
+
     public static class TraceLevelExtensions
     {
         public static SourceLevels ToSourceLevels(this TraceLevel traceLevel)
@@ -82,6 +87,6 @@ namespace Microsoft.VisualStudio.Services.Agent
                 default:
                     return SourceLevels.Information;
             }
-        }    
-    } 
+        }
+    }
 }

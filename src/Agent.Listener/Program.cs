@@ -27,7 +27,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 s_trace = context.GetTrace("AgentProcess");
                 s_trace.Info($"Agent is built for {Constants.Agent.Platform}.");
                 s_trace.Info($"RuntimeInformation: {RuntimeInformation.OSDescription}.");
-                
+
                 // Validate the binaries intended for one OS are not running on a different OS.
                 switch (Constants.Agent.Platform)
                 {
@@ -57,47 +57,44 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                         return Constants.Agent.ReturnCode.TerminatedError;
                 }
 
-                using (var term = context.GetService<ITerminal>())
+                int rc = Constants.Agent.ReturnCode.Success;
+                try
                 {
-                    int rc = Constants.Agent.ReturnCode.Success;
-                    try
+                    s_trace.Info($"Version: {Constants.Agent.Version}");
+                    s_trace.Info($"Commit: {BuildConstants.Source.CommitHash}");
+
+                    //
+                    // TODO (bryanmac): Need VsoAgent.exe compat shim for SCM
+                    //                  That shim will also provide a compat arg parse 
+                    //                  and translate / to -- etc...
+                    //
+
+                    // Parse the command line args.
+                    var command = new CommandSettings(context, args);
+                    s_trace.Info("Arguments parsed");
+
+                    // Defer to the Agent class to execute the command.
+                    IAgent agent = context.GetService<IAgent>();
+                    using (agent.TokenSource = new CancellationTokenSource())
                     {
-                        s_trace.Info($"Version: {Constants.Agent.Version}");
-                        s_trace.Info($"Commit: {BuildConstants.Source.CommitHash}");
-
-                        //
-                        // TODO (bryanmac): Need VsoAgent.exe compat shim for SCM
-                        //                  That shim will also provide a compat arg parse 
-                        //                  and translate / to -- etc...
-                        //
-
-                        // Parse the command line args.
-                        var command = new CommandSettings(context, args);
-                        s_trace.Info("Arguments parsed");
-
-                        // Defer to the Agent class to execute the command.
-                        IAgent agent = context.GetService<IAgent>();
-                        using (agent.TokenSource = new CancellationTokenSource())
+                        try
                         {
-                            try
-                            {
-                                rc = await agent.ExecuteCommand(command);
-                            }
-                            catch (OperationCanceledException) when (agent.TokenSource.IsCancellationRequested)
-                            {
-                                s_trace.Info("Agent execution been cancelled.");
-                            }
+                            rc = await agent.ExecuteCommand(command);
+                        }
+                        catch (OperationCanceledException) when (agent.TokenSource.IsCancellationRequested)
+                        {
+                            s_trace.Info("Agent execution been cancelled.");
                         }
                     }
-                    catch (Exception e)
-                    {
-                        Console.Error.WriteLine(StringUtil.Format("An error occured.  {0}", e.Message));
-                        s_trace.Error(e);
-                        rc = Constants.Agent.ReturnCode.RetryableError;
-                    }
-
-                    return rc;
                 }
+                catch (Exception e)
+                {
+                    Console.Error.WriteLine(StringUtil.Format("An error occured.  {0}", e.Message));
+                    s_trace.Error(e);
+                    rc = Constants.Agent.ReturnCode.RetryableError;
+                }
+
+                return rc;
             }
         }
     }
