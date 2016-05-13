@@ -24,7 +24,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Capabilities
             string powerShellExe = HostContext.GetService<IPowerShellExeUtil>().GetPath();
             string scriptFile = Path.Combine(IOUtil.GetBinPath(), "powershell", "Add-Capabilities.ps1");
             ArgUtil.File(scriptFile, nameof(scriptFile));
-            string arguments = $@"-NoProfile -ExecutionPolicy Unrestricted -Command . ""{scriptFile}""";
+            string arguments = $@"-NoLogo -Sta -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -Command . ""{scriptFile}""";
             using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
             {
                 processInvoker.OutputDataReceived +=
