@@ -303,12 +303,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         {
             gitPath = string.Empty;
 
-#if OS_WINDOWS
-            // find portable git in externals for windows
-            gitPath = Path.Combine(IOUtil.GetExternalsPath(), "portablegit", "cmd", "git.exe");
-#endif
-            // on linux and osx, we will make sure git version >= 2.9.0
-
+            // find portable git in externals
+#if OS_WINDOWS            
+            gitPath = Path.Combine(IOUtil.GetExternalsPath(), "portablewingit", "cmd", $"git{IOUtil.ExeExtension}");
+#elif OS_LINUX
+            gitPath = Path.Combine(IOUtil.GetExternalsPath(), "portablenixgit", "bin", $"git{IOUtil.ExeExtension}");
+#elif OS_OSX
+            gitPath = Path.Combine(IOUtil.GetExternalsPath(), "portableosxgit", "bin", $"git{IOUtil.ExeExtension}");
+#endif            
             return !string.IsNullOrEmpty(gitPath) && File.Exists(gitPath);
         }
     }
