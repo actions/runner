@@ -4,7 +4,7 @@ EXTERNALTOOLSNAME=(
     azcopy
     nuget
     pdbstr
-    portablenixgit
+    #portablenixgit
     portableosxgit
     portablewingit
     symstore
@@ -17,7 +17,7 @@ EXTERNALTOOLSLOCATION=(
     azcopy/1
     nuget/1
     pdbstr/1
-    portablenixgit/1
+    #portablenixgit/1
     portableosxgit/1
     portablewingit/1
     symstore/1
@@ -27,7 +27,8 @@ EXTERNALTOOLSLOCATION=(
     )
     
 EXTERNALTOOLS_WINDOWS=(azcopy nuget pdbstr portablewingit symstore vstshost vstsom)
-EXTERNALTOOLS_LINUX=(tee portablenixgit)
+#EXTERNALTOOLS_LINUX=(tee portablenixgit)
+EXTERNALTOOLS_LINUX=(tee)
 EXTERNALTOOLS_DARWIN=(tee portableosxgit)
 
 CONTAINER_URL=https://vstsagenttools.blob.core.windows.net/tools
