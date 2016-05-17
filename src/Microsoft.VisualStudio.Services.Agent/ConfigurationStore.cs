@@ -1,24 +1,35 @@
-using Microsoft.VisualStudio.Services.Agent.Util;
-using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
+using System.Runtime.Serialization;
 using System.Threading;
+using Microsoft.VisualStudio.Services.Agent.Util;
 
 namespace Microsoft.VisualStudio.Services.Agent
 {
     //
     // Settings are persisted in this structure
     //
+    [DataContract]
     public sealed class AgentSettings
     {
+        [DataMember(EmitDefaultValue = false)]
         public bool AcceptTeeEula { get; set; }
+
+        [DataMember(EmitDefaultValue = false)]
         public int AgentId { get; set; }
+
+        [DataMember(EmitDefaultValue = false)]
         public string AgentName { get; set; }
+
+        [DataMember(EmitDefaultValue = false)]
         public int PoolId { get; set; }
+
+        [DataMember(EmitDefaultValue = false)]
         public string PoolName { get; set; }
+
+        [DataMember(EmitDefaultValue = false)]
         public string ServerUrl { get; set; }
+
+        [DataMember(EmitDefaultValue = false)]
         public string WorkFolder { get; set; }
     }
 

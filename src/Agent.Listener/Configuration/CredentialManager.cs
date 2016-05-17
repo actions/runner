@@ -1,14 +1,12 @@
-using Microsoft.VisualStudio.Services.Client;
-using Microsoft.VisualStudio.Services.Common;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
+using Microsoft.VisualStudio.Services.Common;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 {
     // TODO: Refactor extension manager to enable using it from the agent process.
     [ServiceLocator(Default = typeof(CredentialManager))]
-    public interface ICredentialManager: IAgentService
+    public interface ICredentialManager : IAgentService
     {
         ICredentialProvider GetCredentialProvider(string credType);
         VssCredentials LoadCredentials();
@@ -22,6 +20,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             { Constants.Configuration.Alternate, typeof(AlternateCredential)},
             { Constants.Configuration.Negotiate, typeof(NegotiateCredential)},
             { Constants.Configuration.Integrated, typeof(IntegratedCredential)},
+            { Constants.Configuration.OAuth, typeof(OAuthCredential)},
             { Constants.Configuration.ServiceIdentity, typeof(ServiceIdentityCredential)},
         };
 

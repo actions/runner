@@ -1,11 +1,11 @@
-using Microsoft.VisualStudio.Services.Agent;
-using Newtonsoft.Json;
 using System;
 using System.Collections.Concurrent;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
+using Microsoft.VisualStudio.Services.WebApi;
+using Newtonsoft.Json;
 
 namespace Microsoft.VisualStudio.Services.Agent.Util
 {
@@ -25,18 +25,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
 
         public static void SaveObject(object obj, string path)
         {
-            string json = JsonConvert.SerializeObject(
-                obj,
-                Formatting.Indented,
-                new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore });
+            string json = JsonConvert.SerializeObject(obj, Formatting.Indented, s_serializerSettings.Value);
             File.WriteAllText(path, json);
         }
 
         public static T LoadObject<T>(string path)
         {
             string json = File.ReadAllText(path);
-            T obj = JsonConvert.DeserializeObject<T>(json);
-            return obj;
+            return JsonConvert.DeserializeObject<T>(json, s_serializerSettings.Value);
         }
 
         public static string GetBinPath()
@@ -65,12 +61,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
 
         public static string GetConfigFilePath()
         {
-            return Path.Combine(GetRootPath(), ".Agent");
+            return Path.Combine(GetRootPath(), ".agent");
         }
 
         public static string GetCredFilePath()
         {
-            return Path.Combine(GetRootPath(), ".Credentials");
+            return Path.Combine(GetRootPath(), ".credentials");
         }
 
         public static string GetServiceConfigFilePath()
@@ -246,5 +242,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
                 item.Attributes = item.Attributes & ~FileAttributes.ReadOnly;
             }
         }
+
+        private static Lazy<JsonSerializerSettings> s_serializerSettings = new Lazy<JsonSerializerSettings>(() => new VssJsonMediaTypeFormatter().SerializerSettings);
     }
 }
