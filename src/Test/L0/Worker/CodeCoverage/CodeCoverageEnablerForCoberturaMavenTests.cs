@@ -20,8 +20,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         private TestHostContext _hc;
         private List<string> _warnings = new List<string>();
         private List<string> _errors = new List<string>();
-        private string _include = "com.*.*:app.me*.*:com.app.class2";
-        private string _exclude = "me.*.*:a.b.*:my.com.*.*";
+        private string _classFilter = "+:com.*.*,+:app.me*.*,+:com.app.class2,-:me.*.*,-:a.b.*,-:my.com.*.*";
         private string _sampleBuildFilePath;
 
         [Fact]
@@ -30,10 +29,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         public void Maven_EnableCodeCoverageForCoberturaTest()
         {
             SetupMocks();
-            LoadBuildFile(CodeCoverageConstants.PomXml);
+            LoadBuildFile(CodeCoverageTestConstants.PomXml);
             var enableCodeCoverage = new CodeCoverageEnablerForCoberturaMaven();
             enableCodeCoverage.Initialize(_hc);
-            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_sampleBuildFilePath, null, _include, _exclude, null, null, null, null, null, false));
+            var ccInputs = new Dictionary<string, string>();
+            ccInputs.Add("buildfile", _sampleBuildFilePath);
+            ccInputs.Add("classfilter", _classFilter);
+            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_ec.Object, "Maven", ccInputs));
             VerifyCoberturaCoverageForMaven(checkForPluginManagement: true);
             Assert.Equal(_warnings.Count, 0);
             Assert.Equal(_errors.Count, 0);
@@ -45,10 +47,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         public void Maven_Cobertura_EnableCodeCoverageTestForCodeSearchPlugin()
         {
             SetupMocks();
-            LoadBuildFile(CodeCoverageConstants.CodeSearchPomXml);
+            LoadBuildFile(CodeCoverageTestConstants.CodeSearchPomXml);
             var enableCodeCoverage = new CodeCoverageEnablerForCoberturaMaven();
             enableCodeCoverage.Initialize(_hc);
-            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_sampleBuildFilePath, null, _include, _exclude, null, null, null, null, null, false));
+            var ccInputs = new Dictionary<string, string>();
+            ccInputs.Add("buildfile", _sampleBuildFilePath);
+            ccInputs.Add("classfilter", _classFilter);
+            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_ec.Object, "Maven", ccInputs));
             VerifyCoberturaCoverageForMaven(checkForPluginManagement: false);
             Assert.Equal(_warnings.Count, 0);
             Assert.Equal(_errors.Count, 0);
@@ -60,10 +65,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         public void Maven_Cobertura_EnableCodeCoverageTestForLog4JAppender()
         {
             SetupMocks();
-            LoadBuildFile(CodeCoverageConstants.LogAppenderPomXml);
+            LoadBuildFile(CodeCoverageTestConstants.LogAppenderPomXml);
             var enableCodeCoverage = new CodeCoverageEnablerForCoberturaMaven();
             enableCodeCoverage.Initialize(_hc);
-            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_sampleBuildFilePath, null, _include, _exclude, null, null, null, null, null, false));
+            var ccInputs = new Dictionary<string, string>();
+            ccInputs.Add("buildfile", _sampleBuildFilePath);
+            ccInputs.Add("classfilter", _classFilter);
+            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_ec.Object, "Maven", ccInputs));
             VerifyCoberturaCoverageForMaven(checkForPluginManagement: false);
             Assert.Equal(_warnings.Count, 0);
             Assert.Equal(_errors.Count, 0);
@@ -75,10 +83,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         public void Maven_EnableCodeCoverageForCoberturaWhenCodeCoverageIsAlreadyEnabled()
         {
             SetupMocks();
-            LoadBuildFile(CodeCoverageConstants.PomWithCCCoberturaXml);
+            LoadBuildFile(CodeCoverageTestConstants.PomWithCCCoberturaXml);
             var enableCodeCoverage = new CodeCoverageEnablerForCoberturaMaven();
             enableCodeCoverage.Initialize(_hc);
-            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_sampleBuildFilePath, null, _include, _exclude, null, null, null, null, null, false));
+            var ccInputs = new Dictionary<string, string>();
+            ccInputs.Add("buildfile", _sampleBuildFilePath);
+            ccInputs.Add("classfilter", _classFilter);
+            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_ec.Object, "Maven", ccInputs));
             VerifyCoberturaCoverageForMaven(verifyVersion: false, verifyUserTag: true, checkForPluginManagement: true, numOfCoberturaPluginsInPluginManagement: 1);
             Assert.Equal(_warnings.Count, 0);
             Assert.Equal(_errors.Count, 0);
@@ -94,7 +105,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
             File.WriteAllText(_sampleBuildFilePath, string.Empty);
             var enableCodeCoverage = new CodeCoverageEnablerForCoberturaMaven();
             enableCodeCoverage.Initialize(_hc);
-            Assert.Throws<XmlException>(() => enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_sampleBuildFilePath, null, _include, _exclude, null, null, null, null, null, false)));
+            var ccInputs = new Dictionary<string, string>();
+            ccInputs.Add("buildfile", _sampleBuildFilePath);
+            ccInputs.Add("classfilter", _classFilter);
+            Assert.Throws<XmlException>(() => enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_ec.Object, "Maven", ccInputs)));
         }
 
         [Fact]
@@ -107,7 +121,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
             File.WriteAllText(_sampleBuildFilePath, @"This is not valid xml file contents");
             var enableCodeCoverage = new CodeCoverageEnablerForCoberturaMaven();
             enableCodeCoverage.Initialize(_hc);
-            Assert.Throws<XmlException>(() => enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_sampleBuildFilePath, null, _include, _exclude, null, null, null, null, null, false)));
+            var ccInputs = new Dictionary<string, string>();
+            ccInputs.Add("buildfile", _sampleBuildFilePath);
+            ccInputs.Add("classfilter", _classFilter);
+            Assert.Throws<XmlException>(() => enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_ec.Object, "Maven", ccInputs)));
         }
 
         [Fact]
@@ -116,10 +133,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         public void Maven_Cobertura_EnableCodeCoverageForMultiModulePom()
         {
             SetupMocks();
-            LoadBuildFile(CodeCoverageConstants.PomWithMultiModuleXml);
+            LoadBuildFile(CodeCoverageTestConstants.PomWithMultiModuleXml);
             var enableCodeCoverage = new CodeCoverageEnablerForCoberturaMaven();
             enableCodeCoverage.Initialize(_hc);
-            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_sampleBuildFilePath, null, _include, _exclude, null, null, null, null, null, false));
+            var ccInputs = new Dictionary<string, string>();
+            ccInputs.Add("buildfile", _sampleBuildFilePath);
+            ccInputs.Add("classfilter", _classFilter);
+            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_ec.Object, "Maven", ccInputs));
             VerifyCoberturaCoverageForMaven(verifyVersion: false, isMultiModule: true);
             Assert.Equal(_warnings.Count, 0);
             Assert.Equal(_errors.Count, 0);
@@ -131,10 +151,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         public void Maven_Cobertura_EnableCodeCoverageForMultiModulePomWithCCEnabled()
         {
             SetupMocks();
-            LoadBuildFile(CodeCoverageConstants.PomWithMultiModuleWithCCCoberturaXml);
+            LoadBuildFile(CodeCoverageTestConstants.PomWithMultiModuleWithCCCoberturaXml);
             var enableCodeCoverage = new CodeCoverageEnablerForCoberturaMaven();
             enableCodeCoverage.Initialize(_hc);
-            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_sampleBuildFilePath, null, _include, _exclude, null, null, null, null, null, false));
+            var ccInputs = new Dictionary<string, string>();
+            ccInputs.Add("buildfile", _sampleBuildFilePath);
+            ccInputs.Add("classfilter", _classFilter);
+            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_ec.Object, "Maven", ccInputs));
             VerifyCoberturaCoverageForMaven(verifyVersion: false, isMultiModule: true);
             Assert.Equal(_warnings.Count, 0);
             Assert.Equal(_errors.Count, 0);
@@ -146,10 +169,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         public void Maven_Cobertura_EnableCodeCoverageWithSingleIncludeFilter()
         {
             SetupMocks();
-            LoadBuildFile(CodeCoverageConstants.PomXml);
+            LoadBuildFile(CodeCoverageTestConstants.PomXml);
             var enableCodeCoverage = new CodeCoverageEnablerForCoberturaMaven();
             enableCodeCoverage.Initialize(_hc);
-            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_sampleBuildFilePath, null, "app.com.SampleTest", "", null, null, null, null, null, false));
+            var ccInputs = new Dictionary<string, string>();
+            ccInputs.Add("buildfile", _sampleBuildFilePath);
+            ccInputs.Add("classfilter", "+:app.com.SampleTest");
+            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_ec.Object, "Maven", ccInputs));
             VerifyCoberturaCoverageForMaven(includes: "app/com/SampleTest.class", excludes: string.Empty, verifyVersion: false, numOfInclude: 1, numOfExclude: 0, checkForPluginManagement: true);
             Assert.Equal(_warnings.Count, 0);
             Assert.Equal(_errors.Count, 0);
@@ -161,10 +187,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         public void Maven_Cobertura_EnableCodeCoverageWithSingleExcludeFilter()
         {
             SetupMocks();
-            LoadBuildFile(CodeCoverageConstants.PomXml);
+            LoadBuildFile(CodeCoverageTestConstants.PomXml);
             var enableCodeCoverage = new CodeCoverageEnablerForCoberturaMaven();
             enableCodeCoverage.Initialize(_hc);
-            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_sampleBuildFilePath, null, "", "app.com.SampleTest", null, null, null, null, null, false));
+            var ccInputs = new Dictionary<string, string>();
+            ccInputs.Add("buildfile", _sampleBuildFilePath);
+            ccInputs.Add("classfilter", "-:app.com.SampleTest");
+            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_ec.Object, "Maven", ccInputs));
             VerifyCoberturaCoverageForMaven(includes: string.Empty, excludes: "app/com/SampleTest.class", verifyVersion: false, numOfInclude: 0, numOfExclude: 1, checkForPluginManagement: true);
             Assert.Equal(_warnings.Count, 0);
             Assert.Equal(_errors.Count, 0);
@@ -176,10 +205,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         public void Maven_Cobertura_EnableCodeCoverageWithNoIncludeExcludeFilters()
         {
             SetupMocks();
-            LoadBuildFile(CodeCoverageConstants.PomXml);
+            LoadBuildFile(CodeCoverageTestConstants.PomXml);
             var enableCodeCoverage = new CodeCoverageEnablerForCoberturaMaven();
             enableCodeCoverage.Initialize(_hc);
-            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_sampleBuildFilePath, null, "", "", null, null, null, null, null, false));
+            var ccInputs = new Dictionary<string, string>();
+            ccInputs.Add("buildfile", _sampleBuildFilePath);
+            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_ec.Object, "Maven", ccInputs));
             VerifyCoberturaCoverageForMaven(includes: string.Empty, excludes: string.Empty, verifyVersion: false, numOfInclude: 0, numOfExclude: 0, checkForPluginManagement: true);
             Assert.Equal(_warnings.Count, 0);
             Assert.Equal(_errors.Count, 0);
@@ -191,10 +222,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         public void Maven_Cobertura_EnableCodeCoverageWithFullClassNameFilters()
         {
             SetupMocks();
-            LoadBuildFile(CodeCoverageConstants.PomXml);
+            LoadBuildFile(CodeCoverageTestConstants.PomXml);
             var enableCodeCoverage = new CodeCoverageEnablerForCoberturaMaven();
             enableCodeCoverage.Initialize(_hc);
-            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_sampleBuildFilePath, null, "app.com.SampleTest:app.*.UtilTest:app2*", "app.com.SampleTest:app.*.UtilTest:app3*", null, null, null, null, null, false));
+            var ccInputs = new Dictionary<string, string>();
+            ccInputs.Add("buildfile", _sampleBuildFilePath);
+            ccInputs.Add("classfilter", "+:app.com.SampleTest,+:app.*.UtilTest,+:app2*,-:app.com.SampleTest,-:app.*.UtilTest,-:app3*");
+            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_ec.Object, "Maven", ccInputs));
             VerifyCoberturaCoverageForMaven(includes: "app/com/SampleTest.class,app/*/UtilTest.class,app2*/**", excludes: "app/com/SampleTest.class,app/*/UtilTest.class,app3*/**", verifyVersion: false, checkForPluginManagement: true);
             Assert.Equal(_warnings.Count, 0);
             Assert.Equal(_errors.Count, 0);

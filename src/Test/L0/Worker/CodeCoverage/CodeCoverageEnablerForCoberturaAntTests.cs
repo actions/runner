@@ -23,8 +23,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         private string _coberturaDataFile = "cobertura.ser";
         private string _reportDirectory = Path.Combine(Path.GetTempPath(), "CodeCoverageReport");
         private string _cCReportTask = "CodeCoverageReport";
-        private string _include = "com.*.*:app.me*.*";
-        private string _exclude = "me.*.*:a.b.*:my.com.*.*";
+        private string _classFilter = "+:com.*.*,+:app.me*.*,-:me.*.*,-:a.b.*,-:my.com.*.*";
         private string _coberturaClassPath = @"<fileset dir=""${env.COBERTURA_HOME}""><include name=""cobertura*.jar"" /><include name=""**/lib/**/*.jar"" /></fileset>";
         private string _sourceDirectory = Path.Combine(Path.GetTempPath(), "AntCobertura");
         private string _sampleBuildFilePath;
@@ -37,10 +36,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         public void EnableCodeCoverageForCoberturaTest()
         {
             SetupMocks();
-            LoadBuildFile(CodeCoverageConstants.BuildXml);
+            LoadBuildFile(CodeCoverageTestConstants.BuildXml);
             var enableCodeCoverage = new CodeCoverageEnablerForCoberturaAnt();
             enableCodeCoverage.Initialize(_hc);
-            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_sampleBuildFilePath, _classDirectories, _include, _exclude, _srcDirectory, null, _reportDirectory, _cCReportTask, _sampleReportBuildFilePath, false));
+            var ccInputs = new Dictionary<string, string>();
+            ccInputs.Add("buildfile", _sampleBuildFilePath);
+            ccInputs.Add("classfilesdirectories", _classDirectories);
+            ccInputs.Add("classfilter", _classFilter);
+            ccInputs.Add("ccreporttask", _cCReportTask);
+            ccInputs.Add("reportdirectory", _reportDirectory);
+            ccInputs.Add("sourcedirectories", _srcDirectory);
+            ccInputs.Add("reportbuildfile", _sampleReportBuildFilePath);
+            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_ec.Object, "Ant", ccInputs));
             VerifyCoberturaCoverageForAnt(numberOfTestNodes: 1, buildFilePath: _sampleBuildFilePath);
             VerifyCoberturaReport();
             Assert.Equal(_warnings.Count, 0);
@@ -53,10 +60,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         public void EnableCodeCoverageForCoberturaWhenCodeCoverageIsAlreadyEnabled()
         {
             SetupMocks();
-            LoadBuildFile(CodeCoverageConstants.BuildWithCCCoberturaXml);
+            LoadBuildFile(CodeCoverageTestConstants.BuildWithCCCoberturaXml);
             var enableCodeCoverage = new CodeCoverageEnablerForCoberturaAnt();
             enableCodeCoverage.Initialize(_hc);
-            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_sampleBuildFilePath, _classDirectories, _include, _exclude, _srcDirectory, null, _reportDirectory, _cCReportTask, _sampleReportBuildFilePath, false));
+            var ccInputs = new Dictionary<string, string>();
+            ccInputs.Add("buildfile", _sampleBuildFilePath);
+            ccInputs.Add("classfilesdirectories", _classDirectories);
+            ccInputs.Add("classfilter", _classFilter);
+            ccInputs.Add("ccreporttask", _cCReportTask);
+            ccInputs.Add("reportdirectory", _reportDirectory);
+            ccInputs.Add("sourcedirectories", _srcDirectory);
+            ccInputs.Add("reportbuildfile", _sampleReportBuildFilePath);
+            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_ec.Object, "Ant", ccInputs));
             VerifyCoberturaCoverageForAnt(numberOfTestNodes: 1, buildFilePath: _sampleBuildFilePath);
             VerifyCoberturaReport();
             Assert.Equal(_warnings.Count, 0);
@@ -69,10 +84,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         public void EnableCodeCoverageWithMultipleTestNodesTest()
         {
             SetupMocks();
-            LoadBuildFile(CodeCoverageConstants.BuildWithMultipleNodesXml);
+            LoadBuildFile(CodeCoverageTestConstants.BuildWithMultipleNodesXml);
             var enableCodeCoverage = new CodeCoverageEnablerForCoberturaAnt();
             enableCodeCoverage.Initialize(_hc);
-            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_sampleBuildFilePath, _classDirectories, _include, _exclude, _srcDirectory, null, _reportDirectory, _cCReportTask, _sampleReportBuildFilePath, false));
+            var ccInputs = new Dictionary<string, string>();
+            ccInputs.Add("buildfile", _sampleBuildFilePath);
+            ccInputs.Add("classfilesdirectories", _classDirectories);
+            ccInputs.Add("classfilter", _classFilter);
+            ccInputs.Add("sourcedirectories", _srcDirectory);
+            ccInputs.Add("reportdirectory", _reportDirectory);
+            ccInputs.Add("ccreporttask", _cCReportTask);
+            ccInputs.Add("reportbuildfile", _sampleReportBuildFilePath);
+            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_ec.Object, "Ant", ccInputs));
             VerifyCoberturaCoverageForAnt(numberOfTestNodes: 2, buildFilePath: _sampleBuildFilePath);
             VerifyCoberturaReport();
             Assert.Equal(_warnings.Count, 0);
@@ -85,10 +108,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         public void EnableCodeCoverageForAntCoberturaThrowsIfClassDirectoriesIsInvalid()
         {
             SetupMocks();
-            LoadBuildFile(CodeCoverageConstants.BuildXml);
+            LoadBuildFile(CodeCoverageTestConstants.BuildXml);
             var enableCodeCoverage = new CodeCoverageEnablerForCoberturaAnt();
             enableCodeCoverage.Initialize(_hc);
-            Assert.Throws<ArgumentException>(() => enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_sampleBuildFilePath, "clas*,classFiles", _include, _exclude, _srcDirectory, null, _reportDirectory, _cCReportTask, _sampleReportBuildFilePath, false)));
+            var ccInputs = new Dictionary<string, string>();
+            ccInputs.Add("buildfile", _sampleBuildFilePath);
+            ccInputs.Add("classfilesdirectories", "clas*,classFiles");
+            ccInputs.Add("classfilter", _classFilter);
+            ccInputs.Add("sourcedirectories", _srcDirectory);
+            ccInputs.Add("reportdirectory", _reportDirectory);
+            ccInputs.Add("ccreporttask", _cCReportTask);
+            ccInputs.Add("reportbuildfile", _sampleReportBuildFilePath);
+            Assert.Throws<ArgumentException>(() => enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_ec.Object, "Ant", ccInputs)));
         }
 
         [Fact]
@@ -97,10 +128,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         public void EnableCodeCoverageForAntCoberturaWithSingleIncludeFilter()
         {
             SetupMocks();
-            LoadBuildFile(CodeCoverageConstants.BuildXml);
+            LoadBuildFile(CodeCoverageTestConstants.BuildXml);
             var enableCodeCoverage = new CodeCoverageEnablerForCoberturaAnt();
             enableCodeCoverage.Initialize(_hc);
-            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_sampleBuildFilePath, _classDirectories, "app.com.SampleTest", "", _srcDirectory, null, _reportDirectory, _cCReportTask, _sampleReportBuildFilePath, false));
+            var ccInputs = new Dictionary<string, string>();
+            ccInputs.Add("buildfile", _sampleBuildFilePath);
+            ccInputs.Add("classfilesdirectories", _classDirectories);
+            ccInputs.Add("classfilter", "+:app.com.SampleTest");
+            ccInputs.Add("sourcedirectories", _srcDirectory);
+            ccInputs.Add("reportdirectory", _reportDirectory);
+            ccInputs.Add("ccreporttask", _cCReportTask);
+            ccInputs.Add("reportbuildfile", _sampleReportBuildFilePath);
+            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_ec.Object, "Ant", ccInputs));
             VerifyCoberturaCoverageForAnt(numberOfTestNodes: 1, buildFilePath: _sampleBuildFilePath, includes: "**/app/com/SampleTest.class", excludes: string.Empty);
             VerifyCoberturaReport();
             Assert.Equal(_warnings.Count, 0);
@@ -113,10 +152,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         public void EnableCodeCoverageForAntCoberturaTestWithSingleExcludeFilter()
         {
             SetupMocks();
-            LoadBuildFile(CodeCoverageConstants.BuildXml);
+            LoadBuildFile(CodeCoverageTestConstants.BuildXml);
             var enableCodeCoverage = new CodeCoverageEnablerForCoberturaAnt();
             enableCodeCoverage.Initialize(_hc);
-            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_sampleBuildFilePath, _classDirectories, "", "app.com.SampleTest", _srcDirectory, null, _reportDirectory, _cCReportTask, _sampleReportBuildFilePath, false));
+            var ccInputs = new Dictionary<string, string>();
+            ccInputs.Add("buildfile", _sampleBuildFilePath);
+            ccInputs.Add("classfilesdirectories", _classDirectories);
+            ccInputs.Add("classfilter", "-:app.com.SampleTest");
+            ccInputs.Add("sourcedirectories", _srcDirectory);
+            ccInputs.Add("reportdirectory", _reportDirectory);
+            ccInputs.Add("ccreporttask", _cCReportTask);
+            ccInputs.Add("reportbuildfile", _sampleReportBuildFilePath);
+            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_ec.Object, "Ant", ccInputs));
             VerifyCoberturaCoverageForAnt(numberOfTestNodes: 1, buildFilePath: _sampleBuildFilePath, includes: string.Empty, excludes: "**/app/com/SampleTest.class");
             VerifyCoberturaReport();
             Assert.Equal(_warnings.Count, 0);
@@ -129,10 +176,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         public void EnableCodeCoverageForAntCoberturaTestWithNoIncludeExcludeFilters()
         {
             SetupMocks();
-            LoadBuildFile(CodeCoverageConstants.BuildXml);
+            LoadBuildFile(CodeCoverageTestConstants.BuildXml);
             var enableCodeCoverage = new CodeCoverageEnablerForCoberturaAnt();
             enableCodeCoverage.Initialize(_hc);
-            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_sampleBuildFilePath, _classDirectories, "", "", _srcDirectory, null, _reportDirectory, _cCReportTask, _sampleReportBuildFilePath, false));
+            var ccInputs = new Dictionary<string, string>();
+            ccInputs.Add("buildfile", _sampleBuildFilePath);
+            ccInputs.Add("classfilesdirectories", _classDirectories);
+            ccInputs.Add("sourcedirectories", _srcDirectory);
+            ccInputs.Add("reportdirectory", _reportDirectory);
+            ccInputs.Add("ccreporttask", _cCReportTask);
+            ccInputs.Add("reportbuildfile", _sampleReportBuildFilePath);
+            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_ec.Object, "Ant", ccInputs));
             VerifyCoberturaCoverageForAnt(numberOfTestNodes: 1, buildFilePath: _sampleBuildFilePath, includes: string.Empty, excludes: string.Empty);
             VerifyCoberturaReport();
             Assert.Equal(_warnings.Count, 0);
@@ -145,10 +199,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         public void EnableCodeCoverageForAntCoberturaTestWithFullClassNameFilters()
         {
             SetupMocks();
-            LoadBuildFile(CodeCoverageConstants.BuildXml);
+            LoadBuildFile(CodeCoverageTestConstants.BuildXml);
             var enableCodeCoverage = new CodeCoverageEnablerForCoberturaAnt();
             enableCodeCoverage.Initialize(_hc);
-            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_sampleBuildFilePath, _classDirectories, "app.com.SampleTest:app.*.UtilTest:app2*", "app.com.SampleTest:app.*.UtilTest:app3*", _srcDirectory, null, _reportDirectory, _cCReportTask, _sampleReportBuildFilePath, false));
+            var ccInputs = new Dictionary<string, string>();
+            ccInputs.Add("buildfile", _sampleBuildFilePath);
+            ccInputs.Add("classfilesdirectories", _classDirectories);
+            ccInputs.Add("classfilter", "+:app.com.SampleTest,+:app.*.UtilTest,+:app2*,-:app.com.SampleTest,-:app.*.UtilTest,-:app3*");
+            ccInputs.Add("sourcedirectories", _srcDirectory);
+            ccInputs.Add("reportdirectory", _reportDirectory);
+            ccInputs.Add("ccreporttask", _cCReportTask);
+            ccInputs.Add("reportbuildfile", _sampleReportBuildFilePath);
+            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_ec.Object, "Ant", ccInputs));
             VerifyCoberturaCoverageForAnt(numberOfTestNodes: 1, buildFilePath: _sampleBuildFilePath, includes: "**/app/com/SampleTest.class,**/app/*/UtilTest.class,**/app2*/**", excludes: "**/app/com/SampleTest.class,**/app/*/UtilTest.class,**/app3*/**");
             VerifyCoberturaReport();
             Assert.Equal(_warnings.Count, 0);
@@ -161,10 +223,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         public void EnableCodeCoverageForAntThrowsExceptionWithNoClassDirectory()
         {
             SetupMocks();
-            LoadBuildFile(CodeCoverageConstants.BuildXml);
+            LoadBuildFile(CodeCoverageTestConstants.BuildXml);
             var enableCodeCoverage = new CodeCoverageEnablerForCoberturaAnt();
             enableCodeCoverage.Initialize(_hc);
-            Assert.Throws<ArgumentException>(() => enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_sampleBuildFilePath, null, _include, _exclude, _srcDirectory, null, _reportDirectory, _cCReportTask, _sampleReportBuildFilePath, false)));
+            var ccInputs = new Dictionary<string, string>();
+            ccInputs.Add("buildfile", _sampleBuildFilePath);
+            ccInputs.Add("classfilter", _classFilter);
+            ccInputs.Add("sourcedirectories", _srcDirectory);
+            ccInputs.Add("reportdirectory", _reportDirectory);
+            ccInputs.Add("ccreporttask", _cCReportTask);
+            ccInputs.Add("reportbuildfile", _sampleReportBuildFilePath);
+            Assert.Throws<ArgumentException>(() => enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_ec.Object, "Ant", ccInputs)));
         }
 
         [Fact]
@@ -174,10 +243,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         {
             SetupMocks();
             var buildFile = "invalid.xml";
-            LoadBuildFile(CodeCoverageConstants.BuildXml);
+            LoadBuildFile(CodeCoverageTestConstants.BuildXml);
             var enableCodeCoverage = new CodeCoverageEnablerForCoberturaAnt();
             enableCodeCoverage.Initialize(_hc);
-            Assert.Throws<FileNotFoundException>(() => enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(buildFile, _classDirectories, _include, _exclude, _srcDirectory, null, _reportDirectory, _cCReportTask, _sampleReportBuildFilePath, false)));
+            var ccInputs = new Dictionary<string, string>();
+            ccInputs.Add("buildfile", buildFile);
+            ccInputs.Add("classfilesdirectories", _classDirectories);
+            ccInputs.Add("classfilter", _classFilter);
+            ccInputs.Add("sourcedirectories", _srcDirectory);
+            ccInputs.Add("reportdirectory", _reportDirectory);
+            ccInputs.Add("ccreporttask", _cCReportTask);
+            ccInputs.Add("reportbuildfile", _sampleReportBuildFilePath);
+            Assert.Throws<FileNotFoundException>(() => enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_ec.Object, "Ant", ccInputs)));
         }
 
         [Fact]
@@ -188,7 +265,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
             SetupMocks();
             var enableCodeCoverage = new CodeCoverageEnablerForCoberturaAnt();
             enableCodeCoverage.Initialize(_hc);
-            Assert.Throws<ArgumentException>(() => enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(null, _classDirectories, _include, _exclude, _srcDirectory, null, _reportDirectory, _cCReportTask, _sampleReportBuildFilePath, false)));
+            var ccInputs = new Dictionary<string, string>();
+            ccInputs.Add("classfilesdirectories", _classDirectories);
+            ccInputs.Add("classfilter", _classFilter);
+            ccInputs.Add("sourcedirectories", _srcDirectory);
+            ccInputs.Add("reportdirectory", _reportDirectory);
+            ccInputs.Add("ccreporttask", _cCReportTask);
+            ccInputs.Add("reportbuildfile", _sampleReportBuildFilePath);
+            Assert.Throws<ArgumentException>(() => enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_ec.Object, "Ant", ccInputs)));
         }
 
         [Fact]
@@ -197,10 +281,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         public void EnableCodeCoverageForAntThrowsExceptionWithNoReportDirectory()
         {
             SetupMocks();
-            LoadBuildFile(CodeCoverageConstants.BuildXml);
+            LoadBuildFile(CodeCoverageTestConstants.BuildXml);
             var enableCodeCoverage = new CodeCoverageEnablerForCoberturaAnt();
             enableCodeCoverage.Initialize(_hc);
-            Assert.Throws<ArgumentException>(() => enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_sampleBuildFilePath, _classDirectories, _include, _exclude, _srcDirectory, null, null, _cCReportTask, _sampleReportBuildFilePath, false)));
+            var ccInputs = new Dictionary<string, string>();
+            ccInputs.Add("buildfile", _sampleBuildFilePath);
+            ccInputs.Add("classfilesdirectories", _classDirectories);
+            ccInputs.Add("classfilter", _classFilter);
+            ccInputs.Add("sourcedirectories", _srcDirectory);
+            ccInputs.Add("ccreporttask", _cCReportTask);
+            ccInputs.Add("reportbuildfile", _sampleReportBuildFilePath);
+            Assert.Throws<ArgumentException>(() => enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_ec.Object, "Ant", ccInputs)));
         }
 
         [Fact]
@@ -209,10 +300,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         public void EnableCodeCoverageForAntThrowsExceptionWithNoCCReportTask()
         {
             SetupMocks();
-            LoadBuildFile(CodeCoverageConstants.BuildXml);
+            LoadBuildFile(CodeCoverageTestConstants.BuildXml);
             var enableCodeCoverage = new CodeCoverageEnablerForCoberturaAnt();
             enableCodeCoverage.Initialize(_hc);
-            Assert.Throws<ArgumentException>(() => enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_sampleBuildFilePath, _classDirectories, _include, _exclude, _srcDirectory, null, _reportDirectory, null, _sampleReportBuildFilePath, false)));
+            var ccInputs = new Dictionary<string, string>();
+            ccInputs.Add("buildfile", _sampleBuildFilePath);
+            ccInputs.Add("classfilesdirectories", _classDirectories);
+            ccInputs.Add("classfilter", _classFilter);
+            ccInputs.Add("sourcedirectories", _srcDirectory);
+            ccInputs.Add("reportdirectory", _reportDirectory);
+            ccInputs.Add("reportbuildfile", _sampleReportBuildFilePath);
+            Assert.Throws<ArgumentException>(() => enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_ec.Object, "Ant", ccInputs)));
         }
 
         [Fact]
@@ -221,10 +319,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         public void EnableCodeCoverageForAntThrowsExceptionWithNoCCReportBuildFile()
         {
             SetupMocks();
-            LoadBuildFile(CodeCoverageConstants.BuildXml);
+            LoadBuildFile(CodeCoverageTestConstants.BuildXml);
             var enableCodeCoverage = new CodeCoverageEnablerForCoberturaAnt();
             enableCodeCoverage.Initialize(_hc);
-            Assert.Throws<ArgumentException>(() => enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_sampleBuildFilePath, _classDirectories, _include, _exclude, _srcDirectory, null, _reportDirectory, _cCReportTask, null, false)));
+            var ccInputs = new Dictionary<string, string>();
+            ccInputs.Add("buildfile", _sampleBuildFilePath);
+            ccInputs.Add("classfilesdirectories", _classDirectories);
+            ccInputs.Add("classfilter", _classFilter);
+            ccInputs.Add("sourcedirectories", _srcDirectory);
+            ccInputs.Add("reportdirectory", _reportDirectory);
+            ccInputs.Add("ccreporttask", _cCReportTask);
+            Assert.Throws<ArgumentException>(() => enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_ec.Object, "Ant", ccInputs)));
         }
 
         [Fact]
@@ -233,10 +338,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         public void EnableCodeCoverageForAntThrowsExceptionWithInvalidBuildXml()
         {
             SetupMocks();
-            LoadBuildFile(CodeCoverageConstants.InvalidBuildXml);
+            LoadBuildFile(CodeCoverageTestConstants.InvalidBuildXml);
             var enableCodeCoverage = new CodeCoverageEnablerForCoberturaAnt();
             enableCodeCoverage.Initialize(_hc);
-            Assert.Throws<XmlException>(() => enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_sampleBuildFilePath, _classDirectories, _include, _exclude, _srcDirectory, null, _reportDirectory, _cCReportTask, _sampleReportBuildFilePath, false)));
+            var ccInputs = new Dictionary<string, string>();
+            ccInputs.Add("buildfile", _sampleBuildFilePath);
+            ccInputs.Add("classfilesdirectories", _classDirectories);
+            ccInputs.Add("classfilter", _classFilter);
+            ccInputs.Add("sourcedirectories", _srcDirectory);
+            ccInputs.Add("reportdirectory", _reportDirectory);
+            ccInputs.Add("ccreporttask", _cCReportTask);
+            ccInputs.Add("reportbuildfile", _sampleReportBuildFilePath);
+            Assert.Throws<XmlException>(() => enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_ec.Object, "Ant", ccInputs)));
         }
 
         [Fact]
@@ -245,12 +358,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         public void EnableCodeCoverageForAntDoesNotThrowExceptionWithNoTests()
         {
             SetupMocks();
-            LoadBuildFile(CodeCoverageConstants.BuildWithNoTestsXml);
+            LoadBuildFile(CodeCoverageTestConstants.BuildWithNoTestsXml);
             var enableCodeCoverage = new CodeCoverageEnablerForCoberturaAnt();
             enableCodeCoverage.Initialize(_hc);
+            var ccInputs = new Dictionary<string, string>();
+            ccInputs.Add("buildfile", _sampleBuildFilePath);
+            ccInputs.Add("classfilesdirectories", _classDirectories);
+            ccInputs.Add("classfilter", _classFilter);
+            ccInputs.Add("sourcedirectories", _srcDirectory);
+            ccInputs.Add("reportdirectory", _reportDirectory);
+            ccInputs.Add("ccreporttask", _cCReportTask);
+            ccInputs.Add("reportbuildfile", _sampleReportBuildFilePath);
             try
             {
-                enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_sampleBuildFilePath, _classDirectories, _include, _exclude, _srcDirectory, null, _reportDirectory, _cCReportTask, _sampleReportBuildFilePath, false));
+                enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_ec.Object, "Ant", ccInputs));
             }
             catch (Exception ex)
             {
@@ -264,11 +385,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         public void EnableCodeCoverageForCoberturaWithMultipleBuildFiles()
         {
             SetupMocks();
-            LoadBuildFile(CodeCoverageConstants.BuildXml);
-            LoadBuildFile(CodeCoverageConstants.BuildWithCCCoberturaXml, "buildWithCCCobertura.xml");
+            LoadBuildFile(CodeCoverageTestConstants.BuildXml);
+            LoadBuildFile(CodeCoverageTestConstants.BuildWithCCCoberturaXml, "buildWithCCCobertura.xml");
             var enableCodeCoverage = new CodeCoverageEnablerForCoberturaAnt();
             enableCodeCoverage.Initialize(_hc);
-            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_sampleBuildFilePath, _classDirectories, _include, _exclude, _srcDirectory, null, _reportDirectory, _cCReportTask, _sampleReportBuildFilePath, false));
+            var ccInputs = new Dictionary<string, string>();
+            ccInputs.Add("buildfile", _sampleBuildFilePath);
+            ccInputs.Add("classfilesdirectories", _classDirectories);
+            ccInputs.Add("classfilter", _classFilter);
+            ccInputs.Add("sourcedirectories", _srcDirectory);
+            ccInputs.Add("reportdirectory", _reportDirectory);
+            ccInputs.Add("ccreporttask", _cCReportTask);
+            ccInputs.Add("reportbuildfile", _sampleReportBuildFilePath);
+            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_ec.Object, "Ant", ccInputs));
             VerifyCoberturaCoverageForAnt(numberOfTestNodes: 1, buildFilePath: Path.Combine(_sourceDirectory, "build.xml"));
             VerifyCoberturaCoverageForAnt(numberOfTestNodes: 1, buildFilePath: Path.Combine(_sourceDirectory, "buildWithCCCobertura.xml"));
             VerifyCoberturaReport();
@@ -282,12 +411,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         public void MultipleBuildFilesWithOneOfThemBeingInvalidShouldNotThrow()
         {
             SetupMocks();
-            LoadBuildFile(CodeCoverageConstants.BuildXml);
+            LoadBuildFile(CodeCoverageTestConstants.BuildXml);
             var invalidXml = Path.Combine(_sourceDirectory, "invalid.xml");
             File.WriteAllText(invalidXml, "invalidXmlData");
             var enableCodeCoverage = new CodeCoverageEnablerForCoberturaAnt();
             enableCodeCoverage.Initialize(_hc);
-            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_sampleBuildFilePath, _classDirectories, _include, _exclude, _srcDirectory, null, _reportDirectory, _cCReportTask, _sampleReportBuildFilePath, false));
+            var ccInputs = new Dictionary<string, string>();
+            ccInputs.Add("buildfile", _sampleBuildFilePath);
+            ccInputs.Add("classfilesdirectories", _classDirectories);
+            ccInputs.Add("classfilter", _classFilter);
+            ccInputs.Add("sourcedirectories", _srcDirectory);
+            ccInputs.Add("reportdirectory", _reportDirectory);
+            ccInputs.Add("ccreporttask", _cCReportTask);
+            ccInputs.Add("reportbuildfile", _sampleReportBuildFilePath);
+            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_ec.Object, "Ant", ccInputs));
             VerifyCoberturaCoverageForAnt(numberOfTestNodes: 1, buildFilePath: Path.Combine(_sourceDirectory, "build.xml"));
             VerifyCoberturaReport();
             Assert.Equal(_warnings.Count, 0);
@@ -300,12 +437,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         public void MultipleBuildFilesWithMAinBuildFileBeingInvalidShouldThrow()
         {
             SetupMocks();
-            LoadBuildFile(CodeCoverageConstants.BuildXml);
+            LoadBuildFile(CodeCoverageTestConstants.BuildXml);
             var invalidXml = Path.Combine(_sourceDirectory, "invalid.xml");
             File.WriteAllText(invalidXml, "invalidXmlData");
             var enableCodeCoverage = new CodeCoverageEnablerForCoberturaAnt();
             enableCodeCoverage.Initialize(_hc);
-            Assert.Throws<XmlException>(() => enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(invalidXml, _classDirectories, _include, _exclude, _srcDirectory, null, _reportDirectory, _cCReportTask, _sampleReportBuildFilePath, false)));
+            var ccInputs = new Dictionary<string, string>();
+            ccInputs.Add("buildfile", invalidXml);
+            ccInputs.Add("classfilesdirectories", _classDirectories);
+            ccInputs.Add("classfilter", _classFilter);
+            ccInputs.Add("sourcedirectories", _srcDirectory);
+            ccInputs.Add("reportdirectory", _reportDirectory);
+            ccInputs.Add("ccreporttask", _cCReportTask);
+            ccInputs.Add("reportbuildfile", _sampleReportBuildFilePath);
+            Assert.Throws<XmlException>(() => enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_ec.Object, "Ant", ccInputs)));
         }
 
         public void Dispose()

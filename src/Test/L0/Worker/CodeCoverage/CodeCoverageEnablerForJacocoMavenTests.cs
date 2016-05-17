@@ -21,8 +21,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         private List<string> _errors = new List<string>();
         private string _summaryFile = "summary.xml";
         private string _reportDirectory = "codeCoverage";
-        private string _include = "com.*.*:app.me*.*";
-        private string _exclude = "me.*.*:a.b.*:my.com.*.*";
+        private string _classFilter = "+:com.*.*,+:app.me*.*,-:me.*.*,-:a.b.*,-:my.com.*.*";
         private string _sampleBuildFilePath;
         private string _reportBuildFilePath;
 
@@ -32,10 +31,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         public void Maven_EnableCodeCoverageForJacocoTest()
         {
             SetupMocks();
-            LoadBuildFile(CodeCoverageConstants.PomXml);
+            LoadBuildFile(CodeCoverageTestConstants.PomXml);
             var enableCodeCoverage = new CodeCoverageEnablerForJacocoMaven();
             enableCodeCoverage.Initialize(_hc);
-            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_sampleBuildFilePath, string.Empty, _include, _exclude, string.Empty, _summaryFile, _reportDirectory, null, string.Empty, false));
+            var ccInputs = new Dictionary<string, string>();
+            ccInputs.Add("buildfile", _sampleBuildFilePath);
+            ccInputs.Add("classfilter", _classFilter);
+            ccInputs.Add("summaryfile", _summaryFile);
+            ccInputs.Add("reportdirectory", _reportDirectory);
+            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_ec.Object, "Maven", ccInputs));
             VerifyJacocoCoverageForMaven(checkForPluginManagement: true);
             Assert.Equal(_warnings.Count, 0);
             Assert.Equal(_errors.Count, 0);
@@ -47,10 +51,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         public void Maven_Jacoco_EnableCodeCoverageForCodeSearchPlugin()
         {
             SetupMocks();
-            LoadBuildFile(CodeCoverageConstants.CodeSearchPomXml);
+            LoadBuildFile(CodeCoverageTestConstants.CodeSearchPomXml);
             var enableCodeCoverage = new CodeCoverageEnablerForJacocoMaven();
             enableCodeCoverage.Initialize(_hc);
-            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_sampleBuildFilePath, string.Empty, _include, _exclude, string.Empty, _summaryFile, _reportDirectory, null, string.Empty, false));
+            var ccInputs = new Dictionary<string, string>();
+            ccInputs.Add("buildfile", _sampleBuildFilePath);
+            ccInputs.Add("classfilter", _classFilter);
+            ccInputs.Add("summaryfile", _summaryFile);
+            ccInputs.Add("reportdirectory", _reportDirectory);
+            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_ec.Object, "Maven", ccInputs));
             VerifyJacocoCoverageForMaven(checkForPluginManagement: false);
             Assert.Equal(_warnings.Count, 0);
             Assert.Equal(_errors.Count, 0);
@@ -62,10 +71,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         public void Maven_Jacoco_EnableCodeCoverageForLog4JAppender()
         {
             SetupMocks();
-            LoadBuildFile(CodeCoverageConstants.LogAppenderPomXml);
+            LoadBuildFile(CodeCoverageTestConstants.LogAppenderPomXml);
             var enableCodeCoverage = new CodeCoverageEnablerForJacocoMaven();
             enableCodeCoverage.Initialize(_hc);
-            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_sampleBuildFilePath, string.Empty, _include, _exclude, string.Empty, _summaryFile, _reportDirectory, null, string.Empty, false));
+            var ccInputs = new Dictionary<string, string>();
+            ccInputs.Add("buildfile", _sampleBuildFilePath);
+            ccInputs.Add("classfilter", _classFilter);
+            ccInputs.Add("summaryfile", _summaryFile);
+            ccInputs.Add("reportdirectory", _reportDirectory);
+            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_ec.Object, "Maven", ccInputs));
             VerifyJacocoCoverageForMaven(checkForPluginManagement: false);
             Assert.Equal(_warnings.Count, 0);
             Assert.Equal(_errors.Count, 0);
@@ -77,10 +91,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         public void Maven_EnableCodeCoverageForJacocoWhenCodeCoverageIsAlreadyEnabled()
         {
             SetupMocks();
-            LoadBuildFile(CodeCoverageConstants.PomWithJacocoCCXml);
+            LoadBuildFile(CodeCoverageTestConstants.PomWithJacocoCCXml);
             var enableCodeCoverage = new CodeCoverageEnablerForJacocoMaven();
             enableCodeCoverage.Initialize(_hc);
-            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_sampleBuildFilePath, string.Empty, _include, _exclude, string.Empty, _summaryFile, _reportDirectory, null, string.Empty, false));
+            var ccInputs = new Dictionary<string, string>();
+            ccInputs.Add("buildfile", _sampleBuildFilePath);
+            ccInputs.Add("classfilter", _classFilter);
+            ccInputs.Add("summaryfile", _summaryFile);
+            ccInputs.Add("reportdirectory", _reportDirectory);
+            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_ec.Object, "Maven", ccInputs));
             VerifyJacocoCoverageForMaven(numberOfExecutionElements: 4, numberOfExecutionConfigurations: 3, verifyVersion: false, checkForPluginManagement: true, numOfJacocoPluginsInPluginManagement: 1);
             Assert.Equal(_warnings.Count, 0);
             Assert.Equal(_errors.Count, 0);
@@ -92,11 +111,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         public void Maven_JaCoCo_EnableCodeCoverageForMultiModulePom()
         {
             SetupMocks();
-            LoadBuildFile(CodeCoverageConstants.PomWithMultiModuleXml);
+            LoadBuildFile(CodeCoverageTestConstants.PomWithMultiModuleXml);
             _reportBuildFilePath = Path.Combine(Path.GetTempPath(), "MultiModuleReport.xml");
             var enableCodeCoverage = new CodeCoverageEnablerForJacocoMaven();
             enableCodeCoverage.Initialize(_hc);
-            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_sampleBuildFilePath, string.Empty, _include, _exclude, string.Empty, _summaryFile, _reportDirectory, null, _reportBuildFilePath, false));
+            var ccInputs = new Dictionary<string, string>();
+            ccInputs.Add("buildfile", _sampleBuildFilePath);
+            ccInputs.Add("classfilter", _classFilter);
+            ccInputs.Add("summaryfile", _summaryFile);
+            ccInputs.Add("reportdirectory", _reportDirectory);
+            ccInputs.Add("reportbuildfile", _reportBuildFilePath);
+            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_ec.Object, "Maven", ccInputs));
             VerifyJacocoCoverageForMaven(numberOfExecutionElements: 1, numberOfExecutionConfigurations: 1, verifyVersion: false);
             VerifyMultiModuleReports();
             Assert.Equal(_warnings.Count, 0);
@@ -109,11 +134,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         public void Maven_JaCoCo_EnableCodeCoverageForMultiModulePomWithCCEnabled()
         {
             SetupMocks();
-            LoadBuildFile(CodeCoverageConstants.PomWithMultiModuleWithCCJacocoXml);
+            LoadBuildFile(CodeCoverageTestConstants.PomWithMultiModuleWithCCJacocoXml);
             _reportBuildFilePath = Path.Combine(Path.GetTempPath(), "MultiModuleReport.xml");
             var enableCodeCoverage = new CodeCoverageEnablerForJacocoMaven();
             enableCodeCoverage.Initialize(_hc);
-            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_sampleBuildFilePath, string.Empty, _include, _exclude, string.Empty, _summaryFile, _reportDirectory, null, _reportBuildFilePath, false));
+            var ccInputs = new Dictionary<string, string>();
+            ccInputs.Add("buildfile", _sampleBuildFilePath);
+            ccInputs.Add("classfilter", _classFilter);
+            ccInputs.Add("summaryfile", _summaryFile);
+            ccInputs.Add("reportdirectory", _reportDirectory);
+            ccInputs.Add("reportbuildfile", _reportBuildFilePath);
+            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_ec.Object, "Maven", ccInputs));
             VerifyJacocoCoverageForMaven(numberOfExecutionElements: 3, numberOfExecutionConfigurations: 3, verifyVersion: false);
             VerifyMultiModuleReports(expectedModelVersion: "4.0.0", expectedGroupId: "reports", expectedArtifactId: "report", expectedVersion: "1.0");
             Assert.Equal(_warnings.Count, 0);
@@ -127,10 +158,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         {
             SetupMocks();
             // missing artifactId tag
-            LoadBuildFile(CodeCoverageConstants.PomWithInvalidCCXml);
+            LoadBuildFile(CodeCoverageTestConstants.PomWithInvalidCCXml);
             var enableCodeCoverage = new CodeCoverageEnablerForJacocoMaven();
             enableCodeCoverage.Initialize(_hc);
-            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_sampleBuildFilePath, string.Empty, _include, _exclude, string.Empty, _summaryFile, _reportDirectory, null, string.Empty, false));
+            var ccInputs = new Dictionary<string, string>();
+            ccInputs.Add("buildfile", _sampleBuildFilePath);
+            ccInputs.Add("classfilter", _classFilter);
+            ccInputs.Add("summaryfile", _summaryFile);
+            ccInputs.Add("reportdirectory", _reportDirectory);
+            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_ec.Object, "Maven", ccInputs));
             VerifyJacocoCoverageForMaven(numberOfExecutionElements: 4, verifyVersion: false);
             Assert.Equal(_warnings.Count, 0);
             Assert.Equal(_errors.Count, 0);
@@ -142,10 +178,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         public void EnableCodeCoverageForMavenJacocoThrowsIfClassDirectoriesIsInvalid()
         {
             SetupMocks();
-            LoadBuildFile(CodeCoverageConstants.PomXml);
+            LoadBuildFile(CodeCoverageTestConstants.PomXml);
             var enableCodeCoverage = new CodeCoverageEnablerForJacocoMaven();
             enableCodeCoverage.Initialize(_hc);
-            Assert.Throws<ArgumentException>(() => enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_sampleBuildFilePath, "Clas1/class2*", _include, _exclude, string.Empty, _summaryFile, _reportDirectory, null, string.Empty, false)));
+            var ccInputs = new Dictionary<string, string>();
+            ccInputs.Add("buildfile", _sampleBuildFilePath);
+            ccInputs.Add("classfilesdirectories", "Clas1/class2*");
+            ccInputs.Add("classfilter", _classFilter);
+            ccInputs.Add("summaryfile", _summaryFile);
+            ccInputs.Add("reportdirectory", _reportDirectory);
+            ccInputs.Add("reportbuildfile", _reportBuildFilePath);
+            Assert.Throws<ArgumentException>(() => enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_ec.Object, "Maven", ccInputs)));
         }
 
         [Fact]
@@ -154,10 +197,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         public void EnableCodeCoverageForMavenJacocoThrowsWithNoSummaryFile()
         {
             SetupMocks();
-            LoadBuildFile(CodeCoverageConstants.PomXml);
+            LoadBuildFile(CodeCoverageTestConstants.PomXml);
             var enableCodeCoverage = new CodeCoverageEnablerForJacocoMaven();
             enableCodeCoverage.Initialize(_hc);
-            Assert.Throws<ArgumentException>(() => enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_sampleBuildFilePath, string.Empty, _include, _exclude, string.Empty, null, _reportDirectory, null, string.Empty, false)));
+            var ccInputs = new Dictionary<string, string>();
+            ccInputs.Add("buildfile", _sampleBuildFilePath);
+            ccInputs.Add("classfilter", _classFilter);
+            ccInputs.Add("reportdirectory", _reportDirectory);
+            ccInputs.Add("reportbuildfile", _reportBuildFilePath);
+            Assert.Throws<ArgumentException>(() => enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_ec.Object, "Maven", ccInputs)));
         }
 
         [Fact]
@@ -166,10 +214,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         public void EnableCodeCoverageForMavenJacocoThrowsWithNoReportDirectory()
         {
             SetupMocks();
-            LoadBuildFile(CodeCoverageConstants.PomXml);
+            LoadBuildFile(CodeCoverageTestConstants.PomXml);
             var enableCodeCoverage = new CodeCoverageEnablerForJacocoMaven();
             enableCodeCoverage.Initialize(_hc);
-            Assert.Throws<ArgumentException>(() => enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_sampleBuildFilePath, string.Empty, _include, _exclude, string.Empty, _summaryFile, null, null, string.Empty, false)));
+            var ccInputs = new Dictionary<string, string>();
+            ccInputs.Add("buildfile", _sampleBuildFilePath);
+            ccInputs.Add("classfilter", _classFilter);
+            ccInputs.Add("summaryfile", _summaryFile);
+            ccInputs.Add("reportbuildfile", _reportBuildFilePath);
+            Assert.Throws<ArgumentException>(() => enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_ec.Object, "Maven", ccInputs)));
         }
 
         [Fact]
@@ -182,7 +235,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
             File.WriteAllText(_sampleBuildFilePath, string.Empty);
             var enableCodeCoverage = new CodeCoverageEnablerForJacocoMaven();
             enableCodeCoverage.Initialize(_hc);
-            Assert.Throws<XmlException>(() => enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_sampleBuildFilePath, string.Empty, _include, _exclude, string.Empty, _summaryFile, _reportDirectory, null, string.Empty, false)));
+            var ccInputs = new Dictionary<string, string>();
+            ccInputs.Add("buildfile", _sampleBuildFilePath);
+            ccInputs.Add("classfilter", _classFilter);
+            ccInputs.Add("summaryfile", _summaryFile);
+            ccInputs.Add("reportdirectory", _reportDirectory);
+            ccInputs.Add("reportbuildfile", _reportBuildFilePath);
+            Assert.Throws<XmlException>(() => enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_ec.Object, "Maven", ccInputs)));
         }
 
         [Fact]
@@ -195,7 +254,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
             File.WriteAllText(_sampleBuildFilePath, @"This is not valid xml file contents");
             var enableCodeCoverage = new CodeCoverageEnablerForJacocoMaven();
             enableCodeCoverage.Initialize(_hc);
-            Assert.Throws<XmlException>(() => enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_sampleBuildFilePath, string.Empty, _include, _exclude, string.Empty, _summaryFile, _reportDirectory, null, string.Empty, false)));
+            var ccInputs = new Dictionary<string, string>();
+            ccInputs.Add("buildfile", _sampleBuildFilePath);
+            ccInputs.Add("classfilter", _classFilter);
+            ccInputs.Add("summaryfile", _summaryFile);
+            ccInputs.Add("reportdirectory", _reportDirectory);
+            ccInputs.Add("reportbuildfile", _reportBuildFilePath);
+            Assert.Throws<XmlException>(() => enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_ec.Object, "Maven", ccInputs)));
         }
 
         [Fact]
@@ -204,10 +269,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         public void Maven_JaCoCo_EnableCodeCoverageWithSingleIncludeFilter()
         {
             SetupMocks();
-            LoadBuildFile(CodeCoverageConstants.PomXml);
+            LoadBuildFile(CodeCoverageTestConstants.PomXml);
             var enableCodeCoverage = new CodeCoverageEnablerForJacocoMaven();
             enableCodeCoverage.Initialize(_hc);
-            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_sampleBuildFilePath, string.Empty, "app.com.SampleTest", "", string.Empty, _summaryFile, _reportDirectory, null, string.Empty, false));
+            var ccInputs = new Dictionary<string, string>();
+            ccInputs.Add("buildfile", _sampleBuildFilePath);
+            ccInputs.Add("classfilter", "+:app.com.SampleTest");
+            ccInputs.Add("summaryfile", _summaryFile);
+            ccInputs.Add("reportdirectory", _reportDirectory);
+            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_ec.Object, "Maven", ccInputs));
             VerifyJacocoCoverageForMaven(includes: "**/app/com/SampleTest.class", excludes: string.Empty, numOfIncludes: 1, numOfExcludes: 0, checkForPluginManagement: true);
             Assert.Equal(_warnings.Count, 0);
             Assert.Equal(_errors.Count, 0);
@@ -219,10 +289,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         public void Maven_JaCoCo_EnableCodeCoverageWithSingleExcludeFilter()
         {
             SetupMocks();
-            LoadBuildFile(CodeCoverageConstants.PomXml);
+            LoadBuildFile(CodeCoverageTestConstants.PomXml);
             var enableCodeCoverage = new CodeCoverageEnablerForJacocoMaven();
             enableCodeCoverage.Initialize(_hc);
-            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_sampleBuildFilePath, string.Empty, "", "app.com.SampleTest", string.Empty, _summaryFile, _reportDirectory, null, string.Empty, false));
+            var ccInputs = new Dictionary<string, string>();
+            ccInputs.Add("buildfile", _sampleBuildFilePath);
+            ccInputs.Add("classfilter", "-:app.com.SampleTest");
+            ccInputs.Add("summaryfile", _summaryFile);
+            ccInputs.Add("reportdirectory", _reportDirectory);
+            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_ec.Object, "Maven", ccInputs));
             VerifyJacocoCoverageForMaven(includes: string.Empty, excludes: "**/app/com/SampleTest.class", numOfIncludes: 0, numOfExcludes: 1, checkForPluginManagement: true);
             Assert.Equal(_warnings.Count, 0);
             Assert.Equal(_errors.Count, 0);
@@ -234,10 +309,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         public void Maven_JaCoCo_EnableCodeCoverageWithNoIncludeExcludeFilters()
         {
             SetupMocks();
-            LoadBuildFile(CodeCoverageConstants.PomXml);
+            LoadBuildFile(CodeCoverageTestConstants.PomXml);
             var enableCodeCoverage = new CodeCoverageEnablerForJacocoMaven();
             enableCodeCoverage.Initialize(_hc);
-            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_sampleBuildFilePath, string.Empty, "", "", string.Empty, _summaryFile, _reportDirectory, null, string.Empty, false));
+            var ccInputs = new Dictionary<string, string>();
+            ccInputs.Add("buildfile", _sampleBuildFilePath);
+            ccInputs.Add("classfilter", "");
+            ccInputs.Add("summaryfile", _summaryFile);
+            ccInputs.Add("reportdirectory", _reportDirectory);
+            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_ec.Object, "Maven", ccInputs));
             VerifyJacocoCoverageForMaven(includes: string.Empty, excludes: string.Empty, numOfIncludes: 0, numOfExcludes: 0, checkForPluginManagement: true);
             Assert.Equal(_warnings.Count, 0);
             Assert.Equal(_errors.Count, 0);
@@ -249,10 +329,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         public void Maven_JaCoCo_EnableCodeCoverageWithFullClassNameFilters()
         {
             SetupMocks();
-            LoadBuildFile(CodeCoverageConstants.PomXml);
+            LoadBuildFile(CodeCoverageTestConstants.PomXml);
             var enableCodeCoverage = new CodeCoverageEnablerForJacocoMaven();
             enableCodeCoverage.Initialize(_hc);
-            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_sampleBuildFilePath, string.Empty, "app.com.SampleTest:app.*.UtilTest:app2*", "app.com.SampleTest:app.*.UtilTest:app3*", string.Empty, _summaryFile, _reportDirectory, null, string.Empty, false));
+            var ccInputs = new Dictionary<string, string>();
+            ccInputs.Add("buildfile", _sampleBuildFilePath);
+            ccInputs.Add("classfilter", "+:app.com.SampleTest,+:app.*.UtilTest,+:app2*,-:app.com.SampleTest,-:app.*.UtilTest,-:app3*");
+            ccInputs.Add("summaryfile", _summaryFile);
+            ccInputs.Add("reportdirectory", _reportDirectory);
+            ccInputs.Add("reportbuildfile", _reportBuildFilePath);
+            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_ec.Object, "Maven", ccInputs));
             VerifyJacocoCoverageForMaven(includes: "**/app/com/SampleTest.class,**/app/*/UtilTest.class,**/app2*/**", excludes: "**/app/com/SampleTest.class,**/app/*/UtilTest.class,**/app3*/**", numOfIncludes: 3, numOfExcludes: 3, checkForPluginManagement: true);
             Assert.Equal(_warnings.Count, 0);
             Assert.Equal(_errors.Count, 0);

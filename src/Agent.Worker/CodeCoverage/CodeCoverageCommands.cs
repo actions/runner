@@ -71,42 +71,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
             }
             buildTool = buildTool.Trim();
 
-            string classFilter;
-            eventProperties.TryGetValue(EnableCodeCoverageEventProperties.ClassFilter, out classFilter);
-
-            string buildFile;
-            eventProperties.TryGetValue(EnableCodeCoverageEventProperties.BuildFile, out buildFile);
-
-            string classFilesDirectories;
-            eventProperties.TryGetValue(EnableCodeCoverageEventProperties.ClassFilesDirectories, out classFilesDirectories);
-
-            string sourceDirectories;
-            eventProperties.TryGetValue(EnableCodeCoverageEventProperties.SourceDirectories, out sourceDirectories);
-
-            string summaryFile;
-            eventProperties.TryGetValue(EnableCodeCoverageEventProperties.SummaryFile, out summaryFile);
-
-            string cCReportTask;
-            eventProperties.TryGetValue(EnableCodeCoverageEventProperties.CCReportTask, out cCReportTask);
-
-            string reportBuildFile;
-            eventProperties.TryGetValue(EnableCodeCoverageEventProperties.ReportBuildFile, out reportBuildFile);
-
-            string isMultiModuleInput;
-            var isMultiModule = false;
-            eventProperties.TryGetValue(EnableCodeCoverageEventProperties.IsMultiModule, out isMultiModuleInput);
-            if (!bool.TryParse(isMultiModuleInput, out isMultiModule) && buildTool.Equals("gradle", StringComparison.OrdinalIgnoreCase))
-            {
-                context.Output(StringUtil.Loc("IsMultiModuleParameterNotAvailable"));
-            }
-
-            string reportDirectory;
-            eventProperties.TryGetValue(EnableCodeCoverageEventProperties.ReportDirectory, out reportDirectory);
-
-            string include, exclude;
-            CodeCoverageUtilities.GetFilters(classFilter, out include, out exclude);
-
-            var codeCoverageInputs = new CodeCoverageEnablerInputs(buildFile, classFilesDirectories, include, exclude, sourceDirectories, summaryFile, reportDirectory, cCReportTask, reportBuildFile, isMultiModule);
+            var codeCoverageInputs = new CodeCoverageEnablerInputs(context, buildTool, eventProperties);
             ICodeCoverageEnabler ccEnabler = GetCodeCoverageEnabler(buildTool, codeCoverageTool);
             ccEnabler.EnableCodeCoverage(context, codeCoverageInputs);
         }

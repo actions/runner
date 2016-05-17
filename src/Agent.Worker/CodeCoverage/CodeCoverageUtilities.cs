@@ -107,7 +107,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
             return (int)Priority.Other;
         }
 
-        public static string ThrowIfParameterEmpty(string parameterValue, string parameterName)
+        public static string TrimNonEmptyParam(string parameterValue, string parameterName)
         {
             if (string.IsNullOrWhiteSpace(parameterValue))
             {

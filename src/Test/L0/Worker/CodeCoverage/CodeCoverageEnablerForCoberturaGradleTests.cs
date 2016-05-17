@@ -20,10 +20,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         private string _classDir = "'build/classes/classdir1','build/classes/classdir2'";
         private string _summaryFile = "coverage.xml";
         private string _reportDirectory = "codeCoverage";
-        private string _include = "com.*.*:app.me*.*";
-        private string _exclude = "me.*.*:a.b.*:my.com.test";
         private string _includePackages = "'.*com.*..*','.*app.me*..*'";
         private string _excludePackages = "'.*me.*..*','.*a.b..*','.*my.com.test'";
+        private string _classFilter = "+:com.*.*,+:app.me*.*,-:me.*.*,-:a.b.*,-:my.com.test";
         private string _sampleBuildFilePath;
 
         [Fact]
@@ -32,10 +31,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         public void Gradle_SingleModule_EnableCodeCoverageForCoberturaTest()
         {
             SetupMocks();
-            LoadBuildFile(CodeCoverageConstants.BuildGradle);
+            LoadBuildFile(CodeCoverageTestConstants.BuildGradle);
             var enableCodeCoverage = new CodeCoverageEnablerForCoberturaGradle();
             enableCodeCoverage.Initialize(_hc);
-            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_sampleBuildFilePath, _classDirectories, _include, _exclude, null, _summaryFile, _reportDirectory, null, null, false));
+            var ccInputs = new Dictionary<string, string>();
+            ccInputs.Add("buildfile", _sampleBuildFilePath);
+            ccInputs.Add("classfilesdirectories", _classDirectories);
+            ccInputs.Add("classfilter", _classFilter);
+            ccInputs.Add("summaryfile", _summaryFile);
+            ccInputs.Add("reportdirectory", _reportDirectory);
+            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_ec.Object, "Gradle", ccInputs));
             VerifyCoberturaCoverageForGradle(true);
             Assert.Equal(_warnings.Count, 0);
             Assert.Equal(_errors.Count, 0);
@@ -47,10 +52,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         public void Gradle_MultiModule_EnableCodeCoverageForCoberturaTest()
         {
             SetupMocks();
-            LoadBuildFile(CodeCoverageConstants.BuildMultiModuleGradle);
+            LoadBuildFile(CodeCoverageTestConstants.BuildMultiModuleGradle);
             var enableCodeCoverage = new CodeCoverageEnablerForCoberturaGradle();
             enableCodeCoverage.Initialize(_hc);
-            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_sampleBuildFilePath, _classDirectories, _include, _exclude, null, _summaryFile, _reportDirectory, null, null, true));
+            var ccInputs = new Dictionary<string, string>();
+            ccInputs.Add("buildfile", _sampleBuildFilePath);
+            ccInputs.Add("classfilesdirectories", _classDirectories);
+            ccInputs.Add("classfilter", _classFilter);
+            ccInputs.Add("summaryfile", _summaryFile);
+            ccInputs.Add("reportdirectory", _reportDirectory);
+            ccInputs.Add("ismultimodule", "true");
+            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_ec.Object, "Gradle", ccInputs));
             VerifyCoberturaCoverageForGradle(false);
             Assert.Equal(_warnings.Count, 0);
             Assert.Equal(_errors.Count, 0);
@@ -62,10 +74,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         public void Gradle_SingleModule_EnableCodeCoverageForCoberturaWhenCodeCoverageIsAlreadyEnabled()
         {
             SetupMocks();
-            LoadBuildFile(CodeCoverageConstants.BuildWithCCCoberturaGradle);
+            LoadBuildFile(CodeCoverageTestConstants.BuildWithCCCoberturaGradle);
             var enableCodeCoverage = new CodeCoverageEnablerForCoberturaGradle();
             enableCodeCoverage.Initialize(_hc);
-            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_sampleBuildFilePath, _classDirectories, _include, _exclude, null, _summaryFile, _reportDirectory, null, null, false));
+            var ccInputs = new Dictionary<string, string>();
+            ccInputs.Add("buildfile", _sampleBuildFilePath);
+            ccInputs.Add("classfilesdirectories", _classDirectories);
+            ccInputs.Add("classfilter", _classFilter);
+            ccInputs.Add("summaryfile", _summaryFile);
+            ccInputs.Add("reportdirectory", _reportDirectory);
+            ccInputs.Add("ismultimodule", "false");
+            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_ec.Object, "Gradle", ccInputs));
             VerifyCoberturaCoverageForGradle(true);
             Assert.Equal(_warnings.Count, 0);
             Assert.Equal(_errors.Count, 0);
@@ -77,10 +96,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         public void Gradle_MultiModule_EnableCodeCoverageForCoberturaWhenCodeCoverageIsAlreadyEnabled()
         {
             SetupMocks();
-            LoadBuildFile(CodeCoverageConstants.BuildWithCCMultiModuleGradle);
+            LoadBuildFile(CodeCoverageTestConstants.BuildWithCCMultiModuleGradle);
             var enableCodeCoverage = new CodeCoverageEnablerForCoberturaGradle();
             enableCodeCoverage.Initialize(_hc);
-            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_sampleBuildFilePath, _classDirectories, _include, _exclude, null, _summaryFile, _reportDirectory, null, null, true));
+            var ccInputs = new Dictionary<string, string>();
+            ccInputs.Add("buildfile", _sampleBuildFilePath);
+            ccInputs.Add("classfilesdirectories", _classDirectories);
+            ccInputs.Add("classfilter", _classFilter);
+            ccInputs.Add("summaryfile", _summaryFile);
+            ccInputs.Add("reportdirectory", _reportDirectory);
+            ccInputs.Add("ismultimodule", "true");
+            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_ec.Object, "Gradle", ccInputs));
             VerifyCoberturaCoverageForGradle(false);
             Assert.Equal(_warnings.Count, 0);
             Assert.Equal(_errors.Count, 0);
@@ -96,7 +122,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
             _sampleBuildFilePath = Path.ChangeExtension(_sampleBuildFilePath, ".gradle");
             var enableCodeCoverage = new CodeCoverageEnablerForCoberturaGradle();
             enableCodeCoverage.Initialize(_hc);
-            Assert.Throws<FileNotFoundException>(() => enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_sampleBuildFilePath, _classDirectories, _include, _exclude, null, _summaryFile, _reportDirectory, null, null, false)));
+            var ccInputs = new Dictionary<string, string>();
+            ccInputs.Add("buildfile", _sampleBuildFilePath);
+            ccInputs.Add("classfilesdirectories", _classDirectories);
+            ccInputs.Add("classfilter", _classFilter);
+            ccInputs.Add("summaryfile", _summaryFile);
+            ccInputs.Add("reportdirectory", _reportDirectory);
+            ccInputs.Add("ismultimodule", "false");
+            Assert.Throws<FileNotFoundException>(() => enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_ec.Object, "Gradle", ccInputs)));
         }
 
         [Fact]
@@ -109,7 +142,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
             File.WriteAllText(_sampleBuildFilePath, string.Empty);
             var enableCodeCoverage = new CodeCoverageEnablerForCoberturaGradle();
             enableCodeCoverage.Initialize(_hc);
-            Assert.Throws<InvalidOperationException>(() => enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_sampleBuildFilePath, _classDirectories, _include, _exclude, null, _summaryFile, _reportDirectory, null, null, false)));
+            var ccInputs = new Dictionary<string, string>();
+            ccInputs.Add("buildfile", _sampleBuildFilePath);
+            ccInputs.Add("classfilesdirectories", _classDirectories);
+            ccInputs.Add("classfilter", _classFilter);
+            ccInputs.Add("summaryfile", _summaryFile);
+            ccInputs.Add("reportdirectory", _reportDirectory);
+            ccInputs.Add("ismultimodule", "false");
+            Assert.Throws<InvalidOperationException>(() => enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_ec.Object, "Gradle", ccInputs)));
         }
 
         [Fact]
@@ -118,10 +158,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         public void Gradle_EnableCodeCoverageWithNoClassDirectory()
         {
             SetupMocks();
-            LoadBuildFile(CodeCoverageConstants.BuildGradle);
+            LoadBuildFile(CodeCoverageTestConstants.BuildGradle);
             var enableCodeCoverage = new CodeCoverageEnablerForCoberturaGradle();
             enableCodeCoverage.Initialize(_hc);
-            Assert.Throws<ArgumentException>(() => enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_sampleBuildFilePath, null, _include, _exclude, null, _summaryFile, _reportDirectory, null, null, false)));
+            var ccInputs = new Dictionary<string, string>();
+            ccInputs.Add("buildfile", _sampleBuildFilePath);
+            ccInputs.Add("classfilter", _classFilter);
+            ccInputs.Add("summaryfile", _summaryFile);
+            ccInputs.Add("reportdirectory", _reportDirectory);
+            ccInputs.Add("ismultimodule", "false");
+            Assert.Throws<ArgumentException>(() => enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_ec.Object, "Gradle", ccInputs)));
         }
 
         [Fact]
@@ -130,10 +176,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         public void Gradle_EnableCodeCoverageWithNoReportDirectory()
         {
             SetupMocks();
-            LoadBuildFile(CodeCoverageConstants.BuildGradle);
+            LoadBuildFile(CodeCoverageTestConstants.BuildGradle);
             var enableCodeCoverage = new CodeCoverageEnablerForCoberturaGradle();
             enableCodeCoverage.Initialize(_hc);
-            Assert.Throws<ArgumentException>(() => enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_sampleBuildFilePath, _classDirectories, _include, _exclude, null, _summaryFile, null, null, null, false)));
+            var ccInputs = new Dictionary<string, string>();
+            ccInputs.Add("buildfile", _sampleBuildFilePath);
+            ccInputs.Add("classfilesdirectories", _classDirectories);
+            ccInputs.Add("classfilter", _classFilter);
+            ccInputs.Add("summaryfile", _summaryFile);
+            ccInputs.Add("ismultimodule", "false");
+            Assert.Throws<ArgumentException>(() => enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_ec.Object, "Gradle", ccInputs)));
         }
 
         public void Dispose()

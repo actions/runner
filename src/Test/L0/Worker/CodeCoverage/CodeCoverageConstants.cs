@@ -1,6 +1,6 @@
 ﻿namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
 {
-    public class CodeCoverageConstants
+    public class CodeCoverageTestConstants
     {
         #region publish CC files
         public static readonly string ValidJacocoXml =

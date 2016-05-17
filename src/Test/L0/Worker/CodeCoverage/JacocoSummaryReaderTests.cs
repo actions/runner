@@ -119,7 +119,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         private string GetPathToValidJaCoCoFile()
         {
             var file = Path.Combine(Path.GetTempPath(), "jacocoValid.xml");
-            File.WriteAllText(file, CodeCoverageConstants.ValidJacocoXml);
+            File.WriteAllText(file, CodeCoverageTestConstants.ValidJacocoXml);
             return file;
         }
 

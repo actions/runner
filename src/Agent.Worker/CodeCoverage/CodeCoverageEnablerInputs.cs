@@ -1,15 +1,51 @@
 ﻿using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
+using System.Collections.Generic;
 using System.IO;
+using static Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage.CodeCoverageCommandExtension;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
 {
     public sealed class CodeCoverageEnablerInputs
     {
-        public CodeCoverageEnablerInputs(string buildFile, string classFilesDirectories, string include, string exclude, string sourceDirectories,
-                string summaryFile, string reportDirectory, string cCReportTask, string reportBuildFile, bool isMultiModule)
+        public CodeCoverageEnablerInputs(IExecutionContext context, string buildTool, Dictionary<string, string> eventProperties)
         {
-            BuildFile = CodeCoverageUtilities.ThrowIfParameterEmpty(buildFile, "BuildFile");
+            string classFilter;
+            eventProperties.TryGetValue(EnableCodeCoverageEventProperties.ClassFilter, out classFilter);
+
+            string buildFile;
+            eventProperties.TryGetValue(EnableCodeCoverageEventProperties.BuildFile, out buildFile);
+
+            string classFilesDirectories;
+            eventProperties.TryGetValue(EnableCodeCoverageEventProperties.ClassFilesDirectories, out classFilesDirectories);
+
+            string sourceDirectories;
+            eventProperties.TryGetValue(EnableCodeCoverageEventProperties.SourceDirectories, out sourceDirectories);
+
+            string summaryFile;
+            eventProperties.TryGetValue(EnableCodeCoverageEventProperties.SummaryFile, out summaryFile);
+
+            string cCReportTask;
+            eventProperties.TryGetValue(EnableCodeCoverageEventProperties.CCReportTask, out cCReportTask);
+
+            string reportBuildFile;
+            eventProperties.TryGetValue(EnableCodeCoverageEventProperties.ReportBuildFile, out reportBuildFile);
+
+            string isMultiModuleInput;
+            var isMultiModule = false;
+            eventProperties.TryGetValue(EnableCodeCoverageEventProperties.IsMultiModule, out isMultiModuleInput);
+            if (!bool.TryParse(isMultiModuleInput, out isMultiModule) && buildTool.Equals("gradle", StringComparison.OrdinalIgnoreCase))
+            {
+                context.Output(StringUtil.Loc("IsMultiModuleParameterNotAvailable"));
+            }
+
+            string reportDirectory;
+            eventProperties.TryGetValue(EnableCodeCoverageEventProperties.ReportDirectory, out reportDirectory);
+
+            string include, exclude;
+            CodeCoverageUtilities.GetFilters(classFilter, out include, out exclude);
+
+            BuildFile = CodeCoverageUtilities.TrimNonEmptyParam(buildFile, "BuildFile");
 
             //validatebuild file exists
             if (!File.Exists(BuildFile))
@@ -30,12 +66,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
 
         public void VerifyInputsForJacocoAnt(IExecutionContext context)
         {
-            ClassFilesDirectories = CodeCoverageUtilities.ThrowIfParameterEmpty(ClassFilesDirectories, "ClassFilesDirectories");
-            SummaryFile = CodeCoverageUtilities.ThrowIfParameterEmpty(SummaryFile, "SummaryFile");
-            ReportDirectory = CodeCoverageUtilities.ThrowIfParameterEmpty(ReportDirectory, "ReportDirectory");
-            CCReportTask = CodeCoverageUtilities.ThrowIfParameterEmpty(CCReportTask, "CodeCoverageReportTarget");
-            ReportBuildFile = CodeCoverageUtilities.ThrowIfParameterEmpty(ReportBuildFile, "CodeCoverageReportBuildFile");
-
+            ClassFilesDirectories = CodeCoverageUtilities.TrimNonEmptyParam(ClassFilesDirectories, "ClassFilesDirectories");
+            SummaryFile = CodeCoverageUtilities.TrimNonEmptyParam(SummaryFile, "SummaryFile");
+            ReportDirectory = CodeCoverageUtilities.TrimNonEmptyParam(ReportDirectory, "ReportDirectory");
+            CCReportTask = CodeCoverageUtilities.TrimNonEmptyParam(CCReportTask, "CodeCoverageReportTarget");
+            ReportBuildFile = CodeCoverageUtilities.TrimNonEmptyParam(ReportBuildFile, "CodeCoverageReportBuildFile");
             CodeCoverageUtilities.ThrowIfClassFilesDirectoriesIsInvalid(ClassFilesDirectories);
 
             SourceDirectories = CodeCoverageUtilities.SetCurrentDirectoryIfDirectoriesParameterIsEmpty(context, SourceDirectories, StringUtil.Loc("SourceDirectoriesNotSpecified"));
@@ -43,11 +78,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
 
         public void VerifyInputsForCoberturaAnt(IExecutionContext context)
         {
-            ClassFilesDirectories = CodeCoverageUtilities.ThrowIfParameterEmpty(ClassFilesDirectories, "ClassFilesDirectories");
-            ReportDirectory = CodeCoverageUtilities.ThrowIfParameterEmpty(ReportDirectory, "ReportDirectory");
-            CCReportTask = CodeCoverageUtilities.ThrowIfParameterEmpty(CCReportTask, "CodeCoverageReportTarget");
-            ReportBuildFile = CodeCoverageUtilities.ThrowIfParameterEmpty(ReportBuildFile, "CodeCoverageReportBuildFile");
-
+            ClassFilesDirectories = CodeCoverageUtilities.TrimNonEmptyParam(ClassFilesDirectories, "ClassFilesDirectories");
+            ReportDirectory = CodeCoverageUtilities.TrimNonEmptyParam(ReportDirectory, "ReportDirectory");
+            CCReportTask = CodeCoverageUtilities.TrimNonEmptyParam(CCReportTask, "CodeCoverageReportTarget");
+            ReportBuildFile = CodeCoverageUtilities.TrimNonEmptyParam(ReportBuildFile, "CodeCoverageReportBuildFile");
             CodeCoverageUtilities.ThrowIfClassFilesDirectoriesIsInvalid(ClassFilesDirectories);
 
             SourceDirectories = CodeCoverageUtilities.SetCurrentDirectoryIfDirectoriesParameterIsEmpty(context, SourceDirectories, StringUtil.Loc("SourceDirectoriesNotSpecified"));
@@ -55,23 +89,22 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
 
         public void VerifyInputsForJacocoMaven()
         {
-            SummaryFile = CodeCoverageUtilities.ThrowIfParameterEmpty(SummaryFile, "SummaryFile");
-            ReportDirectory = CodeCoverageUtilities.ThrowIfParameterEmpty(ReportDirectory, "ReportDirectory");
-
+            SummaryFile = CodeCoverageUtilities.TrimNonEmptyParam(SummaryFile, "SummaryFile");
+            ReportDirectory = CodeCoverageUtilities.TrimNonEmptyParam(ReportDirectory, "ReportDirectory");
             CodeCoverageUtilities.ThrowIfClassFilesDirectoriesIsInvalid(ClassFilesDirectories);
         }
 
         public void VerifyInputsForJacocoGradle()
         {
-            ClassFilesDirectories = CodeCoverageUtilities.ThrowIfParameterEmpty(ClassFilesDirectories, "ClassFilesDirectory");
-            SummaryFile = CodeCoverageUtilities.ThrowIfParameterEmpty(SummaryFile, "SummaryFile");
-            ReportDirectory = CodeCoverageUtilities.ThrowIfParameterEmpty(ReportDirectory, "ReportDirectory");
+            ClassFilesDirectories = CodeCoverageUtilities.TrimNonEmptyParam(ClassFilesDirectories, "ClassFilesDirectory");
+            SummaryFile = CodeCoverageUtilities.TrimNonEmptyParam(SummaryFile, "SummaryFile");
+            ReportDirectory = CodeCoverageUtilities.TrimNonEmptyParam(ReportDirectory, "ReportDirectory");
         }
 
         public void VerifyInputsForCoberturaGradle()
         {
-            ClassFilesDirectories = CodeCoverageUtilities.ThrowIfParameterEmpty(ClassFilesDirectories, "ClassFilesDirectory");
-            ReportDirectory = CodeCoverageUtilities.ThrowIfParameterEmpty(ReportDirectory, "ReportDirectory");
+            ClassFilesDirectories = CodeCoverageUtilities.TrimNonEmptyParam(ClassFilesDirectories, "ClassFilesDirectory");
+            ReportDirectory = CodeCoverageUtilities.TrimNonEmptyParam(ReportDirectory, "ReportDirectory");
         }
 
         public string BuildFile { get; private set; }

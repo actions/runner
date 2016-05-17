@@ -90,7 +90,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         [Trait("Category", "EnableCodeCoverage")]
         public void ThrowsIfParameterNull()
         {
-            Assert.Throws<ArgumentException>(() => CodeCoverageUtilities.ThrowIfParameterEmpty(null, "inputName"));
+            Assert.Throws<ArgumentException>(() => CodeCoverageUtilities.TrimNonEmptyParam(null, "inputName"));
         }
 
         [Fact]
@@ -98,7 +98,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         [Trait("Category", "EnableCodeCoverage")]
         public void ThrowsIfParameterIsWhiteSpace()
         {
-            Assert.Throws<ArgumentException>(() => CodeCoverageUtilities.ThrowIfParameterEmpty("       ", "inputName"));
+            Assert.Throws<ArgumentException>(() => CodeCoverageUtilities.TrimNonEmptyParam("       ", "inputName"));
         }
 
         [Fact]
