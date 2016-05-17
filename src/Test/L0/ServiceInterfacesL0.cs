@@ -67,6 +67,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             {
                 typeof(IArtifactDetails),
                 typeof(IArtifactExtension),
+                typeof(ICodeCoverageEnabler),
                 typeof(ICodeCoverageSummaryReader),
                 typeof(IExecutionContext),
                 typeof(IHandler),

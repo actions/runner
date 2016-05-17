@@ -86,6 +86,15 @@ namespace Microsoft.VisualStudio.Services.Agent
                     Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.TestResults.TrxResultReader, Agent.Worker");
                     Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.TestResults.XUnitResultReader, Agent.Worker");
                     break;
+                // Worker code coverage enabler extensions.
+                case "Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage.ICodeCoverageEnabler":
+                    Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage.CodeCoverageEnablerForCoberturaAnt, Agent.Worker");
+                    Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage.CodeCoverageEnablerForCoberturaGradle, Agent.Worker");
+                    Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage.CodeCoverageEnablerForCoberturaMaven, Agent.Worker");
+                    Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage.CodeCoverageEnablerForJacocoAnt, Agent.Worker");
+                    Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage.CodeCoverageEnablerForJacocoGradle, Agent.Worker");
+                    Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage.CodeCoverageEnablerForJacocoMaven, Agent.Worker");
+                    break;
                 // Worker code coverage summary reader extensions.
                 case "Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage.ICodeCoverageSummaryReader":
                     Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage.JaCoCoSummaryReader, Agent.Worker");

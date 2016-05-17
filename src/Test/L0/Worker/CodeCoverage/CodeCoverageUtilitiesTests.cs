@@ -1,4 +1,8 @@
-﻿using Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage;
+﻿using Microsoft.TeamFoundation.DistributedTask.WebApi;
+using Microsoft.VisualStudio.Services.Agent.Worker;
+using Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage;
+using Moq;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using Xunit;
@@ -7,6 +11,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
 {
     public class CodeCoverageUtilitiesTests
     {
+        private Mock<IExecutionContext> _ec;
+        private List<string> _warnings = new List<string>();
+        private List<string> _errors = new List<string>();
+        private List<string> _outputMessages = new List<string>();
+
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "PublishCodeCoverage")]
@@ -74,6 +83,103 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
                 Directory.Delete(destinationFilePath, true);
                 Directory.Delete(Path.Combine(Path.GetTempPath(), "A"), true);
             }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "EnableCodeCoverage")]
+        public void ThrowsIfParameterNull()
+        {
+            Assert.Throws<ArgumentException>(() => CodeCoverageUtilities.TrimNonEmptyParam(null, "inputName"));
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "EnableCodeCoverage")]
+        public void ThrowsIfParameterIsWhiteSpace()
+        {
+            Assert.Throws<ArgumentException>(() => CodeCoverageUtilities.TrimNonEmptyParam("       ", "inputName"));
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "EnableCodeCoverage")]
+        public void SetSourceDirectoryToCurrentLogsMessage()
+        {
+            SetupMocks();
+            CodeCoverageUtilities.SetCurrentDirectoryIfDirectoriesParameterIsEmpty(_ec.Object, " ", "warningMessage");
+            Assert.Equal(0, _warnings.Count);
+            Assert.Equal(0, _errors.Count);
+            Assert.Equal(1, _outputMessages.Count);
+            Assert.Equal(_outputMessages[0], "warningMessage");
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "EnableCodeCoverage")]
+        public void SetSourceDirectoryTrimsSourceDirectory()
+        {
+            SetupMocks();
+            var sourceDir = CodeCoverageUtilities.SetCurrentDirectoryIfDirectoriesParameterIsEmpty(_ec.Object, " sourceDir  ", "warningMessage");
+            Assert.Equal(0, _warnings.Count);
+            Assert.Equal(0, _errors.Count);
+            Assert.Equal(0, _outputMessages.Count);
+            Assert.Equal("sourceDir", sourceDir);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "EnableCodeCoverage")]
+        public void GetFiltersWithInvalidFilterInput()
+        {
+            string include, exclude;
+            Assert.Throws<ArgumentException>(() => CodeCoverageUtilities.GetFilters("invalidFilter", out include, out exclude));
+            Assert.Throws<ArgumentException>(() => CodeCoverageUtilities.GetFilters("+,-:", out include, out exclude));
+            Assert.Throws<ArgumentException>(() => CodeCoverageUtilities.GetFilters("+: , -: ", out include, out exclude));
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "EnableCodeCoverage")]
+        public void GetFiltersWithValidFilterInput()
+        {
+            string include, exclude;
+            CodeCoverageUtilities.GetFilters("", out include, out exclude);
+            Assert.Equal(include, "");
+            Assert.Equal(exclude, "");
+
+            CodeCoverageUtilities.GetFilters("+:avfd.s.sdsd,-:sad.fdf.fs,-:aa.bb,+:av.fd", out include, out exclude);
+            Assert.Equal(include, "avfd.s.sdsd:av.fd");
+            Assert.Equal(exclude, "sad.fdf.fs:aa.bb");
+
+            CodeCoverageUtilities.GetFilters("+:avfd.s.sdsd,-:sad.fdf.fs", out include, out exclude);
+            Assert.Equal(include, "avfd.s.sdsd");
+            Assert.Equal(exclude, "sad.fdf.fs");
+        }
+
+        private void SetupMocks()
+        {
+            _ec = new Mock<IExecutionContext>();
+            _ec.Setup(x => x.Write(It.IsAny<string>(), It.IsAny<string>()))
+                .Callback<string, string>
+                ((tag, message) =>
+                {
+                    _outputMessages.Add(message);
+                });
+
+            _ec.Setup(x => x.AddIssue(It.IsAny<Issue>()))
+            .Callback<Issue>
+            ((issue) =>
+            {
+                if (issue.Type == IssueType.Warning)
+                {
+                    _warnings.Add(issue.Message);
+                }
+                else if (issue.Type == IssueType.Error)
+                {
+                    _errors.Add(issue.Message);
+                }
+            });
         }
 
         private List<string> GetAdditionalCodeCoverageFilesWithSameFileName()

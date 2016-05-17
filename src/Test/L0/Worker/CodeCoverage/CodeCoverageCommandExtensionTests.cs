@@ -18,13 +18,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         private List<string> _warnings = new List<string>();
         private List<string> _errors = new List<string>();
         private Mock<ICodeCoverageSummaryReader> _mocksummaryReader;
+        private Mock<ICodeCoverageEnabler> _mockCodeCoverageEnabler;
         private Mock<IExtensionManager> _mockExtensionManager;
         private Mock<ICodeCoveragePublisher> _mockCodeCoveragePublisher;
         private Mock<IAsyncCommandContext> _mockCommandContext;
-        private TestHostContext hc;
+        private TestHostContext _hc;
         private List<CodeCoverageStatistics> _codeCoverageStatistics;
         private Variables _variables;
+        private static string _includeFilter = "+:abc.sd,+:ab.as.*";
+        private static string _excludeFilter = "-:abs.*.cf,-:sd.*";
+        private static string _includes = (_includeFilter.Replace("+:", "")).Replace(",", ":");
+        private static string _excludes = (_excludeFilter.Replace("-:", "")).Replace(",", ":");
 
+        #region publish code coverage tests
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "PublishCodeCoverage")]
@@ -32,7 +38,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         {
             SetupMocks();
             var publishCCCommand = new CodeCoverageCommandExtension();
-            publishCCCommand.Initialize(hc);
+            publishCCCommand.Initialize(_hc);
             var command = new Command("codecoverage", "publish");
             command.Properties.Add("summaryfile", "a.xml");
             Assert.Throws<ArgumentException>(() => publishCCCommand.ProcessCommand(_ec.Object, command));
@@ -45,7 +51,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         {
             SetupMocks();
             var publishCCCommand = new CodeCoverageCommandExtension();
-            publishCCCommand.Initialize(hc);
+            publishCCCommand.Initialize(_hc);
             var command = new Command("codecoverage", "publish");
             _variables.Set("system.hostType", "release");
             publishCCCommand.ProcessCommand(_ec.Object, command);
@@ -60,7 +66,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         {
             SetupMocks();
             var publishCCCommand = new CodeCoverageCommandExtension();
-            publishCCCommand.Initialize(hc);
+            publishCCCommand.Initialize(_hc);
             var command = new Command("codecoverage", "publish");
             Assert.Throws<ArgumentException>(() => publishCCCommand.ProcessCommand(_ec.Object, command));
         }
@@ -72,7 +78,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         {
             SetupMocks();
             var publishCCCommand = new CodeCoverageCommandExtension();
-            publishCCCommand.Initialize(hc);
+            publishCCCommand.Initialize(_hc);
             var command = new Command("codecoverage", "publish");
             command.Properties.Add("codecoveragetool", "InvalidTool");
             command.Properties.Add("summaryfile", "a.xml");
@@ -90,7 +96,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
             {
                 File.WriteAllText(summaryFile, "test");
                 var publishCCCommand = new CodeCoverageCommandExtension();
-                publishCCCommand.Initialize(hc);
+                publishCCCommand.Initialize(_hc);
                 var command = new Command("codecoverage", "publish");
                 command.Properties.Add("codecoveragetool", "mockCCTool");
                 command.Properties.Add("summaryfile", summaryFile);
@@ -120,7 +126,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
                 Directory.CreateDirectory(reportDirectory);
                 File.WriteAllText(summaryFile, "test");
                 var publishCCCommand = new CodeCoverageCommandExtension();
-                publishCCCommand.Initialize(hc);
+                publishCCCommand.Initialize(_hc);
                 var command = new Command("codecoverage", "publish");
                 command.Properties.Add("codecoveragetool", "mockCCTool");
                 command.Properties.Add("summaryfile", summaryFile);
@@ -149,7 +155,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
             {
                 File.WriteAllText(summaryFile, "test");
                 var publishCCCommand = new CodeCoverageCommandExtension();
-                publishCCCommand.Initialize(hc);
+                publishCCCommand.Initialize(_hc);
                 var command = new Command("codecoverage", "publish");
                 command.Properties.Add("codecoveragetool", "mockCCTool");
                 command.Properties.Add("summaryfile", summaryFile);
@@ -180,7 +186,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
                 Directory.CreateDirectory(reportDirectory);
                 File.WriteAllText(summaryFile, "test");
                 var publishCCCommand = new CodeCoverageCommandExtension();
-                publishCCCommand.Initialize(hc);
+                publishCCCommand.Initialize(_hc);
                 var command = new Command("codecoverage", "publish");
                 command.Properties.Add("codecoveragetool", "mockCCTool");
                 command.Properties.Add("summaryfile", summaryFile);
@@ -198,33 +204,203 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
                 Directory.Delete(reportDirectory, true);
             }
         }
+        #endregion
+
+        #region enable code coverage tests
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "EnableCodeCoverage")]
+        public void EnableCCFailsWithErrorWhenBuildFileDoesnotExist()
+        {
+            SetupMocks();
+            var enableCCCommand = new CodeCoverageCommandExtension();
+            enableCCCommand.Initialize(_hc);
+            var command = new Command("codecoverage", "enable");
+            command.Properties.Add("buildtool", "mockBuildTool");
+            command.Properties.Add("buildfile", "invalid.xml");
+            command.Properties.Add("codecoveragetool", "mockCCTool");
+            Assert.Throws<FileNotFoundException>(() => enableCCCommand.ProcessCommand(_ec.Object, command));
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "EnableCodeCoverage")]
+        public void EnableCCFailsWithErrorWhenBuildToolIsInvalid()
+        {
+            SetupMocks();
+            var enableCCCommand = new CodeCoverageCommandExtension();
+            enableCCCommand.Initialize(_hc);
+            var command = new Command("codecoverage", "enable");
+            command.Properties.Add("buildtool", "invalidBuildTool");
+            command.Properties.Add("buildfile", Path.GetTempFileName());
+            command.Properties.Add("codecoveragetool", "mockCCTool");
+            Assert.Throws<ArgumentException>(() => enableCCCommand.ProcessCommand(_ec.Object, command));
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "EnableCodeCoverage")]
+        public void EnableCCWithInvalidCodeCoverageToolThrowsException()
+        {
+            SetupMocks();
+            var enableCCCommand = new CodeCoverageCommandExtension();
+            enableCCCommand.Initialize(_hc);
+            var command = new Command("codecoverage", "enable");
+            command.Properties.Add("buildtool", "mockBuildTool");
+            command.Properties.Add("buildfile", Path.GetTempFileName());
+            command.Properties.Add("codecoveragetool", "invalidCCTool");
+            Assert.Throws<ArgumentException>(() => enableCCCommand.ProcessCommand(_ec.Object, command));
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "EnableCodeCoverage")]
+        public void EnableCCWhenNoCodeCoverageToolShouldPass()
+        {
+            SetupMocks();
+            var enableCCCommand = new CodeCoverageCommandExtension();
+            enableCCCommand.Initialize(_hc);
+            var command = new Command("codecoverage", "enable");
+            enableCCCommand.ProcessCommand(_ec.Object, command);
+            Assert.Equal(_errors.Count, 0);
+            Assert.Equal(_warnings.Count, 0);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "EnableCodeCoverage")]
+        public void EnableCCWithemptyBuildFileThrowsException()
+        {
+            SetupMocks();
+            var enableCCCommand = new CodeCoverageCommandExtension();
+            enableCCCommand.Initialize(_hc);
+            var command = new Command("codecoverage", "enable");
+            command.Properties.Add("buildtool", "mockBuildTool");
+            command.Properties.Add("buildfile", "");
+            command.Properties.Add("codecoveragetool", "mockCCTool");
+            Assert.Throws<ArgumentException>(() => enableCCCommand.ProcessCommand(_ec.Object, command));
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "EnableCodeCoverage")]
+        public void EnableCCWithInvalidClassFilterThrowsException()
+        {
+            SetupMocks();
+            var enableCCCommand = new CodeCoverageCommandExtension();
+            enableCCCommand.Initialize(_hc);
+            var command = new Command("codecoverage", "enable");
+            command.Properties.Add("buildtool", "mockBuildTool");
+            command.Properties.Add("classfilter", "invalid");
+            command.Properties.Add("codecoveragetool", "mockCCTool");
+            Assert.Throws<ArgumentException>(() => enableCCCommand.ProcessCommand(_ec.Object, command));
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "EnableCodeCoverage")]
+        public void EnableCCWithSpacesInClassFilterThrowsException()
+        {
+            SetupMocks();
+            var enableCCCommand = new CodeCoverageCommandExtension();
+            enableCCCommand.Initialize(_hc);
+            var command = new Command("codecoverage", "enable");
+            command.Properties.Add("buildtool", "mockBuildTool");
+            command.Properties.Add("classfilter", " ,   , ,, , ");
+            command.Properties.Add("codecoveragetool", "mockCCTool");
+            Assert.Throws<ArgumentException>(() => enableCCCommand.ProcessCommand(_ec.Object, command));
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "EnableCodeCoverage")]
+        public void EnableCCWithValidClassFilterShouldPass()
+        {
+            SetupMocks();
+            var enableCCCommand = new CodeCoverageCommandExtension();
+            enableCCCommand.Initialize(_hc);
+            var command = new Command("codecoverage", "enable");
+            command.Properties.Add("buildtool", "mockBuildTool");
+            command.Properties.Add("classfilter", _includeFilter + "," + _excludeFilter);
+            command.Properties.Add("codecoveragetool", "mockCCTool");
+            command.Properties.Add("buildfile", Path.GetTempFileName());
+            enableCCCommand.ProcessCommand(_ec.Object, command);
+            _mockCodeCoverageEnabler.Verify(x => x.EnableCodeCoverage(It.IsAny<IExecutionContext>(), It.Is<CodeCoverageEnablerInputs>(ccInputs => ccInputs.Include == _includes && ccInputs.Exclude == _excludes)));
+            Assert.Equal(0, _warnings.Count);
+            Assert.Equal(0, _errors.Count);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "EnableCodeCoverage")]
+        public void EnableCCWithValidClassIncludeFilterShouldPass()
+        {
+            SetupMocks();
+            var enableCCCommand = new CodeCoverageCommandExtension();
+            enableCCCommand.Initialize(_hc);
+            var command = new Command("codecoverage", "enable");
+            command.Properties.Add("buildtool", "mockBuildTool");
+            command.Properties.Add("classfilter", _includeFilter);
+            command.Properties.Add("codecoveragetool", "mockCCTool");
+            command.Properties.Add("buildfile", Path.GetTempFileName());
+            enableCCCommand.ProcessCommand(_ec.Object, command);
+            _mockCodeCoverageEnabler.Verify(x => x.EnableCodeCoverage(It.IsAny<IExecutionContext>(), It.Is<CodeCoverageEnablerInputs>(ccInputs => ccInputs.Include == _includes && string.IsNullOrWhiteSpace(ccInputs.Exclude))));
+            Assert.Equal(0, _warnings.Count);
+            Assert.Equal(0, _errors.Count);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "EnableCodeCoverage")]
+        public void EnableCCWithValidClassExcludeFilterShouldPass()
+        {
+            SetupMocks();
+            var enableCCCommand = new CodeCoverageCommandExtension();
+            enableCCCommand.Initialize(_hc);
+            var command = new Command("codecoverage", "enable");
+            command.Properties.Add("buildtool", "mockBuildTool");
+            command.Properties.Add("classfilter", _excludeFilter);
+            command.Properties.Add("codecoveragetool", "mockCCTool");
+            command.Properties.Add("buildfile", Path.GetTempFileName());
+            enableCCCommand.ProcessCommand(_ec.Object, command);
+            _mockCodeCoverageEnabler.Verify(x => x.EnableCodeCoverage(It.IsAny<IExecutionContext>(), It.Is<CodeCoverageEnablerInputs>(ccInputs => ccInputs.Exclude == _excludes && string.IsNullOrWhiteSpace(ccInputs.Include))));
+            Assert.Equal(0, _warnings.Count);
+            Assert.Equal(0, _errors.Count);
+        }
+        #endregion
 
         private void SetupMocks([CallerMemberName] string name = "")
         {
-            hc = new TestHostContext(this, name);
+            _hc = new TestHostContext(this, name);
             _codeCoverageStatistics = new List<CodeCoverageStatistics> { new CodeCoverageStatistics { Label = "label", Covered = 10, Total = 10, Position = 1 } };
             _mocksummaryReader = new Mock<ICodeCoverageSummaryReader>();
             _mocksummaryReader.Setup(x => x.Name).Returns("mockCCTool");
             _mocksummaryReader.Setup(x => x.GetCodeCoverageSummary(It.IsAny<IExecutionContext>(), It.IsAny<string>()))
                 .Returns(_codeCoverageStatistics);
-            hc.SetSingleton(_mocksummaryReader.Object);
+            _hc.SetSingleton(_mocksummaryReader.Object);
+
+            _mockCodeCoverageEnabler = new Mock<ICodeCoverageEnabler>();
+            _mockCodeCoverageEnabler.Setup(x => x.Name).Returns("mockCCTool_mockBuildTool");
+            _mockCodeCoverageEnabler.Setup(x => x.EnableCodeCoverage(It.IsAny<IExecutionContext>(), It.IsAny<CodeCoverageEnablerInputs>()));
+            _hc.SetSingleton(_mockCodeCoverageEnabler.Object);
 
             _mockExtensionManager = new Mock<IExtensionManager>();
             _mockExtensionManager.Setup(x => x.GetExtensions<ICodeCoverageSummaryReader>()).Returns(new List<ICodeCoverageSummaryReader> { _mocksummaryReader.Object });
-            hc.SetSingleton(_mockExtensionManager.Object);
+            _mockExtensionManager.Setup(x => x.GetExtensions<ICodeCoverageEnabler>()).Returns(new List<ICodeCoverageEnabler> { _mockCodeCoverageEnabler.Object });
+            _hc.SetSingleton(_mockExtensionManager.Object);
 
             _mockCodeCoveragePublisher = new Mock<ICodeCoveragePublisher>();
-            hc.SetSingleton(_mockCodeCoveragePublisher.Object);
+            _hc.SetSingleton(_mockCodeCoveragePublisher.Object);
 
             _mockCommandContext = new Mock<IAsyncCommandContext>();
-            hc.EnqueueInstance(_mockCommandContext.Object);
+            _hc.EnqueueInstance(_mockCommandContext.Object);
 
             var endpointAuthorization = new EndpointAuthorization()
             {
                 Scheme = EndpointAuthorizationSchemes.OAuth
             };
             List<string> warnings;
-            _variables = new Variables(hc, new Dictionary<string, string>(), new List<MaskHint>(), out warnings);
+            _variables = new Variables(_hc, new Dictionary<string, string>(), new List<MaskHint>(), out warnings);
             _variables.Set("build.buildId", "1");
             _variables.Set("build.containerId", "1");
             _variables.Set("system.teamProjectId", "46075F24-A6B9-447E-BEF0-E1D5592D9E39");
