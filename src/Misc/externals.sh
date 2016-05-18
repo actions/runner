@@ -4,8 +4,9 @@ EXTERNALTOOLSNAME=(
     azcopy
     nuget
     pdbstr
-    #portablenixgit
-    #portableosxgit
+    portableosxgit
+    portableubuntugit
+    portableredhatgit
     portablewingit
     symstore
     tee
@@ -17,20 +18,34 @@ EXTERNALTOOLSLOCATION=(
     azcopy/1
     nuget/1
     pdbstr/1
-    #portablenixgit/1
-    #portableosxgit/1
+    portableosxgit/1
+    portableubuntugit/1
+    portableredhatgit/1
     portablewingit/1
     symstore/1
     tee/1
     vstshost/1
     vstsom/1
     )
+
+EXTERNALTOOLSEXTENSION=(
+    zip
+    zip
+    zip
+    tar.gz
+    tar.gz
+    tar.gz
+    zip
+    zip
+    zip
+    zip
+    zip
+    )
     
 EXTERNALTOOLS_WINDOWS=(azcopy nuget pdbstr portablewingit symstore vstshost vstsom)
-#EXTERNALTOOLS_LINUX=(tee portablenixgit)
-EXTERNALTOOLS_LINUX=(tee)
-#EXTERNALTOOLS_DARWIN=(tee portableosxgit)
-EXTERNALTOOLS_DARWIN=(tee)
+EXTERNALTOOLS_LINUX_RHEL=(tee portableredhatgit)
+EXTERNALTOOLS_LINUX_UBUNTU=(tee portableubuntugit)
+EXTERNALTOOLS_DARWIN=(tee portableosxgit)
 
 CONTAINER_URL=https://vstsagenttools.blob.core.windows.net/tools
 
@@ -42,11 +57,34 @@ get_abs_path() {
 LAYOUT_DIR=$(get_abs_path `dirname $0`/../../_layout)
 DOWNLOAD_DIR=$(get_abs_path `dirname $0`/../../_downloads)
 
-PLATFORM_NAME=`uname`
-PLATFORM="windows"
-if [[ ("$PLATFORM_NAME" == "Linux") || ("$PLATFORM_NAME" == "Darwin") ]]; then
-   PLATFORM=`echo "${PLATFORM_NAME}" | awk '{print tolower($0)}'`
-fi
+function get_current_os_name() {
+
+    local uname=$(uname)
+    if [ "$uname" = "Darwin" ]; then
+        echo "darwin"
+        return 0
+    else
+        # Detect Distro
+        if [ "$(cat /etc/*-release 2>/dev/null | grep -cim1 ubuntu)" -eq 1 ]; then
+            echo "ubuntu"
+            return 0
+        elif [ "$(cat /etc/*-release 2>/dev/null | grep -cim1 centos)" -eq 1 ]; then
+            echo "centos"
+            return 0
+        elif [ "$(cat /etc/*-release 2>/dev/null | grep -cim1 rhel)" -eq 1 ]; then
+            echo "rhel"
+            return 0
+        elif [ "$(cat /etc/*-release 2>/dev/null | grep -cim1 debian)" -eq 1 ]; then
+            echo "debian"
+            return 0
+        fi
+    fi
+    
+    echo "windows"
+    return 0
+}
+
+PLATFORM=$(get_current_os_name)
 
 function checkRC() {
     local rc=$?
@@ -90,8 +128,11 @@ function acquireNode ()
     else
 
         # OSX/Linux
-
-        node_file="node-v${NODE_VERSION}-${PLATFORM}-x64"
+        if [[ "$PLATFORM" == "darwin" ]]; then
+            node_file="node-v${NODE_VERSION}-darwin-x64"
+        else
+            node_file="node-v${NODE_VERSION}-linux-x64"
+        fi        
         node_zip="${node_file}.tar.gz"
         
         if [ -f ${node_zip} ]; then
@@ -131,6 +172,16 @@ function getExternalToolsRelativeDownloadUrl()
     done
 }
 
+function getExternalToolsExtension()
+{
+    local toolName=$1
+    for index in "${!EXTERNALTOOLSNAME[@]}"; do
+        if [[ "${EXTERNALTOOLSNAME[$index]}" = "${tool}" ]]; then
+            echo "${EXTERNALTOOLSEXTENSION[${index}]}";
+        fi
+    done
+}
+
 function acquireExternalTools ()
 {
     local tools=$1
@@ -138,7 +189,8 @@ function acquireExternalTools ()
     for tool in "${!toolsinfo}"
     do
         local relative_url=$(getExternalToolsRelativeDownloadUrl $tool)
-        local download_url="${CONTAINER_URL}/${relative_url}/${tool}.zip"
+        local tool_extension=$(getExternalToolsExtension $tool)
+        local download_url="${CONTAINER_URL}/${relative_url}/${tool}.${tool_extension}"
 
         local target_dir="${LAYOUT_DIR}/externals/${tool}"
         if [ -d $target_dir ]; then
@@ -152,7 +204,7 @@ function acquireExternalTools ()
         mkdir -p $tool_download_dir        
         pushd "${tool_download_dir}" > /dev/null
 
-        if [ -f $tool.zip ]; then
+        if [ -f $tool.${tool_extension} ]; then
             echo "Download exists: ${tool}"
         else
             echo "Downloading ${tool} from ${download_url}"
@@ -161,7 +213,13 @@ function acquireExternalTools ()
         fi
         
         echo "Extracting to layout"
-        unzip ${tool}.zip -d ${target_dir} > /dev/null
+        if [[ "${tool_extension}" = "zip" ]]; then
+            unzip ${tool}.${tool_extension} -d ${target_dir} > /dev/null
+        fi
+
+        if [[ "${tool_extension}" = "tar.gz" ]]; then
+            tar xzf ${tool}.${tool_extension} -C ${target_dir} > /dev/null
+        fi
 
         popd > /dev/null        
     done
@@ -173,8 +231,10 @@ acquireNode
 
 if [[ "$PLATFORM" == "windows" ]]; then
     acquireExternalTools EXTERNALTOOLS_WINDOWS
-elif [[ "$PLATFORM" == "linux" ]]; then
-    acquireExternalTools EXTERNALTOOLS_LINUX
+elif [[ "$PLATFORM" == "ubuntu" || "$PLATFORM" == "debian" ]]; then
+    acquireExternalTools EXTERNALTOOLS_LINUX_UBUNTU
+elif [[ "$PLATFORM" == "rhel" || "$PLATFORM" == "centos" ]]; then
+    acquireExternalTools EXTERNALTOOLS_LINUX_RHEL
 elif [[ "$PLATFORM" == "darwin" ]]; then
     acquireExternalTools EXTERNALTOOLS_DARWIN
 else
