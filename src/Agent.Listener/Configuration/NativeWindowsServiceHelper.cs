@@ -428,9 +428,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 hashString = IOUtil.GetBinPath().ToLowerInvariant();
             }
 
-            using (MD5 md5Hash = MD5.Create())
+            
+            using (SHA256 sha256hash = SHA256.Create())
             {
-                byte[] data = md5Hash.ComputeHash(Encoding.UTF8.GetBytes(hashString));
+                byte[] data = sha256hash.ComputeHash(Encoding.UTF8.GetBytes(hashString));
                 StringBuilder sBuilder = new StringBuilder();
                 for (int i = 0; i < data.Length; i++)
                 {
