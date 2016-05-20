@@ -80,13 +80,37 @@ function rundotnet ()
     done   
 }
 
-function build ()
+function generateConstant()
 {
     commit_token="_COMMIT_HASH_"
     commit_hash=`git rev-parse HEAD` || "failed git commit hash"
     echo "Building ${commit_hash}"
-    sed "s/$commit_token/$commit_hash/g" "Misc/BuildConstants.ch" > "Microsoft.VisualStudio.Services.Agent/BuildConstants.cs"
+    #sed "s/$commit_token/$commit_hash/g" "Misc/BuildConstants.ch" > "Misc/BuildConstants2.ch"
+        
+    rundotnet build failed build_dirs[0]
+    
+    # get the runtime we are build for
+    # if exist Agent.Listener/bin/${BUILD_CONFIG}/dnxcore50
+    build_folder="Microsoft.VisualStudio.Services.Agent/bin/${BUILD_CONFIG}/dnxcore50"
+    if [ ! -d "${build_folder}" ]; then
+        echo "You must build first.  Expecting to find ${build_folder}"
+    fi
 
+    pushd "${build_folder}" > /dev/null
+    pwd
+    runtime_folder=`ls -d */`
+    package_name=${runtime_folder%/}
+    popd > /dev/null
+    
+    echo "Building ${package_name}"
+    package_token="_PACKAGE_NAME_"
+    sed -e "s/$commit_token/$commit_hash/g" -e "s/$package_token/$package_name/g" "Misc/BuildConstants.ch" > "Microsoft.VisualStudio.Services.Agent/BuildConstants.cs"
+}
+
+function build ()
+{
+    generateConstant
+    
     if [[ "$define_os" == 'OS_WINDOWS' ]]; then
         reg_out=`reg query "HKLM\SOFTWARE\Microsoft\MSBuild\ToolsVersions\4.0" -v MSBuildToolsPath`
         msbuild_location=`echo $reg_out | tr -d '\r\n' | tr -s ' ' | cut -d' ' -f5 | tr -d '\r\n'`

@@ -14,5 +14,10 @@ namespace Microsoft.VisualStudio.Services.Agent
         {
             public static readonly string CommitHash = "_COMMIT_HASH_";
         }
+        
+        public static class AgentPackage
+        {
+            public static readonly string PackageName = "_PACKAGE_NAME_";
+        }
     }
 }

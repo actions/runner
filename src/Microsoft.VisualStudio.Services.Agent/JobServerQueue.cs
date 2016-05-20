@@ -116,7 +116,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             await Task.WhenAll(_allDequeueTasks);
             _queueInProcess = false;
             Trace.Info("All queue process task stopped.");
-            
+
 
             //Drain the queue
             List<Exception> queueShutdownExceptions = new List<Exception>();
@@ -469,8 +469,17 @@ namespace Microsoft.VisualStudio.Services.Agent
                     timelineRecord.StartTime = rec.StartTime ?? timelineRecord.StartTime;
                     timelineRecord.State = rec.State ?? timelineRecord.State;
                     timelineRecord.WorkerName = rec.WorkerName ?? timelineRecord.WorkerName;
-                    timelineRecord.ErrorCount = rec.ErrorCount ?? timelineRecord.ErrorCount;
-                    timelineRecord.WarningCount = rec.WarningCount ?? timelineRecord.WarningCount;
+
+                    if (rec.ErrorCount != null && rec.ErrorCount > 0)
+                    {
+                        timelineRecord.ErrorCount = rec.ErrorCount;
+                    }
+
+                    if (rec.WarningCount != null && rec.WarningCount > 0)
+                    {
+                        timelineRecord.WarningCount = rec.WarningCount;
+                    }
+
                     if (rec.Issues.Count > 0)
                     {
                         timelineRecord.Issues.Clear();

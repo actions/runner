@@ -21,16 +21,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
     public class SelfUpdater : AgentService, ISelfUpdater
     {
         private static string _packageType = "agent";
-#if OS_WINDOWS
-        private static string _platform = "windows";
-#elif OS_OSX
-        private static string _platform = "darwin";
-#elif OS_LINUX
-        private static string _platform = "linux";
-#endif
+        private static string _platform = BuildConstants.AgentPackage.PackageName;
 
         private PackageMetadata _latestPackage;
-        
+
         public async Task<bool> SelfUpdate(IJobDispatcher jobDispatcher, bool restartInteractiveAgent, CancellationToken token)
         {
             if (!await UpdateNeeded(token))

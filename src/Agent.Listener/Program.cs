@@ -25,7 +25,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             using (HostContext context = new HostContext("Agent"))
             {
                 s_trace = context.GetTrace("AgentProcess");
-                s_trace.Info($"Agent is built for {Constants.Agent.Platform}.");
+                s_trace.Info($"Agent is built for {Constants.Agent.Platform} - {BuildConstants.AgentPackage.PackageName}.");
                 s_trace.Info($"RuntimeInformation: {RuntimeInformation.OSDescription}.");
 
                 // Validate the binaries intended for one OS are not running on a different OS.
