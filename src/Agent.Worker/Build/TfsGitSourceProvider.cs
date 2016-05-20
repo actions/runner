@@ -304,13 +304,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             gitPath = string.Empty;
 
             // find portable git in externals
-#if OS_WINDOWS            
-            gitPath = Path.Combine(IOUtil.GetExternalsPath(), "portablewingit", "cmd", $"git{IOUtil.ExeExtension}");
-#elif OS_LINUX
-            gitPath = Path.Combine(IOUtil.GetExternalsPath(), "portablenixgit", "bin", $"git{IOUtil.ExeExtension}");
-#elif OS_OSX
-            gitPath = Path.Combine(IOUtil.GetExternalsPath(), "portableosxgit", "bin", $"git{IOUtil.ExeExtension}");
-#endif            
+#if OS_WINDOWS
+            gitPath = Path.Combine(IOUtil.GetExternalsPath(), "git", "cmd", $"git{IOUtil.ExeExtension}");
+#else
+            gitPath = Path.Combine(IOUtil.GetExternalsPath(), "git", "bin", $"git{IOUtil.ExeExtension}");
+#endif
             return !string.IsNullOrEmpty(gitPath) && File.Exists(gitPath);
         }
     }

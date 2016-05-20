@@ -1,5 +1,6 @@
 NODE_VERSION="5.10.1"
 
+#external tools name
 EXTERNALTOOLSNAME=(
     azcopy
     nuget
@@ -14,6 +15,7 @@ EXTERNALTOOLSNAME=(
     vstsom
     )
     
+#external tools download URL fragment
 EXTERNALTOOLSLOCATION=(
     azcopy/1
     nuget/1
@@ -28,6 +30,7 @@ EXTERNALTOOLSLOCATION=(
     vstsom/1
     )
 
+#external tools extensions
 EXTERNALTOOLSEXTENSION=(
     zip
     zip
@@ -40,6 +43,21 @@ EXTERNALTOOLSEXTENSION=(
     zip
     zip
     zip
+    )
+
+#names of the directories where tools are extracted
+EXTERNALTOOLSDIRECTORY=(
+    azcopy
+    nuget
+    pdbstr
+    git
+    git
+    git
+    git
+    symstore
+    tee
+    vstshost
+    vstsom
     )
     
 EXTERNALTOOLS_WINDOWS=(azcopy nuget pdbstr portablewingit symstore vstshost vstsom)
@@ -166,7 +184,7 @@ function getExternalToolsRelativeDownloadUrl()
 {
     local toolName=$1
     for index in "${!EXTERNALTOOLSNAME[@]}"; do
-        if [[ "${EXTERNALTOOLSNAME[$index]}" = "${tool}" ]]; then
+        if [[ "${EXTERNALTOOLSNAME[$index]}" = "${toolName}" ]]; then
             echo "${EXTERNALTOOLSLOCATION[${index}]}";
         fi
     done
@@ -176,8 +194,18 @@ function getExternalToolsExtension()
 {
     local toolName=$1
     for index in "${!EXTERNALTOOLSNAME[@]}"; do
-        if [[ "${EXTERNALTOOLSNAME[$index]}" = "${tool}" ]]; then
+        if [[ "${EXTERNALTOOLSNAME[$index]}" = "${toolName}" ]]; then
             echo "${EXTERNALTOOLSEXTENSION[${index}]}";
+        fi
+    done
+}
+
+function getExternalToolsDirectory()
+{
+    local toolName=$1
+    for index in "${!EXTERNALTOOLSNAME[@]}"; do
+        if [[ "${EXTERNALTOOLSNAME[$index]}" = "${toolName}" ]]; then
+            echo "${EXTERNALTOOLSDIRECTORY[${index}]}";
         fi
     done
 }
@@ -190,9 +218,10 @@ function acquireExternalTools ()
     do
         local relative_url=$(getExternalToolsRelativeDownloadUrl $tool)
         local tool_extension=$(getExternalToolsExtension $tool)
+        local tool_directory=$(getExternalToolsDirectory $tool)
         local download_url="${CONTAINER_URL}/${relative_url}/${tool}.${tool_extension}"
 
-        local target_dir="${LAYOUT_DIR}/externals/${tool}"
+        local target_dir="${LAYOUT_DIR}/externals/${tool_directory}"
         if [ -d $target_dir ]; then
             rm -Rf $target_dir
         fi
