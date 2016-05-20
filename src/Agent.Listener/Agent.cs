@@ -65,10 +65,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     return Constants.Agent.ReturnCode.Success;
                 }
 
+                // Unconfigure, remove config files, service and exit
                 if (command.Unconfigure)
-                {
-                    // TODO: Unconfiure, remove config and exit
-                    return Constants.Agent.ReturnCode.Success;
+                {                    
+                    try
+                    {
+                        await configManager.UnconfigureAsync(command);
+                        return Constants.Agent.ReturnCode.Success;
+                    }
+                    catch (Exception ex)
+                    {
+                        Trace.Error(ex);
+                        _term.WriteError(ex.Message);
+                        return Constants.Agent.ReturnCode.TerminatedError;
+                    }
                 }
 
                 if (command.Run && !configManager.IsConfigured())

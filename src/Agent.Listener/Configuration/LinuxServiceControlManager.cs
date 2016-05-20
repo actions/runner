@@ -85,6 +85,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             return true;
         }
 
+        public override void UnconfigureService()
+        {
+            throw new NotImplementedException();
+        }
+
         public override void StartService()
         {
             Trace.Entering();

@@ -67,11 +67,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 {
                     Trace.Info($"Cleaning up plist file from failed config: {plistPath}");
                     IOUtil.DeleteFile(plistPath);
-                }                
+                }
                 throw;
             }
-            
-            return true;            
+
+            return true;
+        }
+
+        public override void UnconfigureService()
+        {
+            SvcSh("uninstall");
         }
 
         public override void StartService()
@@ -106,6 +111,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             string argLine = StringUtil.Format("{0} {1}", _shName, command);
             var unixUtil = HostContext.CreateService<IUnixUtil>();
             unixUtil.Exec(IOUtil.GetRootPath(), "bash", argLine).GetAwaiter().GetResult();
-        }        
+        }
     }
 }

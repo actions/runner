@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Threading;
 
 namespace Microsoft.VisualStudio.Services.Agent
 {
@@ -32,6 +33,8 @@ namespace Microsoft.VisualStudio.Services.Agent
         AgentSettings GetSettings();
         void SaveCredential(CredentialData credential);
         void SaveSettings(AgentSettings settings);
+        void DeleteCredential();
+        void DeleteSettings();
     }
 
     public sealed class ConfigurationStore : AgentService, IConfigurationStore
@@ -123,6 +126,16 @@ namespace Microsoft.VisualStudio.Services.Agent
         {
             IOUtil.SaveObject(settings, _configFilePath);
             Trace.Info("Settings Saved.");
+        }
+
+        public void DeleteCredential()
+        {
+            IOUtil.Delete(_credFilePath, default(CancellationToken));
+        }
+
+        public void DeleteSettings()
+        {
+            IOUtil.Delete(_configFilePath, default(CancellationToken));
         }
     }
 }

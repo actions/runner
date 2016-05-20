@@ -84,6 +84,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             return true;
         }
 
+        public override void UnconfigureService()
+        {
+            SvcSh("uninstall");
+        }
+
         public override void StartService()
         {
             Trace.Entering();

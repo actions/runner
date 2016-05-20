@@ -1,12 +1,11 @@
+using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Security.Principal;
 using System.ServiceProcess;
-
-using Microsoft.VisualStudio.Services.Agent.Util;
+using System.Threading;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 {
@@ -94,6 +93,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             // TODO: If its service identity add it to appropriate PoolGroup
             // TODO: Add registry key after installation
             return true;
+        }
+
+        public override void UnconfigureService()
+        {
+            string serviceConfigPath = IOUtil.GetServiceConfigFilePath();
+            string serviceName = File.ReadAllText(serviceConfigPath);
+            if (CheckServiceExists(serviceName))
+            {
+                StopService();
+                UninstallService(serviceName);
+            }
+            IOUtil.Delete(serviceConfigPath, default(CancellationToken));
         }
 
         private void UninstallService(string serviceName)

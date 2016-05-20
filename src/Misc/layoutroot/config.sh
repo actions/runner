@@ -5,6 +5,10 @@ if [ $user_id -eq 0 ]; then
     exit 1
 fi
 
-# user_name=`id -nu $user_id`
+if [[ "$1" == "remove" ]]; then
+    sudo ./bin/Agent.Listener unconfigure
+else
+    # user_name=`id -nu $user_id`
 
-sudo ./bin/Agent.Listener configure $*
+    sudo ./bin/Agent.Listener configure $*
+fi

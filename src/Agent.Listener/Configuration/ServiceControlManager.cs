@@ -1,6 +1,8 @@
 using System;
 using System.Linq;
 using Microsoft.VisualStudio.Services.Agent.Util;
+using System.IO;
+using System.Text;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 {
@@ -15,6 +17,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
     public interface IServiceControlManager : IAgentService
     {
         bool ConfigureService(AgentSettings settings, CommandSettings command);
+
+        void UnconfigureService();
 
         void StartService();
 
@@ -53,11 +57,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
         protected void SaveServiceSettings()
         {
-            IOUtil.SaveObject(new { RunAsService = true, ServiceName = ServiceName, ServiceDisplayName = ServiceDisplayName },
-                IOUtil.GetServiceConfigFilePath());
+            File.WriteAllText(IOUtil.GetServiceConfigFilePath(), ServiceName, new UTF8Encoding(false));
         }
 
         public abstract bool ConfigureService(AgentSettings settings, CommandSettings command);
+
+        public abstract void UnconfigureService();
 
         public abstract void StartService();
 

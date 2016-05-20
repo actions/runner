@@ -19,6 +19,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         bool IsServiceConfigured();
         Task EnsureConfiguredAsync(CommandSettings command);
         Task ConfigureAsync(CommandSettings command);
+        Task UnconfigureAsync(CommandSettings command);
         AgentSettings LoadSettings();
     }
 
@@ -263,7 +264,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             {
                 Trace.Info("Configuring to run the agent as service");
                 successfullyConfigured = serviceControlManager.ConfigureService(settings, command);
-            }            
+            }
 
             // chown/chmod the _diag and settings files to the current user, if we started with sudo.
             // Also if we started with sudo, the _diag will be owned by root. Change this to current login user
@@ -297,6 +298,88 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             }
         }
 
+        public async Task UnconfigureAsync(CommandSettings command)
+        {
+            string currentAction = StringUtil.Loc("UninstallingService");
+            try
+            {
+                //stop, uninstall service and remove service config file
+                _term.WriteLine(currentAction);
+                if (_store.IsServiceConfigured())
+                {
+                    var serviceControlManager = HostContext.GetService<IServiceControlManager>();
+                    serviceControlManager.UnconfigureService();
+                    _term.WriteLine(StringUtil.Loc("Success") + currentAction);
+                }
+                else
+                {
+                    _term.WriteLine(StringUtil.Loc("Skipping") + currentAction);
+                }
+
+                //delete agent from the server
+                currentAction = StringUtil.Loc("UnregisteringAgent");
+                _term.WriteLine(currentAction);
+                bool isConfigured = _store.IsConfigured();
+                bool hasCredentials = _store.HasCredentials();
+                if (isConfigured && hasCredentials)
+                {
+                    AgentSettings settings = _store.GetSettings();
+                    var credentialManager = HostContext.GetService<ICredentialManager>();
+                    VssCredentials creds = credentialManager.LoadCredentials();
+                    Uri uri = new Uri(settings.ServerUrl);
+                    VssConnection conn = ApiUtil.CreateConnection(uri, creds);
+                    var agentSvr = HostContext.GetService<IAgentServer>();
+                    await agentSvr.ConnectAsync(conn);
+
+                    List<TaskAgent> agents = await agentSvr.GetAgentsAsync(settings.PoolId, settings.AgentName);
+                    if (agents.Count == 0)
+                    {
+                        _term.WriteLine(StringUtil.Loc("Skipping") + currentAction);
+                    }
+                    else
+                    {
+                        await agentSvr.DeleteAgentAsync(settings.PoolId, settings.AgentId);
+                        _term.WriteLine(StringUtil.Loc("Success") + currentAction);
+                    }
+                }
+                else
+                {
+                    _term.WriteLine(StringUtil.Loc("MissingConfig"));
+                }
+
+                //delete credential config file                
+                currentAction = StringUtil.Loc("DeletingCredentials");
+                _term.WriteLine(currentAction);
+                if (hasCredentials)
+                {
+                    _store.DeleteCredential();
+                    _term.WriteLine(StringUtil.Loc("Success") + currentAction);
+                }
+                else
+                {
+                    _term.WriteLine(StringUtil.Loc("Skipping") + currentAction);
+                }
+
+                //delete settings config file                
+                currentAction = StringUtil.Loc("DeletingSettings");
+                _term.WriteLine(currentAction);
+                if (isConfigured)
+                {
+                    _store.DeleteSettings();
+                    _term.WriteLine(StringUtil.Loc("Success") + currentAction);
+                }
+                else
+                {
+                    _term.WriteLine(StringUtil.Loc("Skipping") + currentAction);
+                }
+            }
+            catch (Exception)
+            {
+                _term.WriteLine(StringUtil.Loc("Failed") + currentAction);
+                throw;
+            }
+        }
+
         private ICredentialProvider GetCredentialProvider(CommandSettings command, string serverUrl)
         {
             Trace.Info(nameof(GetCredentialProvider));
@@ -315,7 +398,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 // Hosted defaults to PAT authentication.
                 bool isHosted = serverUrl.IndexOf("visualstudio.com", StringComparison.OrdinalIgnoreCase) != -1
                     || serverUrl.IndexOf("tfsallin.net", StringComparison.OrdinalIgnoreCase) != -1;
-                string defaultAuth = isHosted ? Constants.Configuration.PAT : 
+                string defaultAuth = isHosted ? Constants.Configuration.PAT :
                     (Constants.Agent.Platform == Constants.OSPlatform.Windows ? Constants.Configuration.Integrated : Constants.Configuration.Negotiate);
                 string authType = command.GetAuth(defaultValue: defaultAuth);
 
