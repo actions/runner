@@ -87,8 +87,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                     }
                     catch (Exception ex)
                     {
-                        Trace.Info($"After prefix Default Path Root provide by JobExtension, the Path is a rooted path, but it is not a full qualified path: {path}");
                         Trace.Error(ex);
+                        Trace.Info($"After prefix Default Path Root provide by JobExtension, the Path is a rooted path, but it is not full qualified, return the path: {path}.");
+                        return path;
                     }
                 }
             }
@@ -104,8 +105,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             sourcePath = localPath;
 
             if (!string.IsNullOrEmpty(localPath) &&
-                File.Exists(localPath) && 
-                SourceEndpoint != null && 
+                File.Exists(localPath) &&
+                SourceEndpoint != null &&
                 SourceProvider != null)
             {
                 // If we found a repo, calculate the relative path to the file
@@ -180,7 +181,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             else
             {
                 string cleanRepoText;
-                if(SourceEndpoint.Data.TryGetValue(WellKnownEndpointData.Clean, out cleanRepoText))
+                if (SourceEndpoint.Data.TryGetValue(WellKnownEndpointData.Clean, out cleanRepoText))
                 {
                     executionContext.Variables.Set(Constants.Variables.Build.RepoClean, cleanRepoText);
                 }
