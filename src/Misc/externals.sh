@@ -250,6 +250,10 @@ function acquireExternalTools ()
             tar xzf ${tool}.${tool_extension} -C ${target_dir} > /dev/null
         fi
 
+        if [[ "${tool}" = "tee" ]]; then
+            chmod +x ${target_dir}/tf
+        fi
+
         popd > /dev/null        
     done
 
