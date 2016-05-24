@@ -126,6 +126,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
                 if (serviceHndl == IntPtr.Zero)
                 {
+                    int lastError = Marshal.GetLastWin32Error();
+                    if (lastError == NativeWindowsServiceHelper.ReturnCode.ERROR_ACCESS_DENIED)
+                    {
+                        throw new Exception(StringUtil.Loc("ShouldBeAdmin"));
+                    }
                     Trace.Info("Service is not installed");
                     return;
                 }

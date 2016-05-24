@@ -64,7 +64,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 File.WriteAllText(svcShPath, svcShContent, new UTF8Encoding(false));
 
                 var unixUtil = HostContext.CreateService<IUnixUtil>();
-                unixUtil.Chmod("755", svcShPath).GetAwaiter().GetResult();
+                unixUtil.ChmodAsync("755", svcShPath).GetAwaiter().GetResult();
 
                 SvcSh("install");
                 _term.WriteLine(StringUtil.Loc("ServiceConfigured", ServiceName));
@@ -87,6 +87,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         public override void UnconfigureService()
         {
             SvcSh("uninstall");
+            string svcShPath = Path.Combine(IOUtil.GetRootPath(), _shName);
+            IOUtil.Delete(svcShPath, default(CancellationToken));
         }
 
         public override void StartService()
@@ -125,7 +127,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
             string argLine = StringUtil.Format("{0} {1}", _shName, command);
             var unixUtil = HostContext.CreateService<IUnixUtil>();
-            unixUtil.Exec(IOUtil.GetRootPath(), "bash", argLine).GetAwaiter().GetResult();
+            unixUtil.ExecAsync(IOUtil.GetRootPath(), "bash", argLine).GetAwaiter().GetResult();
         }
 
         public override bool CheckServiceExists(string serviceName)

@@ -104,6 +104,13 @@ function get_current_os_name() {
 
 PLATFORM=$(get_current_os_name)
 
+function failed()
+{
+   local error=${1:-Undefined error}
+   echo "Failed: $error" >&2
+   exit 1
+}
+
 function checkRC() {
     local rc=$?
     if [ $rc -ne 0 ]; then

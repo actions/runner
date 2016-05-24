@@ -8,9 +8,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
     [ServiceLocator(Default = typeof(UnixUtil))]
     public interface IUnixUtil : IAgentService
     {
-        Task Exec(string workingDirectory, string toolName, string argLine);
-        Task Chmod(string mode, string file);
-        Task Chown(string owner, string group, string file);
+        Task ExecAsync(string workingDirectory, string toolName, string argLine);
+        Task ChmodAsync(string mode, string file);
+        Task ChownAsync(string owner, string group, string file);
     }
 
     public sealed class UnixUtil : AgentService, IUnixUtil
@@ -23,19 +23,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             _term = hostContext.GetService<ITerminal>();
         }
 
-        public async Task Chmod(string mode, string file)
+        public async Task ChmodAsync(string mode, string file)
         {
             Trace.Entering();
-            await Exec(IOUtil.GetRootPath(), "chmod", $"{mode} {file}");
+            await ExecAsync(IOUtil.GetRootPath(), "chmod", $"{mode} {file}");
         }
 
-        public async Task Chown(string owner, string group, string file)
+        public async Task ChownAsync(string owner, string group, string file)
         {
             Trace.Entering();
-            await Exec(IOUtil.GetRootPath(), "chown", $"{owner}:{group} {file}");
+            await ExecAsync(IOUtil.GetRootPath(), "chown", $"{owner}:{group} {file}");
         }
 
-        public async Task Exec(string workingDirectory, string toolName, string argLine)
+        public async Task ExecAsync(string workingDirectory, string toolName, string argLine)
         {
             Trace.Entering();
 

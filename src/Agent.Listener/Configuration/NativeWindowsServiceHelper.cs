@@ -265,6 +265,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 uint result = LsaOpenPolicy(ref system, ref attrib, LSA_POLICY_ALL_ACCESS, out lsaPolicyHandle);
                 if (result != 0 || lsaPolicyHandle == IntPtr.Zero)
                 {
+                    if (result == ReturnCode.STATUS_ACCESS_DENIED)
+                    {
+                        throw new Exception(StringUtil.Loc("ShouldBeAdmin"));
+                    }
                     throw new Exception(StringUtil.Loc("OperationFailed", nameof(LsaOpenPolicy), result));
                 }
 
@@ -466,6 +470,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 uint result = LsaOpenPolicy(ref system, ref attrib, LSA_POLICY_ALL_ACCESS, out handle);
                 if (result != 0 || handle == IntPtr.Zero)
                 {
+                    if (result == ReturnCode.STATUS_ACCESS_DENIED)
+                    {
+                        throw new Exception(StringUtil.Loc("ShouldBeAdmin"));
+                    }
                     throw new Exception(StringUtil.Loc("OperationFailed", nameof(LsaOpenPolicy), result));
                 }
 
@@ -527,6 +535,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             public const int NERR_GroupNotFound = 2220;
             public const int NERR_GroupExists = 2223;
             public const int NERR_UserInGroup = 2236;
+            public const uint STATUS_ACCESS_DENIED = 0XC0000022; //NTSTATUS error code: Access Denied
         }
 
         [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
@@ -692,7 +701,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         [DllImport("advapi32.dll")]
         public static extern IntPtr OpenSCManager(string lpMachineName, string lpDatabaseName, ServiceManagerRights dwDesiredAccess);
 
-        [DllImport("advapi32.dll")]
+        [DllImport("advapi32.dll", SetLastError = true)]
         public static extern IntPtr OpenService(IntPtr hSCManager, string lpServiceName, ServiceRights dwDesiredAccess);
 
         [DllImport("advapi32.dll", SetLastError = true)]

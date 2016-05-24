@@ -257,15 +257,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             _store.SaveSettings(settings);
             _term.WriteLine(StringUtil.Loc("SavedSettings", DateTime.UtcNow));
 
-            bool runAsService = command.GetRunAsService();
-            var serviceControlManager = HostContext.GetService<IServiceControlManager>();
-            bool successfullyConfigured = false;
-            if (runAsService)
-            {
-                Trace.Info("Configuring to run the agent as service");
-                successfullyConfigured = serviceControlManager.ConfigureService(settings, command);
-            }
-
             // chown/chmod the _diag and settings files to the current user, if we started with sudo.
             // Also if we started with sudo, the _diag will be owned by root. Change this to current login user
             if (Constants.Agent.Platform == Constants.OSPlatform.Linux ||
@@ -285,10 +276,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                     var unixUtil = HostContext.CreateService<IUnixUtil>();
                     foreach (var file in filesToChange)
                     {
-                        await unixUtil.Chown(uidValue, gidValue, file.Key);
-                        await unixUtil.Chmod(file.Value, file.Key);
+                        await unixUtil.ChownAsync(uidValue, gidValue, file.Key);
+                        await unixUtil.ChmodAsync(file.Value, file.Key);
                     }
                 }
+            }
+
+            bool runAsService = command.GetRunAsService();
+            var serviceControlManager = HostContext.GetService<IServiceControlManager>();
+            bool successfullyConfigured = false;
+            if (runAsService)
+            {
+                Trace.Info("Configuring to run the agent as service");
+                successfullyConfigured = serviceControlManager.ConfigureService(settings, command);
             }
 
             if (runAsService && successfullyConfigured)
