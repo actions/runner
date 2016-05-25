@@ -121,7 +121,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     Trace.Error(ex);
                     if (IsFatalException(ex))
                     {
-                        _term.WriteError(StringUtil.Loc("SessionCreateFailed"));
+                        _term.WriteError(StringUtil.Loc("SessionCreateFailed", ex.Message));
                         return false;
                     }
 
@@ -249,7 +249,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
         private bool IsFatalException(Exception ex)
         {
-            return ex is TaskAgentPoolNotFoundException || ex is AccessDeniedException || ex is TaskAgentNotFoundException;
+            return ex is TaskAgentPoolNotFoundException ||
+                   ex is AccessDeniedException ||
+                   ex is TaskAgentNotFoundException ||
+                   ex is VssUnauthorizedException;
         }
     }
 }
