@@ -128,8 +128,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 }
                 catch (Exception ex)
                 {
-                    Trace.Info($"The original input is a rooted path, but it is not a full qualified path: {inputValue}");
                     Trace.Error(ex);
+                    Trace.Info($"The original input is a rooted path, but it is not full qualified, return the path: {inputValue}");
+                    return inputValue;
                 }
             }
 
