@@ -87,6 +87,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         }
 
         public string Agent_BuildDirectory { get { return Get(Constants.Variables.Agent.BuildDirectory); } }
+        public string Agent_WorkFolder { get { return Get(Constants.Variables.Agent.WorkFolder); } }
         public TaskResult? Agent_JobStatus { get { return GetEnum<TaskResult>(Constants.Variables.Agent.JobStatus); } set { Set(Constants.Variables.Agent.JobStatus, $"{value}"); } }
         public int? Build_BuildId { get { return GetInt(BuildWebApi.WellKnownBuildVariables.BuildId); } }
         public string Build_BuildUri { get { return Get(BuildWebApi.WellKnownBuildVariables.BuildUri); } }

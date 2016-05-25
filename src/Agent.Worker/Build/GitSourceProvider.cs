@@ -31,6 +31,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             ArgUtil.NotNull(endpoint, nameof(endpoint));
 
             executionContext.Output($"Syncing repository: {endpoint.Name} (Git)");
+            _gitCommandManager = HostContext.GetService<IGitCommandManager>();
+            await _gitCommandManager.LoadGitExecutionInfo(executionContext);
 
             string targetPath = executionContext.Variables.Get(Constants.Variables.Build.SourcesDirectory);
             string sourceBranch = executionContext.Variables.Get(Constants.Variables.Build.SourceBranch);
@@ -57,29 +59,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             Trace.Info($"clean={clean}");
             Trace.Info($"checkoutSubmodules={checkoutSubmodules}");
             Trace.Info($"exposeCred={exposeCred}");
-
-            // ensure find full path to git exist, the version of the installed git is what we supported.
-            string gitPath = null;
-            if (!TryGetGitLocation(executionContext, out gitPath))
-            {
-                throw new Exception(StringUtil.Loc("GitNotInstalled"));
-            }
-            Trace.Info($"Git path={gitPath}");
-
-            _gitCommandManager = HostContext.GetService<IGitCommandManager>();
-            _gitCommandManager.GitPath = gitPath;
-
-            Version gitVersion = await _gitCommandManager.GitVersion(executionContext);
-            if (gitVersion < _minSupportGitVersion)
-            {
-                throw new Exception(StringUtil.Loc("InstalledGitNotSupport", _minSupportGitVersion));
-            }
-            Trace.Info($"Git version={gitVersion}");
-            _gitCommandManager.Version = gitVersion;
-
-            string customizeUserAgent = $"git/{gitVersion.ToString()} (vsts-agent-git/{Constants.Agent.Version})";
-            Trace.Info($"Git useragent={customizeUserAgent}");
-            _gitCommandManager.GitHttpUserAgent = customizeUserAgent;
 
             // retrieve credential from endpoint.
             Uri repositoryUrl = endpoint.Url;
@@ -307,38 +286,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             executionContext.Debug($"targetPath={targetPath}");
 
             await RemoveCachedCredential(executionContext, targetPath, repositoryUrl, "origin");
-        }
-
-        private bool TryGetGitLocation(IExecutionContext executionContext, out string gitPath)
-        {
-            //find git in %Path%
-            var whichTool = HostContext.GetService<IWhichUtil>();
-            gitPath = whichTool.Which("git");
-
-#if OS_WINDOWS
-            //find in %ProgramFiles(x86)%\git\cmd if platform is Windows
-            if (string.IsNullOrEmpty(gitPath))
-            {
-                string programFileX86 = Environment.GetEnvironmentVariable("ProgramFiles(x86)");
-                if (!string.IsNullOrEmpty(programFileX86))
-                {
-                    gitPath = Path.Combine(programFileX86, "Git\\cmd\\git.exe");
-                    if (!File.Exists(gitPath))
-                    {
-                        gitPath = null;
-                    }
-                }
-            }
-#endif
-            if (string.IsNullOrEmpty(gitPath))
-            {
-                return false;
-            }
-            else
-            {
-                executionContext.Debug($"Find git installation path: {gitPath}.");
-                return true;
-            }
         }
 
         protected async Task<bool> IsRepositoryOriginUrlMatch(IExecutionContext context, string repositoryPath, Uri expectedRepositoryOriginUrl)

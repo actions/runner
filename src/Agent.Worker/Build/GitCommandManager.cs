@@ -6,17 +6,15 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using System.IO;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 {
     [ServiceLocator(Default = typeof(GitCommandManager))]
     public interface IGitCommandManager : IAgentService
     {
-        string GitPath { get; set; }
-
-        Version Version { get; set; }
-
-        string GitHttpUserAgent { get; set; }
+        // setup git execution info, git location, version, useragent, execpath
+        Task LoadGitExecutionInfo(IExecutionContext context);
 
         // git init <LocalDir>
         Task<int> GitInit(IExecutionContext context, string repositoryPath);
@@ -56,7 +54,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
         // git config --unset-all <key>
         Task<int> GitConfigUnset(IExecutionContext context, string repositoryPath, string configKey);
-        
+
         // git config gc.auto 0
         Task<int> GitDisableAutoGC(IExecutionContext context, string repositoryPath);
 
@@ -66,20 +64,36 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
     public class GitCommandManager : AgentService, IGitCommandManager
     {
-        private readonly Dictionary<string, Dictionary<Version, string>> _gitCommands = new Dictionary<string, Dictionary<Version, string>>(StringComparer.OrdinalIgnoreCase)
-        {
-            {
-                "checkout", new Dictionary<Version, string> ()
-                            {
-                                { new Version(1,8), "--force {0}" },
-                                { new Version(2,7), "--progress --force {0}" }
-                            }
-            }
-        };
+        private string _gitHttpUserAgentEnv = null;
+        private string _gitPath = null;
+        private Version _version = null;
+        private string _gitExecPathEnv = null;
 
-        public string GitPath { get; set; }
-        public Version Version { get; set; }
-        public string GitHttpUserAgent { get; set; }
+        public async Task LoadGitExecutionInfo(IExecutionContext context)
+        {
+#if OS_WINDOWS
+            _gitPath = Path.Combine(IOUtil.GetExternalsPath(), "git", "cmd", $"git{IOUtil.ExeExtension}");
+#else
+            _gitPath = Path.Combine(IOUtil.GetExternalsPath(), "git", "bin", $"git{IOUtil.ExeExtension}");
+#endif
+            if (string.IsNullOrEmpty(_gitPath) || !File.Exists(_gitPath))
+            {
+                throw new Exception(StringUtil.Loc("GitNotFound"));
+            }
+
+            context.Debug($"Find git from agent's external directory: {_gitPath}.");
+
+            _version = await GitVersion(context);
+            context.Debug($"Detect git version: {_version.ToString()}.");
+
+            _gitHttpUserAgentEnv = $"git/{_version.ToString()} (vsts-agent-git/{Constants.Agent.Version})";
+            context.Debug($"Set git useragent to: {_gitHttpUserAgentEnv}.");
+
+#if !OS_WINDOWS
+            _gitExecPathEnv = Path.Combine(IOUtil.GetExternalsPath(), "git", "libexec", "git-core");
+            context.Debug($"Set git execpath to: {_gitExecPathEnv}");
+#endif
+        }
 
         // git init <LocalDir>
         public async Task<int> GitInit(IExecutionContext context, string repositoryPath)
@@ -105,8 +119,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         public async Task<int> GitCheckout(IExecutionContext context, string repositoryPath, string committishOrBranchSpec, CancellationToken cancellationToken)
         {
             context.Debug($"Checkout {committishOrBranchSpec}.");
-            string checkoutOption = GetCommandOption("checkout");
-            return await ExecuteGitCommandAsync(context, repositoryPath, "checkout", StringUtil.Format(checkoutOption, committishOrBranchSpec), cancellationToken);
+            return await ExecuteGitCommandAsync(context, repositoryPath, "checkout", StringUtil.Format("--progress --force {0}", committishOrBranchSpec), cancellationToken);
         }
 
         // git clean -fdx
@@ -225,6 +238,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             Version version = null;
             List<string> outputStrings = new List<string>();
             int exitCode = await ExecuteGitCommandAsync(context, IOUtil.GetWorkPath(HostContext), "version", null, outputStrings);
+            context.Debug($"git version ouput: {string.Join(Environment.NewLine, outputStrings)}");
             if (exitCode == 0)
             {
                 // remove any empty line.
@@ -248,32 +262,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             return version;
         }
 
-        private string GetCommandOption(string command)
-        {
-            if (string.IsNullOrEmpty(command))
-            {
-                throw new ArgumentNullException("command");
-            }
-
-            if (!_gitCommands.ContainsKey(command))
-            {
-                throw new NotSupportedException($"Unsupported git command: {command}");
-            }
-
-            Dictionary<Version, string> options = _gitCommands[command];
-            foreach (var versionOption in options.OrderByDescending(o => o.Key))
-            {
-                if (Version >= versionOption.Key)
-                {
-                    return versionOption.Value;
-                }
-            }
-
-            var earliestVersion = options.OrderByDescending(o => o.Key).Last();
-            Trace.Info($"Fallback to version {earliestVersion.Key.ToString()} command option for git {command}.");
-            return earliestVersion.Value;
-        }
-
         private async Task<int> ExecuteGitCommandAsync(IExecutionContext context, string repoRoot, string command, string options, CancellationToken cancellationToken = default(CancellationToken))
         {
             string arg = StringUtil.Format($"{command} {options}").Trim();
@@ -290,13 +278,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 context.Output(message.Data);
             };
 
-            Dictionary<string, string> _userAgentEnv = new Dictionary<string, string>();
-            if (!string.IsNullOrEmpty(GitHttpUserAgent))
+            Dictionary<string, string> _gitEnv = new Dictionary<string, string>();
+            if (!string.IsNullOrEmpty(_gitHttpUserAgentEnv))
             {
-                _userAgentEnv["GIT_HTTP_USER_AGENT"] = GitHttpUserAgent;
+                _gitEnv["GIT_HTTP_USER_AGENT"] = _gitHttpUserAgentEnv;
             }
 
-            return await processInvoker.ExecuteAsync(repoRoot, GitPath, arg, _userAgentEnv, cancellationToken);
+            if (!string.IsNullOrEmpty(_gitExecPathEnv))
+            {
+                _gitEnv["GIT_EXEC_PATH"] = _gitExecPathEnv;
+            }
+
+            return await processInvoker.ExecuteAsync(repoRoot, _gitPath, arg, _gitEnv, cancellationToken);
         }
 
         private async Task<int> ExecuteGitCommandAsync(IExecutionContext context, string repoRoot, string command, string options, IList<string> output)
@@ -327,13 +320,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 }
             };
 
-            Dictionary<string, string> _userAgentEnv = new Dictionary<string, string>();
-            if (!string.IsNullOrEmpty(GitHttpUserAgent))
+            Dictionary<string, string> _gitEnv = new Dictionary<string, string>();
+            if (!string.IsNullOrEmpty(_gitHttpUserAgentEnv))
             {
-                _userAgentEnv["GIT_HTTP_USER_AGENT"] = GitHttpUserAgent;
+                _gitEnv["GIT_HTTP_USER_AGENT"] = _gitHttpUserAgentEnv;
             }
 
-            return await processInvoker.ExecuteAsync(repoRoot, GitPath, arg, _userAgentEnv, default(CancellationToken));
+            if (!string.IsNullOrEmpty(_gitExecPathEnv))
+            {
+                _gitEnv["GIT_EXEC_PATH"] = _gitExecPathEnv;
+            }
+
+            return await processInvoker.ExecuteAsync(repoRoot, _gitPath, arg, _gitEnv, default(CancellationToken));
         }
 
         private async Task<int> ExecuteGitCommandAsync(IExecutionContext context, string repoRoot, string command, string options, string additionalCommandLine, CancellationToken cancellationToken)
@@ -352,13 +350,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 context.Output(message.Data);
             };
 
-            Dictionary<string, string> _userAgentEnv = new Dictionary<string, string>();
-            if (!string.IsNullOrEmpty(GitHttpUserAgent))
+            Dictionary<string, string> _gitEnv = new Dictionary<string, string>();
+            if (!string.IsNullOrEmpty(_gitHttpUserAgentEnv))
             {
-                _userAgentEnv["GIT_HTTP_USER_AGENT"] = GitHttpUserAgent;
+                _gitEnv["GIT_HTTP_USER_AGENT"] = _gitHttpUserAgentEnv;
             }
 
-            return await processInvoker.ExecuteAsync(repoRoot, GitPath, arg, _userAgentEnv, cancellationToken);
+            if (!string.IsNullOrEmpty(_gitExecPathEnv))
+            {
+                _gitEnv["GIT_EXEC_PATH"] = _gitExecPathEnv;
+            }
+
+            return await processInvoker.ExecuteAsync(repoRoot, _gitPath, arg, _gitEnv, cancellationToken);
         }
     }
 }

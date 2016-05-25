@@ -49,7 +49,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
                 }
                 else
                 {
-                    workingDirectory = TaskDirectory;
+                    workingDirectory = ExecutionContext.Variables.Agent_WorkFolder;
                 }
             }
 

@@ -19,6 +19,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
         {
             Mock<IGitCommandManager> _gitCommandManager = new Mock<IGitCommandManager>();
             _gitCommandManager
+                .Setup(x => x.LoadGitExecutionInfo(It.IsAny<IExecutionContext>()))
+                .Returns(Task.CompletedTask);
+            _gitCommandManager
                 .Setup(x => x.GitInit(It.IsAny<IExecutionContext>(), It.IsAny<string>()))
                 .Returns(Task.FromResult<int>(0));
             _gitCommandManager
