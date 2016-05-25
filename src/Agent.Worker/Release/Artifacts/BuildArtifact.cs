@@ -165,8 +165,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
                     if (!Directory.Exists(fileShare))
                     {
                         // download path does not exist, log and fall back
-                        executionContext.Output(StringUtil.Loc("RMArtifactNameDirectoryNotFound", fileShare, buildArtifact.Resource.DownloadUrl));
-                        fileShare = new Uri(buildArtifact.Resource.DownloadUrl).LocalPath;
+                        var parenthPath = new Uri(buildArtifact.Resource.DownloadUrl).LocalPath;
+                        executionContext.Output(StringUtil.Loc("RMArtifactNameDirectoryNotFound", fileShare, parenthPath));
+                        fileShare = parenthPath;
                     }
                 }
 
@@ -175,6 +176,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
                     // download path does not exist, raise exception
                     throw new ArtifactDownloadException(StringUtil.Loc("RMArtifactDirectoryNotFoundError", fileShare));
                 }
+
+                executionContext.Output(StringUtil.Loc("RMDownloadingArtifactFromFileShare", fileShare));
 
                 var fileShareArtifact = new FileShareArtifact();
                 await fileShareArtifact.DownloadArtifactAsync(executionContext, HostContext, artifactDefinition, fileShare, downloadFolderPath);

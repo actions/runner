@@ -11,7 +11,7 @@ using Agent.Worker.Release.Artifacts.Definition;
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using Microsoft.VisualStudio.Services.ReleaseManagement.WebApi.Contracts;
-using System.Threading;
+using Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
 {
@@ -191,6 +191,23 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
 
                 // download the artifact to this path. 
                 RetryExecutor retryExecutor = new RetryExecutor();
+                retryExecutor.ShouldRetryAction = (ex) =>
+                {
+                    executionContext.Output(StringUtil.Loc("RMErrorDuringArtifactDownload", ex));
+
+                    bool retry = true;
+                    if (ex is ArtifactDownloadException)
+                    {
+                        retry = false;
+                    }
+                    else
+                    {
+                        executionContext.Output(StringUtil.Loc("RMRetryingArtifactDownload"));
+                    }
+
+                    return retry;
+                };
+
                 await retryExecutor.ExecuteAsync(
                     async () =>
                         {
