@@ -32,9 +32,9 @@ function Add-CapabilityFromEnvironment {
 
     $path = "env:$VariableName"
     Write-Host "Checking: '$path'"
-    $val = (Test-Path -LiteralPath $path -ErrorAction Ignore).Value
+    $val = (Get-Item -LiteralPath $path -ErrorAction Ignore).Value
     if (!$val) {
-        Write-Host "Value found or is empty."
+        Write-Host "Value not found or is empty."
         return
     }
 
