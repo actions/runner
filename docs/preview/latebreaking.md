@@ -21,6 +21,8 @@ Instructions [located here](http://apple.stackexchange.com/questions/126830/how-
 On last check 1.0.2g was the version so ensure you use correct mv, sn commands.  
 Restart new terminal after updating.
 
+If you are using TfsVc, install Oracle Java 1.6+.
+
 ## Ubuntu 14.04
 
 Before running the agent, you need to:
@@ -28,6 +30,7 @@ Before running the agent, you need to:
 ```bash
 sudo apt-get install -y libunwind8 libcurl3 libicu52
 ```
+If you are using TfsVc, install Oracle Java 1.6+.
 
 ## Ubuntu 16.04
 
@@ -39,19 +42,12 @@ sudo apt-get install -y libunwind8 libcurl3
 wget http://security.ubuntu.com/ubuntu/pool/main/i/icu/libicu52_52.1-8ubuntu0.2_amd64.deb
 sudo dpkg -i libicu52_52.1-8ubuntu0.2_amd64.deb
 ```
+If you are using TfsVc, install Oracle Java 1.6+.
 
 ## RedHat and CentOS
-
-Update curl  
-```bash
-sudo rpm -Uvh http://www.city-fan.org/ftp/contrib/yum-repo/rhel6/x86_64/city-fan.org-release-1-13.rhel6.noarch.rpm
-sudo yum -y install libcurl
-```
-
-Update git  
-The default git 1.8.3.1, which is in redhat 7.2 repository is not compatible. Please install git 1.9.1 or latter. If git binary is not available you can build from sources following instructions on http://tecadmin.net/install-git-2-x-on-centos-rhel-and-fedora/
 
 Install dependencies  
 ```bash
 sudo yum -y install libunwind.x86_64 icu
 ```
+If you are using TfsVc, install Oracle Java 1.6+.
