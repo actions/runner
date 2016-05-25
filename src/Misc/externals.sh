@@ -26,7 +26,7 @@ EXTERNALTOOLSLOCATION=(
     portablewingit/1
     symstore/1
     tee/1
-    vstshost/1
+    vstshost/2
     vstsom/1
     )
 
