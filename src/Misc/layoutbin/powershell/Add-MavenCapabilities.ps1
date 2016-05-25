@@ -7,4 +7,4 @@ if (!$env:JAVA_HOME) {
     return
 }
 
-Add-CapabilityFromEnvironment -Name 'maven' -ValueName 'M2_HOME'
+Add-CapabilityFromEnvironment -Name 'maven' -VariableName 'M2_HOME'
