@@ -107,6 +107,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         public string Release_ReleaseUri { get { return Get(Constants.Variables.Release.ReleaseUri); } }
         public string System_CollectionId { get { return Get(Constants.Variables.System.CollectionId); } }
         public bool? System_Debug { get { return GetBoolean(Constants.Variables.System.Debug); } }
+        public string System_DefaultWorkingDirectory { get { return Get(Constants.Variables.System.DefaultWorkingDirectory); } }
         public string System_DefinitionId { get { return Get(Constants.Variables.System.DefinitionId); } }
         public bool? System_EnableAccessToken { get { return GetBoolean(Constants.Variables.System.EnableAccessToken); } }
         public string System_HostType { get { return Get(Constants.Variables.System.HostType); } }
