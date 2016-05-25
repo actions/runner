@@ -21,7 +21,7 @@ Instructions [located here](http://apple.stackexchange.com/questions/126830/how-
 On last check 1.0.2g was the version so ensure you use correct mv, sn commands.  
 Restart new terminal after updating.
 
-If any of your projects is using Team Foundation Version Control, please install Oracle java runtime 1.6+, because tfvc client is a java application.
+If you are using TfsVc, install Oracle Java 1.6+.
 
 ## Ubuntu 14.04
 
@@ -30,7 +30,7 @@ Before running the agent, you need to:
 ```bash
 sudo apt-get install -y libunwind8 libcurl3 libicu52
 ```
-If any of your projects is using Team Foundation Version Control, please install Oracle java runtime 1.6+, because tfvc client is a java application.
+If you are using TfsVc, install Oracle Java 1.6+.
 
 ## Ubuntu 16.04
 
@@ -42,7 +42,7 @@ sudo apt-get install -y libunwind8 libcurl3
 wget http://security.ubuntu.com/ubuntu/pool/main/i/icu/libicu52_52.1-8ubuntu0.2_amd64.deb
 sudo dpkg -i libicu52_52.1-8ubuntu0.2_amd64.deb
 ```
-If any of your projects is using Team Foundation Version Control, please install Oracle java runtime 1.6+, because tfvc client is a java application.
+If you are using TfsVc, install Oracle Java 1.6+.
 
 ## RedHat and CentOS
 
@@ -50,4 +50,4 @@ Install dependencies
 ```bash
 sudo yum -y install libunwind.x86_64 icu
 ```
-If any of your projects is using Team Foundation Version Control, please install Oracle java runtime 1.6+, because tfvc client is a java application.
+If you are using TfsVc, install Oracle Java 1.6+.
