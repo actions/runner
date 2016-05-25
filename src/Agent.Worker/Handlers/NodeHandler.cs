@@ -43,7 +43,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             string workingDirectory = Data.WorkingDirectory;
             if (string.IsNullOrEmpty(workingDirectory))
             {
-                workingDirectory = TaskDirectory;
+                if (!string.IsNullOrEmpty(ExecutionContext.Variables.System_DefaultWorkingDirectory))
+                {
+                    workingDirectory = ExecutionContext.Variables.System_DefaultWorkingDirectory;
+                }
+                else
+                {
+                    workingDirectory = ExecutionContext.Variables.Agent_WorkFolder;
+                }
             }
 
             ArgUtil.Directory(workingDirectory, nameof(workingDirectory));

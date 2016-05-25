@@ -75,7 +75,7 @@
   "FileNotFound": "File not found: '{0}'",
   "FileUploadProgress": "Total file: {0} ---- Uploaded file: {1}",
   "GetSources": "Get Sources",
-  "GitNotInstalled": "Can't find installed git",
+  "GitNotFound": "Can't find git from agent external directory.",
   "GroupDoesNotExists": "Group: {0} does not Exist",
   "InstalledGitNotSupport": "The version of the installed Git is less than min-supported Git version {0}.",
   "InvalidBuildOrCoverageTool": "An internal error occurred. Details: Invalid build or code coverage tool provided. Build tool = '{0}'. Coverage tool = '{1}'. ",

@@ -12,25 +12,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 {
     public sealed class TfsGitSourceProvider : GitSourceProvider, ISourceProvider
     {
-        public override string RepositoryType => WellKnownRepositoryTypes.TfsGit;
         private readonly Dictionary<string, string> _authHeaderCache = new Dictionary<string, string>();
-        private bool _supportAddAuthHeader = false;
+
+        public override string RepositoryType => WellKnownRepositoryTypes.TfsGit;
 
         public override async Task GetSourceAsync(IExecutionContext executionContext, ServiceEndpoint endpoint, CancellationToken cancellationToken)
         {
             Trace.Entering();
             ArgUtil.NotNull(endpoint, nameof(endpoint));
-
-            string gitPath = null;
-            _supportAddAuthHeader = IsLocalGitSupportAddAuthHeader(out gitPath);
-            if (!_supportAddAuthHeader)
-            {
-                // use default git source provider handle credential which will embed credential into remote url
-                await base.GetSourceAsync(executionContext, endpoint, cancellationToken);
-                return;
-            }
-
             executionContext.Output($"Syncing repository: {endpoint.Name} (TfsGit)");
+            _gitCommandManager = HostContext.GetService<IGitCommandManager>();
+            await _gitCommandManager.LoadGitExecutionInfo(executionContext);
 
             string targetPath = executionContext.Variables.Get(Constants.Variables.Build.SourcesDirectory);
             string sourceBranch = executionContext.Variables.Get(Constants.Variables.Build.SourceBranch);
@@ -57,18 +49,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             Trace.Info($"clean={clean}");
             Trace.Info($"checkoutSubmodules={checkoutSubmodules}");
             Trace.Info($"exposeCred={exposeCred}");
-            Trace.Info($"Git path={gitPath}");
-
-            _gitCommandManager = HostContext.GetService<IGitCommandManager>();
-            _gitCommandManager.GitPath = gitPath;
-
-            Version gitVersion = await _gitCommandManager.GitVersion(executionContext);
-            Trace.Info($"Git version={gitVersion}");
-            _gitCommandManager.Version = gitVersion;
-
-            string customizeUserAgent = $"git/{gitVersion.ToString()} (vsts-agent-git/{Constants.Agent.Version})";
-            Trace.Info($"Git useragent={customizeUserAgent}");
-            _gitCommandManager.GitHttpUserAgent = customizeUserAgent;
 
             // retrieve credential from endpoint.
             Uri repositoryUrl = endpoint.Url;
@@ -261,15 +241,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         public override async Task PostJobCleanupAsync(IExecutionContext executionContext, ServiceEndpoint endpoint)
         {
             Trace.Entering();
-            if (!_supportAddAuthHeader)
-            {
-                await base.PostJobCleanupAsync(executionContext, endpoint);
-                return;
-            }
-
             ArgUtil.NotNull(endpoint, nameof(endpoint));
             executionContext.Output($"Cleaning extra http auth header from repository: {endpoint.Name} (TfsGit)");
-            
+
             Uri repositoryUrl = endpoint.Url;
             string targetPath = executionContext.Variables.Get(Constants.Variables.Build.SourcesDirectory);
 
@@ -297,19 +271,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                     }
                 }
             }
-        }
-
-        private bool IsLocalGitSupportAddAuthHeader(out string gitPath)
-        {
-            gitPath = string.Empty;
-
-            // find portable git in externals
-#if OS_WINDOWS
-            gitPath = Path.Combine(IOUtil.GetExternalsPath(), "git", "cmd", $"git{IOUtil.ExeExtension}");
-#else
-            gitPath = Path.Combine(IOUtil.GetExternalsPath(), "git", "bin", $"git{IOUtil.ExeExtension}");
-#endif
-            return !string.IsNullOrEmpty(gitPath) && File.Exists(gitPath);
         }
     }
 }
