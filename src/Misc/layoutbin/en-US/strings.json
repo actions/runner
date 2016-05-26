@@ -262,6 +262,7 @@
   "ServiceStartedSuccessfully": "Service {0} started successfully",
   "SessionCreateFailed": "Failed to create session. {0}",
   "SessionExist": "A session for this agent already exists.",
+  "SessionExistStopRetry": "Stop retry on SessionConflictException after retried for {0} seconds.",
   "ShouldBeAdmin": "Access denied. Please make sure to run the command as an administrator.",
   "Skipping": "Does not exist. Skipping ",
   "SourceDirectoriesNotSpecified": "Source directories field is not specified. Specify valid source directories for code coverage reports to include highlighted source code and try again.",

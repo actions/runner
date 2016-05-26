@@ -35,7 +35,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             ArgUtil.Directory(TaskDirectory, nameof(TaskDirectory));
 
             // Update the env dictionary.
-            AddVariablesToEnvironment();
+            AddVariablesToEnvironment(excludeSecrets: true);
 
             string scriptFile = null;
             try
