@@ -2,6 +2,8 @@
 
 ## Step 1: System Requirements
 
+> NOTE: Prefer Ubuntu 16.04 LTS.  We configure as a service using systemd and it's not in 14.04.  [More here on configuring as a service](nixsvc.md)
+
 [Read here](../preview/latebreaking.md) to ensure system packages are installed
 
 ## Step 2: Download from Releases
