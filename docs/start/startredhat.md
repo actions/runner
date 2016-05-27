@@ -1,4 +1,4 @@
-# ![redhat](../redhat_med.png) Red Hat Agent
+# ![redhat](../res/redhat_med.png) Red Hat Agent
 
 ## Step 1: System Requirements
 

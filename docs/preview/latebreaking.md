@@ -6,7 +6,7 @@ Preview 1 on tested on Windows 10 so far.
 
 Even though the agent has no pre-requisites, many of the tasks we run require Visual Studio 2015
 
-## OSX
+## ![osx](../res/apple_med.png) OSX
 
 Tested on 10.10 (Yosemite) and 11.11 (El Capitan)
 
@@ -23,7 +23,7 @@ Restart new terminal after updating.
 
 If you are using TfsVc, install Oracle Java 1.6+.
 
-## Ubuntu 14.04
+## ![ubuntu](../res/ubuntu_med.png) Ubuntu 14.04
 
 Before running the agent, you need to:
 
@@ -32,7 +32,7 @@ sudo apt-get install -y libunwind8 libcurl3 libicu52
 ```
 If you are using TfsVc, install Oracle Java 1.6+.
 
-## Ubuntu 16.04
+## ![ubuntu](../res/ubuntu_med.png) Ubuntu 16.04
 
 Before running the agent, you need to:
 
@@ -44,7 +44,7 @@ sudo dpkg -i libicu52_52.1-8ubuntu0.2_amd64.deb
 ```
 If you are using TfsVc, install Oracle Java 1.6+.
 
-## RedHat and CentOS
+## ![redhat](../res/redhat_med.png) RedHat and CentOS
 
 Install dependencies  
 ```bash

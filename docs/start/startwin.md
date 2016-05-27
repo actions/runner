@@ -1,4 +1,4 @@
-# ![win](../win_med.png) Windows Agent
+# ![win](../res/win_med.png) Windows Agent
 
 > NOTE: Preview 1 only has git support.  TFSVC support is in progress for the next preview.
 

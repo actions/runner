@@ -1,4 +1,4 @@
-# ![ubuntu](../ubuntu_med.png) Ubuntu Agent
+# ![ubuntu](../res/ubuntu_med.png) Ubuntu Agent
 
 ## Step 1: System Requirements
 

@@ -2,17 +2,17 @@
 
 ## Dev Dependencies
 
-![Win](win_sm.png)![*nix](linux_sm.png) [Install .NET Core Required for our Build](dev/netcore.md)
+![Win](res/win_sm.png)![*nix](res/linux_sm.png) [Install .NET Core Required for our Build](dev/netcore.md)
 
-![Win](win_sm.png) Git for Windows [Install Here](https://git-scm.com/downloads) _(needed for dev sh script)
+![Win](res/win_sm.png) Git for Windows [Install Here](https://git-scm.com/downloads) _(needed for dev sh script)
 
 ## Build, Test, Clean, Restore 
 
 From src:
 
-![Win](win_sm.png) `dev {command}`  
+![Win](res/win_sm.png) `dev {command}`  
 
-![*nix](linux_sm.png) `./dev.sh {command}`
+![*nix](res/linux_sm.png) `./dev.sh {command}`
   
 **Commands:**  
 

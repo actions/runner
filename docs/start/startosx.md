@@ -1,4 +1,4 @@
-# ![osx](../apple_med.png) OSX Agent
+# ![osx](../res/apple_med.png) OSX Agent
 
 ## Step 1: System Requirements
 
