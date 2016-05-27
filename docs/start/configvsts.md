@@ -1,9 +1,12 @@
 # Configure Agent for VSTS Service
 
-Key Points:  
+## Key Points
+
   - Use https account URL (https://contoso.visualstudio.com)  
   - Should use default of PAT Authentication for VSTS.  [Details](roles.md)
   - Copy and Paste your PAT into the terminal.
+
+## Configure
 
 ```bash
 >> Connect:

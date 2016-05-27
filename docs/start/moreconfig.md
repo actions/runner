@@ -30,3 +30,9 @@ Succeeded: Removing .Credentials
 Removing .Agent
 Succeeded: Removing .Agent
 ```
+
+# Help
+
+```bash
+./config.sh --help
+```

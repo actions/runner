@@ -2,13 +2,15 @@
 
 ## Support
 
-This agent is supported for:
-![osx](../res/apple_sm.png) ![linux](../res/linux_sm.png) OSX/Linux: TFS2015 and beyond.
-![win](../res/win_sm.png) Windows: TFS.vNext
+This agent is supported for:  
+![osx](../res/apple_sm.png) ![linux](../res/linux_sm.png) OSX/Linux: TFS2015 and beyond.  
+
+![win](../res/win_sm.png) Windows: TFS.vNext  
 
 If you want to run windows agent for TFS2015, use the agent that you download from that server.  This agent will ship with TFS.vNext major release.
 
-Key Points:  
+## Key Points
+
   - Use server URL (http://mytfsserver:8080/tfs)
   - Windows will default to Integrated.  You will not have to enter credentials
   - Linux will default to Negotiate for an on-premises URL.  Prefer a local account created on the server 
@@ -81,8 +83,6 @@ Connecting to the server.
 ## Replace
 
 If you are asked whether to replace an agent, [read details here](moreconfig.md)
-
-[Details here](moreconfig.md)
 
 ## Reconfigure or Unconfigure
 
