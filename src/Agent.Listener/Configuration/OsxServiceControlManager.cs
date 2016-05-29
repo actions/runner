@@ -16,7 +16,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         private const string _svcDisplayPattern = "VSTS Agent ({0}.{1})";
         private const string _plistTemplate = "vsts.agent.plist.template";
         private const string _shTemplate = "darwin.svc.sh.template";
-        private const string _shName = "svc.sh";
+        private const string _svcShName = "svc.sh";
 
         public override bool ConfigureService(AgentSettings settings, CommandSettings command)
         {
@@ -33,7 +33,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
             try
             {
-                string svcShPath = Path.Combine(IOUtil.GetRootPath(), _shName);
+                string svcShPath = Path.Combine(IOUtil.GetRootPath(), _svcShName);
 
                 // TODO: encoding?
                 // TODO: Loc strings formatted into MSG_xxx vars in shellscript
@@ -55,6 +55,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 unixUtil.ChmodAsync("755", svcShPath).GetAwaiter().GetResult();
 
                 SvcSh("install");
+
                 _term.WriteLine(StringUtil.Loc("ServiceConfigured", ServiceName));
             }
             catch (Exception e)
@@ -77,7 +78,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         public override void UnconfigureService()
         {
             SvcSh("uninstall");
-            string svcShPath = Path.Combine(IOUtil.GetRootPath(), _shName);
+            string svcShPath = Path.Combine(IOUtil.GetRootPath(), _svcShName);
             IOUtil.Delete(svcShPath, default(CancellationToken));
         }
 
@@ -110,9 +111,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         {
             Trace.Entering();
 
-            string argLine = StringUtil.Format("{0} {1}", _shName, command);
+            string argLine = StringUtil.Format("{0} {1}", _svcShName, command);
             var unixUtil = HostContext.CreateService<IUnixUtil>();
             unixUtil.ExecAsync(IOUtil.GetRootPath(), "bash", argLine).GetAwaiter().GetResult();
-        }
+        }        
     }
 }

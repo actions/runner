@@ -4,6 +4,10 @@
 # for more info on how to propagate SIGTERM to a child process see: http://veithen.github.io/2014/11/16/sigterm-propagation.html
 trap 'kill -INT $PID' TERM INT
 
+if [ -f ".Env" ]; then
+    export $(cat .Env)
+fi
+
 if [ -f ".Path" ]; then
     # configure
     export PATH=`cat .Path`
