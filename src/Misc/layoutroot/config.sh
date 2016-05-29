@@ -5,6 +5,8 @@ if [ $user_id -eq 0 ]; then
     exit 1
 fi
 
+source ./env.sh
+
 if [[ "$1" == "remove" ]]; then
     sudo ./bin/Agent.Listener unconfigure
 else

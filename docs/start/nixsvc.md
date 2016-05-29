@@ -1,15 +1,5 @@
 # Running As A Service On Unix and OSX
 
-## Using Your Path
-
-If you install dev tools and have customized your $PATH, you can snapshot it for the service to use.
-
-```bash
-echo $PATH > .Path
-```
-
-You can do this before config, after config (restart service), or after you install various tools (restart service).
-
 ## Configuration
 
 **During configuration, answer Y to run as a service**.  
@@ -79,6 +69,38 @@ $ sudo ./svc.sh uninstall
 On OSX the convenience default is to create the service as a LaunchAgent.  A LaunchAgent runs when the user logs which gives it access to the UI for UI tests.  If you want it start when the box reboots, you can configure it to auto logon that account and lock on startup.
 
 [Auto Logon and Lock](http://www.tuaw.com/2011/03/07/terminally-geeky-use-automatic-login-more-securely/)
+
+## Setting the Environment
+
+When you install and/or configure tools, your path is often setup or other environment variables are set.  Examples are PATH, JAVA_HOME, ANT_HOME, MYSQL_PATH etc...
+
+If your environment changes at any time, you can run env.sh and it will update your path.  You can also manually edit .Env file.  Changes are retained. 
+
+Stop and start the service for changes to take effect.
+
+```bash
+$ ./env.sh 
+$ sudo ./svc.sh stop
+...
+Stopped
+
+$ sudo ./svc.sh start
+...
+Started:
+15397 0 vsts.agent.bryanmac.testsvc2
+```
+
+Configuring as a service will snapshot off your PATH and other "interesting variables" like LANG, JAVA_HOME etc..  When the service starts, it will read these and set.  This allows for unified environment management between
+
+```bash
+$ ls -la
+-rwxrwx---    1 bryanmac  staff   189 May 29 11:42 .Agent
+-rwxrwx---    1 bryanmac  staff   106 May 29 11:41 .Credentials
+-rw-r--r--    1 bryanmac  staff    58 May 29 11:44 .Env
+-rw-r--r--    1 bryanmac  staff   187 May 29 11:40 .Path
+...
+-rwxr-xr-x    1 bryanmac  staff   546 May 29 11:40 env.sh
+```
 
 ## Service Files
 

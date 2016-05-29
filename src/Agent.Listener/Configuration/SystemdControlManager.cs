@@ -67,6 +67,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 unixUtil.ChmodAsync("755", svcShPath).GetAwaiter().GetResult();
 
                 SvcSh("install");
+
                 _term.WriteLine(StringUtil.Loc("ServiceConfigured", ServiceName));
             }
             catch (UnauthorizedAccessException ex)
