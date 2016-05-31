@@ -126,6 +126,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             string homeDirectory = Environment.GetEnvironmentVariable("HOME");
             if (!string.IsNullOrEmpty(homeDirectory) && Directory.Exists(homeDirectory))
             {
+#if OS_OSX
+                string xmlFile = Path.Combine(
+                    homeDirectory,
+                    "Library",
+                    "Application Support",
+                    "Microsoft",
+                    "Team Foundation",
+                    "4.0",
+                    "Configuration",
+                    "TEE-Mementos",
+                    "com.microsoft.tfs.client.productid.xml");
+#else
                 string xmlFile = Path.Combine(
                     homeDirectory,
                     ".microsoft",
@@ -134,6 +146,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                     "Configuration",
                     "TEE-Mementos",
                     "com.microsoft.tfs.client.productid.xml");
+#endif
                 if (File.Exists(xmlFile))
                 {
                     // Load and deserialize the XML.
