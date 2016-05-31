@@ -1,13 +1,13 @@
 ﻿{
     "version": "1.0.0-*",   
-    "compilationOptions": {
+    "buildOptions": {
         "emitEntryPoint": true,
         "warningsAsErrors": true
     },
     
     "configurations": {
         "Debug": {
-            "compilationOptions": {
+            "buildOptions": {
                 "define": [
                     "DEBUG",
                     "TRACE",
@@ -16,7 +16,7 @@
             }
         },
         "Release": {
-            "compilationOptions": {
+            "buildOptions": {
                 "define": [
                     "TRACE",
                     "OS_WINDOWS"
@@ -27,11 +27,11 @@
     },
     
     "dependencies": {
-        "NETStandard.Library": "1.5.0-rc3-24011-00",
-        "Microsoft.NETCore.TestHost": "1.0.0-rc3-24011-00",
-        "System.Buffers": "4.0.0-rc3-24011-00",
-        "System.Reflection.TypeExtensions": "4.1.0-rc3-24011-00",
-        "System.Threading.ThreadPool": "4.0.10-rc3-24011-00",
+        "Microsoft.NETCore.App": "1.0.0-rc3-004306",
+        "Microsoft.NETCore.TestHost": "1.0.0-rc3-24125-01",
+        "System.Buffers": "4.0.0-rc3-24125-01",
+        "System.Reflection.TypeExtensions": "4.1.0-rc3-24125-01",
+        "System.Threading.ThreadPool": "4.0.10-rc3-24125-01",
         "moq.netcore": "4.4.0-beta8",
         "xunit": "2.1.0",
         "xunit.console.netcore": "1.0.2-prerelease-00101",
@@ -43,8 +43,8 @@
         "Agent.Worker": { "target": "project", "version": "1.0.0-*" } 
     },
     "frameworks": {
-        "dnxcore50": {
-            "imports": "portable-net451+win8"
+        "netcoreapp1.0": {
+          "imports": ["dnxcore50", "portable-net451+win8"]
         }
     },
 

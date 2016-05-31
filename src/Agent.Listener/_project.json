@@ -1,6 +1,6 @@
 {
     "version": "1.0.0-*",
-    "compilationOptions": {
+    "buildOptions": {
         "emitEntryPoint": true,
         "warningsAsErrors": true
     },
@@ -11,7 +11,7 @@
 
     "configurations": {
         "Debug": {
-            "compilationOptions": {
+            "buildOptions": {
                 "define": [
                     "DEBUG",
                     "TRACE",
@@ -20,7 +20,7 @@
             }
         },
         "Release": {
-            "compilationOptions": {
+            "buildOptions": {
                 "define": [
                     "TRACE",
                     "OS_WINDOWS"
@@ -31,23 +31,23 @@
     },
     
     "dependencies": {
-        "NETStandard.Library": "1.5.0-rc3-24011-00",
+        "Microsoft.NETCore.App": "1.0.0-rc3-004306",
         "Microsoft.VisualStudio.Services.Agent": { "target": "project", "version": "1.0.0-*" },
-        "Microsoft.Win32.Registry": "4.0.0-rc3-24011-00",
+        "Microsoft.Win32.Registry": "4.0.0-rc3-24125-01",
         "vss-api-netcore": "0.5.10-private",
-        "System.ServiceProcess.ServiceController": "4.1.0-rc3-24011-00",
-        "System.IO.Compression.ZipFile": "4.0.1-rc3-24011-00",
-        "System.IO.FileSystem.AccessControl": "4.0.0-rc3-24011-00",
+        "System.ServiceProcess.ServiceController": "4.1.0-rc3-24125-01",
+        "System.IO.Compression.ZipFile": "4.0.1-rc3-24125-01",
+        "System.IO.FileSystem.AccessControl": "4.0.0-rc3-24125-01",
         "Newtonsoft.Json": "7.0.1",
-        "System.Diagnostics.TraceSource": "4.0.0-rc3-24011-00",
-        "System.Security.AccessControl": "4.0.0-rc3-24011-00",
-        "System.Runtime.InteropServices": "4.1.0-rc3-24011-00",
-        "System.Security.Cryptography.Cng": "4.1.0-rc3-24011-00"
+        "System.Diagnostics.TraceSource": "4.0.0-rc3-24125-01",
+        "System.Security.AccessControl": "4.0.0-rc3-24125-01",
+        "System.Runtime.InteropServices": "4.1.0-rc3-24125-01",
+        "System.Security.Cryptography.Cng": "4.2.0-rc3-24125-01"
     },
 
     "frameworks": {
-        "dnxcore50": {
-            "imports": "portable-net451+win8"
+        "netcoreapp1.0": {
+          "imports": ["dnxcore50", "portable-net451+win8"]
         }
     },
 
