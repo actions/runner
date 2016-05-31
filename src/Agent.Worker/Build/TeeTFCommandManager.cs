@@ -257,7 +257,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
             if (!formatFlags.HasFlag(FormatFlags.OmitLogin))
             {
-                formattedArgs.Add($"-login:_,{accessToken}");
+                formattedArgs.Add($"-jwt:{accessToken}");
             }
 
             if (!formatFlags.HasFlag(FormatFlags.OmitNoPrompt))
