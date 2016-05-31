@@ -25,7 +25,7 @@ EXTERNALTOOLSLOCATION=(
     portableredhatgit/1
     portablewingit/1
     symstore/1
-    tee/1
+    tee/14_0_4
     vstshost/2
     vstsom/1
     )
