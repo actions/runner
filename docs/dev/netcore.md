@@ -36,7 +36,7 @@ tar zxfv dotnet-dev-ubuntu-x64.1.0.0-preview2-002875.tar.gz
 
 > <sub><sup>TIP: Uninstall any existing version first by listing existing packages containing "dotnet" in the name with "dpkg --get-selections | grep dotnet" and then uninstall one by one with "sudo apt-get purge dotnet_package_name".</sup></sub>
 
-## ![Redhat](../res/redhat.png) Red Hat Enterprise Linux 7.2
+## ![Redhat](../res/redhat_med.png) Red Hat Enterprise Linux 7.2
 
 The script below downloads and extracts .Net Core in a folder ~/dotnet. Please add this folder to your PATH (usually by editing ~/.bash_profile).  We install several yum packages needed by .Net Core and our dev.sh script.
 
