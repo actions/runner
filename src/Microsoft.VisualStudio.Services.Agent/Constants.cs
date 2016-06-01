@@ -104,6 +104,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             public static readonly string Alternate = "ALT";
             public static readonly string Negotiate = "Negotiate";
             public static readonly string Integrated = "Integrated";
+            public static readonly string ServiceIdentity = "ServiceIdentity";
         }
 
         public static class Path

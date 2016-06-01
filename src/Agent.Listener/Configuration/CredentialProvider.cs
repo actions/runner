@@ -64,7 +64,54 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             trace.Info(nameof(EnsureCredential));
             ArgUtil.NotNull(command, nameof(command));
             CredentialData.Data[Constants.Agent.CommandLine.Args.Token] = command.GetToken();
-        }        
+        }
+    }
+
+    public sealed class ServiceIdentityCredential : CredentialProvider
+    {
+        public ServiceIdentityCredential(): base(Constants.Configuration.ServiceIdentity) {}
+
+        public override VssCredentials GetVssCredentials(IHostContext context)
+        {
+            ArgUtil.NotNull(context, nameof(context));
+            Tracing trace = context.GetTrace(nameof(PersonalAccessToken));
+            trace.Info(nameof(GetVssCredentials));
+            ArgUtil.NotNull(CredentialData, nameof(CredentialData));
+            string token;
+            if (!CredentialData.Data.TryGetValue(Constants.Agent.CommandLine.Args.Token, out token))
+            {
+                token = null;
+            }
+
+            string username;
+            if (!CredentialData.Data.TryGetValue(Constants.Agent.CommandLine.Args.UserName, out username))
+            {
+                username = null;
+            }
+
+            ArgUtil.NotNullOrEmpty(token, nameof(token));
+            ArgUtil.NotNullOrEmpty(username, nameof(username));
+
+            trace.Info("token retrieved: {0} chars", token.Length);
+
+            // ServiceIdentity uses a service identity credential
+            VssServiceIdentityToken identityToken = new VssServiceIdentityToken(token);
+            VssServiceIdentityCredential serviceIdentityCred = new VssServiceIdentityCredential(username, "", identityToken);
+            VssCredentials creds = new VssCredentials(serviceIdentityCred);
+            trace.Verbose("cred created");
+
+            return creds;
+        }
+
+        public override void EnsureCredential(IHostContext context, CommandSettings command, string serverUrl)
+        {
+            ArgUtil.NotNull(context, nameof(context));
+            Tracing trace = context.GetTrace(nameof(PersonalAccessToken));
+            trace.Info(nameof(EnsureCredential));
+            ArgUtil.NotNull(command, nameof(command));
+            CredentialData.Data[Constants.Agent.CommandLine.Args.Token] = command.GetToken();
+            CredentialData.Data[Constants.Agent.CommandLine.Args.UserName] = command.GetUserName();
+        }
     }
 
     public sealed class AlternateCredential : CredentialProvider
