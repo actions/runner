@@ -8,6 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Diagnostics;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 {
@@ -112,18 +113,26 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         private async Task ParallelUploadAsync(IAsyncCommandContext context, int uploaderId, CancellationToken token)
         {
             string fileToUpload;
+            Stopwatch uploadTimer = new Stopwatch();
             while (_fileUploadQueue.TryDequeue(out fileToUpload))
             {
                 token.ThrowIfCancellationRequested();
                 try
                 {
+                    context.Output(StringUtil.Loc("StartFileUpload", fileToUpload, new FileInfo(fileToUpload).Length));
                     using (FileStream fs = File.Open(fileToUpload, FileMode.Open, FileAccess.Read))
                     {
                         string itemPath = (_containerPath.TrimEnd('/') + "/" + fileToUpload.Remove(0, _sourceParentDirectory.Length + 1)).Replace('\\', '/');
+                        uploadTimer.Restart();
                         var response = await FileContainerHttpClient.UploadFileAsync(_containerId, itemPath, fs, _projectId, token);
+                        uploadTimer.Stop();
                         if (response.StatusCode != System.Net.HttpStatusCode.Created)
                         {
-                            throw new Exception($"Unable to copy file to server StatusCode={response.StatusCode}: {response.ReasonPhrase}. Source file path: {fileToUpload}. Target server path: {itemPath}");
+                            throw new Exception(StringUtil.Loc("FileContainerUploadFailed", response.StatusCode, response.ReasonPhrase, fileToUpload, itemPath));
+                        }
+                        else
+                        {
+                            context.Output(StringUtil.Loc("FileUploadFinish", fileToUpload, uploadTimer.ElapsedMilliseconds));
                         }
                     }
 
