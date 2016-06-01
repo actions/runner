@@ -284,6 +284,7 @@
   "SourceDirectoriesNotSpecified": "Source directories field is not specified. Specify valid source directories for code coverage reports to include highlighted source code and try again.",
   "SourceDirectoriesNotSpecifiedForMultiModule": "Source directories field is not specified. Source directories field is required for a multi module project for code coverage reports to include highlighted source code.",
   "StartFileUpload": "Start uploading file: '{0}' ({1} Bytes)",
+  "StepTimedOut": "The task has timed out.",
   "Success": "Succeeded: ",
   "SupportedRepositoryEndpointNotFound": "Unable to match any source repository endpoints with any of the supported source providers.",
   "SupportedTaskHandlerNotFound": "Supported task execution handler not found.",
