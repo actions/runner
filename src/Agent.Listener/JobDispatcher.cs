@@ -1,4 +1,5 @@
 ﻿using Microsoft.TeamFoundation.DistributedTask.WebApi;
+using Microsoft.VisualStudio.Services.Agent.Listener.Configuration;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
 using System.Collections.Concurrent;
@@ -237,11 +238,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
             // first job request renew succeed.
             TaskCompletionSource<int> firstJobRequestRenewed = new TaskCompletionSource<int>();
+            var notification = HostContext.GetService<IJobNotification>();
 
             // lock renew cancellation token.
             using (var lockRenewalTokenSource = new CancellationTokenSource())
             using (var workerProcessCancelTokenSource = new CancellationTokenSource())
             {
+                await notification.JobStarted(message.JobId);
                 long requestId = message.RequestId;
                 Guid lockToken = message.LockToken;
 
@@ -346,6 +349,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                         term.WriteLine(StringUtil.Loc("JobCompleted", DateTime.UtcNow, message.JobName, result));
                         // complete job request
                         await CompleteJobRequestAsync(_poolId, requestId, lockToken, result);
+                        await notification.JobCompleted(message.JobId);
 
                         Trace.Info("Stop renew job request.");
                         // stop renew lock
@@ -418,6 +422,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     // complete job request with cancel result, stop renew lock, job has finished.
                     //TODO: don't finish job request on abandon
                     await CompleteJobRequestAsync(_poolId, requestId, lockToken, resultOnAbandonOrCancel);
+                    await notification.JobCompleted(message.JobId);
 
                     Trace.Info("Stop renew job request.");
                     // stop renew lock

@@ -19,6 +19,9 @@ namespace Microsoft.VisualStudio.Services.Agent
 
         [DataMember(EmitDefaultValue = false)]
         public string AgentName { get; set; }
+        
+        [DataMember(EmitDefaultValue = false)]
+        public string NotificationPipeName { get; set; }
 
         [DataMember(EmitDefaultValue = false)]
         public int PoolId { get; set; }

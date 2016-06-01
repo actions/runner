@@ -163,9 +163,25 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 validator: Validators.NonEmptyValidator);
         }
 
+        public string GetNotificationPipeName()
+        {
+            return GetArg(Constants.Agent.CommandLine.Args.NotificationPipeName);
+        }
+
         //
         // Private helpers.
         //
+        private string GetArg(string name)
+        {
+            string result;
+            if (!_parser.Args.TryGetValue(name, out result))
+            {
+                result = null;
+            }
+
+            return result;
+        }
+
         private string GetArgOrPrompt(
             string name,
             string description,
@@ -174,11 +190,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         {
             // Check for the arg in the command line parser.
             ArgUtil.NotNull(validator, nameof(validator));
-            string result;
-            if (!_parser.Args.TryGetValue(name, out result))
-            {
-                result = null;
-            }
+            string result = GetArg(name);
 
             // Return the arg if it is not empty and is valid.
             _trace.Info($"Arg '{name}': '{result}'");
