@@ -98,7 +98,7 @@ function generateConstant()
 
     commit_token="_COMMIT_HASH_"
     package_token="_PACKAGE_NAME_"
-    commit_hash=`git rev-parse HEAD` || "failed git commit hash"
+    commit_hash=`git rev-parse HEAD` || failed "git commit hash"
     package_name=${runtime_folder%/}
     echo "Building ${commit_hash} --- ${package_name}"
 
@@ -272,7 +272,7 @@ function package ()
 
     pkg_dir=`pwd`/../_package
 
-    agent_ver=`${LAYOUT_DIR}/bin/Agent.Listener --version` || "failed version"
+    agent_ver=`${LAYOUT_DIR}/bin/Agent.Listener --version` || failed "version"
     agent_pkg_name="vsts-agent-${pkg_runtime}-${agent_ver}"
     # -$(date +%m)$(date +%d)"
 
