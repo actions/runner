@@ -1,5 +1,6 @@
 ﻿using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
+using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -62,6 +63,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 {
                     s_trace.Info($"Version: {Constants.Agent.Version}");
                     s_trace.Info($"Commit: {BuildConstants.Source.CommitHash}");
+                    s_trace.Info($"Culture: {CultureInfo.CurrentCulture.Name}");
 
                     //
                     // TODO (bryanmac): Need VsoAgent.exe compat shim for SCM
