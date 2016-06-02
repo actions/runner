@@ -135,14 +135,21 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
         {
             if (_locStrings == null)
             {
-                string localePath = Path.Combine(IOUtil.GetBinPath(), CultureInfo.CurrentCulture.Name);
-                if (!Directory.Exists(localePath))
+                var localeFallback = new string[] { CultureInfo.CurrentCulture.Name, "en-US" };
+                foreach (string locale in localeFallback)
                 {
-                    localePath = Path.Combine(IOUtil.GetBinPath(), EnglishUSLocale);
-                }
+                    if (string.IsNullOrEmpty(locale))
+                    {
+                        continue;
+                    }
 
-                string stringsPath = Path.Combine(localePath, "strings.json");
-                _locStrings = IOUtil.LoadObject<Dictionary<string, Object>>(stringsPath);
+                    string file = Path.Combine(IOUtil.GetBinPath(), locale, "strings.json");
+                    if (File.Exists(file))
+                    {
+                        _locStrings = IOUtil.LoadObject<Dictionary<string, object>>(file);
+                        return;
+                    }
+                }
             }
         }
     }
