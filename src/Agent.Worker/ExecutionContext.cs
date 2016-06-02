@@ -194,6 +194,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         // This is not thread safe, the caller need to take lock before calling issue()
         public void AddIssue(Issue issue)
         {
+            ArgUtil.NotNull(issue, nameof(issue));
+            issue.Message = _secretMasker.MaskSecrets(issue.Message);
             if (issue.Type == IssueType.Error)
             {
                 if (_record.ErrorCount <= _maxIssueCount)

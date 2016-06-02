@@ -68,10 +68,8 @@ namespace Microsoft.VisualStudio.Services.Agent
                     Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.Build.GitHubSourceProvider, Agent.Worker");
                     Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.Build.SvnSourceProvider, Agent.Worker");
                     Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.Build.TfsGitSourceProvider, Agent.Worker");
-#if WINDOWS
-                    Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.Build.TfsVCWindowsSourceProvider, Agent.Worker");
-#elif OS_LINUX || OS_OSX
-                    Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.Build.TfsVCTeeSourceProvider, Agent.Worker");
+#if !OS_WINDOWS
+                    Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.Build.TfsVCSourceProvider, Agent.Worker");
 #endif
                     break;
                 // Worker release artifact extensions.

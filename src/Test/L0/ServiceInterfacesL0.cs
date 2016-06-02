@@ -75,6 +75,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 typeof(IResultReader),
                 typeof(ISourceProvider),
                 typeof(IStep),
+                typeof(ITfsVCMapping),
+                typeof(ITfsVCPendingChange),
+                typeof(ITfsVCShelveset),
+                typeof(ITfsVCStatus),
+                typeof(ITfsVCWorkspace),
                 typeof(IWorkerCommandExtension),
             };
             Validate(

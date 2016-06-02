@@ -26,14 +26,6 @@ namespace Microsoft.VisualStudio.Services.Agent
             public static readonly OSPlatform Platform = OSPlatform.Windows;
 #endif
 
-            public static class ReturnCode
-            {
-                public const int Success = 0;
-                public const int TerminatedError = 1;
-                public const int RetryableError = 2;
-                public const int AgentUpdating = 3;
-            }
-
             public static class CommandLine
             {
                 public static class Args
@@ -77,6 +69,14 @@ namespace Microsoft.VisualStudio.Services.Agent
                     public static readonly string Version = "version";
                 }
             }
+
+            public static class ReturnCode
+            {
+                public const int Success = 0;
+                public const int TerminatedError = 1;
+                public const int RetryableError = 2;
+                public const int AgentUpdating = 3;
+            }
         }
 
         public static class Build
@@ -111,6 +111,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             public static readonly string BinDirectory = "bin";
             public static readonly string DiagDirectory = "_diag";
             public static readonly string ExternalsDirectory = "externals";
+            public static readonly string TFDirectory = "tf";
             public static readonly string TeeDirectory = "tee";
             public static readonly string TaskJsonFile = "task.json";
             public static readonly string TasksDirectory = "_tasks";
@@ -174,6 +175,27 @@ namespace Microsoft.VisualStudio.Services.Agent
                 public static readonly string TestResultsDirectory = "common.testresultsdirectory";
             }
 
+            public static class Release
+            {
+                //
+                // Keep alphabetical
+                //
+                public static readonly string AgentReleaseDirectory = "agent.releaseDirectory";
+                public static readonly string ArtifactsDirectory = "system.artifactsDirectory";
+                public static readonly string AttemptNumber = "release.attemptNumber";
+                public static readonly string ReleaseDefinitionName = "release.definitionName";
+                public static readonly string ReleaseEnvironmentName = "release.environmentName";
+                public static readonly string ReleaseEnvironmentUri = "release.environmentUri";
+                public static readonly string ReleaseDescription = "release.releaseDescription";
+                public static readonly string ReleaseId = "release.releaseId";
+                public static readonly string ReleaseName = "release.releaseName";
+                public static readonly string ReleaseRequestedForId = "release.requestedForId";
+                public static readonly string ReleaseUri = "release.releaseUri";
+                public static readonly string ReleaseWebUrl = "release.releaseWebUrl";
+                public static readonly string RequestorId = "release.requestedFor";
+                public static readonly string SkipArtifactsDownload = "release.skipartifactsDownload";
+            }
+
             public static class System
             {
                 //
@@ -199,27 +221,6 @@ namespace Microsoft.VisualStudio.Services.Agent
             public static class Task
             {
                 public static readonly string DisplayName = "task.displayname";
-            }
-
-            public static class Release
-            {
-                //
-                // Keep alphabetical
-                //
-                public static readonly string AgentReleaseDirectory = "agent.releaseDirectory";
-                public static readonly string ArtifactsDirectory = "system.artifactsDirectory";
-                public static readonly string AttemptNumber = "release.attemptNumber";
-                public static readonly string ReleaseDefinitionName = "release.definitionName";
-                public static readonly string ReleaseEnvironmentName = "release.environmentName";
-                public static readonly string ReleaseEnvironmentUri = "release.environmentUri";
-                public static readonly string ReleaseDescription = "release.releaseDescription";
-                public static readonly string ReleaseId = "release.releaseId";
-                public static readonly string ReleaseName = "release.releaseName";
-                public static readonly string ReleaseRequestedForId = "release.requestedForId";
-                public static readonly string ReleaseUri = "release.releaseUri";
-                public static readonly string ReleaseWebUrl = "release.releaseWebUrl";
-                public static readonly string RequestorId = "release.requestedFor";
-                public static readonly string SkipArtifactsDownload = "release.skipartifactsDownload";
             }
         }
     }
