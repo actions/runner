@@ -2,9 +2,9 @@
 
 ## Windows
 
-Preview 1 on tested on Windows 10 so far.
+The minimum supported version is Windows 7.
 
-Even though the agent has no pre-requisites, many of the tasks we run require Visual Studio 2015
+Even though the agent has no pre-requisites, many of the tasks we run require Visual Studio.
 
 ## ![osx](../res/apple_med.png) OSX
 

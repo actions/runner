@@ -6,6 +6,8 @@
 
 ![Win](res/win_sm.png) Git for Windows [Install Here](https://git-scm.com/downloads) _(needed for dev sh script)
 
+![Win](res/win_sm.png) On Windows you need Visual Studio 2015.
+
 ## Build, Test, Clean, Restore 
 
 From src:
