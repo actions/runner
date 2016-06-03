@@ -279,16 +279,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
             // We will Combine() what's stored with root.  Defaults to string a relative path
             string workFolder = command.GetWork();
+            string notificationPipeName = command.GetNotificationPipeName();
 
             // Get Agent settings
             var settings = new AgentSettings
             {
                 AcceptTeeEula = acceptTeeEula,
                 AgentId = agent.Id,
-                ServerUrl = serverUrl,
                 AgentName = agentName,
-                PoolName = poolName,
+                NotificationPipeName = notificationPipeName,
                 PoolId = poolId,
+                PoolName = poolName,
+                ServerUrl = serverUrl,
                 WorkFolder = workFolder,
             };
 
