@@ -15,6 +15,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
     public sealed class AgentL0
     {
         private Mock<IConfigurationManager> _configurationManager;
+        private Mock<IJobNotification> _jobNotification;
         private Mock<IMessageListener> _messageListener;
         private Mock<IPromptManager> _promptManager;
         private Mock<IJobDispatcher> _jobDispatcher;
@@ -24,6 +25,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
         public AgentL0()
         {
             _configurationManager = new Mock<IConfigurationManager>();
+            _jobNotification = new Mock<IJobNotification>();
             _messageListener = new Mock<IMessageListener>();
             _promptManager = new Mock<IPromptManager>();            
             _jobDispatcher = new Mock<IJobDispatcher>();
@@ -61,6 +63,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                 var agent = new Agent.Listener.Agent();
                 agent.TokenSource = tokenSource;
                 hc.SetSingleton<IConfigurationManager>(_configurationManager.Object);
+                hc.SetSingleton<IJobNotification>(_jobNotification.Object);
                 hc.SetSingleton<IMessageListener>(_messageListener.Object);
                 hc.SetSingleton<IPromptManager>(_promptManager.Object);                
                 hc.SetSingleton<IAgentServer>(_agentServer.Object);
@@ -118,6 +121,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                    {
                        return Task.CompletedTask;
                    });
+                _jobNotification.Setup(x => x.StartClient(It.IsAny<String>(), It.IsAny<CancellationToken>()))
+                    .Callback(() =>
+                    {
+
+                    });
 
                 hc.EnqueueInstance<IJobDispatcher>(_jobDispatcher.Object);
 
