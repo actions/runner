@@ -11,7 +11,7 @@ Supported on Windows, OSX, Ubuntu and Red Hat.  Written for the .NET Core CLR as
 
 A preview is available for Ubuntu, RedHat and OSX for VSTS.  The current preview is more feature complete than the node agent bringing Auto Update, Cancellation, Run as a svc on OSX and Linux, and Gated support.
 
-What's missing from the preview? TfsVc (TEE on nix) on-prem support and windows tf.exe support is finishing up. 
+What's missing from the preview? Windows tf.exe support is finishing up. 
 
 |   | Build & Test | Preview | Release |
 |---|:-----:|:-----:|:-----:|
