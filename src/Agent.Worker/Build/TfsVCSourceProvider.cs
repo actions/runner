@@ -123,7 +123,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                     }
 #else
                     // Undo pending changes.
-                    ITfsVCStatus tfStatus = await tf.StatusAsync();
+                    ITfsVCStatus tfStatus = await tf.StatusAsync(localPath: sourcesDirectory);
                     if (tfStatus?.HasPendingChanges ?? false)
                     {
                         await tf.UndoAsync(localPath: sourcesDirectory);
