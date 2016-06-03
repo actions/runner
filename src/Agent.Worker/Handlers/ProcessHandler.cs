@@ -37,7 +37,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             ArgUtil.NotNull(TaskDirectory, nameof(TaskDirectory));
 
             // Update the env dictionary.
-            AddVariablesToEnvironment();
+            AddVariablesToEnvironment(excludeSecrets: true);
 
             // Get the command.
             ArgUtil.NotNullOrEmpty(Data.Target, nameof(Data.Target));

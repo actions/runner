@@ -65,21 +65,24 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 jobContext.Variables.Set(Constants.Variables.Agent.WorkFolder, IOUtil.GetWorkPath(HostContext));
                 jobContext.Variables.Set(Constants.Variables.System.WorkFolder, IOUtil.GetWorkPath(HostContext));
 
-                // prefer task definitions url, then TFS url
+                // prefer task definitions url, then TFS collection url, then TFS account url
                 var taskServer = HostContext.GetService<ITaskServer>();
-                string taskUrl = jobContext.Variables.System_TaskDefinitionsUri;
                 Uri taskServerUri;
-                if (string.IsNullOrEmpty(taskUrl))
+                if (!string.IsNullOrEmpty(jobContext.Variables.System_TaskDefinitionsUri))
                 {
-                    taskServerUri = ReplaceWithConfigUriBase(message.Environment.SystemConnection.Url);
-                    Trace.Info($"Creating task server with tfs server url {taskServerUri.ToString()}");
+                    taskServerUri = ReplaceWithConfigUriBase(new Uri(jobContext.Variables.System_TaskDefinitionsUri));
+                }
+                else if (!string.IsNullOrEmpty(jobContext.Variables.System_TFCollectionUrl))
+                {
+                    taskServerUri = ReplaceWithConfigUriBase(new Uri(jobContext.Variables.System_TFCollectionUrl));
                 }
                 else
                 {
-                    taskServerUri = ReplaceWithConfigUriBase(new Uri(taskUrl));
-                    Trace.Info($"Creating task server with {taskServerUri.ToString()}");
+                    var configStore = HostContext.GetService<IConfigurationStore>();
+                    taskServerUri = ReplaceWithConfigUriBase(new Uri(configStore.GetSettings().ServerUrl));
                 }
 
+                Trace.Info($"Creating task server with {taskServerUri}");
                 var taskServerCredential = ApiUtil.GetVssCredential(message.Environment.SystemConnection);
                 await taskServer.ConnectAsync(ApiUtil.CreateConnection(taskServerUri, taskServerCredential));
 

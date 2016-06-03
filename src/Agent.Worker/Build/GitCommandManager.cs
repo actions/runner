@@ -67,8 +67,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         private string _gitHttpUserAgentEnv = null;
         private string _gitPath = null;
         private Version _version = null;
-        private string _gitExecPathEnv = null;
-        private string _gitTemplatePathEnv = null;
 
         public async Task LoadGitExecutionInfo(IExecutionContext context)
         {
@@ -83,6 +81,28 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             }
 
             context.Debug($"Find git from agent's external directory: {_gitPath}.");
+            context.Debug($"Prepend git directory '{Path.GetDirectoryName(_gitPath)}' to PATH env.");
+
+#if OS_WINDOWS
+            string path = Environment.GetEnvironmentVariable("Path");
+#else
+            string path = Environment.GetEnvironmentVariable("PATH");            
+#endif
+
+            if (string.IsNullOrEmpty(path))
+            {
+                path = Path.GetDirectoryName(_gitPath);
+            }
+            else
+            {
+                path = Path.GetDirectoryName(_gitPath) + Path.PathSeparator + path;
+            }
+
+#if OS_WINDOWS
+            Environment.SetEnvironmentVariable("Path", path);
+#else
+            Environment.SetEnvironmentVariable("PATH", path);            
+#endif
 
             _version = await GitVersion(context);
             context.Debug($"Detect git version: {_version.ToString()}.");
@@ -91,10 +111,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             context.Debug($"Set git useragent to: {_gitHttpUserAgentEnv}.");
 
 #if !OS_WINDOWS
-            _gitExecPathEnv = Path.Combine(IOUtil.GetExternalsPath(), "git", "libexec", "git-core");
+            string _gitExecPathEnv = Path.Combine(IOUtil.GetExternalsPath(), "git", "libexec", "git-core");
             context.Debug($"Set git execpath to: {_gitExecPathEnv}");
-            _gitTemplatePathEnv = Path.Combine(IOUtil.GetExternalsPath(), "git", "share", "git-core", "templates");
+            string _gitTemplatePathEnv = Path.Combine(IOUtil.GetExternalsPath(), "git", "share", "git-core", "templates");
             context.Debug($"Set git templateDir to: {_gitTemplatePathEnv}");
+            
+            Environment.SetEnvironmentVariable("GIT_EXEC_PATH", _gitExecPathEnv);
+            Environment.SetEnvironmentVariable("GIT_TEMPLATE_DIR", _gitTemplatePathEnv);
 #endif
         }
 
@@ -287,16 +310,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 _gitEnv["GIT_HTTP_USER_AGENT"] = _gitHttpUserAgentEnv;
             }
 
-            if (!string.IsNullOrEmpty(_gitExecPathEnv))
-            {
-                _gitEnv["GIT_EXEC_PATH"] = _gitExecPathEnv;
-            }
-
-            if (!string.IsNullOrEmpty(_gitTemplatePathEnv))
-            {
-                _gitEnv["GIT_TEMPLATE_DIR"] = _gitTemplatePathEnv;
-            }
-
             return await processInvoker.ExecuteAsync(repoRoot, _gitPath, arg, _gitEnv, cancellationToken);
         }
 
@@ -334,16 +347,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 _gitEnv["GIT_HTTP_USER_AGENT"] = _gitHttpUserAgentEnv;
             }
 
-            if (!string.IsNullOrEmpty(_gitExecPathEnv))
-            {
-                _gitEnv["GIT_EXEC_PATH"] = _gitExecPathEnv;
-            }
-
-            if (!string.IsNullOrEmpty(_gitTemplatePathEnv))
-            {
-                _gitEnv["GIT_TEMPLATE_DIR"] = _gitTemplatePathEnv;
-            }
-
             return await processInvoker.ExecuteAsync(repoRoot, _gitPath, arg, _gitEnv, default(CancellationToken));
         }
 
@@ -367,16 +370,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             if (!string.IsNullOrEmpty(_gitHttpUserAgentEnv))
             {
                 _gitEnv["GIT_HTTP_USER_AGENT"] = _gitHttpUserAgentEnv;
-            }
-
-            if (!string.IsNullOrEmpty(_gitExecPathEnv))
-            {
-                _gitEnv["GIT_EXEC_PATH"] = _gitExecPathEnv;
-            }
-
-            if (!string.IsNullOrEmpty(_gitTemplatePathEnv))
-            {
-                _gitEnv["GIT_TEMPLATE_DIR"] = _gitTemplatePathEnv;
             }
 
             return await processInvoker.ExecuteAsync(repoRoot, _gitPath, arg, _gitEnv, cancellationToken);

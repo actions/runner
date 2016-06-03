@@ -94,7 +94,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             }
         }
 
-        protected void AddVariablesToEnvironment()
+        protected void AddVariablesToEnvironment(bool excludeSecrets = false)
         {
             // Validate args.
             Trace.Entering();
@@ -112,6 +112,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
                 AddEnvironmentVariable(
                     formattedKey,
                     pair.Value);
+            }
+
+            if (!excludeSecrets)
+            {
+                // Add the secret variables to the environment variable dictionary prefix with Secret_.
+                foreach (KeyValuePair<string, string> pair in ExecutionContext.Variables.Private)
+                {
+                    // Format all variables.
+                    string formattedKey = (pair.Key ?? string.Empty).Replace('.', '_').ToUpperInvariant();
+                    AddEnvironmentVariable(
+                        $"SECRET_{formattedKey}",
+                        pair.Value);
+                }
             }
         }
 
