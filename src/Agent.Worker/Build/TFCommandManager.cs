@@ -44,9 +44,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             throw new NotSupportedException();
         }
 
-        public async Task GetAsync()
+        public async Task GetAsync(string localPath)
         {
-            await RunCommandAsync(FormatFlags.OmitCollectionUrl, "vc", "get", $"/version:{SourceVersion}", "/recursive", "/overwrite", SourcesDirectory);
+            ArgUtil.NotNullOrEmpty(localPath, nameof(localPath));
+            await RunCommandAsync(FormatFlags.OmitCollectionUrl, "vc", "get", $"/version:{SourceVersion}", "/recursive", "/overwrite", localPath);
         }
 
         public string ResolvePath(string serverPath)
@@ -85,8 +86,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             }
         }
 
-        public async Task<ITfsVCStatus> StatusAsync()
+        public async Task<ITfsVCStatus> StatusAsync(string localPath)
         {
+            // TODO: Clean this up. The localPath parameter isn't used.
+            ArgUtil.NotNullOrEmpty(localPath, nameof(localPath));
             string xml = await RunPorcelainCommandAsync("vc", "status", $"/workspace:{WorkspaceName}", "/recursive", "/nodetect", "/format:xml");
             var serializer = new XmlSerializer(typeof(TFStatus));
             using (var reader = new StringReader(xml ?? string.Empty))
@@ -115,9 +118,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             }
         }
 
-        public async Task UndoAsync()
+        public async Task UndoAsync(string localPath)
         {
-            await RunCommandAsync(FormatFlags.OmitCollectionUrl, "vc", "undo", "/recursive", SourcesDirectory);
+            ArgUtil.NotNullOrEmpty(localPath, nameof(localPath));
+            await RunCommandAsync(FormatFlags.OmitCollectionUrl, "vc", "undo", "/recursive", localPath);
         }
 
         public async Task UnshelveAsync(string shelveset)

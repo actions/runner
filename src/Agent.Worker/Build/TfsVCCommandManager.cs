@@ -26,15 +26,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         TfsVCFeatures Features { get; }
 
         Task EulaAsync();
-        Task GetAsync();
+        Task GetAsync(string localPath);
         string ResolvePath(string serverPath);
         Task ScorchAsync();
         Task ShelveAsync(string shelveset, string commentFile);
         Task<ITfsVCShelveset> ShelvesetsAsync(string shelveset);
-        Task<ITfsVCStatus> StatusAsync();
+        Task<ITfsVCStatus> StatusAsync(string localPath);
         bool TestEulaAccepted();
         Task<bool> TryWorkspaceDeleteAsync(ITfsVCWorkspace workspace);
-        Task UndoAsync();
+        Task UndoAsync(string localPath);
         Task UnshelveAsync(string shelveset);
         Task WorkfoldCloakAsync(string serverPath);
         Task WorkfoldMapAsync(string serverPath, string localPath);
