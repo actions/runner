@@ -250,6 +250,7 @@
   "RMRetryingArtifactDownload": "Retrying download...",
   "RMStartArtifactsDownload": "Starting artifacts download...",
   "RMUserChoseToSkipArtifactDownload": "Skipping artifact download based on the setting specified.",
+  "RSAKeyFileNotFound": "RSA key file {0} was not found",
   "RunAgentAsServiceDescription": "run agent as service? (Y/N)",
   "RunningJob": "{0:u}: Running job: {1}",
   "SavedSettings": "{0:u}: Settings Saved.",
