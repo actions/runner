@@ -16,7 +16,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             settings.MaxRetryRequest = 5;
 
             var headerValues = new List<ProductInfoHeaderValue>();
-            headerValues.Add(new ProductInfoHeaderValue($"VstsAgentCore-{BuildConstants.AgentPackage.PackageName}", Constants.Agent.Version));
+#if OS_WINDOWS
+            headerValues.Add(new ProductInfoHeaderValue("VstsAgentCore-windows", Constants.Agent.Version));
+#elif OS_OSX
+            headerValues.Add(new ProductInfoHeaderValue("VstsAgentCore-darwin", Constants.Agent.Version));		
+#elif OS_LINUX
+            headerValues.Add(new ProductInfoHeaderValue("VstsAgentCore-linux", Constants.Agent.Version));		
+#endif
             headerValues.Add(new ProductInfoHeaderValue($"({RuntimeInformation.OSDescription.Trim()})"));
 
             if (settings.UserAgent != null && settings.UserAgent.Count > 0)
