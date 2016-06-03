@@ -36,9 +36,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             await RunCommandAsync(FormatFlags.All, "eula", "-accept");
         }
 
-        public async Task GetAsync()
+        public async Task GetAsync(string localPath)
         {
-            await RunCommandAsync("get", $"-version:{SourceVersion}", "-recursive", "-overwrite", SourcesDirectory);
+            ArgUtil.NotNullOrEmpty(localPath, nameof(localPath));
+            await RunCommandAsync(FormatFlags.OmitCollectionUrl, "get", $"-version:{SourceVersion}", "-recursive", "-overwrite", localPath);
         }
 
         public string ResolvePath(string serverPath)
@@ -67,7 +68,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         {
             ArgUtil.NotNullOrEmpty(shelveset, nameof(shelveset));
             ArgUtil.NotNullOrEmpty(commentFile, nameof(commentFile));
-            await RunPorcelainCommandAsync(FormatFlags.OmitCollectionUrl, "shelve", "-saved", "-replace", "-recursive", $"-comment:@{commentFile}", shelveset, SourcesDirectory);
+            await RunPorcelainCommandAsync(FormatFlags.OmitCollectionUrl, "shelve", $"-workspace:{WorkspaceName}", "-saved", "-replace", "-recursive", $"-comment:@{commentFile}", shelveset);
         }
 
         public async Task<ITfsVCShelveset> ShelvesetsAsync(string shelveset)
@@ -90,9 +91,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             }
         }
 
-        public async Task<ITfsVCStatus> StatusAsync()
+        public async Task<ITfsVCStatus> StatusAsync(string localPath)
         {
-            string xml = await RunPorcelainCommandAsync("status", $"-workspace:{WorkspaceName}", "-recursive", "-nodetect", "-format:xml");
+            ArgUtil.NotNullOrEmpty(localPath, nameof(localPath));
+            string xml = await RunPorcelainCommandAsync(FormatFlags.OmitCollectionUrl, "status", "-recursive", "-format:xml", localPath);
             var serializer = new XmlSerializer(typeof(TeeStatus));
             using (var reader = new StringReader(xml ?? string.Empty))
             {
@@ -160,9 +162,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             }
         }
 
-        public async Task UndoAsync()
+        public async Task UndoAsync(string localPath)
         {
-            await RunCommandAsync("undo", "-recursive", SourcesDirectory);
+            ArgUtil.NotNullOrEmpty(localPath, nameof(localPath));
+            await RunCommandAsync(FormatFlags.OmitCollectionUrl, "undo", "-recursive", localPath);
         }
 
         public async Task UnshelveAsync(string shelveset)
@@ -191,7 +194,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
         public async Task WorkspaceNewAsync()
         {
-            await RunCommandAsync("workspace", "-new", "-location:local", "-permission:Public", WorkspaceName);
+            await RunCommandAsync("workspace", "-new", "-location:server", "-permission:Public", WorkspaceName);
         }
 
         public async Task<ITfsVCWorkspace[]> WorkspacesAsync()
