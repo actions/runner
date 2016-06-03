@@ -21,7 +21,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             { Constants.Configuration.PAT, typeof(PersonalAccessToken)},
             { Constants.Configuration.Alternate, typeof(AlternateCredential)},
             { Constants.Configuration.Negotiate, typeof(NegotiateCredential)},
-            { Constants.Configuration.Integrated, typeof(IntegratedCredential)}
+            { Constants.Configuration.Integrated, typeof(IntegratedCredential)},
+            { Constants.Configuration.ServiceIdentity, typeof(ServiceIdentityCredential)},
         };
 
         public ICredentialProvider GetCredentialProvider(string credType)
