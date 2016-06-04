@@ -33,7 +33,7 @@
     "dependencies": {
         "Microsoft.NETCore.App": "1.0.0-rc3-004306",
         "Microsoft.VisualStudio.Services.Agent": { "target": "project", "version": "1.0.0-*" },
-        "vss-api-netcore": "0.5.17-private",
+        "vss-api-netcore": "0.5.19-private",
         "System.Diagnostics.TraceSource": "4.0.0-rc3-24125-01",
         "System.Xml.XmlSerializer": "4.0.11-rc3-24125-01",
         "System.Security.Cryptography.Algorithms": "4.2.0-rc3-24125-01",

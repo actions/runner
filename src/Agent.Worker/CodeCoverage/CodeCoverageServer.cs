@@ -22,9 +22,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
         {
             var testHttpClient = connection.GetClient<TestManagementHttpClient>();
             // <todo: Bug 402783> We are currently passing BuildFlavor and BuildPlatform = "" There value are required be passed to command
-            await testHttpClient.UpdateCodeCoverageSummaryAsync(project, buildId,
-               new CodeCoverageData() { BuildFlavor = "", BuildPlatform = "", CoverageStats = coverageData.ToList() },
-               cancellationToken: cancellationToken);
+            CodeCoverageData data = new CodeCoverageData()
+            {
+                BuildFlavor = "",
+                BuildPlatform = "",
+                CoverageStats = coverageData.ToList()
+            };
+
+            await testHttpClient.UpdateCodeCoverageSummaryAsync(data, project, buildId, cancellationToken: cancellationToken);
         }
     }
 }
