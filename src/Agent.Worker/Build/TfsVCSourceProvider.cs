@@ -36,7 +36,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             AgentSettings settings = HostContext.GetService<IConfigurationStore>().GetSettings();
             if (tf.Features.HasFlag(TfsVCFeatures.Eula) && settings.AcceptTeeEula)
             {
-                // Check if the "tf eula -accept" command needs to be run for the current security user.
+                // Check if the "tf eula -accept" command needs to be run for the current user.
                 bool skipEula = false;
                 try
                 {
@@ -94,51 +94,54 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                     sourcesDirectory: sourcesDirectory);
                 if (existingTFWorkspace != null)
                 {
-                    // TODO: Clean this up. Either merge the logic into one, or use command features instead of "#if def".
-#if !OS_WINDOWS
-                    // Perform "undo" for each map.
-                    foreach (DefinitionWorkspaceMapping definitionMapping in definitionMappings ?? new DefinitionWorkspaceMapping[0])
+                    if (tf.Features.HasFlag(TfsVCFeatures.GetFromUnmappedRoot))
                     {
-                        if (definitionMapping.MappingType == DefinitionMappingType.Map)
+                        // Undo pending changes.
+                        ITfsVCStatus tfStatus = await tf.StatusAsync(localPath: sourcesDirectory);
+                        if (tfStatus?.HasPendingChanges ?? false)
                         {
-                            // Check the status.
-                            string localPath = ResolveMappingLocalPath(definitionMapping, sourcesDirectory);
-                            ITfsVCStatus tfStatus = await tf.StatusAsync(localPath: localPath);
-                            if (tfStatus?.HasPendingChanges ?? false)
-                            {
-                                // Undo.
-                                await tf.UndoAsync(localPath: localPath);
+                            await tf.UndoAsync(localPath: sourcesDirectory);
 
-                                // Cleanup remaining files/directories from pend adds.
-                                tfStatus.AllAdds
-                                    .OrderByDescending(x => x.LocalItem) // Sort descending so nested items are deleted before their parent is deleted.
-                                    .ToList()
-                                    .ForEach(x =>
-                                    {
-                                        executionContext.Output(StringUtil.Loc("Deleting", x.LocalItem));
-                                        IOUtil.Delete(x.LocalItem, cancellationToken);
-                                    });
+                            // Cleanup remaining files/directories from pend adds.
+                            tfStatus.AllAdds
+                                .OrderByDescending(x => x.LocalItem) // Sort descending so nested items are deleted before their parent is deleted.
+                                .ToList()
+                                .ForEach(x =>
+                                {
+                                    executionContext.Output(StringUtil.Loc("Deleting", x.LocalItem));
+                                    IOUtil.Delete(x.LocalItem, cancellationToken);
+                                });
+                        }
+                    }
+                    else
+                    {
+                        // Perform "undo" for each map.
+                        foreach (DefinitionWorkspaceMapping definitionMapping in definitionMappings ?? new DefinitionWorkspaceMapping[0])
+                        {
+                            if (definitionMapping.MappingType == DefinitionMappingType.Map)
+                            {
+                                // Check the status.
+                                string localPath = ResolveMappingLocalPath(definitionMapping, sourcesDirectory);
+                                ITfsVCStatus tfStatus = await tf.StatusAsync(localPath: localPath);
+                                if (tfStatus?.HasPendingChanges ?? false)
+                                {
+                                    // Undo.
+                                    await tf.UndoAsync(localPath: localPath);
+
+                                    // Cleanup remaining files/directories from pend adds.
+                                    tfStatus.AllAdds
+                                        .OrderByDescending(x => x.LocalItem) // Sort descending so nested items are deleted before their parent is deleted.
+                                        .ToList()
+                                        .ForEach(x =>
+                                        {
+                                            executionContext.Output(StringUtil.Loc("Deleting", x.LocalItem));
+                                            IOUtil.Delete(x.LocalItem, cancellationToken);
+                                        });
+                                }
                             }
                         }
                     }
-#else
-                    // Undo pending changes.
-                    ITfsVCStatus tfStatus = await tf.StatusAsync(localPath: sourcesDirectory);
-                    if (tfStatus?.HasPendingChanges ?? false)
-                    {
-                        await tf.UndoAsync(localPath: sourcesDirectory);
 
-                        // Cleanup remaining files/directories from pend adds.
-                        tfStatus.AllAdds
-                            .OrderByDescending(x => x.LocalItem) // Sort descending so nested items are deleted before their parent is deleted.
-                            .ToList()
-                            .ForEach(x =>
-                            {
-                                executionContext.Output(StringUtil.Loc("Deleting", x.LocalItem));
-                                IOUtil.Delete(x.LocalItem, cancellationToken);
-                            });
-                    }
-#endif
                     // Scorch.
                     if (clean)
                     {
@@ -198,20 +201,22 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 }
             }
 
-            // TODO: Clean this up. Either merge the logic into one, or use command features instead of "#if def".
-#if !OS_WINDOWS
-            // Perform "get" for each map.
-            foreach (DefinitionWorkspaceMapping definitionMapping in definitionMappings ?? new DefinitionWorkspaceMapping[0])
+            if (tf.Features.HasFlag(TfsVCFeatures.GetFromUnmappedRoot))
             {
-                if (definitionMapping.MappingType == DefinitionMappingType.Map)
+                // Get.
+                await tf.GetAsync(localPath: sourcesDirectory);
+            }
+            else
+            {
+                // Perform "get" for each map.
+                foreach (DefinitionWorkspaceMapping definitionMapping in definitionMappings ?? new DefinitionWorkspaceMapping[0])
                 {
-                    await tf.GetAsync(localPath: ResolveMappingLocalPath(definitionMapping, sourcesDirectory));
+                    if (definitionMapping.MappingType == DefinitionMappingType.Map)
+                    {
+                        await tf.GetAsync(localPath: ResolveMappingLocalPath(definitionMapping, sourcesDirectory));
+                    }
                 }
             }
-#else
-            // Get.
-            await tf.GetAsync(localPath: sourcesDirectory);
-#endif
 
             string shelvesetName = executionContext.Variables.Build_SourceTfvcShelveset;
             if (!string.IsNullOrEmpty(shelvesetName))
