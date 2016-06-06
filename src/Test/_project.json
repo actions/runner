@@ -38,7 +38,7 @@
         "xunit.netcore.extensions": "1.0.0-prerelease-00326-03",
         "xunit.runner.utility": "2.1.0",
         "Agent.Listener": { "target": "project", "version": "1.0.0-*" },
-        "vss-api-netcore": "0.5.17-private",
+        "vss-api-netcore": "0.5.19-private",
         "Microsoft.VisualStudio.Services.Agent": { "target": "project", "version": "1.0.0-*" },
         "Agent.Worker": { "target": "project", "version": "1.0.0-*" } 
     },

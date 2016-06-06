@@ -46,7 +46,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
            RunCreateModel testRunData,
            CancellationToken cancellationToken = default(CancellationToken))
         {
-            return await TestHttpClient.CreateTestRunAsync(projectName, testRunData, cancellationToken);
+            return await TestHttpClient.CreateTestRunAsync(testRunData, projectName, cancellationToken);
         }
 
         public async Task<TestRun> UpdateTestRunAsync(
@@ -55,7 +55,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
          RunUpdateModel updateModel,
          CancellationToken cancellationToken = default(CancellationToken))
         {
-            return await TestHttpClient.UpdateTestRunAsync(projectName, testRunId, updateModel, cancellationToken);
+            return await TestHttpClient.UpdateTestRunAsync(updateModel, projectName, testRunId, cancellationToken);
         }
 
         public async Task<TestAttachmentReference> CreateTestRunAttachmentAsync(
