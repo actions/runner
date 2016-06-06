@@ -55,6 +55,10 @@ function checkRC() {
 function acquireExternalTool() {
     local download_source=$1 # E.g. https://vstsagenttools.blob.core.windows.net/tools/pdbstr/1/pdbstr.zip
     local target_dir="$LAYOUT_DIR/externals/$2" # E.g. $LAYOUT_DIR/externals/pdbstr
+    local fix_nested_dir=$3 # Flag that indicates whether to move nested contents up one directory. E.g. TEE-CLC-14.0.4.zip
+                            # directly contains only a nested directory TEE-CLC-14.0.4. When this flag is set, the contents
+                            # of the nested TEE-CLC-14.0.4 directory are moved up one directory, and then the empty directory
+                            # TEE-CLC-14.0.4 is removed.
 
     # Extract the portion of the URL after the protocol. E.g. vstsagenttools.blob.core.windows.net/tools/pdbstr/1/pdbstr.zip
     local relative_url="${download_source#*://}"
@@ -86,19 +90,37 @@ function acquireExternalTool() {
 
     # Extract to layout.
     mkdir -p "$target_dir"
+    local nested_dir=""
     if [[ "$download_basename" == *.zip ]]; then
+        # Extract the zip.
         echo "Extracting zip to layout"
         unzip "$download_target" -d "$target_dir" > /dev/null
+
+        # Capture the nested directory path if the fix_nested_dir flag is set.
+        if [[ "$fix_nested_dir" == "fix_nested_dir" ]]; then
+            nested_dir="${download_basename%.zip}" # Remove the trailing ".zip".
+        fi
     elif [[ "$download_basename" == *.tar.gz ]]; then
+        # Extract the tar gz.
         echo "Extracting tar gz to layout"
         tar xzf "$download_target" -C "$target_dir" > /dev/null
-        if [ -d "$target_dir/${download_basename%.tar.gz}" ]; then
-            mv "$target_dir/${download_basename%.tar.gz}"/* "$target_dir/"
-            rmdir "$target_dir/${download_basename%.tar.gz}"
+
+        # Capture the nested directory path if the fix_nested_dir flag is set.
+        if [[ "$fix_nested_dir" == "fix_nested_dir" ]]; then
+            nested_dir="${download_basename%.tar.gz}" # Remove the trailing ".tar.gz".
         fi
     else
+        # Copy the file.
         echo "Copying to layout"
         cp "$download_target" "$target_dir/"
+    fi
+
+    # Fixup the nested directory.
+    if [[ "$nested_dir" != "" ]]; then
+        if [ -d "$target_dir/$nested_dir" ]; then
+            mv "$target_dir/$nested_dir"/* "$target_dir/"
+            rmdir "$target_dir/$nested_dir"
+        fi
     fi
 }
 
@@ -109,6 +131,7 @@ if [[ "$PLATFORM" == "windows" ]]; then
     acquireExternalTool "$CONTAINER_URL/pdbstr/1/pdbstr.zip" pdbstr
     acquireExternalTool "$CONTAINER_URL/portablewingit/1/portablewingit.zip" git
     acquireExternalTool "$CONTAINER_URL/symstore/1/symstore.zip" symstore
+    acquireExternalTool "$CONTAINER_URL/tfexe/101.0/tfexe.zip" tf
     acquireExternalTool "$CONTAINER_URL/vstshost/2/vstshost.zip" vstshost
     acquireExternalTool "$CONTAINER_URL/vstsom/1/vstsom.zip" vstsom
     acquireExternalTool "$NODE_URL/v${NODE_VERSION}/win-x64/node.exe" node/bin
@@ -119,19 +142,17 @@ elif [[ "$PLATFORM" == "rhel" || "$PLATFORM" == "centos" ]]; then
     acquireExternalTool "$CONTAINER_URL/portableredhatgit/1/portableredhatgit.tar.gz" git
 elif [[ "$PLATFORM" == "darwin" ]]; then
     acquireExternalTool "$CONTAINER_URL/portableosxgit/1/portableosxgit.tar.gz" git
-    acquireExternalTool "$NODE_URL/v${NODE_VERSION}/node-v${NODE_VERSION}-darwin-x64.tar.gz" node
+    acquireExternalTool "$NODE_URL/v${NODE_VERSION}/node-v${NODE_VERSION}-darwin-x64.tar.gz" node fix_nested_dir
 else
     echo "Unknown platform $PLATFORM"
 fi
 
 # Download the external tools common across OSX and Linux platforms.
 if [[ "$PLATFORM" == "ubuntu" || "$PLATFORM" == "debian" || "$PLATFORM" == "rhel" || "$PLATFORM" == "centos" || "$PLATFORM" == "darwin" ]]; then
-    acquireExternalTool "$CONTAINER_URL/tee/14_0_4/tee.zip" tee
-    # TODO: Remove this after fix issue with nested folder in zip.
-    chmod +x "$LAYOUT_DIR/externals/tee/tf"
+    acquireExternalTool "$CONTAINER_URL/tee/14_0_4_20160606/TEE-CLC-14.0.4.zip" tee fix_nested_dir
 fi
 
 # Download the external tools common across Linux platforms (excluding OSX).
 if [[ "$PLATFORM" == "ubuntu" || "$PLATFORM" == "debian" || "$PLATFORM" == "rhel" || "$PLATFORM" == "centos" ]]; then
-    acquireExternalTool "$NODE_URL/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-x64.tar.gz" node
+    acquireExternalTool "$NODE_URL/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-x64.tar.gz" node fix_nested_dir
 fi
