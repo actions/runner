@@ -106,7 +106,6 @@ After=network.target
 [Service]
 ExecStart={0}/runsvc.sh
 User={1}
-Environment=NODE_ENV=production
 WorkingDirectory={0}
 KillMode=process
 KillSignal=SIGTERM
