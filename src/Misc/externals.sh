@@ -1,7 +1,71 @@
-#!/bin/bash
-CONTAINER_URL=https://vstsagenttools.blob.core.windows.net/tools
-NODE_URL=https://nodejs.org/dist
 NODE_VERSION="5.10.1"
+
+#external tools name
+EXTERNALTOOLSNAME=(
+    azcopy
+    nuget
+    pdbstr
+    portableosxgit
+    portableubuntugit
+    portableredhatgit
+    portablewingit
+    symstore
+    tee
+    vstshost
+    vstsom
+    )
+    
+#external tools download URL fragment
+EXTERNALTOOLSLOCATION=(
+    azcopy/1
+    nuget/1
+    pdbstr/1
+    portableosxgit/1
+    portableubuntugit/1
+    portableredhatgit/1
+    portablewingit/1
+    symstore/1
+    tee/14_0_4
+    vstshost/2
+    vstsom/1
+    )
+
+#external tools extensions
+EXTERNALTOOLSEXTENSION=(
+    zip
+    zip
+    zip
+    tar.gz
+    tar.gz
+    tar.gz
+    zip
+    zip
+    zip
+    zip
+    zip
+    )
+
+#names of the directories where tools are extracted
+EXTERNALTOOLSDIRECTORY=(
+    azcopy
+    nuget
+    pdbstr
+    git
+    git
+    git
+    git
+    symstore
+    tee
+    vstshost
+    vstsom
+    )
+    
+EXTERNALTOOLS_WINDOWS=(azcopy nuget pdbstr portablewingit symstore vstshost vstsom)
+EXTERNALTOOLS_LINUX_RHEL=(tee portableredhatgit)
+EXTERNALTOOLS_LINUX_UBUNTU=(tee portableubuntugit)
+EXTERNALTOOLS_DARWIN=(tee portableosxgit)
+
+CONTAINER_URL=https://vstsagenttools.blob.core.windows.net/tools
 
 get_abs_path() {
   # exploits the fact that pwd will print abs path when no args
@@ -12,6 +76,7 @@ LAYOUT_DIR=$(get_abs_path `dirname $0`/../../_layout)
 DOWNLOAD_DIR=$(get_abs_path `dirname $0`/../../_downloads)
 
 function get_current_os_name() {
+
     local uname=$(uname)
     if [ "$uname" = "Darwin" ]; then
         echo "darwin"
@@ -39,7 +104,8 @@ function get_current_os_name() {
 
 PLATFORM=$(get_current_os_name)
 
-function failed() {
+function failed()
+{
    local error=${1:-Undefined error}
    echo "Failed: $error" >&2
    exit 1
@@ -52,81 +118,165 @@ function checkRC() {
     fi
 }
 
-function acquireExternalTool() {
-    local download_source=$1 # E.g. https://vstsagenttools.blob.core.windows.net/tools/pdbstr/1/pdbstr.zip
-    local target_dir="$LAYOUT_DIR/externals/$2" # E.g. $LAYOUT_DIR/externals/pdbstr
+function acquireNode ()
+{
+    echo "Downloading Node ${NODE_VERSION}..."
+    target_dir="${LAYOUT_DIR}/externals/node"
+    if [ -d $target_dir ]; then
+        rm -Rf $target_dir
+    fi
+    mkdir -p $target_dir
 
-    # Extract the portion of the URL after the protocol. E.g. vstsagenttools.blob.core.windows.net/tools/pdbstr/1/pdbstr.zip
-    local relative_url="${download_source#*://}"
+    mkdir -p "${DOWNLOAD_DIR}"
+    pushd "${DOWNLOAD_DIR}" > /dev/null
 
-    # Check if the download already exists.
-    local download_target="$DOWNLOAD_DIR/$relative_url"
-    local download_basename="$(basename $download_target)"
-    if [ -f "$download_target" ]; then
-        echo "Download exists: $download_basename"
+    if [[ "$PLATFORM" == "windows" ]]; then
+        
+        # Windows
+
+        node_download_dir="${DOWNLOAD_DIR}/node-v${NODE_VERSION}-win-x64"
+        mkdir -p $node_download_dir
+        pushd "${node_download_dir}" > /dev/null
+
+        node_exe_url=https://nodejs.org/dist/v${NODE_VERSION}/win-x64/node.exe
+        echo "Downloading Node ${NODE_VERSION} @ ${node_exe_url}"
+        curl -kSLO $node_exe_url &> "./node_download_exe.log"
+        node_lib_url=https://nodejs.org/dist/v${NODE_VERSION}/win-x64/node.lib
+        curl -kSLO $node_lib_url &> "./node_download_lib.log"
+        checkRC "Download (curl)"
+
+        echo "Copying to layout"
+        mkdir ${target_dir}/bin
+        cp -f node.* ${target_dir}/bin
+        
+        popd > /dev/null
     else
-        # Delete any previous partial file.
-        local partial_target="$DOWNLOAD_DIR/partial/$download_basename"
-        mkdir -p "$(dirname "$partial_target")"
-        if [ -f "$partial_target" ]; then
-            rm "$partial_target"
+
+        # OSX/Linux
+        if [[ "$PLATFORM" == "darwin" ]]; then
+            node_file="node-v${NODE_VERSION}-darwin-x64"
+        else
+            node_file="node-v${NODE_VERSION}-linux-x64"
+        fi        
+        node_zip="${node_file}.tar.gz"
+        
+        if [ -f ${node_zip} ]; then
+            echo "Download exists"
+        else
+            node_url="https://nodejs.org/dist/v${NODE_VERSION}/${node_zip}"
+            echo "Downloading Node ${NODE_VERSION} @ ${node_url}"
+            curl -kSLO $node_url &> "./node_download.log"
+            checkRC "Download (curl)"
         fi
 
-        # Download from source to the partial file.
-        echo "Downloading $download_source"
-        pushd "$(dirname "$partial_target")" > /dev/null
-        mkdir -p "$(dirname $download_target)"
-        curl -kSLO "$download_source" &> "${download_target}_download.log"
-        checkRC "Download (curl)"
-        popd > /dev/null
+        if [ -d ${node_file} ]; then
+            echo "Already extracted"
+        else
+            echo "Extracting"
+            tar zxf ${node_zip} > "node_tar.log"
+            checkRC "Unzip (node)"
+        fi   
+        
+        # copy to layout
+        echo "Copying to layout"
+        cp -Rf ${node_file}/* ${target_dir} 
+    fi    
 
-        # Move the partial file to the download target.
-        mv "$partial_target" "$download_target"
-    fi
+    popd > /dev/null
 
-    # Extract to layout.
-    echo "Extracting to layout"
-    local extension="${download_basename#*.}"
-    mkdir -p "$target_dir"
-    if [[ "${extension}" = "zip" ]]; then
-        unzip "$download_target" -d "$target_dir" > /dev/null
-    elif [[ "${extension}" = "tar.gz" ]]; then
-        tar xzf "$download_target" -C "$target_dir" > /dev/null
-    else
-        cp "$download_target" "$target_dir/"
-    fi
+    echo Done
 }
 
-# Download the external tools specific to each platform.
+function getExternalToolsRelativeDownloadUrl()
+{
+    local toolName=$1
+    for index in "${!EXTERNALTOOLSNAME[@]}"; do
+        if [[ "${EXTERNALTOOLSNAME[$index]}" = "${toolName}" ]]; then
+            echo "${EXTERNALTOOLSLOCATION[${index}]}";
+        fi
+    done
+}
+
+function getExternalToolsExtension()
+{
+    local toolName=$1
+    for index in "${!EXTERNALTOOLSNAME[@]}"; do
+        if [[ "${EXTERNALTOOLSNAME[$index]}" = "${toolName}" ]]; then
+            echo "${EXTERNALTOOLSEXTENSION[${index}]}";
+        fi
+    done
+}
+
+function getExternalToolsDirectory()
+{
+    local toolName=$1
+    for index in "${!EXTERNALTOOLSNAME[@]}"; do
+        if [[ "${EXTERNALTOOLSNAME[$index]}" = "${toolName}" ]]; then
+            echo "${EXTERNALTOOLSDIRECTORY[${index}]}";
+        fi
+    done
+}
+
+function acquireExternalTools ()
+{
+    local tools=$1
+    local toolsinfo=$tools[@]
+    for tool in "${!toolsinfo}"
+    do
+        local relative_url=$(getExternalToolsRelativeDownloadUrl $tool)
+        local tool_extension=$(getExternalToolsExtension $tool)
+        local tool_directory=$(getExternalToolsDirectory $tool)
+        local download_url="${CONTAINER_URL}/${relative_url}/${tool}.${tool_extension}"
+
+        local target_dir="${LAYOUT_DIR}/externals/${tool_directory}"
+        if [ -d $target_dir ]; then
+            rm -Rf $target_dir
+        fi
+        mkdir -p $target_dir
+        
+        mkdir -p "${DOWNLOAD_DIR}"
+        
+        tool_download_dir="${DOWNLOAD_DIR}/${relative_url}"
+        mkdir -p $tool_download_dir        
+        pushd "${tool_download_dir}" > /dev/null
+
+        if [ -f $tool.${tool_extension} ]; then
+            echo "Download exists: ${tool}"
+        else
+            echo "Downloading ${tool} from ${download_url}"
+            curl -kSLO $download_url &> "./${tool}_download.log"
+            checkRC "Download (curl)"
+        fi
+        
+        echo "Extracting to layout"
+        if [[ "${tool_extension}" = "zip" ]]; then
+            unzip ${tool}.${tool_extension} -d ${target_dir} > /dev/null
+        fi
+
+        if [[ "${tool_extension}" = "tar.gz" ]]; then
+            tar xzf ${tool}.${tool_extension} -C ${target_dir} > /dev/null
+        fi
+
+        if [[ "${tool}" = "tee" ]]; then
+            chmod +x ${target_dir}/tf
+        fi
+
+        popd > /dev/null        
+    done
+
+    echo Done
+}
+
+acquireNode
+
 if [[ "$PLATFORM" == "windows" ]]; then
-    acquireExternalTool "$CONTAINER_URL/azcopy/1/azcopy.zip" azcopy
-    acquireExternalTool "$CONTAINER_URL/nuget/1/nuget.zip" nuget
-    acquireExternalTool "$CONTAINER_URL/pdbstr/1/pdbstr.zip" pdbstr
-    acquireExternalTool "$CONTAINER_URL/portablewingit/1/portablewingit.zip" git
-    acquireExternalTool "$CONTAINER_URL/symstore/1/symstore.zip" symstore
-    acquireExternalTool "$CONTAINER_URL/vstshost/2/vstshost.zip" vstshost
-    acquireExternalTool "$CONTAINER_URL/vstsom/1/vstsom.zip" vstsom
-    acquireExternalTool "$NODE_URL/v${NODE_VERSION}/win-x64/node.exe" node/bin
-    acquireExternalTool "$NODE_URL/v${NODE_VERSION}/win-x64/node.lib" node/bin
+    acquireExternalTools EXTERNALTOOLS_WINDOWS
 elif [[ "$PLATFORM" == "ubuntu" || "$PLATFORM" == "debian" ]]; then
-    acquireExternalTool "$CONTAINER_URL/portableubuntugit/1/portableubuntugit.tar.gz" git
+    acquireExternalTools EXTERNALTOOLS_LINUX_UBUNTU
 elif [[ "$PLATFORM" == "rhel" || "$PLATFORM" == "centos" ]]; then
-    acquireExternalTool "$CONTAINER_URL/portableredhatgit/1/portableredhatgit.tar.gz" git
+    acquireExternalTools EXTERNALTOOLS_LINUX_RHEL
 elif [[ "$PLATFORM" == "darwin" ]]; then
-    acquireExternalTool "$CONTAINER_URL/portableosxgit/1/portableosxgit.tar.gz" git
-    acquireExternalTool "$NODE_URL/node-v${NODE_VERSION}-darwin-x64.tar.gz" node
+    acquireExternalTools EXTERNALTOOLS_DARWIN
 else
     echo "Unknown platform $PLATFORM"
-fi
-
-# Download the external tools common across OSX and Linux platforms.
-if [[ "$PLATFORM" == "ubuntu" || "$PLATFORM" == "debian" || "$PLATFORM" == "rhel" || "$PLATFORM" == "centos" || "$PLATFORM" == "darwin" ]]; then
-    acquireExternalTool "$CONTAINER_URL/tee/14_0_4/tee.zip" tee
-    # TODO: Remove this after fix issue with nested folder in zip.
-    chmod +x "$LAYOUT_DIR/externals/tee/tf"
-fi
-
-# Download the external tools common across Linux platforms (excluding OSX).
-if [[ "$PLATFORM" == "ubuntu" || "$PLATFORM" == "debian" || "$PLATFORM" == "rhel" || "$PLATFORM" == "centos" ]]; then
-    acquireExternalTool "$NODE_URL/node-v${NODE_VERSION}-linux-x64.tar.gz" node
 fi
