@@ -73,7 +73,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                     if (chars.Count > 0)
                     {
                         chars.RemoveAt(chars.Count - 1);
-                        // TODO: Remove a character from the screen also.
+                        Console.Write("\b \b");
                     }
                 }
                 else if (key.KeyChar > 0)
