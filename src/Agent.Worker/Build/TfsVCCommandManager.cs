@@ -251,10 +251,25 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
     public enum TfsVCFeatures
     {
         None = 0,
+
+        // Indicates whether "workspace /new" adds a default mapping.
         DefaultWorkfoldMap = 1,
+
+        // Indicates whether the "eula" subcommand is supported.
         Eula = 2,
-        LoginType = 4,
-        Scorch = 8,
+
+        // Indicates whether the "get" and "undo" subcommands will correctly resolve
+        // the workspace from an unmapped root folder. For example, if a workspace
+        // contains only two mappings, $/foo -> $(build.sourcesDirectory)\foo and
+        // $/bar -> $(build.sourcesDirectory)\bar, then "tf get $(build.sourcesDirectory)"
+        // will not be able to resolve the workspace unless this feature is supported.
+        GetFromUnmappedRoot = 4,
+
+        // Indicates whether the "loginType" parameter is supported.
+        LoginType = 8,
+
+        // Indicates whether the "scorch" subcommand is supported.
+        Scorch = 16,
     }
 
     ////////////////////////////////////////////////////////////////////////////////
