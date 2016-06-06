@@ -584,10 +584,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             {
                 // Arrange.
                 var command = new CommandSettings(hc, args: new string[0]);
+                string accountName = "somewindowsaccount";
                 _promptManager
                     .Setup(x => x.ReadValue(
                         Constants.Agent.CommandLine.Args.WindowsLogonPassword, // argName
-                        StringUtil.Loc("WindowsLogonPasswordDescription"), // description
+                        StringUtil.Loc("WindowsLogonPasswordDescription", accountName), // description
                         true, // secret
                         string.Empty, // defaultValue
                         Validators.NonEmptyValidator, // validator
@@ -595,7 +596,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                     .Returns("some windows logon password");
 
                 // Act.
-                string actual = command.GetWindowsLogonPassword();
+                string actual = command.GetWindowsLogonPassword(accountName);
 
                 // Assert.
                 Assert.Equal("some windows logon password", actual);

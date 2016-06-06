@@ -49,7 +49,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             {
                 while (true)
                 {
-                    logonPassword = command.GetWindowsLogonPassword();
+                    logonPassword = command.GetWindowsLogonPassword(_logonAccount);
 
                     // TODO: Fix this for unattended (should throw if not valid).
                     // TODO: If account is locked there is no point in retrying, translate error to useful message
