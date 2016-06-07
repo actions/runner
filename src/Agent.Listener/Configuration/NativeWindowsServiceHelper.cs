@@ -12,7 +12,7 @@ using Microsoft.VisualStudio.Services.Agent.Util;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 {
-    [ServiceLocator (Default = typeof(NativeWindowsServiceHelper))]
+    [ServiceLocator(Default = typeof(NativeWindowsServiceHelper))]
     public interface INativeWindowsServiceHelper : IAgentService
     {
         string GetUniqueBuildGroupName();
@@ -299,6 +299,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             }
         }
 
+        public static bool IsWellKnownIdentity(String accountName)
+        {
+            NTAccount ntaccount = new NTAccount(accountName);
+            SecurityIdentifier sid = (SecurityIdentifier)ntaccount.Translate(typeof(SecurityIdentifier));
+
+            SecurityIdentifier networkServiceSid = new SecurityIdentifier(WellKnownSidType.NetworkServiceSid, null);
+            SecurityIdentifier localServiceSid = new SecurityIdentifier(WellKnownSidType.LocalServiceSid, null);
+            SecurityIdentifier localSystemSid = new SecurityIdentifier(WellKnownSidType.LocalSystemSid, null);
+
+            return sid.Equals(networkServiceSid) ||
+                   sid.Equals(localServiceSid) ||
+                   sid.Equals(localSystemSid);
+        }
+
         public bool IsValidCredential(string domain, string userName, string logonPassword)
         {
             Trace.Entering();
@@ -395,7 +409,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 //invoke the service with special argument, that tells it to register an event log trace source (need to run as an admin)
                 using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
                 {
-                    processInvoker.ExecuteAsync(string.Empty, agentServiceExecutable, "init", null, default(System.Threading.CancellationToken)).GetAwaiter().GetResult();                    
+                    processInvoker.ExecuteAsync(string.Empty, agentServiceExecutable, "init", null, default(System.Threading.CancellationToken)).GetAwaiter().GetResult();
                 }
 
                 _term.WriteLine(StringUtil.Loc("ServiceConfigured", serviceName));
@@ -431,7 +445,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 hashString = IOUtil.GetBinPath().ToLowerInvariant();
             }
 
-            
+
             using (SHA256 sha256hash = SHA256.Create())
             {
                 byte[] data = sha256hash.ComputeHash(Encoding.UTF8.GetBytes(hashString));

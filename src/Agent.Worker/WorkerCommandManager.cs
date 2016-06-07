@@ -66,7 +66,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     catch (Exception ex)
                     {
                         context.Error(ex);
-                        context.Error($"Unable to process command {command} successfully.");
+                        context.Error($"Unable to process command {input} successfully.");
                         context.CommandResult = TaskResult.Failed;
                     }
                 }
