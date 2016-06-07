@@ -181,8 +181,8 @@
     "bin/Agent.Listener run",
     "",
     "Unattend configuration for on-premise TFS with integrated and negotiate authentication",
-    "bin/Agent.Listener configure --url http://mylocaltfsserver:8080/tfs --agent myagent --pool default --nostart --auth negotiate --username DEV-BOX\\developer --password MyPassword...",
-    "bin/Agent.Listener configure --url http://mylocaltfsserver:8080/tfs --agent myagent --pool default --nostart --auth integrated..."
+    "bin/Agent.Listener configure --url http://mylocaltfsserver:8080/tfs --agent myagent --pool default --nostart --auth negotiate --username DEV-BOX\\developer --password MyPassword",
+    "bin/Agent.Listener configure --url http://mylocaltfsserver:8080/tfs --agent myagent --pool default --nostart --auth integrated"
   ],
   "ListenForJobs": "{0:u}: Listening for Jobs",
   "MemberDoesNotExists": "Member: {0} does not Exist",
