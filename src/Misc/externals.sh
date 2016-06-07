@@ -127,7 +127,6 @@ function acquireExternalTool() {
 # Download the external tools specific to each platform.
 if [[ "$PLATFORM" == "windows" ]]; then
     acquireExternalTool "$CONTAINER_URL/azcopy/1/azcopy.zip" azcopy
-    acquireExternalTool "$CONTAINER_URL/nuget/1/nuget.zip" nuget
     acquireExternalTool "$CONTAINER_URL/pdbstr/1/pdbstr.zip" pdbstr
     acquireExternalTool "$CONTAINER_URL/portablewingit/1/portablewingit.zip" git
     acquireExternalTool "$CONTAINER_URL/symstore/1/symstore.zip" symstore
@@ -136,6 +135,7 @@ if [[ "$PLATFORM" == "windows" ]]; then
     acquireExternalTool "$CONTAINER_URL/vstsom/1/vstsom.zip" vstsom
     acquireExternalTool "$NODE_URL/v${NODE_VERSION}/win-x64/node.exe" node/bin
     acquireExternalTool "$NODE_URL/v${NODE_VERSION}/win-x64/node.lib" node/bin
+    acquireExternalTool "https://dist.nuget.org/win-x86-commandline/v3.4.3/nuget.exe" nuget
 elif [[ "$PLATFORM" == "ubuntu" || "$PLATFORM" == "debian" ]]; then
     acquireExternalTool "$CONTAINER_URL/portableubuntugit/1/portableubuntugit.tar.gz" git
 elif [[ "$PLATFORM" == "rhel" || "$PLATFORM" == "centos" ]]; then
