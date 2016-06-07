@@ -324,15 +324,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
         public NTAccount GetDefaultServiceAccount()
         {
-            SecurityIdentifier sid = new SecurityIdentifier(WellKnownSidType.LocalServiceSid, domainSid: null);
+            SecurityIdentifier sid = new SecurityIdentifier(WellKnownSidType.NetworkServiceSid, domainSid: null);
             NTAccount account = sid.Translate(typeof(NTAccount)) as NTAccount;
 
             if (account == null)
             {
-                throw new InvalidOperationException(StringUtil.Loc("LocalServiceNotFound"));
+                throw new InvalidOperationException(StringUtil.Loc("NetworkServiceNotFound"));
             }
 
-            // TODO: If its domain joined machine use WellKnownSidType.NetworkServiceSid
             return account;
         }
 

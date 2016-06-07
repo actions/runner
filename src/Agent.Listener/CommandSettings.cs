@@ -145,11 +145,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 validator: Validators.NTAccountValidator);
         }
 
-        public string GetWindowsLogonPassword()
+        public string GetWindowsLogonPassword(string accountName)
         {
             return GetArgOrPrompt(
                 name: Constants.Agent.CommandLine.Args.WindowsLogonPassword,
-                description: StringUtil.Loc("WindowsLogonPasswordDescription"),
+                description: StringUtil.Loc("WindowsLogonPasswordDescription", accountName),
                 defaultValue: string.Empty,
                 validator: Validators.NonEmptyValidator);
         }
