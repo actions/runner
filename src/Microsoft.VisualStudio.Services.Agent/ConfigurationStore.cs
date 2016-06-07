@@ -134,12 +134,14 @@ namespace Microsoft.VisualStudio.Services.Agent
             Trace.Info("Saving {0} credential @ {1}", credential.Scheme, _credFilePath);
             IOUtil.SaveObject(credential, _credFilePath);
             Trace.Info("Credentials Saved.");
+            File.SetAttributes(_credFilePath, File.GetAttributes(_credFilePath) | FileAttributes.Hidden);
         }
 
         public void SaveSettings(AgentSettings settings)
         {
             IOUtil.SaveObject(settings, _configFilePath);
             Trace.Info("Settings Saved.");
+            File.SetAttributes(_configFilePath, File.GetAttributes(_configFilePath) | FileAttributes.Hidden);
         }
 
         public void DeleteCredential()

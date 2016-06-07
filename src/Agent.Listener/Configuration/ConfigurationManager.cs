@@ -254,7 +254,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             }
 
             // See if the server supports our OAuth key exchange for credentials
-            if (agent.Authorization != null && 
+            if (agent.Authorization != null &&
                 agent.Authorization.ClientId != Guid.Empty &&
                 agent.Authorization.AuthorizationUrl != null)
             {
@@ -365,11 +365,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 {
                     AgentSettings settings = _store.GetSettings();
                     var credentialManager = HostContext.GetService<ICredentialManager>();
-                    VssCredentials creds = credentialManager.LoadCredentials();
+
+                    // Get the credentials
+                    var credProvider = GetCredentialProvider(command, settings.ServerUrl);
+                    VssCredentials creds = credProvider.GetVssCredentials(HostContext);
+                    Trace.Info("cred retrieved");
+
                     Uri uri = new Uri(settings.ServerUrl);
                     VssConnection conn = ApiUtil.CreateConnection(uri, creds);
                     var agentSvr = HostContext.GetService<IAgentServer>();
                     await agentSvr.ConnectAsync(conn);
+                    Trace.Info("Connect complete.");
 
                     List<TaskAgent> agents = await agentSvr.GetAgentsAsync(settings.PoolId, settings.AgentName);
                     if (agents.Count == 0)
@@ -429,7 +435,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             // Hosted defaults to PAT authentication.
             bool isHosted = serverUrl.IndexOf("visualstudio.com", StringComparison.OrdinalIgnoreCase) != -1
                 || serverUrl.IndexOf("tfsallin.net", StringComparison.OrdinalIgnoreCase) != -1;
-            string defaultAuth = isHosted ? Constants.Configuration.PAT : 
+            string defaultAuth = isHosted ? Constants.Configuration.PAT :
                 (Constants.Agent.Platform == Constants.OSPlatform.Windows ? Constants.Configuration.Integrated : Constants.Configuration.Negotiate);
             string authType = command.GetAuth(defaultValue: defaultAuth);
 

@@ -57,7 +57,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
         protected void SaveServiceSettings()
         {
-            File.WriteAllText(IOUtil.GetServiceConfigFilePath(), ServiceName, new UTF8Encoding(false));
+            string serviceConfigPath = IOUtil.GetServiceConfigFilePath();
+            File.WriteAllText(serviceConfigPath, ServiceName, new UTF8Encoding(false));
+            File.SetAttributes(serviceConfigPath, File.GetAttributes(serviceConfigPath) | FileAttributes.Hidden);
         }
 
         public abstract bool ConfigureService(AgentSettings settings, CommandSettings command);

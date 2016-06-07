@@ -78,7 +78,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             using (TestHostContext hc = CreateTestContext())
             {
                 // Arrange.
-                var command = new CommandSettings(hc, args: new string[] { "unconfigure" });
+                var command = new CommandSettings(hc, args: new string[] { "remove" });
 
                 // Act.
                 bool actual = command.Unconfigure;

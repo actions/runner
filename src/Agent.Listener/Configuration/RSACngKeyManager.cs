@@ -25,6 +25,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 Trace.Info("Creating new RSA key {0}", keyName);
                 File.WriteAllText(_keyFile, keyName);
                 Trace.Info("Successfully saved RSA key parameters to file {0}", _keyFile);
+                File.SetAttributes(_keyFile, File.GetAttributes(_keyFile) | FileAttributes.Hidden);
             }
 
             CngKey key = null;

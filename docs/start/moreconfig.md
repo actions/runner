@@ -24,6 +24,8 @@ $ ./config.sh remove
 Removing service
 Does not exist. Skipping Removing service
 Removing agent from the server
+Enter authentication type (press enter for PAT) >
+Enter personal access token > ****************************************************
 Succeeded: Removing agent from the server
 Removing .Credentials
 Succeeded: Removing .Credentials

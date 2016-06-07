@@ -55,7 +55,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                 {
                     public static readonly string Configure = "configure";
                     public static readonly string Run = "run";
-                    public static readonly string Unconfigure = "unconfigure";
+                    public static readonly string Unconfigure = "remove";
                 }
 
                 public static class Flags
