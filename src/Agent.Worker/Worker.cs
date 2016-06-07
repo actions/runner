@@ -24,6 +24,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             // Validate args.
             ArgUtil.NotNullOrEmpty(pipeIn, nameof(pipeIn));
             ArgUtil.NotNullOrEmpty(pipeOut, nameof(pipeOut));
+            WebProxy.ApplyProxySettings();
             var jobRunner = HostContext.GetService<IJobRunner>();
 
             using (var channel = HostContext.CreateService<IProcessChannel>())

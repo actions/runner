@@ -37,6 +37,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         {
             try
             {
+                WebProxy.ApplyProxySettings();
                 _inConfigStage = true;
                 _term.CancelKeyPress += CtrlCHandler;
                 // TODO Unit test to cover this logic
