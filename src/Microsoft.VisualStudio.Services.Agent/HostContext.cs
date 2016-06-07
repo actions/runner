@@ -133,8 +133,9 @@ namespace Microsoft.VisualStudio.Services.Agent
         public void SetDefaultCulture(string name)
         {
             ArgUtil.NotNull(name, nameof(name));
-            _trace.Verbose($"Culture: '{name}'");
+            _trace.Verbose($"Setting default culture and UI culture to: '{name}'");
             CultureInfo.DefaultThreadCurrentCulture = new CultureInfo(name);
+            CultureInfo.DefaultThreadCurrentUICulture = new CultureInfo(name);
         }
 
         public void Dispose()
