@@ -45,7 +45,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             }
 
             Trace.Info("LogonAccount after transforming: {0}, user: {1}, domain: {2}", _logonAccount, _userName, _domainName);
-            if (!defaultServiceAccount.Equals(new NTAccount(_logonAccount)))
+            if (!defaultServiceAccount.Equals(new NTAccount(_logonAccount)) &&
+                !NativeWindowsServiceHelper.IsWellKnownIdentity(_logonAccount))
             {
                 while (true)
                 {
