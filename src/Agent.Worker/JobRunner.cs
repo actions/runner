@@ -18,6 +18,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
     public sealed class JobRunner : AgentService, IJobRunner
     {
+        private const string _releaseManagementUrlSuffix = "vsrm.visualstudio.com";
+
         public async Task<TaskResult> RunAsync(JobRequestMessage message, CancellationToken jobRequestCancellationToken)
         {
             // Validate parameters.
@@ -38,7 +40,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             // Setup the job server and job server queue.
             var jobServer = HostContext.GetService<IJobServer>();
             var jobServerCredential = ApiUtil.GetVssCredential(message.Environment.SystemConnection);
-            var jobConnection = ApiUtil.CreateConnection(ReplaceWithConfigUriBase(message.Environment.SystemConnection.Url), jobServerCredential);
+            Uri jobServerUrl = ReplaceWithConfigUriBase(message.Environment.SystemConnection.Url);
+
+            Trace.Info($"Creating job server with URL: {jobServerUrl}");
+            var jobConnection = ApiUtil.CreateConnection(jobServerUrl, jobServerCredential);
             await jobServer.ConnectAsync(jobConnection);
 
             var jobServerQueue = HostContext.GetService<IJobServerQueue>();
@@ -213,9 +218,29 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             AgentSettings settings = HostContext.GetService<IConfigurationStore>().GetSettings();
             try
             {
+                string jobServerHost = messageUri.GetComponents(UriComponents.Host, UriFormat.Unescaped);
+                if (!string.IsNullOrEmpty(jobServerHost)
+                    && jobServerHost.IndexOf(_releaseManagementUrlSuffix, StringComparison.OrdinalIgnoreCase) > 0)
+                {
+                    // If its hosted and has RM service URL, return the messageUri as it is.
+                    return messageUri;
+                }
+
                 var configUri = new Uri(settings.ServerUrl);
                 Uri result = null;
-                var configBaseUri = new Uri(configUri.GetComponents(UriComponents.SchemeAndServer, UriFormat.Unescaped));
+                Uri configBaseUri = null;
+                string scheme = messageUri.GetComponents(UriComponents.Scheme, UriFormat.Unescaped);
+                string host = configUri.GetComponents(UriComponents.Host, UriFormat.Unescaped);
+
+                int portValue = 0;
+                string port = messageUri.GetComponents(UriComponents.Port, UriFormat.Unescaped);
+                if (!string.IsNullOrEmpty(port))
+                {
+                    int.TryParse(port, out portValue);
+                }
+
+                configBaseUri = portValue > 0 ? new UriBuilder(scheme, host, portValue).Uri : new UriBuilder(scheme, host).Uri;
+
                 if (Uri.TryCreate(configBaseUri, messageUri.PathAndQuery, out result))
                 {
                     //replace the schema and host portion of messageUri with the host from the
