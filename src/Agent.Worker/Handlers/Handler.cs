@@ -68,13 +68,36 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
                 AddEnvironmentVariable(
                     key: $"ENDPOINT_AUTH_{partialKey}",
                     // Note, JsonUtility.ToString will not null ref if the auth object is null.
-                    value: JsonUtility.ToString(endpoint.Authorization));
+                    value: JsonUtility.ToString(endpoint.Authorization)); 
+                if(endpoint.Authorization != null && endpoint.Authorization.Scheme != null)
+                {
+                    AddEnvironmentVariable(
+                        key: $"ENDPOINT_AUTH_SCHEME_{partialKey}",
+                        value: endpoint.Authorization.Scheme);
+
+                    foreach(KeyValuePair<string, string> pair in endpoint.Authorization.Parameters)
+                    {
+                        AddEnvironmentVariable(
+                            key: $"ENDPOINT_AUTH_PARAMETER_{partialKey}_{pair.Key?.Replace(' ', '_').ToUpperInvariant()}",
+                            value: pair.Value);
+                    }
+                }              
                 if (endpoint.Id != Guid.Empty)
                 {
                     AddEnvironmentVariable(
                         key: $"ENDPOINT_DATA_{partialKey}",
                         // Note, JsonUtility.ToString will not null ref if the data object is null.
                         value: JsonUtility.ToString(endpoint.Data));
+
+                    if(endpoint.Data != null)
+                    {
+                        foreach (KeyValuePair<string, string> pair in endpoint.Data)
+                        {
+                            AddEnvironmentVariable(
+                                key: $"ENDPOINT_DATA_{partialKey}_{pair.Key?.Replace(' ', '_').ToUpperInvariant()}",
+                                value: pair.Value);
+                        }
+                    }
                 }
             }
         }
