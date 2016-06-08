@@ -90,7 +90,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             base.Initialize(context);
 
             _context = context;
-            _keyFile = Path.Combine(IOUtil.GetRootPath(), ".credentials_rsaparams");
+            _keyFile = IOUtil.GetRSACredFilePath();
         }
     }
 }

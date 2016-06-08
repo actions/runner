@@ -312,6 +312,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                                                              { IOUtil.GetDiagPath(), "775" },
                                                              { IOUtil.GetConfigFilePath(), "770"},
                                                              { IOUtil.GetCredFilePath(), "770" },
+                                                             { IOUtil.GetRSACredFilePath(), "770" },
                                                          };
                     var unixUtil = HostContext.CreateService<IUnixUtil>();
                     foreach (var file in filesToChange)

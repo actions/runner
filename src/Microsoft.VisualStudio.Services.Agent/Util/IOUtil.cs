@@ -74,6 +74,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             return Path.Combine(GetRootPath(), ".Service");
         }
 
+        public static string GetRSACredFilePath()
+        {
+            return Path.Combine(GetRootPath(), ".credentials_rsaparams");
+        }
+
         public static string GetProxyConfigFilePath()
         {
             return Path.Combine(GetRootPath(), ".proxy");

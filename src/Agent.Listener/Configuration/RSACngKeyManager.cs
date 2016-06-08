@@ -102,7 +102,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         {
             base.Initialize(context);
 
-            _keyFile = Path.Combine(IOUtil.GetRootPath(), ".credentials_rsaparams");
+            _keyFile = IOUtil.GetRSACredFilePath();
         }
     }
 }

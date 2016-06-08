@@ -25,6 +25,7 @@ namespace Microsoft.VisualStudio.Services.Agent
 #elif OS_WINDOWS
             public static readonly OSPlatform Platform = OSPlatform.Windows;
 #endif
+            public static readonly TimeSpan ExitOnUnloadTimeout = TimeSpan.FromSeconds(30);
 
             public static class CommandLine
             {

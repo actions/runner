@@ -7,6 +7,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.Loader;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -19,6 +20,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         T CreateService<T>() where T : class, IAgentService;
         T GetService<T>() where T : class, IAgentService;
         void SetDefaultCulture(string name);
+        event EventHandler Unloading;
     }
 
     public sealed class HostContext : IHostContext, IDisposable
@@ -29,11 +31,17 @@ namespace Microsoft.VisualStudio.Services.Agent
         private readonly ConcurrentDictionary<Type, Type> _serviceTypes = new ConcurrentDictionary<Type, Type>();
         private Tracing _trace;
         private ITraceManager _traceManager;
+        private AssemblyLoadContext _loadContext;
+
+        public event EventHandler Unloading;
 
         public HostContext(string hostType, string logFile = null)
         {
             // Validate args.
             ArgUtil.NotNullOrEmpty(hostType, nameof(hostType));
+
+            _loadContext = AssemblyLoadContext.GetLoadContext(typeof(HostContext).GetTypeInfo().Assembly);
+            _loadContext.Unloading += LoadContext_Unloading;
 
             // Create the trace manager.
             if (string.IsNullOrEmpty(logFile))
@@ -149,8 +157,21 @@ namespace Microsoft.VisualStudio.Services.Agent
             // TODO: Dispose the trace listener also.
             if (disposing)
             {
+                if (_loadContext != null)
+                {
+                    _loadContext.Unloading -= LoadContext_Unloading;
+                    _loadContext = null;
+                }
                 _traceManager?.Dispose();
                 _traceManager = null;
+            }
+        }
+
+        private void LoadContext_Unloading(AssemblyLoadContext obj)
+        {
+            if (Unloading != null)
+            {
+                Unloading(this, null);
             }
         }
     }
