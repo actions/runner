@@ -74,7 +74,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         {
             if (!File.Exists(_keyFile))
             {
-                throw new CryptographicException(StringUtil.Loc("RSAKeyFileNotFound"));
+                throw new CryptographicException(StringUtil.Loc("RSAKeyFileNotFound", _keyFile));
             }
 
             Trace.Info("Loading RSA key parameters from file {0}", _keyFile);

@@ -100,14 +100,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             using(var processInvoker = HostContext.CreateService<IProcessInvoker>())
             {
                 var outputLock = new object();
-                processInvoker.OutputDataReceived += (object sender, DataReceivedEventArgs e) =>
+                processInvoker.OutputDataReceived += (object sender, ProcessDataReceivedEventArgs e) =>
                 {
                     lock (outputLock)
                     {
                         ExecutionContext.Output(e.Data);
                     }
                 };
-                processInvoker.ErrorDataReceived += (object sender, DataReceivedEventArgs e) =>
+                processInvoker.ErrorDataReceived += (object sender, ProcessDataReceivedEventArgs e) =>
                 {
                     lock (outputLock)
                     {
@@ -142,7 +142,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             {
                 var output = new List<string>();
                 var outputLock = new object();
-                processInvoker.OutputDataReceived += (object sender, DataReceivedEventArgs e) =>
+                processInvoker.OutputDataReceived += (object sender, ProcessDataReceivedEventArgs e) =>
                 {
                     lock (outputLock)
                     {
@@ -150,7 +150,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                         output.Add(e.Data);
                     }
                 };
-                processInvoker.ErrorDataReceived += (object sender, DataReceivedEventArgs e) =>
+                processInvoker.ErrorDataReceived += (object sender, ProcessDataReceivedEventArgs e) =>
                 {
                     lock (outputLock)
                     {

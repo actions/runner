@@ -4,14 +4,16 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Collections.Concurrent;
+using System.IO;
 
 namespace Microsoft.VisualStudio.Services.Agent
 {
     [ServiceLocator(Default = typeof(ProcessInvoker))]
     public interface IProcessInvoker : IDisposable, IAgentService
     {
-        event EventHandler<DataReceivedEventArgs> OutputDataReceived;
-        event EventHandler<DataReceivedEventArgs> ErrorDataReceived;
+        event EventHandler<ProcessDataReceivedEventArgs> OutputDataReceived;
+        event EventHandler<ProcessDataReceivedEventArgs> ErrorDataReceived;
 
         Task<int> ExecuteAsync(
             string workingDirectory,
@@ -29,126 +31,26 @@ namespace Microsoft.VisualStudio.Services.Agent
             CancellationToken cancellationToken);
     }
 
+    // The implementation of the process invoker does not hock up DataReceivedEvent and ErrorReceivedEvent of Process,
+    // instead, we read both STDOUT and STDERR stream manually on seperate thread. 
+    // The reason is we find a huge perf issue about process STDOUT/STDERR with those events. 
+    // 
+    // Missing functionalities:
+    //       1. Cancel/Kill process tree
+    //       2. Make sure STDOUT and STDERR not process out of order 
     public sealed class ProcessInvoker : AgentService, IProcessInvoker
     {
-        //TraceInterval defines how long between printing trace messages,
-        //while waiting for the process to exit
-        private static readonly TimeSpan TraceInterval = TimeSpan.FromSeconds(30);
-
         private Process _proc;
-        private SemaphoreSlim _processExitedSignal = new SemaphoreSlim(0, 1);
         private Stopwatch _stopWatch;
+        private int _asyncStreamReaderCount = 0;
+        private bool _waitingOnStreams = false;
+        private readonly AsyncManualResetEvent _outputProcessEvent = new AsyncManualResetEvent();
+        private readonly TaskCompletionSource<bool> _processExitedCompletionSource = new TaskCompletionSource<bool>();
+        private readonly ConcurrentQueue<string> _errorData = new ConcurrentQueue<string>();
+        private readonly ConcurrentQueue<string> _outputData = new ConcurrentQueue<string>();
 
-        public event EventHandler<DataReceivedEventArgs> OutputDataReceived;
-        public event EventHandler<DataReceivedEventArgs> ErrorDataReceived;
-
-        private async Task<int> WaitForExitAsync(CancellationToken cancellationToken)
-        {
-            // Wait for the cancellation token to be set or the process to exit.
-            try
-            {
-                while (!cancellationToken.IsCancellationRequested && !_proc.HasExited)
-                {
-                    await _processExitedSignal.WaitAsync(TraceInterval, cancellationToken);
-                    if (!_proc.HasExited)
-                    {
-                        Trace.Verbose($"Waiting on process {_proc.Id} ({_stopWatch.Elapsed} elapsed)");
-                    }
-                }
-
-                cancellationToken.ThrowIfCancellationRequested();
-            }
-            finally
-            {
-                if (cancellationToken.IsCancellationRequested && !_proc.HasExited)
-                {
-                    Trace.Info($"Terminating process with file name '{_proc?.StartInfo?.FileName}', arguments '{_proc?.StartInfo?.Arguments}', and working directory '{_proc?.StartInfo?.WorkingDirectory}'.");
-                    try
-                    {
-                        //TODO: find out what is Process.Kill doing with child processes on OSX and Linux
-                        _proc.Kill();
-                    }
-                    catch (InvalidOperationException ex)
-                    {
-                        //process has exited, before we got a chance to kill it
-                        Trace.Error(ex);
-                    }
-                }
-            }
-            // Wait for process to exit without hard timeout, which will 
-            // ensure that we've read everything from the stdout and stderr.
-            _proc.WaitForExit();
-
-            Trace.Info(
-                "Finished process with file name '{0}', arguments '{1}', exit code {2}, and elapsed time {3}.",
-                _proc.StartInfo.FileName,
-                _proc.StartInfo.Arguments,
-                _proc.ExitCode,
-                _stopWatch.Elapsed);
-            return _proc.ExitCode;
-        }
-
-        private void Start(string workingDirectory, string fileName, string arguments, IDictionary<string, string> environment)
-        {
-            ArgUtil.Null(_proc, nameof(_proc));
-            ArgUtil.NotNullOrEmpty(fileName, nameof(fileName));
-            Trace.Info("Starting process with file name '{0}', arguments '{1}', and working directory '{2}'.", fileName, arguments, workingDirectory);
-
-            // Setup the start info.
-            _proc = new Process();
-            _proc.StartInfo.FileName = fileName;
-            _proc.StartInfo.Arguments = arguments;
-            _proc.StartInfo.WorkingDirectory = workingDirectory;
-            _proc.StartInfo.UseShellExecute = false;
-            _proc.StartInfo.RedirectStandardInput = false;
-            _proc.StartInfo.RedirectStandardError = ErrorDataReceived != null;
-            _proc.StartInfo.RedirectStandardOutput = OutputDataReceived != null;
-            _proc.StartInfo.CreateNoWindow = true;
-
-            // Copy the environment variables.
-            if (environment != null && environment.Count > 0)
-            {
-                foreach (KeyValuePair<string, string> kvp in environment)
-                {
-                    _proc.StartInfo.Environment[kvp.Key] = kvp.Value;
-                }
-            }
-
-            // Set the TF_BUILD env variable.
-            _proc.StartInfo.Environment[Constants.TFBuild] = "True";
-
-            // Hook up the events.
-            _proc.EnableRaisingEvents = true;
-            _proc.Exited += OnExited;
-            if (_proc.StartInfo.RedirectStandardOutput)
-            {
-                _proc.OutputDataReceived += OnOutputDataReceived;
-            }
-
-            if (_proc.StartInfo.RedirectStandardError)
-            {
-                _proc.ErrorDataReceived += OnErrorDataReceived;
-            }
-
-            // Start the process.
-            _stopWatch = Stopwatch.StartNew();
-            bool newProcessStarted = _proc.Start();
-            if (!newProcessStarted)
-            {
-                Trace.Verbose("Used existing process instead of starting new one for " + fileName);
-            }
-
-            // Start reading output.
-            if (_proc.StartInfo.RedirectStandardOutput)
-            {
-                _proc.BeginOutputReadLine();
-            }
-
-            if (_proc.StartInfo.RedirectStandardError)
-            {
-                _proc.BeginErrorReadLine();
-            }
-        }
+        public event EventHandler<ProcessDataReceivedEventArgs> OutputDataReceived;
+        public event EventHandler<ProcessDataReceivedEventArgs> ErrorDataReceived;
 
         public Task<int> ExecuteAsync(
             string workingDirectory,
@@ -174,14 +76,94 @@ namespace Microsoft.VisualStudio.Services.Agent
             bool requireExitCodeZero,
             CancellationToken cancellationToken)
         {
-            Start(workingDirectory, fileName, arguments, environment);
-            int exitCode = await WaitForExitAsync(cancellationToken);
-            if (exitCode != 0 && requireExitCodeZero)
+            ArgUtil.Null(_proc, nameof(_proc));
+            ArgUtil.NotNullOrEmpty(fileName, nameof(fileName));
+
+            Trace.Info($"Starting process with file name '{fileName}', arguments '{arguments}', and working directory '{workingDirectory}'.");
+            _proc = new Process();
+            _proc.StartInfo.FileName = fileName;
+            _proc.StartInfo.Arguments = arguments;
+            _proc.StartInfo.WorkingDirectory = workingDirectory;
+            _proc.StartInfo.UseShellExecute = false;
+            _proc.StartInfo.CreateNoWindow = true;
+            _proc.StartInfo.LoadUserProfile = false;
+            _proc.StartInfo.RedirectStandardInput = true;
+            _proc.StartInfo.RedirectStandardError = true;
+            _proc.StartInfo.RedirectStandardOutput = true;
+
+            // Copy the environment variables.
+            if (environment != null && environment.Count > 0)
             {
-                throw new ProcessExitCodeException(exitCode: exitCode, fileName: fileName, arguments: arguments);
+                foreach (KeyValuePair<string, string> kvp in environment)
+                {
+                    _proc.StartInfo.Environment[kvp.Key] = kvp.Value;
+                }
             }
 
-            return exitCode;
+            // Set the TF_BUILD env variable.
+            _proc.StartInfo.Environment[Constants.TFBuild] = "True";
+
+            // Hook up the events.
+            _proc.EnableRaisingEvents = true;
+            _proc.Exited += ProcessExitedHandler;
+
+            using (var registration = cancellationToken.Register(() => CancelProcessTree()))
+            {
+                // Start the process.
+                _stopWatch = Stopwatch.StartNew();
+                _proc.Start();
+
+                // Close the input stream. This is done to prevent commands from blocking the build waiting for input from the user.
+                if (_proc.StartInfo.RedirectStandardInput)
+                {
+                    _proc.StandardInput.Dispose();
+                }
+
+                // Start the standard error notifications, if appropriate.
+                if (_proc.StartInfo.RedirectStandardError)
+                {
+                    StartReadStream(_proc.StandardError, _errorData);
+                }
+
+                // Start the standard output notifications, if appropriate.
+                if (_proc.StartInfo.RedirectStandardOutput)
+                {
+                    StartReadStream(_proc.StandardOutput, _outputData);
+                }
+
+                Trace.Info($"Process started with process id {_proc.Id}, waiting for process exit.");
+                while (true)
+                {
+                    Task outputSignal = _outputProcessEvent.WaitAsync();
+                    var signaled = await Task.WhenAny(outputSignal, _processExitedCompletionSource.Task);
+
+                    if (signaled == outputSignal)
+                    {
+                        ProcessOutput();
+                    }
+                    else
+                    {
+                        _stopWatch.Stop();
+                        break;
+                    }
+                }
+
+                // Just in case there was some pending output when the process shut down go ahead and check the
+                // data buffers one last time before returning
+                ProcessOutput();
+
+                Trace.Info($"Finished process with exit code {_proc.ExitCode}, and elapsed time {_stopWatch.Elapsed}.");
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+
+            // Wait for process to finish.
+            if (_proc.ExitCode != 0 && requireExitCodeZero)
+            {
+                throw new ProcessExitCodeException(exitCode: _proc.ExitCode, fileName: fileName, arguments: arguments);
+            }
+
+            return _proc.ExitCode;
         }
 
         public void Dispose()
@@ -194,40 +176,118 @@ namespace Microsoft.VisualStudio.Services.Agent
         {
             if (disposing)
             {
-                _processExitedSignal.Dispose();
                 if (_proc != null)
                 {
-                    _proc.Exited -= OnExited;
-                    _proc.ErrorDataReceived -= OnErrorDataReceived;
-                    _proc.OutputDataReceived -= OnOutputDataReceived;
                     _proc.Dispose();
                     _proc = null;
                 }
             }
         }
 
-        private void OnExited(object sender, EventArgs e)
+        private void ProcessOutput()
         {
-            _stopWatch.Stop();
-            _processExitedSignal.Release();
-        }
+            List<string> errorData = new List<string>();
+            List<string> outputData = new List<string>();
 
-        private void OnErrorDataReceived(object sender, DataReceivedEventArgs e)
-        {
-            // at the end of the process, the event fires one last time with null
-            if (e.Data != null)
+            string errorLine;
+            while (_errorData.TryDequeue(out errorLine))
             {
-                ErrorDataReceived?.Invoke(sender, e);
+                errorData.Add(errorLine);
+            }
+
+            string outputLine;
+            while (_outputData.TryDequeue(out outputLine))
+            {
+                outputData.Add(outputLine);
+            }
+
+            _outputProcessEvent.Reset();
+
+            // Write the error lines.
+            if (errorData != null && this.ErrorDataReceived != null)
+            {
+                foreach (string line in errorData)
+                {
+                    if (line != null)
+                    {
+                        this.ErrorDataReceived(this, new ProcessDataReceivedEventArgs(line));
+                    }
+                }
+            }
+
+            // Process the output lines.
+            if (outputData != null && this.OutputDataReceived != null)
+            {
+                foreach (string line in outputData)
+                {
+                    if (line != null)
+                    {
+                        // The line is output from the process that was invoked.
+                        this.OutputDataReceived(this, new ProcessDataReceivedEventArgs(line));
+                    }
+                }
             }
         }
 
-        private void OnOutputDataReceived(object sender, DataReceivedEventArgs e)
+        private void CancelProcessTree()
         {
-            // at the end of the process, the event fires one last time with null
-            if (e.Data != null)
+            ArgUtil.NotNull(_proc, nameof(_proc));
+
+            try
             {
-                OutputDataReceived?.Invoke(sender, e);
+                // TODO: Send Ctrl+C/Break to process group.
+                if (!_proc.HasExited)
+                {
+                    _proc.Kill();
+                }
             }
+            catch (InvalidOperationException)
+            {
+                // InvalidOperationException can occur if process got terminated by itself between 
+                // HasExited and Kill() calls above.
+            }
+        }
+
+        private void ProcessExitedHandler(object sender, EventArgs e)
+        {
+            if ((_proc.StartInfo.RedirectStandardError || _proc.StartInfo.RedirectStandardOutput) && _asyncStreamReaderCount != 0)
+            {
+                _waitingOnStreams = true;
+
+                Task.Run(async () =>
+                {
+                    // Wait 5 seconds and then Cancel/Kill process tree
+                    await Task.Delay(TimeSpan.FromSeconds(5));
+                    CancelProcessTree();
+                    _processExitedCompletionSource.TrySetResult(true);
+                });
+            }
+            else
+            {
+                _processExitedCompletionSource.TrySetResult(true);
+            }
+        }
+
+        private void StartReadStream(StreamReader reader, ConcurrentQueue<string> dataBuffer)
+        {
+            Interlocked.Increment(ref _asyncStreamReaderCount);
+            Task.Run(() =>
+            {
+                while (!reader.EndOfStream)
+                {
+                    string line = reader.ReadLine();
+                    if (line != null)
+                    {
+                        dataBuffer.Enqueue(line);
+                        _outputProcessEvent.Set();
+                    }
+                }
+
+                if (Interlocked.Decrement(ref _asyncStreamReaderCount) == 0 && _waitingOnStreams)
+                {
+                    _processExitedCompletionSource.TrySetResult(true);
+                }
+            });
         }
     }
 
@@ -240,5 +300,15 @@ namespace Microsoft.VisualStudio.Services.Agent
         {
             ExitCode = exitCode;
         }
+    }
+
+    public class ProcessDataReceivedEventArgs : EventArgs
+    {
+        public ProcessDataReceivedEventArgs(string data)
+        {
+            Data = data;
+        }
+
+        public string Data { get; private set; }
     }
 }

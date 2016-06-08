@@ -185,7 +185,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             }
         }
 
-        private void OnErrorDataReceived(object sender, DataReceivedEventArgs e)
+        private void OnErrorDataReceived(object sender, ProcessDataReceivedEventArgs e)
         {
             lock (_outputLock)
             {
@@ -196,7 +196,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             }
         }
 
-        private void OnOutputDataReceived(object sender, DataReceivedEventArgs e)
+        private void OnOutputDataReceived(object sender, ProcessDataReceivedEventArgs e)
         {
             lock (_outputLock)
             {

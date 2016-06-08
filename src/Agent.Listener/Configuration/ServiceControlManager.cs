@@ -60,6 +60,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         protected void SaveServiceSettings()
         {
             string serviceConfigPath = IOUtil.GetServiceConfigFilePath();
+            if(File.Exists(serviceConfigPath))
+            {
+                IOUtil.DeleteFile(serviceConfigPath);
+            }
+            
             File.WriteAllText(serviceConfigPath, ServiceName, new UTF8Encoding(false));
             File.SetAttributes(serviceConfigPath, File.GetAttributes(serviceConfigPath) | FileAttributes.Hidden);
         }

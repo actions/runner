@@ -149,7 +149,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Capabilities
                     using (var processInvoker = _hostContext.CreateService<IProcessInvoker>())
                     {
                         processInvoker.OutputDataReceived +=
-                            (object sender, DataReceivedEventArgs args) =>
+                            (object sender, ProcessDataReceivedEventArgs args) =>
                             {
                                 if (!string.IsNullOrEmpty(args.Data))
                                 {

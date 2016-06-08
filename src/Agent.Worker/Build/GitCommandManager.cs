@@ -294,12 +294,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             context.Command($"git {arg}");
 
             var processInvoker = HostContext.CreateService<IProcessInvoker>();
-            processInvoker.OutputDataReceived += delegate (object sender, DataReceivedEventArgs message)
+            processInvoker.OutputDataReceived += delegate (object sender, ProcessDataReceivedEventArgs message)
             {
                 context.Output(message.Data);
             };
 
-            processInvoker.ErrorDataReceived += delegate (object sender, DataReceivedEventArgs message)
+            processInvoker.ErrorDataReceived += delegate (object sender, ProcessDataReceivedEventArgs message)
             {
                 context.Output(message.Data);
             };
@@ -325,7 +325,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
             object outputLock = new object();
             var processInvoker = HostContext.CreateService<IProcessInvoker>();
-            processInvoker.OutputDataReceived += delegate (object sender, DataReceivedEventArgs message)
+            processInvoker.OutputDataReceived += delegate (object sender, ProcessDataReceivedEventArgs message)
             {
                 lock (outputLock)
                 {
@@ -333,7 +333,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 }
             };
 
-            processInvoker.ErrorDataReceived += delegate (object sender, DataReceivedEventArgs message)
+            processInvoker.ErrorDataReceived += delegate (object sender, ProcessDataReceivedEventArgs message)
             {
                 lock (outputLock)
                 {
@@ -356,12 +356,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             context.Command($"git {arg}");
 
             var processInvoker = HostContext.CreateService<IProcessInvoker>();
-            processInvoker.OutputDataReceived += delegate (object sender, DataReceivedEventArgs message)
+            processInvoker.OutputDataReceived += delegate (object sender, ProcessDataReceivedEventArgs message)
             {
                 context.Output(message.Data);
             };
 
-            processInvoker.ErrorDataReceived += delegate (object sender, DataReceivedEventArgs message)
+            processInvoker.ErrorDataReceived += delegate (object sender, ProcessDataReceivedEventArgs message)
             {
                 context.Output(message.Data);
             };

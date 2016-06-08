@@ -211,7 +211,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             }
         }
 
-        private void OnDataReceived(object sender, DataReceivedEventArgs e)
+        private void OnDataReceived(object sender, ProcessDataReceivedEventArgs e)
         {
             // This does not need to be inside of a critical section.
             // The logging queues and command handlers are thread-safe.
