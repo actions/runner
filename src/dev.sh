@@ -82,6 +82,13 @@ function rundotnet ()
 
 function generateConstant()
 {
+    # we are trying to get the runtime constant provide by dotnet cli
+    # the only way to get the constant is run dotnet publish on a project, and the constant is in the output folder path
+    # so we need dotnet publish 'Microsoft.VisualStudio.Services.Agent' to get the runtime constant
+    # however, the 'Microsoft.VisualStudio.Services.Agent' is take dependency on those generate constants
+    # we need copy the generate file template, so we won't get complie error
+    # after we get generate constants, we will overwrite the generated file
+    cat "Misc/BuildConstants.ch" > "Microsoft.VisualStudio.Services.Agent/BuildConstants.cs"
     rundotnet publish failed build_dirs[0]
     
     # get the runtime we are build for
@@ -112,7 +119,7 @@ function build ()
     if [[ "$define_os" == 'OS_WINDOWS' ]]; then
         reg_out=`reg query "HKLM\SOFTWARE\Microsoft\MSBuild\ToolsVersions\4.0" -v MSBuildToolsPath`
         msbuild_location=`echo $reg_out | tr -d '\r\n' | tr -s ' ' | cut -d' ' -f5 | tr -d '\r\n'`
-               
+              
         local rc=$?
         if [ $rc -ne 0 ]; then
             failed "Can not find msbuild location, failing build"

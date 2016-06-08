@@ -120,6 +120,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             public static readonly string TaskJsonFile = "task.json";
             public static readonly string TasksDirectory = "_tasks";
             public static readonly string UpdateDirectory = "_update";
+            public static readonly string WorkDirectory = "_work";
         }
 
         public static class Variables

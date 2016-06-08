@@ -71,7 +71,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
 
         public static string GetServiceConfigFilePath()
         {
-            return Path.Combine(GetRootPath(), ".Service");
+            return Path.Combine(GetRootPath(), ".service");
         }
 
         public static string GetRSACredFilePath()

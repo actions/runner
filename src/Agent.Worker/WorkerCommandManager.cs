@@ -51,7 +51,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 return false;
             }
 
-            Trace.Info($"Process logging command ##vso[{command.Area}.{command.Event}]");
+            context.Debug($"Try processing logging command: ##vso[{command.Area}.{command.Event}]");
             IWorkerCommandExtension extension;
             if (_commandExtensions.TryGetValue(command.Area, out extension))
             {

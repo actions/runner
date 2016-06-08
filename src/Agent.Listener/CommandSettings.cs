@@ -1,11 +1,7 @@
-﻿using Microsoft.TeamFoundation.DistributedTask.WebApi;
-using Microsoft.VisualStudio.Services.Agent.Listener.Configuration;
+﻿using Microsoft.VisualStudio.Services.Agent.Listener.Configuration;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
-using System.IO;
 using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener
 {
@@ -159,7 +155,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             return GetArgOrPrompt(
                 name: Constants.Agent.CommandLine.Args.Work,
                 description: StringUtil.Loc("WorkFolderDescription"),
-                defaultValue: "_work",
+                defaultValue: Constants.Path.WorkDirectory,
                 validator: Validators.NonEmptyValidator);
         }
 
