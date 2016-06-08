@@ -5,7 +5,6 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Text;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
@@ -54,6 +53,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             {
                 ProcessTaskUploadSummaryCommand(context, command.Data);
             }
+            else if (String.Equals(command.Event, WellKnownTaskCommand.UploadFile, StringComparison.OrdinalIgnoreCase))
+            {
+                ProcessTaskUploadFileCommand(context, command.Data);
+            }
             else
             {
                 throw new Exception(StringUtil.Loc("TaskCommandNotFound", command.Event));
@@ -69,7 +72,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 string.IsNullOrEmpty(timelineRecord) ||
                 new Guid(timelineRecord).Equals(Guid.Empty))
             {
-                throw new Exception("Can't update timeline record, timeline record id is not provided.");
+                throw new Exception(StringUtil.Loc("MissingTimelineRecordId"));
             }
             else
             {
@@ -155,7 +158,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 if (record.ParentId != null &&
                     record.ParentId != trackingRecord.ParentId)
                 {
-                    throw new Exception("Can't change parent timeline record of an existing timeline record.");
+                    throw new Exception(StringUtil.Loc("CannotChangeParentTimelineRecord"));
                 }
                 else if (record.ParentId == null)
                 {
@@ -182,19 +185,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 // make sure we have name/type and parent record has created.
                 if (string.IsNullOrEmpty(record.Name))
                 {
-                    throw new Exception("name is required for this new timeline record.");
+                    throw new Exception(StringUtil.Loc("NameRequiredForTimelineRecord"));
                 }
 
                 if (string.IsNullOrEmpty(record.RecordType))
                 {
-                    throw new Exception("type is required for this new timeline record.");
+                    throw new Exception(StringUtil.Loc("TypeRequiredForTimelineRecord"));
                 }
 
                 if (record.ParentId != null && record.ParentId != Guid.Empty)
                 {
                     if (!_timelineRecordsTracker.ContainsKey(record.ParentId.Value))
                     {
-                        throw new Exception("parent timeline record has not been created for this new timeline record.");
+                        throw new Exception(StringUtil.Loc("ParentTimelineNotCreated"));
                     }
                 }
 
@@ -217,7 +220,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         private void ProcessTaskUploadSummaryCommand(IExecutionContext context, string data)
         {
-            if (!String.IsNullOrEmpty(data))
+            if (!string.IsNullOrEmpty(data))
             {
                 var uploadSummaryProperties = new Dictionary<string, string>();
                 uploadSummaryProperties.Add(TaskAddAttachmentEventProperties.Type, CoreAttachmentType.Summary);
@@ -228,7 +231,24 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             }
             else
             {
-                throw new Exception("Cannot upload summary file, summary file location is not specified.");
+                throw new Exception(StringUtil.Loc("CannotUploadSummary"));
+            }
+        }
+
+        private void ProcessTaskUploadFileCommand(IExecutionContext context, string data)
+        {
+            if (!string.IsNullOrEmpty(data))
+            {
+                var uploadFileProperties = new Dictionary<string, string>();
+                uploadFileProperties.Add(TaskAddAttachmentEventProperties.Type, CoreAttachmentType.FileAttachment);
+                var fileName = Path.GetFileName(data);
+                uploadFileProperties.Add(TaskAddAttachmentEventProperties.Name, fileName);
+
+                ProcessTaskAddAttachmentCommand(context, uploadFileProperties, data);
+            }
+            else
+            {
+                throw new Exception("CannotUploadFile");
             }
         }
 
@@ -237,13 +257,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             String type;
             if (!eventProperties.TryGetValue(TaskAddAttachmentEventProperties.Type, out type) || String.IsNullOrEmpty(type))
             {
-                throw new Exception("Can't add task attachment, attachment type is not provided.");
+                throw new Exception(StringUtil.Loc("MissingAttachmentType"));
             }
 
             String name;
             if (!eventProperties.TryGetValue(TaskAddAttachmentEventProperties.Name, out name) || String.IsNullOrEmpty(name))
             {
-                throw new Exception("Can't add task attachment, attachment name is not provided.");
+                throw new Exception(StringUtil.Loc("MissingAttachmentName"));
             }
 
             char[] s_invalidFileChars = Path.GetInvalidFileNameChars();
@@ -265,7 +285,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             }
             else
             {
-                throw new Exception("Cannot upload task attachment file, attachment file location is not specified or attachment file not exist on disk");
+                throw new Exception(StringUtil.Loc("MissingAttachmentFile"));
             }
         }
 
@@ -397,7 +417,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 String.IsNullOrEmpty(resultText) ||
                 !Enum.TryParse<TaskResult>(resultText, out result))
             {
-                throw new Exception("Commond doesn't have valid result value.");
+                throw new Exception(StringUtil.Loc("InvalidCommandResult"));
             }
 
             context.Result = result;
@@ -476,6 +496,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         public static readonly String LogIssue_xplatCompat = "issue";
         public static readonly String SetProgress = "setprogress";
         public static readonly String SetVariable = "setvariable";
+        public static readonly String UploadFile = "uploadfile";
         public static readonly String UploadSummary = "uploadsummary";
     }
 
