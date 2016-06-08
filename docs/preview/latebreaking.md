@@ -8,7 +8,7 @@ Even though the agent has no pre-requisites, many of the tasks we run require Vi
 
 ## ![osx](../res/apple_med.png) OSX
 
-Tested on 10.10 (Yosemite) and 11.11 (El Capitan)
+Tested on 10.10 (Yosemite) and 10.11 (El Capitan)
 
 Update OpenSSL - [issue 110](https://github.com/Microsoft/vsts-agent/issues/110) 
 
