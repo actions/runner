@@ -6,7 +6,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
     /// Manages an RSA key for the agent using the most appropriate store for the target platform.
     /// </summary>
 #if OS_WINDOWS
-    [ServiceLocator(Default = typeof(RSACngKeyManager))]
+    [ServiceLocator(Default = typeof(RSAEncryptedFileKeyManager))]
 #else
     [ServiceLocator(Default = typeof(RSAFileKeyManager))]
 #endif
