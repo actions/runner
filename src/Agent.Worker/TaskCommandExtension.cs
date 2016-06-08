@@ -420,8 +420,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 throw new Exception(StringUtil.Loc("InvalidCommandResult"));
             }
 
-            context.Result = result;
-            context.Progress(0, data);
+            context.Result = TaskResultUtil.MergeTaskResults(context.Result, result);
+            context.Progress(100, data);
         }
 
         private void ProcessTaskProgressCommand(IExecutionContext context, Dictionary<string, string> eventProperties, string data)

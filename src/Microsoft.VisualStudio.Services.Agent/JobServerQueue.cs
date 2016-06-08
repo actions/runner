@@ -110,7 +110,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                 Trace.Info("No-opt, all queue process tasks have been stopped.");
             }
 
-            Trace.Verbose("Fire signal to shutdown all queues.");
+            Trace.Info("Fire signal to shutdown all queues.");
             _jobCompletionSource.TrySetResult(0);
 
             await Task.WhenAll(_allDequeueTasks);
@@ -213,6 +213,12 @@ namespace Microsoft.VisualStudio.Services.Agent
                 string line;
                 while (_webConsoleLineQueue.TryDequeue(out line))
                 {
+                    if (!string.IsNullOrEmpty(line) && line.Length > 1024)
+                    {
+                        Trace.Verbose("Web console line is more than 1024 chars, truncate to first 1024 chars");
+                        line = $"{line.Substring(0, 1024)}...";
+                    }
+
                     currentBatch.Add(line);
                     // choose 100 lines since the whole web console UI will only shows about 40 lines in a 15" monitor.
                     if (currentBatch.Count > 100)
@@ -246,7 +252,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                         }
                         catch (Exception ex)
                         {
-                            Trace.Verbose("Catch exception during append web console line, keep going since the process is best effort. Due with exception when all batches finish.");
+                            Trace.Info("Catch exception during append web console line, keep going since the process is best effort. Due with exception when all batches finish.");
                             webConsoleLinePostExceptions.Add(ex);
                         }
                     }
@@ -308,7 +314,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                         }
                         catch (Exception ex)
                         {
-                            Trace.Verbose("Catch exception during log or attachment file upload, keep going since the process is best effort. Due with exception when all files upload.");
+                            Trace.Info("Catch exception during log or attachment file upload, keep going since the process is best effort. Due with exception when all files upload.");
                             fileUploadExceptions.Add(ex);
 
                             // put the failed upload file back to queue.
@@ -399,10 +405,11 @@ namespace Microsoft.VisualStudio.Services.Agent
                                     Timeline newTimeline = await _jobServer.CreateTimelineAsync(_scopeIdentifier, _hubName, _planId, detailTimeline.Details.Id, default(CancellationToken));
                                     _allTimelines.Add(newTimeline.Id);
                                 }
-                                //catch (TimelineExistsException)
-                                //{
-                                //    ignore 
-                                //}
+                                catch (TimelineExistsException)
+                                {
+                                    Trace.Info("Catch TimelineExistsException during timeline creation. Ignore the error since server already had this timeline.");
+                                    _allTimelines.Add(detailTimeline.Details.Id);
+                                }
                                 catch (Exception ex)
                                 {
                                     Trace.Error(ex);
@@ -420,7 +427,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                         }
                         catch (Exception ex)
                         {
-                            Trace.Error("Catch exception during update timeline records, try to update these timeline records next time.");
+                            Trace.Info("Catch exception during update timeline records, try to update these timeline records next time.");
                             Trace.Error(ex);
                             _bufferedRetryRecords[update.TimelineId] = update.PendingRecords.ToList();
                         }
@@ -553,7 +560,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                     }
                     catch (Exception ex)
                     {
-                        Trace.Verbose("Catch exception during delete success uploaded file.");
+                        Trace.Info("Catch exception during delete success uploaded file.");
                         Trace.Error(ex);
                     }
                 }
