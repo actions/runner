@@ -23,16 +23,25 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             }
         }
 
+        public static String ToString(object obj)
+        {
+            return JsonConvert.SerializeObject(obj, Formatting.Indented, s_serializerSettings.Value);
+        }
+
+        public static T FromString<T>(string value)
+        {
+            return JsonConvert.DeserializeObject<T>(value, s_serializerSettings.Value);
+        }
+
         public static void SaveObject(object obj, string path)
         {
-            string json = JsonConvert.SerializeObject(obj, Formatting.Indented, s_serializerSettings.Value);
-            File.WriteAllText(path, json);
+            File.WriteAllText(path, ToString(obj));
         }
 
         public static T LoadObject<T>(string path)
         {
             string json = File.ReadAllText(path);
-            return JsonConvert.DeserializeObject<T>(json, s_serializerSettings.Value);
+            return FromString<T>(json);
         }
 
         public static string GetBinPath()
