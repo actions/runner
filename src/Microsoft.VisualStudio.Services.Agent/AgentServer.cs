@@ -43,7 +43,6 @@ namespace Microsoft.VisualStudio.Services.Agent
         public async Task ConnectAsync(VssConnection agentConnection)
         {
             _connection = agentConnection;
-
             if (!_connection.HasAuthenticated)
             {
                 await _connection.ConnectAsync();

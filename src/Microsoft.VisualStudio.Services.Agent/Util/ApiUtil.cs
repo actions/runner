@@ -3,6 +3,7 @@ using Microsoft.VisualStudio.Services.Client;
 using Microsoft.VisualStudio.Services.Common;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Net.Http.Headers;
 using System.Runtime.InteropServices;
 
@@ -14,6 +15,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
         {
             VssClientHttpRequestSettings settings = VssClientHttpRequestSettings.Default.Clone();
             settings.MaxRetryRequest = 5;
+
+            // Remove Invariant from the list of accepted languages.
+            //
+            // The constructor of VssHttpRequestSettings (base class of VssClientHttpRequestSettings) adds the current
+            // UI culture to the list of accepted languages. The UI culture will be Invariant on OSX/Linux when the
+            // LANG environment variable is not set when the program starts. If Invariant is in the list of accepted
+            // languages, then "System.ArgumentException: The value cannot be null or empty." will be thrown when the
+            // settings are applied to an HttpRequestMessage.
+            settings.AcceptLanguages.Remove(CultureInfo.InvariantCulture);
 
             var headerValues = new List<ProductInfoHeaderValue>();
 #if OS_WINDOWS

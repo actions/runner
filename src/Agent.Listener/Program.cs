@@ -64,6 +64,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     s_trace.Info($"Version: {Constants.Agent.Version}");
                     s_trace.Info($"Commit: {BuildConstants.Source.CommitHash}");
                     s_trace.Info($"Culture: {CultureInfo.CurrentCulture.Name}");
+                    s_trace.Info($"UI Culture: {CultureInfo.CurrentUICulture.Name}");
 
                     //
                     // TODO (bryanmac): Need VsoAgent.exe compat shim for SCM

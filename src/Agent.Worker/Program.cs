@@ -1,7 +1,6 @@
 ﻿using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
-using System.Diagnostics;
-using System.Threading;
+using System.Globalization;
 using System.Threading.Tasks;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
@@ -26,6 +25,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 {
                     trace.Info($"Version: {Constants.Agent.Version}");
                     trace.Info($"Commit: {BuildConstants.Source.CommitHash}");
+                    trace.Info($"Culture: {CultureInfo.CurrentCulture.Name}");
+                    trace.Info($"UI Culture: {CultureInfo.CurrentUICulture.Name}");
 
                     // Validate args.
                     ArgUtil.NotNull(args, nameof(args));
