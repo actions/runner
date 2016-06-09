@@ -78,11 +78,14 @@ function acquireExternalTool() {
 
         # Download from source to the partial file.
         echo "Downloading $download_source"
-        pushd "$(dirname "$partial_target")" > /dev/null
         mkdir -p "$(dirname $download_target)"
-        curl -kSLO "$download_source" &> "${download_target}_download.log"
+        # curl -f Fail silently (no output at all) on HTTP errors (H)
+        #      -k Allow connections to SSL sites without certs (H)
+        #      -S Show error. With -s, make curl show errors when they occur
+        #      -L Follow redirects (H)
+        #      -o FILE    Write to FILE instead of stdout
+        curl -fkSL -o "$partial_target" "$download_source" 2>"${download_target}_download.log"
         checkRC "Download (curl)"
-        popd > /dev/null
 
         # Move the partial file to the download target.
         mv "$partial_target" "$download_target"

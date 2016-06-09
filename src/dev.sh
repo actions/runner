@@ -213,7 +213,7 @@ function layout ()
     fi
     
     heading Externals ...
-    bash ./Misc/externals.sh
+    bash ./Misc/externals.sh || checkRC externals.sh
 }
 
 function update ()
