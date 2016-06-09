@@ -394,12 +394,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                     _term.WriteLine(StringUtil.Loc("MissingConfig"));
                 }
 
-                //delete credential config file                
+                //delete credential config files               
                 currentAction = StringUtil.Loc("DeletingCredentials");
                 _term.WriteLine(currentAction);
                 if (hasCredentials)
                 {
                     _store.DeleteCredential();
+                    var keyManager = HostContext.GetService<IRSAKeyManager>();
+                    keyManager.DeleteKey();                    
                     _term.WriteLine(StringUtil.Loc("Success") + currentAction);
                 }
                 else
