@@ -126,6 +126,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 {
                     Trace.Verbose($"Adding {taskInstance.DisplayName}.");
                     var taskRunner = HostContext.CreateService<ITaskRunner>();
+                    //// TODO: Presently 'TimeoutInMinutes' is not available in DistributedTask.WebApi TaskInstance.
+                    //// Next update it will be available. Once it is available, pass timeout to CreateChild. It will enable task timeout feature.
+                    //// var timeout = taskInstance.TimeoutInMinutes > 0 ? TimeSpan.FromMinutes(taskInstance.TimeoutInMinutes) : Timeout.InfiniteTimeSpan;
                     taskRunner.ExecutionContext = jobContext.CreateChild(taskInstance.InstanceId, taskInstance.DisplayName);
                     taskRunner.TaskInstance = taskInstance;
                     steps.Add(taskRunner);

@@ -22,10 +22,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         List<ServiceEndpoint> Endpoints { get; }
         Variables Variables { get; }
         List<IAsyncCommandContext> AsyncCommands { get; }
+        bool TimeoutExceeded { get; }
 
         // Initialize
         void InitializeJob(JobRequestMessage message, CancellationToken token);
         IExecutionContext CreateChild(Guid recordId, string name);
+        IExecutionContext CreateChild(Guid recordId, string name, TimeSpan timeout);
 
         // logging
         bool WriteDebug { get; }
@@ -57,6 +59,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         private Guid _mainTimelineId;
         private Guid _detailTimelineId;
         private int _childExecutionContextCount = 0;
+        private TimeSpan _timeout;
+        private CancellationTokenSource _timeoutTokenSource;
 
         public CancellationToken CancellationToken { get; private set; }
         public List<ServiceEndpoint> Endpoints { get; private set; }
@@ -68,6 +72,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             get
             {
                 return _asyncCommands;
+            }
+        }
+
+        public bool TimeoutExceeded
+        {
+            get
+            {
+                return _timeoutTokenSource?.IsCancellationRequested ?? false;
             }
         }
 
@@ -109,15 +121,22 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         public IExecutionContext CreateChild(Guid recordId, string name)
         {
+            return CreateChild(recordId, name, Timeout.InfiniteTimeSpan);
+        }
+
+        public IExecutionContext CreateChild(Guid recordId, string name, TimeSpan timeout)
+        {
             Trace.Entering();
 
             var child = new ExecutionContext();
             child.Initialize(HostContext);
             child.Variables = Variables;
             child.Endpoints = Endpoints;
-            child.CancellationToken = CancellationTokenSource.CreateLinkedTokenSource(CancellationToken).Token;
+            child._timeoutTokenSource = new CancellationTokenSource();
+            child.CancellationToken = CancellationTokenSource.CreateLinkedTokenSource(CancellationToken, child._timeoutTokenSource.Token).Token;
             child.WriteDebug = WriteDebug;
             child._parentExecutionContext = this;
+            child._timeout = timeout;
 
             // the job timeline record is at order 1.
             child.InitializeTimelineRecord(_mainTimelineId, recordId, _record.Id, ExecutionContextType.Task, name, _childExecutionContextCount + 2);
@@ -137,6 +156,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
             _jobServerQueue.QueueTimelineRecordUpdate(_mainTimelineId, _record);
 
+            if (_timeout.TotalMilliseconds <= 0 || _timeout.TotalMilliseconds >= Int32.MaxValue)
+            {
+                _timeout = Timeout.InfiniteTimeSpan;
+            }
+            
+            _timeoutTokenSource?.CancelAfter(_timeout);
             //Section
             this.Section($"Starting: {_record.Name}");
         }
@@ -172,6 +197,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
             //Section
             this.Section($"Finishing: {_record.Name}");
+
+            _timeoutTokenSource?.Dispose();
 
             _logger.End();
 

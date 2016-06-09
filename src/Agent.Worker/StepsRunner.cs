@@ -82,10 +82,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 }
                 catch (OperationCanceledException ex)
                 {
-                    // Log the exception and cancel the step.
-                    Trace.Error($"Caught cancellation exception from step: {ex}");
-                    step.ExecutionContext.Error(ex);
-                    step.ExecutionContext.Result = TaskResult.Canceled;
+                    if (step.ExecutionContext.TimeoutExceeded)
+                    {
+                        Trace.Error($"Caught timeout exception from step: {ex.Message}");
+                        step.ExecutionContext.Error(StringUtil.Loc("StepTimedOut"));
+                        step.ExecutionContext.Result = TaskResult.Failed;
+                    }
+                    else
+                    {
+                        // Log the exception and cancel the step.
+                        Trace.Error($"Caught cancellation exception from step: {ex}");
+                        step.ExecutionContext.Error(ex);
+                        step.ExecutionContext.Result = TaskResult.Canceled;
+                    }
                     //save the OperationCanceledException, merge with OperationCanceledException throw from Async Commands.
                     allCancelExceptions.Add(ex);
                 }
@@ -107,12 +116,24 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     }
                     catch (OperationCanceledException ex)
                     {
-                        // log and save the OperationCanceledException, set step result to canceled if the current result is not failed.
-                        Trace.Error($"Caught cancellation exception from async command {command.Name}: {ex}");
-                        step.ExecutionContext.Error(ex);
+                        if (step.ExecutionContext.TimeoutExceeded)
+                        {
+                            // Log the timeout error, set step result to falied if the current result is not canceled.
+                            Trace.Error($"Caught timeout exception from async command {command.Name}: {ex}");
+                            step.ExecutionContext.Error(StringUtil.Loc("StepTimedOut"));
 
-                        // if the step already failed, don't set it to canceled.
-                        step.ExecutionContext.CommandResult = TaskResultUtil.MergeTaskResults(step.ExecutionContext.CommandResult, TaskResult.Canceled);
+                            // if the step already canceled, don't set it to failed.
+                            step.ExecutionContext.CommandResult = TaskResultUtil.MergeTaskResults(step.ExecutionContext.CommandResult, TaskResult.Failed);
+                        }
+                        else
+                        {
+                            // log and save the OperationCanceledException, set step result to canceled if the current result is not failed.
+                            Trace.Error($"Caught cancellation exception from async command {command.Name}: {ex}");
+                            step.ExecutionContext.Error(ex);
+
+                            // if the step already failed, don't set it to canceled.
+                            step.ExecutionContext.CommandResult = TaskResultUtil.MergeTaskResults(step.ExecutionContext.CommandResult, TaskResult.Canceled);
+                        }
                         allCancelExceptions.Add(ex);
                     }
                     catch (Exception ex)
