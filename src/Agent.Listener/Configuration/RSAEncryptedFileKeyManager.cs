@@ -62,7 +62,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
         private RSAParameters LoadParameters()
         {
-            var encryptedBytes = IOUtil.LoadObject<Byte[]>(_keyFile);
+            var encryptedBytes = File.ReadAllBytes(_keyFile);
             var parametersString = Encoding.UTF8.GetString(ProtectedData.Unprotect(encryptedBytes, null, DataProtectionScope.LocalMachine));
             return IOUtil.FromString<RSAParameters>(parametersString);
         }
@@ -71,7 +71,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         {
             var parametersString = IOUtil.ToString(parameters);
             var encryptedBytes = ProtectedData.Protect(Encoding.UTF8.GetBytes(parametersString), null, DataProtectionScope.LocalMachine);
-            IOUtil.SaveObject(encryptedBytes, _keyFile);
+            File.WriteAllBytes(_keyFile, encryptedBytes);
             File.SetAttributes(_keyFile, File.GetAttributes(_keyFile) | FileAttributes.Hidden);
         }
 
