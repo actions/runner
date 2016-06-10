@@ -18,19 +18,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         private const string _shTemplate = "darwin.svc.sh.template";
         private const string _svcShName = "svc.sh";
 
-        public override bool ConfigureService(AgentSettings settings, CommandSettings command)
+        public override void GenerateScripts(AgentSettings settings)
         {
             Trace.Entering();
 
             CalculateServiceName(settings, _svcNamePattern, _svcDisplayPattern);
-
-            string plistPath = GetPlistPath(ServiceName);
-            if (this.CheckServiceExists(ServiceName))
-            {
-                _term.WriteError(StringUtil.Loc("ServiceAlreadyExists", plistPath));
-                throw new InvalidOperationException(StringUtil.Loc("CanNotInstallService"));
-            }
-
             try
             {
                 string svcShPath = Path.Combine(IOUtil.GetRootPath(), _svcShName);
@@ -53,67 +45,45 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
                 var unixUtil = HostContext.CreateService<IUnixUtil>();
                 unixUtil.ChmodAsync("755", svcShPath).GetAwaiter().GetResult();
-
-                SvcSh("install");
-
-                _term.WriteLine(StringUtil.Loc("ServiceConfigured", ServiceName));
             }
             catch (Exception e)
             {
-                // if cfg as service fails, we fail cfg and cleanup 
                 Trace.Error(e);
-                _term.WriteError(StringUtil.Loc("CanNotStartService"));
-
-                if (File.Exists(plistPath))
-                {
-                    Trace.Info($"Cleaning up plist file from failed config: {plistPath}");
-                    IOUtil.DeleteFile(plistPath);
-                }
                 throw;
             }
+        }
 
-            return true;
+        public override bool ConfigureService(AgentSettings settings, CommandSettings command)
+        {
+            Trace.Entering();
+
+            throw new NotSupportedException("OSX Configure Service");
         }
 
         public override void UnconfigureService()
         {
-            SvcSh("uninstall");
-            string svcShPath = Path.Combine(IOUtil.GetRootPath(), _svcShName);
-            IOUtil.Delete(svcShPath, default(CancellationToken));
+            Trace.Entering();
+
+            throw new NotSupportedException("OSX unconfigure service");
         }
 
         public override void StartService()
         {
-            SvcSh("start");
+            Trace.Entering();
+
+            throw new NotSupportedException("OSX start service");
         }
 
         public override void StopService()
         {
-            SvcSh("stop");
+            Trace.Entering();
+
+            throw new NotSupportedException("OSX stop service");
         }
 
         public override bool CheckServiceExists(string serviceName)
         {
-            return File.Exists(GetPlistPath(serviceName));
-        }
-
-        private string GetPlistPath(string svcName)
-        {
-            string homeDir = Environment.GetEnvironmentVariable("HOME");
-            ArgUtil.NotNullOrEmpty(homeDir, "HOME");
-
-            string plistPath = Path.Combine(homeDir, "Library/LaunchAgents", svcName + ".plist");
-            Trace.Info($"plistPath: {plistPath}");
-            return plistPath;
-        }
-
-        private void SvcSh(string command)
-        {
-            Trace.Entering();
-
-            string argLine = StringUtil.Format("{0} {1}", _svcShName, command);
-            var unixUtil = HostContext.CreateService<IUnixUtil>();
-            unixUtil.ExecAsync(IOUtil.GetRootPath(), "bash", argLine).GetAwaiter().GetResult();
+            return false;
         }        
     }
 }

@@ -5,11 +5,6 @@ SVC_DESCRIPTION="{{SvcDescription}}"
 
 user_id=`id -u`
 
-if [ $user_id -ne 0 ]; then
-    echo "Must run as sudo"
-    exit 1
-fi
-
 SVC_CMD=$1
 AGENT_ROOT=`pwd`
 
@@ -49,22 +44,18 @@ function install()
     log_path="${HOME}/Library/Logs/${SVC_NAME}"
     echo "Creating ${log_path}"
     mkdir -p "${log_path}" || failed "failed to create ${log_path}"
-    chown ${SUDO_UID:-$UID}:${SUDO_GID} "${log_path}" || failed "failed to set permissions for ${log_path}"
 
     echo Creating ${PLIST_PATH}
     sed "s/{{User}}/${SUDO_USER:-$USER}/g; s/{{SvcName}}/$SVC_NAME/g; s@{{AgentRoot}}@${AGENT_ROOT}@g; s@{{UserHome}}@$HOME@g;" "${TEMPLATE_PATH}" > "${TEMP_PATH}" || failed "failed to create replacement temp file"
     mv "${TEMP_PATH}" "${PLIST_PATH}" || failed "failed to copy plist"
-    chown ${SUDO_UID:-$UID}:${SUDO_GID} "${PLIST_PATH}" || failed "failed to set owner for ${PLIST_PATH}"
 
     # Since we started with sudo, runsvc.sh will be owned by root. Change this to current login user.
     echo Creating runsvc.sh    
     cp ./bin/runsvc.sh ./runsvc.sh || failed "failed to copy runsvc.sh"
-    chown ${SUDO_UID:-$UID}:${SUDO_GID} ./runsvc.sh || failed "failed to set owner for runsvc.sh"
-    chmod 755 ./runsvc.sh || failed "failed to set permission for runsvc.sh"
+    chmod u+x ./runsvc.sh || failed "failed to set permission for runsvc.sh"
 
     echo Creating ${CONFIG_PATH}
     echo "${PLIST_PATH}" > ${CONFIG_PATH} || failed "failed to create .Service file"
-    chown ${SUDO_UID:-$UID}:${SUDO_GID} ${CONFIG_PATH} || failed "failed to set permission for ${CONFIG_PATH}"
 
     echo "svc install complete"
 }
@@ -72,14 +63,14 @@ function install()
 function start()
 {
     echo "starting ${SVC_NAME}"
-    sudo -u "${SUDO_USER}" launchctl load -w "${PLIST_PATH}" || failed "failed to load ${PLIST_PATH}"
+    launchctl load -w "${PLIST_PATH}" || failed "failed to load ${PLIST_PATH}"
     status
 }
 
 function stop()
 {
     echo "stopping ${SVC_NAME}"
-    sudo -u "${SUDO_USER}" launchctl unload "${PLIST_PATH}" || failed "failed to unload ${PLIST_PATH}"
+    launchctl unload "${PLIST_PATH}" || failed "failed to unload ${PLIST_PATH}"
     status
 }
 
@@ -107,7 +98,7 @@ function status()
     fi
 
     echo
-    status_out=`sudo -u "${SUDO_USER}" launchctl list | grep "${SVC_NAME}"`
+    status_out=`launchctl list | grep "${SVC_NAME}"`
     if [ ! -z "$status_out" ]; then
         echo Started:
         echo $status_out

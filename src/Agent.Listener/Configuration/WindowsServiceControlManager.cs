@@ -28,6 +28,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             _windowsServiceHelper = HostContext.GetService<INativeWindowsServiceHelper>();
         }
 
+        public override void GenerateScripts(AgentSettings settings)
+        {
+
+        }
+        
         public override bool ConfigureService(AgentSettings settings, CommandSettings command)
         {
             Trace.Entering();

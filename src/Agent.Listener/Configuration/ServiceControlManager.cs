@@ -16,6 +16,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
     // TODO: If this pattern repeats, avoid having this conditions and create WindowsServiceLocator/LinuxServiceLocator attribute
     public interface IServiceControlManager : IAgentService
     {
+        void GenerateScripts(AgentSettings settings);
+
         bool ConfigureService(AgentSettings settings, CommandSettings command);
 
         void UnconfigureService();
@@ -61,6 +63,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             File.WriteAllText(serviceConfigPath, ServiceName, new UTF8Encoding(false));
             File.SetAttributes(serviceConfigPath, File.GetAttributes(serviceConfigPath) | FileAttributes.Hidden);
         }
+
+        public abstract void GenerateScripts(AgentSettings settings);
 
         public abstract bool ConfigureService(AgentSettings settings, CommandSettings command);
 

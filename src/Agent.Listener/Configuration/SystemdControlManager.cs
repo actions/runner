@@ -21,31 +21,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         private const string _shTemplate = "systemd.svc.sh.template";
         private const string _shName = "svc.sh";
 
-        public override bool ConfigureService(
-            AgentSettings settings,
-            CommandSettings command)
+        public override void GenerateScripts(AgentSettings settings)
         {
-            Trace.Entering();
-
-            var _linuxServiceHelper = HostContext.GetService<INativeLinuxServiceHelper>();
-            CalculateServiceName(settings, ServiceNamePattern, ServiceDisplayNamePattern);
-
-            if (!_linuxServiceHelper.CheckIfSystemdExists())
-            {
-                Trace.Info("Systemd does not exists, returning");
-                _term.WriteLine(StringUtil.Loc("SystemdDoesNotExists"));
-
-                return false;
-            }
-
-            var unitFile = _linuxServiceHelper.GetUnitFile(ServiceName);
-
-            if (CheckServiceExists(ServiceName))
-            {
-                _term.WriteError(StringUtil.Loc("ServiceAlreadyExists", unitFile));
-                throw new InvalidOperationException(StringUtil.Loc("CanNotInstallService"));
-            }
-
             try
             {
                 string svcShPath = Path.Combine(IOUtil.GetRootPath(), _shName);
@@ -65,92 +42,47 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
                 var unixUtil = HostContext.CreateService<IUnixUtil>();
                 unixUtil.ChmodAsync("755", svcShPath).GetAwaiter().GetResult();
-
-                SvcSh("install");
-
-                _term.WriteLine(StringUtil.Loc("ServiceConfigured", ServiceName));
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                Trace.Error(ex);
-                _term.WriteError(StringUtil.Loc("UnauthorizedAccess", unitFile));
-                throw;
             }
             catch (Exception ex)
             {
                 Trace.Error(ex);
                 throw;
-            }
+            }            
+        }
 
-            return true;
+        public override bool ConfigureService(
+            AgentSettings settings,
+            CommandSettings command)
+        {
+            Trace.Entering();
+
+            throw new NotSupportedException("Systemd Configure Service");
         }
 
         public override void UnconfigureService()
         {
-            SvcSh("uninstall");
-            string svcShPath = Path.Combine(IOUtil.GetRootPath(), _shName);
-            IOUtil.Delete(svcShPath, default(CancellationToken));
+            Trace.Entering();
+
+            throw new NotSupportedException("Systemd Unconfigure Service");
         }
 
         public override void StartService()
         {
             Trace.Entering();
-            try
-            {
-                SvcSh("start");
-                _term.WriteLine(StringUtil.Loc("ServiceStartedSuccessfully", ServiceName));
-            }
-            catch (Exception)
-            {
-                _term.WriteError(StringUtil.Loc("CanNotStartService"));
-                throw;
-            }
+
+            throw new NotSupportedException("Systemd Start Service");
         }
 
         public override void StopService()
         {
             Trace.Entering();
-            try
-            {
-                SvcSh("stop");
-            }
-            catch (Exception ex)
-            {
-                Trace.Error(ex);
-                _term.WriteError(StringUtil.Loc("CanNotStopService", ServiceName));
-                // We dont want to throw here. We can still replace the systemd unit file and call daemon-reload
-            }
-        }
 
-        private void SvcSh(string command)
-        {
-            Trace.Entering();
-
-            string argLine = StringUtil.Format("{0} {1}", _shName, command);
-            var unixUtil = HostContext.CreateService<IUnixUtil>();
-            unixUtil.ExecAsync(IOUtil.GetRootPath(), "bash", argLine).GetAwaiter().GetResult();
+            throw new NotSupportedException("Systemd Stop Service");
         }
 
         public override bool CheckServiceExists(string serviceName)
         {
-            Trace.Entering();
-            if (string.IsNullOrEmpty(serviceName))
-            {
-                throw new ArgumentNullException("serviceName");
-            }
-
-            try
-            {
-                var unitFile = new FileInfo(Path.Combine(NativeLinuxServiceHelper.SystemdPathPrefix, serviceName));
-                return unitFile.Exists;
-            }
-            catch (Exception ex)
-            {
-                Trace.Error(ex);
-
-                // If we can't check if the service exists we can't configure either. We can't ignore this error.
-                throw;
-            }
+            return false;
         }
     }
 }

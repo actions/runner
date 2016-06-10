@@ -11,6 +11,15 @@ TEMPLATE_PATH=./bin/vsts.agent.service.template
 TEMP_PATH=./bin/vsts.agent.service.temp
 CONFIG_PATH=.Service
 
+user_id=`id -u`
+
+# systemctl must run as sudo
+# this script is a convenience wrapper around systemctl
+if [ $user_id -ne 0 ]; then
+    echo "Must run as sudo"
+    exit 1
+fi
+
 function failed()
 {
    local error=${1:-Undefined error}

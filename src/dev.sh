@@ -207,7 +207,7 @@ function layout ()
 
     # clean up files not meant for platform
     if [[ ("$PLATFORM_NAME" == "Linux") || ("$PLATFORM_NAME" == "Darwin") ]]; then
-        rm ${LAYOUT_DIR}/run.cmd
+        rm ${LAYOUT_DIR}/*.cmd
     else
         rm ${LAYOUT_DIR}/*.sh
     fi

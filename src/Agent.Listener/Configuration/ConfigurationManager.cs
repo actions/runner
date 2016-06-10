@@ -297,34 +297,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             _store.SaveSettings(settings);
             _term.WriteLine(StringUtil.Loc("SavedSettings", DateTime.UtcNow));
 
-            // chown/chmod the _diag and settings files to the current user, if we started with sudo.
-            // Also if we started with sudo, the _diag will be owned by root. Change this to current login user
-            if (Constants.Agent.Platform == Constants.OSPlatform.Linux ||
-               Constants.Agent.Platform == Constants.OSPlatform.OSX)
-            {
-                string uidValue = Environment.GetEnvironmentVariable("SUDO_UID");
-                string gidValue = Environment.GetEnvironmentVariable("SUDO_GID");
+            bool runAsService = false;
 
-                if (!string.IsNullOrEmpty(uidValue) && !string.IsNullOrEmpty(gidValue))
-                {
-                    var filesToChange = new Dictionary<string, string>
-                                                         {
-                                                             { IOUtil.GetDiagPath(), "775" },
-                                                             { IOUtil.GetConfigFilePath(), "770"},
-                                                             { IOUtil.GetCredFilePath(), "770" },
-                                                             { IOUtil.GetRSACredFilePath(), "770" },
-                                                         };
-                    var unixUtil = HostContext.CreateService<IUnixUtil>();
-                    foreach (var file in filesToChange)
-                    {
-                        await unixUtil.ChownAsync(uidValue, gidValue, file.Key);
-                        await unixUtil.ChmodAsync(file.Value, file.Key);
-                    }
-                }
+            if (Constants.Agent.Platform == Constants.OSPlatform.Windows)
+            {
+                runAsService = command.GetRunAsService();
             }
 
-            bool runAsService = command.GetRunAsService();
             var serviceControlManager = HostContext.GetService<IServiceControlManager>();
+            serviceControlManager.GenerateScripts(settings);
+
             bool successfullyConfigured = false;
             if (runAsService)
             {
@@ -351,10 +333,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                     var serviceControlManager = HostContext.GetService<IServiceControlManager>();
                     serviceControlManager.UnconfigureService();
                     _term.WriteLine(StringUtil.Loc("Success") + currentAction);
-                }
-                else
-                {
-                    _term.WriteLine(StringUtil.Loc("Skipping") + currentAction);
                 }
 
                 //delete agent from the server
