@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text;
 using System.Threading;
 using Microsoft.VisualStudio.Services.WebApi;
 using Newtonsoft.Json;
@@ -11,6 +13,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
 {
     public static class IOUtil
     {
+        private static Lazy<JsonSerializerSettings> s_serializerSettings = new Lazy<JsonSerializerSettings>(() => new VssJsonMediaTypeFormatter().SerializerSettings);
+
         public static string ExeExtension
         {
             get
@@ -35,12 +39,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
 
         public static void SaveObject(object obj, string path)
         {
-            File.WriteAllText(path, ToString(obj));
+            File.WriteAllText(path, ToString(obj), Encoding.UTF8);
         }
 
         public static T LoadObject<T>(string path)
         {
-            string json = File.ReadAllText(path);
+            string json = File.ReadAllText(path, Encoding.UTF8);
             return FromString<T>(json);
         }
 
@@ -131,12 +135,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
                 return;
             }
 
+            // Remove the readonly flag.
+            RemoveReadOnly(directory);
+
+            // Check if the directory is a reparse point.
+            if (directory.Attributes.HasFlag(FileAttributes.ReparsePoint))
+            {
+                // Delete the reparse point directory and short-circuit.
+                directory.Delete();
+                return;
+            }
+
             // Initialize a concurrent stack to store the directories. The directories
             // cannot be deleted until the files are deleted.
             var directories = new ConcurrentStack<DirectoryInfo>();
-
-            // Remove the readonly flag and store the root directory.
-            RemoveReadOnly(directory);
             directories.Push(directory);
 
             // Create a new token source for the parallel query. The parallel query should be
@@ -144,44 +156,51 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             // could get out of control for a large directory with access denied on every file.
             using (var tokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken))
             {
-                // Delete all files and store all subdirectories.
-                directory
-                    .EnumerateFileSystemInfos("*", SearchOption.AllDirectories)
-                    .AsParallel()
-                    .WithCancellation(tokenSource.Token)
-                    .ForAll((FileSystemInfo item) =>
-                    {
-                        bool success = false;
-                        try
+                try
+                {
+                    // Recursively delete all files and store all subdirectories.
+                    Enumerate(directory, tokenSource)
+                        .AsParallel()
+                        .WithCancellation(tokenSource.Token)
+                        .ForAll((FileSystemInfo item) =>
                         {
-                            // Check if the item is a file.
-                            var file = item as FileInfo;
-                            if (file != null)
+                            bool success = false;
+                            try
                             {
-                                // Delete the file.
-                                RemoveReadOnly(file);
-                                file.Delete();
+                                // Check if the item is a file.
+                                var file = item as FileInfo;
+                                if (file != null)
+                                {
+                                    // Delete the file.
+                                    RemoveReadOnly(file);
+                                    file.Delete();
+                                    success = true;
+                                    return;
+                                }
+
+                                // The item is a directory.
+                                var subdirectory = item as DirectoryInfo;
+                                ArgUtil.NotNull(subdirectory, nameof(subdirectory));
+
+                                // Remove the readonly attribute and store the subdirectory.
+                                RemoveReadOnly(subdirectory);
+                                directories.Push(subdirectory);
                                 success = true;
-                                return;
                             }
-
-                            // The item is a directory.
-                            var subdirectory = item as DirectoryInfo;
-                            ArgUtil.NotNull(subdirectory, nameof(subdirectory));
-
-                            // Remove the readonly attribute and store the subdirectory.
-                            RemoveReadOnly(subdirectory);
-                            directories.Push(subdirectory);
-                            success = true;
-                        }
-                        finally
-                        {
-                            if (!success)
+                            finally
                             {
-                                tokenSource.Cancel(); // Cancel is thread-safe.
+                                if (!success)
+                                {
+                                    tokenSource.Cancel(); // Cancel is thread-safe.
+                                }
                             }
-                        }
-                    });
+                        });
+                }
+                catch (Exception)
+                {
+                    tokenSource.Cancel();
+                    throw;
+                }
             }
 
             // Delete the directories.
@@ -203,7 +222,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             }
         }
 
-        //********************************************************************************************
         /// <summary>
         /// Given a path and directory, return the path relative to the directory.  If the path is not
         /// under the directory the path is returned un modified.  Examples:
@@ -215,7 +233,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
         /// <param name="path">Path to make relative.</param>
         /// <param name="folder">Folder to make it relative to.</param>
         /// <returns>Relative path.</returns>
-        //********************************************************************************************
         public static string MakeRelative(string path, string folder)
         {
             ArgUtil.NotNullOrEmpty(path, nameof(path));
@@ -253,6 +270,35 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             }
         }
 
+        /// <summary>
+        /// Recursively enumerates a directory without following directory reparse points.
+        /// </summary>
+        private static IEnumerable<FileSystemInfo> Enumerate(DirectoryInfo directory, CancellationTokenSource tokenSource)
+        {
+            ArgUtil.NotNull(directory, nameof(directory));
+            ArgUtil.Equal(false, directory.Attributes.HasFlag(FileAttributes.ReparsePoint), nameof(directory.Attributes.HasFlag));
+
+            // Push the directory onto the processing stack.
+            var directories = new Stack<DirectoryInfo>(new[] { directory });
+            while (directories.Count > 0)
+            {
+                // Pop the next directory.
+                directory = directories.Pop();
+                foreach (FileSystemInfo item in directory.GetFileSystemInfos())
+                {
+                    yield return item;
+
+                    // Push non-reparse-point directories onto the processing stack.
+                    directory = item as DirectoryInfo;
+                    if (directory != null &&
+                        !item.Attributes.HasFlag(FileAttributes.ReparsePoint))
+                    {
+                        directories.Push(directory);
+                    }
+                }
+            }
+        }
+
         private static void RemoveReadOnly(FileSystemInfo item)
         {
             ArgUtil.NotNull(item, nameof(item));
@@ -261,7 +307,5 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
                 item.Attributes = item.Attributes & ~FileAttributes.ReadOnly;
             }
         }
-
-        private static Lazy<JsonSerializerSettings> s_serializerSettings = new Lazy<JsonSerializerSettings>(() => new VssJsonMediaTypeFormatter().SerializerSettings);
     }
 }
