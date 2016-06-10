@@ -2,6 +2,7 @@ using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
 using System.IO;
 using System.Threading;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests.Util
@@ -262,6 +263,153 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Util
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
+        public async Task DeleteDirectory_DoesNotFollowDirectoryReparsePoint()
+        {
+            using (TestHostContext hc = new TestHostContext(this))
+            {
+                Tracing trace = hc.GetTrace();
+
+                // Arrange: Create the following structure:
+                //   randomDir
+                //   randomDir/targetDir
+                //   randomDir/targetDir/file.txt
+                //   randomDir/linkDir -> targetDir
+                string randomDir = Path.Combine(IOUtil.GetBinPath(), Path.GetRandomFileName());
+                try
+                {
+                    string targetDir = Directory.CreateDirectory(Path.Combine(randomDir, "targetDir")).FullName;
+                    string file = Path.Combine(targetDir, "file.txt");
+                    File.WriteAllText(path: file, contents: "some contents");
+                    string linkDir = Path.Combine(randomDir, "linkDir");
+                    await CreateDirectoryReparsePoint(context: hc, link: linkDir, target: targetDir);
+
+                    // Sanity check to verify the link was created properly:
+                    Assert.True(Directory.Exists(linkDir));
+                    Assert.True(new DirectoryInfo(linkDir).Attributes.HasFlag(FileAttributes.ReparsePoint));
+                    Assert.True(File.Exists(Path.Combine(linkDir, "file.txt")));
+
+                    // Act.
+                    IOUtil.DeleteDirectory(linkDir, CancellationToken.None);
+
+                    // Assert.
+                    Assert.False(Directory.Exists(linkDir));
+                    Assert.True(Directory.Exists(targetDir));
+                    Assert.True(File.Exists(file));
+                }
+                finally
+                {
+                    // Cleanup.
+                    if (Directory.Exists(randomDir))
+                    {
+                        Directory.Delete(randomDir, recursive: true);
+                    }
+                }
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public async Task DeleteDirectory_DoesNotFollowNestLevel1DirectoryReparsePoint()
+        {
+            using (TestHostContext hc = new TestHostContext(this))
+            {
+                Tracing trace = hc.GetTrace();
+
+                // Arrange: Create the following structure:
+                //   randomDir
+                //   randomDir/targetDir
+                //   randomDir/targetDir/file.txt
+                //   randomDir/subDir
+                //   randomDir/subDir/linkDir -> ../targetDir
+                string randomDir = Path.Combine(IOUtil.GetBinPath(), Path.GetRandomFileName());
+                try
+                {
+                    string targetDir = Directory.CreateDirectory(Path.Combine(randomDir, "targetDir")).FullName;
+                    string file = Path.Combine(targetDir, "file.txt");
+                    File.WriteAllText(path: file, contents: "some contents");
+                    string subDir = Directory.CreateDirectory(Path.Combine(randomDir, "subDir")).FullName;
+                    string linkDir = Path.Combine(subDir, "linkDir");
+                    await CreateDirectoryReparsePoint(context: hc, link: linkDir, target: targetDir);
+
+                    // Sanity check to verify the link was created properly:
+                    Assert.True(Directory.Exists(linkDir));
+                    Assert.True(new DirectoryInfo(linkDir).Attributes.HasFlag(FileAttributes.ReparsePoint));
+                    Assert.True(File.Exists(Path.Combine(linkDir, "file.txt")));
+
+                    // Act.
+                    IOUtil.DeleteDirectory(subDir, CancellationToken.None);
+
+                    // Assert.
+                    Assert.False(Directory.Exists(subDir));
+                    Assert.True(Directory.Exists(targetDir));
+                    Assert.True(File.Exists(file));
+                }
+                finally
+                {
+                    // Cleanup.
+                    if (Directory.Exists(randomDir))
+                    {
+                        Directory.Delete(randomDir, recursive: true);
+                    }
+                }
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public async Task DeleteDirectory_DoesNotFollowNestLevel2DirectoryReparsePoint()
+        {
+            using (TestHostContext hc = new TestHostContext(this))
+            {
+                Tracing trace = hc.GetTrace();
+
+                // Arrange: Create the following structure:
+                //   randomDir
+                //   randomDir/targetDir
+                //   randomDir/targetDir/file.txt
+                //   randomDir/subDir1
+                //   randomDir/subDir1/subDir2
+                //   randomDir/subDir1/subDir2/linkDir -> ../../targetDir
+                string randomDir = Path.Combine(IOUtil.GetBinPath(), Path.GetRandomFileName());
+                try
+                {
+                    string targetDir = Directory.CreateDirectory(Path.Combine(randomDir, "targetDir")).FullName;
+                    string file = Path.Combine(targetDir, "file.txt");
+                    File.WriteAllText(path: file, contents: "some contents");
+                    string subDir1 = Directory.CreateDirectory(Path.Combine(randomDir, "subDir1")).FullName;
+                    string subDir2 = Directory.CreateDirectory(Path.Combine(subDir1, "subDir2")).FullName;
+                    string linkDir = Path.Combine(subDir2, "linkDir");
+                    await CreateDirectoryReparsePoint(context: hc, link: linkDir, target: targetDir);
+
+                    // Sanity check to verify the link was created properly:
+                    Assert.True(Directory.Exists(linkDir));
+                    Assert.True(new DirectoryInfo(linkDir).Attributes.HasFlag(FileAttributes.ReparsePoint));
+                    Assert.True(File.Exists(Path.Combine(linkDir, "file.txt")));
+
+                    // Act.
+                    IOUtil.DeleteDirectory(subDir1, CancellationToken.None);
+
+                    // Assert.
+                    Assert.False(Directory.Exists(subDir1));
+                    Assert.True(Directory.Exists(targetDir));
+                    Assert.True(File.Exists(file));
+                }
+                finally
+                {
+                    // Cleanup.
+                    if (Directory.Exists(randomDir))
+                    {
+                        Directory.Delete(randomDir, recursive: true);
+                    }
+                }
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
         public void DeleteDirectory_IgnoresFile()
         {
             using (TestHostContext hc = new TestHostContext(this))
@@ -276,7 +424,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Util
                     Directory.CreateDirectory(directory);
                     File.WriteAllText(path: file, contents: "some contents");
 
-                    // Act.
+                    // Act: Call "DeleteDirectory" against the file. The method should not blow up and
+                    // should simply ignore the file since it is not a directory.
                     IOUtil.DeleteDirectory(file, CancellationToken.None);
 
                     // Assert.
@@ -382,7 +531,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Util
                 {
                     Directory.CreateDirectory(directory);
 
-                    // Act.
+                    // Act: Call "DeleteFile" against a directory. The method should not blow up and
+                    // should simply ignore the directory since it is not a file.
                     IOUtil.DeleteFile(directory);
 
                     // Assert.
@@ -494,6 +644,29 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Util
                 // Assert.
                 Assert.True(string.Equals(relativePath, string.Empty, StringComparison.OrdinalIgnoreCase), $"RelativePath does not expected: {relativePath}");
 #endif
+            }
+        }
+
+        private static async Task CreateDirectoryReparsePoint(IHostContext context, string link, string target)
+        {
+#if OS_WINDOWS
+            string fileName = Environment.GetEnvironmentVariable("ComSpec");
+            string arguments = $@"/c ""mklink /J ""{link}"" {target}""""";
+#else
+            string fileName = "/bin/ln";
+            string arguments = $@"-s ""{target}"" ""{link}""";
+#endif
+            ArgUtil.File(fileName, nameof(fileName));
+            using (var processInvoker = new ProcessInvoker())
+            {
+                processInvoker.Initialize(context);
+                await processInvoker.ExecuteAsync(
+                    workingDirectory: IOUtil.GetBinPath(),
+                    fileName: fileName,
+                    arguments: arguments,
+                    environment: null,
+                    requireExitCodeZero: true,
+                    cancellationToken: CancellationToken.None);
             }
         }
     }

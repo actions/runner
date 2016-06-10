@@ -9,9 +9,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
 {
     public static class StringUtil
     {
-        private static readonly object[] DefaultFormatArgs = new object[] { null };
-        private static Dictionary<string, object> _locStrings;
-        private const string EnglishUSLocale = "en-US";
+        private static readonly object[] s_defaultFormatArgs = new object[] { null };
+        private static Dictionary<string, object> s_locStrings;
 
         public static string Format(string format, params object[] args)
         {
@@ -21,37 +20,29 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
         // Do not combine the non-format overload with the format overload.
         public static string Loc(string locKey)
         {
-            //
-            // TODO: Replace this custom little loc impl with proper one after confirming OSX/Linux support
-            //
             string locStr = locKey;
-            
             try
             {
                 EnsureLoaded();
-
-                if (_locStrings.ContainsKey(locKey))
+                if (s_locStrings.ContainsKey(locKey))
                 {
-                    Object item = _locStrings[locKey];
-
-                    Type t = item.GetType();
-
-                    if (t == typeof(string))
+                    object item = s_locStrings[locKey];
+                    if (item is string)
                     {
-                        locStr = _locStrings[locKey].ToString();
+                        locStr = item as string;
                     }
-                    else if (t == typeof(JArray))
+                    else if (item is JArray)
                     {
-                        string[] lines = ((JArray)item).ToObject<string[]>();
-                        StringBuilder sb = new StringBuilder();
-                        foreach (string line in lines)
+                        string[] lines = (item as JArray).ToObject<string[]>();
+                        var sb = new StringBuilder();
+                        for (int i = 0 ; i < lines.Length ; i++)
                         {
-                            if (sb.Length > 0)
+                            if (i > 0)
                             {
                                 sb.AppendLine();
                             }
 
-                            sb.Append(line);
+                            sb.Append(lines[i]);
                         }
 
                         locStr = sb.ToString();
@@ -117,7 +108,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
                 return string.Format(
                     culture,
                     format ?? string.Empty,
-                    args == null || args.Length == 0 ? DefaultFormatArgs : args);
+                    args == null || args.Length == 0 ? s_defaultFormatArgs : args);
             }
             catch (FormatException)
             {
@@ -133,23 +124,38 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
 
         private static void EnsureLoaded()
         {
-            if (_locStrings == null)
+            if (s_locStrings == null)
             {
-                var localeFallback = new string[] { CultureInfo.CurrentCulture.Name, "en-US" };
-                foreach (string locale in localeFallback)
+                // Determine the list of resource files to load. The fallback "en-US" strings should always be
+                // loaded into the dictionary first.
+                string[] cultureNames;
+                if (string.IsNullOrEmpty(CultureInfo.CurrentCulture.Name) || // Exclude InvariantCulture.
+                    string.Equals(CultureInfo.CurrentCulture.Name, "en-US", StringComparison.Ordinal))
                 {
-                    if (string.IsNullOrEmpty(locale))
-                    {
-                        continue;
-                    }
+                    cultureNames = new[] { "en-US" };
+                }
+                else
+                {
+                    cultureNames = new[] { "en-US", CultureInfo.CurrentCulture.Name };
+                }
 
-                    string file = Path.Combine(IOUtil.GetBinPath(), locale, "strings.json");
+                // Initialize the dictionary.
+                var locStrings = new Dictionary<string, object>();
+                foreach (string cultureName in cultureNames)
+                {
+                    // Merge the strings from the file into the instance dictionary.
+                    string file = Path.Combine(IOUtil.GetBinPath(), cultureName, "strings.json");
                     if (File.Exists(file))
                     {
-                        _locStrings = IOUtil.LoadObject<Dictionary<string, object>>(file);
-                        return;
+                        foreach (KeyValuePair<string, object> pair in IOUtil.LoadObject<Dictionary<string, object>>(file))
+                        {
+                            locStrings[pair.Key] = pair.Value;
+                        }
                     }
                 }
+
+                // Store the instance.
+                s_locStrings = locStrings;
             }
         }
     }
