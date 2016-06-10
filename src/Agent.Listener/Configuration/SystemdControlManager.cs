@@ -25,6 +25,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         {
             try
             {
+                CalculateServiceName(settings, ServiceNamePattern, ServiceDisplayNamePattern);
                 string svcShPath = Path.Combine(IOUtil.GetRootPath(), _shName);
 
                 string svcShContent = File.ReadAllText(Path.Combine(IOUtil.GetBinPath(), _shTemplate));
