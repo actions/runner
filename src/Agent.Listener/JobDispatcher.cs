@@ -265,7 +265,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
                 if (jobRequestCancellationToken.IsCancellationRequested)
                 {
-                    await CompleteJobRequestAsync(_poolId, requestId, lockToken, TaskResult.Canceled);
+                    await CompleteJobRequestAsync(_poolId, message, lockToken, TaskResult.Canceled);
                     return;
                 }
 
@@ -347,8 +347,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                         Trace.Info($"finish job request with result: {result}");
                         term.WriteLine(StringUtil.Loc("JobCompleted", DateTime.UtcNow, message.JobName, result));
                         // complete job request
-                        await CompleteJobRequestAsync(_poolId, requestId, lockToken, result);
-                        await notification.JobCompleted(message.JobId);
+                        await CompleteJobRequestAsync(_poolId, message, lockToken, result);
 
                         Trace.Info("Stop renew job request.");
                         // stop renew lock
@@ -420,8 +419,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     term.WriteLine(StringUtil.Loc("JobCompleted", DateTime.UtcNow, message.JobName, resultOnAbandonOrCancel));
                     // complete job request with cancel result, stop renew lock, job has finished.
                     //TODO: don't finish job request on abandon
-                    await CompleteJobRequestAsync(_poolId, requestId, lockToken, resultOnAbandonOrCancel);
-                    await notification.JobCompleted(message.JobId);
+                    await CompleteJobRequestAsync(_poolId, message, lockToken, resultOnAbandonOrCancel);
 
                     Trace.Info("Stop renew job request.");
                     // stop renew lock
@@ -513,14 +511,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             return;
         }
 
-        private async Task CompleteJobRequestAsync(int poolId, long requestId, Guid lockToken, TaskResult result)
+        private async Task CompleteJobRequestAsync(int poolId, JobRequestMessage message, Guid lockToken, TaskResult result)
         {
             var agentServer = HostContext.GetService<IAgentServer>();
             try
             {
                 using (var csFinishRequest = new CancellationTokenSource(ChannelTimeout))
                 {
-                    await agentServer.FinishAgentRequestAsync(poolId, requestId, lockToken, DateTime.UtcNow, result, csFinishRequest.Token);
+                    await agentServer.FinishAgentRequestAsync(poolId, message.RequestId, lockToken, DateTime.UtcNow, result, csFinishRequest.Token);
                 }
             }
             catch (TaskAgentJobNotFoundException)
@@ -531,6 +529,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             {
                 Trace.Info("TaskAgentJobTokenExpiredException received, job is no longer valid.");
             }
+
+            // This should be the last thing to run so we don't notify external parties until actually finished
+            var notification = HostContext.GetService<IJobNotification>();
+            await notification.JobCompleted(message.JobId);
         }
 
         private class WorkerDispatcher : IDisposable
