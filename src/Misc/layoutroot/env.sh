@@ -1,12 +1,22 @@
 #!/bin/bash
 
-varCheckList=('LANG' 'JAVA_HOME' 'ANT_HOME' 'M2_HOME' 'ANDROID_HOME' 'GRADLE_HOME')
+varCheckList=(
+    'LANG' 
+    'JAVA_HOME' 
+    'ANT_HOME' 
+    'M2_HOME' 
+    'ANDROID_HOME' 
+    'GRADLE_HOME' 
+    'NVM_BIN' 
+    'NVM_PATH'
+    )
+
 envContents=""
 
-if [ -f ".Env" ]; then
-    envContents=`cat .Env`
+if [ -f ".env" ]; then
+    envContents=`cat .env`
 else
-    touch .Env
+    touch .env
 fi
 
 function writeVar()
@@ -16,12 +26,12 @@ function writeVar()
     if test "${envContents#*$checkDelim}" = "$envContents"
     then
         if [ ! -z "${!checkVar}" ]; then
-            echo "${checkVar}=${!checkVar}">>.Env
+            echo "${checkVar}=${!checkVar}">>.env
         fi
     fi 
 }
 
-echo $PATH>.Path
+echo $PATH>.path
 
 for var_name in ${varCheckList[@]}
 do

@@ -12,7 +12,7 @@ LAUNCH_PATH="${HOME}/Library/LaunchAgents"
 PLIST_PATH="${LAUNCH_PATH}/${SVC_NAME}.plist"
 TEMPLATE_PATH=./bin/vsts.agent.plist.template
 TEMP_PATH=./bin/vsts.agent.plist.temp
-CONFIG_PATH=.Service
+CONFIG_PATH=.service
 
 function failed()
 {

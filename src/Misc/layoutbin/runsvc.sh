@@ -4,14 +4,14 @@
 # for more info on how to propagate SIGTERM to a child process see: http://veithen.github.io/2014/11/16/sigterm-propagation.html
 trap 'kill -INT $PID' TERM INT
 
-if [ -f ".Env" ]; then
-    export $(cat .Env)
+if [ -f ".env" ]; then
+    export $(cat .env)
 fi
 
-if [ -f ".Path" ]; then
+if [ -f ".path" ]; then
     # configure
-    export PATH=`cat .Path`
-    echo ".Path=${PATH}"
+    export PATH=`cat .path`
+    echo ".path=${PATH}"
 fi
 
 # insert anything to setup env when running as a service
