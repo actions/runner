@@ -28,7 +28,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Capabilities
             using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
             {
                 processInvoker.OutputDataReceived +=
-                    (object sender, DataReceivedEventArgs args) =>
+                    (object sender, ProcessDataReceivedEventArgs args) =>
                     {
                         Trace.Info($"STDOUT: {args.Data}");
                         Capability capability;
@@ -39,7 +39,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Capabilities
                         }
                     };
                 processInvoker.ErrorDataReceived +=
-                    (object sender, DataReceivedEventArgs args) =>
+                    (object sender, ProcessDataReceivedEventArgs args) =>
                     {
                         Trace.Info($"STDERR: {args.Data}");
                     };

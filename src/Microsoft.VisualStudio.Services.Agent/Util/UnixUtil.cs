@@ -61,7 +61,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             }
         }
 
-        private void OnOutputDataReceived(object sender, DataReceivedEventArgs e)
+        private void OnOutputDataReceived(object sender, ProcessDataReceivedEventArgs e)
         {
             if (!string.IsNullOrEmpty(e.Data))
             {
@@ -69,7 +69,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             }
         }
 
-        private void OnErrorDataReceived(object sender, DataReceivedEventArgs e)
+        private void OnErrorDataReceived(object sender, ProcessDataReceivedEventArgs e)
         {
             if (!string.IsNullOrEmpty(e.Data))
             {

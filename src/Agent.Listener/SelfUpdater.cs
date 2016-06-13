@@ -146,7 +146,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     // tar -xzf
                     using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
                     {
-                        processInvoker.OutputDataReceived += new EventHandler<DataReceivedEventArgs>((sender, args) =>
+                        processInvoker.OutputDataReceived += new EventHandler<ProcessDataReceivedEventArgs>((sender, args) =>
                         {
                             if (!string.IsNullOrEmpty(args.Data))
                             {
@@ -154,7 +154,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                             }
                         });
 
-                        processInvoker.ErrorDataReceived += new EventHandler<DataReceivedEventArgs>((sender, args) =>
+                        processInvoker.ErrorDataReceived += new EventHandler<ProcessDataReceivedEventArgs>((sender, args) =>
                         {
                             if (!string.IsNullOrEmpty(args.Data))
                             {

@@ -20,7 +20,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
         private Mock<IProcessInvoker> _processInvoker;
         private Mock<IPromptManager> _promptManager;
         private Mock<INativeWindowsServiceHelper> _windowsServiceHelper;
-        private string _expectedLogonAccount = "NT AUTHORITY\\LOCAL SERVICE";
+        private string _expectedLogonAccount = "NT AUTHORITY\\NETWORK SERVICE";
         private string _expectedLogonPassword = "test";
 
         public WindowsServiceControlManagerL0()
