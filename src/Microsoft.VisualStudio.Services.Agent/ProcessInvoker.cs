@@ -86,7 +86,6 @@ namespace Microsoft.VisualStudio.Services.Agent
             _proc.StartInfo.WorkingDirectory = workingDirectory;
             _proc.StartInfo.UseShellExecute = false;
             _proc.StartInfo.CreateNoWindow = true;
-            _proc.StartInfo.LoadUserProfile = false;
             _proc.StartInfo.RedirectStandardInput = true;
             _proc.StartInfo.RedirectStandardError = true;
             _proc.StartInfo.RedirectStandardOutput = true;
