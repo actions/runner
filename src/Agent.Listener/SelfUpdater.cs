@@ -270,6 +270,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 scriptBuilder.AppendLine("endlocal");
             }
 
+            scriptBuilder.AppendLine("echo Exit _update.cmd >> %logfile% 2>&1");
             scriptBuilder.AppendLine(":end");
 
             string updateScript = Path.Combine(IOUtil.GetWorkPath(HostContext), "_update.cmd");
@@ -363,8 +364,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             if (restartInteractiveAgent)
             {
                 scriptBuilder.AppendLine("echo \"Restarting interactive agent\"  >> \"$logfile\" 2>&1");
-                scriptBuilder.AppendLine("\"$existingagentbinfolder\"/$agentprocessname");
+                scriptBuilder.AppendLine("\"$existingagentbinfolder\"/$agentprocessname &");
             }
+
+            scriptBuilder.AppendLine("echo \"Exit _update.sh\" >> \"$logfile\" 2>&1");
 
             string updateScript = Path.Combine(IOUtil.GetWorkPath(HostContext), "_update.sh");
             if (File.Exists(updateScript))
