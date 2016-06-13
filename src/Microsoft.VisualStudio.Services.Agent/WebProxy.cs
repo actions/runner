@@ -37,15 +37,17 @@ namespace Microsoft.VisualStudio.Services.Agent
             {
                 return;
             }
-            _proxySettingsApplied = true;
-            var proxyFilePath = IOUtil.GetProxyConfigFilePath();
-            bool proxyConfigured = (new FileInfo(proxyFilePath)).Exists;
-            if (!proxyConfigured)
+
+            string proxy = Environment.GetEnvironmentVariable("VSTS_HTTP_PROXY");
+            if (!string.IsNullOrEmpty(proxy))
             {
-                return;
+                VssHttpMessageHandler.DefaultWebProxy = new WebProxy(new Uri(proxy))
+                {
+                    Credentials = CredentialCache.DefaultNetworkCredentials
+                };
             }
-            string proxyURI = File.ReadAllText(proxyFilePath);
-            VssHttpMessageHandler.DefaultWebProxy = new WebProxy(new Uri(proxyURI));
+
+            _proxySettingsApplied = true;
         }
     }
 }
