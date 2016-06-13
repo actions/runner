@@ -23,6 +23,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
         private readonly object _outputLock = new object();
         private readonly StringBuilder _errorBuffer = new StringBuilder();
         private volatile int _errorCount;
+        private bool _failOnStandardError;
         public PowerShellExeHandlerData Data { get; set; }
 
         public async Task RunAsync()
@@ -37,6 +38,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             // Update the env dictionary.
             AddVariablesToEnvironment(excludeSecrets: true);
 
+            // Determine whether to fail on STDERR.
+            _failOnStandardError = StringUtil.ConvertToBoolean(Data.FailOnStandardError, true); // Default to true.
+
+            // Get the script file.
             string scriptFile = null;
             try
             {
@@ -134,7 +139,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
                     FlushErrorData();
 
                     // Fail on error count.
-                    if (_errorCount > 0)
+                    if (_failOnStandardError && _errorCount > 0)
                     {
                         if (ExecutionContext.Result != null)
                         {
@@ -202,9 +207,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
         {
             lock (_outputLock)
             {
-                if (!string.IsNullOrEmpty(e.Data))
+                if (_failOnStandardError)
                 {
-                    _errorBuffer.AppendLine(e.Data);
+                    if (!string.IsNullOrEmpty(e.Data))
+                    {
+                        _errorBuffer.AppendLine(e.Data);
+                    }
+                }
+                else
+                {
+                    ExecutionContext.Output(e.Data);
                 }
             }
         }
