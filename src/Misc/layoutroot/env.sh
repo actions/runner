@@ -9,6 +9,7 @@ varCheckList=(
     'GRADLE_HOME' 
     'NVM_BIN' 
     'NVM_PATH'
+    'VSTS_HTTP_PROXY'
     )
 
 envContents=""
