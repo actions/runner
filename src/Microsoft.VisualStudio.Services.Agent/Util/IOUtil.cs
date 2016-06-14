@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using Microsoft.VisualStudio.Services.WebApi;
@@ -51,6 +52,23 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
         public static string GetBinPath()
         {
             return Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
+        }
+
+        public static string GetBinPathHash()
+        {
+            string hashString = GetBinPath().ToLowerInvariant();
+            using (SHA256 sha256hash = SHA256.Create())
+            {
+                byte[] data = sha256hash.ComputeHash(Encoding.UTF8.GetBytes(hashString));
+                StringBuilder sBuilder = new StringBuilder();
+                for (int i = 0; i < data.Length; i++)
+                {
+                    sBuilder.Append(data[i].ToString("x2"));
+                }
+
+                string hash = sBuilder.ToString();
+                return hash;
+            }
         }
 
         public static string GetDiagPath()

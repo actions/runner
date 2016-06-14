@@ -54,7 +54,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
         public string GetUniqueBuildGroupName()
         {
-            return AgentServiceLocalGroupPrefix + GetHashCodeForAgent().Substring(0, 5);
+            return AgentServiceLocalGroupPrefix + IOUtil.GetBinPathHash().Substring(0, 5);
         }
 
         public ServiceController TryGetServiceController(string serviceName)
@@ -437,29 +437,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             }
         }
 
-        private string GetHashCodeForAgent(string hashString = null)
-        {
-            Trace.Entering();
-            if (string.IsNullOrEmpty(hashString))
-            {
-                hashString = IOUtil.GetBinPath().ToLowerInvariant();
-            }
-
-
-            using (SHA256 sha256hash = SHA256.Create())
-            {
-                byte[] data = sha256hash.ComputeHash(Encoding.UTF8.GetBytes(hashString));
-                StringBuilder sBuilder = new StringBuilder();
-                for (int i = 0; i < data.Length; i++)
-                {
-                    sBuilder.Append(data[i].ToString("x2"));
-                }
-
-                string hash = sBuilder.ToString();
-                Trace.Info("Bin path location hash = {0}", hash);
-                return hash;
-            }
-        }
 
         // Helper class not to repeat whenever we deal with LSA* api
         internal class LsaPolicy : IDisposable

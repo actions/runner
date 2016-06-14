@@ -2,9 +2,9 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Client;
+using Microsoft.VisualStudio.Services.WebApi;
 
 namespace Microsoft.VisualStudio.Services.Agent
 {
@@ -15,6 +15,8 @@ namespace Microsoft.VisualStudio.Services.Agent
 
         // task download
         Task<Stream> GetTaskContentZipAsync(Guid taskId, TaskVersion taskVersion, CancellationToken token);
+
+        Task<bool> TaskDefinitionEndpointExist(CancellationToken token);
     }
 
     public sealed class TaskServer : AgentService, ITaskServer
@@ -54,6 +56,20 @@ namespace Microsoft.VisualStudio.Services.Agent
             CheckConnection();
             return _taskAgentClient.GetTaskContentZipAsync(taskId, taskVersion, null, token);
         }
-    }
 
+        public async Task<bool> TaskDefinitionEndpointExist(CancellationToken token)
+        {
+            CheckConnection();
+            try
+            {
+                var definitions = await _taskAgentClient.GetTaskDefinitionsAsync(cancellationToken: token);
+            }
+            catch (VssResourceNotFoundException)
+            {
+                return false;
+            }
+
+            return true;
+        }
+    }
 }

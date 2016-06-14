@@ -72,7 +72,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
                 // prefer task definitions url, then TFS collection url, then TFS account url
                 var taskServer = HostContext.GetService<ITaskServer>();
-                Uri taskServerUri;
+                Uri taskServerUri = null;
                 if (!string.IsNullOrEmpty(jobContext.Variables.System_TaskDefinitionsUri))
                 {
                     taskServerUri = ReplaceWithConfigUriBase(new Uri(jobContext.Variables.System_TaskDefinitionsUri));
@@ -81,15 +81,22 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 {
                     taskServerUri = ReplaceWithConfigUriBase(new Uri(jobContext.Variables.System_TFCollectionUrl));
                 }
-                else
+
+                var taskServerCredential = ApiUtil.GetVssCredential(message.Environment.SystemConnection);
+                if (taskServerUri != null)
                 {
-                    var configStore = HostContext.GetService<IConfigurationStore>();
-                    taskServerUri = ReplaceWithConfigUriBase(new Uri(configStore.GetSettings().ServerUrl));
+                    Trace.Info($"Creating task server with {taskServerUri}");
+                    await taskServer.ConnectAsync(ApiUtil.CreateConnection(taskServerUri, taskServerCredential));
                 }
 
-                Trace.Info($"Creating task server with {taskServerUri}");
-                var taskServerCredential = ApiUtil.GetVssCredential(message.Environment.SystemConnection);
-                await taskServer.ConnectAsync(ApiUtil.CreateConnection(taskServerUri, taskServerCredential));
+                if (taskServerUri == null || !await taskServer.TaskDefinitionEndpointExist(jobRequestCancellationToken))
+                {
+                    Trace.Info($"Can't determine task download url from JobMessage or the endpoint doesn't exist.");
+                    var configStore = HostContext.GetService<IConfigurationStore>();
+                    taskServerUri = ReplaceWithConfigUriBase(new Uri(configStore.GetSettings().ServerUrl));
+                    Trace.Info($"Recreate task server with configuration server url: {taskServerUri}");
+                    await taskServer.ConnectAsync(ApiUtil.CreateConnection(taskServerUri, taskServerCredential));
+                }
 
                 // Expand the endpoint data values.
                 foreach (ServiceEndpoint endpoint in jobContext.Endpoints)
