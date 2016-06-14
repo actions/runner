@@ -31,7 +31,8 @@ Secrets are masked out of the logs.
 ## Http Tracing Windows
 
 Start [Fiddler](http://www.telerik.com/fiddler).  
-It's recommended to only listen to agent traffic.  File, Capture Traffic off (F12) 
+It's recommended to only listen to agent traffic.  File > Capture Traffic off (F12)  
+Enable decrypting HTTPS traffic.  Tools > Fiddler Options > HTTPS tab. Decrypt HTTPS traffic
 
 Let the agent know to use the proxy:
 
@@ -51,8 +52,8 @@ It's easy to capture the http trace of the agent using Charles Proxy (similar to
 
 TODO: video
 
-Start Charles Proxy
-Charles: Proxy > Proxy Settings > SSL Tab.  Enable.  Add URL
+Start Charles Proxy  
+Charles: Proxy > Proxy Settings > SSL Tab.  Enable.  Add URL  
 Charles: Proxy > Mac OSX Proxy.  Recommend disabling to only see agent traffic.
 
 ```bash
