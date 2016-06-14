@@ -8,13 +8,13 @@
 
 ## Step 2: Download from Releases
 
-Download the agent from [github releases](https://github.com/Microsoft/vsts-agent/releases/tag/v2.101.1)
+Download the agent from [github releases](https://github.com/Microsoft/vsts-agent/releases/tag/v2.102.0)
 
 ## Step 3: Create the agent
 
 ```bash
 ~/$ mkdir myagent && cd myagent
-~/myagent$ tar xzf ~/Downloads/vsts-agent-ubuntu.14.04-x64-2.101.1.tar.gz
+~/myagent$ tar xzf ~/Downloads/vsts-agent-ubuntu.14.04-x64-2.102.0.tar.gz
 ```
 ## Step 4: Configure
 
@@ -30,8 +30,6 @@ Download the agent from [github releases](https://github.com/Microsoft/vsts-agen
 > NOTE: running as a service [details here](nixsvc.md)
 
 ## Step 5: Optionally run the agent interactively
-
-If you didn't run as a service above:
 
 ```bash
 ~/myagent$ ./run.sh

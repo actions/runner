@@ -19,6 +19,8 @@ Successfully added the agent
 
 # Unconfigure
 
+> Important: If you're running as a service on Linux/OSX, ensure you `stop` then `uninstall` the service before unconfiguring.  See [Nix Service Config](nixsvc.md)
+
 ```bash
 $ ./config.sh remove
 Removing service
