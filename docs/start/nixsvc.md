@@ -5,6 +5,10 @@ Key Points:
   - SystemD is used on Linux.  Ubuntu 16 LTS, Redhat 7.1 has SystemD
   - SystemD requires sudo so all scripts below must be called with sudo.  OSX does not.
 
+## Managing the Service
+
+./svc.sh was generated to manage your service
+
 ## Install
 
 Install will create a LaunchAgent plist on OSX or a systemd unit file on Linux
@@ -19,11 +23,18 @@ svc install complete
 
 Service files point to `./runsvc.sh` which will setup the environment and start the agents host.  See Environment section below.
 
-Start and stop the service after making changes
+### Start
+```bash
+$ sudo ./svc.sh start
 
-## Managing the Service
+starting vsts.agent.bryanmac.testsvc
+status vsts.agent.bryanmac.testsvc:
 
-./svc.sh was generated to manage your service
+/Users/bryanmac/Library/LaunchAgents/vsts.agent.bryanmac.testsvc.plist
+
+Started:
+25324 0 vsts.agent.bryanmac.testsvc
+```
 
 ### Status
 ```bash
@@ -49,19 +60,6 @@ status vsts.agent.bryanmac.testsvc:
 /Users/bryanmac/Library/LaunchAgents/vsts.agent.bryanmac.testsvc.plist
 
 Stopped
-```
-
-### Start
-```bash
-$ sudo ./svc.sh start
-
-starting vsts.agent.bryanmac.testsvc
-status vsts.agent.bryanmac.testsvc:
-
-/Users/bryanmac/Library/LaunchAgents/vsts.agent.bryanmac.testsvc.plist
-
-Started:
-25324 0 vsts.agent.bryanmac.testsvc
 ```
 
 ### Uninstall
