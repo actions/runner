@@ -288,6 +288,39 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             }
         }
 
+        public static void CopyDirectory(string sourceDirectory, string targetDirectory, CancellationToken cancellationToken = default(CancellationToken))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            DirectoryInfo sourceDir = new DirectoryInfo(sourceDirectory);
+
+            // If the source directory does not exist, throw an exception.
+            if (!sourceDir.Exists)
+            {
+                throw new DirectoryNotFoundException($"{sourceDirectory}");
+            }
+
+            Directory.CreateDirectory(targetDirectory);
+
+            // Get the file contents of the directory to copy.
+            foreach (FileInfo file in sourceDir.GetFiles() ?? new FileInfo[0])
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                // Create the path to the new copy of the file.
+                string targetFilePath = Path.Combine(targetDirectory, file.Name);
+                // Copy the file.
+                file.CopyTo(targetFilePath, true);
+            }
+
+            DirectoryInfo[] subDirs = sourceDir.GetDirectories();
+            foreach (DirectoryInfo subDir in subDirs ?? new DirectoryInfo[0])
+            {
+                // Create the subdirectory.
+                string targetDirectoryPath = Path.Combine(targetDirectory, subDir.Name);
+                // Copy the subdirectories.
+                CopyDirectory(subDir.FullName, targetDirectoryPath, cancellationToken);
+            }
+        }
+
         /// <summary>
         /// Recursively enumerates a directory without following directory reparse points.
         /// </summary>
