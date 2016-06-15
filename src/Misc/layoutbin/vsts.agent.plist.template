@@ -14,8 +14,6 @@
     <string>{{AgentRoot}}</string>
     <key>RunAtLoad</key>
     <true/>    
-    <key>SessionCreate</key>
-    <true/>    
     <key>StandardOutPath</key>
     <string>{{UserHome}}/Library/Logs/{{SvcName}}/stdout.log</string>
     <key>StandardErrorPath</key>
