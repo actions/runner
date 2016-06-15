@@ -18,7 +18,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
     {
         public CancellationTokenSource TokenSource { get; set; }
 
-        private Guid _sessionId;
+        private IMessageListener _listener;
         private int _poolId;
         private ITerminal _term;
         private bool _inConfigStage;
@@ -176,16 +176,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             // Load the settings.
             _poolId = settings.PoolId;
 
-            var listener = HostContext.GetService<IMessageListener>();
-            if (!await listener.CreateSessionAsync(token))
+            _listener = HostContext.GetService<IMessageListener>();
+            if (!await _listener.CreateSessionAsync(token))
             {
                 return Constants.Agent.ReturnCode.TerminatedError;
             }
 
             _term.WriteLine(StringUtil.Loc("ListenForJobs", DateTime.UtcNow));
 
-            _sessionId = listener.Session.SessionId;
             IJobDispatcher jobDispatcher = null;
+            CancellationTokenSource messageQueueLoopTokenSource = CancellationTokenSource.CreateLinkedTokenSource(token);
             try
             {
                 var notification = HostContext.GetService<IJobNotification>();
@@ -194,13 +194,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 bool autoUpdateInProgress = false;
                 Task<bool> selfUpdateTask = null;
                 jobDispatcher = HostContext.CreateService<IJobDispatcher>();
+
                 while (!token.IsCancellationRequested)
                 {
                     TaskAgentMessage message = null;
                     bool skipMessageDeletion = false;
                     try
                     {
-                        Task<TaskAgentMessage> getNextMessage = listener.GetNextMessageAsync(token);
+                        Task<TaskAgentMessage> getNextMessage = _listener.GetNextMessageAsync(messageQueueLoopTokenSource.Token);
                         if (autoUpdateInProgress)
                         {
                             Trace.Verbose("Auto update task running at backend, waiting for getNextMessage or selfUpdateTask to finish.");
@@ -211,6 +212,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                                 if (await selfUpdateTask)
                                 {
                                     Trace.Info("Auto update task finished at backend, an agent update is ready to apply exit the current agent instance.");
+                                    Trace.Info("Stop message queue looping.");
+                                    messageQueueLoopTokenSource.Cancel();
+                                    try
+                                    {
+                                        await getNextMessage;
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        Trace.Info($"Ignore any exception after cancel message loop. {ex}");
+                                    }
+
                                     return Constants.Agent.ReturnCode.AgentUpdating;
                                 }
                                 else
@@ -290,7 +302,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 }
 
                 //TODO: make sure we don't mask more important exception
-                await listener.DeleteSessionAsync();
+                await _listener.DeleteSessionAsync();
+                
+                messageQueueLoopTokenSource.Dispose();
             }
 
             return Constants.Agent.ReturnCode.Success;
@@ -298,12 +312,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
         private async Task DeleteMessageAsync(TaskAgentMessage message)
         {
-            if (message != null && _sessionId != Guid.Empty)
+            if (message != null && _listener.Session.SessionId != Guid.Empty)
             {
                 var agentServer = HostContext.GetService<IAgentServer>();
                 using (var cs = new CancellationTokenSource(TimeSpan.FromSeconds(30)))
                 {
-                    await agentServer.DeleteAgentMessageAsync(_poolId, message.MessageId, _sessionId, cs.Token);
+                    await agentServer.DeleteAgentMessageAsync(_poolId, message.MessageId, _listener.Session.SessionId, cs.Token);
                 }
             }
         }

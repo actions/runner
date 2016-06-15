@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using Microsoft.VisualStudio.Services.WebApi;
@@ -51,6 +52,23 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
         public static string GetBinPath()
         {
             return Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
+        }
+
+        public static string GetBinPathHash()
+        {
+            string hashString = GetBinPath().ToLowerInvariant();
+            using (SHA256 sha256hash = SHA256.Create())
+            {
+                byte[] data = sha256hash.ComputeHash(Encoding.UTF8.GetBytes(hashString));
+                StringBuilder sBuilder = new StringBuilder();
+                for (int i = 0; i < data.Length; i++)
+                {
+                    sBuilder.Append(data[i].ToString("x2"));
+                }
+
+                string hash = sBuilder.ToString();
+                return hash;
+            }
         }
 
         public static string GetDiagPath()
@@ -267,6 +285,39 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             else
             {
                 return path;
+            }
+        }
+
+        public static void CopyDirectory(string sourceDirectory, string targetDirectory, CancellationToken cancellationToken = default(CancellationToken))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            DirectoryInfo sourceDir = new DirectoryInfo(sourceDirectory);
+
+            // If the source directory does not exist, throw an exception.
+            if (!sourceDir.Exists)
+            {
+                throw new DirectoryNotFoundException($"{sourceDirectory}");
+            }
+
+            Directory.CreateDirectory(targetDirectory);
+
+            // Get the file contents of the directory to copy.
+            foreach (FileInfo file in sourceDir.GetFiles() ?? new FileInfo[0])
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                // Create the path to the new copy of the file.
+                string targetFilePath = Path.Combine(targetDirectory, file.Name);
+                // Copy the file.
+                file.CopyTo(targetFilePath, true);
+            }
+
+            DirectoryInfo[] subDirs = sourceDir.GetDirectories();
+            foreach (DirectoryInfo subDir in subDirs ?? new DirectoryInfo[0])
+            {
+                // Create the subdirectory.
+                string targetDirectoryPath = Path.Combine(targetDirectory, subDir.Name);
+                // Copy the subdirectories.
+                CopyDirectory(subDir.FullName, targetDirectoryPath, cancellationToken);
             }
         }
 

@@ -28,6 +28,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             ArgUtil.NotNull(Inputs, nameof(Inputs));
             ArgUtil.Directory(TaskDirectory, nameof(TaskDirectory));
 
+#if !OS_WINDOWS
+            // Ensure compat vso-task-lib exist at the root of _work folder
+            // This will make vsts-agent works against 2015 RTM/QU1 TFS, since tasks in those version doesn't package with task lib
+            // Put the 0.5.5 version vso-task-lib into the root of _work/node_modules folder, so tasks are able to find those lib.
+            if (!File.Exists(Path.Combine(IOUtil.GetWorkPath(HostContext), "node_modules", "vso-task-lib", "package.json")))
+            {
+                string vsoTaskLibFromExternal = Path.Combine(IOUtil.GetExternalsPath(), "vso-task-lib");
+                string compatVsoTaskLibInWork = Path.Combine(IOUtil.GetWorkPath(HostContext), "node_modules", "vso-task-lib");
+                IOUtil.CopyDirectory(vsoTaskLibFromExternal, compatVsoTaskLibInWork, ExecutionContext.CancellationToken);
+            }
+#endif
+
             // Update the env dictionary.
             AddInputsToEnvironment();
             AddEndpointsToEnvironment();
