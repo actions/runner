@@ -4,6 +4,8 @@ SVC_NAME="{{SvcNameVar}}"
 SVC_DESCRIPTION="{{SvcDescription}}"
 
 SVC_CMD=$1
+arg_2=${2}
+
 AGENT_ROOT=`pwd`
 
 UNIT_PATH=/etc/systemd/system/${SVC_NAME}
@@ -49,7 +51,7 @@ function install()
     fi
 
     # can optionally use username supplied
-    run_as_user=${2:-$SUDO_USER}
+    run_as_user=${arg_2:-$SUDO_USER}
     echo "Run as user: ${run_as_user}"
 
     run_as_uid=$(id -u ${run_as_user}) || failed "User does not exist"
