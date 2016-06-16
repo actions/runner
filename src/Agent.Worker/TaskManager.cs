@@ -438,6 +438,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             }
         }
 
+        public string FailOnStandardError
+        {
+            get
+            {
+                return GetInput(nameof(FailOnStandardError));
+            }
+
+            set
+            {
+                SetInput(nameof(FailOnStandardError), value);
+            }
+        }
+
         public string InlineScript
         {
             get
