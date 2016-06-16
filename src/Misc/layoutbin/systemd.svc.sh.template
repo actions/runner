@@ -48,7 +48,17 @@ function install()
       rm "${TEMP_PATH}" || failed "failed to delete ${TEMP_PATH}"
     fi
 
-    sed "s/{{User}}/${SUDO_USER:-$USER}/g; s/{{Description}}/$(echo ${SVC_DESCRIPTION} | sed -e 's/[\/&]/\\&/g')/g; s/{{AgentRoot}}/$(echo ${AGENT_ROOT} | sed -e 's/[\/&]/\\&/g')/g;" "${TEMPLATE_PATH}" > "${TEMP_PATH}" || failed "failed to create replacement temp file"
+    # can optionally use username supplied
+    run_as_user=${2:-$SUDO_USER}
+    echo "Run as user: ${run_as_user}"
+
+    run_as_uid=$(id -u ${run_as_user}) || failed "User does not exist"
+    echo "Run as uid: ${run_as_uid}"
+
+    run_as_gid=$(id -g ${run_as_user}) || failed "Group not available"
+    echo "gid: ${run_as_gid}"
+
+    sed "s/{{User}}/${run_as_user}/g; s/{{Description}}/$(echo ${SVC_DESCRIPTION} | sed -e 's/[\/&]/\\&/g')/g; s/{{AgentRoot}}/$(echo ${AGENT_ROOT} | sed -e 's/[\/&]/\\&/g')/g;" "${TEMPLATE_PATH}" > "${TEMP_PATH}" || failed "failed to create replacement temp file"
     mv "${TEMP_PATH}" "${UNIT_PATH}" || failed "failed to copy unit file"
     
     # unit file should not be executable and world writable
@@ -57,13 +67,13 @@ function install()
     
 	# Since we started with sudo, runsvc.sh will be owned by root. Change this to current login user.    
     cp ./bin/runsvc.sh ./runsvc.sh || failed "failed to copy runsvc.sh"
-    chown ${SUDO_UID:-$UID}:${SUDO_GID} ./runsvc.sh || failed "failed to set owner for runsvc.sh"
+    chown ${run_as_uid}:${run_as_gid} ./runsvc.sh || failed "failed to set owner for runsvc.sh"
     chmod 755 ./runsvc.sh || failed "failed to set permission for runsvc.sh"
 
     systemctl enable ${SVC_NAME} || failed "failed to enable ${SVC_NAME}"
 
-    echo "${SVC_NAME}" > ${CONFIG_PATH} || failed "failed to create .Service file"
-    chown ${SUDO_UID:-$UID}:${SUDO_GID} ${CONFIG_PATH} || failed "failed to set permission for ${CONFIG_PATH}"
+    echo "${SVC_NAME}" > ${CONFIG_PATH} || failed "failed to create .service file"
+    chown ${run_as_uid}:${run_as_gid} ${CONFIG_PATH} || failed "failed to set permission for ${CONFIG_PATH}"
 }
 
 function start()

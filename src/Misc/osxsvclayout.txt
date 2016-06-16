@@ -1,6 +1,6 @@
 Agent:
--rwxr--r--    1 bryanmac  staff   309 May  6 08:14 .Agent
--rwxr--r--    1 bryanmac  staff   106 May  6 08:14 .Credentials
+-rwxr--r--    1 bryanmac  staff   309 May  6 08:14 .agent
+-rwxr--r--    1 bryanmac  staff   106 May  6 08:14 .credentials
 -rwxr-xr-x    1 bryanmac  staff  2052 May  6 08:14 svc.sh
 
 -=B=- ~/Testing/2100$ ls -la ~/Library/LaunchAgents/vsts.agent.btest.2100.plist 
@@ -26,9 +26,7 @@ Agent:
     <key>WorkingDirectory</key>
     <string>/Users/bryanmac/Testing/2100</string>
     <key>RunAtLoad</key>
-    <true/>    
-    <key>SessionCreate</key>
-    <true/>    
+    <true/>
     <key>StandardOutPath</key>
     <string>/Users/bryanmac/Library/Logs/vsts.agent.btest.2100/stdout.log</string>
     <key>StandardErrorPath</key>
