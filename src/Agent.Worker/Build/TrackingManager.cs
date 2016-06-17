@@ -1,11 +1,9 @@
 ﻿using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
-using Newtonsoft.Json.Serialization;
 using System;
-using System.Globalization;
 using System.IO;
+using Agent.Worker.Common;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 {
@@ -145,29 +143,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             Trace.Entering();
             Trace.Verbose($"Writing config to file: {file}");
 
-            // Create the directory if it does not exist.
-            Directory.CreateDirectory(Path.GetDirectoryName(file));
-
-            // Serialize the object.
-            JsonSerializerSettings settings = new JsonSerializerSettings();
-            settings.ContractResolver = new CamelCasePropertyNamesContractResolver();
-            settings.Converters.Add(new StringEnumConverter() { CamelCaseText = true });
-            string contents = JsonConvert.SerializeObject(
-                value: value,
-                formatting: Formatting.Indented,
-                settings: settings);
-
-            // Lock write access on the file so the garbage collector service
-            // can also lock on write access to safely handle the file.
-            using (FileStream stream = new FileStream(file, FileMode.Create, FileAccess.Write, FileShare.Read))
-            {
-                using (StreamWriter writer = new StreamWriter(stream))
-                {
-                    writer.Write(contents);
-                    writer.Flush();
-                    stream.Flush();
-                }
-            }
+            FileSystemHelper.WriteToFile(file, value);
         }
     }
 }

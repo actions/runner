@@ -199,6 +199,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                 public static readonly string ReleaseWebUrl = "release.releaseWebUrl";
                 public static readonly string RequestorId = "release.requestedFor";
                 public static readonly string SkipArtifactsDownload = "release.skipartifactsDownload";
+                public static readonly string ReleaseDefinitionId = "release.definitionId";
             }
 
             public static class System
@@ -226,6 +227,18 @@ namespace Microsoft.VisualStudio.Services.Agent
             public static class Task
             {
                 public static readonly string DisplayName = "task.displayname";
+            }
+        }
+
+        public class Release
+        {
+            public class Path
+            {
+                public static readonly string WorkingDirectory = "r";
+                public static readonly string ArtifactsDirectory = "a";
+                public static readonly string RootMappingDirectory = "RootMapping";
+                public static readonly string MappingsFile = "Mappings.json";
+                public static readonly string DefinitionMapping = "DefinitionMapping.json";
             }
         }
     }
