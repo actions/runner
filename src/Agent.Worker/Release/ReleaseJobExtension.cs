@@ -273,7 +273,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
                 $"ReleaseId={releaseId}, TeamProjectId={teamProjectId}, ReleaseDefinitionName={releaseDefinitionName}");
 
             var releaseDefinitionToFolderMap = directoryManager.PrepareArtifactsDirectory(
-                IOUtil.GetWorkPath(HostContext), executionContext.Variables.System_CollectionId,
+                IOUtil.GetWorkPath(HostContext),
+                executionContext.Variables.System_CollectionId,
                 executionContext.Variables.System_TeamProjectId.ToString(),
                 executionContext.Variables.Get(Constants.Variables.Release.ReleaseDefinitionId));
 

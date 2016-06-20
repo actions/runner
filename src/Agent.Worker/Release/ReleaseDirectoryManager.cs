@@ -51,7 +51,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
             {
                 Regex regex = new Regex(@"^[0-9]*$");
                 var dirs = Directory.GetDirectories(releaseDirectory);
-                var integerFolderNames = dirs.Select(Path.GetFileName).Where(path => regex.IsMatch(path));
+                var integerFolderNames = dirs.Select(Path.GetFileName).Where(name => regex.IsMatch(name));
                 Trace.Verbose($"Number of folder with integer names: {integerFolderNames.Count()}");
 
                 if (integerFolderNames.Any())
@@ -83,7 +83,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
             Trace.Entering();
             Trace.Verbose($"Writing config to file: {file}");
 
-            FileSystemHelper.WriteToFile(file, value);
+            FileSystemHelper.WriteJsonSerializeToFile(file, value);
         }
     }
 }

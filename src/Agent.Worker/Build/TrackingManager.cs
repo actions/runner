@@ -143,7 +143,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             Trace.Entering();
             Trace.Verbose($"Writing config to file: {file}");
 
-            FileSystemHelper.WriteToFile(file, value);
+            FileSystemHelper.WriteJsonSerializeToFile(file, value);
         }
     }
 }

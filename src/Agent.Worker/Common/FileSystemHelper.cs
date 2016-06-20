@@ -7,7 +7,7 @@ namespace Agent.Worker.Common
 {
     public static class FileSystemHelper
     {
-        public static void WriteToFile(string file, object value)
+        public static void WriteJsonSerializeToFile(string file, object value)
         {
             // Create the directory if it does not exist.
             Directory.CreateDirectory(Path.GetDirectoryName(file));
