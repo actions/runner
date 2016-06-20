@@ -5,6 +5,12 @@ SVC_DESCRIPTION="{{SvcDescription}}"
 
 user_id=`id -u`
 
+# launchctl should not run as sudo for launch agents
+if [ $user_id -eq 0 ]; then
+    echo "Must not run with sudo"
+    exit 1
+fi
+
 SVC_CMD=$1
 AGENT_ROOT=`pwd`
 
