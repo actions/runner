@@ -3,12 +3,11 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Security.AccessControl;
-using System.Security.Cryptography;
 using System.Security.Principal;
 using System.ServiceProcess;
-using System.Text;
 
 using Microsoft.VisualStudio.Services.Agent.Util;
+using Microsoft.Win32;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 {
@@ -38,6 +37,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         ServiceController TryGetServiceController(string serviceName);
 
         void InstallService(string serviceName, string serviceDisplayName, string logonAccount, string logonPassword);
+
+        void CreateVstsAgentRegistryKey();
+
+        void DeleteVstsAgentRegistryKey();
     }
 
     public class NativeWindowsServiceHelper : AgentService, INativeWindowsServiceHelper
@@ -418,6 +421,65 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             finally
             {
                 CloseServiceHandle(scmHndl);
+            }
+        }
+
+        public void CreateVstsAgentRegistryKey()
+        {
+            RegistryKey tfsKey = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\TeamFoundationServer\15.0", true);
+            if (tfsKey == null)
+            {
+                //We could be on a machine that doesn't have TFS installed on it, create the key
+                tfsKey = Registry.LocalMachine.CreateSubKey(@"SOFTWARE\Microsoft\TeamFoundationServer\15.0");
+            }
+
+            if (tfsKey == null)
+            {
+                throw new ArgumentNullException("Unable to create regiestry key: 'HKLM\\SOFTWARE\\Microsoft\\TeamFoundationServer\\15.0'");
+            }
+
+            try
+            {
+                using (RegistryKey vstsAgentsKey = tfsKey.CreateSubKey("VstsAgents"))
+                {
+                    String hash = IOUtil.GetBinPathHash();
+                    using (RegistryKey agentKey = vstsAgentsKey.CreateSubKey(hash))
+                    {
+                        agentKey.SetValue("InstallPath", Path.Combine(IOUtil.GetBinPath(), "Agent.Listener.exe"));
+                    }
+                }
+            }
+            finally
+            {
+                tfsKey.Dispose();
+            }
+        }
+
+        public void DeleteVstsAgentRegistryKey()
+        {
+            RegistryKey tfsKey = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\TeamFoundationServer\15.0", true);
+            if (tfsKey != null)
+            {
+                try
+                {
+                    RegistryKey vstsAgentsKey = tfsKey.OpenSubKey("VstsAgents", true);
+                    if (vstsAgentsKey != null)
+                    {
+                        try
+                        {
+                            String hash = IOUtil.GetBinPathHash();
+                            vstsAgentsKey.DeleteSubKeyTree(hash);
+                        }
+                        finally
+                        {
+                            vstsAgentsKey.Dispose();
+                        }
+                    }
+                }
+                finally
+                {
+                    tfsKey.Dispose();
+                }
             }
         }
 

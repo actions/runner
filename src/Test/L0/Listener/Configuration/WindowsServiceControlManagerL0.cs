@@ -9,8 +9,6 @@ using System.ServiceProcess;
 using System.Threading;
 using System.Threading.Tasks;
 
-using Microsoft.TeamFoundation;
-
 using Xunit;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
