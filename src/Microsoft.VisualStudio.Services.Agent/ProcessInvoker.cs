@@ -237,7 +237,7 @@ namespace Microsoft.VisualStudio.Services.Agent
 #if OS_WINDOWS
             await WindowsCancelAndKillProcessTree();
 #else
-            KillProcessTree();
+            await NixCancelAndKillProcessTree();
 #endif
         }
 
@@ -545,6 +545,13 @@ namespace Microsoft.VisualStudio.Services.Agent
         // Delegate type to be used as the Handler Routine for SetConsoleCtrlHandler
         private delegate Boolean ConsoleCtrlDelegate(ConsoleCtrlEvent CtrlType);
 #else
+        private async Task NixCancelAndKillProcessTree()
+        {
+            // TODO: replace Task.Delay(1) with Send SIGINT/SIGTERM/SIGKILL
+            await Task.Delay(1);
+            KillProcessTree();
+        }
+
         private void NixKillProcessTree()
         {
             try
