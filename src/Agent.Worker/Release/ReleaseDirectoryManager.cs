@@ -1,9 +1,9 @@
+using Newtonsoft.Json;
 using System;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
-using Agent.Worker.Common;
-using Newtonsoft.Json;
+using Microsoft.VisualStudio.Services.Agent.Util;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
 {
@@ -19,7 +19,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
             ReleaseDefinitionToFolderMap map = null;
             string mapFile = Path.Combine(
                 workingDirectory,
-                Constants.Release.Path.WorkingDirectory,
+                Constants.Release.Path.ReleaseDirectoryPrefix,
                 Constants.Release.Path.RootMappingDirectory,
                 collectionId,
                 projectId,
@@ -33,7 +33,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
                 Trace.Verbose("Mappings file does not exist. A new mapping file will be created");
                 var folderNameToUse = ComputeFolderName(workingDirectory);
                 map = new ReleaseDefinitionToFolderMap();
-                map.ArtifactsDirectory = folderNameToUse.ToString();
+                map.ReleaseDirectory = folderNameToUse.ToString();
                 WriteToFile(mapFile, map);
                 Trace.Verbose($"Created a new mapping file: {mapFile}");
             }
@@ -46,7 +46,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
             Trace.Entering();
             var releaseDirectory = Path.Combine(
                 workingDirectory,
-                Constants.Release.Path.WorkingDirectory);
+                Constants.Release.Path.ReleaseDirectoryPrefix);
             if (Directory.Exists(releaseDirectory))
             {
                 Regex regex = new Regex(@"^[0-9]*$");
@@ -83,7 +83,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
             Trace.Entering();
             Trace.Verbose($"Writing config to file: {file}");
 
-            FileSystemHelper.WriteJsonSerializeToFile(file, value);
+            // Create the directory if it does not exist.
+            Directory.CreateDirectory(Path.GetDirectoryName(file));
+            IOUtil.SaveObject(value, file);
         }
     }
 }

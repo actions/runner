@@ -3,7 +3,6 @@ using Microsoft.VisualStudio.Services.Agent.Util;
 using Newtonsoft.Json;
 using System;
 using System.IO;
-using Agent.Worker.Common;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 {
@@ -143,7 +142,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             Trace.Entering();
             Trace.Verbose($"Writing config to file: {file}");
 
-            FileSystemHelper.WriteJsonSerializeToFile(file, value);
+            // Create the directory if it does not exist.
+            Directory.CreateDirectory(Path.GetDirectoryName(file));
+            IOUtil.SaveObject(value, file);
         }
     }
 }

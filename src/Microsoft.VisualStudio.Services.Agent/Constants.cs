@@ -234,7 +234,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         {
             public class Path
             {
-                public static readonly string WorkingDirectory = "r";
+                public static readonly string ReleaseDirectoryPrefix = "r";
                 public static readonly string ArtifactsDirectory = "a";
                 public static readonly string RootMappingDirectory = "RootMapping";
                 public static readonly string MappingsFile = "Mappings.json";

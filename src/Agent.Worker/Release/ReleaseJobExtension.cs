@@ -269,8 +269,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
 
             // TODO: Should we also write to log in executionContext.Output methods? so that we don't have to repeat writing into logs?
             // Log these values here to debug scenarios where downloading the artifact fails.
-            executionContext.Output(
-                $"ReleaseId={releaseId}, TeamProjectId={teamProjectId}, ReleaseDefinitionName={releaseDefinitionName}");
+            executionContext.Output($"ReleaseId={releaseId}, TeamProjectId={teamProjectId}, ReleaseDefinitionName={releaseDefinitionName}");
 
             var releaseDefinitionToFolderMap = directoryManager.PrepareArtifactsDirectory(
                 IOUtil.GetWorkPath(HostContext),
@@ -279,7 +278,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
                 executionContext.Variables.Get(Constants.Variables.Release.ReleaseDefinitionId));
 
             artifactsWorkingFolder = Path.Combine(IOUtil.GetWorkPath(HostContext),
-                Constants.Release.Path.WorkingDirectory, releaseDefinitionToFolderMap.ArtifactsDirectory,
+                Constants.Release.Path.ReleaseDirectoryPrefix,
+                releaseDefinitionToFolderMap.ReleaseDirectory,
                 Constants.Release.Path.ArtifactsDirectory);
             executionContext.Output($"Release folder: {artifactsWorkingFolder}");
 
