@@ -187,12 +187,12 @@
     "$ bin/Agent.Listener",
     "",
     "Unattend configuration.  Remember to check return codes",
-    "bin/Agent.Listener configure --url https://myaccount.visualstudio.com --agent myagent --pool default --nostart --auth PAT --token o4u5...",
+    "bin/Agent.Listener configure --url https://myaccount.visualstudio.com --agent myagent --pool default --nostart --acceptteeeula --auth PAT --token o4u5...",
     "bin/Agent.Listener run",
     "",
-    "Unattend configuration for on-premise TFS with integrated and negotiate authentication",
-    "bin/Agent.Listener configure --url http://mylocaltfsserver:8080/tfs --agent myagent --pool default --nostart --auth negotiate --username DEV-BOX\\developer --password MyPassword",
-    "bin/Agent.Listener configure --url http://mylocaltfsserver:8080/tfs --agent myagent --pool default --nostart --auth integrated"
+    "Unattend configuration for on-premise TFS with integrated (windows) and (Linux/OSX) negotiate authentication",
+    "bin/Agent.Listener configure --url http://mylocaltfsserver:8080/tfs --agent myagent --pool default --nostart --acceptteeeula --auth integrated",
+    "bin/Agent.Listener configure --url http://mylocaltfsserver:8080/tfs --agent myagent --pool default --nostart --acceptteeeula --auth negotiate --username DEV-BOX\\developer --password MyPassword"
   ],
   "ListenForJobs": "{0:u}: Listening for Jobs",
   "MemberDoesNotExists": "Member: {0} does not Exist",
