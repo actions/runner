@@ -32,7 +32,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         {
 
         }
-        
+
         public override bool ConfigureService(AgentSettings settings, CommandSettings command)
         {
             Trace.Entering();
@@ -97,7 +97,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             SaveServiceSettings();
 
             // TODO: If its service identity add it to appropriate PoolGroup
-            // TODO: Add registry key after installation
+
+            // Add registry key after installation
+            _windowsServiceHelper.CreateVstsAgentRegistryKey();
             return true;
         }
 
@@ -109,6 +111,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             {
                 StopService();
                 UninstallService(serviceName);
+
+                // Remove registry key only on Windows
+                _windowsServiceHelper.DeleteVstsAgentRegistryKey();
             }
             IOUtil.Delete(serviceConfigPath, default(CancellationToken));
         }
