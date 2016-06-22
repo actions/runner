@@ -34,8 +34,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
             {
                 var settings = new XmlReaderSettings
                 {
-                    DtdProcessing = DtdProcessing.Ignore,
-                    XmlResolver = null
+                    DtdProcessing = DtdProcessing.Ignore
                 };
 
                 using (XmlReader reader = XmlReader.Create(filePath, settings))
