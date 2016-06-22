@@ -60,6 +60,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
         "</assembly>" +
         "</assemblies>";
 
+        private const string _xunitResultsWithDtd = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
+        "<!DOCTYPE report PUBLIC '-//JACOCO//DTD Report 1.0//EN' 'report.dtd'>" +
+        "<assemblies>" +
+        "<assembly name = \"C:\\Users\\kaadhina\\Source\\Workspaces\\p1\\ClassLibrary2\\ClassLibrary2\\bin\\Debug\\ClassLibrary2.DLL\">" +
+        "<class name=\"MyFirstUnitTests.Class1\">" +
+        "<test name=\"MyFirstUnitTests.Class1.FailingTest\">" +
+        "</test>" +
+        "</class>" +
+        "</assembly>" +
+        "</assemblies>";
+
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "PublishTestResults")]
@@ -336,11 +347,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
         public void Xunit_DtdProhibitedXmlShouldReturnNull()
         {
             SetupMocks();
-            var testRunData = ReadResults(Utilities.dtdInvalidXml);
-
-            var exceptionMessage = Utilities.GetDtdExceptionMessage("BadXUnitResults.xml");
-
-            Assert.Null(testRunData);
+            var testRunData = ReadResults(_xunitResultsWithDtd);
+            Assert.NotNull(testRunData);
         }
 
         public void Dispose()

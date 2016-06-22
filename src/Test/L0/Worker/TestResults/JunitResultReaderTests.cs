@@ -87,6 +87,21 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
               "<testcase classname=\"com.contoso.billingservice.ConsoleMessageRendererTest\" name=\"\" time=\"0.001\" />" +
             "</testsuite>";
 
+        private const string _sampleJunitResultXmlWithDtd = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>"
+            + "<!DOCTYPE report PUBLIC '-//JACOCO//DTD Report 1.0//EN' 'report.dtd'>"
+            + "<testsuite errors = \"0\" failures=\"0\" hostname=\"achalla-dev\" name=\"test.AllTests\" skipped=\"0\" tests=\"1\" time=\"0.03\" timestamp=\"2015-09-01T10:19:04\">"
+            + "<properties>"
+            + "<property name = \"java.vendor\" value=\"Oracle Corporation\" />"
+            + "<property name = \"lib.dir\" value=\"lib\" />"
+            + "<property name = \"sun.java.launcher\" value=\"SUN_STANDARD\" />"
+            + "</properties>"
+            + "<testcase classname = \"test.ExampleTest\" name=\"Fact\" time=\"0.001\" />"
+            + "<system-out><![CDATA[Set Up Complete."
+            + "Sample test Successful"
+            + "]]></system-out>"
+            + "<system-err><![CDATA[]]></system-err>"
+            + "</testsuite>";
+
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "PublishTestResults")]
@@ -279,12 +294,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
         public void Junit_DtdProhibitedXmlShouldReturnNull()
         {
             SetupMocks();
-            _junitResultsToBeRead = Utilities.dtdInvalidXml;
+            _junitResultsToBeRead = _sampleJunitResultXmlWithDtd;
             ReadResults();
-
-            var exceptionMessage = Utilities.GetDtdExceptionMessage(_fileName);
-
-            Assert.Null(_testRunData);
+            Assert.NotNull(_testRunData);
         }
 
         private void SetupMocks([CallerMemberName] string name = "")

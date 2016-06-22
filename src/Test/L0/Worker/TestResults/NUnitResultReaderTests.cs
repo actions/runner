@@ -88,6 +88,33 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
             "</test-suite>" +
             "</test-results>";
 
+        private const string _nUnitSimpleResultsXmlWithDtd =
+            "<?xml version =\"1.0\" encoding=\"UTF-8\"?>" +
+            "<!DOCTYPE report PUBLIC '-//JACOCO//DTD Report 1.0//EN' 'report.dtd'>" +
+            "<test-results not-run=\"0\" failures=\"0\" total=\"17\" time=\"10:34:42\" date=\"2015-06-22\">" +
+            "<test-suite time =\"1.943\" name=\"Tests.dll\" success=\"True\">" +
+            "<results>" +
+            "<test-case time=\"0.0003414\" name=\"VVO.RentalApartmentStore.Tests.Core.Integrations.Paytrail.PaytrailRESTTests.PaytrailCreatePaymentResponse_Deserializes\" success=\"True\" executed=\"True\"> </test-case>" +
+            "<test-case time=\"0.0002827\" name=\"VVO.RentalApartmentStore.Tests.Core.Integrations.Paytrail.PaytrailRESTTests.PaytrailErrorMessage_Deserializes\" success=\"True\" executed=\"True\"> </test-case>" +
+            "<test-case time=\"0.022023\" name=\"VVO.RentalApartmentStore.Tests.Core.Integrations.Paytrail.PaytrailRESTTests.PaytrailCreatePaymentMessage_Serializes\" success=\"True\" executed=\"True\"> </test-case>" +
+            "<test-case time=\"0.0081796\" name=\"VVO.RentalApartmentStore.Tests.Core.Database.RasContextTests.RasContext_EmptyByDefault\" success=\"True\" executed=\"True\"> </test-case>" +
+            "<test-case time=\"0.0011515\" name=\"VVO.RentalApartmentStore.Tests.Core.Database.RasContextTests.RasContext_Insert_Ok\" success=\"True\" executed=\"True\"> </test-case>" +
+            "<test-case time=\"0.0001928\" name=\"VVO.RentalApartmentStore.Tests.DummyTest.EnsureTestFrameworkWorksInBuildEnvironment\" success=\"True\" executed=\"True\"> </test-case>" +
+            "<test-case time=\"0.7327256\" name=\"VVO.RentalApartmentStore.Tests.Core.Integrations.Paytrail.PaytrailIntegrationTests.ValidateSuccessResponse_AuthCodeError_Fails\" success=\"True\" executed=\"True\"> </test-case>" +
+            "<test-case time=\"0.3111823\" name=\"VVO.RentalApartmentStore.Tests.Core.Integrations.Paytrail.PaytrailIntegrationTests.CreatePayment_Success\" success=\"True\" executed=\"True\"> </test-case>" +
+            "<test-case time=\"0.5112726\" name=\"VVO.RentalApartmentStore.Tests.Core.Integrations.Paytrail.PaytrailIntegrationTests.ValidateFailureResponse_NoExistingLogEntry_Throws\" success=\"True\" executed=\"True\"> </test-case>" +
+            "<test-case time=\"0.0071163\" name=\"VVO.RentalApartmentStore.Tests.Core.Integrations.Paytrail.PaytrailIntegrationTests.CreatePayment_ErrorReturned_ThrowsPaytrailException\" success=\"True\" executed=\"True\"> </test-case>" +
+            "<test-case time=\"0.0349477\" name=\"VVO.RentalApartmentStore.Tests.Core.Integrations.Paytrail.PaytrailIntegrationTests.ValidateFailureResponse_UpdatesLogEntry\" success=\"True\" executed=\"True\"> </test-case>" +
+            "<test-case time=\"0.0017853\" name=\"VVO.RentalApartmentStore.Tests.Core.Integrations.Paytrail.PaytrailIntegrationTests.ValidateFailureResponse_AuthCodeError_Fails\" success=\"True\" executed=\"True\"> </test-case>" +
+            "<test-case time=\"0.0013893\" name=\"VVO.RentalApartmentStore.Tests.Core.Integrations.Paytrail.PaytrailIntegrationTests.CreatePayment_HttpErrorReturned_ThrowsException\" success=\"True\" executed=\"True\"> </test-case>" +
+            "<test-case time=\"0.0117449\" name=\"VVO.RentalApartmentStore.Tests.Core.Integrations.Paytrail.PaytrailIntegrationTests.ValidateSuccessResponse_NoExistingLogEntry_Throws\" success=\"True\" executed=\"True\"> </test-case>" +
+            "<test-case time=\"0.002887\" name=\"VVO.RentalApartmentStore.Tests.Core.Integrations.Paytrail.PaytrailIntegrationTests.CreatePayment_Success_CreatesLogEntry\" success=\"True\" executed=\"True\"> </test-case>" +
+            "<test-case time=\"0.0026852\" name=\"VVO.RentalApartmentStore.Tests.Core.Integrations.Paytrail.PaytrailIntegrationTests.ValidateSuccessResponse_UpdatedLogEntry\" success=\"True\" executed=\"True\"> </test-case>" +
+            "<test-case time=\"0.0020365\" name=\"VVO.RentalApartmentStore.Tests.Core.Entities.ISupportChangeTrackingTests.Insert_UpdatedCreatedByAndModifiedBy\" success=\"True\" executed=\"True\"> </test-case>" +
+            "</results>" +
+            "</test-suite>" +
+            "</test-results>";
+
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "PublishTestResults")]
@@ -294,12 +321,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
         public void Nunit_DtdProhibitedXmlShouldReturnNull()
         {
             SetupMocks();
-            _nunitResultsToBeRead = Utilities.dtdInvalidXml;
+            _nunitResultsToBeRead = _nUnitSimpleResultsXmlWithDtd;
             ReadResults();
-
-            var exceptionMessage = Utilities.GetDtdExceptionMessage(_fileName);
-
-            Assert.Null(_testRunData);
+            Assert.NotNull(_testRunData);
         }
 
         public void Dispose()
