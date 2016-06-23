@@ -240,6 +240,10 @@ function update ()
 
 function runtest ()
 {
+    if [[ ("$PLATFORM" == "linux") || ("$PLATFORM" == "darwin") ]]; then
+        ulimit -n 1024
+    fi
+
     heading Testing ...
     dotnet publish Test || failed "publishing Test"
     rm -Rf Test/bin/${BUILD_CONFIG}/netcoreapp1.0/_diag
