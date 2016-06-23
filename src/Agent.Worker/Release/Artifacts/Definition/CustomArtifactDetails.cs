@@ -2,7 +2,7 @@ using System.Collections.Generic;
 
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
 
-namespace Agent.Worker.Release.Artifacts.Definition
+namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts.Definition
 {
     public class CustomArtifactDetails : IArtifactDetails
     {

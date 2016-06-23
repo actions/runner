@@ -1,12 +1,10 @@
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
-using Agent.Worker.Release.Artifacts.Definition;
-
 using Microsoft.VisualStudio.Services.Agent.Util;
+using Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts.Definition;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
 {

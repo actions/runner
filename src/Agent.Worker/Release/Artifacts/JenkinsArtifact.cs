@@ -10,10 +10,9 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-using Agent.Worker.Release.Artifacts.Definition;
-
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Util;
+using Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts.Definition;
 using Microsoft.VisualStudio.Services.ReleaseManagement.WebApi.Contracts;
 
 using Newtonsoft.Json;

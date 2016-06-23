@@ -7,7 +7,7 @@
 // </summary>
 // --------------------------------------------------------------------------------------------------------------------
 
-namespace Agent.Worker.Release.Artifacts.Definition
+namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts.Definition
 {
     public interface IArtifactDetails
     {

@@ -74,6 +74,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                 case "Microsoft.VisualStudio.Services.Agent.Worker.Release.IArtifactExtension":
                     Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts.BuildArtifact, Agent.Worker");
                     Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts.JenkinsArtifact, Agent.Worker");
+                    Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts.GitHubArtifact, Agent.Worker");
                     break;
                 // Worker test result readers.
                 case "Microsoft.VisualStudio.Services.Agent.Worker.TestResults.IResultReader":

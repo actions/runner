@@ -1,4 +1,3 @@
-using Agent.Worker.Release.Artifacts.Definition;
 using Microsoft.VisualStudio.Services.Agent.Listener;
 using Microsoft.VisualStudio.Services.Agent.Listener.Capabilities;
 using Microsoft.VisualStudio.Services.Agent.Listener.Configuration;
@@ -13,6 +12,7 @@ using System.Linq;
 using System.Reflection;
 using Xunit;
 using Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage;
+using Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts.Definition;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests
 {

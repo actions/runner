@@ -11,7 +11,7 @@ using System;
 
 using Microsoft.VisualStudio.Services.Common;
 
-namespace Agent.Worker.Release.Artifacts.Definition
+namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts.Definition
 {
     public class BuildArtifactDetails : IArtifactDetails
     {

@@ -1,7 +1,6 @@
 using System.Threading.Tasks;
 
-using Agent.Worker.Release.Artifacts.Definition;
-
+using Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts.Definition;
 using Microsoft.VisualStudio.Services.ReleaseManagement.WebApi.Contracts;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Release

@@ -1,17 +1,16 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
 using Agent.Worker.Release;
-using Agent.Worker.Release.Artifacts.Definition;
 
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using Microsoft.VisualStudio.Services.ReleaseManagement.WebApi.Contracts;
 using Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts;
+using Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts.Definition;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
 {
@@ -149,7 +148,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
             List<AgentArtifactDefinition> releaseArtifacts =
                 releaseServer.GetReleaseArtifactsFromService(releaseId).ToList();
 
-            releaseArtifacts.ForEach(x => Trace.Info($"Found Artifact = {x.Alias}"));
+            releaseArtifacts.ForEach(x => Trace.Info($"Found Artifact = {x.Alias} of type {x.ArtifactType}"));
 
             CleanUpArtifactsFolder(executionContext, artifactsWorkingFolder);
             await DownloadArtifacts(executionContext, releaseArtifacts, artifactsWorkingFolder);
@@ -169,14 +168,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
 
                 if (extension == null)
                 {
-                    throw new InvalidOperationException(StringUtil.Loc("RMArtifactTypeNotSupported"));
+                    throw new InvalidOperationException(StringUtil.Loc("RMArtifactTypeNotSupported", agentArtifactDefinition.ArtifactType));
                 }
 
                 Trace.Info($"Found artifact extension of type {extension.ArtifactType}");
                 executionContext.Output(StringUtil.Loc("RMStartArtifactsDownload"));
                 ArtifactDefinition artifactDefinition = ConvertToArtifactDefinition(agentArtifactDefinition, executionContext, extension);
-                executionContext.Output(StringUtil.Loc("RMArtifactDownloadBegin", agentArtifactDefinition.Alias));
-                executionContext.Output(StringUtil.Loc("RMDownloadArtifactType", agentArtifactDefinition.ArtifactType));
+                executionContext.Output(StringUtil.Loc("RMArtifactDownloadBegin", agentArtifactDefinition.Alias, agentArtifactDefinition.ArtifactType));
 
                 // Get the local path where this artifact should be downloaded. 
                 string downloadFolderPath = Path.GetFullPath(Path.Combine(artifactsWorkingFolder, agentArtifactDefinition.Alias ?? string.Empty));
@@ -215,8 +213,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
                             var releaseFileSystemManager = HostContext.GetService<IReleaseFileSystemManager>();
                             releaseFileSystemManager.CleanupDirectory(downloadFolderPath, executionContext.CancellationToken);
 
-                            if (agentArtifactDefinition.ArtifactType == AgentArtifactType.GitHub
-                                || agentArtifactDefinition.ArtifactType == AgentArtifactType.TFGit
+                            if (agentArtifactDefinition.ArtifactType == AgentArtifactType.TFGit
                                 || agentArtifactDefinition.ArtifactType == AgentArtifactType.Tfvc)
                             {
                                 throw new NotImplementedException();
