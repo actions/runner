@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.VisualStudio.Services.WebApi;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener
 {
@@ -478,6 +479,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                             return;
                         }
                     }
+                    else
+                    {
+                        Trace.Error("Catch exception during renew agent jobrequest.");
+                        Trace.Error(ex);
+                    }
 
                     // retry
                     TimeSpan remainingTime = TimeSpan.Zero;
@@ -514,20 +520,33 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         private async Task CompleteJobRequestAsync(int poolId, JobRequestMessage message, Guid lockToken, TaskResult result)
         {
             var agentServer = HostContext.GetService<IAgentServer>();
-            try
+            bool retrying = false;
+            while (true)
             {
-                using (var csFinishRequest = new CancellationTokenSource(ChannelTimeout))
+                try
                 {
-                    await agentServer.FinishAgentRequestAsync(poolId, message.RequestId, lockToken, DateTime.UtcNow, result, csFinishRequest.Token);
+                    using (var csFinishRequest = new CancellationTokenSource(ChannelTimeout))
+                    {
+                        await agentServer.FinishAgentRequestAsync(poolId, message.RequestId, lockToken, DateTime.UtcNow, result, csFinishRequest.Token);
+                    }
+                    break;
                 }
-            }
-            catch (TaskAgentJobNotFoundException)
-            {
-                Trace.Info("TaskAgentJobNotFoundException received, job is no longer valid.");
-            }
-            catch (TaskAgentJobTokenExpiredException)
-            {
-                Trace.Info("TaskAgentJobTokenExpiredException received, job is no longer valid.");
+                catch (TaskAgentJobNotFoundException)
+                {
+                    Trace.Info("TaskAgentJobNotFoundException received, job is no longer valid.");
+                    break;
+                }
+                catch (TaskAgentJobTokenExpiredException)
+                {
+                    Trace.Info("TaskAgentJobTokenExpiredException received, job is no longer valid.");
+                    break;
+                }
+                catch (VssServiceResponseException ex) when (!retrying && ex.InnerException != null && ex.InnerException is ArgumentNullException)
+                {
+                    Trace.Error("Retry on ArgumentNullException due a dotnet core bug in Linux/Mac.");
+                    Trace.Error(ex);
+                    retrying = true;
+                }
             }
 
             // This should be the last thing to run so we don't notify external parties until actually finished

@@ -51,6 +51,8 @@ namespace Microsoft.VisualStudio.Services.Agent
         private readonly TaskCompletionSource<bool> _processExitedCompletionSource = new TaskCompletionSource<bool>();
         private readonly ConcurrentQueue<string> _errorData = new ConcurrentQueue<string>();
         private readonly ConcurrentQueue<string> _outputData = new ConcurrentQueue<string>();
+        private readonly TimeSpan _sigintTimeout = TimeSpan.FromSeconds(10);
+        private readonly TimeSpan _sigtermTimeout = TimeSpan.FromSeconds(5);
 
         public event EventHandler<ProcessDataReceivedEventArgs> OutputDataReceived;
         public event EventHandler<ProcessDataReceivedEventArgs> ErrorDataReceived;
@@ -234,11 +236,40 @@ namespace Microsoft.VisualStudio.Services.Agent
         private async Task CancelAndKillProcessTree()
         {
             ArgUtil.NotNull(_proc, nameof(_proc));
+            bool sigint_succeed = await SendSIGINT(_sigintTimeout);
+            if (sigint_succeed)
+            {
+                Trace.Info("Process cancelled successfully through Ctrl+C/SIGINT.");
+                return;
+            }
+
+            bool sigterm_succeed = await SendSIGTERM(_sigtermTimeout);
+            if (sigterm_succeed)
+            {
+                Trace.Info("Process terminate successfully through Ctrl+Break/SIGTERM.");
+                return;
+            }
+
+            Trace.Info("Kill entire process tree since both cancel and terminate signal has been ignored by the target process.");
+            KillProcessTree();
+        }
+
+        private async Task<bool> SendSIGINT(TimeSpan timeout)
+        {
 #if OS_WINDOWS
-            await WindowsCancelAndKillProcessTree();
+            return await SendCtrlSignal(ConsoleCtrlEvent.CTRL_C, timeout);
 #else
-            await NixCancelAndKillProcessTree();
-#endif
+            return await SendSignal(Signals.SIGINT, timeout);
+#endif            
+        }
+
+        private async Task<bool> SendSIGTERM(TimeSpan timeout)
+        {
+#if OS_WINDOWS
+            return await SendCtrlSignal(ConsoleCtrlEvent.CTRL_BREAK, timeout);
+#else
+            return await SendSignal(Signals.SIGTERM, timeout);
+#endif            
         }
 
         private void ProcessExitedHandler(object sender, EventArgs e)
@@ -293,26 +324,6 @@ namespace Microsoft.VisualStudio.Services.Agent
         }
 
 #if OS_WINDOWS
-        private async Task WindowsCancelAndKillProcessTree()
-        {
-            bool ctrl_c_succeed = await SendCtrlSignal(ConsoleCtrlEvent.CTRL_C, TimeSpan.FromSeconds(10));
-            if (ctrl_c_succeed)
-            {
-                Trace.Info("Process cancelled successfully through Ctrl+C.");
-                return;
-            }
-
-            bool ctrl_break_succeed = await SendCtrlSignal(ConsoleCtrlEvent.CTRL_BREAK, TimeSpan.FromSeconds(5));
-            if (ctrl_break_succeed)
-            {
-                Trace.Info("Process terminate successfully through Ctrl+Break.");
-                return;
-            }
-
-            Trace.Info("Kill entire process tree since both cancel and terminate signal has been ignored by the target process.");
-            KillProcessTree();
-        }
-
         private async Task<bool> SendCtrlSignal(ConsoleCtrlEvent signal, TimeSpan timeout)
         {
             Trace.Info($"Sending {signal} to process {_proc.Id}.");
@@ -545,31 +556,57 @@ namespace Microsoft.VisualStudio.Services.Agent
         // Delegate type to be used as the Handler Routine for SetConsoleCtrlHandler
         private delegate Boolean ConsoleCtrlDelegate(ConsoleCtrlEvent CtrlType);
 #else
-        private async Task NixCancelAndKillProcessTree()
+        private async Task<bool> SendSignal(Signals signal, TimeSpan timeout)
         {
-            // TODO: replace Task.Delay(1) with Send SIGINT/SIGTERM/SIGKILL
-            await Task.Delay(1);
-            KillProcessTree();
+            Trace.Info($"Sending {signal} to process {_proc.Id}.");
+            int errorCode = kill(_proc.Id, (int)signal);
+            if (errorCode != 0)
+            {
+                Trace.Info($"{signal} signal doesn't fire successfully.");
+                Trace.Error($"Error code: {errorCode}.");
+                return false;
+            }
+
+            Trace.Info($"Successfully send {signal} to process {_proc.Id}.");
+            Trace.Info($"Waiting for process exit or {timeout.TotalSeconds} seconds after {signal} signal fired.");
+            var completedTask = await Task.WhenAny(Task.Delay(timeout), _processExitedCompletionSource.Task);
+            if (completedTask == _processExitedCompletionSource.Task)
+            {
+                Trace.Info("Process exit successfully.");
+                return true;
+            }
+            else
+            {
+                Trace.Info($"Process did not honor {signal} signal within {timeout.TotalSeconds} seconds.");
+                return false;
+            }
         }
 
         private void NixKillProcessTree()
         {
             try
             {
-                // TODO: Send Ctrl+C/Break to process group.
                 if (!_proc.HasExited)
                 {
                     _proc.Kill();
                 }
             }
-            catch (InvalidOperationException)
+            catch (InvalidOperationException ex)
             {
-                // InvalidOperationException can occur if process got terminated by itself between 
-                // HasExited and Kill() calls above.
+                Trace.Error("Ignore InvalidOperationException during Process.Kill().");
+                Trace.Error(ex);
             }
         }
-#endif        
 
+        private enum Signals : int
+        {
+            SIGINT = 2,
+            SIGTERM = 15
+        }
+
+        [DllImport("libc", SetLastError = true)]
+        private static extern int kill(int pid, int sig);
+#endif
     }
 
     public sealed class ProcessExitCodeException : Exception
