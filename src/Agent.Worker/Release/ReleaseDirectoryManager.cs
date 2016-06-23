@@ -19,7 +19,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
             ReleaseDefinitionToFolderMap map = null;
             string mapFile = Path.Combine(
                 workingDirectory,
-                Constants.Release.Path.ReleaseDirectoryPrefix,
                 Constants.Release.Path.RootMappingDirectory,
                 collectionId,
                 projectId,
@@ -31,9 +30,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
             if (map == null)
             {
                 Trace.Verbose("Mappings file does not exist. A new mapping file will be created");
-                var folderNameToUse = ComputeFolderName(workingDirectory);
+                var releaseDirectorySuffix = ComputeFolderInteger(workingDirectory);
                 map = new ReleaseDefinitionToFolderMap();
-                map.ReleaseDirectory = folderNameToUse.ToString();
+                map.ReleaseDirectory = string.Format(
+                    "{0}{1}",
+                    Constants.Release.Path.ReleaseDirectoryPrefix,
+                    releaseDirectorySuffix);
                 WriteToFile(mapFile, map);
                 Trace.Verbose($"Created a new mapping file: {mapFile}");
             }
@@ -41,27 +43,23 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
             return map;
         }
 
-        private int ComputeFolderName(string workingDirectory)
+        private int ComputeFolderInteger(string workingDirectory)
         {
             Trace.Entering();
-            var releaseDirectory = Path.Combine(
-                workingDirectory,
-                Constants.Release.Path.ReleaseDirectoryPrefix);
-            if (Directory.Exists(releaseDirectory))
+            Regex regex = new Regex(string.Format(@"^{0}[0-9]*$", Constants.Release.Path.ReleaseDirectoryPrefix));
+            var dirs = Directory.GetDirectories(workingDirectory);
+            var folderNames = dirs.Select(Path.GetFileName).Where(name => regex.IsMatch(name));
+            Trace.Verbose($"Number of folder with integer names: {folderNames.Count()}");
+
+            if (folderNames.Any())
             {
-                Regex regex = new Regex(@"^[0-9]*$");
-                var dirs = Directory.GetDirectories(releaseDirectory);
-                var integerFolderNames = dirs.Select(Path.GetFileName).Where(name => regex.IsMatch(name));
-                Trace.Verbose($"Number of folder with integer names: {integerFolderNames.Count()}");
-
-                if (integerFolderNames.Any())
-                {
-                    var max = integerFolderNames.Select(Int32.Parse).Max();
-                    return max + 1;
-                }
+                var max = folderNames.Select(x => Int32.Parse(x.Substring(1))).Max();
+                return max + 1;
             }
-
-            return 1;
+            else
+            {
+                return 1;
+            }
         }
 
         private ReleaseDefinitionToFolderMap LoadIfExists(string mappingFile)

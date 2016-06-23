@@ -277,8 +277,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
                 executionContext.Variables.System_TeamProjectId.ToString(),
                 executionContext.Variables.Get(Constants.Variables.Release.ReleaseDefinitionId));
 
-            artifactsWorkingFolder = Path.Combine(IOUtil.GetWorkPath(HostContext),
-                Constants.Release.Path.ReleaseDirectoryPrefix,
+            artifactsWorkingFolder = Path.Combine(
+                IOUtil.GetWorkPath(HostContext),
                 releaseDefinitionToFolderMap.ReleaseDirectory,
                 Constants.Release.Path.ArtifactsDirectory);
             executionContext.Output($"Release folder: {artifactsWorkingFolder}");

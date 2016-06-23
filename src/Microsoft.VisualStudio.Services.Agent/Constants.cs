@@ -123,6 +123,17 @@ namespace Microsoft.VisualStudio.Services.Agent
             public static readonly string WorkDirectory = "_work";
         }
 
+        public static class Release
+        {
+            public static class Path
+            {
+                public static readonly string ArtifactsDirectory = "a";
+                public static readonly string DefinitionMapping = "DefinitionMapping.json";
+                public static readonly string ReleaseDirectoryPrefix = "r";
+                public static readonly string RootMappingDirectory = "ReleaseRootMapping";
+            }
+        }
+
         public static class Variables
         {
             public static readonly string MacroPrefix = "$(";
@@ -191,6 +202,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                 public static readonly string ReleaseDefinitionName = "release.definitionName";
                 public static readonly string ReleaseEnvironmentName = "release.environmentName";
                 public static readonly string ReleaseEnvironmentUri = "release.environmentUri";
+                public static readonly string ReleaseDefinitionId = "release.definitionId";
                 public static readonly string ReleaseDescription = "release.releaseDescription";
                 public static readonly string ReleaseId = "release.releaseId";
                 public static readonly string ReleaseName = "release.releaseName";
@@ -199,7 +211,6 @@ namespace Microsoft.VisualStudio.Services.Agent
                 public static readonly string ReleaseWebUrl = "release.releaseWebUrl";
                 public static readonly string RequestorId = "release.requestedFor";
                 public static readonly string SkipArtifactsDownload = "release.skipartifactsDownload";
-                public static readonly string ReleaseDefinitionId = "release.definitionId";
             }
 
             public static class System
@@ -227,18 +238,6 @@ namespace Microsoft.VisualStudio.Services.Agent
             public static class Task
             {
                 public static readonly string DisplayName = "task.displayname";
-            }
-        }
-
-        public class Release
-        {
-            public class Path
-            {
-                public static readonly string ReleaseDirectoryPrefix = "r";
-                public static readonly string ArtifactsDirectory = "a";
-                public static readonly string RootMappingDirectory = "RootMapping";
-                public static readonly string MappingsFile = "Mappings.json";
-                public static readonly string DefinitionMapping = "DefinitionMapping.json";
             }
         }
     }

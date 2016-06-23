@@ -4,7 +4,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
 {
     public sealed class ReleaseDefinitionToFolderMap
     {
-        [JsonProperty("ReleaseDirectory")]
+        [JsonProperty("releaseDirectory")]
         public string ReleaseDirectory { get; set; }
     }
 }
