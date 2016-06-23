@@ -9,16 +9,18 @@ Supported on Windows, OSX, Ubuntu and Red Hat.  Written for the .NET Core CLR as
 
 ## Status
 
-The preview is feature complete on all platforms and supported for production use. 
+This agent is feature complete on all platforms and supported for production use.  
 
-The current preview is more feature complete than the node agent bringing Auto Update, Cancellation, Run as a svc on OSX and Linux, and Gated support.
+This agent replaces the node agent for OSX and Linux bringing Auto Update, Cancellation, Run as a svc on OSX and Linux, and Gated support.  
+
+The windows agent is in RC2 awaiting final validation with internal dogfooding (currently self host, building VSTS etc...)  
 
 |   | Build & Test | Preview | Release |
 |---|:-----:|:-----:|:-----:|
-|![Apple](docs/res/apple_med.png) **OSX**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/b924d696-3eae-4116-8443-9a18392d8544/3080/badge?branch=master)| [RC v2.102.0](https://github.com/Microsoft/vsts-agent/releases/tag/v2.102.0) | Next Drop |
-|![Ubuntu](docs/res/ubuntu_med.png) **Ubuntu**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/b924d696-3eae-4116-8443-9a18392d8544/2853/badge?branch=master)| [RC v2.102.0](https://github.com/Microsoft/vsts-agent/releases/tag/v2.102.0) | Next Drop |
-|![RedHat](docs/res/redhat_med.png) **RedHat**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/b924d696-3eae-4116-8443-9a18392d8544/3418/badge?branch=master)| [RC v2.102.0](https://github.com/Microsoft/vsts-agent/releases/tag/v2.102.0) | Next Drop |
-|![Win](docs/res/win_med.png) **Windows**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/b924d696-3eae-4116-8443-9a18392d8544/2850/badge?branch=master)| [Preview 4 v2.102.0](https://github.com/Microsoft/vsts-agent/releases/tag/v2.102.0) | July |
+|![Apple](docs/res/apple_med.png) **OSX**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/b924d696-3eae-4116-8443-9a18392d8544/3080/badge?branch=master)| [RC 2 v2.102.1](https://github.com/Microsoft/vsts-agent/releases/tag/v2.102.1) | RC2 is candidate |
+|![Ubuntu](docs/res/ubuntu_med.png) **Ubuntu**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/b924d696-3eae-4116-8443-9a18392d8544/2853/badge?branch=master)| [RC 2 v2.102.1](https://github.com/Microsoft/vsts-agent/releases/tag/v2.102.1) | RC2 is candidate |
+|![RedHat](docs/res/redhat_med.png) **RedHat**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/b924d696-3eae-4116-8443-9a18392d8544/3418/badge?branch=master)| [RC 2 v2.102.1](https://github.com/Microsoft/vsts-agent/releases/tag/v2.102.1) | RC2 is candidate |
+|![Win](docs/res/win_med.png) **Windows**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/b924d696-3eae-4116-8443-9a18392d8544/2850/badge?branch=master)| [RC2 v2.102.1](https://github.com/Microsoft/vsts-agent/releases/tag/v2.102.1) | July |
 
 ## Preview Support
 
@@ -26,10 +28,9 @@ This agent can be used for the VSTS service and it replaces the node agent for T
 
 | Scenario | OSX/Unix | Windows | Comment |
 |:-------------:|:-----:|:-----:|:-----:|
-| VSTS Git      |  Yes  | Yes   |
-| VSTS TfsVC    |  Yes  | Yes  |
-| TFS2015 Git   |  Yes  | No    | Win use agent with 2015 |
-| TFS2015 TfsVC |  Yes  | No    | Win use agent with 2015 |
+| VSTS      |  Yes  | Yes   |
+| TFS2015 (onprem)   |  Yes  | No    | Windows use agent with 2015 |
+| TFS.vNext (onprem)   |  Yes  | Yes    |  |
 
 ## Get Started
 
