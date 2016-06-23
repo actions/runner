@@ -17,9 +17,9 @@ The windows agent is in RC2 awaiting final validation with internal dogfooding (
 
 |   | Build & Test | Preview | Release |
 |---|:-----:|:-----:|:-----:|
-|![Apple](docs/res/apple_med.png) **OSX**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/b924d696-3eae-4116-8443-9a18392d8544/3080/badge?branch=master)| [RC 2 v2.102.1](https://github.com/Microsoft/vsts-agent/releases/tag/v2.102.1) | RC2 is candidate |
-|![Ubuntu](docs/res/ubuntu_med.png) **Ubuntu**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/b924d696-3eae-4116-8443-9a18392d8544/2853/badge?branch=master)| [RC 2 v2.102.1](https://github.com/Microsoft/vsts-agent/releases/tag/v2.102.1) | RC2 is candidate |
-|![RedHat](docs/res/redhat_med.png) **RedHat**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/b924d696-3eae-4116-8443-9a18392d8544/3418/badge?branch=master)| [RC 2 v2.102.1](https://github.com/Microsoft/vsts-agent/releases/tag/v2.102.1) | RC2 is candidate |
+|![Apple](docs/res/apple_med.png) **OSX**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/b924d696-3eae-4116-8443-9a18392d8544/3080/badge?branch=master)| [RC2 v2.102.1](https://github.com/Microsoft/vsts-agent/releases/tag/v2.102.1) | RC2 is candidate |
+|![Ubuntu](docs/res/ubuntu_med.png) **Ubuntu**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/b924d696-3eae-4116-8443-9a18392d8544/2853/badge?branch=master)| [RC2 v2.102.1](https://github.com/Microsoft/vsts-agent/releases/tag/v2.102.1) | RC2 is candidate |
+|![RedHat](docs/res/redhat_med.png) **RedHat**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/b924d696-3eae-4116-8443-9a18392d8544/3418/badge?branch=master)| [RC2 v2.102.1](https://github.com/Microsoft/vsts-agent/releases/tag/v2.102.1) | RC2 is candidate |
 |![Win](docs/res/win_med.png) **Windows**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/b924d696-3eae-4116-8443-9a18392d8544/2850/badge?branch=master)| [RC2 v2.102.1](https://github.com/Microsoft/vsts-agent/releases/tag/v2.102.1) | July |
 
 ## Preview Support
