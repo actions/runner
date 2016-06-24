@@ -236,7 +236,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
             executionContext.Output(StringUtil.Loc("RMCleaningArtifactsDirectory", artifactsWorkingFolder));
             try
             {
-                IOUtil.DeleteDirectory(artifactsWorkingFolder, executionContext.CancellationToken);
+                if (Directory.Exists(artifactsWorkingFolder))
+                {
+                    IOUtil.DeleteDirectory(artifactsWorkingFolder, executionContext.CancellationToken);
+                }
+
+                Directory.CreateDirectory(artifactsWorkingFolder);
             }
             catch (Exception ex)
             {
@@ -253,6 +258,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
         {
             Trace.Entering();
 
+            var directoryManager = HostContext.GetService<IReleaseDirectoryManager>();
             releaseId = executionContext.Variables.GetInt(Constants.Variables.Release.ReleaseId) ?? 0;
             teamProjectId = executionContext.Variables.GetGuid(Constants.Variables.System.TeamProjectId) ?? Guid.Empty;
             skipArtifactsDownload = executionContext.Variables.GetBoolean(Constants.Variables.Release.SkipArtifactsDownload) ?? false;
@@ -260,18 +266,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
 
             // TODO: Should we also write to log in executionContext.Output methods? so that we don't have to repeat writing into logs?
             // Log these values here to debug scenarios where downloading the artifact fails.
-            executionContext.Output(
-                $"ReleaseId={releaseId}, TeamProjectId={teamProjectId}, ReleaseDefinitionName={releaseDefinitionName}");
+            executionContext.Output($"ReleaseId={releaseId}, TeamProjectId={teamProjectId}, ReleaseDefinitionName={releaseDefinitionName}");
 
-            // TODO: Remove shorthash, you may get into collision. Switch to increment integer
-            var configStore = HostContext.GetService<IConfigurationStore>();
-            var shortHash = ReleaseFolderHelper.CreateShortHash(
-                configStore.GetSettings().AgentName,
-                teamProjectId.ToString(),
-                releaseDefinitionName);
-            executionContext.Output($"Release folder: {shortHash}");
+            var releaseDefinitionToFolderMap = directoryManager.PrepareArtifactsDirectory(
+                IOUtil.GetWorkPath(HostContext),
+                executionContext.Variables.System_CollectionId,
+                executionContext.Variables.System_TeamProjectId.ToString(),
+                executionContext.Variables.Get(Constants.Variables.Release.ReleaseDefinitionId));
 
-            artifactsWorkingFolder = Path.Combine(IOUtil.GetWorkPath(HostContext), shortHash);
+            artifactsWorkingFolder = Path.Combine(
+                IOUtil.GetWorkPath(HostContext),
+                releaseDefinitionToFolderMap.ReleaseDirectory,
+                Constants.Release.Path.ArtifactsDirectory);
+            executionContext.Output($"Release folder: {artifactsWorkingFolder}");
+
             SetLocalVariables(executionContext, artifactsWorkingFolder);
 
             // Log the environment variables available after populating the variable service with our variables
