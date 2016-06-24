@@ -1,9 +1,5 @@
 using Microsoft.VisualStudio.Services.Agent.Util;
-using System;
-using System.Diagnostics;
-using System.Globalization;
 using System.IO;
-using System.Threading;
 using Xunit;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests.Util

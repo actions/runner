@@ -1,6 +1,6 @@
 ﻿using Microsoft.TeamFoundation.TestManagement.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Util;
-using Microsoft.VisualStudio.Services.Client;
+using Microsoft.VisualStudio.Services.WebApi;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -11,7 +11,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
     public interface ITestResultsServer : IAgentService
     {
         void InitializeServer(VssConnection connection);
-        Task<List<TestCaseResult>> AddTestResultsToTestRunAsync(TestResultCreateModel[] currentBatch, string projectName, int testRunId, CancellationToken cancellationToken = default(CancellationToken));
+        Task<List<TestCaseResult>> AddTestResultsToTestRunAsync(TestCaseResult[] currentBatch, string projectName, int testRunId, CancellationToken cancellationToken = default(CancellationToken));
         Task<TestRun> CreateTestRunAsync(string projectName, RunCreateModel testRunData, CancellationToken cancellationToken = default(CancellationToken));
         Task<TestRun> UpdateTestRunAsync(string projectName, int testRunId, RunUpdateModel updateModel, CancellationToken cancellationToken = default(CancellationToken));
         Task<TestAttachmentReference> CreateTestRunAttachmentAsync(TestAttachmentRequestModel reqModel, string projectName, int testRunId, CancellationToken cancellationToken = default(CancellationToken));
@@ -33,7 +33,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
         }
 
         public async Task<List<TestCaseResult>> AddTestResultsToTestRunAsync(
-            TestResultCreateModel[] currentBatch,
+            TestCaseResult[] currentBatch,
             string projectName,
             int testRunId,
             CancellationToken cancellationToken = default(CancellationToken))

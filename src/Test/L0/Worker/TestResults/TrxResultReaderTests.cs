@@ -166,14 +166,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
             DateTime StartedDate;
             DateTime.TryParse("2015-03-20T16:53:32.3099353+05:30", out StartedDate);
-            Assert.Equal(runData.Results[0].StartedDate, StartedDate.ToString("o"));
+            Assert.Equal(runData.Results[0].StartedDate, StartedDate);
 
             TimeSpan Duration;
             TimeSpan.TryParse("00:00:00.0834563", out Duration);
-            Assert.Equal(runData.Results[0].DurationInMs, ((int)Duration.TotalMilliseconds).ToString());
+            Assert.Equal(runData.Results[0].DurationInMs, Duration.TotalMilliseconds);
 
             DateTime CompletedDate = StartedDate.AddTicks(Duration.Ticks);
-            Assert.Equal(runData.Results[0].CompletedDate, CompletedDate.ToString("o"));
+            Assert.Equal(runData.Results[0].CompletedDate, CompletedDate);
 
             Assert.Equal(runData.Name, "VSTest Test Run debug any cpu");
             Assert.Equal(runData.State, "InProgress");
@@ -189,7 +189,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
             Assert.Equal(runData.Results[0].AutomatedTestTypeId, "13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b");
             Assert.Equal(runData.Results[0].ErrorMessage, "Assert.Fail failed.");
             Assert.Equal(runData.Results[0].StackTrace, "at UnitTestProject4.UnitTest1.TestMethod2() in C:\\Users\\kaadhina\\Source\\Repos\\Projectx\\UnitTestProject4\\UnitTestProject4\\UnitTest1.cs:line 21");
-            Assert.Equal(runData.Results[0].TestCasePriority, "1");
+            Assert.Equal(runData.Results[0].Priority.ToString(), "1");
             Assert.Equal(runData.Results[0].ConsoleLog, "Show console log output.");
             Assert.Equal(runData.Results[0].Attachments.Length, 1);
             Assert.True(runData.Results[0].Attachments[0].Contains("x.txt"));

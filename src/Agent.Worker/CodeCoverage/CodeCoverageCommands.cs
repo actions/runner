@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.VisualStudio.Services.WebApi;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
 {
@@ -123,7 +124,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
                 context.Warning(StringUtil.Loc("CodeCoverageDataIsNull"));
             }
 
-            Client.VssConnection connection = WorkerUtilies.GetVssConnection(context);
+            VssConnection connection = WorkerUtilies.GetVssConnection(context);
             var codeCoveragePublisher = HostContext.GetService<ICodeCoveragePublisher>();
             codeCoveragePublisher.InitializePublisher(_buildId, connection);
 

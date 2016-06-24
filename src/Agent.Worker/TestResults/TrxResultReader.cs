@@ -255,7 +255,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
             object sync = new object();
             Parallel.ForEach<XmlNode>(resultsNodes.Cast<XmlNode>(), resultNode =>
             {
-                TestCaseResultData resultCreateModel = new TestCaseResultData();
+                TestCaseResultData resultCreateModel = new TestCaseResultData()
+                {
+                    Priority = TestManagementConstants.UnspecifiedPriority,  //Priority is int type so if no priority set then its 255.
+                };
 
                 //Find and format dates as per TCM requirement.
                 TimeSpan duration;
@@ -267,7 +270,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                 {
                     duration = TimeSpan.Zero;
                 }
-                resultCreateModel.DurationInMs = ((int)duration.TotalMilliseconds).ToString();
+                resultCreateModel.DurationInMs = duration.TotalMilliseconds;
 
                 DateTime startedDate;
                 if (resultNode.Attributes["startTime"] != null && resultNode.Attributes["startTime"].Value != null)
@@ -278,10 +281,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                 {
                     startedDate = DateTime.Now;
                 }
-                resultCreateModel.StartedDate = startedDate.ToString("o");
+                resultCreateModel.StartedDate = startedDate;
 
                 DateTime completedDate = startedDate.AddTicks(duration.Ticks);
-                resultCreateModel.CompletedDate = completedDate.ToString("o");
+                resultCreateModel.CompletedDate = completedDate;
 
                 if (resultNode.Attributes["outcome"] != null && resultNode.Attributes["outcome"].Value != null)
                 {
@@ -330,7 +333,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                             }
                             if (definition.Priority != null)
                             {
-                                resultCreateModel.TestCasePriority = definition.Priority;
+                                resultCreateModel.Priority = !string.IsNullOrEmpty(definition.Priority) ? Convert.ToInt32(definition.Priority) : TestManagementConstants.UnspecifiedPriority;
                             }
                             if (definition.Owner != null)
                             {

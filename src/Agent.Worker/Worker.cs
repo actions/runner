@@ -46,7 +46,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 Trace.Info("Message received.");
                 ArgUtil.Equal(MessageType.NewJobRequest, channelMessage.MessageType, nameof(channelMessage.MessageType));
                 ArgUtil.NotNullOrEmpty(channelMessage.Body, nameof(channelMessage.Body));
-                var jobMessage = JsonUtility.FromString<JobRequestMessage>(channelMessage.Body);
+                var jobMessage = JsonUtility.FromString<AgentJobRequestMessage>(channelMessage.Body);
                 ArgUtil.NotNull(jobMessage, nameof(jobMessage));
 
                 // Initialize the secret masker and set the thread culture.

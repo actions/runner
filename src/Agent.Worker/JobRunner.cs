@@ -13,14 +13,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
     [ServiceLocator(Default = typeof(JobRunner))]
     public interface IJobRunner : IAgentService
     {
-        Task<TaskResult> RunAsync(JobRequestMessage message, CancellationToken jobRequestCancellationToken);
+        Task<TaskResult> RunAsync(AgentJobRequestMessage message, CancellationToken jobRequestCancellationToken);
     }
 
     public sealed class JobRunner : AgentService, IJobRunner
     {
         private const string _releaseManagementUrlSuffix = "vsrm.visualstudio.com";
 
-        public async Task<TaskResult> RunAsync(JobRequestMessage message, CancellationToken jobRequestCancellationToken)
+        public async Task<TaskResult> RunAsync(AgentJobRequestMessage message, CancellationToken jobRequestCancellationToken)
         {
             // Validate parameters.
             Trace.Entering();

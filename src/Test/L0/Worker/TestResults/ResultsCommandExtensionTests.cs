@@ -228,7 +228,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
             var durationInMs = 10;
             var testRunData = new TestRunData();
             var testCaseResultData = new TestCaseResultData();
-            testCaseResultData.DurationInMs = durationInMs.ToString();
+            testCaseResultData.DurationInMs = durationInMs;
 
             testRunData.Results = new TestCaseResultData[] { testCaseResultData, testCaseResultData };
             testRunData.Attachments = new string[] { "attachment1", "attachment2" };

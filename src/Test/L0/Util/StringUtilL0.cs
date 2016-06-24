@@ -1,11 +1,9 @@
 using Microsoft.VisualStudio.Services.Agent.Util;
-using System;
-using System.Diagnostics;
 using System.Globalization;
 using Xunit;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests.Util
-{            
+{
     public class StringUtilL0
     {
         [Fact]

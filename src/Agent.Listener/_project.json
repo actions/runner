@@ -4,11 +4,9 @@
         "emitEntryPoint": true,
         "warningsAsErrors": true
     },
-    
     "commands": {
         "Agent.Listener": "Agent.Listener"
     },
-
     "configurations": {
         "Debug": {
             "buildOptions": {
@@ -29,36 +27,39 @@
             }
         }
     },
-    
     "dependencies": {
-        "Microsoft.NETCore.App": "1.0.0-rc3-004306",
-        "Microsoft.VisualStudio.Services.Agent": { "target": "project", "version": "1.0.0-*" },
-        "Microsoft.Win32.Registry": "4.0.0-rc3-24125-01",
-        "vss-api-netcore": "0.5.19-private",
-        "System.ServiceProcess.ServiceController": "4.1.0-rc3-24125-01",
-        "System.IO.Compression.ZipFile": "4.0.1-rc3-24125-01",
-        "System.IO.FileSystem.AccessControl": "4.0.0-rc3-24125-01",
+        "Microsoft.NETCore.App": "1.0.0",
+        "Microsoft.VisualStudio.Services.Agent": {
+            "target": "project",
+            "version": "1.0.0-*"
+        },
+        "Microsoft.Win32.Registry": "4.0.0",
+        "vss-api-netcore": "0.5.21-private",
+        "System.ServiceProcess.ServiceController": "4.1.0",
+        "System.IO.Compression.ZipFile": "4.0.1",
+        "System.IO.FileSystem.AccessControl": "4.0.0",
         "Newtonsoft.Json": "8.0.3",
-        "System.Diagnostics.TraceSource": "4.0.0-rc3-24125-01",
-        "System.Security.AccessControl": "4.0.0-rc3-24125-01",
-        "System.Runtime.InteropServices": "4.1.0-rc3-24125-01",
-        "System.Security.Cryptography.Cng": "4.2.0-rc3-24125-01",
-        "System.Security.Cryptography.ProtectedData": "4.0.0-rc3-24125-01",
-        "System.Runtime.Loader": "4.0.0-rc3-24125-01"
+        "System.Diagnostics.TraceSource": "4.0.0",
+        "System.Security.AccessControl": "4.0.0",
+        "System.Runtime.InteropServices": "4.1.0",
+        "System.Security.Cryptography.Cng": "4.2.0",
+        "System.Security.Cryptography.ProtectedData": "4.0.0",
+        "System.Runtime.Loader": "4.0.0"
     },
-
     "frameworks": {
         "netcoreapp1.0": {
-          "imports": ["dnxcore50", "portable-net451+win8"]
+            "imports": [
+                "dnxcore50",
+                "portable-net451+win8"
+            ]
         }
     },
-
     "runtimes": {
-        "win7-x64": { },
-        "ubuntu.14.04-x64": { },
-        "ubuntu.16.04-x64": { },
-        "centos.7-x64": { },
-        "rhel.7.2-x64": { },
-        "osx.10.11-x64": { }
+        "win7-x64": {},
+        "ubuntu.14.04-x64": {},
+        "ubuntu.16.04-x64": {},
+        "centos.7-x64": {},
+        "rhel.7.2-x64": {},
+        "osx.10.11-x64": {}
     }
 }

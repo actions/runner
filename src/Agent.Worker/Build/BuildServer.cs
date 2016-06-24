@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Build2 = Microsoft.TeamFoundation.Build.WebApi;
-using Microsoft.VisualStudio.Services.Client;
+using Microsoft.VisualStudio.Services.WebApi;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 {

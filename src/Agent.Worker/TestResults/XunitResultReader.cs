@@ -93,7 +93,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                 XmlNodeList testCaseNodeList = assemblyNode.SelectNodes("./collection/test");
                 foreach (XmlNode testCaseNode in testCaseNodeList)
                 {
-                    TestCaseResultData resultCreateModel = new TestCaseResultData();
+                    TestCaseResultData resultCreateModel = new TestCaseResultData()
+                    {
+                        Priority = TestManagementConstants.UnspecifiedPriority,  //Priority is int type so if no priority set then its 255.
+                    };
 
                     //Test storage.
                     if (assemblyNode.Attributes["name"] != null)
@@ -119,14 +122,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                         double duration = 0;
                         double.TryParse(testCaseNode.Attributes["time"].Value, out duration);
                         var durationFromSeconds = TimeSpan.FromSeconds(duration);
-                        resultCreateModel.DurationInMs = durationFromSeconds.TotalMilliseconds.ToString(CultureInfo.InvariantCulture);
+                        resultCreateModel.DurationInMs = durationFromSeconds.TotalMilliseconds;
 
                         // no assemblystarttime available so dont set testcase start and completed
                         if (assemblyRunStartTimeStamp != DateTime.MinValue)
                         {
-                            resultCreateModel.StartedDate = assemblyRunStartTimeStamp.ToString("o");
-                            resultCreateModel.CompletedDate =
-                                assemblyRunStartTimeStamp.AddTicks(durationFromSeconds.Ticks).ToString("o");
+                            resultCreateModel.StartedDate = assemblyRunStartTimeStamp;
+                            resultCreateModel.CompletedDate = assemblyRunStartTimeStamp.AddTicks(durationFromSeconds.Ticks);
                             assemblyRunStartTimeStamp = assemblyRunStartTimeStamp.AddTicks(1) + durationFromSeconds;
                             //next start time
                         }
@@ -168,7 +170,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                     XmlNode priorityTrait = testCaseNode.SelectSingleNode("./traits/trait[@name='priority']");
                     if (priorityTrait != null && priorityTrait.Attributes["value"] != null)
                     {
-                        resultCreateModel.TestCasePriority = priorityTrait.Attributes["value"].Value;
+                        var priorityValue = priorityTrait.Attributes["value"].Value;
+                        resultCreateModel.Priority = !string.IsNullOrEmpty(priorityValue) ? Convert.ToInt32(priorityValue)
+                                                        : TestManagementConstants.UnspecifiedPriority;
                     }
 
                     //Test owner.

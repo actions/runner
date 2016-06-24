@@ -1,10 +1,9 @@
 ﻿{
-    "version": "1.0.0-*",   
+    "version": "1.0.0-*",
     "buildOptions": {
         "emitEntryPoint": true,
         "warningsAsErrors": true
     },
-    
     "configurations": {
         "Debug": {
             "buildOptions": {
@@ -25,35 +24,45 @@
             }
         }
     },
-    
     "dependencies": {
-        "Microsoft.NETCore.App": "1.0.0-rc3-004306",
-        "Microsoft.NETCore.TestHost": "1.0.0-rc3-24125-01",
-        "System.Buffers": "4.0.0-rc3-24125-01",
-        "System.Reflection.TypeExtensions": "4.1.0-rc3-24125-01",
-        "System.Threading.ThreadPool": "4.0.10-rc3-24125-01",
+        "Microsoft.NETCore.App": "1.0.0",
+        "Microsoft.NETCore.TestHost": "1.0.0",
+        "System.Buffers": "4.0.0",
+        "System.Reflection.TypeExtensions": "4.1.0",
+        "System.Threading.ThreadPool": "4.0.10",
+        "vss-api-netcore": "0.5.21-private",
         "moq.netcore": "4.4.0-beta8",
         "xunit": "2.1.0",
-        "xunit.console.netcore": "1.0.2-prerelease-00326-03",
-        "xunit.netcore.extensions": "1.0.0-prerelease-00326-03",
+        "xunit.console.netcore": "1.0.3-prerelease-00520-02",
+        "xunit.netcore.extensions": "1.0.0-prerelease-00520-01",
         "xunit.runner.utility": "2.1.0",
-        "Agent.Listener": { "target": "project", "version": "1.0.0-*" },
-        "vss-api-netcore": "0.5.19-private",
-        "Microsoft.VisualStudio.Services.Agent": { "target": "project", "version": "1.0.0-*" },
-        "Agent.Worker": { "target": "project", "version": "1.0.0-*" } 
+        "Agent.Listener": {
+            "target": "project",
+            "version": "1.0.0-*"
+        },
+        "Microsoft.VisualStudio.Services.Agent": {
+            "target": "project",
+            "version": "1.0.0-*"
+        },
+        "Agent.Worker": {
+            "target": "project",
+            "version": "1.0.0-*"
+        }
     },
     "frameworks": {
         "netcoreapp1.0": {
-          "imports": ["dnxcore50", "portable-net451+win8"]
+            "imports": [
+                "dnxcore50",
+                "portable-net451+win8"
+            ]
         }
     },
-
     "runtimes": {
-        "win7-x64": { },
-        "ubuntu.14.04-x64": { },
-        "ubuntu.16.04-x64": { },
-        "centos.7-x64": { },
-        "rhel.7.2-x64": { },
-        "osx.10.11-x64": { }
+        "win7-x64": {},
+        "ubuntu.14.04-x64": {},
+        "ubuntu.16.04-x64": {},
+        "centos.7-x64": {},
+        "rhel.7.2-x64": {},
+        "osx.10.11-x64": {}
     }
 }

@@ -171,7 +171,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                         {
                             Body = "somebody1",
                             MessageId = 4234,
-                            MessageType = JobRequestMessage.MessageType
+                            MessageType = JobRequestMessageTypes.AgentJobRequest
                         },
                         new TaskAgentMessage
                         {
@@ -185,7 +185,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                         {
                             Body = "somebody3",
                             MessageId = 4236,
-                            MessageType = JobRequestMessage.MessageType
+                            MessageType = JobRequestMessageTypes.AgentJobRequest
                         }
                 };
                 var messages = new Queue<TaskAgentMessage>(arMessages);

@@ -2,10 +2,10 @@
 using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.VisualStudio.Services.WebApi;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
 {
@@ -70,7 +70,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
 
             IResultReader resultReader = GetTestResultReader(_testRunner);
             TestRunContext runContext = new TestRunContext(owner, _platform, _configuration, buildId, buildUri, releaseUri, releaseEnvironmentUri);
-            Client.VssConnection connection = WorkerUtilies.GetVssConnection(_executionContext);
+            VssConnection connection = WorkerUtilies.GetVssConnection(_executionContext);
 
             var publisher = HostContext.GetService<ITestRunPublisher>();
             publisher.InitializePublisher(context, connection, teamProject, resultReader);
@@ -113,8 +113,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                     {
                         foreach (TestCaseResultData tcResult in resultFileRunData.Results)
                         {
-                            int durationInMs = 0;
-                            int.TryParse(tcResult.DurationInMs, out durationInMs);
+                            int durationInMs = Convert.ToInt32(tcResult.DurationInMs);
                             totalTestCaseDuration = totalTestCaseDuration.Add(TimeSpan.FromMilliseconds(durationInMs));
                         }
                         runResults.AddRange(resultFileRunData.Results);

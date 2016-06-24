@@ -2,7 +2,6 @@ using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Listener.Capabilities;
 using Microsoft.VisualStudio.Services.Agent.Listener.Configuration;
 using Microsoft.VisualStudio.Services.Agent.Util;
-using Microsoft.VisualStudio.Services.Client;
 using Microsoft.VisualStudio.Services.Common;
 using System;
 using System.Collections.Generic;
@@ -11,6 +10,7 @@ using System.Threading.Tasks;
 using System.Security.Cryptography;
 using System.IO;
 using System.Text;
+using Microsoft.VisualStudio.Services.WebApi;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener
 {

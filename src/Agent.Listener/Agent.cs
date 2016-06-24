@@ -254,7 +254,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                                 }
                             }
                         }
-                        else if (string.Equals(message.MessageType, JobRequestMessage.MessageType, StringComparison.OrdinalIgnoreCase))
+                        else if (string.Equals(message.MessageType, JobRequestMessageTypes.AgentJobRequest, StringComparison.OrdinalIgnoreCase))
                         {
                             if (autoUpdateInProgress)
                             {
@@ -262,7 +262,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                             }
                             else
                             {
-                                var newJobMessage = JsonUtility.FromString<JobRequestMessage>(message.Body);
+                                var newJobMessage = JsonUtility.FromString<AgentJobRequestMessage>(message.Body);
                                 jobDispatcher.Run(newJobMessage);
                             }
                         }
