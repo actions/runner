@@ -58,11 +58,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
                     { ArtifactAssociateEventProperties.Browsable, browsableProperty },
                 };
 
-                FileContainerServer fileContainerHelper = new FileContainerServer(_connection.Uri, _connection.Credentials, projectId, containerId, file.Item2);
+                FileContainerServer fileContainerHelper = new FileContainerServer(_connection, projectId, containerId, file.Item2);
                 await fileContainerHelper.CopyToContainerAsync(context, file.Item1, cancellationToken);
                 string fileContainerFullPath = StringUtil.Format($"#/{containerId}/{file.Item2}");
 
-                Build.BuildServer buildHelper = new Build.BuildServer(_connection.Uri, _connection.Credentials, projectId);
+                Build.BuildServer buildHelper = new Build.BuildServer(_connection, projectId);
                 var artifact = await buildHelper.AssociateArtifact(_buildId, file.Item2, WellKnownArtifactResourceTypes.Container, fileContainerFullPath, artifactProperties, cancellationToken);
                 context.Output(StringUtil.Loc("PublishedCodeCoverageArtifact", file.Item1, file.Item2));
             });

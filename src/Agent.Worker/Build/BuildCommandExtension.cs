@@ -1,12 +1,12 @@
 using Microsoft.TeamFoundation.Build.WebApi;
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Util;
-using Microsoft.VisualStudio.Services.Common;
 using System;
 using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.VisualStudio.Services.Client;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 {
@@ -72,13 +72,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             ArgUtil.NotNull(context, nameof(context));
             ArgUtil.NotNull(context.Endpoints, nameof(context.Endpoints));
 
-            ServiceEndpoint systemConnection = context.Endpoints.FirstOrDefault(e => string.Equals(e.Name, ServiceEndpoints.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
-            ArgUtil.NotNull(systemConnection, nameof(systemConnection));
-            ArgUtil.NotNull(systemConnection.Url, nameof(systemConnection.Url));
-
-            Uri projectUrl = systemConnection.Url;
-            VssCredentials projectCredential = ApiUtil.GetVssCredential(systemConnection);
-
             Guid projectId = context.Variables.System_TeamProjectId ?? Guid.Empty;
             ArgUtil.NotEmpty(projectId, nameof(projectId));
 
@@ -95,8 +88,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 var commandContext = HostContext.CreateService<IAsyncCommandContext>();
                 commandContext.InitializeCommandContext(context, StringUtil.Loc("UpdateBuildNumber"));
                 commandContext.Task = UpdateBuildNumberAsync(commandContext,
-                                                             projectUrl,
-                                                             projectCredential,
+                                                             WorkerUtilies.GetVssConnection(context),
                                                              projectId,
                                                              buildId.Value,
                                                              data,
@@ -112,14 +104,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
         private async Task UpdateBuildNumberAsync(
             IAsyncCommandContext context,
-            Uri projectCollection,
-            VssCredentials credentials,
+            VssConnection connection,
             Guid projectId,
             int buildId,
             string buildNumber,
             CancellationToken cancellationToken)
         {
-            BuildServer buildServer = new BuildServer(projectCollection, credentials, projectId);
+            BuildServer buildServer = new BuildServer(connection, projectId);
             var build = await buildServer.UpdateBuildNumber(buildId, buildNumber, cancellationToken);
             context.Output(StringUtil.Loc("UpdateBuildNumberForBuild", build.BuildNumber, build.Id));
         }
@@ -128,13 +119,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         {
             ArgUtil.NotNull(context, nameof(context));
             ArgUtil.NotNull(context.Endpoints, nameof(context.Endpoints));
-
-            ServiceEndpoint systemConnection = context.Endpoints.FirstOrDefault(e => string.Equals(e.Name, ServiceEndpoints.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
-            ArgUtil.NotNull(systemConnection, nameof(systemConnection));
-            ArgUtil.NotNull(systemConnection.Url, nameof(systemConnection.Url));
-
-            Uri projectUrl = systemConnection.Url;
-            VssCredentials projectCredential = ApiUtil.GetVssCredential(systemConnection);
 
             Guid projectId = context.Variables.System_TeamProjectId ?? Guid.Empty;
             ArgUtil.NotEmpty(projectId, nameof(projectId));
@@ -149,8 +133,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 var commandContext = HostContext.CreateService<IAsyncCommandContext>();
                 commandContext.InitializeCommandContext(context, StringUtil.Loc("AddBuildTag"));
                 commandContext.Task = AddBuildTagAsync(commandContext,
-                                                       projectUrl,
-                                                       projectCredential,
+                                                       WorkerUtilies.GetVssConnection(context),
                                                        projectId,
                                                        buildId.Value,
                                                        data,
@@ -165,14 +148,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
         private async Task AddBuildTagAsync(
             IAsyncCommandContext context,
-            Uri projectCollection,
-            VssCredentials credentials,
+            VssConnection connection,
             Guid projectId,
             int buildId,
             string buildTag,
             CancellationToken cancellationToken)
         {
-            BuildServer buildServer = new BuildServer(projectCollection, credentials, projectId);
+            BuildServer buildServer = new BuildServer(connection, projectId);
             var tags = await buildServer.AddBuildTag(buildId, buildTag, cancellationToken);
 
             if (tags == null || !tags.Contains(buildTag))

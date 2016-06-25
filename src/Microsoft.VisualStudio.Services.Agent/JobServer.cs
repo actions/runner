@@ -1,8 +1,6 @@
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
-using Microsoft.VisualStudio.Services.Agent.Util;
 using Microsoft.VisualStudio.Services.Client;
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
@@ -29,7 +27,6 @@ namespace Microsoft.VisualStudio.Services.Agent
         private bool _hasConnection;
         private VssConnection _connection;
         private TaskHttpClient _taskClient;
-        private TaskAgentHttpClient _taskAgentClient;
 
         public async Task ConnectAsync(VssConnection jobConnection)
         {
@@ -41,7 +38,6 @@ namespace Microsoft.VisualStudio.Services.Agent
             }
 
             _taskClient = _connection.GetClient<TaskHttpClient>();
-            _taskAgentClient = _connection.GetClient<TaskAgentHttpClient>();
             _hasConnection = true;
         }
 

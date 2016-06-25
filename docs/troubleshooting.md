@@ -70,3 +70,20 @@ HTTP traces and trace files can contain credentials.
 
 1. Do not POST them on a publically accessible site.
 2. If you send them to the product team, they will be treated securely and discarded after the investigation.
+
+## Workaround HttpTimeoutException
+
+You may experience Build failed because of http timeout during upload build artifact, or a Build/Release finished without detail log since agent hit HttpTimeoutException and not able to upload logs.  
+The HttpClient that agent used by default will retry at most 5 times on any Network/Socket area exception.  
+Regular http post request by default will timeout after 100 seconds, artifact upload http post request by default will timeout after 300 seconds.  
+We provide two environment variables that will allow you overwrite these configurations.  
+
+```bash
+Windows:
+    set VSTS_HTTP_RETRY=5         // set http retry, valid range [5, 10]  
+    set VSTS_HTTP_TIMEOUT=120     // set http timeout, valid range [100, 1200]  
+
+Linux:
+    export VSTS_HTTP_RETRY=5          // set http retry, valid range [5, 10]  
+    export VSTS_HTTP_TIMEOUT=120      // set http timeout, valid range [100, 1200]  
+```

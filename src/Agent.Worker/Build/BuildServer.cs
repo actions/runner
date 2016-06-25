@@ -1,36 +1,26 @@
 ﻿using Microsoft.TeamFoundation.Core.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Util;
-using Microsoft.VisualStudio.Services.Common;
 using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Build2 = Microsoft.TeamFoundation.Build.WebApi;
+using Microsoft.VisualStudio.Services.Client;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 {
     public class BuildServer
     {
-        private Uri _projectCollectionUrl;
-        private VssCredentials _credential;
+        private readonly Build2.BuildHttpClient _buildHttpClient;
         private Guid _projectId;
 
-        private Build2.BuildHttpClient BuildHttpClient { get; }
-
-        public BuildServer(
-            Uri projectCollection,
-            VssCredentials credentials,
-            Guid projectId)
+        public BuildServer(VssConnection connection, Guid projectId)
         {
-            ArgUtil.NotNull(projectCollection, nameof(projectCollection));
-            ArgUtil.NotNull(credentials, nameof(credentials));
+            ArgUtil.NotNull(connection, nameof(connection));
             ArgUtil.NotEmpty(projectId, nameof(projectId));
 
-            _projectCollectionUrl = projectCollection;
-            _credential = credentials;
             _projectId = projectId;
-
-            BuildHttpClient = new Build2.BuildHttpClient(projectCollection, credentials, new VssHttpRetryMessageHandler(3));
+            _buildHttpClient = connection.GetClient<Build2.BuildHttpClient>();
         }
 
         public async Task<Build2.BuildArtifact> AssociateArtifact(
@@ -52,7 +42,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 }
             };
 
-            return await BuildHttpClient.CreateArtifactAsync(artifact, _projectId, buildId, cancellationToken);
+            return await _buildHttpClient.CreateArtifactAsync(artifact, _projectId, buildId, cancellationToken);
         }
 
         public async Task<Build2.Build> UpdateBuildNumber(
@@ -70,7 +60,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 },
             };
 
-            return await BuildHttpClient.UpdateBuildAsync(build, _projectId, buildId, cancellationToken);
+            return await _buildHttpClient.UpdateBuildAsync(build, _projectId, buildId, cancellationToken);
         }
 
         public async Task<IEnumerable<string>> AddBuildTag(
@@ -78,7 +68,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             string buildTag,
             CancellationToken cancellationToken = default(CancellationToken))
         {
-            return await BuildHttpClient.AddBuildTagAsync(_projectId, buildId, buildTag, cancellationToken: cancellationToken);
+            return await _buildHttpClient.AddBuildTagAsync(_projectId, buildId, buildTag, cancellationToken: cancellationToken);
         }
     }
 }
