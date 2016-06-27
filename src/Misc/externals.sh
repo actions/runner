@@ -134,7 +134,7 @@ if [[ "$PLATFORM" == "windows" ]]; then
     acquireExternalTool "$CONTAINER_URL/portablewingit/1/portablewingit.zip" git
     acquireExternalTool "$CONTAINER_URL/symstore/1/symstore.zip" symstore
     acquireExternalTool "$CONTAINER_URL/tfexe/101.0/tfexe.zip" tf
-    acquireExternalTool "$CONTAINER_URL/vstshost/2/vstshost.zip" vstshost
+    acquireExternalTool "$CONTAINER_URL/vstshost/3/vstshost.zip" vstshost
     acquireExternalTool "$CONTAINER_URL/vstsom/1/vstsom.zip" vstsom
     acquireExternalTool "$NODE_URL/v${NODE_VERSION}/win-x64/node.exe" node/bin
     acquireExternalTool "$NODE_URL/v${NODE_VERSION}/win-x64/node.lib" node/bin
