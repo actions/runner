@@ -45,13 +45,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 // if parse fail but input contains ##vso, print warning with DOC link
                 if (input.IndexOf("##vso") >= 0)
                 {
-                    context.Warning($"'{input}' contains logging command keyword '##vso'. TODO: aka link to command DOC.");
+                    context.Warning(StringUtil.Loc("CommandKeywordDetected", input));
                 }
 
                 return false;
             }
 
-            context.Debug($"Try processing logging command: ##vso[{command.Area}.{command.Event}]");
             IWorkerCommandExtension extension;
             if (_commandExtensions.TryGetValue(command.Area, out extension))
             {
@@ -60,13 +59,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 {
                     try
                     {
+                        context.Debug($"Processing: {input}");
                         extension.ProcessCommand(context, command);
-                        context.Debug($"Processed logging command: {input}");
                     }
                     catch (Exception ex)
                     {
+                        context.Error(StringUtil.Loc("CommandProcessFailed", input));
                         context.Error(ex);
-                        context.Error($"Unable to process command {input} successfully.");
                         context.CommandResult = TaskResult.Failed;
                     }
                 }
