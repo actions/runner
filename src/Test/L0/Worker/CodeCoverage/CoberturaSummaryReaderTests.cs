@@ -20,7 +20,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
 
         [Fact]
         [Trait("Level", "L0")]
-        [Trait("Category", "PublishCodeCoverage")]
+        [Trait("Category", "PublishCodeCoverage")]        
         public void VerifyCoberturaCoverageStatisticsForValidSummaryFile()
         {
             string coberturaXml = GetPathToValidCoberturaFile();

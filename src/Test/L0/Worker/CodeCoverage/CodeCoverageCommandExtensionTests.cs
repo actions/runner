@@ -4,6 +4,7 @@ using Microsoft.VisualStudio.Services.Agent.Worker;
 using Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage;
 using Moq;
 using System;
+using System.Linq;
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.CompilerServices;
@@ -83,6 +84,43 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
             command.Properties.Add("codecoveragetool", "InvalidTool");
             command.Properties.Add("summaryfile", "a.xml");
             Assert.Throws<ArgumentException>(() => publishCCCommand.ProcessCommand(_ec.Object, command));
+        }
+      
+        [Fact]
+        [Trait("Level", "L0")]       
+        public void Publish_CoberturaNewIndexFile()
+        {
+            SetupMocks();
+            var reportDirectory = Path.Combine(Path.GetTempPath(), "reportDirectory");
+            var coberturaXml = Path.Combine(reportDirectory, "coberturaValid.xml");
+
+            try
+            {
+                Directory.CreateDirectory(reportDirectory);
+                File.WriteAllText(coberturaXml, CodeCoverageTestConstants.ValidCoberturaXml);
+                File.WriteAllText((Path.Combine(reportDirectory, "index.html")), string.Empty);
+                File.WriteAllText((Path.Combine(reportDirectory, "frame-summary.html")), string.Empty);
+                
+                var publishCCCommand = new CodeCoverageCommandExtension();
+                publishCCCommand.Initialize(_hc);
+                var command = new Command("codecoverage", "publish");
+                command.Properties.Add("codecoveragetool", "mockCCTool");
+                command.Properties.Add("summaryfile", coberturaXml);
+                command.Properties.Add("reportdirectory", reportDirectory);
+                publishCCCommand.ProcessCommand(_ec.Object, command);
+                Assert.Equal(0, _warnings.Count);
+                Assert.Equal(0, _errors.Count);
+                _mockCodeCoveragePublisher.Verify(x => x.PublishCodeCoverageSummaryAsync(It.IsAny<IEnumerable<CodeCoverageStatistics>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()));
+                _mockCodeCoveragePublisher.Verify(x => x.PublishCodeCoverageFilesAsync(It.IsAny<IAsyncCommandContext>(), It.IsAny<Guid>(), It.IsAny<long>(),
+                  It.IsAny<List<Tuple<string, string>>>(), It.Is<bool>(browsable => browsable == true), It.IsAny<CancellationToken>()));
+         //       Assert.True(File.Exists(Path.Combine(reportDirectory, "frame-summary.html")));
+                Assert.True(File.Exists(Path.Combine(reportDirectory, "indexnew.html")));
+               
+            }
+            finally
+            {                               
+                Directory.Delete(reportDirectory, true);
+            }              
         }
 
         [Fact]
