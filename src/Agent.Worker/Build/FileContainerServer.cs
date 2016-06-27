@@ -1,5 +1,4 @@
 ﻿using Microsoft.VisualStudio.Services.Agent.Util;
-using Microsoft.VisualStudio.Services.Common;
 using Microsoft.VisualStudio.Services.FileContainer.Client;
 using System;
 using System.Collections.Concurrent;
@@ -9,6 +8,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Diagnostics;
+using Microsoft.VisualStudio.Services.Client;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 {
@@ -16,41 +16,34 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
     {
         private readonly ConcurrentQueue<string> _fileUploadQueue = new ConcurrentQueue<string>();
         private readonly ConcurrentBag<Exception> _exceptionsDuringFileUpload = new ConcurrentBag<Exception>();
-        private CancellationTokenSource _uploadCancellationTokenSource;
+        private readonly FileContainerHttpClient _fileContainerHttpClient;
 
-        private Uri _projectCollectionUrl;
-        private VssCredentials _credential;
+        private CancellationTokenSource _uploadCancellationTokenSource;
         private Guid _projectId;
         private long _containerId;
         private string _containerPath;
-
         private int _filesUploaded = 0;
         private string _sourceParentDirectory;
 
-        private FileContainerHttpClient FileContainerHttpClient { get; }
-
         public FileContainerServer(
-            Uri projectCollectionUrl,
-            VssCredentials credential,
+            VssConnection connection,
             Guid projectId,
             long containerId,
             string containerPath)
         {
-            _projectCollectionUrl = projectCollectionUrl;
-            _credential = credential;
             _projectId = projectId;
             _containerId = containerId;
             _containerPath = containerPath;
 
             // default file upload request timeout to 300 seconds
-            // TODO: Load from .ini file.
-            VssHttpRequestSettings fileUploadRequestSettings = new VssHttpRequestSettings();
-            fileUploadRequestSettings.SendTimeout = TimeSpan.FromSeconds(300);
-            FileContainerHttpClient = new FileContainerHttpClient(
-                _projectCollectionUrl,
-                _credential,
-                fileUploadRequestSettings,
-                new VssHttpRetryMessageHandler(3));
+            var fileContainerClientConnectionSetting = connection.Settings.Clone();
+            if (fileContainerClientConnectionSetting.SendTimeout < TimeSpan.FromSeconds(300))
+            {
+                fileContainerClientConnectionSetting.SendTimeout = TimeSpan.FromSeconds(300);
+            }
+
+            var fileContainerClientConnection = new VssConnection(connection.Uri, connection.Credentials, fileContainerClientConnectionSetting);
+            _fileContainerHttpClient = fileContainerClientConnection.GetClient<FileContainerHttpClient>();
         }
 
         public async Task CopyToContainerAsync(
@@ -124,7 +117,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                     {
                         string itemPath = (_containerPath.TrimEnd('/') + "/" + fileToUpload.Remove(0, _sourceParentDirectory.Length + 1)).Replace('\\', '/');
                         uploadTimer.Restart();
-                        var response = await FileContainerHttpClient.UploadFileAsync(_containerId, itemPath, fs, _projectId, token);
+                        var response = await _fileContainerHttpClient.UploadFileAsync(_containerId, itemPath, fs, _projectId, token);
                         uploadTimer.Stop();
                         if (response.StatusCode != System.Net.HttpStatusCode.Created)
                         {

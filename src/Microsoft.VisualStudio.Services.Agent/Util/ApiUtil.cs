@@ -14,7 +14,24 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
         public static VssConnection CreateConnection(Uri serverUri, VssCredentials credentials)
         {
             VssClientHttpRequestSettings settings = VssClientHttpRequestSettings.Default.Clone();
-            settings.MaxRetryRequest = 5;
+
+            int maxRetryRequest;
+            if (!int.TryParse(Environment.GetEnvironmentVariable("VSTS_HTTP_RETRY") ?? string.Empty, out maxRetryRequest))
+            {
+                maxRetryRequest = 5;
+            }
+
+            // make sure MaxRetryRequest in range [5, 10]
+            settings.MaxRetryRequest = Math.Min(Math.Max(maxRetryRequest, 5), 10);
+
+            int httpRequestTimeoutSeconds;
+            if (!int.TryParse(Environment.GetEnvironmentVariable("VSTS_HTTP_TIMEOUT") ?? string.Empty, out httpRequestTimeoutSeconds))
+            {
+                httpRequestTimeoutSeconds = 100;
+            }
+
+            // make sure httpRequestTimeoutSeconds in range [100, 1200]
+            settings.SendTimeout = TimeSpan.FromSeconds(Math.Min(Math.Max(httpRequestTimeoutSeconds, 100), 1200));
 
             // Remove Invariant from the list of accepted languages.
             //

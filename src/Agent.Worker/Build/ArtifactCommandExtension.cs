@@ -8,6 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.VisualStudio.Services.Client;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 {
@@ -99,8 +100,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             var commandContext = HostContext.CreateService<IAsyncCommandContext>();
             commandContext.InitializeCommandContext(context, StringUtil.Loc("AssociateArtifact"));
             commandContext.Task = AssociateArtifactAsync(commandContext,
-                                                         projectUrl,
-                                                         projectCredential,
+                                                         WorkerUtilies.GetVssConnection(context),
                                                          projectId,
                                                          buildId.Value,
                                                          artifactName,
@@ -116,13 +116,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             ArgUtil.NotNull(context, nameof(context));
             ArgUtil.NotNull(context.Endpoints, nameof(context.Endpoints));
 
-            ServiceEndpoint systemConnection = context.Endpoints.FirstOrDefault(e => string.Equals(e.Name, ServiceEndpoints.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
-            ArgUtil.NotNull(systemConnection, nameof(systemConnection));
-            ArgUtil.NotNull(systemConnection.Url, nameof(systemConnection.Url));
-
-            Uri projectUrl = systemConnection.Url;
-            VssCredentials projectCredential = ApiUtil.GetVssCredential(systemConnection);
-
             Guid projectId = context.Variables.System_TeamProjectId ?? Guid.Empty;
             ArgUtil.NotEmpty(projectId, nameof(projectId));
 
@@ -133,14 +126,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             ArgUtil.NotNull(containerId, nameof(containerId));
 
             string artifactName;
-            if (!eventProperties.TryGetValue(ArtifactAssociateEventProperties.ArtifactName, out artifactName) || 
+            if (!eventProperties.TryGetValue(ArtifactAssociateEventProperties.ArtifactName, out artifactName) ||
                 string.IsNullOrEmpty(artifactName))
             {
                 throw new Exception(StringUtil.Loc("ArtifactNameRequired"));
             }
 
             string containerFolder;
-            if (!eventProperties.TryGetValue(ArtifactUploadEventProperties.ContainerFolder, out containerFolder) || 
+            if (!eventProperties.TryGetValue(ArtifactUploadEventProperties.ContainerFolder, out containerFolder) ||
                 string.IsNullOrEmpty(containerFolder))
             {
                 containerFolder = artifactName;
@@ -172,8 +165,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             var commandContext = HostContext.CreateService<IAsyncCommandContext>();
             commandContext.InitializeCommandContext(context, StringUtil.Loc("UploadArtifact"));
             commandContext.Task = UploadArtifactAsync(commandContext,
-                                                      projectUrl,
-                                                      projectCredential,
+                                                      WorkerUtilies.GetVssConnection(context),
                                                       projectId,
                                                       containerId.Value,
                                                       containerFolder,
@@ -187,8 +179,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
         private async Task AssociateArtifactAsync(
             IAsyncCommandContext context,
-            Uri projectCollection,
-            VssCredentials credentials,
+            VssConnection connection,
             Guid projectId,
             int buildId,
             string name,
@@ -197,15 +188,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             Dictionary<string, string> propertiesDictionary,
             CancellationToken cancellationToken)
         {
-            BuildServer buildHelper = new BuildServer(projectCollection, credentials, projectId);
+            BuildServer buildHelper = new BuildServer(connection, projectId);
             var artifact = await buildHelper.AssociateArtifact(buildId, name, type, data, propertiesDictionary, cancellationToken);
             context.Output(StringUtil.Loc("AssociateArtifactWithBuild", artifact.Id, buildId));
         }
 
         private async Task UploadArtifactAsync(
             IAsyncCommandContext context,
-            Uri projectCollection,
-            VssCredentials credentials,
+            VssConnection connection,
             Guid projectId,
             long containerId,
             string containerPath,
@@ -215,12 +205,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             string source,
             CancellationToken cancellationToken)
         {
-            FileContainerServer fileContainerHelper = new FileContainerServer(projectCollection, credentials, projectId, containerId, containerPath);
+            FileContainerServer fileContainerHelper = new FileContainerServer(connection, projectId, containerId, containerPath);
             await fileContainerHelper.CopyToContainerAsync(context, source, cancellationToken);
             string fileContainerFullPath = StringUtil.Format($"#/{containerId}/{containerPath}");
             context.Output(StringUtil.Loc("UploadToFileContainer", source, fileContainerFullPath));
 
-            BuildServer buildHelper = new BuildServer(projectCollection, credentials, projectId);
+            BuildServer buildHelper = new BuildServer(connection, projectId);
             var artifact = await buildHelper.AssociateArtifact(buildId, name, WellKnownArtifactResourceTypes.Container, fileContainerFullPath, propertiesDictionary, cancellationToken);
             context.Output(StringUtil.Loc("AssociateArtifactWithBuild", artifact.Id, buildId));
         }
