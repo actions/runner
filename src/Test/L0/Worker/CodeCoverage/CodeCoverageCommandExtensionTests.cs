@@ -85,12 +85,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
             command.Properties.Add("summaryfile", "a.xml");
             Assert.Throws<ArgumentException>(() => publishCCCommand.ProcessCommand(_ec.Object, command));
         }
-      
+
         [Fact]
-        [Trait("Level", "L0")]       
+        [Trait("Level", "L0")]
         public void Publish_CoberturaNewIndexFile()
         {
-            SetupMocks();
+            SetupMocks2();
             var reportDirectory = Path.Combine(Path.GetTempPath(), "reportDirectory");
             var coberturaXml = Path.Combine(reportDirectory, "coberturaValid.xml");
 
@@ -100,11 +100,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
                 File.WriteAllText(coberturaXml, CodeCoverageTestConstants.ValidCoberturaXml);
                 File.WriteAllText((Path.Combine(reportDirectory, "index.html")), string.Empty);
                 File.WriteAllText((Path.Combine(reportDirectory, "frame-summary.html")), string.Empty);
-                
+
                 var publishCCCommand = new CodeCoverageCommandExtension();
                 publishCCCommand.Initialize(_hc);
                 var command = new Command("codecoverage", "publish");
-                command.Properties.Add("codecoveragetool", "mockCCTool");
+                command.Properties.Add("codecoveragetool", "cobertura");
                 command.Properties.Add("summaryfile", coberturaXml);
                 command.Properties.Add("reportdirectory", reportDirectory);
                 publishCCCommand.ProcessCommand(_ec.Object, command);
@@ -113,14 +113,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
                 _mockCodeCoveragePublisher.Verify(x => x.PublishCodeCoverageSummaryAsync(It.IsAny<IEnumerable<CodeCoverageStatistics>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()));
                 _mockCodeCoveragePublisher.Verify(x => x.PublishCodeCoverageFilesAsync(It.IsAny<IAsyncCommandContext>(), It.IsAny<Guid>(), It.IsAny<long>(),
                   It.IsAny<List<Tuple<string, string>>>(), It.Is<bool>(browsable => browsable == true), It.IsAny<CancellationToken>()));
-         //       Assert.True(File.Exists(Path.Combine(reportDirectory, "frame-summary.html")));
+                //       Assert.True(File.Exists(Path.Combine(reportDirectory, "frame-summary.html")));
                 Assert.True(File.Exists(Path.Combine(reportDirectory, "indexnew.html")));
-               
+
             }
             finally
-            {                               
+            {
                 Directory.Delete(reportDirectory, true);
-            }              
+            }
         }
 
         [Fact]
@@ -419,6 +419,63 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
 
             _mockCodeCoverageEnabler = new Mock<ICodeCoverageEnabler>();
             _mockCodeCoverageEnabler.Setup(x => x.Name).Returns("mockCCTool_mockBuildTool");
+            _mockCodeCoverageEnabler.Setup(x => x.EnableCodeCoverage(It.IsAny<IExecutionContext>(), It.IsAny<CodeCoverageEnablerInputs>()));
+            _hc.SetSingleton(_mockCodeCoverageEnabler.Object);
+
+            _mockExtensionManager = new Mock<IExtensionManager>();
+            _mockExtensionManager.Setup(x => x.GetExtensions<ICodeCoverageSummaryReader>()).Returns(new List<ICodeCoverageSummaryReader> { _mocksummaryReader.Object });
+            _mockExtensionManager.Setup(x => x.GetExtensions<ICodeCoverageEnabler>()).Returns(new List<ICodeCoverageEnabler> { _mockCodeCoverageEnabler.Object });
+            _hc.SetSingleton(_mockExtensionManager.Object);
+
+            _mockCodeCoveragePublisher = new Mock<ICodeCoveragePublisher>();
+            _hc.SetSingleton(_mockCodeCoveragePublisher.Object);
+
+            _mockCommandContext = new Mock<IAsyncCommandContext>();
+            _hc.EnqueueInstance(_mockCommandContext.Object);
+
+            var endpointAuthorization = new EndpointAuthorization()
+            {
+                Scheme = EndpointAuthorizationSchemes.OAuth
+            };
+            List<string> warnings;
+            _variables = new Variables(_hc, new Dictionary<string, string>(), new List<MaskHint>(), out warnings);
+            _variables.Set("build.buildId", "1");
+            _variables.Set("build.containerId", "1");
+            _variables.Set("system.teamProjectId", "46075F24-A6B9-447E-BEF0-E1D5592D9E39");
+            _variables.Set("system.hostType", "build");
+            endpointAuthorization.Parameters[EndpointAuthorizationParameters.AccessToken] = "accesstoken";
+
+            _ec = new Mock<IExecutionContext>();
+            _ec.Setup(x => x.Endpoints).Returns(new List<ServiceEndpoint> { new ServiceEndpoint { Url = new Uri("http://dummyurl"), Name = ServiceEndpoints.SystemVssConnection, Authorization = endpointAuthorization } });
+            _ec.Setup(x => x.Variables).Returns(_variables);
+            var asyncCommands = new List<IAsyncCommandContext>();
+            _ec.Setup(x => x.AsyncCommands).Returns(asyncCommands);
+            _ec.Setup(x => x.AddIssue(It.IsAny<Issue>()))
+            .Callback<Issue>
+            ((issue) =>
+            {
+                if (issue.Type == IssueType.Warning)
+                {
+                    _warnings.Add(issue.Message);
+                }
+                else if (issue.Type == IssueType.Error)
+                {
+                    _errors.Add(issue.Message);
+                }
+            });
+        }
+        private void SetupMocks2([CallerMemberName] string name = "")
+        {
+            _hc = new TestHostContext(this, name);
+            _codeCoverageStatistics = new List<CodeCoverageStatistics> { new CodeCoverageStatistics { Label = "label", Covered = 10, Total = 10, Position = 1 } };
+            _mocksummaryReader = new Mock<ICodeCoverageSummaryReader>();
+            _mocksummaryReader.Setup(x => x.Name).Returns("cobertura");
+            _mocksummaryReader.Setup(x => x.GetCodeCoverageSummary(It.IsAny<IExecutionContext>(), It.IsAny<string>()))
+                .Returns(_codeCoverageStatistics);
+            _hc.SetSingleton(_mocksummaryReader.Object);
+
+            _mockCodeCoverageEnabler = new Mock<ICodeCoverageEnabler>();
+            _mockCodeCoverageEnabler.Setup(x => x.Name).Returns("cobertura_mockBuildTool");
             _mockCodeCoverageEnabler.Setup(x => x.EnableCodeCoverage(It.IsAny<IExecutionContext>(), It.IsAny<CodeCoverageEnablerInputs>()));
             _hc.SetSingleton(_mockCodeCoverageEnabler.Object);
 
