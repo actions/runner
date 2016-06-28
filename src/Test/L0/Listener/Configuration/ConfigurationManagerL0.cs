@@ -1,18 +1,16 @@
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Listener;
-using Microsoft.VisualStudio.Services.Client;
 using Moq;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
 {
     using Microsoft.VisualStudio.Services.Agent.Listener.Configuration;
+    using WebApi;
 
     public class ConfigurationManagerL0
     {
@@ -35,11 +33,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
             _store = new Mock<IConfigurationStore>();
 
             _agentServer.Setup(x => x.ConnectAsync(It.IsAny<VssConnection>())).Returns(Task.FromResult<object>(null));
-            
+
             _store.Setup(x => x.IsConfigured()).Returns(false);
             _store.Setup(x => x.HasCredentials()).Returns(false);
             _store.Setup(x => x.GetSettings()).Returns(
-                new AgentSettings { 
+                new AgentSettings
+                {
                     ServerUrl = _expectedServerUrl,
                     AgentName = _expectedAgentName,
                     PoolName = _expectedPoolName,
@@ -79,30 +78,30 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
                     new[]
                     {
                         "configure",
-                        "--url", _expectedServerUrl, 
-                        "--agent", _expectedAgentName, 
-                        "--pool", _expectedPoolName,  
+                        "--url", _expectedServerUrl,
+                        "--agent", _expectedAgentName,
+                        "--pool", _expectedPoolName,
                         "--work", _expectedWorkFolder,
                         "--auth", _expectedAuthType,
                         "--token", _expectedToken
                     });
                 trace.Info("Constructed.");
-                
+
                 var expectedPools = new List<TaskAgentPool>() { new TaskAgentPool(_expectedPoolName) { Id = 1 } };
                 _agentServer.Setup(x => x.GetAgentPoolsAsync(It.IsAny<string>())).Returns(Task.FromResult(expectedPools));
-                
+
                 var expectedAgents = new List<TaskAgent>();
                 _agentServer.Setup(x => x.GetAgentsAsync(It.IsAny<int>(), It.IsAny<string>())).Returns(Task.FromResult(expectedAgents));
-                
+
                 var expectedAgent = new TaskAgent(_expectedAgentName) { Id = 1 };
                 _agentServer.Setup(x => x.AddAgentAsync(It.IsAny<int>(), It.IsAny<TaskAgent>())).Returns(Task.FromResult(expectedAgent));
                 _agentServer.Setup(x => x.UpdateAgentAsync(It.IsAny<int>(), It.IsAny<TaskAgent>())).Returns(Task.FromResult(expectedAgent));
-                
+
                 trace.Info("Ensuring all the required parameters are available in the command line parameter");
                 configManager.ConfigureAsync(command);
 
                 _store.Setup(x => x.IsConfigured()).Returns(true);
-                
+
                 trace.Info("Configured, verifying all the parameter value");
                 var s = configManager.LoadSettings();
                 Assert.True(s.ServerUrl.Equals(_expectedServerUrl));

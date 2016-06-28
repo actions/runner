@@ -13,7 +13,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
     [ServiceLocator(Default = typeof(JobDispatcher))]
     public interface IJobDispatcher : IAgentService
     {
-        void Run(JobRequestMessage message);
+        void Run(AgentJobRequestMessage message);
         bool Cancel(JobCancelMessage message);
         Task WaitAsync(CancellationToken token);
         Task ShutdownAsync();
@@ -46,7 +46,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             _poolId = agentSetting.PoolId;
         }
 
-        public void Run(JobRequestMessage jobRequestMessage)
+        public void Run(AgentJobRequestMessage jobRequestMessage)
         {
             Trace.Info($"Job request {jobRequestMessage.JobId} received.");
 
@@ -221,7 +221,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             }
         }
 
-        private async Task RunAsync(JobRequestMessage message, WorkerDispatcher previousJobDispatch, CancellationToken jobRequestCancellationToken)
+        private async Task RunAsync(AgentJobRequestMessage message, WorkerDispatcher previousJobDispatch, CancellationToken jobRequestCancellationToken)
         {
             if (previousJobDispatch != null)
             {
@@ -517,7 +517,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             return;
         }
 
-        private async Task CompleteJobRequestAsync(int poolId, JobRequestMessage message, Guid lockToken, TaskResult result)
+        private async Task CompleteJobRequestAsync(int poolId, AgentJobRequestMessage message, Guid lockToken, TaskResult result)
         {
             var agentServer = HostContext.GetService<IAgentServer>();
             bool retrying = false;

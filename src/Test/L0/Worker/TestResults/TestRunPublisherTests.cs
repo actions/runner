@@ -10,6 +10,7 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
+using Microsoft.VisualStudio.Services.WebApi;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 {
@@ -26,7 +27,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
         private string _projectId;
         private TestRunData _testRun;
         private TestAttachmentRequestModel _attachmentRequestModel;
-        private TestResultCreateModel[] _resultCreateModels;
+        private TestCaseResult[] _resultCreateModels;
         private Dictionary<int, List<TestAttachmentRequestModel>> _resultsLevelAttachments = new Dictionary<int, List<TestAttachmentRequestModel>>();
         private RunUpdateModel _updateProperties;
         private List<int> _batchSizes = new List<int>();
@@ -68,9 +69,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
                         });
 
             _testResultServer = new Mock<ITestResultsServer>();
-            _testResultServer.Setup(x => x.InitializeServer(It.IsAny<Client.VssConnection>()));
-            _testResultServer.Setup(x => x.AddTestResultsToTestRunAsync(It.IsAny<TestResultCreateModel[]>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
-                        .Callback<TestResultCreateModel[], string, int, CancellationToken>
+            _testResultServer.Setup(x => x.InitializeServer(It.IsAny<VssConnection>()));
+            _testResultServer.Setup(x => x.AddTestResultsToTestRunAsync(It.IsAny<TestCaseResult[]>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                        .Callback<TestCaseResult[], string, int, CancellationToken>
                         ((currentBatch, projectName, testRunId, cancellationToken) =>
                         {
                             _batchSizes.Add(currentBatch.Length);
@@ -80,7 +81,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
                         {
                             List<TestCaseResult> resultsList = new List<TestCaseResult>();
                             int i = 0;
-                            foreach (TestResultCreateModel resultCreateModel in _resultCreateModels)
+                            foreach (TestCaseResult resultCreateModel in _resultCreateModels)
                             {
                                 resultsList.Add(new TestCaseResult() { Id = ++i });
                             }
@@ -384,7 +385,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
             _publisher = new TestRunPublisher();
             _publisher.Initialize(hc);
-            _publisher.InitializePublisher(_ec.Object, new Client.VssConnection(new Uri("http://dummyurl"), new Common.VssCredentials()), "Project1", _reader.Object);
+            _publisher.InitializePublisher(_ec.Object, new VssConnection(new Uri("http://dummyurl"), new Common.VssCredentials()), "Project1", _reader.Object);
         }
     }
 }

@@ -8,7 +8,6 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
-using Xunit.Extensions;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
 {
@@ -27,21 +26,21 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
             _configurationManager = new Mock<IConfigurationManager>();
             _jobNotification = new Mock<IJobNotification>();
             _messageListener = new Mock<IMessageListener>();
-            _promptManager = new Mock<IPromptManager>();            
+            _promptManager = new Mock<IPromptManager>();
             _jobDispatcher = new Mock<IJobDispatcher>();
             _agentServer = new Mock<IAgentServer>();
             _term = new Mock<ITerminal>();
         }
 
-        private JobRequestMessage CreateJobRequestMessage(string jobName)
+        private AgentJobRequestMessage CreateJobRequestMessage(string jobName)
         {
             TaskOrchestrationPlanReference plan = new TaskOrchestrationPlanReference();
             TimelineReference timeline = null;
             JobEnvironment environment = new JobEnvironment();
             List<TaskInstance> tasks = new List<TaskInstance>();
             Guid JobId = Guid.NewGuid();
-            var jobRequest = new JobRequestMessage(plan, timeline, JobId, jobName, environment, tasks);
-            return jobRequest;
+            var jobRequest = new AgentJobRequestMessage(plan, timeline, JobId, jobName, environment, tasks);
+            return jobRequest as AgentJobRequestMessage;
         }
 
         private JobCancelMessage CreateJobCancelMessage()
@@ -65,7 +64,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                 hc.SetSingleton<IConfigurationManager>(_configurationManager.Object);
                 hc.SetSingleton<IJobNotification>(_jobNotification.Object);
                 hc.SetSingleton<IMessageListener>(_messageListener.Object);
-                hc.SetSingleton<IPromptManager>(_promptManager.Object);                
+                hc.SetSingleton<IPromptManager>(_promptManager.Object);
                 hc.SetSingleton<IAgentServer>(_agentServer.Object);
                 agent.Initialize(hc);
                 var settings = new AgentSettings
@@ -82,7 +81,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                 {
                     Body = JsonUtility.ToString(CreateJobRequestMessage("job1")),
                     MessageId = 4234,
-                    MessageType = JobRequestMessage.MessageType
+                    MessageType = JobRequestMessageTypes.AgentJobRequest
                 };
 
                 var messages = new Queue<TaskAgentMessage>();
@@ -111,8 +110,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                         });
                 _messageListener.Setup(x => x.DeleteSessionAsync())
                     .Returns(Task.CompletedTask);
-                _jobDispatcher.Setup(x => x.Run(It.IsAny<JobRequestMessage>()))
-                    .Callback(()=>
+                _jobDispatcher.Setup(x => x.Run(It.IsAny<AgentJobRequestMessage>()))
+                    .Callback(() =>
                     {
 
                     });
@@ -153,7 +152,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                     Assert.True(!agentTask.IsFaulted, agentTask.Exception?.ToString());
                     Assert.True(agentTask.IsCanceled);
 
-                    _jobDispatcher.Verify(x => x.Run(It.IsAny<JobRequestMessage>()), Times.Once(),
+                    _jobDispatcher.Verify(x => x.Run(It.IsAny<AgentJobRequestMessage>()), Times.Once(),
                          $"{nameof(_jobDispatcher.Object.Run)} was not invoked.");
                     _messageListener.Verify(x => x.GetNextMessageAsync(It.IsAny<CancellationToken>()), Times.AtLeastOnce());
                     _messageListener.Verify(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()), Times.Once());

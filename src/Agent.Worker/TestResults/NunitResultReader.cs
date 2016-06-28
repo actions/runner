@@ -118,7 +118,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                         if (testCases != null)
                         {
                             results.AddRange(testCases);
-                            testCases.ForEach(x => totalTestCaseDuration += TimeSpan.FromMilliseconds(double.Parse(x.DurationInMs)));
+                            testCases.ForEach(x => totalTestCaseDuration += TimeSpan.FromMilliseconds(x.DurationInMs));
                         }
                     }
                 }
@@ -196,13 +196,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                         double.TryParse(testCaseNode.Attributes["time"].Value, out duration);
                         testCaseDuration = TimeSpan.FromSeconds(duration);
                     }
-                    resultCreateModel.DurationInMs = testCaseDuration.TotalMilliseconds.ToString(CultureInfo.InvariantCulture);
+                    resultCreateModel.DurationInMs = testCaseDuration.TotalMilliseconds;
 
                     if (assemblyStartTime != DateTime.MinValue)
                     {
-                        resultCreateModel.StartedDate = testCaseStartTime.ToString("o");
-                        resultCreateModel.CompletedDate =
-                            testCaseStartTime.AddTicks(testCaseDuration.Ticks).ToString("o");
+                        resultCreateModel.StartedDate = testCaseStartTime;
+                        resultCreateModel.CompletedDate = testCaseStartTime.AddTicks(testCaseDuration.Ticks);
                         testCaseStartTime = testCaseStartTime.AddTicks(1) + testCaseDuration; //next start time
                     }
 

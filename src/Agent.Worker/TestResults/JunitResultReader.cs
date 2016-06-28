@@ -99,7 +99,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
             if (runSummary.Results.Count > 0)
             {
                 //first testsuite starteddate is the starteddate of the run
-                runSummary.TimeStamp = DateTime.Parse(runSummary.Results[0].StartedDate);
+                runSummary.TimeStamp = runSummary.Results[0].StartedDate;
             }
 
             //create test run data
@@ -190,10 +190,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
 
                     //test case duration
                     TimeSpan testCaseDuration = GetTimeSpan(testCaseNode);
-                    resultCreateModel.DurationInMs = testCaseDuration.TotalMilliseconds.ToString(CultureInfo.InvariantCulture);
+                    resultCreateModel.DurationInMs = testCaseDuration.TotalMilliseconds;
 
-                    resultCreateModel.StartedDate = testCaseStartTime.ToString("o");
-                    resultCreateModel.CompletedDate = testCaseStartTime.AddTicks(testCaseDuration.Ticks).ToString("o");
+                    resultCreateModel.StartedDate = testCaseStartTime;
+                    resultCreateModel.CompletedDate = testCaseStartTime.AddTicks(testCaseDuration.Ticks);
                     testCaseStartTime = testCaseStartTime.AddTicks(1) + testCaseDuration; //next start time
 
                     //test case outcome

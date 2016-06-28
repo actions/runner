@@ -1,5 +1,5 @@
 ﻿using Microsoft.TeamFoundation.TestManagement.WebApi;
-using Microsoft.VisualStudio.Services.Client;
+using Microsoft.VisualStudio.Services.WebApi;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;

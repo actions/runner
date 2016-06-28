@@ -156,12 +156,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
             Assert.Equal("at MyFirstUnitTests.Class1.FailingTest() in C: \\Users\\kaadhina\\Source\\Workspaces\\p1\\ClassLibrary2\\ClassLibrary2\\Class1.cs:line 17", runData.Results[0].StackTrace);
             Assert.Equal("Owner", runData.Results[0].RunBy.DisplayName);
             Assert.Equal("Completed", runData.Results[0].State);
-            Assert.Equal("1042", runData.Results[0].DurationInMs);
+            Assert.Equal("1042", runData.Results[0].DurationInMs.ToString());
             Assert.Equal("ClassLibrary2.DLL", runData.Results[0].AutomatedTestStorage);
 
 
             Assert.Equal("Passed", runData.Results[1].Outcome);
-            Assert.Equal("0", runData.Results[1].TestCasePriority);
+            Assert.Equal("0", runData.Results[1].Priority.ToString());
             Assert.Equal("asdf", runData.Results[1].Owner.DisplayName);
 
             Assert.Equal(null, runData.Results[0].AutomatedTestId);
@@ -170,9 +170,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
             double runDuration = 0;
             foreach (TestCaseResultData result in runData.Results)
             {
-                double resultDuration;
-                double.TryParse(result.DurationInMs, out resultDuration);
-                runDuration += resultDuration;
+                runDuration += result.DurationInMs;
             }
 
             DateTime startDate;
@@ -289,7 +287,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
         {
             SetupMocks();
             var runData = ReadResults(true, true);
-            Assert.Equal(runData.StartDate, runData.Results[0].StartedDate);
+            Assert.Equal(runData.StartDate, runData.Results[0].StartedDate.ToString("o"));
 
         }
 
@@ -300,8 +298,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
         {
             SetupMocks();
             var runData = ReadResults(true, true);
-            var testCase1CompletedDate = DateTime.Parse(runData.Results[0].CompletedDate);
-            var testCase2StartDate = DateTime.Parse(runData.Results[1].StartedDate);
+            var testCase1CompletedDate = runData.Results[0].CompletedDate;
+            var testCase2StartDate = runData.Results[1].StartedDate;
             Assert.True(testCase1CompletedDate <= testCase2StartDate, "first test case end should be before second test case start time");
 
         }
@@ -313,8 +311,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
         {
             SetupMocks();
             var runData = ReadResults(true, true);
-            var testCaseCompletedDate = DateTime.Parse(runData.Results[0].CompletedDate);
-            var testRunCompletedDate = DateTime.Parse(runData.Results[0].StartedDate).AddTicks(DateTime.Parse(runData.CompleteDate).Ticks);
+            var testCaseCompletedDate = runData.Results[0].CompletedDate;
+            var testRunCompletedDate = runData.Results[0].StartedDate.AddTicks(DateTime.Parse(runData.CompleteDate).Ticks);
             Assert.True(testCaseCompletedDate <= testRunCompletedDate, "first test case end should be within test run completed time");
 
         }

@@ -1,5 +1,4 @@
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
-using Microsoft.VisualStudio.Services.Agent.Listener;
 using Microsoft.VisualStudio.Services.Agent.Worker;
 using Moq;
 using System;
@@ -29,7 +28,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             environment.Variables[Constants.Variables.System.Culture] = "en-US";
             List<TaskInstance> tasks = new List<TaskInstance>();
             Guid JobId = Guid.NewGuid();
-            var jobRequest = new JobRequestMessage(plan, timeline, JobId, jobName, environment, tasks);
+            var jobRequest = new AgentJobRequestMessage(plan, timeline, JobId, jobName, environment, tasks);
             return jobRequest;
         }
 
@@ -76,7 +75,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                         await Task.Delay(-1, tokenSource.Token);
                         return default(WorkerMessage);
                     });
-                _jobRunner.Setup(x => x.RunAsync(It.IsAny<JobRequestMessage>(), It.IsAny<CancellationToken>()))
+                _jobRunner.Setup(x => x.RunAsync(It.IsAny<AgentJobRequestMessage>(), It.IsAny<CancellationToken>()))
                     .Returns(Task.FromResult<TaskResult>(TaskResult.Succeeded));
 
                 //Act
@@ -85,7 +84,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                 //Assert
                 _processChannel.Verify(x => x.StartClient("1", "2"), Times.Once());
                 _jobRunner.Verify(x => x.RunAsync(
-                    It.Is<JobRequestMessage>(y => JsonUtility.ToString(y) == arWorkerMessages[0].Body), It.IsAny<CancellationToken>()));
+                    It.Is<AgentJobRequestMessage>(y => JsonUtility.ToString(y) == arWorkerMessages[0].Body), It.IsAny<CancellationToken>()));
                 tokenSource.Cancel();
             }
         }
@@ -122,7 +121,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
 
                 _processChannel.Setup(x => x.ReceiveAsync(It.IsAny<CancellationToken>()))
                     .Returns(() => Task.FromResult(workerMessages.Dequeue()));
-                _jobRunner.Setup(x => x.RunAsync(It.IsAny<JobRequestMessage>(), It.IsAny<CancellationToken>()))
+                _jobRunner.Setup(x => x.RunAsync(It.IsAny<AgentJobRequestMessage>(), It.IsAny<CancellationToken>()))
                     .Returns(
                     async (JobRequestMessage jm, CancellationToken ct) =>
                     {
@@ -137,7 +136,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                 //Assert
                 _processChannel.Verify(x => x.StartClient("1", "2"), Times.Once());
                 _jobRunner.Verify(x => x.RunAsync(
-                    It.Is<JobRequestMessage>(y => JsonUtility.ToString(y) == arWorkerMessages[0].Body), It.IsAny<CancellationToken>()));
+                    It.Is<AgentJobRequestMessage>(y => JsonUtility.ToString(y) == arWorkerMessages[0].Body), It.IsAny<CancellationToken>()));
             }
         }
     }

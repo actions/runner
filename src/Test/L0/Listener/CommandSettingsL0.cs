@@ -3,7 +3,6 @@ using Microsoft.VisualStudio.Services.Agent.Listener.Configuration;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using Moq;
 using System;
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using Xunit;
 

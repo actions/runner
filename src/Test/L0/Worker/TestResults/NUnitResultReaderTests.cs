@@ -263,7 +263,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
             SetupMocks();
             _nunitResultsToBeRead = _nUnitSimpleResultsXml;
             ReadResults(new TestRunContext("owner", "platform", "configuration", 1, "buildUri", "releaseUri", "releaseEnvironmentUri"));
-            Assert.Equal(_testRunData.StartDate, _testRunData.Results[0].StartedDate);
+            Assert.Equal(_testRunData.StartDate, _testRunData.Results[0].StartedDate.ToString("o"));
 
         }
 
@@ -275,8 +275,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
             SetupMocks();
             _nunitResultsToBeRead = _nUnitSimpleResultsXml;
             ReadResults(new TestRunContext("owner", "platform", "configuration", 1, "buildUri", "releaseUri", "releaseEnvironmentUri"));
-            var testCase1CompletedDate = DateTime.Parse(_testRunData.Results[0].CompletedDate);
-            var testCase2StartDate = DateTime.Parse(_testRunData.Results[1].StartedDate);
+            var testCase1CompletedDate = _testRunData.Results[0].CompletedDate;
+            var testCase2StartDate = _testRunData.Results[1].StartedDate;
             Assert.True(testCase1CompletedDate <= testCase2StartDate, "first test case end should be before second test case start time");
         }
 
@@ -288,8 +288,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
             SetupMocks();
             _nunitResultsToBeRead = _nUnitSimpleResultsXml;
             ReadResults(new TestRunContext("owner", "platform", "configuration", 1, "buildUri", "releaseUri", "releaseEnvironmentUri"));
-            var testCaseCompletedDate = DateTime.Parse(_testRunData.Results[0].CompletedDate);
-            var testRunCompletedDate = DateTime.Parse(_testRunData.Results[0].StartedDate).AddTicks(DateTime.Parse(_testRunData.CompleteDate).Ticks);
+            var testCaseCompletedDate = _testRunData.Results[0].CompletedDate;
+            var testRunCompletedDate = _testRunData.Results[0].StartedDate.AddTicks(DateTime.Parse(_testRunData.CompleteDate).Ticks);
             Assert.True(testCaseCompletedDate <= testRunCompletedDate, "first test case end should be within test run completed time");
         }
 

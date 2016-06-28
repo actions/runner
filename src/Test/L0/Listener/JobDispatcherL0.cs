@@ -25,15 +25,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
             _configurationStore = new Mock<IConfigurationStore>();
         }
 
-        private JobRequestMessage CreateJobRequestMessage()
+        private AgentJobRequestMessage CreateJobRequestMessage()
         {
             TaskOrchestrationPlanReference plan = new TaskOrchestrationPlanReference();
             TimelineReference timeline = null;
             JobEnvironment environment = new JobEnvironment();
             List<TaskInstance> tasks = new List<TaskInstance>();
             Guid JobId = Guid.NewGuid();
-            var jobRequest = new JobRequestMessage(plan, timeline, JobId, "someJob", environment, tasks);
-            return jobRequest;
+            var jobRequest = new AgentJobRequestMessage(plan, timeline, JobId, "someJob", environment, tasks);
+            return jobRequest as AgentJobRequestMessage;
         }
 
         [Fact]
@@ -43,7 +43,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
         {
             //Arrange
             using (var hc = new TestHostContext(this))
-            { 
+            {
                 var jobDispatcher = new JobDispatcher();
                 hc.SetSingleton<IConfigurationStore>(_configurationStore.Object);
                 hc.SetSingleton<IAgentServer>(_agentServer.Object);
@@ -55,14 +55,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                 jobDispatcher.Initialize(hc);
 
                 var ts = new CancellationTokenSource();
-                JobRequestMessage message = CreateJobRequestMessage();
+                AgentJobRequestMessage message = CreateJobRequestMessage();
                 string strMessage = JsonUtility.ToString(message);
 
                 _processInvoker.Setup(x => x.ExecuteAsync(It.IsAny<String>(), It.IsAny<String>(), "spawnclient 1 2", null, It.IsAny<CancellationToken>()))
                     .Returns(Task.FromResult<int>(56));
 
                 _processChannel.Setup(x => x.StartServer(It.IsAny<StartProcessDelegate>()))
-                    .Callback((StartProcessDelegate startDel) => { startDel("1","2"); });
+                    .Callback((StartProcessDelegate startDel) => { startDel("1", "2"); });
                 _processChannel.Setup(x => x.SendAsync(MessageType.NewJobRequest, It.Is<string>(s => s.Equals(strMessage)), It.IsAny<CancellationToken>()))
                     .Returns(Task.CompletedTask);
 
@@ -135,7 +135,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
         //         Task<int> runAsyncTask = jobDispatcher.RunAsync(message, ts.Token);
         //         ts.Cancel();
         //         await runAsyncTask;
-                
+
         //         //Assert
         //         // Verify the cancellation message was sent
         //         _processChannel.Verify(x => x.SendAsync(MessageType.CancelRequest, It.IsAny<String>(), It.IsAny<CancellationToken>()),

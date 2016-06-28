@@ -9,7 +9,7 @@ using Microsoft.TeamFoundation.Build.WebApi;
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts.Definition;
-using Microsoft.VisualStudio.Services.Client;
+using Microsoft.VisualStudio.Services.WebApi;
 using Microsoft.VisualStudio.Services.Common;
 using Microsoft.VisualStudio.Services.ReleaseManagement.WebApi.Contracts;
 
@@ -187,7 +187,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
 
                 // TODO:Get VssBinFetchclient and get away from zipstream downloader
                 Stream contentStream;
-                
+
                 if (definitionType == DefinitionType.Xaml)
                 {
                     contentStream = await xamlBuildClient.GetArtifactContentZipAsync(buildArtifactDetails.Project, buildId, buildArtifact.Name);
@@ -196,7 +196,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
                 {
                     contentStream = await buildClient.GetArtifactContentZipAsync(buildArtifactDetails.Project, buildId, buildArtifact.Name);
                 }
-                
+
 
                 var zipStreamDownloader = HostContext.GetService<IZipStreamDownloader>();
                 string artifactRootFolder = StringUtil.Format("/{0}", buildArtifact.Name);

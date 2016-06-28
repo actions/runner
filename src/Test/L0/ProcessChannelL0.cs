@@ -10,7 +10,7 @@ using Xunit;
 namespace Microsoft.VisualStudio.Services.Agent.Tests
 {
     public sealed class ProcessChannelL0
-    {      
+    {
         //RunAsync is an "echo" type service which reads
         //one message and sends back to the server same data 
         public static async Task RunAsync(string[] args)
@@ -21,7 +21,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
 
                 var cs2 = new CancellationTokenSource();
                 var packetReceiveTask = client.ReceiveAsync(cs2.Token);
-                Task[] taskToWait = { packetReceiveTask, Task.Delay(30*1000)  };
+                Task[] taskToWait = { packetReceiveTask, Task.Delay(30 * 1000) };
                 //Wait up to 5 seconds for the server to call us and then reply back with the same data
                 await Task.WhenAny(taskToWait);
                 bool timedOut = !packetReceiveTask.IsCompleted;
@@ -59,14 +59,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         public async Task RunIPCEndToEnd()
         {
             using (var server = new ProcessChannel())
-            {                
-                JobRequestMessage result = null;                
+            {
+                AgentJobRequestMessage result = null;
                 TaskOrchestrationPlanReference plan = new TaskOrchestrationPlanReference();
                 TimelineReference timeline = null;
                 JobEnvironment environment = new JobEnvironment();
                 List<TaskInstance> tasks = new List<TaskInstance>();
                 Guid JobId = Guid.NewGuid();
-                var jobRequest = new JobRequestMessage(plan, timeline, JobId, "someJob", environment, tasks);
+                var jobRequest = new AgentJobRequestMessage(plan, timeline, JobId, "someJob", environment, tasks);
                 Process jobProcess;
                 server.StartServer((p1, p2) =>
                 {
@@ -74,13 +74,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                     jobProcess = new Process();
                     jobProcess.StartInfo.FileName = clientFileName;
                     jobProcess.StartInfo.Arguments = "spawnclient " + p1 + " " + p2;
-                    jobProcess.EnableRaisingEvents = true;                    
+                    jobProcess.EnableRaisingEvents = true;
                     jobProcess.Start();
                 });
-                var cs = new CancellationTokenSource();                
+                var cs = new CancellationTokenSource();
                 await server.SendAsync(MessageType.NewJobRequest, JsonUtility.ToString(jobRequest), cs.Token);
                 var packetReceiveTask = server.ReceiveAsync(cs.Token);
-                Task[] taskToWait = { packetReceiveTask, Task.Delay(30*1000) };
+                Task[] taskToWait = { packetReceiveTask, Task.Delay(30 * 1000) };
                 await Task.WhenAny(taskToWait);
                 bool timedOut = !packetReceiveTask.IsCompleted;
 
@@ -104,7 +104,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 }
                 else
                 {
-                    result = JsonUtility.FromString<JobRequestMessage>(packetReceiveTask.Result.Body);                    
+                    result = JsonUtility.FromString<AgentJobRequestMessage>(packetReceiveTask.Result.Body);
                 }
 
                 // Wait until response is received
