@@ -46,20 +46,21 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
         private int ComputeFolderInteger(string workingDirectory)
         {
             Trace.Entering();
-            Regex regex = new Regex(string.Format(@"^{0}[0-9]*$", Constants.Release.Path.ReleaseDirectoryPrefix));
-            var dirs = Directory.GetDirectories(workingDirectory);
-            var folderNames = dirs.Select(Path.GetFileName).Where(name => regex.IsMatch(name));
-            Trace.Verbose($"Number of folder with integer names: {folderNames.Count()}");
+            if (Directory.Exists(workingDirectory))
+            {
+                Regex regex = new Regex(string.Format(@"^{0}[0-9]*$", Constants.Release.Path.ReleaseDirectoryPrefix));
+                var dirs = Directory.GetDirectories(workingDirectory);
+                var folderNames = dirs.Select(Path.GetFileName).Where(name => regex.IsMatch(name));
+                Trace.Verbose($"Number of folder with integer names: {folderNames.Count()}");
 
-            if (folderNames.Any())
-            {
-                var max = folderNames.Select(x => Int32.Parse(x.Substring(1))).Max();
-                return max + 1;
+                if (folderNames.Any())
+                {
+                    var max = folderNames.Select(x => Int32.Parse(x.Substring(1))).Max();
+                    return max + 1;
+                }
             }
-            else
-            {
-                return 1;
-            }
+
+            return 1;
         }
 
         private ReleaseDefinitionToFolderMap LoadIfExists(string mappingFile)
