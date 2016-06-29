@@ -87,12 +87,38 @@ namespace Test.L0.Worker.Release
             }
         }
 
-        private TestHostContext Initialize([CallerMemberName] string name = "")
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void PrepareArtifactsDirectoryShouldReturnMapIfWorkDirectoryDoesNotExist()
+        {
+            using (TestHostContext testHostContext = Initialize(createWorkDirectory: false))
+            {
+
+                this.releaseDirectoryManager.PrepareArtifactsDirectory(
+                    this.stubWorkFolder,
+                    StubCollectionId,
+                    StubProjectId,
+                    StubReleaseDefinitionId);
+                var existingMap = this.releaseDirectoryManager.PrepareArtifactsDirectory(
+                    this.stubWorkFolder,
+                    StubCollectionId,
+                    StubProjectId,
+                    StubReleaseDefinitionId);
+
+                Assert.Equal(existingMap.ReleaseDirectory, "r1");
+            }
+        }
+
+        private TestHostContext Initialize([CallerMemberName] string name = "", bool createWorkDirectory = true)
         {
             this.stubWorkFolder = Path.Combine(
                 Path.GetDirectoryName(Assembly.GetEntryAssembly().Location),
                 $"_work_{Path.GetRandomFileName()}");
-            Directory.CreateDirectory(this.stubWorkFolder);
+            if (createWorkDirectory)
+            {
+                Directory.CreateDirectory(this.stubWorkFolder);
+            }
 
             var hostContext =  new TestHostContext(this, name);
             this.releaseDirectoryManager = new ReleaseDirectoryManager();
