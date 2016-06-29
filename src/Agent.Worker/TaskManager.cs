@@ -1,6 +1,5 @@
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Util;
-using Microsoft.VisualStudio.Services.Agent.Worker.Handlers;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;

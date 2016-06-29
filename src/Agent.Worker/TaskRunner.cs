@@ -1,12 +1,10 @@
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
-using Microsoft.VisualStudio.Services.Agent;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using Microsoft.VisualStudio.Services.Agent.Worker.Handlers;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
@@ -97,6 +95,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             // Expand the handler inputs.
             Trace.Verbose("Expanding handler inputs.");
             VarUtil.ExpandValues(HostContext, source: inputs, target: handlerData.Inputs);
+            ExecutionContext.Variables.ExpandValues(target: handlerData.Inputs);
 
             // Create the handler.
             IHandler handler = handlerFactory.Create(

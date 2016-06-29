@@ -1,9 +1,4 @@
-﻿using Microsoft.TeamFoundation.DistributedTask.WebApi;
-using Microsoft.VisualStudio.Services.Agent.Util;
-using Microsoft.VisualStudio.Services.Agent.Worker;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
+﻿using Microsoft.VisualStudio.Services.Agent.Util;
 using System.IO;
 using System.Threading.Tasks;
 
