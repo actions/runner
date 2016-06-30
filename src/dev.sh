@@ -1,3 +1,4 @@
+#!/bin/bash
 DEV_CMD=$1
 DEV_SUBCMD=$2
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
