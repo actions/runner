@@ -50,7 +50,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 .FirstOrDefault();
             if (handlerData == null)
             {
-                throw new Exception(StringUtil.Loc("SupportedTaskHandlerNotFound"));
+                string[] supportedHandlers;
+#if OS_WINDOWS
+                supportedHandlers = new string[] { "Node", "PowerShell3", "PowerShell", "AzurePowerShell", "PowerShellExe", "Process" };
+#else
+                supportedHandlers = new string[] { "Node" };
+#endif                
+                throw new Exception(StringUtil.Loc("SupportedTaskHandlerNotFound", string.Join(", ", supportedHandlers)));
             }
 
             // Load the default input values from the definition.
