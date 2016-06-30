@@ -283,8 +283,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
             {
                 if (_codeCoverageTool.Equals("cobertura", StringComparison.OrdinalIgnoreCase) && File.Exists(Path.Combine(reportDirectory, CodeCoverageConstants.DefaultIndexFile)) && File.Exists(Path.Combine(reportDirectory, CodeCoverageConstants.DefaultNonFrameFileCobertura)))
                 {
-                    File.Move(Path.Combine(reportDirectory, CodeCoverageConstants.DefaultIndexFile), Path.Combine(reportDirectory, CodeCoverageConstants.NewIndexFile));
-                    File.Move(Path.Combine(reportDirectory, CodeCoverageConstants.DefaultNonFrameFileCobertura), Path.Combine(reportDirectory, CodeCoverageConstants.DefaultIndexFile));
+                    // duplicating frame-summary.html to index.html and renaming index.html to newindex.html
+                    File.Move(sourceFileName: Path.Combine(reportDirectory, CodeCoverageConstants.DefaultIndexFile), destFileName: Path.Combine(reportDirectory, CodeCoverageConstants.NewIndexFile));
+                    File.Copy(sourceFileName: Path.Combine(reportDirectory, CodeCoverageConstants.DefaultNonFrameFileCobertura), destFileName: Path.Combine(reportDirectory, CodeCoverageConstants.DefaultIndexFile), overwrite: true);                                       
                 }
             }
             catch (Exception ex)

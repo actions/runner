@@ -111,9 +111,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
                 Assert.Equal(0, _warnings.Count);
                 Assert.Equal(0, _errors.Count);
                 _mockCodeCoveragePublisher.Verify(x => x.PublishCodeCoverageSummaryAsync(It.IsAny<IEnumerable<CodeCoverageStatistics>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()));
-                _mockCodeCoveragePublisher.Verify(x => x.PublishCodeCoverageFilesAsync(It.IsAny<IAsyncCommandContext>(), It.IsAny<Guid>(), It.IsAny<long>(),
-                  It.IsAny<List<Tuple<string, string>>>(), It.Is<bool>(browsable => browsable == true), It.IsAny<CancellationToken>()));
-         //       Assert.True(File.Exists(Path.Combine(reportDirectory, "frame-summary.html")));
+                _mockCodeCoveragePublisher.Verify(x => x.PublishCodeCoverageFilesAsync(It.IsAny<IAsyncCommandContext>(), It.IsAny<Guid>(), It.IsAny<long>(), It.IsAny<List<Tuple<string, string>>>(), It.Is<bool>(browsable => browsable == true), It.IsAny<CancellationToken>()));
+                Assert.True(File.Exists(Path.Combine(reportDirectory, "frame-summary.html")));
                 Assert.True(File.Exists(Path.Combine(reportDirectory, "indexnew.html")));
 
             }
