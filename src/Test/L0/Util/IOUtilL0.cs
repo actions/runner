@@ -112,6 +112,57 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Util
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
+        public async Task DeleteDirectory_DeletesDirectoryReparsePointsBeforeDirectories()
+        {
+            using (TestHostContext hc = new TestHostContext(this))
+            {
+                Tracing trace = hc.GetTrace();
+
+                // Arrange: Create the following structure:
+                //   randomDir
+                //   randomDir/linkDir -> targetDir
+                //   randomDir/targetDir
+                //   randomDir/targetDir/file.txt
+                //
+                // The accuracy of this test relies on an assumption that IOUtil sorts the directories in
+                // descending order before deleting them - either by length or by default sort order.
+                string randomDir = Path.Combine(IOUtil.GetBinPath(), Path.GetRandomFileName());
+                try
+                {
+                    string targetDir = Directory.CreateDirectory(Path.Combine(randomDir, "targetDir")).FullName;
+                    string file = Path.Combine(targetDir, "file.txt");
+                    File.WriteAllText(path: file, contents: "some contents");
+                    string linkDir = Path.Combine(randomDir, "linkDir");
+                    await CreateDirectoryReparsePoint(context: hc, link: linkDir, target: targetDir);
+
+                    // Sanity check to verify the link was created properly:
+                    Assert.True(Directory.Exists(linkDir));
+                    Assert.True(new DirectoryInfo(linkDir).Attributes.HasFlag(FileAttributes.ReparsePoint));
+                    Assert.True(File.Exists(Path.Combine(linkDir, "file.txt")));
+
+                    // Act.
+                    IOUtil.DeleteDirectory(randomDir, CancellationToken.None);
+
+                    // Assert.
+                    Assert.False(Directory.Exists(linkDir));
+                    Assert.False(Directory.Exists(targetDir));
+                    Assert.False(File.Exists(file));
+                    Assert.False(Directory.Exists(randomDir));
+                }
+                finally
+                {
+                    // Cleanup.
+                    if (Directory.Exists(randomDir))
+                    {
+                        Directory.Delete(randomDir, recursive: true);
+                    }
+                }
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
         public void DeleteDirectory_DeletesFilesRecursively()
         {
             using (TestHostContext hc = new TestHostContext(this))

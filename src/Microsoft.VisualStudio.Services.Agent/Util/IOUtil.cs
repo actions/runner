@@ -200,8 +200,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
                                 var subdirectory = item as DirectoryInfo;
                                 ArgUtil.NotNull(subdirectory, nameof(subdirectory));
 
-                                // Remove the readonly attribute and store the subdirectory.
+                                // Remove the readonly attribute.
                                 RemoveReadOnly(subdirectory);
+
+                                // Check if the directory is a reparse point.
+                                if (subdirectory.Attributes.HasFlag(FileAttributes.ReparsePoint))
+                                {
+                                    // Delete the reparse point.
+                                    subdirectory.Delete();
+                                    success = true;
+                                    return;
+                                }
+
+                                // Store the subdirectory.
                                 directories.Push(subdirectory);
                                 success = true;
                             }
