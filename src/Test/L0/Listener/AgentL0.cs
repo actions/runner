@@ -71,11 +71,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                 {
                     PoolId = 43242
                 };
-                var taskAgentSession = new TaskAgentSession();
-                //we use reflection to achieve this, because "set" is internal
-                PropertyInfo sessionIdProperty = taskAgentSession.GetType().GetProperty("SessionId", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
-                Assert.NotNull(sessionIdProperty);
-                sessionIdProperty.SetValue(taskAgentSession, Guid.NewGuid());
 
                 var message = new TaskAgentMessage()
                 {
@@ -95,8 +90,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                     .Returns(Task.CompletedTask);
                 _messageListener.Setup(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()))
                     .Returns(Task.FromResult<bool>(true));
-                _messageListener.Setup(x => x.Session)
-                    .Returns(taskAgentSession);
                 _messageListener.Setup(x => x.GetNextMessageAsync(It.IsAny<CancellationToken>()))
                     .Returns(async () =>
                         {
@@ -110,16 +103,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                         });
                 _messageListener.Setup(x => x.DeleteSessionAsync())
                     .Returns(Task.CompletedTask);
+                _messageListener.Setup(x => x.DeleteMessageAsync(It.IsAny<TaskAgentMessage>()))
+                    .Returns(Task.CompletedTask);
                 _jobDispatcher.Setup(x => x.Run(It.IsAny<AgentJobRequestMessage>()))
                     .Callback(() =>
                     {
 
                     });
-                _agentServer.Setup(x => x.DeleteAgentMessageAsync(settings.PoolId, message.MessageId, taskAgentSession.SessionId, It.IsAny<CancellationToken>()))
-                    .Returns((Int32 poolId, Int64 messageId, Guid sessionId, CancellationToken cancellationToken) =>
-                   {
-                       return Task.CompletedTask;
-                   });
                 _jobNotification.Setup(x => x.StartClient(It.IsAny<String>(), It.IsAny<CancellationToken>()))
                     .Callback(() =>
                     {
@@ -157,7 +147,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                     _messageListener.Verify(x => x.GetNextMessageAsync(It.IsAny<CancellationToken>()), Times.AtLeastOnce());
                     _messageListener.Verify(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()), Times.Once());
                     _messageListener.Verify(x => x.DeleteSessionAsync(), Times.Once());
-                    _agentServer.Verify(x => x.DeleteAgentMessageAsync(settings.PoolId, message.MessageId, taskAgentSession.SessionId, It.IsAny<CancellationToken>()), Times.AtLeastOnce());
+                    _messageListener.Verify(x => x.DeleteMessageAsync(It.IsAny<TaskAgentMessage>()), Times.AtLeastOnce());
                 }
             }
         }

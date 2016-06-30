@@ -73,7 +73,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
 
                 // Assert.
                 Assert.True(result);
-                Assert.Equal(expectedSession, listener.Session);
                 _agentServer
                     .Verify(x => x.CreateAgentSessionAsync(
                         _settings.PoolId,
@@ -115,7 +114,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
 
                 bool result = await listener.CreateSessionAsync(tokenSource.Token);
                 Assert.True(result);
-                Assert.Equal(expectedSession, listener.Session);
 
                 _agentServer
                     .Setup(x => x.DeleteAgentSessionAsync(
@@ -163,7 +161,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
 
                 bool result = await listener.CreateSessionAsync(tokenSource.Token);
                 Assert.True(result);
-                Assert.Equal(expectedSession, listener.Session);
 
                 var arMessages = new TaskAgentMessage[]
                 {
