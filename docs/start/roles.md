@@ -2,7 +2,7 @@
 
 ## VSTS
 
-Create a PAT token.  [Step by Step here](http://roadtoalm.com/2015/07/22/using-personal-access-tokens-to-access-visual-studio-online/)
+Create a PAT token.  [Step by Step here](https://www.visualstudio.com/en-us/docs/setup-admin/team-services/use-personal-access-tokens-to-authenticate)
 
 ## On Premises TFS
 
