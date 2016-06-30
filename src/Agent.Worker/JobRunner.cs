@@ -37,10 +37,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 message.Environment.Variables[Constants.Variables.System.AccessToken] = message.Environment.SystemConnection.Authorization.Parameters["AccessToken"];
             }
 
+            // Make sure SystemConnection Url and Endpoint Url match Config Url base
+            ReplaceConfigUriBaseInJobRequestMessage(message);
+
             // Setup the job server and job server queue.
             var jobServer = HostContext.GetService<IJobServer>();
             var jobServerCredential = ApiUtil.GetVssCredential(message.Environment.SystemConnection);
-            Uri jobServerUrl = ReplaceWithConfigUriBase(message.Environment.SystemConnection.Url);
+            Uri jobServerUrl = message.Environment.SystemConnection.Url;
 
             Trace.Info($"Creating job server with URL: {jobServerUrl}");
             var jobConnection = ApiUtil.CreateConnection(jobServerUrl, jobServerCredential);
@@ -75,11 +78,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 Uri taskServerUri = null;
                 if (!string.IsNullOrEmpty(jobContext.Variables.System_TaskDefinitionsUri))
                 {
-                    taskServerUri = ReplaceWithConfigUriBase(new Uri(jobContext.Variables.System_TaskDefinitionsUri));
+                    taskServerUri = new Uri(jobContext.Variables.System_TaskDefinitionsUri);
                 }
                 else if (!string.IsNullOrEmpty(jobContext.Variables.System_TFCollectionUrl))
                 {
-                    taskServerUri = ReplaceWithConfigUriBase(new Uri(jobContext.Variables.System_TFCollectionUrl));
+                    taskServerUri = new Uri(jobContext.Variables.System_TFCollectionUrl);
                 }
 
                 var taskServerCredential = ApiUtil.GetVssCredential(message.Environment.SystemConnection);
@@ -93,7 +96,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 {
                     Trace.Info($"Can't determine task download url from JobMessage or the endpoint doesn't exist.");
                     var configStore = HostContext.GetService<IConfigurationStore>();
-                    taskServerUri = ReplaceWithConfigUriBase(new Uri(configStore.GetSettings().ServerUrl));
+                    taskServerUri = new Uri(configStore.GetSettings().ServerUrl);
                     Trace.Info($"Recreate task server with configuration server url: {taskServerUri}");
                     await taskServer.ConnectAsync(ApiUtil.CreateConnection(taskServerUri, taskServerCredential));
                 }
@@ -220,7 +223,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         // the hostname (how the agent knows the server) is external to our server
         // in other words, an agent may have it's own way (DNS, hostname) of refering
-        // to the server.  it owns that.  That's the hostname we will use
+        // to the server.  it owns that.  That's the hostname we will use.
+        // Example: Server's notification url is http://tfsserver:8080/tfs 
+        //          Agent config url is http://tfsserver.mycompany.com:8080/tfs 
         private Uri ReplaceWithConfigUriBase(Uri messageUri)
         {
             AgentSettings settings = HostContext.GetService<IConfigurationStore>().GetSettings();
@@ -268,6 +273,46 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             }
 
             return messageUri;
+        }
+
+        private void ReplaceConfigUriBaseInJobRequestMessage(AgentJobRequestMessage message)
+        {
+            string systemConnectionHostName = message.Environment.SystemConnection.Url.GetComponents(UriComponents.Host, UriFormat.Unescaped);
+            // fixup any endpoint Url that match SystemConnect host.
+            foreach (var endpoint in message.Environment.Endpoints)
+            {
+                if (endpoint.Url.GetComponents(UriComponents.Host, UriFormat.Unescaped).Equals(systemConnectionHostName, StringComparison.OrdinalIgnoreCase))
+                {
+                    endpoint.Url = ReplaceWithConfigUriBase(endpoint.Url);
+                    Trace.Info($"Ensure endpoint url match config url base. {endpoint.Url}");
+                }
+            }
+
+            // fixup well known variables. (taskDefinitionsUrl, tfsServerUrl, tfsCollectionUrl)
+            if (message.Environment.Variables.ContainsKey(WellKnownDistributedTaskVariables.TaskDefinitionsUrl))
+            {
+                string taskDefinitionsUrl = message.Environment.Variables[WellKnownDistributedTaskVariables.TaskDefinitionsUrl];
+                message.Environment.Variables[WellKnownDistributedTaskVariables.TaskDefinitionsUrl] = ReplaceWithConfigUriBase(new Uri(taskDefinitionsUrl)).AbsoluteUri;
+                Trace.Info($"Ensure System.TaskDefinitionsUrl match config url base. {message.Environment.Variables[WellKnownDistributedTaskVariables.TaskDefinitionsUrl]}");
+            }
+
+            if (message.Environment.Variables.ContainsKey(Constants.Variables.System.TFServerUrl))
+            {
+                string tfsServerUrl = message.Environment.Variables[Constants.Variables.System.TFServerUrl];
+                message.Environment.Variables[Constants.Variables.System.TFServerUrl] = ReplaceWithConfigUriBase(new Uri(tfsServerUrl)).AbsoluteUri;
+                Trace.Info($"Ensure System.TFServerUrl match config url base. {message.Environment.Variables[Constants.Variables.System.TFServerUrl]}");
+            }
+
+            if (message.Environment.Variables.ContainsKey(WellKnownDistributedTaskVariables.TFCollectionUrl))
+            {
+                string tfsCollectionUrl = message.Environment.Variables[WellKnownDistributedTaskVariables.TFCollectionUrl];
+                message.Environment.Variables[WellKnownDistributedTaskVariables.TFCollectionUrl] = ReplaceWithConfigUriBase(new Uri(tfsCollectionUrl)).AbsoluteUri;
+                Trace.Info($"Ensure System.TFCollectionUrl match config url base. {message.Environment.Variables[WellKnownDistributedTaskVariables.TFCollectionUrl]}");
+            }
+
+            // fixup SystemConnection Url
+            message.Environment.SystemConnection.Url = ReplaceWithConfigUriBase(message.Environment.SystemConnection.Url);
+            Trace.Info($"Ensure SystemConnection url match config url base. {message.Environment.SystemConnection.Url}");
         }
     }
 }
