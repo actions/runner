@@ -219,49 +219,49 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             scriptBuilder.AppendLine($"set backupexternalsfolder=\"{Path.Combine(currentAgent, $"{Constants.Path.ExternalsDirectory}.bak.{Constants.Agent.Version}")}\"");
             scriptBuilder.AppendLine($"set logfile=\"{updateLog}\"");
 
-            scriptBuilder.AppendLine("echo --------env-------- >> %logfile% 2>&1");
+            scriptBuilder.AppendLine("echo [%date% %time%] --------env-------- >> %logfile% 2>&1");
             scriptBuilder.AppendLine("set >> %logfile% 2>&1");
-            scriptBuilder.AppendLine("echo --------env-------- >> %logfile% 2>&1");
+            scriptBuilder.AppendLine("echo [%date% %time%] --------env-------- >> %logfile% 2>&1");
 
-            scriptBuilder.AppendLine("echo --------whoami-------- >> %logfile% 2>&1");
+            scriptBuilder.AppendLine("echo [%date% %time%] --------whoami-------- >> %logfile% 2>&1");
             scriptBuilder.AppendLine("whoami >> %logfile% 2>&1");
-            scriptBuilder.AppendLine("echo --------whoami-------- >> %logfile% 2>&1");
+            scriptBuilder.AppendLine("echo [%date% %time%] --------whoami-------- >> %logfile% 2>&1");
 
-            scriptBuilder.AppendLine("echo Waiting for %agentprocessname% (%agentpid%) to complete >> %logfile% 2>&1");
+            scriptBuilder.AppendLine("echo [%date% %time%] Waiting for %agentprocessname% (%agentpid%) to complete >> %logfile% 2>&1");
             scriptBuilder.AppendLine(":loop");
             scriptBuilder.AppendLine("tasklist /fi \"pid eq %agentpid%\" | find /I \"%agentprocessname%\" 2>nul");
             scriptBuilder.AppendLine("if \"%errorlevel%\"==\"1\" goto copy");
-            scriptBuilder.AppendLine("echo Process %agentpid% still running >> %logfile% 2>&1");
+            scriptBuilder.AppendLine("echo [%date% %time%] Process %agentpid% still running >> %logfile% 2>&1");
             scriptBuilder.AppendLine("ping 127.0.0.1 -n 1 -w 1000 >nul");
             scriptBuilder.AppendLine("goto loop");
 
             scriptBuilder.AppendLine(":copy");
-            scriptBuilder.AppendLine("echo Process %agentpid% finished running >> %logfile% 2>&1");
-            scriptBuilder.AppendLine("echo Renameing folders and copying files >> %logfile% 2>&1");
+            scriptBuilder.AppendLine("echo [%date% %time%] Process %agentpid% finished running >> %logfile% 2>&1");
+            scriptBuilder.AppendLine("echo [%date% %time%] Renameing folders and copying files >> %logfile% 2>&1");
 
-            scriptBuilder.AppendLine("echo move %existingagentbinfolder% %backupbinfolder% >> %logfile% 2>&1");
+            scriptBuilder.AppendLine("echo [%date% %time%] move %existingagentbinfolder% %backupbinfolder% >> %logfile% 2>&1");
             scriptBuilder.AppendLine("move %existingagentbinfolder% %backupbinfolder% >> %logfile% 2>&1");
-            scriptBuilder.AppendLine("if \"%errorlevel%\" gtr \"0\" (echo Can't move %existingagentbinfolder% to %backupbinfolder% >> %logfile% 2>&1 & goto end)");
+            scriptBuilder.AppendLine("if \"%errorlevel%\" gtr \"0\" (echo [%date% %time%] Can't move %existingagentbinfolder% to %backupbinfolder% >> %logfile% 2>&1 & goto end)");
 
-            scriptBuilder.AppendLine("echo move %existingagentexternalsfolder% %backupexternalsfolder% >> %logfile% 2>&1");
+            scriptBuilder.AppendLine("echo [%date% %time%] move %existingagentexternalsfolder% %backupexternalsfolder% >> %logfile% 2>&1");
             scriptBuilder.AppendLine("move %existingagentexternalsfolder% %backupexternalsfolder% >> %logfile% 2>&1");
-            scriptBuilder.AppendLine("if \"%errorlevel%\" gtr \"0\" (echo Can't move %existingagentexternalsfolder% to %backupexternalsfolder% >> %logfile% 2>&1 & goto end)");
+            scriptBuilder.AppendLine("if \"%errorlevel%\" gtr \"0\" (echo [%date% %time%] Can't move %existingagentexternalsfolder% to %backupexternalsfolder% >> %logfile% 2>&1 & goto end)");
 
-            scriptBuilder.AppendLine("echo move %downloadagentbinfolder% %existingagentbinfolder% >> %logfile% 2>&1");
+            scriptBuilder.AppendLine("echo [%date% %time%] move %downloadagentbinfolder% %existingagentbinfolder% >> %logfile% 2>&1");
             scriptBuilder.AppendLine("move %downloadagentbinfolder% %existingagentbinfolder% >> %logfile% 2>&1");
-            scriptBuilder.AppendLine("if \"%errorlevel%\" gtr \"0\" (echo Can't move %downloadagentbinfolder% to %existingagentbinfolder% >> %logfile% 2>&1 & goto end)");
+            scriptBuilder.AppendLine("if \"%errorlevel%\" gtr \"0\" (echo [%date% %time%] Can't move %downloadagentbinfolder% to %existingagentbinfolder% >> %logfile% 2>&1 & goto end)");
 
-            scriptBuilder.AppendLine("echo move %downloadagentexternalsfolder% %existingagentexternalsfolder% >> %logfile% 2>&1");
+            scriptBuilder.AppendLine("echo [%date% %time%] move %downloadagentexternalsfolder% %existingagentexternalsfolder% >> %logfile% 2>&1");
             scriptBuilder.AppendLine("move %downloadagentexternalsfolder% %existingagentexternalsfolder% >> %logfile% 2>&1");
-            scriptBuilder.AppendLine("if \"%errorlevel%\" gtr \"0\" (echo Can't move %downloadagentexternalsfolder% to %existingagentexternalsfolder% >> %logfile% 2>&1 & goto end)");
+            scriptBuilder.AppendLine("if \"%errorlevel%\" gtr \"0\" (echo [%date% %time%] Can't move %downloadagentexternalsfolder% to %existingagentexternalsfolder% >> %logfile% 2>&1 & goto end)");
 
-            scriptBuilder.AppendLine("echo copy %downloadagentfolder%\\*.* %existingagentfolder%\\*.* /Y >> %logfile% 2>&1");
+            scriptBuilder.AppendLine("echo [%date% %time%] copy %downloadagentfolder%\\*.* %existingagentfolder%\\*.* /Y >> %logfile% 2>&1");
             scriptBuilder.AppendLine("copy %downloadagentfolder%\\*.* %existingagentfolder%\\*.* /Y >> %logfile% 2>&1");
-            scriptBuilder.AppendLine("if \"%errorlevel%\" gtr \"0\" (echo Can't copy %downloadagentfolder%\\*.* to %existingagentfolder%\\*.* >> %logfile% 2>&1 & goto end)");
+            scriptBuilder.AppendLine("if \"%errorlevel%\" gtr \"0\" (echo [%date% %time%] Can't copy %downloadagentfolder%\\*.* to %existingagentfolder%\\*.* >> %logfile% 2>&1 & goto end)");
 
             if (restartInteractiveAgent)
             {
-                scriptBuilder.AppendLine("echo Restart interactive agent >> %logfile% 2>&1");
+                scriptBuilder.AppendLine("echo [%date% %time%] Restart interactive agent >> %logfile% 2>&1");
                 scriptBuilder.AppendLine("endlocal");
                 scriptBuilder.AppendLine($"start \"Vsts Agent\" cmd.exe /k \"{Path.Combine(currentAgent, Constants.Path.BinDirectory, agentProcessName)}\"");
             }
@@ -270,7 +270,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 scriptBuilder.AppendLine("endlocal");
             }
 
-            scriptBuilder.AppendLine("echo Exit _update.cmd >> %logfile% 2>&1");
+            scriptBuilder.AppendLine("echo [%date% %time%] Exit _update.cmd >> %logfile% 2>&1");
             scriptBuilder.AppendLine(":end");
 
             string updateScript = Path.Combine(IOUtil.GetWorkPath(HostContext), "_update.cmd");
@@ -304,70 +304,70 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             scriptBuilder.AppendLine($"backupexternalsfolder=\"{Path.Combine(currentAgent, $"{Constants.Path.ExternalsDirectory}.bak.{Constants.Agent.Version}")}\"");
             scriptBuilder.AppendLine($"logfile=\"{updateLog}\"");
 
-            scriptBuilder.AppendLine("echo \"--------env--------\" >> \"$logfile\" 2>&1");
+            scriptBuilder.AppendLine("date \"+[%F %T-%4N] --------env--------\" >> \"$logfile\" 2>&1");
             scriptBuilder.AppendLine("env >> \"$logfile\" 2>&1");
-            scriptBuilder.AppendLine("echo \"--------env--------\" >> \"$logfile\" 2>&1");
+            scriptBuilder.AppendLine("date \"+[%F %T-%4N] --------env--------\" >> \"$logfile\" 2>&1");
 
-            scriptBuilder.AppendLine("echo \"--------whoami--------\" >> \"$logfile\" 2>&1");
+            scriptBuilder.AppendLine("date \"+[%F %T-%4N] --------whoami--------\" >> \"$logfile\" 2>&1");
             scriptBuilder.AppendLine("whoami >> \"$logfile\" 2>&1");
-            scriptBuilder.AppendLine("echo \"--------whoami--------\" >> \"$logfile\" 2>&1");
+            scriptBuilder.AppendLine("date \"+[%F %T-%4N] --------whoami--------\" >> \"$logfile\" 2>&1");
 
-            scriptBuilder.AppendLine("echo \"Waiting for $agentprocessname ($agentpid) to complete\" >> \"$logfile\" 2>&1");
+            scriptBuilder.AppendLine("date \"+[%F %T-%4N] Waiting for $agentprocessname ($agentpid) to complete\" >> \"$logfile\" 2>&1");
             scriptBuilder.AppendLine("while [ -e /proc/$agentpid ]");
             scriptBuilder.AppendLine("do");
-            scriptBuilder.AppendLine("    echo \"Process $agentpid still running\" >> \"$logfile\" 2>&1");
+            scriptBuilder.AppendLine("    date \"+[%F %T-%4N] Process $agentpid still running\" >> \"$logfile\" 2>&1");
             scriptBuilder.AppendLine("    sleep 1");
             scriptBuilder.AppendLine("done");
-            scriptBuilder.AppendLine("echo \"Process $agentpid finished running\" >> \"$logfile\" 2>&1");
+            scriptBuilder.AppendLine("date \"+[%F %T-%4N] Process $agentpid finished running\" >> \"$logfile\" 2>&1");
 
-            scriptBuilder.AppendLine("echo \"Renaming folders and copying files\" >> \"$logfile\"");
-            scriptBuilder.AppendLine("echo \"move $existingagentbinfolder $backupbinfolder\" >> \"$logfile\" 2>&1");
-            scriptBuilder.AppendLine("mv -f \"$existingagentbinfolder\" \"$backupbinfolder\" >> \"$logfile\" 2>&1");
+            scriptBuilder.AppendLine("date \"+[%F %T-%4N] Renaming folders and copying files\" >> \"$logfile\"");
+            scriptBuilder.AppendLine("date \"+[%F %T-%4N] move $existingagentbinfolder $backupbinfolder\" >> \"$logfile\" 2>&1");
+            scriptBuilder.AppendLine("mv -fv \"$existingagentbinfolder\" \"$backupbinfolder\" >> \"$logfile\" 2>&1");
             scriptBuilder.AppendLine("if [ $? -ne 0 ]");
             scriptBuilder.AppendLine("    then");
-            scriptBuilder.AppendLine("        echo \"Can't move $existingagentbinfolder to $backupbinfolder\" >> \"$logfile\" 2>&1");
+            scriptBuilder.AppendLine("        date \"+[%F %T-%4N] Can't move $existingagentbinfolder to $backupbinfolder\" >> \"$logfile\" 2>&1");
             scriptBuilder.AppendLine("        exit 1");
             scriptBuilder.AppendLine("fi");
 
-            scriptBuilder.AppendLine("echo \"move $existingagentexternalsfolder $backupexternalsfolder\" >> \"$logfile\" 2>&1");
-            scriptBuilder.AppendLine("mv -f \"$existingagentexternalsfolder\" \"$backupexternalsfolder\" >> \"$logfile\" 2>&1");
+            scriptBuilder.AppendLine("date \"+[%F %T-%4N] move $existingagentexternalsfolder $backupexternalsfolder\" >> \"$logfile\" 2>&1");
+            scriptBuilder.AppendLine("mv -fv \"$existingagentexternalsfolder\" \"$backupexternalsfolder\" >> \"$logfile\" 2>&1");
             scriptBuilder.AppendLine("if [ $? -ne 0 ]");
             scriptBuilder.AppendLine("    then");
-            scriptBuilder.AppendLine("        echo \"Can't move $existingagentexternalsfolder to $backupexternalsfolder\" >> \"$logfile\" 2>&1");
+            scriptBuilder.AppendLine("        date \"+[%F %T-%4N] Can't move $existingagentexternalsfolder to $backupexternalsfolder\" >> \"$logfile\" 2>&1");
             scriptBuilder.AppendLine("        exit 1");
             scriptBuilder.AppendLine("fi");
 
-            scriptBuilder.AppendLine("echo \"move $downloadagentbinfolder $existingagentbinfolder\" >> \"$logfile\" 2>&1");
-            scriptBuilder.AppendLine("mv -f \"$downloadagentbinfolder\" \"$existingagentbinfolder\" >> \"$logfile\" 2>&1");
+            scriptBuilder.AppendLine("date \"+[%F %T-%4N] move $downloadagentbinfolder $existingagentbinfolder\" >> \"$logfile\" 2>&1");
+            scriptBuilder.AppendLine("mv -fv \"$downloadagentbinfolder\" \"$existingagentbinfolder\" >> \"$logfile\" 2>&1");
             scriptBuilder.AppendLine("if [ $? -ne 0 ]");
             scriptBuilder.AppendLine("    then");
-            scriptBuilder.AppendLine("        echo \"Can't move $downloadagentbinfolder to $existingagentbinfolder\" >> \"$logfile\" 2>&1");
+            scriptBuilder.AppendLine("        date \"+[%F %T-%4N] Can't move $downloadagentbinfolder to $existingagentbinfolder\" >> \"$logfile\" 2>&1");
             scriptBuilder.AppendLine("        exit 1");
             scriptBuilder.AppendLine("fi");
 
-            scriptBuilder.AppendLine("echo \"move $downloadagentexternalsfolder $existingagentexternalsfolder\" >> \"$logfile\" 2>&1");
-            scriptBuilder.AppendLine("mv -f \"$downloadagentexternalsfolder\" \"$existingagentexternalsfolder\" >> \"$logfile\" 2>&1");
+            scriptBuilder.AppendLine("date \"+[%F %T-%4N] move $downloadagentexternalsfolder $existingagentexternalsfolder\" >> \"$logfile\" 2>&1");
+            scriptBuilder.AppendLine("mv -fv \"$downloadagentexternalsfolder\" \"$existingagentexternalsfolder\" >> \"$logfile\" 2>&1");
             scriptBuilder.AppendLine("if [ $? -ne 0 ]");
             scriptBuilder.AppendLine("    then");
-            scriptBuilder.AppendLine("        echo \"Can't move $downloadagentexternalsfolder to $existingagentexternalsfolder\" >> \"$logfile\" 2>&1");
+            scriptBuilder.AppendLine("        date \"+[%F %T-%4N] Can't move $downloadagentexternalsfolder to $existingagentexternalsfolder\" >> \"$logfile\" 2>&1");
             scriptBuilder.AppendLine("        exit 1");
             scriptBuilder.AppendLine("fi");
 
-            scriptBuilder.AppendLine("echo copy \"$downloadagentfolder\"/*.* \"$existingagentfolder\" >> \"$logfile\" 2>&1");
-            scriptBuilder.AppendLine("cp -f \"$downloadagentfolder\"/*.* \"$existingagentfolder\" >> \"$logfile\" 2>&1");
+            scriptBuilder.AppendLine("date \"+[%F %T-%4N] copy $downloadagentfolder/*.* $existingagentfolder\" >> \"$logfile\" 2>&1");
+            scriptBuilder.AppendLine("cp -fv \"$downloadagentfolder\"/*.* \"$existingagentfolder\" >> \"$logfile\" 2>&1");
             scriptBuilder.AppendLine("if [ $? -ne 0 ]");
             scriptBuilder.AppendLine("    then");
-            scriptBuilder.AppendLine("        echo \"Can't copy $downloadagentfolder/*.* to $existingagentfolder\" >> \"$logfile\" 2>&1");
+            scriptBuilder.AppendLine("        date \"+[%F %T-%4N] Can't copy $downloadagentfolder/*.* to $existingagentfolder\" >> \"$logfile\" 2>&1");
             scriptBuilder.AppendLine("        exit 1");
             scriptBuilder.AppendLine("fi");
 
             if (restartInteractiveAgent)
             {
-                scriptBuilder.AppendLine("echo \"Restarting interactive agent\"  >> \"$logfile\" 2>&1");
+                scriptBuilder.AppendLine("date \"+[%F %T-%4N] Restarting interactive agent\"  >> \"$logfile\" 2>&1");
                 scriptBuilder.AppendLine("\"$existingagentbinfolder\"/$agentprocessname &");
             }
 
-            scriptBuilder.AppendLine("echo \"Exit _update.sh\" >> \"$logfile\" 2>&1");
+            scriptBuilder.AppendLine("date \"+[%F %T-%4N] Exit _update.sh\" >> \"$logfile\" 2>&1");
 
             string updateScript = Path.Combine(IOUtil.GetWorkPath(HostContext), "_update.sh");
             if (File.Exists(updateScript))

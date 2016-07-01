@@ -303,7 +303,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
                 //TODO: make sure we don't mask more important exception
                 await _listener.DeleteSessionAsync();
-                
+
                 messageQueueLoopTokenSource.Dispose();
             }
 
