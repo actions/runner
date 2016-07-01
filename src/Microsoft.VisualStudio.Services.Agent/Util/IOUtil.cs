@@ -185,35 +185,45 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
                             bool success = false;
                             try
                             {
+                                // Remove the readonly attribute.
+                                RemoveReadOnly(item);
+
                                 // Check if the item is a file.
-                                var file = item as FileInfo;
-                                if (file != null)
+                                if (item is FileInfo)
                                 {
                                     // Delete the file.
-                                    RemoveReadOnly(file);
-                                    file.Delete();
-                                    success = true;
-                                    return;
+                                    item.Delete();
                                 }
-
-                                // The item is a directory.
-                                var subdirectory = item as DirectoryInfo;
-                                ArgUtil.NotNull(subdirectory, nameof(subdirectory));
-
-                                // Remove the readonly attribute.
-                                RemoveReadOnly(subdirectory);
-
-                                // Check if the directory is a reparse point.
-                                if (subdirectory.Attributes.HasFlag(FileAttributes.ReparsePoint))
+                                else
                                 {
-                                    // Delete the reparse point.
-                                    subdirectory.Delete();
-                                    success = true;
-                                    return;
+                                    // Check if the item is a directory reparse point.
+                                    var subdirectory = item as DirectoryInfo;
+                                    ArgUtil.NotNull(subdirectory, nameof(subdirectory));
+                                    if (subdirectory.Attributes.HasFlag(FileAttributes.ReparsePoint))
+                                    {
+                                        try
+                                        {
+                                            // Delete the reparse point.
+                                            subdirectory.Delete();
+                                        }
+                                        catch (DirectoryNotFoundException)
+                                        {
+                                            // The target of the reparse point directory has been deleted.
+                                            // Therefore the item is no longer a directory and is now a file.
+                                            //
+                                            // Deletion of reparse point directories happens in parallel. This case can occur
+                                            // when reparse point directory FOO points to some other reparse point directory BAR,
+                                            // and BAR is deleted after the DirectoryInfo for FOO has already been initialized.
+                                            File.Delete(subdirectory.FullName);
+                                        }
+                                    }
+                                    else
+                                    {
+                                        // Store the directory.
+                                        directories.Push(subdirectory);
+                                    }
                                 }
 
-                                // Store the subdirectory.
-                                directories.Push(subdirectory);
                                 success = true;
                             }
                             finally

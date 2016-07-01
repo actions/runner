@@ -112,6 +112,70 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Util
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
+        public async Task DeleteDirectory_DeletesDirectoryReparsePointChain()
+        {
+            using (TestHostContext hc = new TestHostContext(this))
+            {
+                Tracing trace = hc.GetTrace();
+
+                // Arrange: Create the following structure:
+                //   randomDir
+                //   randomDir/<guid 1> -> <guid 2>
+                //   randomDir/<guid 2> -> <guid 3>
+                //   randomDir/<guid 3> -> <guid 4>
+                //   randomDir/<guid 4> -> <guid 5>
+                //   randomDir/<guid 5> -> targetDir
+                //   randomDir/targetDir
+                //   randomDir/targetDir/file.txt
+                //
+                // The purpose of this test is to verify that DirectoryNotFoundException is gracefully handled when
+                // deleting a chain of reparse point directories. Since the reparse points are named in a random order,
+                // the DirectoryNotFoundException case is likely to be encountered.
+                string randomDir = Path.Combine(IOUtil.GetBinPath(), Path.GetRandomFileName());
+                try
+                {
+                    string targetDir = Directory.CreateDirectory(Path.Combine(randomDir, "targetDir")).FullName;
+                    string file = Path.Combine(targetDir, "file.txt");
+                    File.WriteAllText(path: file, contents: "some contents");
+                    string linkDir1 = Path.Combine(randomDir, $"{Guid.NewGuid()}_linkDir1");
+                    string linkDir2 = Path.Combine(randomDir, $"{Guid.NewGuid()}_linkDir2");
+                    string linkDir3 = Path.Combine(randomDir, $"{Guid.NewGuid()}_linkDir3");
+                    string linkDir4 = Path.Combine(randomDir, $"{Guid.NewGuid()}_linkDir4");
+                    string linkDir5 = Path.Combine(randomDir, $"{Guid.NewGuid()}_linkDir5");
+                    await CreateDirectoryReparsePoint(context: hc, link: linkDir1, target: linkDir2);
+                    await CreateDirectoryReparsePoint(context: hc, link: linkDir2, target: linkDir3);
+                    await CreateDirectoryReparsePoint(context: hc, link: linkDir3, target: linkDir4);
+                    await CreateDirectoryReparsePoint(context: hc, link: linkDir4, target: linkDir5);
+                    await CreateDirectoryReparsePoint(context: hc, link: linkDir5, target: targetDir);
+
+                    // Sanity check to verify the link was created properly:
+                    Assert.True(Directory.Exists(linkDir1));
+                    Assert.True(new DirectoryInfo(linkDir1).Attributes.HasFlag(FileAttributes.ReparsePoint));
+                    Assert.True(File.Exists(Path.Combine(linkDir1, "file.txt")));
+
+                    // Act.
+                    IOUtil.DeleteDirectory(randomDir, CancellationToken.None);
+
+                    // Assert.
+                    Assert.False(Directory.Exists(linkDir1));
+                    Assert.False(Directory.Exists(targetDir));
+                    Assert.False(File.Exists(file));
+                    Assert.False(Directory.Exists(randomDir));
+                }
+                finally
+                {
+                    // Cleanup.
+                    if (Directory.Exists(randomDir))
+                    {
+                        Directory.Delete(randomDir, recursive: true);
+                    }
+                }
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
         public async Task DeleteDirectory_DeletesDirectoryReparsePointsBeforeDirectories()
         {
             using (TestHostContext hc = new TestHostContext(this))
