@@ -172,7 +172,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
                 Directory.CreateDirectory(Path.GetDirectoryName(destinationSummaryFile));
                 File.Copy(_summaryFileLocation, destinationSummaryFile, true);
 
-                commandContext.Output("Modifying Cobertura Index file");
+                commandContext.Output(StringUtil.Loc("ModifyingCoberturaIndexFile"));
                 ModifyCoberturaIndexDotHTML(newReportDirectory, executionContext);
 
                 filesToPublish.Add(new Tuple<string, string>(newReportDirectory, GetCoverageDirectoryName(_buildId.ToString(), CodeCoverageConstants.ReportDirectory)));
