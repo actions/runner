@@ -312,7 +312,7 @@
   ],
   "TestResultsRemaining": "Test results remaining: {0}. Test run id: {1}",
   "TFSConnectionDownRetrying": "The TFS service is currently unavailable. Error: '{1}'. Retrying to establing a connection - attempt '{0}'.",
-  "TotalUploadFiles": "Total files need to uploads {0}",
+  "TotalUploadFiles": "Uploading {0} files",
   "TypeRequiredForTimelineRecord": "Type is required for this new timeline record.",
   "UnableResolveArtifactType": "Can't infer artifact type from artifact location: {0}.",
   "UnableToArchiveResults": "Unable to archive the test results: {0}",
