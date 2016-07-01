@@ -56,9 +56,28 @@ function Get-FromSdkPath {
         $path = [System.IO.Path]::Combine($programFiles, $partialPath)
         Write-Host "Checking if path exists: $path"
         if (Test-Path -LiteralPath $path -PathType Leaf) {
-            # Get the module.
-            Write-Host "Get-Module -Name $path"
-            $module = Get-Module -Name $path
+            $directory = [System.IO.Path]::GetDirectoryName($path)
+            $fileNameOnly = [System.IO.Path]::GetFileNameWithoutExtension($path)
+
+            # Prepend the module path.
+            Write-Host "Temporarily adjusting module path."
+            $originalPSModulePath = $env:PSModulePath
+            if ($env:PSModulePath) {
+                $env:PSModulePath = ";$env:PSModulePath"
+            }
+
+            $env:PSModulePath = "$directory$env:PSModulePath"
+            Write-Host "Env:PSModulePath: '$env:PSModulePath'"
+            try {
+                # Get the module.
+                Write-Host "Get-Module -Name $fileNameOnly -ListAvailable"
+                $module = Get-Module -Name $fileNameOnly -ListAvailable | Select-Object -First 1
+            } finally {
+                # Revert the module path adjustment.
+                Write-Host "Reverting module path adjustment."
+                $env:PSModulePath = $originalPSModulePath
+                Write-Host "Env:PSModulePath: '$env:PSModulePath'"
+            }
 
             # Add the capability.
             Write-Capability -Name $script:capabilityName -Value $module.Version
@@ -69,7 +88,7 @@ function Get-FromSdkPath {
     return $false
 }
 
-Write-Host "Env:PSModulePath: '$env:PSMODULEPATH'"
+Write-Host "Env:PSModulePath: '$env:PSModulePath'"
 $null = (Get-FromModulePath -Classic:$false) -or
     (Get-FromSdkPath -Classic:$false) -or
     (Get-FromModulePath -Classic:$true) -or
