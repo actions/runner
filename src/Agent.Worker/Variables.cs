@@ -112,7 +112,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         public string System_DefinitionId { get { return Get(Constants.Variables.System.DefinitionId); } }
         public bool? System_EnableAccessToken { get { return GetBoolean(Constants.Variables.System.EnableAccessToken); } }
         public string System_HostType { get { return Get(Constants.Variables.System.HostType); } }
-        public string System_TaskDefinitionsUri { get { return Get(Constants.Variables.System.TaskDefinitionsUri); } }
+        public string System_TaskDefinitionsUri { get { return Get(WellKnownDistributedTaskVariables.TaskDefinitionsUrl); } }
         public string System_TeamProject { get { return Get(BuildWebApi.WellKnownBuildVariables.TeamProject); } }
         public Guid? System_TeamProjectId { get { return GetGuid(BuildWebApi.WellKnownBuildVariables.TeamProjectId); } }
         public string System_TFCollectionUrl { get { return Get(WellKnownDistributedTaskVariables.TFCollectionUrl); } }
