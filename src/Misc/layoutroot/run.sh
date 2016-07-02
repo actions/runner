@@ -10,4 +10,4 @@ if [ ! -f .agent ]; then
     exit 1
 fi
 
-./bin/Agent.Listener $*
+./bin/Agent.Listener run $*

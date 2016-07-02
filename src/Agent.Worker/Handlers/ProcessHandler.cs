@@ -61,19 +61,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
 
             // Determine the working directory.
             string workingDirectory;
-            if (isCommandRooted &&
-                File.Exists(command) && // File.Exists does not throw if illegal characters are in the path.
-                (string.IsNullOrEmpty(Data.WorkingDirectory) || string.Equals(Data.WorkingDirectory, FilePathInputRootDirectory, StringComparison.OrdinalIgnoreCase)))
-            {
-                workingDirectory = Path.GetDirectoryName(command);
-            }
-            else if (!string.IsNullOrEmpty(Data.WorkingDirectory) && Path.IsPathRooted(Data.WorkingDirectory))
+            if (!string.IsNullOrEmpty(Data.WorkingDirectory))
             {
                 workingDirectory = Data.WorkingDirectory;
             }
             else
             {
-                workingDirectory = TaskDirectory;
+                if (isCommandRooted && File.Exists(command))
+                {
+                    workingDirectory = Path.GetDirectoryName(command);
+                }
+                else
+                {
+                    workingDirectory = Path.Combine(TaskDirectory, "DefaultTaskWorkingDirectory");
+                }
             }
 
             ExecutionContext.Debug($"Working directory: '{workingDirectory}'");

@@ -1,6 +1,14 @@
 @echo off
 
 rem ********************************************************************************
+rem Ensure configured.
+rem ********************************************************************************
+if not exist %~dp0.agent (
+    echo "Must configure first. Run config.cmd"
+    exit /B 1
+)
+
+rem ********************************************************************************
 rem Unblock specific files.
 rem ********************************************************************************
 setlocal
@@ -28,4 +36,4 @@ powershell.exe -NoLogo -Sta -NoProfile -NonInteractive -ExecutionPolicy Unrestri
 rem ********************************************************************************
 rem Run the listener process.
 rem ********************************************************************************
-"%~dp0bin\Agent.Listener.exe" %*
+"%~dp0bin\Agent.Listener.exe" run %*

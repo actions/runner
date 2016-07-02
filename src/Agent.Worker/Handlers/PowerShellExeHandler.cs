@@ -1,10 +1,6 @@
-﻿using Microsoft.TeamFoundation.DistributedTask.WebApi;
-using Microsoft.VisualStudio.Services.Agent.Util;
-using Microsoft.VisualStudio.Services.Agent.Worker;
+﻿using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
-using System.Collections.Generic;
 using System.Security.Cryptography;
-using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Threading.Tasks;
@@ -105,19 +101,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
 
                 // Determine the working directory.
                 string workingDirectory;
-                if (isScriptFileRooted &&
-                    File.Exists(scriptFile) && // File.Exists does not throw if illegal characters are in the path.
-                    (string.IsNullOrEmpty(Data.WorkingDirectory) || string.Equals(Data.WorkingDirectory, FilePathInputRootDirectory, StringComparison.OrdinalIgnoreCase)))
-                {
-                    workingDirectory = Path.GetDirectoryName(scriptFile);
-                }
-                else if (!string.IsNullOrEmpty(Data.WorkingDirectory) && Path.IsPathRooted(Data.WorkingDirectory))
+                if (!string.IsNullOrEmpty(Data.WorkingDirectory))
                 {
                     workingDirectory = Data.WorkingDirectory;
                 }
                 else
                 {
-                    workingDirectory = TaskDirectory;
+                    if (isScriptFileRooted && File.Exists(scriptFile))
+                    {
+                        workingDirectory = Path.GetDirectoryName(scriptFile);
+                    }
+                    else
+                    {
+                        workingDirectory = Path.Combine(TaskDirectory, "DefaultTaskWorkingDirectory");
+                    }
                 }
 
                 ExecutionContext.Debug($"Working directory: '{workingDirectory}'");
