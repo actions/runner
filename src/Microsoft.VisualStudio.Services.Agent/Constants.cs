@@ -2,11 +2,33 @@ using System;
 
 namespace Microsoft.VisualStudio.Services.Agent
 {
+    public enum WellKnownDirectory
+    {
+        Bin,
+        Diag,
+        Externals,
+        LegacyPSHost,
+        Root,
+        ServerOM,
+        Tee,
+        Tasks,
+        Update,
+        Work,
+    }
+
     public static class Constants
     {
+        /// <summary>Path environment varible name.</summary>
+#if OS_WINDOWS
+        public static readonly string PathVariable = "Path";
+#else
+        public static readonly string PathVariable = "PATH";
+#endif
         public static string SecretMask = "********";
         public static string TFBuild = "TF_BUILD";
 
+        // This enum is embedded within the Constants class to make it easier to reference and avoid
+        // ambiguous type reference with System.Runtime.InteropServices.OSPlatform.
         public enum OSPlatform
         {
             OSX,
@@ -16,7 +38,7 @@ namespace Microsoft.VisualStudio.Services.Agent
 
         public static class Agent
         {
-            public static readonly string Version = "2.102.1";
+            public static readonly string Version = "2.103.0";
 
 #if OS_LINUX
             public static readonly OSPlatform Platform = OSPlatform.Linux;
@@ -115,7 +137,8 @@ namespace Microsoft.VisualStudio.Services.Agent
             public static readonly string BinDirectory = "bin";
             public static readonly string DiagDirectory = "_diag";
             public static readonly string ExternalsDirectory = "externals";
-            public static readonly string TFDirectory = "tf";
+            public static readonly string LegacyPSHostDirectory = "vstshost";
+            public static readonly string ServerOMDirectory = "vstsom";
             public static readonly string TeeDirectory = "tee";
             public static readonly string TaskJsonFile = "task.json";
             public static readonly string TasksDirectory = "_tasks";
@@ -134,6 +157,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             }
         }
 
+        // Related to definition variables.
         public static class Variables
         {
             public static readonly string MacroPrefix = "$(";

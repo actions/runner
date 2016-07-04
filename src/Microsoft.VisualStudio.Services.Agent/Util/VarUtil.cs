@@ -1,12 +1,48 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 
 namespace Microsoft.VisualStudio.Services.Agent.Util
 {
-    public static class VarUtil
+    [ServiceLocator(Default = typeof(VarUtil))]
+    public interface IVarUtil : IAgentService
     {
+        void PrependPath(string directory);
+        void SetEnvironmentVariable(string name, string value);
+    }
+
+    public sealed class VarUtil : AgentService, IVarUtil
+    {
+        public void PrependPath(string directory)
+        {
+            ArgUtil.Directory(directory, nameof(directory));
+
+            // Build the new value.
+            string path = Environment.GetEnvironmentVariable(Constants.PathVariable);
+            if (string.IsNullOrEmpty(path))
+            {
+                // Careful not to add a trailing separator if the PATH is empty.
+                // On OSX/Linux, a trailing separator indicates that "current directory"
+                // is added to the PATH, which is considered a security risk.
+                path = directory;
+            }
+            else
+            {
+                path = directory + Path.PathSeparator + path;
+            }
+
+            // Update the PATH environment variable.
+            Environment.SetEnvironmentVariable(Constants.PathVariable, path);
+        }
+
+        public void SetEnvironmentVariable(string name, string value)
+        {
+            ArgUtil.NotNullOrEmpty(name, nameof(name));
+            Environment.SetEnvironmentVariable(name, value);
+        }
+
         public static void ExpandEnvironmentVariables(IHostContext context, IDictionary<string, string> target)
         {
             ArgUtil.NotNull(context, nameof(context));

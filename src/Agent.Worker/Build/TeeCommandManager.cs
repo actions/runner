@@ -20,16 +20,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
         protected override string Switch => "-";
 
-        protected override string TF
-        {
-            get
-            {
-                return Path.Combine(
-                    IOUtil.GetExternalsPath(),
-                    Constants.Path.TeeDirectory,
-                    "tf");
-            }
-        }
+        public string FilePath => Path.Combine(IOUtil.GetExternalsPath(), Constants.Path.TeeDirectory, "tf");
 
         public async Task EulaAsync()
         {

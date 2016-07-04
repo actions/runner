@@ -133,9 +133,8 @@ if [[ "$PLATFORM" == "windows" ]]; then
     acquireExternalTool "$CONTAINER_URL/pdbstr/1/pdbstr.zip" pdbstr
     acquireExternalTool "$CONTAINER_URL/portablewingit/1/portablewingit.zip" git
     acquireExternalTool "$CONTAINER_URL/symstore/1/symstore.zip" symstore
-    acquireExternalTool "$CONTAINER_URL/tfexe/101.0/tfexe.zip" tf
-    acquireExternalTool "$CONTAINER_URL/vstshost/3/vstshost.zip" vstshost
-    acquireExternalTool "$CONTAINER_URL/vstsom/1/vstsom.zip" vstsom
+    acquireExternalTool "$CONTAINER_URL/vstshost/m102_private_e90d775b/vstshost.zip" vstshost
+    acquireExternalTool "$CONTAINER_URL/vstsom/m102_private_e90d775b/vstsom.zip" vstsom
     acquireExternalTool "$NODE_URL/v${NODE_VERSION}/win-x64/node.exe" node/bin
     acquireExternalTool "$NODE_URL/v${NODE_VERSION}/win-x64/node.lib" node/bin
     acquireExternalTool "https://dist.nuget.org/win-x86-commandline/v3.4.3/nuget.exe" nuget

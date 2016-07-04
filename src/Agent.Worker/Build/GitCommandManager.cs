@@ -70,54 +70,40 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
         public async Task LoadGitExecutionInfo(IExecutionContext context)
         {
+            // Resolve the location of git.
 #if OS_WINDOWS
             _gitPath = Path.Combine(IOUtil.GetExternalsPath(), "git", "cmd", $"git{IOUtil.ExeExtension}");
 #else
             _gitPath = Path.Combine(IOUtil.GetExternalsPath(), "git", "bin", $"git{IOUtil.ExeExtension}");
 #endif
-            if (string.IsNullOrEmpty(_gitPath) || !File.Exists(_gitPath))
-            {
-                throw new Exception(StringUtil.Loc("GitNotFound"));
-            }
+            ArgUtil.File(_gitPath, nameof(_gitPath));
 
-            context.Debug($"Find git from agent's external directory: {_gitPath}.");
-            context.Debug($"Prepend git directory '{Path.GetDirectoryName(_gitPath)}' to PATH env.");
+            // Prepend the PATH.
+            context.Output(StringUtil.Loc("Prepending0WithDirectoryContaining1", Constants.PathVariable, Path.GetFileName(_gitPath)));
+            var varUtil = HostContext.GetService<IVarUtil>();
+            varUtil.PrependPath(Path.GetDirectoryName(_gitPath));
+            context.Debug($"{Constants.PathVariable}: '{Environment.GetEnvironmentVariable(Constants.PathVariable)}'");
 
-#if OS_WINDOWS
-            string path = Environment.GetEnvironmentVariable("Path");
-#else
-            string path = Environment.GetEnvironmentVariable("PATH");            
-#endif
-
-            if (string.IsNullOrEmpty(path))
-            {
-                path = Path.GetDirectoryName(_gitPath);
-            }
-            else
-            {
-                path = Path.GetDirectoryName(_gitPath) + Path.PathSeparator + path;
-            }
-
-#if OS_WINDOWS
-            Environment.SetEnvironmentVariable("Path", path);
-#else
-            Environment.SetEnvironmentVariable("PATH", path);            
-#endif
-
+            // Get the Git version.
             _version = await GitVersion(context);
             context.Debug($"Detect git version: {_version.ToString()}.");
 
+            // Set the user agent.
             _gitHttpUserAgentEnv = $"git/{_version.ToString()} (vsts-agent-git/{Constants.Agent.Version})";
             context.Debug($"Set git useragent to: {_gitHttpUserAgentEnv}.");
 
 #if !OS_WINDOWS
+            // Set GIT_EXEC_PATH.
             string _gitExecPathEnv = Path.Combine(IOUtil.GetExternalsPath(), "git", "libexec", "git-core");
+            ArgUtil.Directory(_gitExecPathEnv, nameof(_gitExecPathEnv));
             context.Debug($"Set git execpath to: {_gitExecPathEnv}");
+            varUtil.SetEnvironmentVariable("GIT_EXEC_PATH", _gitExecPathEnv);
+
+            // Set GIT_TEMPLATE_DIR.
             string _gitTemplatePathEnv = Path.Combine(IOUtil.GetExternalsPath(), "git", "share", "git-core", "templates");
+            ArgUtil.Directory(_gitTemplatePathEnv, nameof(_gitTemplatePathEnv));
             context.Debug($"Set git templateDir to: {_gitTemplatePathEnv}");
-            
-            Environment.SetEnvironmentVariable("GIT_EXEC_PATH", _gitExecPathEnv);
-            Environment.SetEnvironmentVariable("GIT_TEMPLATE_DIR", _gitTemplatePathEnv);
+            varUtil.SetEnvironmentVariable("GIT_TEMPLATE_DIR", _gitTemplatePathEnv);
 #endif
         }
 

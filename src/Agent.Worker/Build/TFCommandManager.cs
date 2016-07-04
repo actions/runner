@@ -29,16 +29,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
         protected override string Switch => "/";
 
-        protected override string TF
-        {
-            get
-            {
-                return Path.Combine(
-                    IOUtil.GetExternalsPath(),
-                    Constants.Path.TFDirectory,
-                    "tf.exe");
-            }
-        }
+        public string FilePath => Path.Combine(ExecutionContext.Variables.Agent_ServerOMDirectory, "tf.exe");
 
         public Task EulaAsync()
         {
