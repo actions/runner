@@ -125,6 +125,8 @@ namespace Microsoft.VisualStudio.Services.Agent
 
         public static class Release
         {
+            public static readonly string Map = "Map";
+
             public static class Path
             {
                 public static readonly string ArtifactsDirectory = "a";
