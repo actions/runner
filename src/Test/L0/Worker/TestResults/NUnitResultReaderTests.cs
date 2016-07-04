@@ -73,6 +73,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
             "<test-case time=\"0.002887\" name=\"VVO.RentalApartmentStore.Tests.Core.Integrations.Paytrail.PaytrailIntegrationTests.CreatePayment_Success_CreatesLogEntry\" success=\"True\" executed=\"True\"> </test-case>" +
             "<test-case time=\"0.0026852\" name=\"VVO.RentalApartmentStore.Tests.Core.Integrations.Paytrail.PaytrailIntegrationTests.ValidateSuccessResponse_UpdatedLogEntry\" success=\"True\" executed=\"True\"> </test-case>" +
             "<test-case time=\"0.0020365\" name=\"VVO.RentalApartmentStore.Tests.Core.Entities.ISupportChangeTrackingTests.Insert_UpdatedCreatedByAndModifiedBy\" success=\"True\" executed=\"True\"> </test-case>" +
+            "<test-case time=\"0.0020365\" name=\"VVO.RentalApartmentStore.Tests.Core.Entities.ISupportChangeTrackingTests.Insert_UpdatedCreatedByAndDeletedBy\" success=\"True\" result=\"Ignored\" executed=\"True\"> </test-case>" +
             "</results>" +
             "</test-suite>" +
             "</test-results>";
@@ -139,9 +140,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
             ReadResults(new TestRunContext("owner", "platform", "configuration", 1, "buildUri", "releaseUri", "releaseEnvironmentUri"));
 
             Assert.NotNull(_testRunData);
-            Assert.Equal(17, _testRunData.Results.Length);
+            Assert.Equal(18, _testRunData.Results.Length);
             Assert.Equal(17, _testRunData.Results.Count(r => r.Outcome.Equals("Passed")));
             Assert.Equal(0, _testRunData.Results.Count(r => r.Outcome.Equals("Failed")));
+            Assert.Equal(1, _testRunData.Results.Count(r => r.Outcome.Equals("NotExecuted")));
             Assert.Equal(1, _testRunData.Attachments.Length);
         }
 

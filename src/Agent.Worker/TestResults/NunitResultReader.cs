@@ -224,7 +224,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                     }
                     else
                     {
-                        resultCreateModel.Outcome = "Passed";
+                        if (testCaseNode.Attributes["result"] != null && string.Equals(testCaseNode.Attributes["result"].Value, "Ignored", StringComparison.OrdinalIgnoreCase))
+                        {
+                            resultCreateModel.Outcome = "NotExecuted";
+                        }
+                        else
+                        {
+                            resultCreateModel.Outcome = "Passed";
+                        }
                     }
 
                     resultCreateModel.State = "Completed";
