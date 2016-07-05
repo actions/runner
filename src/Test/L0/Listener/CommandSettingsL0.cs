@@ -26,7 +26,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 var command = new CommandSettings(hc, args: new string[] { "--agent", "some agent" });
 
                 // Act.
-                string actual = command.GetAgent();
+                string actual = command.GetAgentName();
 
                 // Assert.
                 Assert.Equal("some agent", actual);
@@ -276,7 +276,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                     .Returns("some agent");
 
                 // Act.
-                string actual = command.GetAgent();
+                string actual = command.GetAgentName();
 
                 // Assert.
                 Assert.Equal("some agent", actual);
@@ -328,7 +328,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                     .Returns("some agent");
 
                 // Act.
-                string actual = command.GetAgent();
+                string actual = command.GetAgentName();
 
                 // Assert.
                 Assert.Equal("some agent", actual);

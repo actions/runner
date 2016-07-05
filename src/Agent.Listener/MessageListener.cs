@@ -11,6 +11,7 @@ using System.Security.Cryptography;
 using System.IO;
 using System.Text;
 using Microsoft.VisualStudio.Services.WebApi;
+using Microsoft.VisualStudio.Services.OAuth;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener
 {
@@ -20,7 +21,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         Task<Boolean> CreateSessionAsync(CancellationToken token);
         Task DeleteSessionAsync();
         Task<TaskAgentMessage> GetNextMessageAsync(CancellationToken token);
-        TaskAgentSession Session { get; }
+        Task DeleteMessageAsync(TaskAgentMessage message);
     }
 
     public sealed class MessageListener : AgentService, IMessageListener
@@ -28,18 +29,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         private long? _lastMessageId;
         private AgentSettings _settings;
         private ITerminal _term;
+        private IAgentServer _agentServer;
+        private TaskAgentSession _session;
         private readonly TimeSpan _sessionCreationRetryInterval = TimeSpan.FromSeconds(30);
         private readonly TimeSpan _sessionConflictRetryLimit = TimeSpan.FromMinutes(4);
+        private readonly TimeSpan _clockSkewRetryLimit = TimeSpan.FromMinutes(30);
         private readonly Dictionary<string, int> _sessionCreationExceptionTracker = new Dictionary<string, int>();
         private readonly TimeSpan _getNextMessageRetryInterval = TimeSpan.FromSeconds(15);
-
-        public TaskAgentSession Session { get; set; }
 
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
 
             _term = HostContext.GetService<ITerminal>();
+            _agentServer = HostContext.GetService<IAgentServer>();
         }
 
         public async Task<Boolean> CreateSessionAsync(CancellationToken token)
@@ -49,13 +52,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             // Settings
             var configManager = HostContext.GetService<IConfigurationManager>();
             _settings = configManager.LoadSettings();
-            int agentPoolId = _settings.PoolId;
             var serverUrl = _settings.ServerUrl;
             Trace.Info(_settings);
 
             // Capabilities.
-            // TODO: LOC
-            _term.WriteLine("Scanning for tool capabilities.");
+            _term.WriteLine(StringUtil.Loc("ScanToolCapabilities"));
             Dictionary<string, string> systemCapabilities = await HostContext.GetService<ICapabilitiesManager>().GetCapabilitiesAsync(_settings, token);
 
             // Create connection.
@@ -74,11 +75,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             string sessionName = $"{Environment.MachineName ?? "AGENT"}";
             var taskAgentSession = new TaskAgentSession(sessionName, agent, systemCapabilities);
 
-            var agentSvr = HostContext.GetService<IAgentServer>();
             string errorMessage = string.Empty;
             bool encounteringError = false;
-            // TODO: LOC
-            _term.WriteLine("Connecting to the server.");
+
+            _term.WriteLine(StringUtil.Loc("ConnectToServer"));
             while (true)
             {
                 token.ThrowIfCancellationRequested();
@@ -86,9 +86,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 try
                 {
                     Trace.Info("Connecting to the Agent Server...");
-                    await agentSvr.ConnectAsync(conn);
+                    await _agentServer.ConnectAsync(conn);
 
-                    Session = await agentSvr.CreateAgentSessionAsync(
+                    _session = await _agentServer.CreateAgentSessionAsync(
                                                         _settings.PoolId,
                                                         taskAgentSession,
                                                         token);
@@ -133,12 +133,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
         public async Task DeleteSessionAsync()
         {
-            var agentServer = HostContext.GetService<IAgentServer>();
-            if (Session != null && Session.SessionId != Guid.Empty)
+            if (_session != null && _session.SessionId != Guid.Empty)
             {
                 using (var ts = new CancellationTokenSource(TimeSpan.FromSeconds(30)))
                 {
-                    await agentServer.DeleteAgentSessionAsync(_settings.PoolId, Session.SessionId, ts.Token);
+                    await _agentServer.DeleteAgentSessionAsync(_settings.PoolId, _session.SessionId, ts.Token);
                 }
             }
         }
@@ -146,9 +145,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         public async Task<TaskAgentMessage> GetNextMessageAsync(CancellationToken token)
         {
             Trace.Entering();
-            ArgUtil.NotNull(Session, nameof(Session));
+            ArgUtil.NotNull(_session, nameof(_session));
             ArgUtil.NotNull(_settings, nameof(_settings));
-            var agentServer = HostContext.GetService<IAgentServer>();
             bool encounteringError = false;
             string errorMessage = string.Empty;
             while (true)
@@ -157,8 +155,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 TaskAgentMessage message = null;
                 try
                 {
-                    message = await agentServer.GetAgentMessageAsync(_settings.PoolId,
-                                                                Session.SessionId,
+                    message = await _agentServer.GetAgentMessageAsync(_settings.PoolId,
+                                                                _session.SessionId,
                                                                 _lastMessageId,
                                                                 token);
 
@@ -211,19 +209,33 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
                 if (message == null)
                 {
-                    Trace.Verbose($"No message retrieved from session '{Session.SessionId}'.");
+                    Trace.Verbose($"No message retrieved from session '{_session.SessionId}'.");
                     continue;
                 }
 
-                Trace.Verbose($"Message '{message.MessageId}' received from session '{Session.SessionId}'.");
+                Trace.Verbose($"Message '{message.MessageId}' received from session '{_session.SessionId}'.");
                 return message;
+            }
+        }
+
+        public async Task DeleteMessageAsync(TaskAgentMessage message)
+        {
+            Trace.Entering();
+            ArgUtil.NotNull(_session, nameof(_session));
+
+            if (message != null && _session.SessionId != Guid.Empty)
+            {
+                using (var cs = new CancellationTokenSource(TimeSpan.FromSeconds(30)))
+                {
+                    await _agentServer.DeleteAgentMessageAsync(_settings.PoolId, message.MessageId, _session.SessionId, cs.Token);
+                }
             }
         }
 
         private TaskAgentMessage DecryptMessage(TaskAgentMessage message)
         {
-            if (Session.EncryptionKey == null ||
-                Session.EncryptionKey.Value.Length == 0 ||
+            if (_session.EncryptionKey == null ||
+                _session.EncryptionKey.Value.Length == 0 ||
                 message == null ||
                 message.IV == null ||
                 message.IV.Length == 0)
@@ -247,18 +259,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             Aes aes,
             TaskAgentMessage message)
         {
-            if (Session.EncryptionKey.Encrypted)
+            if (_session.EncryptionKey.Encrypted)
             {
                 // The agent session encryption key uses the AES symmetric algorithm
                 var keyManager = HostContext.GetService<IRSAKeyManager>();
                 using (var rsa = keyManager.GetKey())
                 {
-                    return aes.CreateDecryptor(rsa.Decrypt(Session.EncryptionKey.Value, RSAEncryptionPadding.OaepSHA1), message.IV);
+                    return aes.CreateDecryptor(rsa.Decrypt(_session.EncryptionKey.Value, RSAEncryptionPadding.OaepSHA1), message.IV);
                 }
             }
             else
             {
-                return aes.CreateDecryptor(Session.EncryptionKey.Value, message.IV);
+                return aes.CreateDecryptor(_session.EncryptionKey.Value, message.IV);
             }
         }
 
@@ -308,6 +320,28 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 }
 
                 Trace.Info("The session conflict exception haven't reached retry limit.");
+                return true;
+            }
+            else if (ex is VssOAuthTokenRequestException && ex.Message.Contains("Current server time is"))
+            {
+                Trace.Info("Local clock might skewed.");
+                _term.WriteError(StringUtil.Loc("LocalClockSkewed"));
+                if (_sessionCreationExceptionTracker.ContainsKey(nameof(VssOAuthTokenRequestException)))
+                {
+                    _sessionCreationExceptionTracker[nameof(VssOAuthTokenRequestException)]++;
+                    if (_sessionCreationExceptionTracker[nameof(VssOAuthTokenRequestException)] * _sessionCreationRetryInterval.TotalSeconds >= _clockSkewRetryLimit.TotalSeconds)
+                    {
+                        Trace.Info("The OAuth token request exception have reached retry limit.");
+                        _term.WriteError(StringUtil.Loc("ClockSkewStopRetry", _clockSkewRetryLimit.TotalSeconds));
+                        return false;
+                    }
+                }
+                else
+                {
+                    _sessionCreationExceptionTracker[nameof(VssOAuthTokenRequestException)] = 1;
+                }
+
+                Trace.Info("The OAuth token request exception haven't reached retry limit.");
                 return true;
             }
             else if (ex is TaskAgentPoolNotFoundException ||

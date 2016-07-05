@@ -19,7 +19,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         public CancellationTokenSource TokenSource { get; set; }
 
         private IMessageListener _listener;
-        private int _poolId;
         private ITerminal _term;
         private bool _inConfigStage;
         private ManualResetEvent _completedCommand = new ManualResetEvent(false);
@@ -172,10 +171,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         private async Task<int> RunAsync(CancellationToken token, AgentSettings settings, bool runAsService)
         {
             Trace.Info(nameof(RunAsync));
-
-            // Load the settings.
-            _poolId = settings.PoolId;
-
             _listener = HostContext.GetService<IMessageListener>();
             if (!await _listener.CreateSessionAsync(token))
             {
@@ -279,7 +274,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                         {
                             try
                             {
-                                await DeleteMessageAsync(message);
+                                await _listener.DeleteMessageAsync(message);
                             }
                             catch (Exception ex)
                             {
@@ -308,18 +303,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             }
 
             return Constants.Agent.ReturnCode.Success;
-        }
-
-        private async Task DeleteMessageAsync(TaskAgentMessage message)
-        {
-            if (message != null && _listener.Session.SessionId != Guid.Empty)
-            {
-                var agentServer = HostContext.GetService<IAgentServer>();
-                using (var cs = new CancellationTokenSource(TimeSpan.FromSeconds(30)))
-                {
-                    await agentServer.DeleteAgentMessageAsync(_poolId, message.MessageId, _listener.Session.SessionId, cs.Token);
-                }
-            }
         }
 
         private void PrintUsage()

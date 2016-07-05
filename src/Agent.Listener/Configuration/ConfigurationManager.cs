@@ -10,6 +10,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Security.Cryptography;
 using Microsoft.VisualStudio.Services.WebApi;
+using Microsoft.VisualStudio.Services.OAuth;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 {
@@ -176,17 +177,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             TaskAgent agent;
             while (true)
             {
-                agentName = command.GetAgent();
+                agentName = command.GetAgentName();
 
                 // Get the system capabilities.
                 // TODO: Hook up to ctrl+c cancellation token.
-                // TODO: LOC
-                _term.WriteLine("Scanning for tool capabilities.");
+                _term.WriteLine(StringUtil.Loc("ScanToolCapabilities"));
                 Dictionary<string, string> systemCapabilities = await HostContext.GetService<ICapabilitiesManager>().GetCapabilitiesAsync(
                     new AgentSettings { AgentName = agentName }, CancellationToken.None);
 
-                // TODO: LOC
-                _term.WriteLine("Connecting to the server.");
+                _term.WriteLine(StringUtil.Loc("ConnectToServer"));
                 agent = await GetAgent(agentName, poolId);
                 if (agent != null)
                 {
@@ -275,6 +274,26 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             {
                 // Save the provided admin credential data for compat with existing agent
                 _store.SaveCredential(credProvider.CredentialData);
+            }
+
+            // Testing agent connection, detect any protential connection issue, like local clock skew that cause OAuth token expired.
+            _term.WriteLine(StringUtil.Loc("TestAgentConnection"));
+            var credMgr = HostContext.GetService<ICredentialManager>();
+            VssCredentials credential = credMgr.LoadCredentials();
+            VssConnection conn = ApiUtil.CreateConnection(new Uri(serverUrl), credential);
+            var agentSvr = HostContext.GetService<IAgentServer>();
+            try
+            {
+                await agentSvr.ConnectAsync(conn);
+            }
+            catch (VssOAuthTokenRequestException ex) when (ex.Message.Contains("Current server time is"))
+            {
+                // there are two exception messages server send that indicate clock skew.
+                // 1. The bearer token expired on {jwt.ValidTo}. Current server time is {DateTime.UtcNow}.
+                // 2. The bearer token is not valid until {jwt.ValidFrom}. Current server time is {DateTime.UtcNow}.                
+                Trace.Error("Catch exception during test agent connection.");
+                Trace.Error(ex);
+                throw new Exception(StringUtil.Loc("LocalClockSkewed"));
             }
 
             // We will Combine() what's stored with root.  Defaults to string a relative path

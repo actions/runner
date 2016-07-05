@@ -69,7 +69,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         //
         // Args.
         //
-        public string GetAgent()
+        public string GetAgentName()
         {
             return GetArgOrPrompt(
                 name: Constants.Agent.CommandLine.Args.Agent,
