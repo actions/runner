@@ -77,6 +77,10 @@
         public const string ReportDirectory = "Code Coverage Report";
         public const string SummaryFileDirectory = "summary";
         public const string DefaultIndexFile = "index.html";
+        public const string NewIndexFile = "indexnew.html";
+        //This file name is dependent on the outputs produced by the cobertura tool.
+        //The name can change in future and should be updated if required
+        public const string DefaultNonFrameFileCobertura = "frame-summary.html";
         #endregion
 
         #region VerboseStrings
