@@ -15,6 +15,7 @@ namespace Microsoft.VisualStudio.Services.Agent
 {
     public interface IHostContext : IDisposable
     {
+        string GetDirectory(WellKnownDirectory directory);
         Tracing GetTrace(string name);
         Task Delay(TimeSpan delay, CancellationToken cancellationToken);
         T CreateService<T>() where T : class, IAgentService;
@@ -68,6 +69,79 @@ namespace Microsoft.VisualStudio.Services.Agent
             }
 
             _trace = GetTrace(nameof(HostContext));
+        }
+
+        public string GetDirectory(WellKnownDirectory directory)
+        {
+            string path;
+            switch (directory)
+            {
+                case WellKnownDirectory.Bin:
+                    path = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
+                    break;
+
+                case WellKnownDirectory.Diag:
+                    path = Path.Combine(
+                        GetDirectory(WellKnownDirectory.Root),
+                        Constants.Path.DiagDirectory);
+                    break;
+
+                case WellKnownDirectory.Externals:
+                    path = Path.Combine(
+                        GetDirectory(WellKnownDirectory.Root),
+                        Constants.Path.ExternalsDirectory);
+                    break;
+
+                case WellKnownDirectory.LegacyPSHost:
+                    path = Path.Combine(
+                        GetDirectory(WellKnownDirectory.Externals),
+                        Constants.Path.LegacyPSHostDirectory);
+                    break;
+
+                case WellKnownDirectory.Root:
+                    path = new DirectoryInfo(GetDirectory(WellKnownDirectory.Bin)).Parent.FullName;
+                    break;
+
+                case WellKnownDirectory.ServerOM:
+                    path = Path.Combine(
+                        GetDirectory(WellKnownDirectory.Externals),
+                        Constants.Path.ServerOMDirectory);
+                    break;
+
+                case WellKnownDirectory.Tee:
+                    path = Path.Combine(
+                        GetDirectory(WellKnownDirectory.Externals),
+                        Constants.Path.TeeDirectory);
+                    break;
+
+                case WellKnownDirectory.Tasks:
+                    path = Path.Combine(
+                        GetDirectory(WellKnownDirectory.Work),
+                        Constants.Path.TasksDirectory);
+                    break;
+
+                case WellKnownDirectory.Update:
+                    path = Path.Combine(
+                        GetDirectory(WellKnownDirectory.Work),
+                        Constants.Path.UpdateDirectory);
+                    break;
+
+                case WellKnownDirectory.Work:
+                    var configurationStore = GetService<IConfigurationStore>();
+                    AgentSettings settings = configurationStore.GetSettings();
+                    ArgUtil.NotNull(settings, nameof(settings));
+                    ArgUtil.NotNullOrEmpty(settings.WorkFolder, nameof(settings.WorkFolder));
+                    path = Path.Combine(
+                        GetDirectory(WellKnownDirectory.Root),
+                        settings.WorkFolder);
+                    break;
+
+                default:
+                    throw new NotSupportedException($"Unexpected well known directory: '{directory}'");
+            }
+
+            _trace.Info($"Well known directory '{directory}': '{path}'");
+            return path;
         }
 
         public Tracing GetTrace(string name)

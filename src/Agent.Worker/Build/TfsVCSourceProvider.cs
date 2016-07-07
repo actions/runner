@@ -2,6 +2,7 @@ using Microsoft.TeamFoundation.Build.WebApi;
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent;
 using Microsoft.VisualStudio.Services.Agent.Util;
+using Microsoft.VisualStudio.Services.Agent.Worker;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -31,6 +32,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             tf.CancellationToken = cancellationToken;
             tf.Endpoint = endpoint;
             tf.ExecutionContext = executionContext;
+
+            // Add TF to the PATH.
+            string tfPath = tf.FilePath;
+            ArgUtil.File(tfPath, nameof(tfPath));
+            var varUtil = HostContext.GetService<IVarUtil>();
+            executionContext.Output(StringUtil.Loc("Prepending0WithDirectoryContaining1", Constants.PathVariable, Path.GetFileName(tfPath)));
+            varUtil.PrependPath(Path.GetDirectoryName(tfPath));
+            executionContext.Debug($"{Constants.PathVariable}: '{Environment.GetEnvironmentVariable(Constants.PathVariable)}'");
 
             // Check if the administrator accepted the license terms of the TEE EULA when configuring the agent.
             AgentSettings settings = HostContext.GetService<IConfigurationStore>().GetSettings();

@@ -24,6 +24,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         ServiceEndpoint Endpoint { set; }
         IExecutionContext ExecutionContext { set; }
         TfsVCFeatures Features { get; }
+        string FilePath { get; }
 
         Task EulaAsync();
         Task GetAsync(string localPath);
@@ -73,8 +74,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
         protected abstract string Switch { get; }
 
-        protected abstract string TF { get; }
-
         protected string WorkspaceName
         {
             get
@@ -115,10 +114,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                     }
                 };
                 string arguments = FormatArguments(formatFlags, args);
-                ExecutionContext.Command($@"{TF} {arguments}");
+                ExecutionContext.Command($@"tf {arguments}");
                 await processInvoker.ExecuteAsync(
                     workingDirectory: SourcesDirectory,
-                    fileName: TF,
+                    fileName: "tf",
                     arguments: arguments,
                     environment: null,
                     requireExitCodeZero: true,
@@ -159,13 +158,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                     }
                 };
                 string arguments = FormatArguments(formatFlags, args);
-                ExecutionContext.Debug($@"{TF} {arguments}");
+                ExecutionContext.Debug($@"tf {arguments}");
                 // TODO: Test whether the output encoding needs to be specified on a non-Latin OS.
                 try
                 {
                     await processInvoker.ExecuteAsync(
                         workingDirectory: SourcesDirectory,
-                        fileName: TF,
+                        fileName: "tf",
                         arguments: arguments,
                         environment: null,
                         requireExitCodeZero: true,

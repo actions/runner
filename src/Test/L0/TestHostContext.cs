@@ -136,6 +136,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             _serviceSingletons[typeof(T)] = singleton;
         }
 
+        public string GetDirectory(WellKnownDirectory directory)
+        {
+            throw new Exception("TODO: USE A NEW RANDOM TEMP DIR FOR EACH TEST. TEST-HOST-CONTEXT TEARDOWN CAN CLEANUP THE DIRECTORY");
+        }
+
         // simple convenience factory so each suite/test gets a different trace file per run
         public Tracing GetTrace()
         {

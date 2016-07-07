@@ -86,36 +86,78 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             RecalculateExpanded(out warnings);
         }
 
-        public string Agent_BuildDirectory { get { return Get(Constants.Variables.Agent.BuildDirectory); } }
-        public string Agent_WorkFolder { get { return Get(Constants.Variables.Agent.WorkFolder); } }
-        public TaskResult? Agent_JobStatus { get { return GetEnum<TaskResult>(Constants.Variables.Agent.JobStatus); } set { Set(Constants.Variables.Agent.JobStatus, $"{value}"); } }
-        public int? Build_BuildId { get { return GetInt(BuildWebApi.WellKnownBuildVariables.BuildId); } }
-        public string Build_BuildUri { get { return Get(BuildWebApi.WellKnownBuildVariables.BuildUri); } }
-        public BuildCleanOption? Build_Clean { get { return GetEnum<BuildCleanOption>(Constants.Variables.Build.Clean); } }
-        public long? Build_ContainerId { get { return GetLong(BuildWebApi.WellKnownBuildVariables.ContainerId); } }
-        public string Build_DefinitionName { get { return Get(Constants.Variables.Build.DefinitionName); } }
-        public bool? Build_GatedRunCI { get { return GetBoolean(Constants.Variables.Build.GatedRunCI); } }
-        public string Build_GatedShelvesetName { get { return Get(Constants.Variables.Build.GatedShelvesetName); } }
-        public string Build_RepoTfvcWorkspace { get { return Get(Constants.Variables.Build.RepoTfvcWorkspace); } }
-        public string Build_RequestedFor { get { return Get((BuildWebApi.WellKnownBuildVariables.RequestedFor)); } }
-        public string Build_SourceBranch { get { return Get(Constants.Variables.Build.SourceBranch); } }
-        public string Build_SourcesDirectory { get { return Get(Constants.Variables.Build.SourcesDirectory); } }
-        public string Build_SourceTfvcShelveset { get { return Get(Constants.Variables.Build.SourceTfvcShelveset); } }
-        public string Build_SourceVersion { get { return Get(Constants.Variables.Build.SourceVersion); } }
-        public bool? Build_SyncSources { get { return GetBoolean(Constants.Variables.Build.SyncSources); } }
-        public string Release_ArtifactsDirectory { get { return Get(Constants.Variables.Release.ArtifactsDirectory); } }
-        public string Release_ReleaseEnvironmentUri { get { return Get(Constants.Variables.Release.ReleaseEnvironmentUri); } }
-        public string Release_ReleaseUri { get { return Get(Constants.Variables.Release.ReleaseUri); } }
-        public string System_CollectionId { get { return Get(Constants.Variables.System.CollectionId); } }
-        public bool? System_Debug { get { return GetBoolean(Constants.Variables.System.Debug); } }
-        public string System_DefaultWorkingDirectory { get { return Get(Constants.Variables.System.DefaultWorkingDirectory); } }
-        public string System_DefinitionId { get { return Get(Constants.Variables.System.DefinitionId); } }
-        public bool? System_EnableAccessToken { get { return GetBoolean(Constants.Variables.System.EnableAccessToken); } }
-        public string System_HostType { get { return Get(Constants.Variables.System.HostType); } }
-        public string System_TaskDefinitionsUri { get { return Get(WellKnownDistributedTaskVariables.TaskDefinitionsUrl); } }
-        public string System_TeamProject { get { return Get(BuildWebApi.WellKnownBuildVariables.TeamProject); } }
-        public Guid? System_TeamProjectId { get { return GetGuid(BuildWebApi.WellKnownBuildVariables.TeamProjectId); } }
-        public string System_TFCollectionUrl { get { return Get(WellKnownDistributedTaskVariables.TFCollectionUrl); } }
+        public string Agent_BuildDirectory => Get(Constants.Variables.Agent.BuildDirectory);
+
+        public string Agent_WorkFolder => Get(Constants.Variables.Agent.WorkFolder);
+
+        public TaskResult? Agent_JobStatus
+        {
+            get
+            {
+                return GetEnum<TaskResult>(Constants.Variables.Agent.JobStatus);
+            }
+
+            set
+            {
+                Set(Constants.Variables.Agent.JobStatus, $"{value}");
+            }
+        }
+
+        public string Agent_ServerOMDirectory => Get(Constants.Variables.Agent.ServerOMDirectory);
+
+        public int? Build_BuildId => GetInt(BuildWebApi.WellKnownBuildVariables.BuildId);
+
+        public string Build_BuildUri => Get(BuildWebApi.WellKnownBuildVariables.BuildUri);
+
+        public BuildCleanOption? Build_Clean => GetEnum<BuildCleanOption>(Constants.Variables.Build.Clean);
+
+        public long? Build_ContainerId => GetLong(BuildWebApi.WellKnownBuildVariables.ContainerId);
+
+        public string Build_DefinitionName => Get(Constants.Variables.Build.DefinitionName);
+
+        public bool? Build_GatedRunCI => GetBoolean(Constants.Variables.Build.GatedRunCI);
+
+        public string Build_GatedShelvesetName => Get(Constants.Variables.Build.GatedShelvesetName);
+
+        public string Build_RepoTfvcWorkspace => Get(Constants.Variables.Build.RepoTfvcWorkspace);
+
+        public string Build_RequestedFor => Get((BuildWebApi.WellKnownBuildVariables.RequestedFor));
+
+        public string Build_SourceBranch => Get(Constants.Variables.Build.SourceBranch);
+
+        public string Build_SourcesDirectory => Get(Constants.Variables.Build.SourcesDirectory);
+
+        public string Build_SourceTfvcShelveset => Get(Constants.Variables.Build.SourceTfvcShelveset);
+
+        public string Build_SourceVersion => Get(Constants.Variables.Build.SourceVersion);
+
+        public bool? Build_SyncSources => GetBoolean(Constants.Variables.Build.SyncSources);
+
+        public string Release_ArtifactsDirectory => Get(Constants.Variables.Release.ArtifactsDirectory);
+
+        public string Release_ReleaseEnvironmentUri => Get(Constants.Variables.Release.ReleaseEnvironmentUri);
+
+        public string Release_ReleaseUri => Get(Constants.Variables.Release.ReleaseUri);
+
+        public string System_CollectionId => Get(Constants.Variables.System.CollectionId);
+
+        public bool? System_Debug => GetBoolean(Constants.Variables.System.Debug);
+
+        public string System_DefaultWorkingDirectory => Get(Constants.Variables.System.DefaultWorkingDirectory);
+
+        public string System_DefinitionId => Get(Constants.Variables.System.DefinitionId);
+
+        public bool? System_EnableAccessToken => GetBoolean(Constants.Variables.System.EnableAccessToken);
+
+        public string System_HostType => Get(Constants.Variables.System.HostType);
+
+        public string System_TaskDefinitionsUri => Get(WellKnownDistributedTaskVariables.TaskDefinitionsUrl);
+
+        public string System_TeamProject => Get(BuildWebApi.WellKnownBuildVariables.TeamProject);
+
+        public Guid? System_TeamProjectId => GetGuid(BuildWebApi.WellKnownBuildVariables.TeamProjectId);
+
+        public string System_TFCollectionUrl => Get(WellKnownDistributedTaskVariables.TFCollectionUrl);
 
         public void ExpandValues(IDictionary<string, string> target)
         {
