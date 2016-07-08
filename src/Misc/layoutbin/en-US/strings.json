@@ -8,7 +8,7 @@
   "AgentMachinePoolNameLabel": "agent pool",
   "AgentName": "agent name",
   "AgentReplaced": "Successfully replaced the agent",
-  "AlreadyConfiguredError": "Cannot configure. Already configured.",
+  "AlreadyConfiguredError": "Cannot configure the agent because it is already configured. To reconfigure the agent, run 'config.cmd remove' or './config.sh remove' first.",
   "ArgumentNeeded": "'{0}' has to be specified.",
   "ArtifactCommandNotFound": "##vso[artifact.{0}] is not a recognized command for Artifact command extension. Please reference documentaion (http://go.microsoft.com/fwlink/?LinkId=817296)",
   "ArtifactLocationNotSupport": "Unsupport artifact location: {0}",
