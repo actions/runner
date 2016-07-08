@@ -9,11 +9,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 {
     public static class Program
     {
-        private static Tracing s_trace;
-
         public static int Main(string[] args)
         {
-            return MainAsync(args).GetAwaiter().GetResult();
+            using (HostContext context = new HostContext("Agent"))
+            {
+                return MainAsync(context, args).GetAwaiter().GetResult();
+            }
         }
 
         // Return code definition: (this will be used by service host to determine whether it will re-launch agent.listener)
@@ -21,83 +22,79 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         // 1: Terminate failure
         // 2: Retriable failure
         // 3: Exit for self update
-        public async static Task<int> MainAsync(string[] args)
+        public async static Task<int> MainAsync(IHostContext context, string[] args)
         {
-            using (HostContext context = new HostContext("Agent"))
+            Tracing trace = context.GetTrace("AgentProcess");
+            trace.Info($"Agent is built for {Constants.Agent.Platform} - {BuildConstants.AgentPackage.PackageName}.");
+            trace.Info($"RuntimeInformation: {RuntimeInformation.OSDescription}.");
+            var terminal = context.GetService<ITerminal>();
+
+            // Validate the binaries intended for one OS are not running on a different OS.
+            switch (Constants.Agent.Platform)
             {
-                s_trace = context.GetTrace("AgentProcess");
-                s_trace.Info($"Agent is built for {Constants.Agent.Platform} - {BuildConstants.AgentPackage.PackageName}.");
-                s_trace.Info($"RuntimeInformation: {RuntimeInformation.OSDescription}.");
-
-                // Validate the binaries intended for one OS are not running on a different OS.
-                switch (Constants.Agent.Platform)
-                {
-                    case Constants.OSPlatform.Linux:
-                        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-                        {
-                            Console.WriteLine(StringUtil.Loc("NotLinux"));
-                            return Constants.Agent.ReturnCode.TerminatedError;
-                        }
-                        break;
-                    case Constants.OSPlatform.OSX:
-                        if (!RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-                        {
-                            Console.WriteLine(StringUtil.Loc("NotOSX"));
-                            return Constants.Agent.ReturnCode.TerminatedError;
-                        }
-                        break;
-                    case Constants.OSPlatform.Windows:
-                        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                        {
-                            Console.WriteLine(StringUtil.Loc("NotWindows"));
-                            return Constants.Agent.ReturnCode.TerminatedError;
-                        }
-                        break;
-                    default:
-                        Console.WriteLine(StringUtil.Loc("PlatformNotSupport", RuntimeInformation.OSDescription, Constants.Agent.Platform.ToString()));
-                        return Constants.Agent.ReturnCode.TerminatedError;
-                }
-
-                int rc = Constants.Agent.ReturnCode.Success;
-                try
-                {
-                    s_trace.Info($"Version: {Constants.Agent.Version}");
-                    s_trace.Info($"Commit: {BuildConstants.Source.CommitHash}");
-                    s_trace.Info($"Culture: {CultureInfo.CurrentCulture.Name}");
-                    s_trace.Info($"UI Culture: {CultureInfo.CurrentUICulture.Name}");
-
-                    //
-                    // TODO (bryanmac): Need VsoAgent.exe compat shim for SCM
-                    //                  That shim will also provide a compat arg parse 
-                    //                  and translate / to -- etc...
-                    //
-
-                    // Parse the command line args.
-                    var command = new CommandSettings(context, args);
-                    s_trace.Info("Arguments parsed");
-
-                    // Defer to the Agent class to execute the command.
-                    IAgent agent = context.GetService<IAgent>();
-                    using (agent.TokenSource = new CancellationTokenSource())
+                case Constants.OSPlatform.Linux:
+                    if (!RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
                     {
-                        try
-                        {
-                            rc = await agent.ExecuteCommand(command);
-                        }
-                        catch (OperationCanceledException) when (agent.TokenSource.IsCancellationRequested)
-                        {
-                            s_trace.Info("Agent execution been cancelled.");
-                        }
+                        terminal.WriteLine(StringUtil.Loc("NotLinux"));
+                        return Constants.Agent.ReturnCode.TerminatedError;
+                    }
+                    break;
+                case Constants.OSPlatform.OSX:
+                    if (!RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+                    {
+                        terminal.WriteLine(StringUtil.Loc("NotOSX"));
+                        return Constants.Agent.ReturnCode.TerminatedError;
+                    }
+                    break;
+                case Constants.OSPlatform.Windows:
+                    if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                    {
+                        terminal.WriteLine(StringUtil.Loc("NotWindows"));
+                        return Constants.Agent.ReturnCode.TerminatedError;
+                    }
+                    break;
+                default:
+                    terminal.WriteLine(StringUtil.Loc("PlatformNotSupport", RuntimeInformation.OSDescription, Constants.Agent.Platform.ToString()));
+                    return Constants.Agent.ReturnCode.TerminatedError;
+            }
+
+            try
+            {
+                trace.Info($"Version: {Constants.Agent.Version}");
+                trace.Info($"Commit: {BuildConstants.Source.CommitHash}");
+                trace.Info($"Culture: {CultureInfo.CurrentCulture.Name}");
+                trace.Info($"UI Culture: {CultureInfo.CurrentUICulture.Name}");
+
+                //
+                // TODO (bryanmac): Need VsoAgent.exe compat shim for SCM
+                //                  That shim will also provide a compat arg parse 
+                //                  and translate / to -- etc...
+                //
+
+                // Parse the command line args.
+                var command = new CommandSettings(context, args);
+                trace.Info("Arguments parsed");
+
+                // Defer to the Agent class to execute the command.
+                IAgent agent = context.GetService<IAgent>();
+                using (agent.TokenSource = new CancellationTokenSource())
+                {
+                    try
+                    {
+                        return await agent.ExecuteCommand(command);
+                    }
+                    catch (OperationCanceledException) when (agent.TokenSource.IsCancellationRequested)
+                    {
+                        trace.Info("Agent execution been cancelled.");
+                        return Constants.Agent.ReturnCode.Success;
                     }
                 }
-                catch (Exception e)
-                {
-                    Console.Error.WriteLine(StringUtil.Format("An error occured.  {0}", e.Message));
-                    s_trace.Error(e);
-                    rc = Constants.Agent.ReturnCode.RetryableError;
-                }
-
-                return rc;
+            }
+            catch (Exception e)
+            {
+                terminal.WriteError(StringUtil.Loc("ErrorOccurred", e.Message));
+                trace.Error(e);
+                return Constants.Agent.ReturnCode.RetryableError;
             }
         }
     }

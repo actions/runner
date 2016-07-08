@@ -7,7 +7,7 @@ param()
 function Add-Versions {
     [CmdletBinding()]
     param(
-        [string]$NameSuffix,
+        [string]$NameFormat,
 
         [Parameter(Mandatory = $true)]
         [string]$View,
@@ -46,7 +46,7 @@ function Add-Versions {
 
             # Parse the version from the sub key name.
             $versionObject = [System.Version]::Parse($versionSubKeyName.Substring(1))
-            $capabilityName = "DotNetFramework_$($versionObject.Major).$($versionObject.Minor)$NameSuffix"
+            $capabilityName = ($NameFormat -f "$($versionObject.Major).$($versionObject.Minor)")
 
             # Add the capability.
             Write-Capability -Name $capabilityName -Value $installPath
@@ -92,22 +92,30 @@ function Add-Versions {
                 378758 { "4.5.1" }
                 379893 { "4.5.2" }
                 380995 { "4.5.3" } # 4.5.3 version that comes with VS CTP
-                { $_ -gt 380995 } { "4.5.3" } # Until we know the releaseVersion, continue to use 4.5.3
+                393295 { "4.6.0" } # Installed on Windows 10
+                393297 { "4.6.0" } # Installed on all other Windows OS versions
+                394254 { "4.6.1" } # Installed on Windows 10
+                394271 { "4.6.1" } # Installed on all other Windows OS versions
+                394747 { "4.6.2" } # Preview installed on Windows 10 RS1 Preview
+                394748 { "4.6.2" } # Preview installed on all other Windows OS versions
+                { $_ -gt 394748 } { "4.6.2" } # Until we know the releaseVersion, continue to use 4.6.2
             }
 
             if (!$versionString) {
                 continue
             }
 
-            Write-Capability -Name "DotNetFramework_$versionString$NameSuffix" -Value $installPath
+            Write-Capability -Name ($NameFormat -f $versionString) -Value $installPath
             $LatestValue.Value = $installPath
         }
     }
 }
 
 $latest = $null
-Add-Versions -NameSuffix '' -View 'Registry32' -LatestValue ([ref]$latest)
-Add-Versions -NameSuffix '_x64' -View 'Registry64' -LatestValue ([ref]$latest)
+Add-Versions -NameFormat 'DotNetFramework_{0}' -View 'Registry32' -LatestValue ([ref]$latest)
+# The .Net prerequisite validation check in the agent depends on the format
+# of the capability name (including the _x64 suffix).
+Add-Versions -NameFormat 'DotNetFramework_{0}_x64' -View 'Registry64' -LatestValue ([ref]$latest)
 if ($latest) {
     Write-Capability -Name 'DotNetFramework' -Value $latest
 }
