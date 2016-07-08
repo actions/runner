@@ -1,6 +1,6 @@
 ﻿namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts.Definition
 {
-    public class GitArtifactDetails : IArtifactDetails
+    public class TfsGitArtifactDetails : IArtifactDetails
     {
         public string RelativePath { get; set; }
 

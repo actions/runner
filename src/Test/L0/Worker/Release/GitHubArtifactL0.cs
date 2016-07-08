@@ -80,16 +80,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Release
 
                 await gitHubArtifact.DownloadAsync(_ec.Object, _artifactDefinition, expectedPath);
 
-                // verify required variables are set
-                Assert.Equal(_variables.Get(Constants.Variables.Build.SourcesDirectory), expectedPath);
-                Assert.Equal(_variables.Get(Constants.Variables.Build.SourceBranch), _expectedBranchName);
-                Assert.Equal(_variables.Get(Constants.Variables.Build.SourceVersion), _expectedVersion);
-
                 // verify github endpoint is set correctly
                 _sourceProvider.Verify(
                     x => x.GetSourceAsync(
                         It.IsAny<IExecutionContext>(), 
-                        It.Is<ServiceEndpoint>(y => y.Url.Equals(new Uri(_expectedGitHubUrl)) && y.Authorization.Scheme.Equals(EndpointAuthorizationSchemes.OAuth)), 
+                        It.Is<ServiceEndpoint>(y => y.Url.Equals(new Uri(_expectedGitHubUrl)) && y.Authorization.Scheme.Equals(EndpointAuthorizationSchemes.OAuth)
+                        && y.Data.ContainsKey(Constants.Variables.Build.SourcesDirectory) && y.Data.ContainsKey(Constants.Variables.Build.SourceBranch)
+                        && y.Data.ContainsKey(Constants.Variables.Build.SourceVersion)), 
                         It.IsAny<CancellationToken>()));
             }
         }

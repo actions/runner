@@ -123,6 +123,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
 
                 GitSourceProvider gitSourceProvider = new GitSourceProvider();
                 gitSourceProvider.Initialize(tc);
+                gitSourceProvider.SetVariablesInEndpoint(executionContext.Object, endpoint);
 
                 // Act.
                 gitSourceProvider.GetSourceAsync(executionContext.Object, endpoint, default(CancellationToken)).GetAwaiter().GetResult();
@@ -163,6 +164,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
 
                     GitSourceProvider gitSourceProvider = new GitSourceProvider();
                     gitSourceProvider.Initialize(tc);
+                    gitSourceProvider.SetVariablesInEndpoint(executionContext.Object, endpoint);
 
                     // Act.
                     gitSourceProvider.GetSourceAsync(executionContext.Object, endpoint, default(CancellationToken)).GetAwaiter().GetResult();
@@ -202,6 +204,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
 
                 GitSourceProvider gitSourceProvider = new GitSourceProvider();
                 gitSourceProvider.Initialize(tc);
+                gitSourceProvider.SetVariablesInEndpoint(executionContext.Object, endpoint);
 
                 // Act.
                 gitSourceProvider.GetSourceAsync(executionContext.Object, endpoint, default(CancellationToken)).GetAwaiter().GetResult();
@@ -243,6 +246,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
 
                     GitSourceProvider gitSourceProvider = new GitSourceProvider();
                     gitSourceProvider.Initialize(tc);
+                    gitSourceProvider.SetVariablesInEndpoint(executionContext.Object, endpoint);
 
                     // Act.
                     gitSourceProvider.GetSourceAsync(executionContext.Object, endpoint, default(CancellationToken)).GetAwaiter().GetResult();
@@ -294,6 +298,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
 
                     GitSourceProvider gitSourceProvider = new GitSourceProvider();
                     gitSourceProvider.Initialize(tc);
+                    gitSourceProvider.SetVariablesInEndpoint(executionContext.Object, endpoint);
 
                     // Act.
                     gitSourceProvider.GetSourceAsync(executionContext.Object, endpoint, default(CancellationToken)).GetAwaiter().GetResult();
@@ -337,6 +342,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
 
                     GitSourceProvider gitSourceProvider = new GitSourceProvider();
                     gitSourceProvider.Initialize(tc);
+                    gitSourceProvider.SetVariablesInEndpoint(executionContext.Object, endpoint);
 
                     // Act.
                     gitSourceProvider.GetSourceAsync(executionContext.Object, endpoint, default(CancellationToken)).GetAwaiter().GetResult();

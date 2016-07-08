@@ -3,6 +3,7 @@ using Microsoft.VisualStudio.Services.Agent;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using Microsoft.VisualStudio.Services.Agent.Worker;
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
@@ -22,6 +23,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         Task PostJobCleanupAsync(IExecutionContext executionContext, ServiceEndpoint endpoint);
 
         string GetLocalPath(IExecutionContext executionContext, ServiceEndpoint endpoint, string path);
+
+        void SetVariablesInEndpoint(IExecutionContext executionContext, ServiceEndpoint endpoint);
     }
 
     public abstract class SourceProvider : AgentService
@@ -62,6 +65,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         public virtual string GetLocalPath(IExecutionContext executionContext, ServiceEndpoint endpoint, string path)
         {
             return path;
+        }
+
+        public virtual void SetVariablesInEndpoint(IExecutionContext executionContext, ServiceEndpoint endpoint)
+        {
+            endpoint.Data.Add(Constants.Variables.Build.SourcesDirectory, executionContext.Variables.Get(Constants.Variables.Build.SourcesDirectory));
+            endpoint.Data.Add(Constants.Variables.Build.SourceVersion, executionContext.Variables.Get(Constants.Variables.Build.SourceVersion));
         }
     }
 }

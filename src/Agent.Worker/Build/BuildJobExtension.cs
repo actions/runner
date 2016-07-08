@@ -188,6 +188,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             }
 
             executionContext.Debug($"Sync source for endpoint: {SourceEndpoint.Name}");
+            SourceProvider.SetVariablesInEndpoint(executionContext, SourceEndpoint);
             await SourceProvider.GetSourceAsync(executionContext, SourceEndpoint, executionContext.CancellationToken);
         }
 

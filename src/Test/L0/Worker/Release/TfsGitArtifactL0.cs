@@ -1,7 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using Microsoft.TeamFoundation.Build.WebApi;
@@ -10,16 +8,13 @@ using Microsoft.VisualStudio.Services.Agent.Worker;
 using Microsoft.VisualStudio.Services.Agent.Worker.Build;
 using Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts;
 using Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts.Definition;
-using Microsoft.VisualStudio.Services.ReleaseManagement.WebApi;
-using Microsoft.VisualStudio.Services.ReleaseManagement.WebApi.Contracts;
 using Microsoft.VisualStudio.Services.WebApi;
 using Moq;
-using Newtonsoft.Json;
 using Xunit;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Release
 {
-    public sealed class TfVCArtifactL0
+    public sealed class TfsGitArtifactL0
     {
         private Mock<IExecutionContext> _ec;
         private Mock<IExtensionManager> _extensionManager;
@@ -27,29 +22,31 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Release
         private ArtifactDefinition _artifactDefinition;
         private Variables _variables;
 
-        private string _buildDirectory = "r1";
-        private const string _repositoryId = "fe0bd152-bb17-4ec4-b421-21d7e0450edb";
-        private const string _projectId = "ke0bd152-bb17-4ec4-b421-21d7e0450edb";
+        private const string _expectedUrl = "https://hello.com/repos/contoso";
+        private const string _expectedBranchName = "/refs/head/testbranch";
         private const string _expectedVersion = "version";
+        private const string _expectedRepositoryId = "fe0bd152-bb17-4ec4-b421-21d7e0450edb";
+        private const string _expectedProjectId = "ae0bd152-bb17-4ec4-b421-21d7e0450edb";
 
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public void MissingEndpointShouldThrowException()
+        public void ShouldThrowIfEndpointsDoNotContainTfsGitEndpoint()
         {
             using (TestHostContext tc = Setup())
             {
-                var artifact = new TfVCArtifact();
+                var artifact = new TfsGitArtifact();
 
                 _ec.Setup(x => x.Endpoints)
                     .Returns(
                         new List<ServiceEndpoint>
-                        {
-                            new ServiceEndpoint
                             {
-                                Name = "Some endpoint name"
-                            }
-                        });
+                                new ServiceEndpoint
+                                    {
+                                        Name = "Some endpoint name",
+                                        Url = new Uri("http://contoso.visualstudio.com")
+                                    }
+                            });
 
                 Assert.Throws<InvalidOperationException>(
                     () => artifact.DownloadAsync(_ec.Object, _artifactDefinition, "temp").SyncResult());
@@ -59,48 +56,37 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Release
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async void TfVCArtifactShouldCallGetSourceWithCorrectParameter()
+        public async void TfsGitArtifactShouldCallGetSourceWithCorrectParameter()
         {
             using (TestHostContext tc = Setup())
             {
-                var tfVcArtifact = new TfVCArtifact();
-                tfVcArtifact.Initialize(tc);
-                var workFolder = Path.Combine(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location),
-                    $"_work_{Path.GetRandomFileName()}");
-                var sourcesDirectory = Path.Combine(workFolder, _buildDirectory, "temp");
-                _artifactDefinition.Details = tfVcArtifact.GetArtifactDetails(
-                    _ec.Object,
-                    new AgentArtifactDefinition
-                    {
-                        Details = JsonConvert.SerializeObject(new Dictionary<string, string>
-                        {
-                            {ArtifactDefinitionConstants.ProjectId, _projectId},
-                            {ArtifactDefinitionConstants.RepositoryId, _repositoryId}
-                        })
-                    });
+                var tfsGitArtifact = new TfsGitArtifact();
+                tfsGitArtifact.Initialize(tc);
+                var expectedPath = "expectedLocalPath";
 
                 _ec.Setup(x => x.Endpoints)
                     .Returns(
                         new List<ServiceEndpoint>
-                        {
-                            new ServiceEndpoint
                             {
-                                Name = _repositoryId,
-                            }
-                        });
+                                new ServiceEndpoint
+                                    {
+                                        Name = _expectedRepositoryId,
+                                        Url = new Uri(_expectedUrl),
+                                        Authorization = new EndpointAuthorization
+                                        {
+                                            Scheme = EndpointAuthorizationSchemes.OAuth
+                                        }
+                                    }
+                            });
 
-                await tfVcArtifact.DownloadAsync(_ec.Object, _artifactDefinition, sourcesDirectory);
+                await tfsGitArtifact.DownloadAsync(_ec.Object, _artifactDefinition, expectedPath);
 
-                // verify required variables are set
-                Assert.Equal(_variables.Get(Constants.Variables.Build.SourcesDirectory), sourcesDirectory);
-                Assert.Equal(_variables.Get(Constants.Variables.Agent.BuildDirectory), _buildDirectory);
-                Assert.Equal(_variables.Get(Constants.Variables.Build.SourceVersion), _expectedVersion);
-
-                // verify tfvc endpoint is set correctly
+                // verify TfsGit endpoint is set correctly
                 _sourceProvider.Verify(
                     x => x.GetSourceAsync(
                         It.IsAny<IExecutionContext>(),
-                        It.Is<ServiceEndpoint>(y => y.Data.ContainsKey(WellKnownEndpointData.TfvcWorkspaceMapping) && y.Data.ContainsKey(WellKnownEndpointData.Clean)),
+                        It.Is<ServiceEndpoint>(y => y.Url.Equals(new Uri(_expectedUrl)) && y.Authorization.Scheme.Equals(EndpointAuthorizationSchemes.OAuth) && y.Name.Equals(_expectedRepositoryId) && y.Data.ContainsKey(Constants.Variables.Build.SourcesDirectory) && y.Data.ContainsKey(Constants.Variables.Build.SourceBranch)
+                        && y.Data.ContainsKey(Constants.Variables.Build.SourceVersion)),
                         It.IsAny<CancellationToken>()));
             }
         }
@@ -113,11 +99,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Release
             _artifactDefinition = new ArtifactDefinition
             {
                 Version = _expectedVersion,
-                Details = new TfVCArtifactDetails
+                Details = new TfsGitArtifactDetails
                 {
-                    RepositoryId = _repositoryId,
-                    Mappings = string.Empty,
-                    ProjectId = _projectId
+                    RepositoryId = _expectedRepositoryId,
+                    ProjectId = _expectedProjectId,
+                    Branch = _expectedBranchName
                 }
             };
 
@@ -131,7 +117,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Release
             _ec.Setup(x => x.Variables).Returns(_variables);
             _extensionManager.Setup(x => x.GetExtensions<ISourceProvider>())
                 .Returns(new List<ISourceProvider> { _sourceProvider.Object });
-            _sourceProvider.Setup(x => x.RepositoryType).Returns(WellKnownRepositoryTypes.TfsVersionControl);
+            _sourceProvider.Setup(x => x.RepositoryType).Returns(WellKnownRepositoryTypes.TfsGit);
 
             return hc;
         }

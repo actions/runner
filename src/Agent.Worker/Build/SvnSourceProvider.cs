@@ -16,10 +16,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
     {
         public override string RepositoryType => WellKnownRepositoryTypes.Svn;
 
-        public async Task GetSourceAsync(IExecutionContext executionContext, ServiceEndpoint endpoint, CancellationToken cancellationToken)
+        public async Task GetSourceAsync(
+            IExecutionContext executionContext,
+            ServiceEndpoint endpoint,
+            CancellationToken cancellationToken)
         {
-            Trace.Verbose("Entering SvnSourceProvider.GetSourceAsync");
-
+            Trace.Entering();
             // Validate args.
             ArgUtil.NotNull(executionContext, nameof(executionContext));
             ArgUtil.NotNull(endpoint, nameof(endpoint));
@@ -28,14 +30,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             svn.Init(executionContext, endpoint, cancellationToken);
 
             // Determine the sources directory.
-            string sourcesDirectory = executionContext.Variables.Build_SourcesDirectory;
+            string sourcesDirectory;
+            endpoint.Data.TryGetValue(Constants.Variables.Build.SourcesDirectory, out sourcesDirectory);
             executionContext.Debug($"sourcesDirectory={sourcesDirectory}");
             ArgUtil.NotNullOrEmpty(sourcesDirectory, nameof(sourcesDirectory));
 
-            string sourceBranch = executionContext.Variables.Build_SourceBranch;
+            string sourceBranch;
+            endpoint.Data.TryGetValue(Constants.Variables.Build.SourceBranch, out sourceBranch);
             executionContext.Debug($"sourceBranch={sourceBranch}");
 
-            string revision = executionContext.Variables.Build_SourceVersion;
+            string revision;
+            endpoint.Data.TryGetValue(Constants.Variables.Build.SourceVersion, out revision);
             if (string.IsNullOrWhiteSpace(revision))
             {
                 revision = "HEAD";
@@ -90,7 +95,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             if (serverPath.StartsWith("^/"))
             {
                 //Convert the server path to the relative one using SVN work copy mappings
-                string sourcesDirectory = executionContext.Variables.Build_SourcesDirectory;
+                string sourcesDirectory;
+                endpoint.Data.TryGetValue(Constants.Variables.Build.SourcesDirectory, out sourcesDirectory);
                 localPath = svn.ResolveServerPath(serverPath, sourcesDirectory);
             }
             else
@@ -101,6 +107,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
             Trace.Verbose("Leaving SvnSourceProvider.GetLocalPath");
             return localPath;
+        }
+
+        public override void SetVariablesInEndpoint(IExecutionContext executionContext, ServiceEndpoint endpoint)
+        {
+            base.SetVariablesInEndpoint(executionContext, endpoint);
+            endpoint.Data.Add(Constants.Variables.Build.SourceBranch, executionContext.Variables.Get(Constants.Variables.Build.SourceBranch));
         }
 
         public Task PostJobCleanupAsync(IExecutionContext executionContext, ServiceEndpoint endpoint)

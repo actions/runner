@@ -16,17 +16,26 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
         public override string RepositoryType => WellKnownRepositoryTypes.TfsGit;
 
-        public override async Task GetSourceAsync(IExecutionContext executionContext, ServiceEndpoint endpoint, CancellationToken cancellationToken)
+        public override async Task GetSourceAsync(
+            IExecutionContext executionContext,
+            ServiceEndpoint endpoint,
+            CancellationToken cancellationToken)
         {
             Trace.Entering();
+            // Validate args.
+            ArgUtil.NotNull(executionContext, nameof(executionContext));
             ArgUtil.NotNull(endpoint, nameof(endpoint));
+
             executionContext.Output($"Syncing repository: {endpoint.Name} (TfsGit)");
             _gitCommandManager = HostContext.GetService<IGitCommandManager>();
             await _gitCommandManager.LoadGitExecutionInfo(executionContext);
 
-            string targetPath = executionContext.Variables.Get(Constants.Variables.Build.SourcesDirectory);
-            string sourceBranch = executionContext.Variables.Get(Constants.Variables.Build.SourceBranch);
-            string sourceVersion = executionContext.Variables.Get(Constants.Variables.Build.SourceVersion);
+            string targetPath;
+            string sourceBranch;
+            string sourceVersion;
+            endpoint.Data.TryGetValue(Constants.Variables.Build.SourcesDirectory, out targetPath);
+            endpoint.Data.TryGetValue(Constants.Variables.Build.SourceBranch, out sourceBranch);
+            endpoint.Data.TryGetValue(Constants.Variables.Build.SourceVersion, out sourceVersion);
 
             bool clean = false;
             if (endpoint.Data.ContainsKey(WellKnownEndpointData.Clean))
@@ -244,8 +253,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             ArgUtil.NotNull(endpoint, nameof(endpoint));
             executionContext.Output($"Cleaning extra http auth header from repository: {endpoint.Name} (TfsGit)");
 
-            Uri repositoryUrl = endpoint.Url;
-            string targetPath = executionContext.Variables.Get(Constants.Variables.Build.SourcesDirectory);
+            string targetPath;
+            endpoint.Data.TryGetValue(Constants.Variables.Build.SourcesDirectory, out targetPath);
 
             executionContext.Debug($"Repository url={endpoint.Url}");
             executionContext.Debug($"targetPath={targetPath}");

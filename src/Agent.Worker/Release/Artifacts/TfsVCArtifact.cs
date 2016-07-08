@@ -19,7 +19,7 @@ using DefinitionMappingType = Microsoft.VisualStudio.Services.Agent.Worker.Build
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
 {
-    public class TfVCArtifact : AgentService, IArtifactExtension
+    public class TfsVCArtifact : AgentService, IArtifactExtension
     {
         public Type ExtensionType => typeof(IArtifactExtension);
         public AgentArtifactType ArtifactType => AgentArtifactType.Tfvc;
@@ -29,30 +29,30 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
             ArgUtil.NotNull(artifactDefinition, nameof(artifactDefinition));
             ArgUtil.NotNullOrEmpty(downloadFolderPath, nameof(downloadFolderPath));
 
-            var tfVCDetails = artifactDefinition.Details as TfVCArtifactDetails;
-            ArgUtil.NotNull(tfVCDetails, nameof(tfVCDetails));
+            var tfsVcArtifactDetails = artifactDefinition.Details as TfsVCArtifactDetails;
+            ArgUtil.NotNull(tfsVcArtifactDetails, nameof(tfsVcArtifactDetails));
 
-            ServiceEndpoint tfVCEndpoint = executionContext.Endpoints.FirstOrDefault((e => string.Equals(e.Name, tfVCDetails.RepositoryId, StringComparison.OrdinalIgnoreCase)));
-            if (tfVCEndpoint == null)
+            ServiceEndpoint tfsVCEndpoint = executionContext.Endpoints.FirstOrDefault((e => string.Equals(e.Name, tfsVcArtifactDetails.RepositoryId, StringComparison.OrdinalIgnoreCase)));
+            if (tfsVCEndpoint == null)
             {
-                throw new InvalidOperationException(StringUtil.Loc("RMTfVCEndpointNotFound"));
+                throw new InvalidOperationException(StringUtil.Loc("RMTfsVCEndpointNotFound"));
             }
 
-            PrepareTfVCEndpoint(tfVCEndpoint, tfVCDetails);
+            PrepareTfsVCEndpoint(tfsVCEndpoint, tfsVcArtifactDetails);
             var extensionManager = HostContext.GetService<IExtensionManager>();
             ISourceProvider sourceProvider = (extensionManager.GetExtensions<ISourceProvider>()).FirstOrDefault(x => x.RepositoryType == WellKnownRepositoryTypes.TfsVersionControl);
 
             if (sourceProvider == null)
             {
-                throw new InvalidOperationException(StringUtil.Loc("SourceArtifactNotFound", WellKnownRepositoryTypes.TfsVersionControl));
+                throw new InvalidOperationException(StringUtil.Loc("SourceArtifactProviderNotFound", WellKnownRepositoryTypes.TfsVersionControl));
             }
 
             var rootDirectory = Directory.GetParent(downloadFolderPath).Name;
-            executionContext.Variables.Set(Constants.Variables.Agent.BuildDirectory, rootDirectory);
-            executionContext.Variables.Set(Constants.Variables.Build.SourcesDirectory, downloadFolderPath);
-            executionContext.Variables.Set(Constants.Variables.Build.SourceVersion, artifactDefinition.Version);
+            tfsVCEndpoint.Data.Add(Constants.Variables.Agent.BuildDirectory, rootDirectory);
+            tfsVCEndpoint.Data.Add(Constants.Variables.Build.SourcesDirectory, downloadFolderPath);
+            tfsVCEndpoint.Data.Add(Constants.Variables.Build.SourceVersion, artifactDefinition.Version);
 
-            await sourceProvider.GetSourceAsync(executionContext, tfVCEndpoint, executionContext.CancellationToken);
+            await sourceProvider.GetSourceAsync(executionContext, tfsVCEndpoint, executionContext.CancellationToken);
         }
 
         public IArtifactDetails GetArtifactDetails(IExecutionContext context, AgentArtifactDefinition agentArtifactDefinition)
@@ -90,7 +90,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
             if (artifactDetails.TryGetValue(ArtifactDefinitionConstants.ProjectId, out projectId)
                 && artifactDetails.TryGetValue(ArtifactDefinitionConstants.RepositoryId, out repositoryId))
             {
-                return new TfVCArtifactDetails
+                return new TfsVCArtifactDetails
                 {
                     RelativePath = "\\",
                     ProjectId = projectId,
@@ -100,13 +100,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
             }
             else
             {
-                throw new InvalidOperationException(StringUtil.Loc("RMArtifactDetailsIncomplete", agentArtifactDefinition.Name));
+                throw new InvalidOperationException(StringUtil.Loc("RMArtifactDetailsIncomplete"));
             }
         }
 
-        private void PrepareTfVCEndpoint(ServiceEndpoint endpoint, TfVCArtifactDetails tfVcArtifactDetails)
+        private void PrepareTfsVCEndpoint(ServiceEndpoint endpoint, TfsVCArtifactDetails tfsVcArtifactDetails)
         {
-            var allMappings = JsonConvert.DeserializeObject<IList<Dictionary<string, InputValue>>>(tfVcArtifactDetails.Mappings);
+            var allMappings = JsonConvert.DeserializeObject<IList<Dictionary<string, InputValue>>>(tfsVcArtifactDetails.Mappings);
             var distinctMapping = new Dictionary<string, DefinitionWorkspaceMapping>();
 
             foreach (var map in allMappings)

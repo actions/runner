@@ -55,7 +55,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         {
             get
             {
-                string version = ExecutionContext.Variables.Build_SourceVersion;
+                string version;
+                Endpoint.Data.TryGetValue(Constants.Variables.Build.SourceVersion, out version);
                 ArgUtil.NotNullOrEmpty(version, nameof(version));
                 return version;
             }
@@ -65,7 +66,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         {
             get
             {
-                string sourcesDirectory = ExecutionContext.Variables.Build_SourcesDirectory;
+                string sourcesDirectory;
+                Endpoint.Data.TryGetValue(Constants.Variables.Build.SourcesDirectory, out sourcesDirectory);
                 ArgUtil.NotNullOrEmpty(sourcesDirectory, nameof(sourcesDirectory));
                 return sourcesDirectory;
             }

@@ -12,7 +12,7 @@ using Newtonsoft.Json;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
 {
-    public class TfGitArtifact : AgentService, IArtifactExtension
+    public class TfsGitArtifact : AgentService, IArtifactExtension
     {
         public Type ExtensionType => typeof(IArtifactExtension);
         public AgentArtifactType ArtifactType => AgentArtifactType.TFGit;
@@ -23,7 +23,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
             ArgUtil.NotNull(artifactDefinition, nameof(artifactDefinition));
             ArgUtil.NotNullOrEmpty(downloadFolderPath, nameof(downloadFolderPath));
 
-            var gitArtifactDetails = artifactDefinition.Details as GitArtifactDetails;
+            var gitArtifactDetails = artifactDefinition.Details as TfsGitArtifactDetails;
             ArgUtil.NotNull(gitArtifactDetails, nameof(gitArtifactDetails));
 
             ServiceEndpoint endpoint = executionContext.Endpoints.FirstOrDefault((e => string.Equals(e.Name, gitArtifactDetails.RepositoryId, StringComparison.OrdinalIgnoreCase)));
@@ -34,15 +34,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
 
             var extensionManager = HostContext.GetService<IExtensionManager>();
             ISourceProvider sourceProvider = (extensionManager.GetExtensions<ISourceProvider>()).FirstOrDefault(x => x.RepositoryType == WellKnownRepositoryTypes.TfsGit);
-
             if (sourceProvider == null)
             {
-                throw new InvalidOperationException(StringUtil.Loc("SourceArtifactNotFound", WellKnownRepositoryTypes.TfsGit));
+                throw new InvalidOperationException(StringUtil.Loc("SourceArtifactProviderNotFound", WellKnownRepositoryTypes.TfsGit));
             }
 
-            executionContext.Variables.Set(Constants.Variables.Build.SourcesDirectory, downloadFolderPath);
-            executionContext.Variables.Set(Constants.Variables.Build.SourceBranch, gitArtifactDetails.Branch);
-            executionContext.Variables.Set(Constants.Variables.Build.SourceVersion, artifactDefinition.Version);
+            endpoint.Data.Add(Constants.Variables.Build.SourcesDirectory, downloadFolderPath);
+            endpoint.Data.Add(Constants.Variables.Build.SourceBranch, gitArtifactDetails.Branch);
+            endpoint.Data.Add(Constants.Variables.Build.SourceVersion, artifactDefinition.Version);
 
             await sourceProvider.GetSourceAsync(executionContext, endpoint, executionContext.CancellationToken);
         }
@@ -58,7 +57,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
                 && artifactDetails.TryGetValue("RepositoryId", out repositoryId)
                 && artifactDetails.TryGetValue("Branch", out branch))
             {
-                return new GitArtifactDetails
+                return new TfsGitArtifactDetails
                 {
                     RelativePath = "\\",
                     ProjectId = projectId,
@@ -68,7 +67,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
             }
             else
             {
-                throw new InvalidOperationException(StringUtil.Loc("RMArtifactDetailsIncomplete", agentArtifactDefinition.Name));
+                throw new InvalidOperationException(StringUtil.Loc("RMArtifactDetailsIncomplete"));
             }
         }
     }
