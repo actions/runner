@@ -232,11 +232,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             scriptBuilder.AppendLine("tasklist /fi \"pid eq %agentpid%\" | find /I \"%agentprocessname%\" 2>nul");
             scriptBuilder.AppendLine("if \"%errorlevel%\"==\"1\" goto copy");
             scriptBuilder.AppendLine("echo [%date% %time%] Process %agentpid% still running >> %logfile% 2>&1");
-            scriptBuilder.AppendLine("ping 127.0.0.1 -n 1 -w 1000 >nul");
+            scriptBuilder.AppendLine("timeout /t 1 /nobreak >nul");
             scriptBuilder.AppendLine("goto loop");
 
             scriptBuilder.AppendLine(":copy");
             scriptBuilder.AppendLine("echo [%date% %time%] Process %agentpid% finished running >> %logfile% 2>&1");
+            scriptBuilder.AppendLine("echo [%date% %time%] Sleep 1 more second to make sure process exited >> %logfile% 2>&1");
+            scriptBuilder.AppendLine("timeout /t 1 /nobreak >nul");
             scriptBuilder.AppendLine("echo [%date% %time%] Renameing folders and copying files >> %logfile% 2>&1");
 
             scriptBuilder.AppendLine("echo [%date% %time%] move %existingagentbinfolder% %backupbinfolder% >> %logfile% 2>&1");
@@ -319,6 +321,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             scriptBuilder.AppendLine("    sleep 1");
             scriptBuilder.AppendLine("done");
             scriptBuilder.AppendLine("date \"+[%F %T-%4N] Process $agentpid finished running\" >> \"$logfile\" 2>&1");
+
+            scriptBuilder.AppendLine("date \"+[%F %T-%4N] Sleep 1 more second to make sure process exited\" >> \"$logfile\" 2>&1");
+            scriptBuilder.AppendLine("sleep 1");
 
             scriptBuilder.AppendLine("date \"+[%F %T-%4N] Renaming folders and copying files\" >> \"$logfile\"");
             scriptBuilder.AppendLine("date \"+[%F %T-%4N] move $existingagentbinfolder $backupbinfolder\" >> \"$logfile\" 2>&1");
