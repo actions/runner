@@ -64,6 +64,7 @@
   "DirectoryNotFound": "Directory not found: '{0}'",
   "DownloadArtifacts": "Download Artifacts",
   "DownloadArtifactsFailed": "Downloading artifacts failed: {0}",
+  "DownloadingTask0": "Downloading task: {0}",
   "EnterValidValueFor0": "Enter a valid value for {0}.",
   "ErrorOccuredWhilePublishingCCFiles": "Error occured while publishing code coverage files. Error: {0}",
   "EulasSectionHeader": "End User License Agreements",

@@ -21,7 +21,53 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
     public sealed class TaskManager : AgentService, ITaskManager
     {
-        private async Task DownloadAsync(IExecutionContext executionContext, TaskReference task)
+        public async Task DownloadAsync(IExecutionContext executionContext, IEnumerable<TaskInstance> tasks)
+        {
+            ArgUtil.NotNull(executionContext, nameof(executionContext));
+            ArgUtil.NotNull(tasks, nameof(tasks));
+
+            //remove duplicate and disabled tasks
+            IEnumerable<TaskInstance> uniqueTasks =
+                from task in tasks
+                where task.Enabled
+                group task by new
+                {
+                    task.Id,
+                    task.Version
+                }
+                into taskGrouping
+                select taskGrouping.First();
+            foreach (TaskInstance task in uniqueTasks)
+            {
+                await DownloadAsync(executionContext, task);
+            }
+        }
+
+        public Definition Load(TaskReference task)
+        {
+            // Validate args.
+            Trace.Entering();
+            ArgUtil.NotNull(task, nameof(task));
+
+            // Initialize the definition wrapper object.
+            var definition = new Definition() { Directory = GetDirectory(task) };
+
+            // Deserialize the JSON.
+            string file = Path.Combine(definition.Directory, Constants.Path.TaskJsonFile);
+            Trace.Info($"Loading task definition '{file}'.");
+            string json = File.ReadAllText(file);
+            definition.Data = JsonConvert.DeserializeObject<DefinitionData>(json);
+
+            // Replace the macros within the handler data sections.
+            foreach (HandlerData handlerData in (definition.Data?.Execution?.All as IEnumerable<HandlerData> ?? new HandlerData[0]))
+            {
+                handlerData?.ReplaceMacros(HostContext, definition);
+            }
+
+            return definition;
+        }
+
+        private async Task DownloadAsync(IExecutionContext executionContext, TaskInstance task)
         {
             Trace.Entering();
             ArgUtil.NotNull(executionContext, nameof(executionContext));
@@ -38,7 +84,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 return;
             }
 
-            Trace.Info("Getting task.");
+            // Inform the user that a download is taking place. The download could take a while if
+            // the task zip is large. It would be nice to print the localized name, but it is not
+            // available from the reference included in the job message.
+            executionContext.Output(StringUtil.Loc("DownloadingTask0", task.Name));
             string zipFile;
             var version = new TaskVersion(task.Version);
 
@@ -94,52 +143,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 IOUtil.GetTasksPath(HostContext),
                 $"{task.Name}_{task.Id}",
                 task.Version);
-        }
-
-        public async Task DownloadAsync(IExecutionContext executionContext, IEnumerable<TaskInstance> tasks)
-        {
-            ArgUtil.NotNull(executionContext, nameof(executionContext));
-            ArgUtil.NotNull(tasks, nameof(tasks));
-
-            //remove duplicate and disabled tasks
-            IEnumerable<TaskInstance> uniqueTasks =
-                from task in tasks
-                where task.Enabled
-                group task by new
-                {
-                    task.Id,
-                    task.Version
-                }
-                into taskGrouping
-                select taskGrouping.First();
-            foreach (TaskInstance task in uniqueTasks)
-            {
-                await DownloadAsync(executionContext, task);
-            }
-        }
-
-        public Definition Load(TaskReference task)
-        {
-            // Validate args.
-            Trace.Entering();
-            ArgUtil.NotNull(task, nameof(task));
-
-            // Initialize the definition wrapper object.
-            var definition = new Definition() { Directory = GetDirectory(task) };
-
-            // Deserialize the JSON.
-            string file = Path.Combine(definition.Directory, Constants.Path.TaskJsonFile);
-            Trace.Info($"Loading task definition '{file}'.");
-            string json = File.ReadAllText(file);
-            definition.Data = JsonConvert.DeserializeObject<DefinitionData>(json);
-
-            // Replace the macros within the handler data sections.
-            foreach (HandlerData handlerData in (definition.Data?.Execution?.All as IEnumerable<HandlerData> ?? new HandlerData[0]))
-            {
-                handlerData?.ReplaceMacros(HostContext, definition);
-            }
-
-            return definition;
         }
     }
 
