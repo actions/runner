@@ -191,7 +191,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
             }
             catch (IOException ex)
             {
-                executionContext.Warning(StringUtil.Loc("ErrorOccuredWhilePublishingCCFiles", ex.Message));
+                executionContext.Warning(StringUtil.Loc("ErrorOccurredWhilePublishingCCFiles", ex.Message));
             }
             finally
             {

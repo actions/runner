@@ -86,7 +86,7 @@
         #region VerboseStrings
         public const string SettingAttributeTemplate = "Setting attribute '{0}' = '{1}' for '{2}' task.";
         public const string EnablingEditingTemplate = "Enabling '{0}' code coverage for '{1}' by editing '{2}'.";
-        public const string InvalidXMLTemplate = "Invalid build xml '{0}'. Error '{1}' occured while parsing the file. ";
+        public const string InvalidXMLTemplate = "Invalid build xml '{0}'. Error '{1}' occurred while parsing the file. ";
         public const string MavenMultiModule = "This is a multi module project. Generating code coverage reports using ant task.";
         #endregion
     }
