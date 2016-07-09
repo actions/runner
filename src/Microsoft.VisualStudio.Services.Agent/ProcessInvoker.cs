@@ -1,14 +1,15 @@
 using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Runtime.InteropServices;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Collections.Concurrent;
-using System.IO;
-using System.Runtime.InteropServices;
-using System.ComponentModel;
-using System.Linq;
 
 namespace Microsoft.VisualStudio.Services.Agent
 {
@@ -57,6 +58,13 @@ namespace Microsoft.VisualStudio.Services.Agent
         public event EventHandler<ProcessDataReceivedEventArgs> OutputDataReceived;
         public event EventHandler<ProcessDataReceivedEventArgs> ErrorDataReceived;
 
+        static ProcessInvoker()
+        {
+#if OS_WINDOWS
+            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+#endif
+        }
+
         public Task<int> ExecuteAsync(
             string workingDirectory,
             string fileName,
@@ -94,6 +102,11 @@ namespace Microsoft.VisualStudio.Services.Agent
             _proc.StartInfo.RedirectStandardInput = true;
             _proc.StartInfo.RedirectStandardError = true;
             _proc.StartInfo.RedirectStandardOutput = true;
+#if OS_WINDOWS
+            Encoding encoding = GetEncoding();
+            _proc.StartInfo.StandardErrorEncoding = encoding;
+            _proc.StartInfo.StandardOutputEncoding = encoding;
+#endif
 
             // Copy the environment variables.
             if (environment != null && environment.Count > 0)
@@ -175,6 +188,63 @@ namespace Microsoft.VisualStudio.Services.Agent
             Dispose(true);
             GC.SuppressFinalize(this);
         }
+
+#if OS_WINDOWS
+        private Encoding GetEncoding()
+        {
+            CPINFOEX info;
+            try
+            {
+                if (!GetCPInfoEx(CodePage: 1, dwFlags: 0, lpCPInfoEx: out info))
+                {
+                    Trace.Error("Unable to determine code page. Defaulting to UTF8 encoding.");
+                    return Encoding.UTF8;
+                }
+                else
+                {
+                    Trace.Info($"Getting encoding for code page: '{info.CodePage}'");
+                    Encoding encoding = Encoding.GetEncoding(info.CodePage);
+                    Trace.Info($"Resolved encoding: '{encoding}'");
+                    return encoding;
+                }
+            }
+            catch (Exception exception)
+            {
+                Trace.Error("Unable to resolve encoding from code page.");
+                Trace.Error(exception);
+                Trace.Info("Defaulting to UTF8 encoding.");
+                return Encoding.UTF8;
+            }
+        }
+
+        private const int MAX_DEFAULTCHAR = 2;
+        private const int MAX_LEADBYTES = 12;
+        private const int MAX_PATH = 260;
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct CPINFOEX
+        {
+            [MarshalAs(UnmanagedType.U4)]
+            public int MaxCharSize;
+
+            [MarshalAs(UnmanagedType.ByValArray, SizeConst = MAX_DEFAULTCHAR)]
+            public byte[] DefaultChar;
+
+            [MarshalAs(UnmanagedType.ByValArray, SizeConst = MAX_LEADBYTES)]
+            public byte[] LeadBytes;
+
+            public char UnicodeDefaultChar;
+
+            [MarshalAs(UnmanagedType.U4)]
+            public int CodePage;
+
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = MAX_PATH)]
+            public string CodePageName;
+        }
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        public static extern bool GetCPInfoEx(int CodePage, int dwFlags, out CPINFOEX lpCPInfoEx);
+#endif
 
         private void Dispose(bool disposing)
         {
