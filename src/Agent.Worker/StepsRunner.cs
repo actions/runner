@@ -71,7 +71,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
                 // Run the step.
                 Trace.Info("Starting the step.");
-                step.ExecutionContext.Start();
+                TimeSpan? stepTimeout = null;
+                if (step is ITaskRunner && (step as ITaskRunner).TaskInstance.TimeoutInMinutes > 0)
+                {
+                    stepTimeout = TimeSpan.FromMinutes((step as ITaskRunner).TaskInstance.TimeoutInMinutes);
+                }
+
+                step.ExecutionContext.Start(timeout: stepTimeout);
                 List<string> expansionWarnings;
                 step.ExecutionContext.Variables.RecalculateExpanded(out expansionWarnings);
                 expansionWarnings?.ForEach(x => step.ExecutionContext.Warning(x));
@@ -82,7 +88,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 }
                 catch (OperationCanceledException ex)
                 {
-                    if (step.ExecutionContext.TimeoutExceeded)
+                    if (step.ExecutionContext.CancellationToken.IsCancellationRequested &&
+                        !jobContext.CancellationToken.IsCancellationRequested)
                     {
                         Trace.Error($"Caught timeout exception from step: {ex.Message}");
                         step.ExecutionContext.Error(StringUtil.Loc("StepTimedOut"));
@@ -95,6 +102,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                         step.ExecutionContext.Error(ex);
                         step.ExecutionContext.Result = TaskResult.Canceled;
                     }
+
                     //save the OperationCanceledException, merge with OperationCanceledException throw from Async Commands.
                     allCancelExceptions.Add(ex);
                 }
@@ -116,7 +124,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     }
                     catch (OperationCanceledException ex)
                     {
-                        if (step.ExecutionContext.TimeoutExceeded)
+                        if (step.ExecutionContext.CancellationToken.IsCancellationRequested &&
+                            !jobContext.CancellationToken.IsCancellationRequested)
                         {
                             // Log the timeout error, set step result to falied if the current result is not canceled.
                             Trace.Error($"Caught timeout exception from async command {command.Name}: {ex}");
