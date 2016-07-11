@@ -176,7 +176,7 @@ function copyBin ()
         failed "Publish folder is missing. Please ensure you use the correct .NET Core tools (see readme for instructions)"
     fi
 
-    cp -Ruf ${source_dir}* ${LAYOUT_DIR}/bin
+    cp -Rf ${source_dir}* ${LAYOUT_DIR}/bin
     popd > /dev/null 
 }
 
