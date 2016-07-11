@@ -6,14 +6,14 @@
 
 ## Step 2: Download from Releases
 
-Download the agent from [github releases](https://github.com/Microsoft/vsts-agent/releases/tag/v2.102.1)
+Download the agent from [github releases](https://github.com/Microsoft/vsts-agent/releases/tag/v2.103.0)
 
 ## Step 3: Create the agent
 
 Create a directory for the agent and unzip.  Use explorer or from cmd:  
 ```bash
 c:\ mkdir myagent && cd myagent
-C:\myagent> Add-Type -AssemblyName System.IO.Compression.FileSystem ; [System.IO.Compression.ZipFile]::ExtractToDirectory("$HOME\Downloads\vsts-agent-win7-x64-2.102.1.zip", "$PWD")
+C:\myagent> Add-Type -AssemblyName System.IO.Compression.FileSystem ; [System.IO.Compression.ZipFile]::ExtractToDirectory("$HOME\Downloads\vsts-agent-win7-x64-2.103.0.zip", "$PWD")
 ```
 ## Step 4: Configure
 
