@@ -73,7 +73,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
             if (CheckServiceExists(ServiceName))
             {
-                _term.WriteLine(StringUtil.Loc("ServiceAleadyExists"));
+                _term.WriteLine(StringUtil.Loc("ServiceAlreadyExists", ServiceName));
 
                 StopService();
                 UninstallService(ServiceName);
@@ -95,8 +95,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             _windowsServiceHelper.InstallService(ServiceName, ServiceDisplayName, _logonAccount, logonPassword);
 
             SaveServiceSettings();
-
-            // TODO: If its service identity add it to appropriate PoolGroup
 
             // Add registry key after installation
             _windowsServiceHelper.CreateVstsAgentRegistryKey();

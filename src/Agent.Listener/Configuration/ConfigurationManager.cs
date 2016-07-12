@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using System.Security.Cryptography;
 using Microsoft.VisualStudio.Services.WebApi;
 using Microsoft.VisualStudio.Services.OAuth;
+using System.Security.Principal;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 {
@@ -321,6 +322,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             if (Constants.Agent.Platform == Constants.OSPlatform.Windows)
             {
                 runAsService = command.GetRunAsService();
+                if (runAsService)
+                {
+                    if (!new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator))
+                    {
+                        Trace.Error("Needs Administrator privileges for configure agent as windows service.");
+                        throw new SecurityException(StringUtil.Loc("NeedAdminForConfigAgentWinService"));
+                    }
+                }
             }
 
             var serviceControlManager = HostContext.GetService<IServiceControlManager>();
