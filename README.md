@@ -6,12 +6,12 @@ The cross platform build and release agent for Team Services and Team Foundation
 
 Supported on Windows, OSX, Ubuntu and Red Hat.  Written for the .NET Core CLR as one code base in C#.
 
+## Current Release
+
+[v2.103.0](https://github.com/Microsoft/vsts-agent/releases/tag/v2.103.0)  
+
 
 ## Status
-
-This agent is feature complete on all platforms and supported for production use.  
-
-This agent replaces the node agent for OSX and Linux bringing Auto Update, Cancellation, Run as a svc on OSX and Linux, and Gated support.  
 
 |   | Build & Test |
 |---|:-----:|
@@ -20,9 +20,6 @@ This agent replaces the node agent for OSX and Linux bringing Auto Update, Cance
 |![RedHat](docs/res/redhat_med.png) **RedHat**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/b924d696-3eae-4116-8443-9a18392d8544/3418/badge?branch=master)| 
 |![Win](docs/res/win_med.png) **Windows**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/b924d696-3eae-4116-8443-9a18392d8544/2850/badge?branch=master)| 
 
-## Current Release
-
-[v2.103.0](https://github.com/Microsoft/vsts-agent/releases/tag/v2.103.0)  
 
 ## Supported Usage
 
