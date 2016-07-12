@@ -1,7 +1,10 @@
 using System;
+using System.Collections;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Security;
 using System.Security.AccessControl;
 using System.Security.Principal;
 using System.ServiceProcess;
@@ -45,8 +48,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
     public class NativeWindowsServiceHelper : AgentService, INativeWindowsServiceHelper
     {
-        // TODO: Change it to VSTS_AgentService_G?
-        private const string AgentServiceLocalGroupPrefix = "TFS_BuildService_G";
+        private const string AgentServiceLocalGroupPrefix = "VSTS_AgentService_G";
         private ITerminal _term;
 
         public override void Initialize(IHostContext hostContext)
@@ -378,22 +380,25 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             Trace.Entering();
 
             string agentServiceExecutable = Path.Combine(IOUtil.GetBinPath(), WindowsServiceControlManager.WindowsServiceControllerName);
-            IntPtr scmHndl = OpenSCManager(null, null, ServiceManagerRights.AllAccess);
-
-            if (scmHndl.ToInt64() <= 0)
-            {
-                throw new Exception("Failed to Open Service Control Manager");
-            }
+            IntPtr scmHndl = IntPtr.Zero;
+            IntPtr svcHndl = IntPtr.Zero;
+            IntPtr tmpBuf = IntPtr.Zero;
+            IntPtr svcLock = IntPtr.Zero;
 
             try
             {
-                Trace.Verbose(StringUtil.Format("Opened SCManager. Trying to create service {0}", serviceName));
+                Trace.Verbose(StringUtil.Format("Trying to open SCManager."));
+                scmHndl = OpenSCManager(null, null, ServiceManagerRights.AllAccess);
+                if (scmHndl.ToInt64() <= 0)
+                {
+                    throw new Exception(StringUtil.Loc("FailedToOpenSCM"));
+                }
 
-                IntPtr serviceHndl = CreateService(
-                                        scmHndl,
+                Trace.Verbose(StringUtil.Format("Opened SCManager. Trying to create service {0}", serviceName));
+                svcHndl = CreateService(scmHndl,
                                         serviceName,
                                         serviceDisplayName,
-                                        ServiceRights.QueryStatus | ServiceRights.Start,
+                                        ServiceRights.AllAccess,
                                         SERVICE_WIN32_OWN_PROCESS,
                                         ServiceBootFlag.AutoStart,
                                         ServiceError.Normal,
@@ -403,8 +408,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                                         null,
                                         logonAccount,
                                         logonPassword);
-
-                if (serviceHndl.ToInt64() <= 0)
+                if (svcHndl.ToInt64() <= 0)
                 {
                     throw new InvalidOperationException(StringUtil.Loc("OperationFailed", nameof(CreateService), GetLastError()));
                 }
@@ -415,12 +419,98 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                     processInvoker.ExecuteAsync(string.Empty, agentServiceExecutable, "init", null, default(System.Threading.CancellationToken)).GetAwaiter().GetResult();
                 }
 
+                _term.WriteLine(StringUtil.Loc("ServiceInstalled", serviceName));
+
+                //set recovery option to restart on failure.
+                ArrayList failureActions = new ArrayList();
+                //first failure, we will restart the service right away.
+                failureActions.Add(new FailureAction(RecoverAction.Restart, 0));
+                //second failure, we will restart the service after 1 min.
+                failureActions.Add(new FailureAction(RecoverAction.Restart, 60000));
+                //subsequent failures, we will restart the service after 1 min
+                failureActions.Add(new FailureAction(RecoverAction.Restart, 60000));
+
+                // Lock the Service Database
+                svcLock = LockServiceDatabase(scmHndl);
+                if (svcLock.ToInt64() <= 0)
+                {
+                    throw new Exception(StringUtil.Loc("FailedToLockServiceDB"));
+                }
+
+                int[] actions = new int[failureActions.Count * 2];
+                int currInd = 0;
+                foreach (FailureAction fa in failureActions)
+                {
+                    actions[currInd] = (int)fa.Type;
+                    actions[++currInd] = fa.Delay;
+                    currInd++;
+                }
+
+                // Need to pack 8 bytes per struct
+                tmpBuf = Marshal.AllocHGlobal(failureActions.Count * 8);
+                // Move array into marshallable pointer
+                Marshal.Copy(actions, 0, tmpBuf, failureActions.Count * 2);
+
+                // Set the SERVICE_FAILURE_ACTIONS struct
+                SERVICE_FAILURE_ACTIONS sfa = new SERVICE_FAILURE_ACTIONS();
+                sfa.cActions = failureActions.Count;
+                sfa.dwResetPeriod = SERVICE_NO_CHANGE;
+                sfa.lpCommand = String.Empty;
+                sfa.lpRebootMsg = String.Empty;
+                sfa.lpsaActions = tmpBuf.ToInt64();
+
+                // Call the ChangeServiceFailureActions() abstraction of ChangeServiceConfig2()
+                bool result = ChangeServiceFailureActions(svcHndl, SERVICE_CONFIG_FAILURE_ACTIONS, ref sfa);
+                //Check the return
+                if (!result)
+                {
+                    int lastErrorCode = (int)GetLastError();
+                    Exception win32exception = new Win32Exception(lastErrorCode);
+                    if (lastErrorCode == ReturnCode.ERROR_ACCESS_DENIED)
+                    {
+                        throw new SecurityException(StringUtil.Loc("AccessDeniedSettingRecoveryOption"), win32exception);
+                    }
+                    else
+                    {
+                        throw win32exception;
+                    }
+                }
+                else
+                {
+                    _term.WriteLine(StringUtil.Loc("ServiceRecoveryOptionSet", serviceName));
+                }
+
                 _term.WriteLine(StringUtil.Loc("ServiceConfigured", serviceName));
-                CloseServiceHandle(serviceHndl);
             }
             finally
             {
-                CloseServiceHandle(scmHndl);
+                if (scmHndl != IntPtr.Zero)
+                {
+                    // Unlock the service database
+                    if (svcLock != IntPtr.Zero)
+                    {
+                        UnlockServiceDatabase(svcLock);
+                        svcLock = IntPtr.Zero;
+                    }
+
+                    // Close the service control manager handle
+                    CloseServiceHandle(scmHndl);
+                    scmHndl = IntPtr.Zero;
+                }
+
+                // Close the service handle
+                if (svcHndl != IntPtr.Zero)
+                {
+                    CloseServiceHandle(svcHndl);
+                    svcHndl = IntPtr.Zero;
+                }
+
+                // Free the memory
+                if (tmpBuf != IntPtr.Zero)
+                {
+                    Marshal.FreeHGlobal(tmpBuf);
+                    tmpBuf = IntPtr.Zero;
+                }
             }
         }
 
@@ -552,7 +642,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         private const UInt32 LOGON32_PROVIDER_DEFAULT = 0;
 
         private const int SERVICE_WIN32_OWN_PROCESS = 0x00000010;
-        public const int SERVICE_NO_CHANGE = -1;
+        private const int SERVICE_NO_CHANGE = -1;
+        private const int SERVICE_CONFIG_FAILURE_ACTIONS = 0x2;
 
         // TODO Fix this. This is not yet available in coreclr (newer version?)
         private const int UnicodeCharSize = 2;
@@ -627,6 +718,33 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             public IntPtr SecurityQualityOfService;
         }
 
+        [StructLayout(LayoutKind.Sequential)]
+        public struct SERVICE_FAILURE_ACTIONS
+        {
+            public int dwResetPeriod;
+            public string lpRebootMsg;
+            public string lpCommand;
+            public int cActions;
+            public long lpsaActions;
+        }
+
+        // Class to represent a failure action which consists of a recovery
+        // action type and an action delay
+        private class FailureAction
+        {
+            // Property to set recover action type
+            public RecoverAction Type { get; set; }
+            // Property to set recover action delay
+            public int Delay { get; set; }
+
+            // Constructor
+            public FailureAction(RecoverAction actionType, int actionDelay)
+            {
+                Type = actionType;
+                Delay = actionDelay;
+            }
+        }
+
         [Flags]
         public enum ServiceManagerRights
         {
@@ -676,6 +794,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             AutoStart = 0x00000002,
             DemandStart = 0x00000003,
             Disabled = 0x00000004
+        }
+
+        // Enum for recovery actions (correspond to the Win32 equivalents )
+        private enum RecoverAction
+        {
+            None = 0,
+            Restart = 1,
+            Reboot = 2,
+            RunCommand = 3
         }
 
         [DllImport("Netapi32.dll")]
@@ -761,6 +888,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
         [DllImport("advapi32.dll")]
         public static extern int CloseServiceHandle(IntPtr hSCObject);
+
+        [DllImport("advapi32.dll")]
+        public static extern IntPtr LockServiceDatabase(IntPtr hSCManager);
+
+        [DllImport("advapi32.dll")]
+        public static extern bool UnlockServiceDatabase(IntPtr hSCManager);
+
+        [DllImport("advapi32.dll", EntryPoint = "ChangeServiceConfig2")]
+        public static extern bool ChangeServiceFailureActions(IntPtr hService, int dwInfoLevel, ref SERVICE_FAILURE_ACTIONS lpInfo);
 
         [DllImport("kernel32.dll")]
         static extern uint GetLastError();
