@@ -1,5 +1,4 @@
 using System;
-using System.Diagnostics;
 
 namespace Microsoft.VisualStudio.Services.Agent
 {

@@ -68,7 +68,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Capabilities
                 .Any(x => x >= minimum);
             if (!meetsMinimum)
             {
-                throw new Exception(StringUtil.Loc("MinimumNetFramework"));
+                throw new NonRetryableException(StringUtil.Loc("MinimumNetFramework"));
             }
 
             return capabilities;
