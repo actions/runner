@@ -169,6 +169,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                     name: workspaceName,
                     directory: sourcesDirectory);
 
+                // Remove any conflicting workspace from a different computer.
+                // This is primarily a hosted scenario where a registered hosted
+                // agent can land on a different computer each time.
+                tfWorkspaces = await tf.WorkspacesAsync(matchWorkspaceNameOnAnyComputer: true);
+                foreach (ITfsVCWorkspace tfWorkspace in tfWorkspaces ?? new ITfsVCWorkspace[0])
+                {
+                    await tf.WorkspaceDeleteAsync(tfWorkspace);
+                }
+
                 // Recreate the sources directory.
                 executionContext.Debug($"Deleting: '{sourcesDirectory}'.");
                 IOUtil.DeleteDirectory(sourcesDirectory, cancellationToken);
@@ -352,7 +361,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             Trace.Info($"Expected workspace name '{name}', machine name '{machineName}', number of mappings '{definitionMappings?.Length ?? 0}'.");
             foreach (ITfsVCWorkspace tfWorkspace in tfWorkspaces ?? new ITfsVCWorkspace[0])
             {
-                // Compare the works name, machine name, and number of mappings.
+                // Compare the workspace name, machine name, and number of mappings.
                 Trace.Info($"Candidate workspace name '{tfWorkspace.Name}', machine name '{tfWorkspace.Computer}', number of mappings '{tfWorkspace.Mappings?.Length ?? 0}'.");
                 if (!string.Equals(tfWorkspace.Name, name, StringComparison.Ordinal) ||
                     !string.Equals(tfWorkspace.Computer, machineName, StringComparison.Ordinal) ||

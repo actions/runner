@@ -183,14 +183,49 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             throw new NotSupportedException();
         }
 
+        public async Task WorkspaceDeleteAsync(ITfsVCWorkspace workspace)
+        {
+            ArgUtil.NotNull(workspace, nameof(workspace));
+            await RunCommandAsync("workspace", "-delete", $"{workspace.Name};{workspace.Owner}");
+        }
+
         public async Task WorkspaceNewAsync()
         {
             await RunCommandAsync("workspace", "-new", "-location:server", "-permission:Public", WorkspaceName);
         }
 
-        public async Task<ITfsVCWorkspace[]> WorkspacesAsync()
+        public async Task<ITfsVCWorkspace[]> WorkspacesAsync(bool matchWorkspaceNameOnAnyComputer = false)
         {
-            string xml = await RunPorcelainCommandAsync("workspaces", "-format:xml") ?? string.Empty;
+            // Build the args.
+            var args = new List<string>();
+            args.Add("workspaces");
+            if (matchWorkspaceNameOnAnyComputer)
+            {
+                args.Add(WorkspaceName);
+                args.Add($"-computer:*");
+            }
+
+            args.Add("-format:xml");
+
+            // Run the command.
+            TfsVCPorcelainCommandResult result = await TryRunPorcelainCommandAsync(FormatFlags.None, args.ToArray());
+            ArgUtil.NotNull(result, nameof(result));
+            if (result.Exception != null)
+            {
+                // Check if the workspace name was specified and the command returned exit code 1.
+                if (matchWorkspaceNameOnAnyComputer && result.Exception.ExitCode == 1)
+                {
+                    // Ignore the error. This condition can indicate the workspace was not found.
+                    return new ITfsVCWorkspace[0];
+                }
+
+                // Dump the output and throw.
+                result.Output?.ForEach(x => ExecutionContext.Output(x ?? string.Empty));
+                throw result.Exception;
+            }
+
+            // Note, string.join gracefully handles a null element within the IEnumerable<string>.
+            string xml = string.Join(Environment.NewLine, result.Output ?? new List<string>()) ?? string.Empty;
 
             // The command returns a non-XML message preceeding the XML if there are no workspaces.
             if (!xml.StartsWith("<?xml"))
