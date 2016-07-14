@@ -148,19 +148,25 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 SourceEndpoint,
                 SourceProvider);
 
+            // Set the directory variables.
             executionContext.Debug("Set build variables.");
             string _workDirectory = IOUtil.GetWorkPath(HostContext);
             executionContext.Variables.Set(Constants.Variables.Agent.BuildDirectory, Path.Combine(_workDirectory, trackingConfig.BuildDirectory));
             executionContext.Variables.Set(Constants.Variables.System.ArtifactsDirectory, Path.Combine(_workDirectory, trackingConfig.ArtifactsDirectory));
             executionContext.Variables.Set(Constants.Variables.System.DefaultWorkingDirectory, Path.Combine(_workDirectory, trackingConfig.SourcesDirectory));
             executionContext.Variables.Set(Constants.Variables.Common.TestResultsDirectory, Path.Combine(_workDirectory, trackingConfig.TestResultsDirectory));
-
             executionContext.Variables.Set(Constants.Variables.Build.BinariesDirectory, Path.Combine(_workDirectory, trackingConfig.BuildDirectory, Constants.Build.Path.BinariesDirectory));
             executionContext.Variables.Set(Constants.Variables.Build.SourcesDirectory, Path.Combine(_workDirectory, trackingConfig.SourcesDirectory));
             executionContext.Variables.Set(Constants.Variables.Build.StagingDirectory, Path.Combine(_workDirectory, trackingConfig.ArtifactsDirectory));
             executionContext.Variables.Set(Constants.Variables.Build.ArtifactStagingDirectory, Path.Combine(_workDirectory, trackingConfig.ArtifactsDirectory));
 
-            executionContext.Variables.Set(Constants.Variables.Build.RepoId, SourceEndpoint.Id.ToString("D")); // TODO: This is getting set to the empty guid.
+            // Set the repo variables.
+            string repositoryId;
+            if (SourceEndpoint.Data.TryGetValue("repositoryId", out repositoryId)) // TODO: Move to const after source artifacts PR is merged.
+            {
+                executionContext.Variables.Set(Constants.Variables.Build.RepoId, repositoryId);
+            }
+
             executionContext.Variables.Set(Constants.Variables.Build.RepoName, SourceEndpoint.Name);
             executionContext.Variables.Set(Constants.Variables.Build.RepoProvider, SourceEndpoint.Type);
             executionContext.Variables.Set(Constants.Variables.Build.RepoUri, SourceEndpoint.Url?.AbsoluteUri);
