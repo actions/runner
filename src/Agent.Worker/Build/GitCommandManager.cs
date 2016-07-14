@@ -1,7 +1,6 @@
 using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -13,8 +12,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
     [ServiceLocator(Default = typeof(GitCommandManager))]
     public interface IGitCommandManager : IAgentService
     {
+        bool EnsureGitVersion(Version requiredVersion, bool throwOnNotMatch);
+
         // setup git execution info, git location, version, useragent, execpath
-        Task LoadGitExecutionInfo(IExecutionContext context);
+        Task LoadGitExecutionInfo(IExecutionContext context, bool useBuiltInGit);
 
         // git init <LocalDir>
         Task<int> GitInit(IExecutionContext context, string repositoryPath);
@@ -68,43 +69,64 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         private string _gitPath = null;
         private Version _version = null;
 
-        public async Task LoadGitExecutionInfo(IExecutionContext context)
+        public bool EnsureGitVersion(Version requiredVersion, bool throwOnNotMatch)
+        {
+            ArgUtil.NotNull(_gitPath, nameof(_gitPath));
+            ArgUtil.NotNull(_version, nameof(_version));
+
+            if (_version < requiredVersion && throwOnNotMatch)
+            {
+                throw new NotSupportedException(StringUtil.Loc("MinRequiredGitVersion", requiredVersion, _gitPath, _version));
+            }
+
+            return _version >= requiredVersion;
+        }
+
+        public async Task LoadGitExecutionInfo(IExecutionContext context, bool useBuiltInGit)
         {
             // Resolve the location of git.
+            if (useBuiltInGit)
+            {
 #if OS_WINDOWS
-            _gitPath = Path.Combine(IOUtil.GetExternalsPath(), "git", "cmd", $"git{IOUtil.ExeExtension}");
-#else
-            _gitPath = Path.Combine(IOUtil.GetExternalsPath(), "git", "bin", $"git{IOUtil.ExeExtension}");
-#endif
-            ArgUtil.File(_gitPath, nameof(_gitPath));
+                _gitPath = Path.Combine(IOUtil.GetExternalsPath(), "git", "cmd", $"git{IOUtil.ExeExtension}");
 
-            // Prepend the PATH.
-            context.Output(StringUtil.Loc("Prepending0WithDirectoryContaining1", Constants.PathVariable, Path.GetFileName(_gitPath)));
-            var varUtil = HostContext.GetService<IVarUtil>();
-            varUtil.PrependPath(Path.GetDirectoryName(_gitPath));
-            context.Debug($"{Constants.PathVariable}: '{Environment.GetEnvironmentVariable(Constants.PathVariable)}'");
+                // Prepend the PATH.
+                context.Output(StringUtil.Loc("Prepending0WithDirectoryContaining1", Constants.PathVariable, Path.GetFileName(_gitPath)));
+                var varUtil = HostContext.GetService<IVarUtil>();
+                varUtil.PrependPath(Path.GetDirectoryName(_gitPath));
+                context.Debug($"{Constants.PathVariable}: '{Environment.GetEnvironmentVariable(Constants.PathVariable)}'");
+#else
+                // There is no built-in git for OSX/Linux
+                _gitPath = null;
+#endif
+            }
+            else
+            {
+                var whichUtil = HostContext.GetService<IWhichUtil>();
+                _gitPath = whichUtil.Which("git");
+            }
+
+            ArgUtil.File(_gitPath, nameof(_gitPath));
 
             // Get the Git version.
             _version = await GitVersion(context);
+            ArgUtil.NotNull(_version, nameof(_version));
             context.Debug($"Detect git version: {_version.ToString()}.");
+
+            // required 2.0, all git operation commandline args need min git version 2.0
+            Version minRequiredGitVersion = new Version(2, 0);
+            EnsureGitVersion(minRequiredGitVersion, throwOnNotMatch: true);
+
+            // suggest user upgrade to 2.9 for better git experience
+            Version recommendGitVersion = new Version(2, 9);
+            if (!EnsureGitVersion(recommendGitVersion, throwOnNotMatch: false))
+            {
+                context.Warning(StringUtil.Loc("UpgradeToLatestGit", recommendGitVersion, _version));
+            }
 
             // Set the user agent.
             _gitHttpUserAgentEnv = $"git/{_version.ToString()} (vsts-agent-git/{Constants.Agent.Version})";
             context.Debug($"Set git useragent to: {_gitHttpUserAgentEnv}.");
-
-#if !OS_WINDOWS
-            // Set GIT_EXEC_PATH.
-            string _gitExecPathEnv = Path.Combine(IOUtil.GetExternalsPath(), "git", "libexec", "git-core");
-            ArgUtil.Directory(_gitExecPathEnv, nameof(_gitExecPathEnv));
-            context.Debug($"Set git execpath to: {_gitExecPathEnv}");
-            varUtil.SetEnvironmentVariable("GIT_EXEC_PATH", _gitExecPathEnv);
-
-            // Set GIT_TEMPLATE_DIR.
-            string _gitTemplatePathEnv = Path.Combine(IOUtil.GetExternalsPath(), "git", "share", "git-core", "templates");
-            ArgUtil.Directory(_gitTemplatePathEnv, nameof(_gitTemplatePathEnv));
-            context.Debug($"Set git templateDir to: {_gitTemplatePathEnv}");
-            varUtil.SetEnvironmentVariable("GIT_TEMPLATE_DIR", _gitTemplatePathEnv);
-#endif
         }
 
         // git init <LocalDir>
@@ -131,7 +153,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         public async Task<int> GitCheckout(IExecutionContext context, string repositoryPath, string committishOrBranchSpec, CancellationToken cancellationToken)
         {
             context.Debug($"Checkout {committishOrBranchSpec}.");
-            return await ExecuteGitCommandAsync(context, repositoryPath, "checkout", StringUtil.Format("--progress --force {0}", committishOrBranchSpec), cancellationToken);
+
+            // Git 2.7 support report checkout progress to stderr during stdout/err redirect.
+            string options;
+            if (_version >= new Version(2, 7))
+            {
+                options = StringUtil.Format("--progress --force {0}", committishOrBranchSpec);
+            }
+            else
+            {
+                options = StringUtil.Format("--force {0}", committishOrBranchSpec);
+            }
+
+            return await ExecuteGitCommandAsync(context, repositoryPath, "checkout", options, cancellationToken);
         }
 
         // git clean -fdx

@@ -127,26 +127,22 @@ function acquireExternalTool() {
     fi
 }
 
-# Download the external tools specific to each platform.
+# Download the external tools only for Windows.
 if [[ "$PLATFORM" == "windows" ]]; then
     acquireExternalTool "$CONTAINER_URL/azcopy/1/azcopy.zip" azcopy
     acquireExternalTool "$CONTAINER_URL/pdbstr/1/pdbstr.zip" pdbstr
-    acquireExternalTool "$CONTAINER_URL/portablewingit/1/portablewingit.zip" git
+    acquireExternalTool "$CONTAINER_URL/portablewingit/2/portablewingit.zip" git
     acquireExternalTool "$CONTAINER_URL/symstore/1/symstore.zip" symstore
     acquireExternalTool "$CONTAINER_URL/vstshost/m102_private_e90d775b/vstshost.zip" vstshost
     acquireExternalTool "$CONTAINER_URL/vstsom/m102_private_e90d775b/vstsom.zip" vstsom
     acquireExternalTool "$NODE_URL/v${NODE_VERSION}/win-x64/node.exe" node/bin
     acquireExternalTool "$NODE_URL/v${NODE_VERSION}/win-x64/node.lib" node/bin
     acquireExternalTool "https://dist.nuget.org/win-x86-commandline/v3.4.3/nuget.exe" nuget
-elif [[ "$PLATFORM" == "ubuntu" || "$PLATFORM" == "debian" ]]; then
-    acquireExternalTool "$CONTAINER_URL/portableubuntugit/1/portableubuntugit.tar.gz" git
-elif [[ "$PLATFORM" == "rhel" || "$PLATFORM" == "centos" ]]; then
-    acquireExternalTool "$CONTAINER_URL/portableredhatgit/1/portableredhatgit.tar.gz" git
-elif [[ "$PLATFORM" == "darwin" ]]; then
-    acquireExternalTool "$CONTAINER_URL/portableosxgit/1/portableosxgit.tar.gz" git
+fi
+
+# Download the external tools only for OSX.
+if [[ "$PLATFORM" == "darwin" ]]; then
     acquireExternalTool "$NODE_URL/v${NODE_VERSION}/node-v${NODE_VERSION}-darwin-x64.tar.gz" node fix_nested_dir
-else
-    echo "Unknown platform $PLATFORM"
 fi
 
 # Download the external tools common across OSX and Linux platforms.
