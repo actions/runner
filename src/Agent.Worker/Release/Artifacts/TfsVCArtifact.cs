@@ -32,12 +32,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
             var tfsVcArtifactDetails = artifactDefinition.Details as TfsVCArtifactDetails;
             ArgUtil.NotNull(tfsVcArtifactDetails, nameof(tfsVcArtifactDetails));
 
-            ServiceEndpoint tfsVCEndpoint = executionContext.Endpoints.FirstOrDefault((e => string.Equals(e.Name, tfsVcArtifactDetails.RepositoryId, StringComparison.OrdinalIgnoreCase)));
-            if (tfsVCEndpoint == null)
+            ServiceEndpoint endpoint = executionContext.Endpoints.FirstOrDefault((e => string.Equals(e.Name, tfsVcArtifactDetails.RepositoryId, StringComparison.OrdinalIgnoreCase)));
+            if (endpoint == null)
             {
                 throw new InvalidOperationException(StringUtil.Loc("RMTfsVCEndpointNotFound"));
             }
 
+            var tfsVCEndpoint = endpoint.Clone();
             PrepareTfsVCEndpoint(tfsVCEndpoint, tfsVcArtifactDetails);
             var extensionManager = HostContext.GetService<IExtensionManager>();
             ISourceProvider sourceProvider = (extensionManager.GetExtensions<ISourceProvider>()).FirstOrDefault(x => x.RepositoryType == WellKnownRepositoryTypes.TfsVersionControl);
@@ -48,9 +49,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
             }
 
             var rootDirectory = Directory.GetParent(downloadFolderPath).Name;
-            tfsVCEndpoint.Data.Add(Constants.Variables.Agent.BuildDirectory, rootDirectory);
-            tfsVCEndpoint.Data.Add(Constants.Variables.Build.SourcesDirectory, downloadFolderPath);
-            tfsVCEndpoint.Data.Add(Constants.Variables.Build.SourceVersion, artifactDefinition.Version);
+            executionContext.Variables.Set(Constants.Variables.Agent.BuildDirectory, rootDirectory);
+            tfsVCEndpoint.Data.Add(Constants.EndpointData.SourcesDirectory, downloadFolderPath);
+            tfsVCEndpoint.Data.Add(Constants.EndpointData.SourceVersion, artifactDefinition.Version);
 
             await sourceProvider.GetSourceAsync(executionContext, tfsVCEndpoint, executionContext.CancellationToken);
         }

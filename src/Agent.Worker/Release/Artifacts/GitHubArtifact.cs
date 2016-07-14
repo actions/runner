@@ -49,9 +49,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
                 throw new InvalidOperationException(StringUtil.Loc("SourceArtifactProviderNotFound", WellKnownRepositoryTypes.GitHub));
             }
 
-            gitHubEndpoint.Data.Add(Constants.Variables.Build.SourcesDirectory, localFolderPath);
-            gitHubEndpoint.Data.Add(Constants.Variables.Build.SourceBranch, gitHubDetails.Branch);
-            gitHubEndpoint.Data.Add(Constants.Variables.Build.SourceVersion, artifactDefinition.Version);
+            gitHubEndpoint.Data.Add(Constants.EndpointData.SourcesDirectory, localFolderPath);
+            gitHubEndpoint.Data.Add(Constants.EndpointData.SourceBranch, gitHubDetails.Branch);
+            gitHubEndpoint.Data.Add(Constants.EndpointData.SourceVersion, artifactDefinition.Version);
 
             await sourceProvider.GetSourceAsync(executionContext, gitHubEndpoint, executionContext.CancellationToken);
         }

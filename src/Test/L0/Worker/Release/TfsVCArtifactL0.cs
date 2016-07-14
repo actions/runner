@@ -96,8 +96,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Release
                     x => x.GetSourceAsync(
                         It.IsAny<IExecutionContext>(),
                         It.Is<ServiceEndpoint>(y => y.Data.ContainsKey(WellKnownEndpointData.TfvcWorkspaceMapping) && y.Data.ContainsKey(WellKnownEndpointData.Clean)
-                        && y.Data.ContainsKey(Constants.Variables.Build.SourcesDirectory) && y.Data.ContainsKey(Constants.Variables.Agent.BuildDirectory)
-                        && y.Data.ContainsKey(Constants.Variables.Build.SourceVersion)),
+                        && y.Data.ContainsKey(Constants.EndpointData.SourcesDirectory) && y.Data.ContainsKey(Constants.EndpointData.SourceVersion)),
                         It.IsAny<CancellationToken>()));
             }
         }

@@ -39,12 +39,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             _gitCommandManager = HostContext.GetService<IGitCommandManager>();
             await _gitCommandManager.LoadGitExecutionInfo(executionContext);
 
-            string targetPath;
-            string sourceBranch;
-            string sourceVersion;
-            endpoint.Data.TryGetValue(Constants.Variables.Build.SourcesDirectory, out targetPath);
-            endpoint.Data.TryGetValue(Constants.Variables.Build.SourceBranch, out sourceBranch);
-            endpoint.Data.TryGetValue(Constants.Variables.Build.SourceVersion, out sourceVersion);
+            string targetPath = GetEndpointData(endpoint, Constants.EndpointData.SourcesDirectory);
+            string sourceBranch = GetEndpointData(endpoint, Constants.EndpointData.SourceBranch);
+            string sourceVersion = GetEndpointData(endpoint, Constants.EndpointData.SourceVersion);
 
             bool clean = false;
             if (endpoint.Data.ContainsKey(WellKnownEndpointData.Clean))
@@ -288,8 +285,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             executionContext.Output($"Cleaning embeded credential from repository: {endpoint.Name} (Git)");
 
             Uri repositoryUrl = endpoint.Url;
-            string targetPath;
-            endpoint.Data.TryGetValue(Constants.Variables.Build.SourcesDirectory, out targetPath);
+            string targetPath = GetEndpointData(endpoint, Constants.EndpointData.SourcesDirectory);
 
             executionContext.Debug($"Repository url={repositoryUrl}");
             executionContext.Debug($"targetPath={targetPath}");
@@ -300,7 +296,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         public override void SetVariablesInEndpoint(IExecutionContext executionContext, ServiceEndpoint endpoint)
         {
             base.SetVariablesInEndpoint(executionContext, endpoint);
-            endpoint.Data.Add(Constants.Variables.Build.SourceBranch, executionContext.Variables.Get(Constants.Variables.Build.SourceBranch));
+            endpoint.Data.Add(Constants.EndpointData.SourceBranch, executionContext.Variables.Get(Constants.Variables.Build.SourceBranch));
         }
 
         protected async Task<bool> IsRepositoryOriginUrlMatch(IExecutionContext context, string repositoryPath, Uri expectedRepositoryOriginUrl)

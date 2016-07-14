@@ -110,6 +110,16 @@ namespace Microsoft.VisualStudio.Services.Agent
             public static readonly string ServiceIdentity = "ServiceIdentity";
         }
 
+        public static class EndpointData
+        {
+            public static readonly string SourcesDirectory = "SourcesDirectory";
+            public static readonly string SourceVersion = "SourceVersion";
+            public static readonly string SourceBranch = "SourceBranch";
+            public static readonly string SourceTfvcShelveset = "SourceTfvcShelveset";
+            public static readonly string GatedShelvesetName = "GatedShelvesetName";
+            public static readonly string GatedRunCI = "GatedRunCI";
+        }
+
         public static class Path
         {
             public static readonly string BinDirectory = "bin";

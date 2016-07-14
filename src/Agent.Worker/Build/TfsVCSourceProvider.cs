@@ -1,6 +1,5 @@
 using Microsoft.TeamFoundation.Build.WebApi;
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
-using Microsoft.VisualStudio.Services.Agent;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using Newtonsoft.Json;
 using System;
@@ -78,8 +77,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 JsonConvert.DeserializeObject<DefinitionWorkspaceMappings>(endpoint.Data[WellKnownEndpointData.TfvcWorkspaceMapping])?.Mappings;
 
             // Determine the sources directory.
-            string sourcesDirectory;
-            endpoint.Data.TryGetValue(Constants.Variables.Build.SourcesDirectory, out sourcesDirectory);
+            string sourcesDirectory = GetEndpointData(endpoint, Constants.EndpointData.SourcesDirectory);
             ArgUtil.NotNullOrEmpty(sourcesDirectory, nameof(sourcesDirectory));
 
             // Attempt to re-use an existing workspace if the command manager supports scorch
@@ -220,14 +218,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 }
             }
 
-            string shelvesetName;
-            endpoint.Data.TryGetValue(Constants.Variables.Build.SourceTfvcShelveset, out shelvesetName);
+            string shelvesetName = GetEndpointData(endpoint, Constants.EndpointData.SourceTfvcShelveset);
             if (!string.IsNullOrEmpty(shelvesetName))
             {
                 // Get the shelveset details.
                 ITfsVCShelveset tfShelveset = null;
-                string gatedShelvesetName;
-                endpoint.Data.TryGetValue(Constants.Variables.Build.GatedShelvesetName, out gatedShelvesetName);
+                string gatedShelvesetName = GetEndpointData(endpoint, Constants.EndpointData.GatedShelvesetName);
                 if (!string.IsNullOrEmpty(gatedShelvesetName))
                 {
                     tfShelveset = await tf.ShelvesetsAsync(shelveset: shelvesetName);
@@ -243,10 +239,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 {
                     // Create the comment file for reshelve.
                     StringBuilder comment = new StringBuilder(tfShelveset.Comment ?? string.Empty);
-                    string runCi;
-                    endpoint.Data.TryGetValue(Constants.Variables.Build.GatedRunCI, out runCi);
-                    bool? gatedRunCi = executionContext.Variables.GetBoolean(runCi);
-                    if (!(gatedRunCi ?? true))
+                    string runCi = GetEndpointData(endpoint, Constants.EndpointData.GatedRunCI);
+                    bool gatedRunCi = StringUtil.ConvertToBoolean(runCi, true);
+                    if (!gatedRunCi)
                     {
                         if (comment.Length > 0)
                         {
@@ -312,9 +307,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         public override void SetVariablesInEndpoint(IExecutionContext executionContext, ServiceEndpoint endpoint)
         {
             base.SetVariablesInEndpoint(executionContext, endpoint);
-            endpoint.Data.Add(Constants.Variables.Build.SourceTfvcShelveset, executionContext.Variables.Get(Constants.Variables.Build.SourceTfvcShelveset));
-            endpoint.Data.Add(Constants.Variables.Build.GatedShelvesetName, executionContext.Variables.Get(Constants.Variables.Build.GatedShelvesetName));
-            endpoint.Data.Add(Constants.Variables.Build.GatedRunCI, executionContext.Variables.Get(Constants.Variables.Build.GatedRunCI));
+            endpoint.Data.Add(Constants.EndpointData.SourceTfvcShelveset, executionContext.Variables.Get(Constants.Variables.Build.SourceTfvcShelveset));
+            endpoint.Data.Add(Constants.EndpointData.GatedShelvesetName, executionContext.Variables.Get(Constants.Variables.Build.GatedShelvesetName));
+            endpoint.Data.Add(Constants.EndpointData.GatedRunCI, executionContext.Variables.Get(Constants.Variables.Build.GatedRunCI));
         }
 
         private static string ResolveMappingLocalPath(DefinitionWorkspaceMapping definitionMapping, string sourcesDirectory)

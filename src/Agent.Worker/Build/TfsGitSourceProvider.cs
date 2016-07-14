@@ -30,12 +30,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             _gitCommandManager = HostContext.GetService<IGitCommandManager>();
             await _gitCommandManager.LoadGitExecutionInfo(executionContext);
 
-            string targetPath;
-            string sourceBranch;
-            string sourceVersion;
-            endpoint.Data.TryGetValue(Constants.Variables.Build.SourcesDirectory, out targetPath);
-            endpoint.Data.TryGetValue(Constants.Variables.Build.SourceBranch, out sourceBranch);
-            endpoint.Data.TryGetValue(Constants.Variables.Build.SourceVersion, out sourceVersion);
+            string targetPath = GetEndpointData(endpoint, Constants.EndpointData.SourcesDirectory);
+            string sourceBranch = GetEndpointData(endpoint, Constants.EndpointData.SourceBranch);
+            string sourceVersion = GetEndpointData(endpoint, Constants.EndpointData.SourceVersion);
 
             bool clean = false;
             if (endpoint.Data.ContainsKey(WellKnownEndpointData.Clean))
@@ -253,8 +250,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             ArgUtil.NotNull(endpoint, nameof(endpoint));
             executionContext.Output($"Cleaning extra http auth header from repository: {endpoint.Name} (TfsGit)");
 
-            string targetPath;
-            endpoint.Data.TryGetValue(Constants.Variables.Build.SourcesDirectory, out targetPath);
+            string targetPath = GetEndpointData(endpoint, Constants.EndpointData.SourcesDirectory);
 
             executionContext.Debug($"Repository url={endpoint.Url}");
             executionContext.Debug($"targetPath={targetPath}");

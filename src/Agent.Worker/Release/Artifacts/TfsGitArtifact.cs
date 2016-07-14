@@ -39,11 +39,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
                 throw new InvalidOperationException(StringUtil.Loc("SourceArtifactProviderNotFound", WellKnownRepositoryTypes.TfsGit));
             }
 
-            endpoint.Data.Add(Constants.Variables.Build.SourcesDirectory, downloadFolderPath);
-            endpoint.Data.Add(Constants.Variables.Build.SourceBranch, gitArtifactDetails.Branch);
-            endpoint.Data.Add(Constants.Variables.Build.SourceVersion, artifactDefinition.Version);
+            var tfsGitEndpoint = endpoint.Clone();
+            tfsGitEndpoint.Data.Add(Constants.EndpointData.SourcesDirectory, downloadFolderPath);
+            tfsGitEndpoint.Data.Add(Constants.EndpointData.SourceBranch, gitArtifactDetails.Branch);
+            tfsGitEndpoint.Data.Add(Constants.EndpointData.SourceVersion, artifactDefinition.Version);
 
-            await sourceProvider.GetSourceAsync(executionContext, endpoint, executionContext.CancellationToken);
+            await sourceProvider.GetSourceAsync(executionContext, tfsGitEndpoint, executionContext.CancellationToken);
         }
 
         public IArtifactDetails GetArtifactDetails(IExecutionContext context, AgentArtifactDefinition agentArtifactDefinition)

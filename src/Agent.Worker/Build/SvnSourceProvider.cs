@@ -1,14 +1,12 @@
-using Microsoft.TeamFoundation.Build.WebApi;
-using Microsoft.VisualStudio.Services.Agent;
-using System;
-using Microsoft.TeamFoundation.DistributedTask.WebApi;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.VisualStudio.Services.Agent.Util;
-using Newtonsoft.Json;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.TeamFoundation.Build.WebApi;
+using Microsoft.TeamFoundation.DistributedTask.WebApi;
+using Microsoft.VisualStudio.Services.Agent.Util;
+using Newtonsoft.Json;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 {
@@ -17,12 +15,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         public override string RepositoryType => WellKnownRepositoryTypes.Svn;
 
         public async Task GetSourceAsync(
-            IExecutionContext executionContext,
-            ServiceEndpoint endpoint,
+            IExecutionContext executionContext, 
+            ServiceEndpoint endpoint, 
             CancellationToken cancellationToken)
         {
             Trace.Entering();
-            // Validate args.
+
+// Validate args.
             ArgUtil.NotNull(executionContext, nameof(executionContext));
             ArgUtil.NotNull(endpoint, nameof(endpoint));
 
@@ -30,21 +29,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             svn.Init(executionContext, endpoint, cancellationToken);
 
             // Determine the sources directory.
-            string sourcesDirectory;
-            endpoint.Data.TryGetValue(Constants.Variables.Build.SourcesDirectory, out sourcesDirectory);
+            string sourcesDirectory = GetEndpointData(endpoint, Constants.EndpointData.SourcesDirectory);
             executionContext.Debug($"sourcesDirectory={sourcesDirectory}");
             ArgUtil.NotNullOrEmpty(sourcesDirectory, nameof(sourcesDirectory));
 
-            string sourceBranch;
-            endpoint.Data.TryGetValue(Constants.Variables.Build.SourceBranch, out sourceBranch);
+            string sourceBranch = GetEndpointData(endpoint, Constants.EndpointData.SourceBranch);
             executionContext.Debug($"sourceBranch={sourceBranch}");
 
-            string revision;
-            endpoint.Data.TryGetValue(Constants.Variables.Build.SourceVersion, out revision);
+            string revision = GetEndpointData(endpoint, Constants.EndpointData.SourceVersion);
             if (string.IsNullOrWhiteSpace(revision))
             {
                 revision = "HEAD";
             }
+
             executionContext.Debug($"revision={revision}");
 
             bool clean = endpoint.Data.ContainsKey(WellKnownEndpointData.Clean) &&
@@ -52,7 +49,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             executionContext.Debug($"clean={clean}");
 
             // Get the definition mappings.
-            List<SvnMappingDetails> allMappings = JsonConvert.DeserializeObject<SvnWorkspace>(endpoint.Data[WellKnownEndpointData.SvnWorkspaceMapping]).Mappings;
+            List<SvnMappingDetails> allMappings = JsonConvert.DeserializeObject<SvnWorkspace>
+                (endpoint.Data[WellKnownEndpointData.SvnWorkspaceMapping]).Mappings;
 
             if (executionContext.Variables.System_Debug.HasValue && executionContext.Variables.System_Debug.Value)
             {
@@ -94,9 +92,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
             if (serverPath.StartsWith("^/"))
             {
-                //Convert the server path to the relative one using SVN work copy mappings
-                string sourcesDirectory;
-                endpoint.Data.TryGetValue(Constants.Variables.Build.SourcesDirectory, out sourcesDirectory);
+                // Convert the server path to the relative one using SVN work copy mappings
+                string sourcesDirectory = GetEndpointData(endpoint, Constants.EndpointData.SourcesDirectory);
                 localPath = svn.ResolveServerPath(serverPath, sourcesDirectory);
             }
             else
@@ -112,7 +109,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         public override void SetVariablesInEndpoint(IExecutionContext executionContext, ServiceEndpoint endpoint)
         {
             base.SetVariablesInEndpoint(executionContext, endpoint);
-            endpoint.Data.Add(Constants.Variables.Build.SourceBranch, executionContext.Variables.Get(Constants.Variables.Build.SourceBranch));
+            endpoint.Data.Add(Constants.EndpointData.SourceBranch, executionContext.Variables.Get(Constants.Variables.Build.SourceBranch));
         }
 
         public Task PostJobCleanupAsync(IExecutionContext executionContext, ServiceEndpoint endpoint)
