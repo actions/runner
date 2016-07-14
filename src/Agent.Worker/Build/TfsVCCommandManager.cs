@@ -40,8 +40,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         Task WorkfoldCloakAsync(string serverPath);
         Task WorkfoldMapAsync(string serverPath, string localPath);
         Task WorkfoldUnmapAsync(string serverPath);
+        Task WorkspaceDeleteAsync(ITfsVCWorkspace workspace);
         Task WorkspaceNewAsync();
-        Task<ITfsVCWorkspace[]> WorkspacesAsync();
+        Task<ITfsVCWorkspace[]> WorkspacesAsync(bool matchWorkspaceNameOnAnyComputer = false);
         Task WorkspacesRemoveAsync(ITfsVCWorkspace workspace);
     }
 
@@ -132,6 +133,23 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
         protected async Task<string> RunPorcelainCommandAsync(FormatFlags formatFlags, params string[] args)
         {
+            // Run the command.
+            TfsVCPorcelainCommandResult result = await TryRunPorcelainCommandAsync(formatFlags, args);
+            ArgUtil.NotNull(result, nameof(result));
+            if (result.Exception != null)
+            {
+                // The command failed. Dump the output and throw.
+                result.Output?.ForEach(x => ExecutionContext.Output(x ?? string.Empty));
+                throw result.Exception;
+            }
+
+            // Return the output.
+            // Note, string.join gracefully handles a null element within the IEnumerable<string>.
+            return string.Join(Environment.NewLine, result.Output ?? new List<string>());
+        }
+
+        protected async Task<TfsVCPorcelainCommandResult> TryRunPorcelainCommandAsync(FormatFlags formatFlags, params string[] args)
+        {
             // Validation.
             ArgUtil.NotNull(args, nameof(args));
             ArgUtil.NotNull(ExecutionContext, nameof(ExecutionContext));
@@ -139,14 +157,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             // Invoke tf.
             using(var processInvoker = HostContext.CreateService<IProcessInvoker>())
             {
-                var output = new List<string>();
+                var result = new TfsVCPorcelainCommandResult();
                 var outputLock = new object();
                 processInvoker.OutputDataReceived += (object sender, ProcessDataReceivedEventArgs e) =>
                 {
                     lock (outputLock)
                     {
                         ExecutionContext.Debug(e.Data);
-                        output.Add(e.Data);
+                        result.Output.Add(e.Data);
                     }
                 };
                 processInvoker.ErrorDataReceived += (object sender, ProcessDataReceivedEventArgs e) =>
@@ -154,7 +172,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                     lock (outputLock)
                     {
                         ExecutionContext.Debug(e.Data);
-                        output.Add(e.Data);
+                        result.Output.Add(e.Data);
                     }
                 };
                 string arguments = FormatArguments(formatFlags, args);
@@ -170,15 +188,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                         requireExitCodeZero: true,
                         cancellationToken: CancellationToken);
                 }
-                catch (ProcessExitCodeException)
+                catch (ProcessExitCodeException ex)
                 {
-                    // The command failed. Dump the output and throw.
-                    output.ForEach(x => ExecutionContext.Output(x ?? string.Empty));
-                    throw;
+                    result.Exception = ex;
                 }
 
-                // Note, string.join gracefully handles a null element within the IEnumerable<string>.
-                return string.Join(Environment.NewLine, output);
+                return result;
             }
         }
 
@@ -269,6 +284,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
         // Indicates whether the "scorch" subcommand is supported.
         Scorch = 16,
+    }
+
+    public sealed class TfsVCPorcelainCommandResult
+    {
+        public TfsVCPorcelainCommandResult()
+        {
+            Output = new List<string>();
+        }
+
+        public ProcessExitCodeException Exception { get; set; }
+
+        public List<string> Output { get; }
     }
 
     ////////////////////////////////////////////////////////////////////////////////

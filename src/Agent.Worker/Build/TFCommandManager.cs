@@ -147,14 +147,33 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             await RunCommandAsync("vc", "workfold", "/unmap", $"/workspace:{WorkspaceName}", serverPath);
         }
 
+        public async Task WorkspaceDeleteAsync(ITfsVCWorkspace workspace)
+        {
+            ArgUtil.NotNull(workspace, nameof(workspace));
+            await RunCommandAsync("vc", "workspace", "/delete", $"{workspace.Name};{workspace.Owner}");
+        }
+
         public async Task WorkspaceNewAsync()
         {
             await RunCommandAsync("vc", "workspace", "/new", "/location:server", "/permission:Public", WorkspaceName);
         }
 
-        public async Task<ITfsVCWorkspace[]> WorkspacesAsync()
+        public async Task<ITfsVCWorkspace[]> WorkspacesAsync(bool matchWorkspaceNameOnAnyComputer = false)
         {
-            string xml = await RunPorcelainCommandAsync("vc", "workspaces", "/format:xml") ?? string.Empty;
+            // Build the args.
+            var args = new List<string>();
+            args.Add("vc");
+            args.Add("workspaces");
+            if (matchWorkspaceNameOnAnyComputer)
+            {
+                args.Add(WorkspaceName);
+                args.Add($"/computer:*");
+            }
+
+            args.Add("/format:xml");
+
+            // Run the command.
+            string xml = await RunPorcelainCommandAsync(args.ToArray()) ?? string.Empty;
 
             // Deserialize the XML.
             var serializer = new XmlSerializer(typeof(TFWorkspaces));
