@@ -246,7 +246,7 @@
   "QueueConnected": "{0:u}: Agent reconnected.",
   "ReadingCodeCoverageSummary": "Reading code coverage summary from '{0}'",
   "RegisterAgentSectionHeader": "Register Agent",
-  "RenameIndexFileCoberturaFailed": "Renaming {0} to {1} failed while publishing code coverage files for Coberura. Inner Exception: {2}",
+  "RenameIndexFileCoberturaFailed": "Renaming '{0}' to '{1}' failed while publishing code coverage files for '{2}'. Inner Exception: '{3}'",
   "Replace": "replace? (Y/N)",
   "ResultsCommandNotFound": "##vso[results.{0}] is not a recognized command for Task command extension. TODO: DOC aka link",
   "RMAgentVariableInfo": "ReleaseId={0}, TeamProjectId={1}, ReleaseDefinitionName={2}",

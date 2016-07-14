@@ -124,6 +124,73 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
 
         [Fact]
         [Trait("Level", "L0")]
+        public void Publish_WithIndexHtmFileinReportDirectory()
+        {
+            SetupMocks();
+            var reportDirectory = Path.Combine(Path.GetTempPath(), "reportDirectory");
+            var summaryFile = Path.Combine(reportDirectory, "summary.xml");
+            try
+            {
+                Directory.CreateDirectory(reportDirectory);
+                File.WriteAllText(summaryFile, "test");
+                File.WriteAllText((Path.Combine(reportDirectory, "index.htm")), string.Empty);
+
+                var publishCCCommand = new CodeCoverageCommandExtension();
+                publishCCCommand.Initialize(_hc);
+                var command = new Command("codecoverage", "publish");
+                command.Properties.Add("codecoveragetool", "mockCCTool");
+                command.Properties.Add("summaryfile", summaryFile);
+                command.Properties.Add("reportdirectory", reportDirectory);
+                publishCCCommand.ProcessCommand(_ec.Object, command);
+                Assert.Equal(0, _warnings.Count);
+                Assert.Equal(0, _errors.Count);
+                _mockCodeCoveragePublisher.Verify(x => x.PublishCodeCoverageSummaryAsync(It.IsAny<IEnumerable<CodeCoverageStatistics>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()));
+                _mockCodeCoveragePublisher.Verify(x => x.PublishCodeCoverageFilesAsync(It.IsAny<IAsyncCommandContext>(), It.IsAny<Guid>(), It.IsAny<long>(), It.IsAny<List<Tuple<string, string>>>(), It.Is<bool>(browsable => browsable == true), It.IsAny<CancellationToken>()));
+                Assert.True(File.Exists(Path.Combine(reportDirectory, "index.html")));
+                Assert.True(File.Exists(Path.Combine(reportDirectory, "index.htm")));
+            }
+            finally
+            {
+                Directory.Delete(reportDirectory, true);
+            }
+        }
+
+         [Fact]
+        [Trait("Level", "L0")]
+        public void Publish_WithIndexHtmAndHtmlFileInReportDirectory()
+        {
+            SetupMocks();
+            var reportDirectory = Path.Combine(Path.GetTempPath(), "reportDirectory");
+            var summaryFile = Path.Combine(reportDirectory, "summary.xml");
+            try
+            {
+                Directory.CreateDirectory(reportDirectory);
+                File.WriteAllText(summaryFile, "test");
+                File.WriteAllText((Path.Combine(reportDirectory, "index.htm")), string.Empty);
+                File.WriteAllText((Path.Combine(reportDirectory, "index.html")), string.Empty);
+
+                var publishCCCommand = new CodeCoverageCommandExtension();
+                publishCCCommand.Initialize(_hc);
+                var command = new Command("codecoverage", "publish");
+                command.Properties.Add("codecoveragetool", "mockCCTool");
+                command.Properties.Add("summaryfile", summaryFile);
+                command.Properties.Add("reportdirectory", reportDirectory);
+                publishCCCommand.ProcessCommand(_ec.Object, command);
+                Assert.Equal(0, _warnings.Count);
+                Assert.Equal(0, _errors.Count);
+                _mockCodeCoveragePublisher.Verify(x => x.PublishCodeCoverageSummaryAsync(It.IsAny<IEnumerable<CodeCoverageStatistics>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()));
+                _mockCodeCoveragePublisher.Verify(x => x.PublishCodeCoverageFilesAsync(It.IsAny<IAsyncCommandContext>(), It.IsAny<Guid>(), It.IsAny<long>(), It.IsAny<List<Tuple<string, string>>>(), It.Is<bool>(browsable => browsable == true), It.IsAny<CancellationToken>()));
+                Assert.True(File.Exists(Path.Combine(reportDirectory, "index.html")));
+                Assert.True(File.Exists(Path.Combine(reportDirectory, "index.htm")));
+            }
+            finally
+            {
+                Directory.Delete(reportDirectory, true);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
         [Trait("Category", "PublishCodeCoverage")]
         public void PublishesCCFilesWhenCodeCoverageDataIsNull()
         {
