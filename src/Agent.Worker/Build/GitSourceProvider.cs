@@ -25,18 +25,23 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
         public override string RepositoryType => WellKnownRepositoryTypes.Git;
 
-        public virtual async Task GetSourceAsync(IExecutionContext executionContext, ServiceEndpoint endpoint, CancellationToken cancellationToken)
+        public virtual async Task GetSourceAsync(
+            IExecutionContext executionContext,
+            ServiceEndpoint endpoint,
+            CancellationToken cancellationToken)
         {
             Trace.Entering();
+            // Validate args.
+            ArgUtil.NotNull(executionContext, nameof(executionContext));
             ArgUtil.NotNull(endpoint, nameof(endpoint));
 
             executionContext.Output($"Syncing repository: {endpoint.Name} (Git)");
             _gitCommandManager = HostContext.GetService<IGitCommandManager>();
             await _gitCommandManager.LoadGitExecutionInfo(executionContext);
 
-            string targetPath = executionContext.Variables.Get(Constants.Variables.Build.SourcesDirectory);
-            string sourceBranch = executionContext.Variables.Get(Constants.Variables.Build.SourceBranch);
-            string sourceVersion = executionContext.Variables.Get(Constants.Variables.Build.SourceVersion);
+            string targetPath = GetEndpointData(endpoint, Constants.EndpointData.SourcesDirectory);
+            string sourceBranch = GetEndpointData(endpoint, Constants.EndpointData.SourceBranch);
+            string sourceVersion = GetEndpointData(endpoint, Constants.EndpointData.SourceVersion);
 
             bool clean = false;
             if (endpoint.Data.ContainsKey(WellKnownEndpointData.Clean))
@@ -280,12 +285,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             executionContext.Output($"Cleaning embeded credential from repository: {endpoint.Name} (Git)");
 
             Uri repositoryUrl = endpoint.Url;
-            string targetPath = executionContext.Variables.Get(Constants.Variables.Build.SourcesDirectory);
+            string targetPath = GetEndpointData(endpoint, Constants.EndpointData.SourcesDirectory);
 
-            executionContext.Debug($"Repository url={endpoint.Url}");
+            executionContext.Debug($"Repository url={repositoryUrl}");
             executionContext.Debug($"targetPath={targetPath}");
 
             await RemoveCachedCredential(executionContext, targetPath, repositoryUrl, "origin");
+        }
+
+        public override void SetVariablesInEndpoint(IExecutionContext executionContext, ServiceEndpoint endpoint)
+        {
+            base.SetVariablesInEndpoint(executionContext, endpoint);
+            endpoint.Data.Add(Constants.EndpointData.SourceBranch, executionContext.Variables.Get(Constants.Variables.Build.SourceBranch));
         }
 
         protected async Task<bool> IsRepositoryOriginUrlMatch(IExecutionContext context, string repositoryPath, Uri expectedRepositoryOriginUrl)

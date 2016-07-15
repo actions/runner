@@ -1,13 +1,11 @@
-using Microsoft.TeamFoundation.DistributedTask.WebApi;
-using Microsoft.VisualStudio.Services.Agent;
-using Microsoft.VisualStudio.Services.Agent.Util;
-using Microsoft.VisualStudio.Services.Agent.Worker;
 using System;
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.TeamFoundation.DistributedTask.WebApi;
+using Microsoft.VisualStudio.Services.Agent.Util;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 {
@@ -22,11 +20,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         Task PostJobCleanupAsync(IExecutionContext executionContext, ServiceEndpoint endpoint);
 
         string GetLocalPath(IExecutionContext executionContext, ServiceEndpoint endpoint, string path);
+
+        void SetVariablesInEndpoint(IExecutionContext executionContext, ServiceEndpoint endpoint);
     }
 
     public abstract class SourceProvider : AgentService
     {
         public Type ExtensionType => typeof(ISourceProvider);
+
         public abstract string RepositoryType { get; }
 
         public string GetBuildDirectoryHashKey(IExecutionContext executionContext, ServiceEndpoint endpoint)
@@ -62,6 +63,26 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         public virtual string GetLocalPath(IExecutionContext executionContext, ServiceEndpoint endpoint, string path)
         {
             return path;
+        }
+
+        public virtual void SetVariablesInEndpoint(IExecutionContext executionContext, ServiceEndpoint endpoint)
+        {
+            endpoint.Data.Add(Constants.EndpointData.SourcesDirectory, executionContext.Variables.Get(Constants.Variables.Build.SourcesDirectory));
+            endpoint.Data.Add(Constants.EndpointData.SourceVersion, executionContext.Variables.Get(Constants.Variables.Build.SourceVersion));
+        }
+
+        public string GetEndpointData(ServiceEndpoint endpoint, string name)
+        {
+            var trace = HostContext.GetTrace(nameof(SourceProvider));
+            string value;
+            if (endpoint.Data.TryGetValue(name, out value))
+            {
+                trace.Info($"Get '{name}': '{value}'");
+                return value;
+            }
+
+            trace.Info($"Get '{name}' (not found)");
+            return null;
         }
     }
 }

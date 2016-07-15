@@ -1,6 +1,5 @@
 using Microsoft.TeamFoundation.Build.WebApi;
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
-using Microsoft.VisualStudio.Services.Agent;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using Microsoft.VisualStudio.Services.Agent.Worker;
 using Newtonsoft.Json;
@@ -23,6 +22,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             ServiceEndpoint endpoint,
             CancellationToken cancellationToken)
         {
+            Trace.Entering();
             // Validate args.
             ArgUtil.NotNull(executionContext, nameof(executionContext));
             ArgUtil.NotNull(endpoint, nameof(endpoint));
@@ -86,7 +86,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 JsonConvert.DeserializeObject<DefinitionWorkspaceMappings>(endpoint.Data[WellKnownEndpointData.TfvcWorkspaceMapping])?.Mappings;
 
             // Determine the sources directory.
-            string sourcesDirectory = executionContext.Variables.Build_SourcesDirectory;
+            string sourcesDirectory = GetEndpointData(endpoint, Constants.EndpointData.SourcesDirectory);
             ArgUtil.NotNullOrEmpty(sourcesDirectory, nameof(sourcesDirectory));
 
             // Attempt to re-use an existing workspace if the command manager supports scorch
@@ -236,12 +236,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 }
             }
 
-            string shelvesetName = executionContext.Variables.Build_SourceTfvcShelveset;
+            string shelvesetName = GetEndpointData(endpoint, Constants.EndpointData.SourceTfvcShelveset);
             if (!string.IsNullOrEmpty(shelvesetName))
             {
                 // Get the shelveset details.
                 ITfsVCShelveset tfShelveset = null;
-                string gatedShelvesetName = executionContext.Variables.Build_GatedShelvesetName;
+                string gatedShelvesetName = GetEndpointData(endpoint, Constants.EndpointData.GatedShelvesetName);
                 if (!string.IsNullOrEmpty(gatedShelvesetName))
                 {
                     tfShelveset = await tf.ShelvesetsAsync(shelveset: shelvesetName);
@@ -257,7 +257,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 {
                     // Create the comment file for reshelve.
                     StringBuilder comment = new StringBuilder(tfShelveset.Comment ?? string.Empty);
-                    if (!(executionContext.Variables.Build_GatedRunCI ?? true))
+                    string runCi = GetEndpointData(endpoint, Constants.EndpointData.GatedRunCI);
+                    bool gatedRunCi = StringUtil.ConvertToBoolean(runCi, true);
+                    if (!gatedRunCi)
                     {
                         if (comment.Length > 0)
                         {
@@ -318,6 +320,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
             // Return the original path.
             return path;
+        }
+
+        public override void SetVariablesInEndpoint(IExecutionContext executionContext, ServiceEndpoint endpoint)
+        {
+            base.SetVariablesInEndpoint(executionContext, endpoint);
+            endpoint.Data.Add(Constants.EndpointData.SourceTfvcShelveset, executionContext.Variables.Get(Constants.Variables.Build.SourceTfvcShelveset));
+            endpoint.Data.Add(Constants.EndpointData.GatedShelvesetName, executionContext.Variables.Get(Constants.Variables.Build.GatedShelvesetName));
+            endpoint.Data.Add(Constants.EndpointData.GatedRunCI, executionContext.Variables.Get(Constants.Variables.Build.GatedRunCI));
         }
 
         private static string ResolveMappingLocalPath(DefinitionWorkspaceMapping definitionMapping, string sourcesDirectory)

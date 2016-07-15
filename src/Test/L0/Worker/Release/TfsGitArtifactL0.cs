@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading;
-
 using Microsoft.TeamFoundation.Build.WebApi;
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Worker;
@@ -10,14 +9,12 @@ using Microsoft.VisualStudio.Services.Agent.Worker.Build;
 using Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts;
 using Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts.Definition;
 using Microsoft.VisualStudio.Services.WebApi;
-
 using Moq;
-
 using Xunit;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Release
 {
-    public sealed class GitHubArtifactL0
+    public sealed class TfsGitArtifactL0
     {
         private Mock<IExecutionContext> _ec;
         private Mock<IExtensionManager> _extensionManager;
@@ -25,19 +22,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Release
         private ArtifactDefinition _artifactDefinition;
         private Variables _variables;
 
-        private const string _expectedGitHubUrl = "https://api.github.com/repos/contoso";
-        private const string _githubConnectionName = "githubconnection";
+        private const string _expectedUrl = "https://hello.com/repos/contoso";
         private const string _expectedBranchName = "/refs/head/testbranch";
         private const string _expectedVersion = "version";
+        private const string _expectedRepositoryId = "fe0bd152-bb17-4ec4-b421-21d7e0450edb";
+        private const string _expectedProjectId = "ae0bd152-bb17-4ec4-b421-21d7e0450edb";
 
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public void MissingEndpointShouldThrowException()
+        public void ShouldThrowIfEndpointsDoNotContainTfsGitEndpoint()
         {
             using (TestHostContext tc = Setup())
             {
-                var artifact = new GitHubArtifact();
+                var artifact = new TfsGitArtifact();
 
                 _ec.Setup(x => x.Endpoints)
                     .Returns(
@@ -58,12 +56,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Release
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async void GitHubArtifactShouldCallGetSourceWithCorrectParameter()
+        public async void TfsGitArtifactShouldCallGetSourceWithCorrectParameter()
         {
             using (TestHostContext tc = Setup())
             {
-                var gitHubArtifact = new GitHubArtifact();
-                gitHubArtifact.Initialize(tc);
+                var tfsGitArtifact = new TfsGitArtifact();
+                tfsGitArtifact.Initialize(tc);
                 var expectedPath = "expectedLocalPath";
 
                 _ec.Setup(x => x.Endpoints)
@@ -72,21 +70,23 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Release
                             {
                                 new ServiceEndpoint
                                     {
-                                        Name = _githubConnectionName,
-                                        Url = new Uri("http://contoso.visualstudio.com"),
-                                        Authorization = new EndpointAuthorization()
+                                        Name = _expectedRepositoryId,
+                                        Url = new Uri(_expectedUrl),
+                                        Authorization = new EndpointAuthorization
+                                        {
+                                            Scheme = EndpointAuthorizationSchemes.OAuth
+                                        }
                                     }
                             });
 
-                await gitHubArtifact.DownloadAsync(_ec.Object, _artifactDefinition, expectedPath);
+                await tfsGitArtifact.DownloadAsync(_ec.Object, _artifactDefinition, expectedPath);
 
-                // verify github endpoint is set correctly
+                // verify TfsGit endpoint is set correctly
                 _sourceProvider.Verify(
                     x => x.GetSourceAsync(
-                        It.IsAny<IExecutionContext>(), 
-                        It.Is<ServiceEndpoint>(y => y.Url.Equals(new Uri(_expectedGitHubUrl)) && y.Authorization.Scheme.Equals(EndpointAuthorizationSchemes.OAuth)
-                        && y.Data.ContainsKey(Constants.EndpointData.SourcesDirectory) && y.Data.ContainsKey(Constants.EndpointData.SourceBranch)
-                        && y.Data.ContainsKey(Constants.EndpointData.SourceVersion)), 
+                        It.IsAny<IExecutionContext>(),
+                        It.Is<ServiceEndpoint>(y => y.Url.Equals(new Uri(_expectedUrl)) && y.Authorization.Scheme.Equals(EndpointAuthorizationSchemes.OAuth) && y.Name.Equals(_expectedRepositoryId) && y.Data.ContainsKey(Constants.EndpointData.SourcesDirectory) && y.Data.ContainsKey(Constants.EndpointData.SourceBranch)
+                        && y.Data.ContainsKey(Constants.EndpointData.SourceVersion)),
                         It.IsAny<CancellationToken>()));
             }
         }
@@ -97,15 +97,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Release
             _ec = new Mock<IExecutionContext>();
 
             _artifactDefinition = new ArtifactDefinition
-                                      {
-                                          Version = _expectedVersion,
-                                          Details = new GitHubArtifactDetails
-                                          {
-                                              ConnectionName = _githubConnectionName,
-                                              CloneUrl = new Uri(_expectedGitHubUrl),
-                                              Branch = _expectedBranchName
-                                          }
-                                      };
+            {
+                Version = _expectedVersion,
+                Details = new TfsGitArtifactDetails
+                {
+                    RepositoryId = _expectedRepositoryId,
+                    ProjectId = _expectedProjectId,
+                    Branch = _expectedBranchName
+                }
+            };
 
             _extensionManager = new Mock<IExtensionManager>();
             _sourceProvider = new Mock<ISourceProvider>();
@@ -117,7 +117,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Release
             _ec.Setup(x => x.Variables).Returns(_variables);
             _extensionManager.Setup(x => x.GetExtensions<ISourceProvider>())
                 .Returns(new List<ISourceProvider> { _sourceProvider.Object });
-            _sourceProvider.Setup(x => x.RepositoryType).Returns(WellKnownRepositoryTypes.GitHub);
+            _sourceProvider.Setup(x => x.RepositoryType).Returns(WellKnownRepositoryTypes.TfsGit);
 
             return hc;
         }

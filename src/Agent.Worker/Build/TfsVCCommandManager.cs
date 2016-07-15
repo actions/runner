@@ -57,7 +57,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         {
             get
             {
-                string version = ExecutionContext.Variables.Build_SourceVersion;
+                string version = GetEndpointData(Endpoint, Constants.EndpointData.SourceVersion);
                 ArgUtil.NotNullOrEmpty(version, nameof(version));
                 return version;
             }
@@ -67,7 +67,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         {
             get
             {
-                string sourcesDirectory = ExecutionContext.Variables.Build_SourcesDirectory;
+                string sourcesDirectory = GetEndpointData(Endpoint, Constants.EndpointData.SourcesDirectory);
                 ArgUtil.NotNullOrEmpty(sourcesDirectory, nameof(sourcesDirectory));
                 return sourcesDirectory;
             }
@@ -248,6 +248,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             }
 
             return string.Join(" ", formattedArgs);
+        }
+
+        private string GetEndpointData(ServiceEndpoint endpoint, string name)
+        {
+            string value;
+            if (endpoint.Data.TryGetValue(name, out value))
+            {
+                Trace.Info($"Get '{name}': '{value}'");
+                return value;
+            }
+
+            Trace.Info($"Get '{name}' (not found)");
+            return null;
         }
 
         [Flags]

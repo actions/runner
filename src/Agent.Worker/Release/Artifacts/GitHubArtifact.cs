@@ -46,12 +46,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
 
             if (sourceProvider == null)
             {
-                throw new InvalidOperationException(StringUtil.Loc("SourceArtifactNotFound", WellKnownRepositoryTypes.GitHub));
+                throw new InvalidOperationException(StringUtil.Loc("SourceArtifactProviderNotFound", WellKnownRepositoryTypes.GitHub));
             }
 
-            executionContext.Variables.Set(Constants.Variables.Build.SourcesDirectory, localFolderPath);
-            executionContext.Variables.Set(Constants.Variables.Build.SourceBranch, gitHubDetails.Branch);
-            executionContext.Variables.Set(Constants.Variables.Build.SourceVersion, artifactDefinition.Version);
+            gitHubEndpoint.Data.Add(Constants.EndpointData.SourcesDirectory, localFolderPath);
+            gitHubEndpoint.Data.Add(Constants.EndpointData.SourceBranch, gitHubDetails.Branch);
+            gitHubEndpoint.Data.Add(Constants.EndpointData.SourceVersion, artifactDefinition.Version);
 
             await sourceProvider.GetSourceAsync(executionContext, gitHubEndpoint, executionContext.CancellationToken);
         }
@@ -91,7 +91,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
             }
             else
             {
-                throw new InvalidOperationException(StringUtil.Loc("RMArtifactDetailsIncomplete", agentArtifactDefinition.Name));
+                throw new InvalidOperationException(StringUtil.Loc("RMArtifactDetailsIncomplete"));
             }
         }
 

@@ -212,16 +212,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
                             //TODO:SetAttributesToNormal
                             var releaseFileSystemManager = HostContext.GetService<IReleaseFileSystemManager>();
                             releaseFileSystemManager.CleanupDirectory(downloadFolderPath, executionContext.CancellationToken);
-
-                            if (agentArtifactDefinition.ArtifactType == AgentArtifactType.TFGit
-                                || agentArtifactDefinition.ArtifactType == AgentArtifactType.Tfvc)
-                            {
-                                throw new NotImplementedException();
-                            }
-                            else
-                            {
-                                await extension.DownloadAsync(executionContext, artifactDefinition, downloadFolderPath);
-                            }
+                            await extension.DownloadAsync(executionContext, artifactDefinition, downloadFolderPath);
                         });
 
                 executionContext.Output(StringUtil.Loc("RMArtifactDownloadFinished", agentArtifactDefinition.Alias));

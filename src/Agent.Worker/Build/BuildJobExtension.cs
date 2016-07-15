@@ -194,6 +194,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             }
 
             executionContext.Debug($"Sync source for endpoint: {SourceEndpoint.Name}");
+            SourceProvider.SetVariablesInEndpoint(executionContext, SourceEndpoint);
             await SourceProvider.GetSourceAsync(executionContext, SourceEndpoint, executionContext.CancellationToken);
         }
 
@@ -228,7 +229,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                     .FirstOrDefault(x => string.Equals(x.RepositoryType, ep.Type, StringComparison.OrdinalIgnoreCase));
                 if (SourceProvider != null)
                 {
-                    SourceEndpoint = ep;
+                    SourceEndpoint = ep.Clone();
                     return true;
                 }
             }
