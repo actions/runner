@@ -39,6 +39,8 @@ Enter work folder (press enter for _work) >
 Enter run agent as service? (Y/N) (press enter for N) >
 ```
 
+note: last question is on Windows only.  Linux/OSX start docs have info on running them as a service via svc.sh.
+
 ## Configure OSX/Linux
 
 ```bash
