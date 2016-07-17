@@ -1,5 +1,6 @@
 ﻿using Microsoft.VisualStudio.Services.Agent.Util;
 using System.IO;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
@@ -79,6 +80,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
                 // file name character on Linux.
                 string arguments = StringUtil.Format(@"""{0}""", target.Replace(@"""", @"\"""));
 
+#if OS_WINDOWS
+                // It appears that node.exe outputs UTF8 when not in TTY mode.
+                Encoding outputEncoding = Encoding.UTF8;
+#else
+                // Let .NET choose the default.
+                Encoding outputEncoding = null;
+#endif
+
                 // Execute the process. Exit code 0 should always be returned.
                 // A non-zero exit code indicates infrastructural failure.
                 // Task failure should be communicated over STDOUT using ## commands.
@@ -88,6 +97,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
                     arguments: arguments,
                     environment: Environment,
                     requireExitCodeZero: true,
+                    outputEncoding: outputEncoding,
                     cancellationToken: ExecutionContext.CancellationToken);
             }
         }

@@ -33,9 +33,18 @@ namespace Microsoft.VisualStudio.Services.Agent
             IDictionary<string, string> environment,
             bool requireExitCodeZero,
             CancellationToken cancellationToken);
+
+        Task<int> ExecuteAsync(
+            string workingDirectory,
+            string fileName,
+            string arguments,
+            IDictionary<string, string> environment,
+            bool requireExitCodeZero,
+            Encoding outputEncoding,
+            CancellationToken cancellationToken);
     }
 
-    // The implementation of the process invoker does not hock up DataReceivedEvent and ErrorReceivedEvent of Process,
+    // The implementation of the process invoker does not hook up DataReceivedEvent and ErrorReceivedEvent of Process,
     // instead, we read both STDOUT and STDERR stream manually on seperate thread. 
     // The reason is we find a huge perf issue about process STDOUT/STDERR with those events. 
     // 
@@ -61,6 +70,20 @@ namespace Microsoft.VisualStudio.Services.Agent
         static ProcessInvoker()
         {
 #if OS_WINDOWS
+            // By default, only Unicode encodings, ASCII, and code page 28591 are supported.
+            // This line is required to support the full set of encodings that were included
+            // in Full .NET prior to 4.6.
+            //
+            // For example, on an en-US box, this is required for loading the encoding for the
+            // default console output code page '437'. Without loading the correct encoding for
+            // code page IBM437, some characters cannot be translated correctly, e.g. write 'ç'
+            // from powershell.exe.
+            //
+            // If StandardErrorEncoding or StandardOutputEncoding is not specified the on the
+            // ProcessStartInfo object, then .NET PInvokes to resolve the default console output
+            // code page:
+            //      [DllImport("api-ms-win-core-console-l1-1-0.dll", SetLastError = true)]
+            //      public extern static uint GetConsoleOutputCP();
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 #endif
         }
@@ -81,12 +104,31 @@ namespace Microsoft.VisualStudio.Services.Agent
                 cancellationToken: cancellationToken);
         }
 
+        public Task<int> ExecuteAsync(
+            string workingDirectory,
+            string fileName,
+            string arguments,
+            IDictionary<string, string> environment,
+            bool requireExitCodeZero,
+            CancellationToken cancellationToken)
+        {
+            return ExecuteAsync(
+                workingDirectory: workingDirectory,
+                fileName: fileName,
+                arguments: arguments,
+                environment: environment,
+                requireExitCodeZero: false,
+                outputEncoding: null,
+                cancellationToken: cancellationToken);
+        }
+
         public async Task<int> ExecuteAsync(
             string workingDirectory,
             string fileName,
             string arguments,
             IDictionary<string, string> environment,
             bool requireExitCodeZero,
+            Encoding outputEncoding,
             CancellationToken cancellationToken)
         {
             ArgUtil.Null(_proc, nameof(_proc));
@@ -102,11 +144,12 @@ namespace Microsoft.VisualStudio.Services.Agent
             _proc.StartInfo.RedirectStandardInput = true;
             _proc.StartInfo.RedirectStandardError = true;
             _proc.StartInfo.RedirectStandardOutput = true;
-#if OS_WINDOWS
-            Encoding encoding = GetEncoding();
-            _proc.StartInfo.StandardErrorEncoding = encoding;
-            _proc.StartInfo.StandardOutputEncoding = encoding;
-#endif
+            if (outputEncoding != null)
+            {
+                // See comment regarding encoding on the static constructor of ProcessInvoker.
+                _proc.StartInfo.StandardErrorEncoding = outputEncoding;
+                _proc.StartInfo.StandardOutputEncoding = outputEncoding;
+            }
 
             // Copy the environment variables.
             if (environment != null && environment.Count > 0)
@@ -188,63 +231,6 @@ namespace Microsoft.VisualStudio.Services.Agent
             Dispose(true);
             GC.SuppressFinalize(this);
         }
-
-#if OS_WINDOWS
-        private Encoding GetEncoding()
-        {
-            CPINFOEX info;
-            try
-            {
-                if (!GetCPInfoEx(CodePage: 1, dwFlags: 0, lpCPInfoEx: out info))
-                {
-                    Trace.Error("Unable to determine code page. Defaulting to UTF8 encoding.");
-                    return Encoding.UTF8;
-                }
-                else
-                {
-                    Trace.Info($"Getting encoding for code page: '{info.CodePage}'");
-                    Encoding encoding = Encoding.GetEncoding(info.CodePage);
-                    Trace.Info($"Resolved encoding: '{encoding}'");
-                    return encoding;
-                }
-            }
-            catch (Exception exception)
-            {
-                Trace.Error("Unable to resolve encoding from code page.");
-                Trace.Error(exception);
-                Trace.Info("Defaulting to UTF8 encoding.");
-                return Encoding.UTF8;
-            }
-        }
-
-        private const int MAX_DEFAULTCHAR = 2;
-        private const int MAX_LEADBYTES = 12;
-        private const int MAX_PATH = 260;
-
-        [StructLayout(LayoutKind.Sequential)]
-        public struct CPINFOEX
-        {
-            [MarshalAs(UnmanagedType.U4)]
-            public int MaxCharSize;
-
-            [MarshalAs(UnmanagedType.ByValArray, SizeConst = MAX_DEFAULTCHAR)]
-            public byte[] DefaultChar;
-
-            [MarshalAs(UnmanagedType.ByValArray, SizeConst = MAX_LEADBYTES)]
-            public byte[] LeadBytes;
-
-            public char UnicodeDefaultChar;
-
-            [MarshalAs(UnmanagedType.U4)]
-            public int CodePage;
-
-            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = MAX_PATH)]
-            public string CodePageName;
-        }
-
-        [DllImport("kernel32.dll", SetLastError = true)]
-        public static extern bool GetCPInfoEx(int CodePage, int dwFlags, out CPINFOEX lpCPInfoEx);
-#endif
 
         private void Dispose(bool disposing)
         {
@@ -330,7 +316,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             return await SendCtrlSignal(ConsoleCtrlEvent.CTRL_C, timeout);
 #else
             return await SendSignal(Signals.SIGINT, timeout);
-#endif            
+#endif
         }
 
         private async Task<bool> SendSIGTERM(TimeSpan timeout)
@@ -339,7 +325,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             return await SendCtrlSignal(ConsoleCtrlEvent.CTRL_BREAK, timeout);
 #else
             return await SendSignal(Signals.SIGTERM, timeout);
-#endif            
+#endif
         }
 
         private void ProcessExitedHandler(object sender, EventArgs e)
@@ -690,7 +676,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         }
     }
 
-    public class ProcessDataReceivedEventArgs : EventArgs
+    public sealed class ProcessDataReceivedEventArgs : EventArgs
     {
         public ProcessDataReceivedEventArgs(string data)
         {
