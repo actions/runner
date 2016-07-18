@@ -60,6 +60,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Capabilities
             builder.Check(name: "subversion", fileName: "svn");
             builder.Check(name: "ruby");
             builder.Check(name: "rake");
+            builder.Check(name: "svn");
             builder.Check(
                 name: "Xamarin.iOS",
                 fileName: "mdtool",
