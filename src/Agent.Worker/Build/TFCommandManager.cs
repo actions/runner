@@ -27,6 +27,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             }
         }
 
+        // When output is redirected, TF.exe writes output using the current system code page
+        // (i.e. CP_ACP or code page 0). E.g. code page 1252 on an en-US box.
+        protected override Encoding OutputEncoding => StringUtil.GetSystemEncoding();
+
         protected override string Switch => "/";
 
         public string FilePath => Path.Combine(ExecutionContext.Variables.Agent_ServerOMDirectory, "tf.exe");

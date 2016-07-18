@@ -67,27 +67,6 @@ namespace Microsoft.VisualStudio.Services.Agent
         public event EventHandler<ProcessDataReceivedEventArgs> OutputDataReceived;
         public event EventHandler<ProcessDataReceivedEventArgs> ErrorDataReceived;
 
-        static ProcessInvoker()
-        {
-#if OS_WINDOWS
-            // By default, only Unicode encodings, ASCII, and code page 28591 are supported.
-            // This line is required to support the full set of encodings that were included
-            // in Full .NET prior to 4.6.
-            //
-            // For example, on an en-US box, this is required for loading the encoding for the
-            // default console output code page '437'. Without loading the correct encoding for
-            // code page IBM437, some characters cannot be translated correctly, e.g. write 'ç'
-            // from powershell.exe.
-            //
-            // If StandardErrorEncoding or StandardOutputEncoding is not specified the on the
-            // ProcessStartInfo object, then .NET PInvokes to resolve the default console output
-            // code page:
-            //      [DllImport("api-ms-win-core-console-l1-1-0.dll", SetLastError = true)]
-            //      public extern static uint GetConsoleOutputCP();
-            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
-#endif
-        }
-
         public Task<int> ExecuteAsync(
             string workingDirectory,
             string fileName,
@@ -134,7 +113,12 @@ namespace Microsoft.VisualStudio.Services.Agent
             ArgUtil.Null(_proc, nameof(_proc));
             ArgUtil.NotNullOrEmpty(fileName, nameof(fileName));
 
-            Trace.Info($"Starting process with file name '{fileName}', arguments '{arguments}', and working directory '{workingDirectory}'.");
+            Trace.Info("Starting process:");
+            Trace.Info($"  File name: '{fileName}'");
+            Trace.Info($"  Arguments: '{arguments}'");
+            Trace.Info($"  Working directory: '{workingDirectory}'");
+            Trace.Info($"  Require exit code zero: '{requireExitCodeZero}'");
+            Trace.Info($"  Encoding web name: {outputEncoding?.WebName} ; code page: '{outputEncoding?.CodePage}'");
             _proc = new Process();
             _proc.StartInfo.FileName = fileName;
             _proc.StartInfo.Arguments = arguments;
@@ -144,9 +128,16 @@ namespace Microsoft.VisualStudio.Services.Agent
             _proc.StartInfo.RedirectStandardInput = true;
             _proc.StartInfo.RedirectStandardError = true;
             _proc.StartInfo.RedirectStandardOutput = true;
+#if OS_WINDOWS
+            // If StandardErrorEncoding or StandardOutputEncoding is not specified the on the
+            // ProcessStartInfo object, then .NET PInvokes to resolve the default console output
+            // code page:
+            //      [DllImport("api-ms-win-core-console-l1-1-0.dll", SetLastError = true)]
+            //      public extern static uint GetConsoleOutputCP();
+            StringUtil.EnsureRegisterEncodings();
+#endif
             if (outputEncoding != null)
             {
-                // See comment regarding encoding on the static constructor of ProcessInvoker.
                 _proc.StartInfo.StandardErrorEncoding = outputEncoding;
                 _proc.StartInfo.StandardOutputEncoding = outputEncoding;
             }
