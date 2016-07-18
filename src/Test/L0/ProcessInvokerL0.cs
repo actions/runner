@@ -44,7 +44,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                     fileName: "powershell.exe",
                     arguments: $@"-NoLogo -Sta -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -Command ""Write-Host 'From STDOUT ''ç''' ; Write-Error 'From STDERR ''ç'''""",
                     environment: null,
-                    requireExitCodeZero: true,
+                    requireExitCodeZero: false,
                     cancellationToken: CancellationToken.None);
                 Assert.Equal(1, stdout.Count);
                 Assert.Equal("From STDOUT 'ç'", stdout[0]);
