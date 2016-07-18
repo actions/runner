@@ -1,13 +1,10 @@
-using Microsoft.VisualStudio.Services.Agent;
 using Microsoft.VisualStudio.Services.Agent.Util;
-using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using Xunit;
+using System;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests
 {
@@ -61,9 +58,78 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             IOUtil.SaveObject(sortedResourceDictionary, prettyStringsFile);
 
             Assert.True(string.Equals(File.ReadAllText(stringsFile), File.ReadAllText(prettyStringsFile)), $"Orginal string.json file: {stringsFile} is not pretty printed, replace it with: {prettyStringsFile}");
-            
+
             // delete file on succeed
             File.Delete(prettyStringsFile);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "LocString")]
+        public void FindExtraLocStrings()
+        {
+            // Load the strings.
+            string stringsFile = Path.Combine(TestUtil.GetSrcPath(), "Misc", "layoutbin", "en-US", "strings.json");
+            Assert.True(File.Exists(stringsFile), $"File does not exist: {stringsFile}");
+            var resourceDictionary = IOUtil.LoadObject<Dictionary<string, object>>(stringsFile);
+
+            // find all loc string key in source file
+            var keys = new List<string>();
+            string[] sourceFiles = Directory.GetFiles(
+                    TestUtil.GetSrcPath(),
+                    "*.cs",
+                    SearchOption.AllDirectories);
+            foreach (string sourceFile in sourceFiles)
+            {
+                // Skip files in the obj directory.
+                if (sourceFile.Contains(StringUtil.Format("{0}obj{0}", Path.DirectorySeparatorChar)))
+                {
+                    continue;
+                }
+
+                foreach (string line in File.ReadAllLines(sourceFile))
+                {
+                    // Search for calls to the StringUtil.Loc method within the line.
+                    const string Pattern = "StringUtil.Loc(";
+                    int searchIndex = 0;
+                    int patternIndex;
+                    while (searchIndex < line.Length &&
+                        (patternIndex = line.IndexOf(Pattern, searchIndex)) >= 0)
+                    {
+                        // Bump the search index in preparation for the for the next iteration within the same line.
+                        searchIndex = patternIndex + Pattern.Length;
+
+                        // Extract the resource key.
+                        int keyStartIndex = patternIndex + Pattern.Length;
+                        int keyEndIndex;
+                        if (keyStartIndex + 2 < line.Length &&  // Key should start with a ", be followed by at least
+                            line[keyStartIndex] == '"' &&       // one character, and end with a ".
+                            (keyEndIndex = line.IndexOf('"', keyStartIndex + 1)) > 0)
+                        {
+                            // Remove the first and last double quotes.
+                            keyStartIndex++;
+                            keyEndIndex--;
+                            string key = line.Substring(
+                                startIndex: keyStartIndex,
+                                length: keyEndIndex - keyStartIndex + 1);
+                            if (ValidKeyRegex.IsMatch(key))
+                            {
+                                // A valid key was extracted.
+                                keys.Add(key);
+                                continue;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // find extra loc strings.
+            var extraKeys = resourceDictionary.Keys.Where(x => !keys.Contains(x))?.ToList();
+
+            if (extraKeys != null)
+            {
+                Assert.True(extraKeys.Count == 0, $"Please save company's money by removing extra loc strings:{Environment.NewLine}{string.Join(Environment.NewLine, extraKeys)}");
+            }
         }
 
         private void ValidateLocStrings(TestHostContext hc, string project)

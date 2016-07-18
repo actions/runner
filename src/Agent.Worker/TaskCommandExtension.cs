@@ -248,7 +248,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             }
             else
             {
-                throw new Exception("CannotUploadFile");
+                throw new Exception(StringUtil.Loc("CannotUploadFile"));
             }
         }
 
