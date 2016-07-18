@@ -117,7 +117,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                 fileName: fileName,
                 arguments: arguments,
                 environment: environment,
-                requireExitCodeZero: false,
+                requireExitCodeZero: requireExitCodeZero,
                 outputEncoding: null,
                 cancellationToken: cancellationToken);
         }
