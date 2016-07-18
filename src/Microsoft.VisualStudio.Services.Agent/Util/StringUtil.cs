@@ -45,7 +45,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             // E.g. code page 1252 on an en-US box.
             return Encoding.GetEncoding(0);
 #else
-            throw new NotSupportedException(nameof(SystemEncoding)); // Should never reach here.
+            throw new NotSupportedException(nameof(GetSystemEncoding)); // Should never reach here.
 #endif
         }
 
