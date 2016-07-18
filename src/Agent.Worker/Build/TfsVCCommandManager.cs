@@ -49,9 +49,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
     public abstract class TfsVCCommandManager : AgentService
     {
         public CancellationToken CancellationToken { protected get; set; }
+
         public ServiceEndpoint Endpoint { protected get; set; }
+
         public IExecutionContext ExecutionContext { protected get; set; }
+
         public abstract TfsVCFeatures Features { get; }
+
+        protected virtual Encoding OutputEncoding => null;
 
         protected string SourceVersion
         {
@@ -122,6 +127,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                     arguments: arguments,
                     environment: null,
                     requireExitCodeZero: true,
+                    outputEncoding: OutputEncoding,
                     cancellationToken: CancellationToken);
             }
         }
@@ -186,6 +192,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                         arguments: arguments,
                         environment: null,
                         requireExitCodeZero: true,
+                        outputEncoding: OutputEncoding,
                         cancellationToken: CancellationToken);
                 }
                 catch (ProcessExitCodeException ex)
