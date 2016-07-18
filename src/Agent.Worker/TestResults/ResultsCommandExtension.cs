@@ -2,6 +2,7 @@
 using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -96,7 +97,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
         {
             try
             {
-                DateTime startTime = DateTime.Now; //use local time since TestRunData defaults to local times
+                //use local time since TestRunData defaults to local times
+                DateTime minStartDate = DateTime.MaxValue;
+                DateTime maxCompleteDate = DateTime.MinValue;
+                DateTime presentTime = DateTime.UtcNow;
+                bool dateFormatError = false;
                 TimeSpan totalTestCaseDuration = TimeSpan.Zero;
                 List<string> runAttachments = new List<string>();
                 List<TestCaseResultData> runResults = new List<TestCaseResultData>();
@@ -111,11 +116,39 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
 
                     if (resultFileRunData != null && resultFileRunData.Results != null && resultFileRunData.Results.Length > 0)
                     {
+                        try
+                        {
+                            if (string.IsNullOrEmpty(resultFileRunData.StartDate) || string.IsNullOrEmpty(resultFileRunData.CompleteDate))
+                            {
+                                dateFormatError = true;
+                            }
+
+                            //As per discussion with Manoj(refer bug 565487): Test Run duration time should be minimum Start Time to maximum Completed Time when merging
+                            if (!string.IsNullOrEmpty(resultFileRunData.StartDate))
+                            {
+                                DateTime startDate = DateTime.Parse(resultFileRunData.StartDate, null, DateTimeStyles.RoundtripKind);
+                                minStartDate = minStartDate > startDate ? startDate : minStartDate;
+
+                                if (!string.IsNullOrEmpty(resultFileRunData.CompleteDate))
+                                {
+                                    DateTime endDate = DateTime.Parse(resultFileRunData.CompleteDate, null, DateTimeStyles.RoundtripKind);
+                                    maxCompleteDate = maxCompleteDate < endDate ? endDate : maxCompleteDate;
+                                }
+                            }
+                        }
+                        catch (FormatException)
+                        {
+                            _executionContext.Warning(StringUtil.Loc("InvalidDateFormat", resultFile, resultFileRunData.StartDate, resultFileRunData.CompleteDate));
+                            dateFormatError = true;
+                        }
+
+                        //continue to calculate duration as a fallback for case: if there is issue with format or dates are null or empty
                         foreach (TestCaseResultData tcResult in resultFileRunData.Results)
                         {
                             int durationInMs = Convert.ToInt32(tcResult.DurationInMs);
                             totalTestCaseDuration = totalTestCaseDuration.Add(TimeSpan.FromMilliseconds(durationInMs));
                         }
+
                         runResults.AddRange(resultFileRunData.Results);
 
                         //run attachments
@@ -128,29 +161,38 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                     {
                         _executionContext.Warning(StringUtil.Loc("InvalidResultFiles", resultFile, resultReader));
                     }
-                }
-
-                string runName = string.IsNullOrWhiteSpace(_runTitle)
-                    ? StringUtil.Format("{0}_TestResults_{1}", _testRunner, buildId)
-                    : _runTitle;
-
-                //creat test run
-                TestRunData testRunData = new TestRunData(
-                    name: runName,
-                    startedDate: startTime.ToString("o"),
-                    completedDate: startTime.Add(totalTestCaseDuration).ToString("o"),
-                    state: "InProgress",
-                    isAutomated: true,
-                    buildId: runContext != null ? runContext.BuildId : 0,
-                    buildFlavor: runContext != null ? runContext.Configuration : string.Empty,
-                    buildPlatform: runContext != null ? runContext.Platform : string.Empty
-                    );
-
-                testRunData.Attachments = runAttachments.ToArray();
+                }                
 
                 //publish run if there are results.
                 if (runResults.Count > 0)
                 {
+                    string runName = string.IsNullOrWhiteSpace(_runTitle)
+                    ? StringUtil.Format("{0}_TestResults_{1}", _testRunner, buildId)
+                    : _runTitle;
+
+                    if (DateTime.Compare(minStartDate, maxCompleteDate) > 0)
+                    {
+                        _executionContext.Warning(StringUtil.Loc("InvalidCompletedDate", maxCompleteDate, minStartDate));
+                        dateFormatError = true;
+                    }
+
+                    minStartDate = DateTime.Equals(minStartDate, DateTime.MaxValue) ? presentTime : minStartDate;
+                    maxCompleteDate = dateFormatError || DateTime.Equals(maxCompleteDate, DateTime.MinValue) ? minStartDate.Add(totalTestCaseDuration) : maxCompleteDate;
+
+                    //creat test run
+                    TestRunData testRunData = new TestRunData(
+                        name: runName,
+                        startedDate: minStartDate.ToString("o"),
+                        completedDate: maxCompleteDate.ToString("o"),
+                        state: "InProgress",
+                        isAutomated: true,
+                        buildId: runContext != null ? runContext.BuildId : 0,
+                        buildFlavor: runContext != null ? runContext.Configuration : string.Empty,
+                        buildPlatform: runContext != null ? runContext.Platform : string.Empty
+                    );
+
+                    testRunData.Attachments = runAttachments.ToArray();
+
                     TestRun testRun = await publisher.StartTestRunAsync(testRunData, _executionContext.CancellationToken);
                     await publisher.AddResultsAsync(testRun, runResults.ToArray(), _executionContext.CancellationToken);
                     await publisher.EndTestRunAsync(testRunData, testRun.Id, true, _executionContext.CancellationToken);
