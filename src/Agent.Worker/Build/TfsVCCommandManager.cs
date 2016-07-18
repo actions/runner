@@ -1,15 +1,9 @@
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
-using Microsoft.VisualStudio.Services.Agent;
 using Microsoft.VisualStudio.Services.Agent.Util;
-using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Xml.Serialization;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 {
@@ -102,7 +96,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             ArgUtil.NotNull(ExecutionContext, nameof(ExecutionContext));
 
             // Invoke tf.
-            using(var processInvoker = HostContext.CreateService<IProcessInvoker>())
+            using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
             {
                 var outputLock = new object();
                 processInvoker.OutputDataReceived += (object sender, ProcessDataReceivedEventArgs e) =>
@@ -161,7 +155,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             ArgUtil.NotNull(ExecutionContext, nameof(ExecutionContext));
 
             // Invoke tf.
-            using(var processInvoker = HostContext.CreateService<IProcessInvoker>())
+            using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
             {
                 var result = new TfsVCPorcelainCommandResult();
                 var outputLock = new object();

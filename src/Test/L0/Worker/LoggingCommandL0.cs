@@ -1,5 +1,4 @@
-﻿using Microsoft.VisualStudio.Services.Agent.Worker;
-using System;
+﻿using System;
 using System.Linq;
 using Xunit;
 

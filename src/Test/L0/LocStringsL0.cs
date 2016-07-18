@@ -61,6 +61,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             IOUtil.SaveObject(sortedResourceDictionary, prettyStringsFile);
 
             Assert.True(string.Equals(File.ReadAllText(stringsFile), File.ReadAllText(prettyStringsFile)), $"Orginal string.json file: {stringsFile} is not pretty printed, replace it with: {prettyStringsFile}");
+            
+            // delete file on succeed
+            File.Delete(prettyStringsFile);
         }
 
         private void ValidateLocStrings(TestHostContext hc, string project)

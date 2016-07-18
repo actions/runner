@@ -19,7 +19,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
         {
             Mock<IGitCommandManager> _gitCommandManager = new Mock<IGitCommandManager>();
             _gitCommandManager
-                .Setup(x => x.LoadGitExecutionInfo(It.IsAny<IExecutionContext>()))
+                .Setup(x => x.EnsureGitVersion(It.IsAny<Version>(), It.IsAny<bool>()))
+                .Returns(true);
+            _gitCommandManager
+                .Setup(x => x.LoadGitExecutionInfo(It.IsAny<IExecutionContext>(), It.IsAny<bool>()))
                 .Returns(Task.CompletedTask);
             _gitCommandManager
                 .Setup(x => x.GitInit(It.IsAny<IExecutionContext>(), It.IsAny<string>()))
@@ -121,7 +124,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
                 tc.SetSingleton<IGitCommandManager>(_gitCommandManager.Object);
                 tc.SetSingleton<IWhichUtil>(new WhichUtil());
 
-                GitSourceProvider gitSourceProvider = new GitSourceProvider();
+                GitSourceProvider gitSourceProvider = new ExternalGitSourceProvider();
                 gitSourceProvider.Initialize(tc);
                 gitSourceProvider.SetVariablesInEndpoint(executionContext.Object, endpoint);
 
@@ -162,7 +165,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
                     tc.SetSingleton<IGitCommandManager>(_gitCommandManager.Object);
                     tc.SetSingleton<IWhichUtil>(new WhichUtil());
 
-                    GitSourceProvider gitSourceProvider = new GitSourceProvider();
+                    GitSourceProvider gitSourceProvider = new ExternalGitSourceProvider();
                     gitSourceProvider.Initialize(tc);
                     gitSourceProvider.SetVariablesInEndpoint(executionContext.Object, endpoint);
 
@@ -202,7 +205,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
                 tc.SetSingleton<IGitCommandManager>(_gitCommandManager.Object);
                 tc.SetSingleton<IWhichUtil>(new WhichUtil());
 
-                GitSourceProvider gitSourceProvider = new GitSourceProvider();
+                GitSourceProvider gitSourceProvider = new ExternalGitSourceProvider();
                 gitSourceProvider.Initialize(tc);
                 gitSourceProvider.SetVariablesInEndpoint(executionContext.Object, endpoint);
 
@@ -244,7 +247,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
                     tc.SetSingleton<IGitCommandManager>(_gitCommandManager.Object);
                     tc.SetSingleton<IWhichUtil>(new WhichUtil());
 
-                    GitSourceProvider gitSourceProvider = new GitSourceProvider();
+                    GitSourceProvider gitSourceProvider = new ExternalGitSourceProvider();
                     gitSourceProvider.Initialize(tc);
                     gitSourceProvider.SetVariablesInEndpoint(executionContext.Object, endpoint);
 
@@ -296,7 +299,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
                     tc.SetSingleton<IGitCommandManager>(_gitCommandManager.Object);
                     tc.SetSingleton<IWhichUtil>(new WhichUtil());
 
-                    GitSourceProvider gitSourceProvider = new GitSourceProvider();
+                    GitSourceProvider gitSourceProvider = new ExternalGitSourceProvider();
                     gitSourceProvider.Initialize(tc);
                     gitSourceProvider.SetVariablesInEndpoint(executionContext.Object, endpoint);
 
@@ -340,7 +343,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
                     tc.SetSingleton<IGitCommandManager>(_gitCommandManager.Object);
                     tc.SetSingleton<IWhichUtil>(new WhichUtil());
 
-                    GitSourceProvider gitSourceProvider = new GitSourceProvider();
+                    GitSourceProvider gitSourceProvider = new ExternalGitSourceProvider();
                     gitSourceProvider.Initialize(tc);
                     gitSourceProvider.SetVariablesInEndpoint(executionContext.Object, endpoint);
 

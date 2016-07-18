@@ -1,4 +1,3 @@
-using Microsoft.VisualStudio.Services.Agent;
 using Microsoft.VisualStudio.Services.Agent.Worker;
 using Microsoft.VisualStudio.Services.Agent.Worker.Build;
 using System;
@@ -54,7 +53,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                     concreteType: typeof(Microsoft.VisualStudio.Services.Agent.Worker.TaskCommandExtension));
                 AssertContains<Microsoft.VisualStudio.Services.Agent.Worker.Build.ISourceProvider>(
                     manager,
-                    concreteType: typeof(Microsoft.VisualStudio.Services.Agent.Worker.Build.GitSourceProvider));
+                    concreteType: typeof(Microsoft.VisualStudio.Services.Agent.Worker.Build.ExternalGitSourceProvider));
                 AssertContains<Microsoft.VisualStudio.Services.Agent.Worker.Release.IArtifactExtension>(
                     manager,
                     concreteType: typeof(Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts.BuildArtifact));

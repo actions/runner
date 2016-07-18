@@ -1,7 +1,6 @@
 using Microsoft.TeamFoundation.Build.WebApi;
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Util;
-using Microsoft.VisualStudio.Services.Agent.Worker;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
