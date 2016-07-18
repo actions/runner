@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
+using System.Text;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 {
