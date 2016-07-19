@@ -7,6 +7,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
             string workingDirectory,
             string collectionId,
             string projectId,
-            string releaseDefinitionId);
+            string releaseDefinition);
     }
 }

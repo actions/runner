@@ -2,10 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 using Agent.Worker.Release;
-
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using Microsoft.VisualStudio.Services.ReleaseManagement.WebApi.Contracts;
@@ -259,11 +259,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
             // Log these values here to debug scenarios where downloading the artifact fails.
             executionContext.Output($"ReleaseId={releaseId}, TeamProjectId={teamProjectId}, ReleaseDefinitionName={releaseDefinitionName}");
 
+            var releaseDefinition = executionContext.Variables.Get(Constants.Variables.Release.ReleaseDefinitionId);
+            if (string.IsNullOrEmpty(releaseDefinition))
+            {
+                string pattern = new string(Path.GetInvalidFileNameChars()) + new string(Path.GetInvalidPathChars());
+                Regex regex = new Regex(string.Format("[{0}]", Regex.Escape(pattern)));
+                releaseDefinition = regex.Replace(releaseDefinitionName, string.Empty);
+            }
+
             var releaseDefinitionToFolderMap = directoryManager.PrepareArtifactsDirectory(
                 IOUtil.GetWorkPath(HostContext),
                 executionContext.Variables.System_CollectionId,
                 executionContext.Variables.System_TeamProjectId.ToString(),
-                executionContext.Variables.Get(Constants.Variables.Release.ReleaseDefinitionId));
+                releaseDefinition);
 
             artifactsWorkingFolder = Path.Combine(
                 IOUtil.GetWorkPath(HostContext),

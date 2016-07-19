@@ -13,16 +13,22 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
             string workingDirectory,
             string collectionId,
             string projectId,
-            string releaseDefinitionId)
+            string releaseDefinition)
         {
             Trace.Entering();
-            ReleaseDefinitionToFolderMap map = null;
+
+            ArgUtil.NotNull(workingDirectory, nameof(workingDirectory));
+            ArgUtil.NotNull(collectionId, nameof(collectionId));
+            ArgUtil.NotNull(projectId, nameof(projectId));
+            ArgUtil.NotNull(releaseDefinition, nameof(releaseDefinition));
+
+            ReleaseDefinitionToFolderMap map;
             string mapFile = Path.Combine(
                 workingDirectory,
                 Constants.Release.Path.RootMappingDirectory,
                 collectionId,
                 projectId,
-                releaseDefinitionId,
+                releaseDefinition,
                 Constants.Release.Path.DefinitionMapping);
 
             Trace.Verbose($"Mappings file: {mapFile}");
