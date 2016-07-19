@@ -2,7 +2,7 @@
 
 ## Step 1: System Requirements
 
-[Read here](../preview/latebreaking.md) to ensure system packages are installed
+[Read here](envredhat.md) to ensure system packages are installed
 
 ## Step 2: Download from Releases
 
