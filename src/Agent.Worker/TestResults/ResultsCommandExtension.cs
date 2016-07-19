@@ -188,7 +188,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                         isAutomated: true,
                         buildId: runContext != null ? runContext.BuildId : 0,
                         buildFlavor: runContext != null ? runContext.Configuration : string.Empty,
-                        buildPlatform: runContext != null ? runContext.Platform : string.Empty
+                        buildPlatform: runContext != null ? runContext.Platform : string.Empty,
+                        releaseUri: runContext != null ? runContext.ReleaseUri : null,
+                        releaseEnvironmentUri: runContext != null ? runContext.ReleaseEnvironmentUri : null
                     );
 
                     testRunData.Attachments = runAttachments.ToArray();
