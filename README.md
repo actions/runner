@@ -8,7 +8,7 @@ Supported on Windows, OSX, Ubuntu and Red Hat.  Written for the .NET Core CLR as
 
 ## Current Release
 
-[v2.103.0](https://github.com/Microsoft/vsts-agent/releases/tag/v2.103.0)  
+[v2.103.1](https://github.com/Microsoft/vsts-agent/releases/tag/v2.103.1)  
 
 
 ## Status

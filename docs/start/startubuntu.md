@@ -8,14 +8,24 @@
 
 ## Step 2: Download from Releases
 
-Download the agent from [github releases](https://github.com/Microsoft/vsts-agent/releases/tag/v2.103.0)
+Download the agent from [github releases](https://github.com/Microsoft/vsts-agent/releases/tag/v2.103.1)
 
 ## Step 3: Create the agent
 
+**16.04**
+
 ```bash
 ~/$ mkdir myagent && cd myagent
-~/myagent$ tar xzf ~/Downloads/vsts-agent-ubuntu.14.04-x64-2.103.0.tar.gz
+~/myagent$ tar xzf ~/Downloads/vsts-agent-ubuntu.16.04-x64-2.103.1.tar.gz
 ```
+
+**14.04**
+
+```bash
+~/$ mkdir myagent && cd myagent
+~/myagent$ tar xzf ~/Downloads/vsts-agent-ubuntu.14.04-x64-2.103.1.tar.gz
+```
+
 ## Step 4: Configure
 
 ```bash
