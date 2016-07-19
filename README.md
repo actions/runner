@@ -1,4 +1,6 @@
-# Visual Studio Team Services Build and Release Agent
+# VSTS Agent 
+
+Visual Studio Team Services Agent
 
 ## Overview
 
