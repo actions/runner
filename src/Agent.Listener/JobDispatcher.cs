@@ -174,7 +174,25 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 // 1. an agent bug cause server and agent mismatch on the state of the job request, ex. agent not renew jobrequest properly but think it still own the job reqest, however server already abandon the jobrequest.
                 // 2. a server bug or design change that allow server send more than one job request to an given agent that haven't finish previous job request.
                 var agentServer = HostContext.GetService<IAgentServer>();
-                TaskAgentJobRequest request = await agentServer.GetAgentRequestAsync(_poolId, jobDispatch.RequestId, CancellationToken.None);
+                TaskAgentJobRequest request = null;
+                try
+                {
+                    request = await agentServer.GetAgentRequestAsync(_poolId, jobDispatch.RequestId, CancellationToken.None);
+                }
+                catch (Exception ex)
+                {
+                    // we can't even query for the jobrequest from server, something totally busted, stop agent/worker.
+                    Trace.Error("Catch exception while checking jobrequest status. Cancel running worker right away.");
+                    Trace.Error(ex);
+
+                    jobDispatch.WorkerCancellationTokenSource.Cancel();
+                    // make sure worker process exit before we rethrow, otherwise we might leave orphan worker process behind.
+                    await jobDispatch.WorkerDispatch;
+
+                    // rethrow original exception
+                    throw;
+                }
+
                 if (request.Result != null)
                 {
                     // job request has been finished, the server already has result.
