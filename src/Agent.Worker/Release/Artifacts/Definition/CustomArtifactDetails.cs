@@ -21,5 +21,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts.Definit
         public List<AuthorizationHeader> AuthorizationHeaders { get; set; }
 
         public IDictionary<string, string> ArtifactTypeStreamMapping { get; set; }
+
+        public string VersionsUrl { get; set; }
+
+        public string VersionsResultSelector { get; set; }
+
+        public string VersionsResultTemplate { get; set; }
     }
 }
