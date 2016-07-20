@@ -53,6 +53,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         // git config <key> <value>
         Task<int> GitConfig(IExecutionContext context, string repositoryPath, string configKey, string configValue);
 
+        // git config --get-all <key>
+        Task<bool> GitConfigExist(IExecutionContext context, string repositoryPath, string configKey);
+
         // git config --unset-all <key>
         Task<int> GitConfigUnset(IExecutionContext context, string repositoryPath, string configKey);
 
@@ -261,6 +264,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         {
             context.Debug($"Set git config {configKey} {configValue}");
             return await ExecuteGitCommandAsync(context, repositoryPath, "config", StringUtil.Format($"{configKey} {configValue}"));
+        }
+
+        // git config --get-all <key>
+        public async Task<bool> GitConfigExist(IExecutionContext context, string repositoryPath, string configKey)
+        {
+            // git config --get-all {configKey} will return 0 and print the value if the config exist.
+            context.Debug($"Checking git config {configKey} exist or not");
+
+            // ignore any outputs by redirect them into a string list, since the output might contains secrets.
+            List<string> outputStrings = new List<string>();
+            int exitcode = await ExecuteGitCommandAsync(context, repositoryPath, "config", StringUtil.Format($"--get-all {configKey}"), outputStrings);
+            
+            return exitcode == 0;
         }
 
         // git config --unset-all <key>
