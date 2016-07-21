@@ -237,6 +237,7 @@
   "PublishingCodeCoverageFiles": "Publishing code coverage files to TFS server.",
   "PublishingTestResults": "Publishing test results to test run '{0}'",
   "PublishTestResults": "Publish test results",
+  "QueryingWorkspaceInfo": "Querying workspace information.",
   "QueueConError": "{0:u}: Agent connect error: {1}. Retrying every {2} seconds until reconnected.",
   "QueueConnected": "{0:u}: Agent reconnected.",
   "ReadingCodeCoverageSummary": "Reading code coverage summary from '{0}'",
