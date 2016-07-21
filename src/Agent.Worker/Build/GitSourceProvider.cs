@@ -255,6 +255,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 executionContext.Warning("Unable turn off git auto garbage collection, git fetch operation may trigger auto garbage collection which will affect the performence of fetching.");
             }
 
+            // always remove any possible left extraheader setting from git config.
+            if (await _gitCommandManager.GitConfigExist(executionContext, targetPath, $"http.{repositoryUrl.AbsoluteUri}.extraheader"))
+            {
+                executionContext.Debug("Remove any extraheader setting from git config.");
+                await RemoveExtraHeader(executionContext, targetPath, $"http.{repositoryUrl.AbsoluteUri}.extraheader", string.Empty);
+            }
+
             string additionalFetchArgs = string.Empty;
             if (!_selfManageGitCreds)
             {
@@ -398,23 +405,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 executionContext.Debug("Remove any extraheader setting from git config.");
                 foreach (var header in _authHeaderCache)
                 {
-                    int exitCode_configUnset = await _gitCommandManager.GitConfigUnset(executionContext, targetPath, header.Key);
-                    if (exitCode_configUnset != 0)
-                    {
-                        // if unable to use git.exe unset http.extraheader, modify git config file on disk. make sure we don't left credential.
-                        executionContext.Warning("Unable to use git.exe unset http.extraheader, modify git config file on disk to remove leaking credential.");
-                        string gitConfig = Path.Combine(targetPath, ".git/config");
-                        if (File.Exists(gitConfig))
-                        {
-                            string gitConfigContent = File.ReadAllText(Path.Combine(targetPath, ".git", "config"));
-                            if (gitConfigContent.Contains(header.Key))
-                            {
-                                string setting = $"extraheader = {header.Key}";
-                                gitConfigContent = Regex.Replace(gitConfigContent, setting, string.Empty, RegexOptions.IgnoreCase);
-                                File.WriteAllText(gitConfig, gitConfigContent);
-                            }
-                        }
-                    }
+                    await RemoveExtraHeader(executionContext, targetPath, header.Key, header.Value);
                 }
 
                 await RemoveCachedCredential(executionContext, targetPath, repositoryUrl, "origin");
@@ -515,6 +506,34 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
                 _credentialUrlCache[credUri.Uri.AbsoluteUri] = credUri.Uri;
                 return credUri.Uri;
+            }
+        }
+
+        private async Task RemoveExtraHeader(IExecutionContext executionContext, string targetPath, string extraheaderConfigKey, string extraheaderConfigValue)
+        {
+            int exitCode_configUnset = await _gitCommandManager.GitConfigUnset(executionContext, targetPath, extraheaderConfigKey);
+            if (exitCode_configUnset != 0)
+            {
+                // if unable to use git.exe unset http.extraheader, modify git config file on disk. make sure we don't left credential.
+                if (!string.IsNullOrEmpty(extraheaderConfigValue))
+                {
+                    executionContext.Warning(StringUtil.Loc("AttemptRemoveCredFromConfig"));
+                    string gitConfig = Path.Combine(targetPath, ".git/config");
+                    if (File.Exists(gitConfig))
+                    {
+                        string gitConfigContent = File.ReadAllText(Path.Combine(targetPath, ".git", "config"));
+                        if (gitConfigContent.Contains(extraheaderConfigKey))
+                        {
+                            string setting = $"extraheader = {extraheaderConfigValue}";
+                            gitConfigContent = Regex.Replace(gitConfigContent, setting, string.Empty, RegexOptions.IgnoreCase);
+                            File.WriteAllText(gitConfig, gitConfigContent);
+                        }
+                    }
+                }
+                else
+                {
+                    executionContext.Warning(StringUtil.Loc("FailToRemoveCredFromConfig", extraheaderConfigKey, targetPath));
+                }
             }
         }
 
