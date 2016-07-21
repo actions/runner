@@ -72,6 +72,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             }
 
             // Get the workspaces.
+            executionContext.Output(StringUtil.Loc("QueryingWorkspaceInfo"));
             ITfsVCWorkspace[] tfWorkspaces = await tf.WorkspacesAsync();
 
             // Determine the workspace name.
@@ -153,7 +154,21 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                     // Scorch.
                     if (clean)
                     {
-                        await tf.ScorchAsync();
+                        // Try to scorch.
+                        try
+                        {
+                            await tf.ScorchAsync();
+                        }
+                        catch (ProcessExitCodeException ex)
+                        {
+                            // Scorch failed.
+                            // Warn, drop the folder, and re-clone.
+                            // TODO: Fix tf.exe scorch and remove this catch handler. This catch handler was
+                            //       added because scorch fails to interpret the workspace when a root mapping
+                            //       does not exist.
+                            executionContext.Warning(ex.Message);
+                            existingTFWorkspace = null;
+                        }
                     }
                 }
             }
