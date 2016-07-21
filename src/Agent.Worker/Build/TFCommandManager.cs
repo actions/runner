@@ -48,7 +48,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             return localPath?.Trim() ?? string.Empty;
         }
 
-        public async Task ScorchAsync() => await RunCommandAsync(FormatFlags.OmitCollectionUrl, "vc", "scorch", "/diff", "/recursive", "/unmapped", SourcesDirectory);
+        public async Task ScorchAsync() => await RunCommandAsync(FormatFlags.OmitCollectionUrl, "vc", "scorch", "/diff", "/recursive", "/unmapped", "*");
 
         public async Task ShelveAsync(string shelveset, string commentFile)
         {
