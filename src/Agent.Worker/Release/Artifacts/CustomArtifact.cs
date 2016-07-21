@@ -17,12 +17,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
     {
         public Type ExtensionType => typeof(IArtifactExtension);
         public AgentArtifactType ArtifactType => AgentArtifactType.Custom;
+
         public async Task DownloadAsync(IExecutionContext executionContext, ArtifactDefinition artifactDefinition, string downloadFolderPath)
         {
             EnsureVersionBelongsToLinkedDefinition(artifactDefinition);
 
             var customArtifactDetails = artifactDefinition.Details as CustomArtifactDetails;
-
             if (customArtifactDetails != null)
             {
                 IEnumerable<string> artifactDetails = new EndpointProxy().QueryEndpoint(
@@ -35,8 +35,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
 
                 var artifactDownloadDetailList = new List<CustomArtifactDownloadDetails>();
                 artifactDetails.ToList().ForEach(x => artifactDownloadDetailList.Add(JToken.Parse(x).ToObject<CustomArtifactDownloadDetails>()));
-
-
                 if (artifactDownloadDetailList.Count <= 0)
                 {
                     throw new ArtifactDownloadException(StringUtil.Loc("NoArtifactsFound", artifactDefinition.Version));
@@ -78,6 +76,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
                 Url = customEndpoint.Url,
                 Authorization = customEndpoint.Authorization
             };
+
             return details;
         }
 
@@ -126,7 +125,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
             else
             {
                 string resourceType = streamType;
-                var errorMessage = StringUtil.Loc("RMArtifactTypeNotSupported", resourceType);
+                var errorMessage = StringUtil.Loc("RMStreamTypeNotSupported", resourceType);
                 executionContext.Output(errorMessage);
                 throw new NotSupportedException(errorMessage);
             }
@@ -135,7 +134,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
         private static string GetArtifactStreamType(CustomArtifactDownloadDetails artifact, IDictionary<string, string> artifactTypeStreamMapping)
         {
             string streamType = artifact.StreamType;
-
             if (artifactTypeStreamMapping == null)
             {
                 return streamType;
@@ -153,7 +151,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
         private static HttpWebResponse GetWebResponse(IExecutionContext executionContext, string url, IEndpointAuthorizer authorizer)
         {
             var request = WebRequest.Create(url) as HttpWebRequest;
-
             if (request == null)
             {
                 string errorMessage = StringUtil.Loc("RMArtifactDownloadRequestCreationFailed", url);
@@ -169,7 +166,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
         private void EnsureVersionBelongsToLinkedDefinition(ArtifactDefinition artifactDefinition)
         {
             var customArtifactDetails = artifactDefinition.Details as CustomArtifactDetails;
-
             if (customArtifactDetails != null && !string.IsNullOrEmpty(customArtifactDetails.VersionsUrl))
             {
                 // Query for all artifact versions for given artifact source id, these parameters are contained in customArtifactDetails.ArtifactVariables
@@ -195,10 +191,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
                 if (!versionBelongsToDefinition)
                 {
                     throw new ArtifactDownloadException(
-                        StringUtil.Loc(
-                            "RMArtifactVersionNotBelongToArtifactSource",
-                            artifactDefinition.Version,
-                            customArtifactDetails.ArtifactVariables["definition"]));
+                        StringUtil.Loc("RMArtifactVersionNotBelongToArtifactSource", artifactDefinition.Version, customArtifactDetails.ArtifactVariables["definition"]));
                 }
             }
         }
