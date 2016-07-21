@@ -46,8 +46,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
                 }
                 catch (Exception ex)
                 {
-                    Trace.Info($"Path resolved is a rooted path, but it is not a full qualified path: {path}");
+                    Trace.Info($"Path resolved is a rooted path, but it is not fully qualified, return the path: {path}");
                     Trace.Error(ex);
+                    return path;
                 }
             }
 
@@ -69,8 +70,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
                     }
                     catch (Exception ex)
                     {
-                        Trace.Info($"After prefix Artifact Path Root provide by JobExtension, the Path is a rooted path, but it is not a full qualified path: {path}");
+                        Trace.Info($"After prefix Artifact Path Root provide by JobExtension. The Path is a rooted path, but it is not fully qualified, return the path: {path}");
                         Trace.Error(ex);
+                        return path;
                     }
                 }
             }
