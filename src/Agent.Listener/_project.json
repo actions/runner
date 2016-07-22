@@ -34,7 +34,7 @@
             "version": "1.0.0-*"
         },
         "Microsoft.Win32.Registry": "4.0.0",
-        "vss-api-netcore": "0.5.21-private",
+        "vss-api-netcore": "0.5.22-private",
         "System.ServiceProcess.ServiceController": "4.1.0",
         "System.IO.Compression.ZipFile": "4.0.1",
         "System.IO.FileSystem.AccessControl": "4.0.0",
