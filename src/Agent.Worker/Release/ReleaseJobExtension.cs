@@ -81,10 +81,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
             return rootedPath;
         }
 
-        // TODO: This method seems not relevant to Release Extension, refactor it
         public void ConvertLocalPath(IExecutionContext context, string localPath, out string repoName, out string sourcePath)
         {
-            throw new NotImplementedException();
+            Trace.Info($"Received localpath {localPath}");
+            repoName = string.Empty;
+            sourcePath = string.Empty;
         }
 
         public ReleaseJobExtension()
