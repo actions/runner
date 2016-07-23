@@ -82,6 +82,8 @@
   "FileContainerUploadFailed": "Unable to copy file to server StatusCode={0}: {1}. Source file path: {2}. Target server path: {3}",
   "FileDoesNotExist": "File '{0}' does not exist or is not accessible.",
   "FileNotFound": "File not found: '{0}'",
+  "FileUploadCancelled": "File upload has been cancelled during upload file: '{0}'.",
+  "FileUploadFailed": "Fail to upload '{0}' due to '{1}'.",
   "FileUploadFinish": "File: '{0}' tooks {1} milliseconds to finish upload",
   "FileUploadProgress": "Total file: {0} ---- Uploaded file: {1}",
   "GetSources": "Get Sources",
