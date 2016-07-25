@@ -64,12 +64,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         {
             var encryptedBytes = File.ReadAllBytes(_keyFile);
             var parametersString = Encoding.UTF8.GetString(ProtectedData.Unprotect(encryptedBytes, null, DataProtectionScope.LocalMachine));
-            return IOUtil.FromString<RSAParameters>(parametersString);
+            return StringUtil.ConvertFromJson<RSAParameters>(parametersString);
         }
 
         private void SaveParameters(RSAParameters parameters)
         {
-            var parametersString = IOUtil.ToString(parameters);
+            var parametersString = StringUtil.ConvertToJson(parameters);
             var encryptedBytes = ProtectedData.Protect(Encoding.UTF8.GetBytes(parametersString), null, DataProtectionScope.LocalMachine);
             File.WriteAllBytes(_keyFile, encryptedBytes);
             File.SetAttributes(_keyFile, File.GetAttributes(_keyFile) | FileAttributes.Hidden);

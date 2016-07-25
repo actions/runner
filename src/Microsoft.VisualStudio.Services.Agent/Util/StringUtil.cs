@@ -1,3 +1,5 @@
+using Microsoft.VisualStudio.Services.WebApi;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
@@ -11,6 +13,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
     {
         private static readonly object[] s_defaultFormatArgs = new object[] { null };
         private static Dictionary<string, object> s_locStrings;
+        private static Lazy<JsonSerializerSettings> s_serializerSettings = new Lazy<JsonSerializerSettings>(() => new VssJsonMediaTypeFormatter().SerializerSettings);
 
         static StringUtil()
         {
@@ -27,14 +30,52 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
 #endif
         }
 
-        public static string Format(string format, params object[] args)
+        public static T ConvertFromJson<T>(string value)
         {
-            return Format(CultureInfo.InvariantCulture, format, args);
+            return JsonConvert.DeserializeObject<T>(value, s_serializerSettings.Value);
+        }
+
+        /// <summary>
+        /// Convert String to boolean, valid true string: "1", "true", "$true", valid false string: "0", "false", "$false".
+        /// </summary>
+        /// <param name="value">value to convert.</param>
+        /// <param name="defaultValue">default result when value is null or empty or not a valid true/false string.</param>
+        /// <returns></returns>
+        public static bool ConvertToBoolean(string value, bool defaultValue = false)
+        {
+            if (string.IsNullOrEmpty(value))
+            {
+                return defaultValue;
+            }
+
+            switch (value.ToLowerInvariant())
+            {
+                case "1":
+                case "true":
+                case "$true":
+                    return true;
+                case "0":
+                case "false":
+                case "$false":
+                    return false;
+                default:
+                    return defaultValue;
+            }
+        }
+
+        public static string ConvertToJson(object obj)
+        {
+            return JsonConvert.SerializeObject(obj, Formatting.Indented, s_serializerSettings.Value);
         }
 
         public static void EnsureRegisterEncodings()
         {
             // The static constructor should have registered the required encodings.
+        }
+
+        public static string Format(string format, params object[] args)
+        {
+            return Format(CultureInfo.InvariantCulture, format, args);
         }
 
         public static Encoding GetSystemEncoding()
@@ -97,34 +138,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
         public static string Loc(string locKey, params object[] args)
         {
             return Format(CultureInfo.CurrentCulture, Loc(locKey), args);
-        }
-
-        /// <summary>
-        /// Convert String to boolean, valid true string: "1", "true", "$true", valid false string: "0", "false", "$false".
-        /// </summary>
-        /// <param name="value"></param>
-        /// <param name="defaultValue">default result when value is null or empty or not a valid true/false string.</param>
-        /// <returns></returns>
-        public static bool ConvertToBoolean(string value, bool defaultValue = false)
-        {
-            if (string.IsNullOrEmpty(value))
-            {
-                return defaultValue;
-            }
-
-            switch (value.ToLowerInvariant())
-            {
-                case "1":
-                case "true":
-                case "$true":
-                    return true;
-                case "0":
-                case "false":
-                case "$false":
-                    return false;
-                default:
-                    return defaultValue;
-            }
         }
 
         private static string Format(CultureInfo culture, string format, params object[] args)

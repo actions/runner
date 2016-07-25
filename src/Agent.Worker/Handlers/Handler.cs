@@ -116,7 +116,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             }
         }
 
-        protected void AddVariablesToEnvironment(bool excludeSecrets = false)
+        protected void AddVariablesToEnvironment(bool excludeNames = false, bool excludeSecrets = false)
         {
             // Validate args.
             Trace.Entering();
@@ -124,28 +124,48 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             ArgUtil.NotNull(ExecutionContext, nameof(ExecutionContext));
             ArgUtil.NotNull(ExecutionContext.Variables, nameof(ExecutionContext.Variables));
 
-            // Add the public variables to the environment variable dictionary.
+            // Add the public variables.
+            var names = new List<string>();
             foreach (KeyValuePair<string, string> pair in ExecutionContext.Variables.Public)
             {
-                // Format all variables other than "agent.jobstatus".
-                string formattedKey = string.Equals(pair.Key, Constants.Variables.Agent.JobStatus, StringComparison.OrdinalIgnoreCase)
-                    ? pair.Key
-                    : (pair.Key ?? string.Empty).Replace('.', '_').ToUpperInvariant();
-                AddEnvironmentVariable(
-                    formattedKey,
-                    pair.Value);
+                // Add "agent.jobstatus" using the unformatted name and formatted name.
+                if (string.Equals(pair.Key, Constants.Variables.Agent.JobStatus, StringComparison.OrdinalIgnoreCase))
+                {
+                    AddEnvironmentVariable(pair.Key, pair.Value);
+                }
+
+                // Add the variable using the formatted name.
+                string formattedKey = (pair.Key ?? string.Empty).Replace('.', '_').ToUpperInvariant();
+                AddEnvironmentVariable(formattedKey, pair.Value);
+
+                // Store the name.
+                names.Add(pair.Key ?? string.Empty);
+            }
+
+            // Add the public variable names.
+            if (!excludeNames)
+            {
+                AddEnvironmentVariable("VSTS_PUBLIC_VARIABLES", StringUtil.ConvertToJson(names));
             }
 
             if (!excludeSecrets)
             {
-                // Add the secret variables to the environment variable dictionary prefix with Secret_.
+                // Add the secret variables.
+                var secretNames = new List<string>();
                 foreach (KeyValuePair<string, string> pair in ExecutionContext.Variables.Private)
                 {
-                    // Format all variables.
+                    // Add the variable using the formatted name.
                     string formattedKey = (pair.Key ?? string.Empty).Replace('.', '_').ToUpperInvariant();
-                    AddEnvironmentVariable(
-                        $"SECRET_{formattedKey}",
-                        pair.Value);
+                    AddEnvironmentVariable($"SECRET_{formattedKey}", pair.Value);
+
+                    // Store the name.
+                    secretNames.Add(pair.Key ?? string.Empty);
+                }
+
+                // Add the secret variable names.
+                if (!excludeNames)
+                {
+                    AddEnvironmentVariable("VSTS_SECRET_VARIABLES", StringUtil.ConvertToJson(secretNames));
                 }
             }
         }

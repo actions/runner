@@ -32,7 +32,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             ArgUtil.Directory(TaskDirectory, nameof(TaskDirectory));
 
             // Update the env dictionary.
-            AddVariablesToEnvironment(excludeSecrets: true);
+            AddVariablesToEnvironment(excludeNames: true, excludeSecrets: true);
 
             // Determine whether to fail on STDERR.
             _failOnStandardError = StringUtil.ConvertToBoolean(Data.FailOnStandardError, true); // Default to true.
