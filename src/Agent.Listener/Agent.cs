@@ -4,6 +4,7 @@ using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using System.IO;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener
 {
@@ -126,6 +127,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     return await RunAsync(TokenSource.Token, settings, runAsService);
                 }
 
+#if OS_WINDOWS
+                if (File.Exists(Path.Combine(IOUtil.GetBinPath(), "VsoAgentService.exe")))
+                {
+                    // The old .net windows servicehost doesn't pass correct args while invoke Agent.Listener.exe
+                    // When we detect the agent is a migrated .net windows agent, we will just run the agent.listener.exe even the servicehost doesn't pass correct args.
+                    Trace.Verbose($"Run the agent for compat reason.");
+                    return await RunAsync(TokenSource.Token, settings, runAsService);
+                }
+#endif
                 if (runAsService)
                 {
                     // This is helpful if the user tries to start the agent.listener which is already configured or running as service
@@ -185,6 +195,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             {
                 var notification = HostContext.GetService<IJobNotification>();
                 notification.StartClient(settings.NotificationPipeName, token);
+                // this is not a reliable way to disable auto update.
+                // we need server side work to really enable the feature
+                // https://github.com/Microsoft/vsts-agent/issues/446 (Feature: Allow agent / pool to opt out of automatic updates)
                 bool disableAutoUpdate = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("agent.disableupdate"));
                 bool autoUpdateInProgress = false;
                 Task<bool> selfUpdateTask = null;

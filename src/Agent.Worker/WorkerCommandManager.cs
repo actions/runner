@@ -59,7 +59,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 {
                     try
                     {
-                        context.Debug($"Processing: {input}");
+                        // trace the ##vso command as long as the command is not a ##vso[task.debug] command.
+                        if (!(string.Equals(command.Area, "task", StringComparison.OrdinalIgnoreCase) &&
+                              string.Equals(command.Event, "debug", StringComparison.OrdinalIgnoreCase)))
+                        {
+                            context.Debug($"Processing: {input}");
+                        }
+
                         extension.ProcessCommand(context, command);
                     }
                     catch (Exception ex)

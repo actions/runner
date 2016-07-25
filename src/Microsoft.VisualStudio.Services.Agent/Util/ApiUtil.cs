@@ -1,5 +1,4 @@
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
-using Microsoft.VisualStudio.Services.Client;
 using Microsoft.VisualStudio.Services.Common;
 using System;
 using System.Collections.Generic;
@@ -7,6 +6,7 @@ using System.Globalization;
 using System.Net.Http.Headers;
 using System.Runtime.InteropServices;
 using Microsoft.VisualStudio.Services.WebApi;
+using Microsoft.VisualStudio.Services.OAuth;
 
 namespace Microsoft.VisualStudio.Services.Agent.Util
 {
@@ -95,11 +95,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             if (serviceEndpoint.Authorization.Scheme == EndpointAuthorizationSchemes.OAuth &&
                 serviceEndpoint.Authorization.Parameters.TryGetValue(EndpointAuthorizationParameters.AccessToken, out accessToken))
             {
-                //TODO: consume the new Microsoft.VisualStudio.Services.OAuth.VssOAuthAccessTokenCredential
-                //when it is available in the rest SDK
-#pragma warning disable 618
-                credentials = new VssOAuthCredential(accessToken);
-#pragma warning restore 618
+                credentials = new VssCredentials(null, new VssOAuthAccessTokenCredential(accessToken), CredentialPromptType.DoNotPrompt);
             }
 
             return credentials;

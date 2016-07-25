@@ -61,6 +61,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 Trace.Info("Starting the job execution context.");
                 jobContext.Start();
 
+                // Print agent version into log for better diagnostic experience 
+                jobContext.Output(StringUtil.Loc("AgentVersion", Constants.Agent.Version));
+
                 // Set agent variables.
                 AgentSettings settings = HostContext.GetService<IConfigurationStore>().GetSettings();
                 jobContext.Variables.Set(Constants.Variables.Agent.Id, settings.AgentId.ToString(CultureInfo.InvariantCulture));
