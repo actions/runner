@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Diagnostics;
 using Microsoft.VisualStudio.Services.WebApi;
+using System.Net.Http;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 {
@@ -117,7 +118,22 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                     {
                         string itemPath = (_containerPath.TrimEnd('/') + "/" + fileToUpload.Remove(0, _sourceParentDirectory.Length + 1)).Replace('\\', '/');
                         uploadTimer.Restart();
-                        var response = await _fileContainerHttpClient.UploadFileAsync(_containerId, itemPath, fs, _projectId, token);
+                        HttpResponseMessage response = null;
+                        try
+                        {
+                            response = await _fileContainerHttpClient.UploadFileAsync(_containerId, itemPath, fs, _projectId, token);
+                        }
+                        catch (OperationCanceledException) when (token.IsCancellationRequested)
+                        {
+                            context.Output(StringUtil.Loc("FileUploadCancelled", fileToUpload));
+                            throw;
+                        }
+                        catch (Exception ex)
+                        {
+                            context.Output(StringUtil.Loc("FileUploadFailed", fileToUpload, ex.Message));
+                            throw;
+                        }
+
                         uploadTimer.Stop();
                         if (response.StatusCode != System.Net.HttpStatusCode.Created)
                         {
