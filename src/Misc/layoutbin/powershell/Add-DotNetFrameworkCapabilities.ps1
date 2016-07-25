@@ -87,18 +87,14 @@ function Add-Versions {
             # Determine the version string.
             $release = Get-RegistryValue -Hive 'LocalMachine' -View $View -KeyName $profileKeyName -ValueName 'Release'
             $versionString = switch ($release) {
+                # We put the releaseVersion into version range, since customer might install beta/preview version .net framework.
                 378389 { "4.5.0" }
-                378675 { "4.5.1" }
-                378758 { "4.5.1" }
-                379893 { "4.5.2" }
-                380995 { "4.5.3" } # 4.5.3 version that comes with VS CTP
-                393295 { "4.6.0" } # Installed on Windows 10
-                393297 { "4.6.0" } # Installed on all other Windows OS versions
-                394254 { "4.6.1" } # Installed on Windows 10
-                394271 { "4.6.1" } # Installed on all other Windows OS versions
-                394747 { "4.6.2" } # Preview installed on Windows 10 RS1 Preview
-                394748 { "4.6.2" } # Preview installed on all other Windows OS versions
-                { $_ -gt 394748 } { "4.6.2" } # Until we know the releaseVersion, continue to use 4.6.2
+                { $_ -gt 378389 -and $_ -le 378758 } { "4.5.1" }
+                { $_ -gt 378758 -and $_ -le 379893 } { "4.5.2" }
+                { $_ -gt 379893 -and $_ -le 380995 } { "4.5.3" }
+                { $_ -gt 380995 -and $_ -le 393297 } { "4.6.0" }
+                { $_ -gt 393297 -and $_ -le 394271 } { "4.6.1" }
+                { $_ -gt 394271 } { "4.6.2" }
             }
 
             if (!$versionString) {
