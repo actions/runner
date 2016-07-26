@@ -63,6 +63,9 @@ Stopped
 ```
 
 ### Uninstall
+
+> NOTE: Stop is a separate command with launchd (script is a thin wrapper).  You likely want to stop before uninstalling.
+
 ```bash
 $ sudo ./svc.sh uninstall
 
