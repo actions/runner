@@ -4,6 +4,10 @@
 
 Create a PAT token.  [Step by Step here](https://www.visualstudio.com/en-us/docs/setup-admin/team-services/use-personal-access-tokens-to-authenticate)
 
+Choose all scopes or the minimum "Agent Pools (read, manage)" scope.
+
+![PAT Scope](scopes.png "PAT Scope")
+
 ## On Premises TFS
 
 You can use a domain user but it's recommended to create a local windows user on each of your application tiers specifically for registering build agents.
