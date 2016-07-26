@@ -13,6 +13,7 @@ using System.Reflection;
 using Xunit;
 using Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage;
 using Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts.Definition;
+using Microsoft.VisualStudio.Services.Agent.Worker.Release.ContainerFetchEngine;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests
 {
@@ -81,6 +82,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 typeof(ITfsVCStatus),
                 typeof(ITfsVCWorkspace),
                 typeof(IWorkerCommandExtension),
+                typeof(IContainerProvider)
             };
             Validate(
                 assembly: typeof(IStepsRunner).GetTypeInfo().Assembly,

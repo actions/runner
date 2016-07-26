@@ -14,6 +14,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
         Task WriteStreamToFile(Stream stream, string filePath);
 
         void CleanupDirectory(string directoryPath, CancellationToken cancellationToken);
+
+        void EnsureDirectoryExists(string directoryPath);
+
+        void EnsureParentDirectory(string filePath);
+
+        void DeleteFile(string filePath);
+
+        void MoveFile(string sourceFileName, string destFileName);
+
+        void CreateEmptyFile(string filePath);
+
+        string GetFileName(string filePath);
+
+        string JoinPath(string rootDirectory, string relativePath);
     }
 
     public class ReleaseFileSystemManager : AgentService, IReleaseFileSystemManager
@@ -48,13 +62,49 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
             return Path.GetFullPath(path);
         }
 
-        private void EnsureDirectoryExists(string directoryPath)
+        public void EnsureDirectoryExists(string directoryPath)
         {
             string path = ValidatePath(directoryPath);
             if (!Directory.Exists(path))
             {
                 Directory.CreateDirectory(path);
             }
+        }
+
+        public void EnsureParentDirectory(string filePath)
+        {
+            DirectoryInfo ensureParentDirectory = Directory.GetParent(filePath);
+            EnsureDirectoryExists(ensureParentDirectory.FullName);
+        }
+
+        public void DeleteFile(string filePath)
+        {
+            if (File.Exists(filePath))
+            {
+                File.Delete(filePath);
+            }
+        }
+
+        public void MoveFile(string sourceFileName, string destFileName)
+        {
+            File.Move(sourceFileName, destFileName);
+        }
+
+        public void CreateEmptyFile(string filePath)
+        {
+            using (new FileStream(filePath, FileMode.Create))
+            {
+            }
+        }
+
+        public string GetFileName(string filePath)
+        {
+            return Path.GetFileName(filePath);
+        }
+
+        public string JoinPath(string rootDirectory, string relativePath)
+        {
+            return Path.Combine(rootDirectory, relativePath);
         }
 
         public async Task WriteStreamToFile(Stream stream, string filePath)

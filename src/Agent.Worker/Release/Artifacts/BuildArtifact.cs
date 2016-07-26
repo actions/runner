@@ -9,6 +9,8 @@ using Microsoft.TeamFoundation.Build.WebApi;
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts.Definition;
+using Microsoft.VisualStudio.Services.Agent.Worker.Release.ContainerFetchEngine;
+using Microsoft.VisualStudio.Services.Agent.Worker.Release.ContainerProvider.Helpers;
 using Microsoft.VisualStudio.Services.WebApi;
 using Microsoft.VisualStudio.Services.Common;
 using Microsoft.VisualStudio.Services.ReleaseManagement.WebApi.Contracts;
@@ -111,6 +113,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
                 {
                     Credentials = vssCredentials,
                     RelativePath = artifactDetails["RelativePath"],
+                    AccessToken = accessToken,
                     Project = projectId.ToString(),
                     TfsUrl = new Uri(tfsUrl),
                 };
@@ -181,26 +184,42 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
                 var fileShareArtifact = new FileShareArtifact();
                 await fileShareArtifact.DownloadArtifactAsync(executionContext, HostContext, artifactDefinition, fileShare, downloadFolderPath);
             }
-            else if (string.Equals(buildArtifact.Resource.Type, WellKnownArtifactResourceTypes.Container, StringComparison.OrdinalIgnoreCase))
+            else if (buildArtifactDetails != null
+                     && string.Equals(buildArtifact.Resource.Type, WellKnownArtifactResourceTypes.Container, StringComparison.OrdinalIgnoreCase))
             {
                 executionContext.Output("Artifact Type: ServerDrop");
+                // Get containerId and rootLocation for the artifact #/922702/drop
+                string[] parts = buildArtifact.Resource.Data.Split(new[] { '/' }, 3);
 
-                // TODO:Get VssBinFetchclient and get away from zipstream downloader
-                Stream contentStream;
-
-                if (definitionType == DefinitionType.Xaml)
+                if (parts.Length < 3)
                 {
-                    contentStream = await xamlBuildClient.GetArtifactContentZipAsync(buildArtifactDetails.Project, buildId, buildArtifact.Name);
-                }
-                else
-                {
-                    contentStream = await buildClient.GetArtifactContentZipAsync(buildArtifactDetails.Project, buildId, buildArtifact.Name);
+                    throw new ArtifactDownloadException(StringUtil.Loc("RMArtifactContainerDetailsNotFoundError", buildArtifact.Name));
                 }
 
+                int containerId;
+                string rootLocation = parts[2];
+                if (!int.TryParse(parts[1], out containerId))
+                {
+                    throw new ArtifactDownloadException(StringUtil.Loc("RMArtifactContainerDetailsInvaidError", buildArtifact.Name));
+                }
 
-                var zipStreamDownloader = HostContext.GetService<IZipStreamDownloader>();
-                string artifactRootFolder = StringUtil.Format("/{0}", buildArtifact.Name);
-                await zipStreamDownloader.DownloadFromStream(contentStream, artifactRootFolder, buildArtifactDetails.RelativePath, downloadFolderPath);
+                IContainerProvider containerProvider =
+                    new ContainerProviderFactory(buildArtifactDetails, rootLocation, containerId, executionContext).GetContainerProvider(
+                        WellKnownArtifactResourceTypes.Container);
+
+                string rootDestinationDir = Path.Combine(localFolderPath, rootLocation);
+                var containerFetchEngineOptions = new ContainerFetchEngineOptions
+                {
+                    ParallelDownloadLimit = 4,
+                    CancellationToken = executionContext.CancellationToken
+                };
+
+                using (var engine = new ContainerFetchEngine.ContainerFetchEngine(containerProvider, rootLocation, rootDestinationDir))
+                {
+                    engine.ContainerFetchEngineOptions = containerFetchEngineOptions;
+                    engine.ExecutionLogger = new ExecutionLogger(executionContext);
+                    await engine.FetchAsync();
+                }
             }
             else
             {

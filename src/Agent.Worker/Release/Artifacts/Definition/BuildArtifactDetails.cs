@@ -22,5 +22,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts.Definit
         public VssCredentials Credentials { get; set; }
 
         public string Project { get; set; }
+
+        public string AccessToken { get; set; }
     }
 }
