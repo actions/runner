@@ -52,8 +52,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 }
                 catch (Exception ex)
                 {
-                    Trace.Error("Unexpected exception while testing whether the TEE EULA has been accepted for the current security user.");
-                    Trace.Error(ex);
+                    executionContext.Debug("Unexpected exception while testing whether the TEE EULA has been accepted for the current user.");
+                    executionContext.Debug(ex.ToString());
                 }
 
                 if (!skipEula)
@@ -65,7 +65,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                     }
                     catch (Exception ex)
                     {
-                        Trace.Error(ex);
+                        executionContext.Debug(ex.ToString());
                         executionContext.Warning(ex.Message);
                     }
                 }
@@ -97,6 +97,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             if (tf.Features.HasFlag(TfsVCFeatures.Scorch) || !clean)
             {
                 existingTFWorkspace = MatchExactWorkspace(
+                    executionContext: executionContext,
                     tfWorkspaces: tfWorkspaces,
                     name: workspaceName,
                     definitionMappings: definitionMappings,
@@ -358,7 +359,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             return Path.Combine(sourcesDirectory, relativePath);
         }
 
-        private ITfsVCWorkspace MatchExactWorkspace(ITfsVCWorkspace[] tfWorkspaces, string name, DefinitionWorkspaceMapping[] definitionMappings, string sourcesDirectory)
+        private ITfsVCWorkspace MatchExactWorkspace(
+            IExecutionContext executionContext,
+            ITfsVCWorkspace[] tfWorkspaces,
+            string name,
+            DefinitionWorkspaceMapping[] definitionMappings,
+            string sourcesDirectory)
         {
             ArgUtil.NotNullOrEmpty(name, nameof(name));
             ArgUtil.NotNullOrEmpty(sourcesDirectory, nameof(sourcesDirectory));
@@ -373,34 +379,38 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             if (!Directory.Exists(sourcesDirectory) ||
                 !Directory.EnumerateFileSystemEntries(sourcesDirectory).Any(x => !x.EndsWith($"{Path.DirectorySeparatorChar}.tf")))
             {
-                Trace.Info($"Sources directory does not exist or is empty.");
+                executionContext.Debug("Sources directory does not exist or is empty.");
                 return null;
             }
 
             string machineName = Environment.MachineName;
-            Trace.Info("Attempting to find a matching workspace.");
-            Trace.Info($"Expected workspace name '{name}', machine name '{machineName}', number of mappings '{definitionMappings?.Length ?? 0}'.");
+            executionContext.Debug($"Attempting to find a workspace: '{name}'");
             foreach (ITfsVCWorkspace tfWorkspace in tfWorkspaces ?? new ITfsVCWorkspace[0])
             {
-                // Compare the workspace name, machine name, and number of mappings.
-                Trace.Info($"Candidate workspace name '{tfWorkspace.Name}', machine name '{tfWorkspace.Computer}', number of mappings '{tfWorkspace.Mappings?.Length ?? 0}'.");
-                if (!string.Equals(tfWorkspace.Name, name, StringComparison.Ordinal) ||
-                    !string.Equals(tfWorkspace.Computer, machineName, StringComparison.Ordinal) ||
-                    (tfWorkspace.Mappings?.Length ?? 0) != (definitionMappings?.Length ?? 0))
+                // Compare the workspace name.
+                if (!string.Equals(tfWorkspace.Name, name, StringComparison.Ordinal))
                 {
+                    executionContext.Debug($"Skipping workspace: '{tfWorkspace.Name}'");
+                    continue;
+                }
+
+                executionContext.Debug($"Candidate workspace: '{tfWorkspace.Name}'");
+
+                // Compare the machine name.
+                if (!string.Equals(tfWorkspace.Computer, machineName, StringComparison.Ordinal))
+                {
+                    executionContext.Debug($"Expected computer name: '{machineName}'. Actual: '{tfWorkspace.Computer}'");
+                    continue;
+                }
+
+                // Compare the number of mappings.
+                if ((tfWorkspace.Mappings?.Length ?? 0) != (definitionMappings?.Length ?? 0))
+                {
+                    executionContext.Debug($"Expected number of mappings: '{definitionMappings?.Length ?? 0}'. Actual: '{tfWorkspace.Mappings?.Length ?? 0}'");
                     continue;
                 }
 
                 // TODO: Is there such a thing as a single level cloak?
-                // Sort the TF mappings.
-                List<ITfsVCMapping> sortedTFMappings =
-                    (tfWorkspace.Mappings ?? new ITfsVCMapping[0])
-                    .OrderBy(x => !x.Cloak) // Cloaks first
-                    .ThenBy(x => !x.Recursive) // Then recursive maps
-                    .ThenBy(x => x.ServerPath) // Then sort by server path
-                    .ToList();
-                sortedTFMappings.ForEach(x => Trace.Info($"TF mapping: cloak '{x.Cloak}', recursive '{x.Recursive}', server path '{x.ServerPath}', local path '{x.LocalPath}'."));
-
                 // Sort the definition mappings.
                 List<DefinitionWorkspaceMapping> sortedDefinitionMappings =
                     (definitionMappings ?? new DefinitionWorkspaceMapping[0])
@@ -408,72 +418,80 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                     .ThenBy(x => !x.Recursive) // Then recursive maps
                     .ThenBy(x => x.NormalizedServerPath) // Then sort by the normalized server path
                     .ToList();
-                sortedDefinitionMappings.ForEach(x => Trace.Info($"Definition mapping: cloak '{x.MappingType == DefinitionMappingType.Cloak}', recursive '{x.Recursive}', server path '{x.NormalizedServerPath}', local path '{ResolveMappingLocalPath(x, sourcesDirectory)}'."));
+                for (int i = 0 ; i < sortedDefinitionMappings.Count ; i++)
+                {
+                    DefinitionWorkspaceMapping mapping = sortedDefinitionMappings[i];
+                    executionContext.Debug($"Definition mapping[{i}]: cloak '{mapping.MappingType == DefinitionMappingType.Cloak}', recursive '{mapping.Recursive}', server path '{mapping.NormalizedServerPath}', local path '{ResolveMappingLocalPath(mapping, sourcesDirectory)}'");
+                }
 
-                // Compare the mappings,
+                // Sort the TF mappings.
+                List<ITfsVCMapping> sortedTFMappings =
+                    (tfWorkspace.Mappings ?? new ITfsVCMapping[0])
+                    .OrderBy(x => !x.Cloak) // Cloaks first
+                    .ThenBy(x => !x.Recursive) // Then recursive maps
+                    .ThenBy(x => x.ServerPath) // Then sort by server path
+                    .ToList();
+                for (int i = 0 ; i< sortedTFMappings.Count ; i++)
+                {
+                    ITfsVCMapping mapping = sortedTFMappings[i];
+                    executionContext.Debug($"Found mapping[{i}]: cloak '{mapping.Cloak}', recursive '{mapping.Recursive}', server path '{mapping.ServerPath}', local path '{mapping.LocalPath}'");
+                }
+
+                // Compare the mappings.
                 bool allMatch = true;
                 for (int i = 0 ; i < sortedTFMappings.Count ; i++)
                 {
                     ITfsVCMapping tfMapping = sortedTFMappings[i];
                     DefinitionWorkspaceMapping definitionMapping = sortedDefinitionMappings[i];
-                    if (tfMapping.Cloak)
-                    {
-                        // The TF mapping is a cloak.
 
-                        // Verify the definition mapping is a cloak and the server paths match.
-                        if (definitionMapping.MappingType != DefinitionMappingType.Cloak ||
-                            !string.Equals(tfMapping.ServerPath, definitionMapping.ServerPath, StringComparison.Ordinal))
-                        {
-                            allMatch = false; // Mapping comparison failed.
-                            break;
-                        }
+                    // Compare the cloak flag.
+                    bool expectedCloak = definitionMapping.MappingType == DefinitionMappingType.Cloak;
+                    if (tfMapping.Cloak != expectedCloak)
+                    {
+                        executionContext.Debug($"Expected mapping[{i}] cloak: '{expectedCloak}'. Actual: '{tfMapping.Cloak}'");
+                        allMatch = false;
+                        break;
                     }
-                    else
+
+                    // Compare the recursive flag.
+                    if (!expectedCloak && tfMapping.Recursive != definitionMapping.Recursive)
                     {
-                        // The TF mapping is a map.
+                        executionContext.Debug($"Expected mapping[{i}] recursive: '{definitionMapping.Recursive}'. Actual: '{tfMapping.Recursive}'");
+                        allMatch = false;
+                        break;
+                    }
 
-                        // Verify the definition mapping is a map and the local paths match.
-                        if (definitionMapping.MappingType != DefinitionMappingType.Map ||
-                            !string.Equals(tfMapping.LocalPath, ResolveMappingLocalPath(definitionMapping, sourcesDirectory), StringComparison.Ordinal))
+                    // TODO: Is there such a thing as a single level cloak?
+                    // Compare the server path. Normalize the expected server path for a single-level map.
+                    string expectedServerPath = definitionMapping.NormalizedServerPath;
+                    if (!string.Equals(tfMapping.ServerPath, expectedServerPath, StringComparison.Ordinal))
+                    {
+                        executionContext.Debug($"Expected mapping[{i}] server path: '{expectedServerPath}'. Actual: '{tfMapping.ServerPath}'");
+                        allMatch = false;
+                        break;
+                    }
+
+                    // Compare the local path.
+                    if (!expectedCloak)
+                    {
+                        string expectedLocalPath = ResolveMappingLocalPath(definitionMapping, sourcesDirectory);
+                        if (!string.Equals(tfMapping.LocalPath, expectedLocalPath, StringComparison.Ordinal))
                         {
-                            allMatch = false; // Mapping comparison failed.
+                            executionContext.Debug($"Expected mapping[{i}] local path: '{expectedLocalPath}'. Actual: '{tfMapping.LocalPath}'");
+                            allMatch = false;
                             break;
-                        }
-
-                        if (tfMapping.Recursive)
-                        {
-                            // The TF mapping is a recursive map.
-
-                            // Verify the server paths match.
-                            if (!string.Equals(tfMapping.ServerPath, definitionMapping.ServerPath, StringComparison.Ordinal))
-                            {
-                                allMatch = false; // Mapping comparison failed.
-                                break;
-                            }
-                        }
-                        else
-                        {
-                            // The TF mapping is a single-level map.
-
-                            // Verify the definition mapping is a single-level map and the normalized server paths match.
-                            if (definitionMapping.Recursive ||
-                                !string.Equals(tfMapping.ServerPath, definitionMapping.NormalizedServerPath, StringComparison.Ordinal))
-                            {
-                                allMatch = false; // Mapping comparison failed.
-                                break;
-                            }
                         }
                     }
                 }
 
                 if (allMatch)
                 {
-                    Trace.Info("Matching workspace found.");
+                    executionContext.Debug("Matching workspace found.");
                     return tfWorkspace;
                 }
             }
 
-            Trace.Info("Matching workspace not found.");
+            executionContext.Debug("Matching workspace not found.");
             return null;
         }
 
@@ -542,10 +560,41 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
             public DefinitionMappingType MappingType { get; set; }
 
-            // Remove the trailing "/*" from the single-level mapping server path.
-            public string NormalizedServerPath => Recursive ? ServerPath : ServerPath.Substring(0, ServerPath.Length - 2);
+            /// <summary>
+            /// Remove the trailing "/*" from the single-level mapping server path.
+            /// If the ServerPath is "$/*", then the normalized path is returned
+            /// as "$/" rather than "$".
+            /// </summary>
+            public string NormalizedServerPath
+            {
+                get
+                {
+                    string path;
+                    if (!Recursive)
+                    {
+                        // Trim the last two characters (i.e. "/*") from the single-level
+                        // mapping server path.
+                        path = ServerPath.Substring(0, ServerPath.Length - 2);
 
-            // Returns true if the path does not end with "/*".
+                        // Check if trimmed too much. This is important when comparing
+                        // against workspaces on disk.
+                        if (string.Equals(path, "$", StringComparison.Ordinal))
+                        {
+                            path = "$/";
+                        }
+                    }
+                    else
+                    {
+                        path = ServerPath ?? string.Empty;
+                    }
+
+                    return path;
+                }
+            }
+
+            /// <summary>
+            /// Returns true if the path does not end with "/*".
+            /// </summary>
             public bool Recursive => !(ServerPath ?? string.Empty).EndsWith("/*");
 
             public string ServerPath { get; set; }
