@@ -7,15 +7,11 @@ using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
-using Microsoft.VisualStudio.Services.WebApi;
-using Newtonsoft.Json;
 
 namespace Microsoft.VisualStudio.Services.Agent.Util
 {
     public static class IOUtil
     {
-        private static Lazy<JsonSerializerSettings> s_serializerSettings = new Lazy<JsonSerializerSettings>(() => new VssJsonMediaTypeFormatter().SerializerSettings);
-
         public static string ExeExtension
         {
             get
@@ -28,25 +24,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             }
         }
 
-        public static String ToString(object obj)
-        {
-            return JsonConvert.SerializeObject(obj, Formatting.Indented, s_serializerSettings.Value);
-        }
-
-        public static T FromString<T>(string value)
-        {
-            return JsonConvert.DeserializeObject<T>(value, s_serializerSettings.Value);
-        }
-
         public static void SaveObject(object obj, string path)
         {
-            File.WriteAllText(path, ToString(obj), Encoding.UTF8);
+            File.WriteAllText(path, StringUtil.ConvertToJson(obj), Encoding.UTF8);
         }
 
         public static T LoadObject<T>(string path)
         {
             string json = File.ReadAllText(path, Encoding.UTF8);
-            return FromString<T>(json);
+            return StringUtil.ConvertFromJson<T>(json);
         }
 
         // TODO: Remove all of these directory functions from IOUtil and use IHostContext.GetDirectory(WellKnownDirectory) instead.
