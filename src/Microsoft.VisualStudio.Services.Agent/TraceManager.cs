@@ -5,13 +5,12 @@ using System.Diagnostics;
 
 namespace Microsoft.VisualStudio.Services.Agent
 {
-    public interface ITraceManager: IDisposable
+    public interface ITraceManager : IDisposable
     {
         SourceSwitch Switch { get; }
         Tracing this[string name] { get; }
     }
 
-    // TODO: Handle paging.
     public sealed class TraceManager : ITraceManager
     {
         private readonly ConcurrentDictionary<string, Tracing> _sources = new ConcurrentDictionary<string, Tracing>(StringComparer.OrdinalIgnoreCase);
@@ -23,7 +22,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             : this(traceListener, new TraceSetting(), secretMasker)
         {
         }
-        
+
         public TraceManager(HostTraceListener traceListener, TraceSetting traceSetting, ISecretMasker secretMasker)
         {
             // Validate and store params.
@@ -39,7 +38,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                 Level = _traceSetting.DefaultTraceLevel.ToSourceLevels()
             };
         }
-        
+
         public SourceSwitch Switch { get; private set; }
 
         public Tracing this[string name]
@@ -76,7 +75,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             TraceLevel sourceTraceLevel;
             if (_traceSetting.DetailTraceSetting.TryGetValue(name, out sourceTraceLevel))
             {
-                sourceSwitch = new SourceSwitch("VSTSAgentSubSwitch") 
+                sourceSwitch = new SourceSwitch("VSTSAgentSubSwitch")
                 {
                     Level = sourceTraceLevel.ToSourceLevels()
                 };

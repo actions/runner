@@ -97,11 +97,47 @@ namespace AgentService {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Agent listener update failed, stop the service..
+        /// </summary>
+        internal static string AgentUpdateFailed {
+            get {
+                return ResourceManager.GetString("AgentUpdateFailed", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Agent listener exit because of updating, re-launch agent in 5 seconds..
         /// </summary>
         internal static string AgentUpdateInProcess {
             get {
                 return ResourceManager.GetString("AgentUpdateInProcess", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Agent listener has been updated to latest, restart the service to update the servicehost itself..
+        /// </summary>
+        internal static string AgentUpdateRestartNeeded {
+            get {
+                return ResourceManager.GetString("AgentUpdateRestartNeeded", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Agent listener has been updated to latest, re-launch agent in 5 seconds..
+        /// </summary>
+        internal static string AgentUpdateSucceed {
+            get {
+                return ResourceManager.GetString("AgentUpdateSucceed", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Crash servicehost to trigger SCM restart the serivce..
+        /// </summary>
+        internal static string CrashServiceHost {
+            get {
+                return ResourceManager.GetString("CrashServiceHost", resourceCulture);
             }
         }
     }

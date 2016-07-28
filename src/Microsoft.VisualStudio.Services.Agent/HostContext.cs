@@ -2,7 +2,6 @@ using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -48,14 +47,14 @@ namespace Microsoft.VisualStudio.Services.Agent
             if (string.IsNullOrEmpty(logFile))
             {
                 int logPageSize;
-                string logSizeEnv = Environment.GetEnvironmentVariable($"{hostType.ToLower()}.logsize");
+                string logSizeEnv = Environment.GetEnvironmentVariable($"{hostType.ToUpperInvariant()}_LOGSIZE");
                 if (!string.IsNullOrEmpty(logSizeEnv) || !int.TryParse(logSizeEnv, out logPageSize))
                 {
                     logPageSize = _defaultLogPageSize;
                 }
 
                 int logRetentionDays;
-                string logRetentionDaysEnv = Environment.GetEnvironmentVariable($"{hostType.ToLower()}.logretention");
+                string logRetentionDaysEnv = Environment.GetEnvironmentVariable($"{hostType.ToUpperInvariant()}_LOGRETENTION");
                 if (!string.IsNullOrEmpty(logRetentionDaysEnv) || !int.TryParse(logRetentionDaysEnv, out logRetentionDays))
                 {
                     logRetentionDays = _defaultLogRetentionDays;

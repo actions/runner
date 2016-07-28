@@ -5,8 +5,6 @@ using System.Linq;
 using System.Text;
 
 using Microsoft.VisualStudio.Services.Agent.Util;
-using System.Threading;
-using System.Diagnostics;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 {

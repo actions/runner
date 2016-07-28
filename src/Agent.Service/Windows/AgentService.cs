@@ -14,6 +14,7 @@ namespace AgentService
     {
         public const string EventSourceName = "VstsAgentService";
         private const int CTRL_C_EVENT = 0;
+        private bool _restart = false;
         private Process AgentListener { get; set; }
         private bool Stopping { get; set; }
         private object ServiceLock { get; set; }
@@ -75,6 +76,23 @@ namespace AgentService
                                         break;
                                     case 3:
                                         WriteInfo(Resource.AgentUpdateInProcess);
+                                        var updateResult = HandleAgentUpdate();
+                                        if (updateResult == AgentUpdateResult.Succeed)
+                                        {
+                                            WriteInfo(Resource.AgentUpdateSucceed);
+                                        }
+                                        else if (updateResult == AgentUpdateResult.Failed)
+                                        {
+                                            WriteInfo(Resource.AgentUpdateFailed);
+                                            Stopping = true;
+                                        }
+                                        else if (updateResult == AgentUpdateResult.SucceedNeedRestart)
+                                        {
+                                            WriteInfo(Resource.AgentUpdateRestartNeeded);
+                                            _restart = true;
+                                            ExitCode = int.MaxValue;
+                                            Stop();
+                                        }
                                         break;
                                     default:
                                         WriteInfo(Resource.AgentExitWithUndefinedReturnCode);
@@ -147,6 +165,13 @@ namespace AgentService
             {
                 Stopping = true;
 
+                // throw exception during OnStop() will make SCM think the service crash and trigger recovery option.
+                // in this way we can self-update the service host.
+                if (_restart)
+                {
+                    throw new Exception(Resource.CrashServiceHost);
+                }
+
                 // TODO If agent service is killed make sure AgentListener also is killed
                 try
                 {
@@ -191,12 +216,77 @@ namespace AgentService
             }
         }
 
-        private static void WriteToEventLog(string eventText, EventLogEntryType entryType)
+        private AgentUpdateResult HandleAgentUpdate()
+        {
+            // sleep 5 seconds wait for upgrade script to finish
+            Thread.Sleep(5000);
+
+            // looking update result record under _diag folder (the log file itself will indicate the result)
+            // SelfUpdate-20160711-160300.log.succeed or SelfUpdate-20160711-160300.log.fail
+            // Find the latest upgrade log, make sure the log is created less than 15 seconds.
+            // When log file named as SelfUpdate-20160711-160300.log.succeedneedrestart, Exit(int.max), during Exit() throw Exception, this will trigger SCM to recovery the service by restart it
+            // since SCM cache the ServiceHost in memory, sometime we need update the servicehost as well, in this way we can upgrade the ServiceHost as well.
+
+            DirectoryInfo dirInfo = new DirectoryInfo(GetDiagnosticFolderPath());
+            FileInfo[] updateLogs = dirInfo.GetFiles("SelfUpdate-*-*.log.*") ?? new FileInfo[0];
+            if (updateLogs.Length == 0)
+            {
+                // totally wrong, we are not even get a update log.
+                return AgentUpdateResult.Failed;
+            }
+            else
+            {
+                String latestLogFile = null;
+                DateTime latestLogTimestamp = DateTime.MinValue;
+                foreach (var logFile in updateLogs)
+                {
+                    int timestampStartIndex = logFile.Name.IndexOf("-") + 1;
+                    int timestampEndIndex = logFile.Name.LastIndexOf(".log") - 1;
+                    string timestamp = logFile.Name.Substring(timestampStartIndex, timestampEndIndex - timestampStartIndex + 1);
+                    DateTime updateTime;
+                    if (DateTime.TryParseExact(timestamp, "yyyyMMdd-HHmmss", null, DateTimeStyles.None, out updateTime) &&
+                        updateTime > latestLogTimestamp)
+                    {
+                        latestLogFile = logFile.Name;
+                        latestLogTimestamp = updateTime;
+                    }
+                }
+
+                if (string.IsNullOrEmpty(latestLogFile) || latestLogTimestamp == DateTime.MinValue)
+                {
+                    // we can't find update log with expected naming convention.
+                    return AgentUpdateResult.Failed;
+                }
+
+                if (DateTime.UtcNow - latestLogTimestamp > TimeSpan.FromSeconds(15))
+                {
+                    // the latest update log we find is more than 15 sec old, the update process is busted.
+                    return AgentUpdateResult.Failed;
+                }
+                else
+                {
+                    string resultString = Path.GetExtension(latestLogFile).TrimStart('.');
+                    AgentUpdateResult result;
+                    if (Enum.TryParse<AgentUpdateResult>(resultString, true, out result))
+                    {
+                        // return the result indicated by the update log.
+                        return result;
+                    }
+                    else
+                    {
+                        // can't convert the result string, return failed to stop the service.
+                        return AgentUpdateResult.Failed;
+                    }
+                }
+            }
+        }
+
+        private void WriteToEventLog(string eventText, EventLogEntryType entryType)
         {
             EventLog.WriteEntry(EventSourceName, eventText, entryType, 100);
         }
 
-        private static string GetDiagnosticFolderPath()
+        private string GetDiagnosticFolderPath()
         {
             return Path.Combine(Path.GetDirectoryName(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)), "_diag");
         }
@@ -221,6 +311,13 @@ namespace AgentService
         private void WriteException(Exception exception)
         {
             WriteToEventLog(exception.ToString(), EventLogEntryType.Error);
+        }
+
+        private enum AgentUpdateResult
+        {
+            Succeed,
+            Failed,
+            SucceedNeedRestart,
         }
 
         [DllImport("kernel32.dll", SetLastError = true)]

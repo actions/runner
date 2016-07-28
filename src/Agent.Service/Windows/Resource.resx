@@ -129,6 +129,18 @@
   <data name="AgentUpdateInProcess" xml:space="preserve">
     <value>Agent listener exit because of updating, re-launch agent in 5 seconds.</value>
   </data>
+  <data name="AgentUpdateSucceed" xml:space="preserve">
+    <value>Agent listener has been updated to latest, re-launch agent in 5 seconds.</value>
+  </data>
+  <data name="AgentUpdateFailed" xml:space="preserve">
+    <value>Agent listener update failed, stop the service.</value>
+  </data>
+  <data name="AgentUpdateRestartNeeded" xml:space="preserve">
+    <value>Agent listener has been updated to latest, restart the service to update the servicehost itself.</value>
+  </data>
+  <data name="CrashServiceHost" xml:space="preserve">
+    <value>Crash servicehost to trigger SCM restart the serivce.</value>
+  </data>
   <data name="AgentExitWithUndefinedReturnCode" xml:space="preserve">
     <value>Agent listener exit with undefined return code, re-launch agent in 5 seconds.</value>
   </data>
