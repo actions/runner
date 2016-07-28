@@ -410,7 +410,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                     continue;
                 }
 
-                // TODO: Is there such a thing as a single level cloak?
                 // Sort the definition mappings.
                 List<DefinitionWorkspaceMapping> sortedDefinitionMappings =
                     (definitionMappings ?? new DefinitionWorkspaceMapping[0])
@@ -461,7 +460,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                         break;
                     }
 
-                    // TODO: Is there such a thing as a single level cloak?
                     // Compare the server path. Normalize the expected server path for a single-level map.
                     string expectedServerPath = definitionMapping.NormalizedServerPath;
                     if (!string.Equals(tfMapping.ServerPath, expectedServerPath, StringComparison.Ordinal))
