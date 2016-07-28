@@ -48,7 +48,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             return localPath?.Trim() ?? string.Empty;
         }
 
-        public async Task ScorchAsync() => await RunCommandAsync(FormatFlags.OmitCollectionUrl, "vc", "scorch", "/diff", "/recursive", "/unmapped", "*");
+        // TODO: Fix scorch. Scorch blows up if a root mapping does not exist.
+        //
+        // No good workaround appears to exist. Attempting to resolve by workspace fails with
+        // the same error. Switching to "*" instead of passing "SourcesDirectory" allows the
+        // command to exit zero, but causes every source file to be deleted.
+        //
+        // The current approach taken is: allow the exception to bubble. The TfsVCSourceProvider
+        // will catch the exception, log it as a warning, throw away the workspace, and re-clone.
+        public async Task ScorchAsync() => await RunCommandAsync(FormatFlags.OmitCollectionUrl, "vc", "scorch", SourcesDirectory, "/recursive", "/diff", "/unmapped");
 
         public async Task ShelveAsync(string shelveset, string commentFile)
         {
