@@ -24,6 +24,10 @@ Supported on Windows, OSX, Ubuntu and Red Hat.  Written for the .NET Core CLR as
     
 [Read Here](docs/start/roles.md)
 
+### Installing Git for OSX and Linux Agents
+    
+[Read Here](docs/git.md)
+
 ### Next, get the agent configured
 
 ![win](docs/res/win_sm.png)  [Start Windows](https://www.visualstudio.com/en-us/docs/build/admin/agents/v2-windows)  
