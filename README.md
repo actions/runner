@@ -6,10 +6,6 @@ The cross platform build and release agent for Team Services and Team Foundation
 
 Supported on Windows, OSX, Ubuntu and Red Hat.  Written for the .NET Core CLR as one code base in C#.
 
-## Current Release
-
-[v2.103.1](https://github.com/Microsoft/vsts-agent/releases/tag/v2.103.1)  
-
 
 ## Status
 
@@ -22,6 +18,22 @@ Supported on Windows, OSX, Ubuntu and Red Hat.  Written for the .NET Core CLR as
 |![Win](docs/res/win_med.png) **Windows**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/b924d696-3eae-4116-8443-9a18392d8544/2850/badge?branch=master)| 
 
 
+## Get Started
+
+### First, add the build account to the proper roles
+    
+[Read Here](docs/start/roles.md)
+
+### Next, get the agent configured
+
+![win](docs/res/win_sm.png)  [Start Windows](https://www.visualstudio.com/en-us/docs/build/admin/agents/v2-windows)  
+
+![osx](docs/res/apple_sm.png)  [Start OSX](https://www.visualstudio.com/en-us/docs/build/admin/agents/v2-osx)  
+
+![ubuntu](docs/res/ubuntu_sm.png)  [Start Ubuntu](https://www.visualstudio.com/en-us/docs/build/admin/agents/v2-linux)  
+
+![redhat](docs/res/redhat_sm.png)  [Start RedHat](https://www.visualstudio.com/en-us/docs/build/admin/agents/v2-linux)  
+
 ## Supported Usage
 
 This agent can be used for the VSTS service and it replaces the node agent for TFS2015 On-Prem.
@@ -32,21 +44,6 @@ This agent can be used for the VSTS service and it replaces the node agent for T
 | TFS2015 (onprem)   |  Yes  | No    | Windows use agent with 2015 |
 | TFS.vNext (onprem)   |  Yes  | Yes    |  |
 
-## Get Started
-
-### First, add the build account to the proper roles
-    
-[Read Here](docs/start/roles.md)
-
-### Next, get the agent configured
-
-![win](docs/res/win_sm.png)  [Start Windows](docs/start/startwin.md)  
-
-![osx](docs/res/apple_sm.png)  [Start OSX](docs/start/startosx.md)  
-
-![ubuntu](docs/res/ubuntu_sm.png)  [Start Ubuntu](docs/start/startubuntu.md)  
-
-![redhat](docs/res/redhat_sm.png)  [Start RedHat](docs/start/startredhat.md)  
 
 ## Troubleshooting
 
