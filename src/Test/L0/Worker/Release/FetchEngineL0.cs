@@ -26,7 +26,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Release
             RetryInterval = TimeSpan.FromMilliseconds(1),
             RetryLimit = 1,
             ParallelDownloadLimit = 1,
-            GetFileAsyncTimeout = TimeSpan.FromMilliseconds(100),
+            GetFileAsyncTimeout = TimeSpan.FromMilliseconds(1000),
         };
 
         private static readonly ContainerItem DummyConatinerItem1 = new ContainerItem
