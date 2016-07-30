@@ -2,6 +2,7 @@ using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -68,6 +69,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
     public class GitCommandManager : AgentService, IGitCommandManager
     {
+#if OS_WINDOWS
+        private static readonly Encoding s_encoding = Encoding.UTF8;
+#else
+        private static readonly Encoding s_encoding = null;
+#endif
         private string _gitHttpUserAgentEnv = null;
         private string _gitPath = null;
         private Version _version = null;
@@ -346,7 +352,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 _gitEnv["GIT_HTTP_USER_AGENT"] = _gitHttpUserAgentEnv;
             }
 
-            return await processInvoker.ExecuteAsync(repoRoot, _gitPath, arg, _gitEnv, cancellationToken);
+            return await processInvoker.ExecuteAsync(
+                workingDirectory: repoRoot,
+                fileName: _gitPath,
+                arguments: arg,
+                environment: _gitEnv,
+                requireExitCodeZero: false,
+                outputEncoding: s_encoding,
+                cancellationToken: cancellationToken);
         }
 
         private async Task<int> ExecuteGitCommandAsync(IExecutionContext context, string repoRoot, string command, string options, IList<string> output)
@@ -383,7 +396,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 _gitEnv["GIT_HTTP_USER_AGENT"] = _gitHttpUserAgentEnv;
             }
 
-            return await processInvoker.ExecuteAsync(repoRoot, _gitPath, arg, _gitEnv, default(CancellationToken));
+            return await processInvoker.ExecuteAsync(
+                workingDirectory: repoRoot,
+                fileName: _gitPath,
+                arguments: arg,
+                environment: _gitEnv,
+                requireExitCodeZero: false,
+                outputEncoding: s_encoding,
+                cancellationToken: default(CancellationToken));
         }
 
         private async Task<int> ExecuteGitCommandAsync(IExecutionContext context, string repoRoot, string command, string options, string additionalCommandLine, CancellationToken cancellationToken)
@@ -408,7 +428,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 _gitEnv["GIT_HTTP_USER_AGENT"] = _gitHttpUserAgentEnv;
             }
 
-            return await processInvoker.ExecuteAsync(repoRoot, _gitPath, arg, _gitEnv, cancellationToken);
+            return await processInvoker.ExecuteAsync(
+                workingDirectory: repoRoot,
+                fileName: _gitPath,
+                arguments: arg,
+                environment: _gitEnv,
+                requireExitCodeZero: false,
+                outputEncoding: s_encoding,
+                cancellationToken: cancellationToken);
         }
     }
 }
