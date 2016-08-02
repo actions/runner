@@ -20,15 +20,17 @@ Supported on Windows, OSX, Ubuntu and Red Hat.  Written for the .NET Core CLR as
 
 ## Get Started
 
-### First, add the build account to the proper roles
-    
-[Read Here](docs/start/roles.md)
+### System Pre-Requisites
 
-### Installing Git for OSX and Linux Agents
-    
-[Read Here](docs/git.md)
+![win](../res/win_med.png) [Windows](../start/envwin.md)    
 
-### Next, get the agent configured
+![osx](../res/apple_med.png) [OSX](../start/envosx.md)  
+
+![ubuntu](../res/ubuntu_med.png) [Ubuntu](../start/envubuntu.md)  
+
+![redhat](../res/redhat_med.png) [RedHat & CentOS](../start/envredhat.md)  
+
+### Get the Agent
 
 ![win](docs/res/win_sm.png)  [Start Windows](https://www.visualstudio.com/en-us/docs/build/admin/agents/v2-windows)  
 
