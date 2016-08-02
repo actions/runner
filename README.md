@@ -22,13 +22,13 @@ Supported on Windows, OSX, Ubuntu and Red Hat.  Written for the .NET Core CLR as
 
 ### System Pre-Requisites
 
-![win](../res/win_med.png) [Windows](../start/envwin.md)    
+![win](docs/res/win_med.png) [Windows](docs/start/envwin.md)    
 
-![osx](../res/apple_med.png) [OSX](../start/envosx.md)  
+![osx](docs/res/apple_med.png) [OSX](docs/start/envosx.md)  
 
-![ubuntu](../res/ubuntu_med.png) [Ubuntu](../start/envubuntu.md)  
+![ubuntu](docs/res/ubuntu_med.png) [Ubuntu](docs/start/envubuntu.md)  
 
-![redhat](../res/redhat_med.png) [RedHat & CentOS](../start/envredhat.md)  
+![redhat](docs/res/redhat_med.png) [RedHat & CentOS](docs/start/envredhat.md)  
 
 ### Get the Agent
 
