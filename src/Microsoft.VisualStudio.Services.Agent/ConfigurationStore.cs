@@ -19,7 +19,7 @@ namespace Microsoft.VisualStudio.Services.Agent
 
         [DataMember(EmitDefaultValue = false)]
         public string AgentName { get; set; }
-        
+
         [DataMember(EmitDefaultValue = false)]
         public string NotificationPipeName { get; set; }
 
@@ -132,6 +132,13 @@ namespace Microsoft.VisualStudio.Services.Agent
         public void SaveCredential(CredentialData credential)
         {
             Trace.Info("Saving {0} credential @ {1}", credential.Scheme, _credFilePath);
+            if (File.Exists(_credFilePath))
+            {
+                // Delete existing credential file first, since the file is hidden and not able to overwrite.
+                Trace.Info("Delete exist agent credential file.");
+                IOUtil.DeleteFile(_credFilePath);
+            }
+
             IOUtil.SaveObject(credential, _credFilePath);
             Trace.Info("Credentials Saved.");
             File.SetAttributes(_credFilePath, File.GetAttributes(_credFilePath) | FileAttributes.Hidden);
@@ -139,6 +146,14 @@ namespace Microsoft.VisualStudio.Services.Agent
 
         public void SaveSettings(AgentSettings settings)
         {
+            Trace.Info("Saving agent settings.");
+            if (File.Exists(_configFilePath))
+            {
+                // Delete existing agent settings file first, since the file is hidden and not able to overwrite.
+                Trace.Info("Delete exist agent settings file.");
+                IOUtil.DeleteFile(_configFilePath);
+            }
+
             IOUtil.SaveObject(settings, _configFilePath);
             Trace.Info("Settings Saved.");
             File.SetAttributes(_configFilePath, File.GetAttributes(_configFilePath) | FileAttributes.Hidden);
