@@ -1,10 +1,8 @@
 # VSTS Agent System Pre-Requisites
 
-## Windows
+## ![win](../res/win_med.png) Windows
 
-The minimum supported version is Windows 7.
-
-Even though the agent has no pre-requisites, many of the tasks we run require Visual Studio.
+[Windows System Pre-Requisties](../start/envwin.md)
 
 ## ![osx](../res/apple_med.png) OSX
 

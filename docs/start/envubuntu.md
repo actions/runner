@@ -8,6 +8,12 @@ Tested on 16.04 LTS (Yosemite) and 14.04 LTS (El Capitan).  Not domain joined.
 
 16.04 is recommended since latest and supports SystemD for runnings as a service.
 
+## Dependency Packages
+
+```bash
+sudo apt-get install -y libunwind8 libcurl3
+```
+
 ## Git
 
 If you use git, git >= 2.9.0 is a pre-requisite for Ubuntu agents.

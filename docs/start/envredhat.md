@@ -6,6 +6,12 @@
 
 Tested on Redhat 7.1.  Not domain joined.
 
+## Dependency Packages
+
+```bash
+sudo yum -y install libunwind.x86_64 icu
+```
+
 ## Git
 
 If you use git, git >= 2.9.0 is a pre-requisite for Redhat/CentOS agents.
