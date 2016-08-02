@@ -63,6 +63,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
             var repositoryId = string.Empty;
             var mappings = string.Empty;
 
+            var mandatoryFields = artifactDetails.TryGetValue(ArtifactDefinitionConstants.ProjectId, out projectId)
+                              && artifactDetails.TryGetValue(ArtifactDefinitionConstants.RepositoryId, out repositoryId);
+
             if (!artifactDetails.TryGetValue(ArtifactDefinitionConstants.MappingsId, out mappings) || mappings == null)
             {
                 string baseRepoPath = string.Join("/", "$", projectId);
@@ -88,8 +91,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
                 mappings = JsonConvert.SerializeObject(defaultMapping);
             }
 
-            if (artifactDetails.TryGetValue(ArtifactDefinitionConstants.ProjectId, out projectId)
-                && artifactDetails.TryGetValue(ArtifactDefinitionConstants.RepositoryId, out repositoryId))
+            if (mandatoryFields)
             {
                 return new TfsVCArtifactDetails
                 {
