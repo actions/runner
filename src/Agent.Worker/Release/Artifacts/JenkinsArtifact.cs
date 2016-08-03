@@ -79,6 +79,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
             executionContext.Output(StringUtil.Loc("RMDownloadingJenkinsArtifacts"));
             var zipStreamDownloader = HostContext.GetService<IZipStreamDownloader>();
             await zipStreamDownloader.DownloadFromStream(
+                executionContext,
                 downloadedStream,
                 string.IsNullOrEmpty(parentFolder) ? "archive" : string.Empty,
                 parentFolder,

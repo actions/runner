@@ -44,7 +44,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
             }
             else
             {
-                executionContext.Warning(StringUtil.Loc("RMNoArtifactsFound", relativePath));
+                executionContext.Warning(StringUtil.Loc("RMArtifactEmpty"));
             }
         }
     }

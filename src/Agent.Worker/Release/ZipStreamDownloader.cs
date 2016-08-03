@@ -13,6 +13,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
     public interface IZipStreamDownloader : IAgentService
     {
         Task<int> DownloadFromStream(
+            IExecutionContext executionContext,
             Stream zipStream,
             string folderWithinStream,
             string relativePathWithinStream,
@@ -26,17 +27,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
 
         private const char Backslash = '\\';
 
-        public Task<int> DownloadFromStream(Stream zipStream, string folderWithinStream, string relativePathWithinStream, string localFolderPath)
+        public Task<int> DownloadFromStream(IExecutionContext executionContext, Stream zipStream, string folderWithinStream, string relativePathWithinStream, string localFolderPath)
         {
             Trace.Entering();
 
             ArgUtil.NotNullOrEmpty(localFolderPath, nameof(localFolderPath));
             ArgUtil.NotNull(folderWithinStream, nameof(folderWithinStream));
 
-            return DownloadStreams(zipStream, localFolderPath, folderWithinStream, relativePathWithinStream);
+            return DownloadStreams(executionContext, zipStream, localFolderPath, folderWithinStream, relativePathWithinStream);
         }
 
-        private async Task<int> DownloadStreams(Stream zipStream, string localFolderPath, string folderWithinStream, string relativePathWithinStream)
+        private async Task<int> DownloadStreams(IExecutionContext executionContext, Stream zipStream, string localFolderPath, string folderWithinStream, string relativePathWithinStream)
         {
             Trace.Entering();
 
@@ -89,6 +90,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
                 {
                     stream.ZipStream.Dispose();
                 }
+            }
+
+            if (streamsDownloaded == 0)
+            {
+                executionContext.Warning(StringUtil.Loc("RMArtifactEmpty"));
             }
 
             return streamsDownloaded;

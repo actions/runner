@@ -110,6 +110,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
                     {
                         var zipStreamDownloader = HostContext.GetService<IZipStreamDownloader>();
                         await zipStreamDownloader.DownloadFromStream(
+                            executionContext,
                             webResponse.GetResponseStream(),
                             string.Empty,
                             artifact.RelativePath ?? string.Empty,
