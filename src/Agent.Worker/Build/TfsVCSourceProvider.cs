@@ -96,7 +96,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 StringUtil.ConvertToBoolean(endpoint.Data[WellKnownEndpointData.Clean], defaultValue: false);
             if (tf.Features.HasFlag(TfsVCFeatures.Scorch) || !clean)
             {
-                existingTFWorkspace = MatchExactWorkspace(
+                existingTFWorkspace = WorkspaceUtil.MatchExactWorkspace(
                     executionContext: executionContext,
                     tfWorkspaces: tfWorkspaces,
                     name: workspaceName,
@@ -131,7 +131,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                             if (definitionMapping.MappingType == DefinitionMappingType.Map)
                             {
                                 // Check the status.
-                                string localPath = ResolveMappingLocalPath(definitionMapping, sourcesDirectory);
+                                string localPath = definitionMapping.GetRootedLocalPath(sourcesDirectory);
                                 ITfsVCStatus tfStatus = await tf.StatusAsync(localPath: localPath);
                                 if (tfStatus?.HasPendingChanges ?? false)
                                 {
@@ -223,7 +223,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                             // Add the mapping.
                             await tf.WorkfoldMapAsync(
                                 serverPath: definitionMapping.ServerPath,
-                                localPath: ResolveMappingLocalPath(definitionMapping, sourcesDirectory));
+                                localPath: definitionMapping.GetRootedLocalPath(sourcesDirectory));
                             break;
                         default:
                             throw new NotSupportedException();
@@ -243,7 +243,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 {
                     if (definitionMapping.MappingType == DefinitionMappingType.Map)
                     {
-                        await tf.GetAsync(localPath: ResolveMappingLocalPath(definitionMapping, sourcesDirectory));
+                        await tf.GetAsync(localPath: definitionMapping.GetRootedLocalPath(sourcesDirectory));
                     }
                 }
             }
@@ -342,157 +342,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             endpoint.Data.Add(Constants.EndpointData.GatedRunCI, executionContext.Variables.Get(Constants.Variables.Build.GatedRunCI));
         }
 
-        private static string ResolveMappingLocalPath(DefinitionWorkspaceMapping definitionMapping, string sourcesDirectory)
-        {
-            string relativePath =
-                (definitionMapping.LocalPath ?? string.Empty)
-                .Trim('/', '\\');
-            if (Path.DirectorySeparatorChar == '\\')
-            {
-                relativePath = relativePath.Replace('/', Path.DirectorySeparatorChar);
-            }
-            else
-            {
-                relativePath = relativePath.Replace('\\', Path.DirectorySeparatorChar);
-            }
-
-            return Path.Combine(sourcesDirectory, relativePath);
-        }
-
-        private ITfsVCWorkspace MatchExactWorkspace(
-            IExecutionContext executionContext,
-            ITfsVCWorkspace[] tfWorkspaces,
-            string name,
-            DefinitionWorkspaceMapping[] definitionMappings,
-            string sourcesDirectory)
-        {
-            ArgUtil.NotNullOrEmpty(name, nameof(name));
-            ArgUtil.NotNullOrEmpty(sourcesDirectory, nameof(sourcesDirectory));
-
-            // Short-circuit early if the sources directory is empty.
-            //
-            // Consider the sources directory to be empty if it only contains a .tf directory exists. This can
-            // indicate the workspace is in a corrupted state and the tf commands (e.g. status) will not return
-            // reliable information. An easy way to reproduce this is to delete the workspace directory, then
-            // run "tf status" on that workspace. The .tf directory will be recreated but the contents will be
-            // in a corrupted state.
-            if (!Directory.Exists(sourcesDirectory) ||
-                !Directory.EnumerateFileSystemEntries(sourcesDirectory).Any(x => !x.EndsWith($"{Path.DirectorySeparatorChar}.tf")))
-            {
-                executionContext.Debug("Sources directory does not exist or is empty.");
-                return null;
-            }
-
-            string machineName = Environment.MachineName;
-            executionContext.Debug($"Attempting to find a workspace: '{name}'");
-            foreach (ITfsVCWorkspace tfWorkspace in tfWorkspaces ?? new ITfsVCWorkspace[0])
-            {
-                // Compare the workspace name.
-                if (!string.Equals(tfWorkspace.Name, name, StringComparison.Ordinal))
-                {
-                    executionContext.Debug($"Skipping workspace: '{tfWorkspace.Name}'");
-                    continue;
-                }
-
-                executionContext.Debug($"Candidate workspace: '{tfWorkspace.Name}'");
-
-                // Compare the machine name.
-                if (!string.Equals(tfWorkspace.Computer, machineName, StringComparison.Ordinal))
-                {
-                    executionContext.Debug($"Expected computer name: '{machineName}'. Actual: '{tfWorkspace.Computer}'");
-                    continue;
-                }
-
-                // Compare the number of mappings.
-                if ((tfWorkspace.Mappings?.Length ?? 0) != (definitionMappings?.Length ?? 0))
-                {
-                    executionContext.Debug($"Expected number of mappings: '{definitionMappings?.Length ?? 0}'. Actual: '{tfWorkspace.Mappings?.Length ?? 0}'");
-                    continue;
-                }
-
-                // Sort the definition mappings.
-                List<DefinitionWorkspaceMapping> sortedDefinitionMappings =
-                    (definitionMappings ?? new DefinitionWorkspaceMapping[0])
-                    .OrderBy(x => x.MappingType != DefinitionMappingType.Cloak) // Cloaks first
-                    .ThenBy(x => !x.Recursive) // Then recursive maps
-                    .ThenBy(x => x.NormalizedServerPath) // Then sort by the normalized server path
-                    .ToList();
-                for (int i = 0 ; i < sortedDefinitionMappings.Count ; i++)
-                {
-                    DefinitionWorkspaceMapping mapping = sortedDefinitionMappings[i];
-                    executionContext.Debug($"Definition mapping[{i}]: cloak '{mapping.MappingType == DefinitionMappingType.Cloak}', recursive '{mapping.Recursive}', server path '{mapping.NormalizedServerPath}', local path '{ResolveMappingLocalPath(mapping, sourcesDirectory)}'");
-                }
-
-                // Sort the TF mappings.
-                List<ITfsVCMapping> sortedTFMappings =
-                    (tfWorkspace.Mappings ?? new ITfsVCMapping[0])
-                    .OrderBy(x => !x.Cloak) // Cloaks first
-                    .ThenBy(x => !x.Recursive) // Then recursive maps
-                    .ThenBy(x => x.ServerPath) // Then sort by server path
-                    .ToList();
-                for (int i = 0 ; i< sortedTFMappings.Count ; i++)
-                {
-                    ITfsVCMapping mapping = sortedTFMappings[i];
-                    executionContext.Debug($"Found mapping[{i}]: cloak '{mapping.Cloak}', recursive '{mapping.Recursive}', server path '{mapping.ServerPath}', local path '{mapping.LocalPath}'");
-                }
-
-                // Compare the mappings.
-                bool allMatch = true;
-                for (int i = 0 ; i < sortedTFMappings.Count ; i++)
-                {
-                    ITfsVCMapping tfMapping = sortedTFMappings[i];
-                    DefinitionWorkspaceMapping definitionMapping = sortedDefinitionMappings[i];
-
-                    // Compare the cloak flag.
-                    bool expectedCloak = definitionMapping.MappingType == DefinitionMappingType.Cloak;
-                    if (tfMapping.Cloak != expectedCloak)
-                    {
-                        executionContext.Debug($"Expected mapping[{i}] cloak: '{expectedCloak}'. Actual: '{tfMapping.Cloak}'");
-                        allMatch = false;
-                        break;
-                    }
-
-                    // Compare the recursive flag.
-                    if (!expectedCloak && tfMapping.Recursive != definitionMapping.Recursive)
-                    {
-                        executionContext.Debug($"Expected mapping[{i}] recursive: '{definitionMapping.Recursive}'. Actual: '{tfMapping.Recursive}'");
-                        allMatch = false;
-                        break;
-                    }
-
-                    // Compare the server path. Normalize the expected server path for a single-level map.
-                    string expectedServerPath = definitionMapping.NormalizedServerPath;
-                    if (!string.Equals(tfMapping.ServerPath, expectedServerPath, StringComparison.Ordinal))
-                    {
-                        executionContext.Debug($"Expected mapping[{i}] server path: '{expectedServerPath}'. Actual: '{tfMapping.ServerPath}'");
-                        allMatch = false;
-                        break;
-                    }
-
-                    // Compare the local path.
-                    if (!expectedCloak)
-                    {
-                        string expectedLocalPath = ResolveMappingLocalPath(definitionMapping, sourcesDirectory);
-                        if (!string.Equals(tfMapping.LocalPath, expectedLocalPath, StringComparison.Ordinal))
-                        {
-                            executionContext.Debug($"Expected mapping[{i}] local path: '{expectedLocalPath}'. Actual: '{tfMapping.LocalPath}'");
-                            allMatch = false;
-                            break;
-                        }
-                    }
-                }
-
-                if (allMatch)
-                {
-                    executionContext.Debug("Matching workspace found.");
-                    return tfWorkspace;
-                }
-            }
-
-            executionContext.Debug("Matching workspace not found.");
-            return null;
-        }
-
         private async Task RemoveConflictingWorkspacesAsync(ITfsVCCommandManager tf, ITfsVCWorkspace[] tfWorkspaces, string name, string directory)
         {
             // Validate the args.
@@ -547,6 +396,143 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             }
         }
 
+        public static class WorkspaceUtil
+        {
+            public static ITfsVCWorkspace MatchExactWorkspace(
+                IExecutionContext executionContext,
+                ITfsVCWorkspace[] tfWorkspaces,
+                string name,
+                DefinitionWorkspaceMapping[] definitionMappings,
+                string sourcesDirectory)
+            {
+                ArgUtil.NotNullOrEmpty(name, nameof(name));
+                ArgUtil.NotNullOrEmpty(sourcesDirectory, nameof(sourcesDirectory));
+
+                // Short-circuit early if the sources directory is empty.
+                //
+                // Consider the sources directory to be empty if it only contains a .tf directory exists. This can
+                // indicate the workspace is in a corrupted state and the tf commands (e.g. status) will not return
+                // reliable information. An easy way to reproduce this is to delete the workspace directory, then
+                // run "tf status" on that workspace. The .tf directory will be recreated but the contents will be
+                // in a corrupted state.
+                if (!Directory.Exists(sourcesDirectory) ||
+                    !Directory.EnumerateFileSystemEntries(sourcesDirectory).Any(x => !x.EndsWith($"{Path.DirectorySeparatorChar}.tf")))
+                {
+                    executionContext.Debug("Sources directory does not exist or is empty.");
+                    return null;
+                }
+
+                string machineName = Environment.MachineName;
+                executionContext.Debug($"Attempting to find a workspace: '{name}'");
+                foreach (ITfsVCWorkspace tfWorkspace in tfWorkspaces ?? new ITfsVCWorkspace[0])
+                {
+                    // Compare the workspace name.
+                    if (!string.Equals(tfWorkspace.Name, name, StringComparison.Ordinal))
+                    {
+                        executionContext.Debug($"Skipping workspace: '{tfWorkspace.Name}'");
+                        continue;
+                    }
+
+                    executionContext.Debug($"Candidate workspace: '{tfWorkspace.Name}'");
+
+                    // Compare the machine name.
+                    if (!string.Equals(tfWorkspace.Computer, machineName, StringComparison.Ordinal))
+                    {
+                        executionContext.Debug($"Expected computer name: '{machineName}'. Actual: '{tfWorkspace.Computer}'");
+                        continue;
+                    }
+
+                    // Compare the number of mappings.
+                    if ((tfWorkspace.Mappings?.Length ?? 0) != (definitionMappings?.Length ?? 0))
+                    {
+                        executionContext.Debug($"Expected number of mappings: '{definitionMappings?.Length ?? 0}'. Actual: '{tfWorkspace.Mappings?.Length ?? 0}'");
+                        continue;
+                    }
+
+                    // Sort the definition mappings.
+                    List<DefinitionWorkspaceMapping> sortedDefinitionMappings =
+                        (definitionMappings ?? new DefinitionWorkspaceMapping[0])
+                        .OrderBy(x => x.MappingType != DefinitionMappingType.Cloak) // Cloaks first
+                        .ThenBy(x => !x.Recursive) // Then recursive maps
+                        .ThenBy(x => x.NormalizedServerPath) // Then sort by the normalized server path
+                        .ToList();
+                    for (int i = 0 ; i < sortedDefinitionMappings.Count ; i++)
+                    {
+                        DefinitionWorkspaceMapping mapping = sortedDefinitionMappings[i];
+                        executionContext.Debug($"Definition mapping[{i}]: cloak '{mapping.MappingType == DefinitionMappingType.Cloak}', recursive '{mapping.Recursive}', server path '{mapping.NormalizedServerPath}', local path '{mapping.GetRootedLocalPath(sourcesDirectory)}'");
+                    }
+
+                    // Sort the TF mappings.
+                    List<ITfsVCMapping> sortedTFMappings =
+                        (tfWorkspace.Mappings ?? new ITfsVCMapping[0])
+                        .OrderBy(x => !x.Cloak) // Cloaks first
+                        .ThenBy(x => !x.Recursive) // Then recursive maps
+                        .ThenBy(x => x.ServerPath) // Then sort by server path
+                        .ToList();
+                    for (int i = 0 ; i< sortedTFMappings.Count ; i++)
+                    {
+                        ITfsVCMapping mapping = sortedTFMappings[i];
+                        executionContext.Debug($"Found mapping[{i}]: cloak '{mapping.Cloak}', recursive '{mapping.Recursive}', server path '{mapping.ServerPath}', local path '{mapping.LocalPath}'");
+                    }
+
+                    // Compare the mappings.
+                    bool allMatch = true;
+                    for (int i = 0 ; i < sortedTFMappings.Count ; i++)
+                    {
+                        ITfsVCMapping tfMapping = sortedTFMappings[i];
+                        DefinitionWorkspaceMapping definitionMapping = sortedDefinitionMappings[i];
+
+                        // Compare the cloak flag.
+                        bool expectedCloak = definitionMapping.MappingType == DefinitionMappingType.Cloak;
+                        if (tfMapping.Cloak != expectedCloak)
+                        {
+                            executionContext.Debug($"Expected mapping[{i}] cloak: '{expectedCloak}'. Actual: '{tfMapping.Cloak}'");
+                            allMatch = false;
+                            break;
+                        }
+
+                        // Compare the recursive flag.
+                        if (!expectedCloak && tfMapping.Recursive != definitionMapping.Recursive)
+                        {
+                            executionContext.Debug($"Expected mapping[{i}] recursive: '{definitionMapping.Recursive}'. Actual: '{tfMapping.Recursive}'");
+                            allMatch = false;
+                            break;
+                        }
+
+                        // Compare the server path. Normalize the expected server path for a single-level map.
+                        string expectedServerPath = definitionMapping.NormalizedServerPath;
+                        if (!string.Equals(tfMapping.ServerPath, expectedServerPath, StringComparison.Ordinal))
+                        {
+                            executionContext.Debug($"Expected mapping[{i}] server path: '{expectedServerPath}'. Actual: '{tfMapping.ServerPath}'");
+                            allMatch = false;
+                            break;
+                        }
+
+                        // Compare the local path.
+                        if (!expectedCloak)
+                        {
+                            string expectedLocalPath = definitionMapping.GetRootedLocalPath(sourcesDirectory);
+                            if (!string.Equals(tfMapping.LocalPath, expectedLocalPath, StringComparison.Ordinal))
+                            {
+                                executionContext.Debug($"Expected mapping[{i}] local path: '{expectedLocalPath}'. Actual: '{tfMapping.LocalPath}'");
+                                allMatch = false;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (allMatch)
+                    {
+                        executionContext.Debug("Matching workspace found.");
+                        return tfWorkspace;
+                    }
+                }
+
+                executionContext.Debug("Matching workspace not found.");
+                return null;
+            }
+        }
+
         public sealed class DefinitionWorkspaceMappings
         {
             public DefinitionWorkspaceMapping[] Mappings { get; set; }
@@ -596,6 +582,22 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             public bool Recursive => !(ServerPath ?? string.Empty).EndsWith("/*");
 
             public string ServerPath { get; set; }
+
+            /// <summary>
+            /// Gets the rooted local path and normalizes slashes.
+            /// </summary>
+            public string GetRootedLocalPath(string sourcesDirectory)
+            {
+                // TEE normalizes all slashes in a workspace mapping to match the OS. It is not
+                // possible on OSX/Linux to have a workspace mapping with a backslash, even though
+                // backslash is a legal file name character.
+                string relativePath =
+                    (LocalPath ?? string.Empty)
+                    .Replace('/', Path.DirectorySeparatorChar)
+                    .Replace('\\', Path.DirectorySeparatorChar)
+                    .Trim(Path.DirectorySeparatorChar);
+                return Path.Combine(sourcesDirectory, relativePath);
+            }
         }
 
         public enum DefinitionMappingType
