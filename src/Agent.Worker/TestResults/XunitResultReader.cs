@@ -64,7 +64,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
             IdentityRef runUserIdRef = new IdentityRef();
             runUserIdRef.DisplayName = runUser;
 
-            var runStartTime = DateTime.MinValue;
+            var minStartTime = DateTime.MaxValue;
+            var maxCompletedTime = DateTime.MinValue;
+            bool dateTimeParseError = true;
+            bool assemblyRunDateTimeAttributesNotPresent = false;
+            bool assemblyTimeAttributeNotPresent = false;
+            double assemblyRunDuration = 0;
             double testRunDuration = 0;
 
             XmlNodeList assemblyNodes = doc.SelectNodes("/assemblies/assembly");
@@ -78,18 +83,46 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
 
                     var startDate = DateTime.Now;
                     var startTime = TimeSpan.Zero;
-                    if (DateTime.TryParse(runDate, out startDate))
+                    if (DateTime.TryParse(runDate, DateTimeFormatInfo.InvariantInfo, DateTimeStyles.None, out startDate) && 
+                        TimeSpan.TryParse(runTime, CultureInfo.InvariantCulture, out startTime))
                     {
-                        TimeSpan.TryParse(runTime, out startTime);
+                        dateTimeParseError = false;
                     }
                     assemblyRunStartTimeStamp = startDate + startTime;
-                    if (testRunDuration == 0)
+					if(minStartTime > assemblyRunStartTimeStamp)
+					{
+						minStartTime = assemblyRunStartTimeStamp;
+					}
+                }
+				else 
+				{
+					assemblyRunDateTimeAttributesNotPresent = true;
+				}
+				if (!assemblyTimeAttributeNotPresent && assemblyNode.Attributes["time"] != null)
+                {
+                    double assemblyDuration = 0;
+                    Double.TryParse(assemblyNode.Attributes["time"].Value, NumberStyles.Any, NumberFormatInfo.InvariantInfo, out assemblyDuration);
+                    assemblyRunDuration = assemblyRunDuration + assemblyDuration;
+                    var durationFromSeconds = TimeSpan.FromSeconds(assemblyDuration);
+
+                    // no assemblystarttime available so dont calculate assemblycompletedtime
+                    if (assemblyRunStartTimeStamp != DateTime.MinValue)
                     {
-                        // first assembly start time is runstart time
-                        runStartTime = assemblyRunStartTimeStamp;
+                        DateTime assemblyRunCompleteTimeStamp =
+                           assemblyRunStartTimeStamp.AddTicks(durationFromSeconds.Ticks);
+
+                        //finding maximum comleted time
+                        if (maxCompletedTime < assemblyRunCompleteTimeStamp)
+                        {
+                            maxCompletedTime = assemblyRunCompleteTimeStamp;
+                        }
+
                     }
                 }
-
+                else
+                {
+                    assemblyTimeAttributeNotPresent = true;
+                }
                 XmlNodeList testCaseNodeList = assemblyNode.SelectNodes("./collection/test");
                 foreach (XmlNode testCaseNode in testCaseNodeList)
                 {
@@ -120,7 +153,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                     if (testCaseNode.Attributes["time"] != null && testCaseNode.Attributes["time"].Value != null)
                     {
                         double duration = 0;
-                        double.TryParse(testCaseNode.Attributes["time"].Value, out duration);
+                        double.TryParse(testCaseNode.Attributes["time"].Value, NumberStyles.Any, NumberFormatInfo.InvariantInfo, out duration);
                         var durationFromSeconds = TimeSpan.FromSeconds(duration);
                         resultCreateModel.DurationInMs = durationFromSeconds.TotalMilliseconds;
 
@@ -196,12 +229,29 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                     }
                 }
             }
+			if (dateTimeParseError || assemblyRunDateTimeAttributesNotPresent)
+            {
+                executionContext.Warning("Atleast for one assembly start time was not obtained due to tag not present or parsing issue, total run duration will now be summation of time taken by each assembly");
 
+                if (assemblyTimeAttributeNotPresent)
+                {
+                    executionContext.Warning("Atleast for one assembly time tag is not present, total run duration will now be summation of time from all test runs");
+                }
+            }
+
+            //if minimum start time is not available then set it to present time
+            minStartTime = minStartTime == DateTime.MaxValue ? DateTime.UtcNow : minStartTime ;
+
+            //if start time cannot be obtained even for one assembly then fallback duration to sum of assembly run time
+            //if assembly run time cannot be obtained even for one assembly then fallback duration to total test run
+            maxCompletedTime = dateTimeParseError || assemblyRunDateTimeAttributesNotPresent || maxCompletedTime == DateTime.MinValue ? minStartTime.Add(assemblyTimeAttributeNotPresent ? TimeSpan.FromSeconds(testRunDuration) : TimeSpan.FromSeconds(assemblyRunDuration)) : maxCompletedTime;
+
+            executionContext.Output(string.Format("Obtained XUnit Test Run Start Date: {0} and Completed Date: {1}", minStartTime.ToString("o"), maxCompletedTime.ToString("o")));
             TestRunData testRunData = new TestRunData(
                 name: runName,
                 buildId: runContext != null ? runContext.BuildId : 0,
-                startedDate: (runStartTime == DateTime.MinValue) ? string.Empty : runStartTime.ToString("o"),
-                completedDate: (runStartTime == DateTime.MinValue) ? string.Empty : runStartTime.Add(TimeSpan.FromSeconds(testRunDuration)).ToString("o"),
+                startedDate: minStartTime.ToString("o"),
+                completedDate: maxCompletedTime.ToString("o"),
                 state: TestRunState.InProgress.ToString(),
                 isAutomated: true,
                 buildFlavor: runContext != null ? runContext.Configuration : null,

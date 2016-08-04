@@ -4,9 +4,11 @@ using Microsoft.VisualStudio.Services.Agent.Worker.TestResults;
 using Moq;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using Xunit;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
@@ -54,11 +56,25 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
         private const string _jUnitMultiSuiteXml =
             "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" +
             "<testsuites>" +
-            "<testsuite errors=\"0\" failures=\"1\" hostname=\"mghost\" name=\"com.contoso.billingservice.ConsoleMessageRendererTest\" skipped=\"0\" tests=\"2\" time=\"0.006\" timestamp=\"2015-04-06T21:56:24\">" +
-              "<testcase classname=\"com.contoso.billingservice.ConsoleMessageRendererTest\" name=\"testRenderNullMessage\" time=\"0.001\" />" +
+            "<testsuite errors=\"0\" failures=\"1\" hostname=\"mghost\" name=\"com.contoso.billingservice.ConsoleMessageRendererTest\" skipped=\"0\" tests=\"2\" time=\"1.006\" timestamp=\"2015-04-06T21:56:24\">" +
+              "<testcase classname=\"com.contoso.billingservice.ConsoleMessageRendererTest\" name=\"testRenderNullMessage\" time=\"1.001\" />" +
             "</testsuite>" +
-            "<testsuite errors=\"0\" failures=\"1\" hostname=\"mghost\" name=\"com.contoso.billingservice.ConsoleMessageRendererTest1\" skipped=\"0\" tests=\"2\" time=\"0.006\" timestamp=\"2015-04-06T21:56:24\">" +
-              "<testcase classname=\"com.contoso.billingservice.ConsoleMessageRendererTest\" name=\"testRenderNullMessage\" time=\"0.001\" />" +
+            "<testsuite errors=\"0\" failures=\"1\" hostname=\"mghost\" name=\"com.contoso.billingservice.ConsoleMessageRendererTest1\" skipped=\"0\" tests=\"2\" time=\"1.006\" timestamp=\"2015-04-06T21:56:24\">" +
+              "<testcase classname=\"com.contoso.billingservice.ConsoleMessageRendererTest\" name=\"testRenderNullMessage\" time=\"1.001\" />" +
+            "</testsuite>" +
+            "</testsuites>";
+
+        private const string c_jUnitMultiSuiteParallelXml =
+            "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" +
+            "<testsuites>" +
+            "<testsuite errors=\"0\" failures=\"1\" hostname=\"mghost\" name=\"com.contoso.billingservice.ConsoleMessageRendererTest\" skipped=\"0\" tests=\"2\" time=\"1.006\" timestamp=\"2015-04-06T21:56:24\">" +
+              "<testcase classname=\"com.contoso.billingservice.ConsoleMessageRendererTest\" name=\"testRenderNullMessage\" time=\"1.001\" />" +
+            "</testsuite>" +
+            "<testsuite errors=\"0\" failures=\"1\" hostname=\"mghost\" name=\"com.contoso.billingservice.ConsoleMessageRendererTest1\" skipped=\"0\" tests=\"2\" time=\"3.058\" timestamp=\"2015-04-06T21:56:25\">" +
+              "<testcase classname=\"com.contoso.billingservice.ConsoleMessageRendererTest\" name=\"testRenderNullMessage\" time=\"3.003\" />" +
+            "</testsuite>" +
+            "<testsuite errors=\"0\" failures=\"1\" hostname=\"mghost\" name=\"com.contoso.billingservice.ConsoleMessageRendererTest1\" skipped=\"0\" tests=\"2\" time=\"2.016\" timestamp=\"2015-04-06T21:56:25\">" +
+              "<testcase classname=\"com.contoso.billingservice.ConsoleMessageRendererTest\" name=\"testRenderNullMessage\" time=\"2.002\" />" +
             "</testsuite>" +
             "</testsuites>";
 
@@ -140,6 +156,105 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
             var time = TimeSpan.FromMilliseconds(_testRunData.Results[0].DurationInMs);
             Assert.Equal(0.001, time.TotalSeconds);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
+        public void VerifyDurationAsDiffBetweenMinStartAndMaxCompletedDate()
+        {
+            SetupMocks();
+            // case for duration = maxcompletedtime- minstarttime
+            _junitResultsToBeRead = c_jUnitMultiSuiteParallelXml;
+            ReadResults();
+            var timeSpan = DateTime.Parse(_testRunData.CompleteDate) - DateTime.Parse(_testRunData.StartDate);
+            Assert.Equal(4.058, timeSpan.TotalSeconds);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
+        public void VerifyDurationAsSumOfAssemblyTimeWhenTimestampNotParseable()
+        {
+            SetupMocks();
+            //  time stamp parsing failure: case for duration = summation of assembly run time
+            _junitResultsToBeRead = c_jUnitMultiSuiteParallelXml.Replace("timestamp=\"2015-04-06T21:56:24\"", "timestamp =\"5-04ggg-06T21:56:24\"");
+            ReadResults();
+            var timeSpan = DateTime.Parse(_testRunData.CompleteDate) - DateTime.Parse(_testRunData.StartDate);
+            Assert.Equal(6.08, timeSpan.TotalSeconds);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
+        public void VerifyDurationAsSumOfAssemblyTimeWhenTimestampTagNotAvailable()
+        {
+            SetupMocks();
+            //  timestamp attribute not present: case for duration = summation of assembly run time
+            _junitResultsToBeRead = c_jUnitMultiSuiteParallelXml.Replace("timestamp", "ts");
+            ReadResults();
+            var timeSpan = DateTime.Parse(_testRunData.CompleteDate) - DateTime.Parse(_testRunData.StartDate);
+            Assert.Equal(6.08, timeSpan.TotalSeconds);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
+        public void VerifyDurationAsSumOfTestCaseTimeWhenTestSuiteTimeTagNotAvailable()
+        {
+            SetupMocks();
+            //  timestamp and time attribute not present in test suite tag : case for duration = summation of test cases run time
+            _junitResultsToBeRead = c_jUnitMultiSuiteParallelXml.Replace("timestamp", "ts").Replace("time=\"2.016\"", "tm =\"2.016\"");
+            ReadResults();
+            var timeSpan = DateTime.Parse(_testRunData.CompleteDate) - DateTime.Parse(_testRunData.StartDate);
+            Assert.Equal(6.006, Math.Round(timeSpan.TotalSeconds, 3));
+        }
+
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
+        public void VerifyDurationsCalculationsInDifferentCulture()
+        {
+            SetupMocks();
+            CultureInfo current = CultureInfo.CurrentCulture;
+            try
+            {
+                //German is used, as in this culture decimal separator is comma & thousand separator is dot
+                CultureInfo.CurrentCulture = new CultureInfo("de-De");
+                //verify test case start date
+                _junitResultsToBeRead = _sampleJunitResultXml;
+                ReadResults();
+                Assert.Equal(_testRunData.StartDate, _testRunData.Results[0].StartedDate.ToString("o"));
+
+                //verify test case completed date
+                _junitResultsToBeRead = _sampleJunitResultXml;
+                ReadResults();
+                Assert.Equal(_testRunData.StartDate, _testRunData.Results[0].StartedDate.ToString("o"));
+
+                //verify duration as difference between min start time and max completed time
+                _junitResultsToBeRead = _jUnitKarmaResultsXml;
+                ReadResults();
+                var testCase1CompletedDate = _testRunData.Results[0].CompletedDate;
+                var testCase2StartDate = _testRunData.Results[1].StartedDate;
+                Assert.True(testCase1CompletedDate <= testCase2StartDate, "first test case end should be before second test case start time");
+
+                //verify duration as sum of assembly time when timestamp tag is not available
+                _junitResultsToBeRead = c_jUnitMultiSuiteParallelXml.Replace("timestamp", "ts");
+                ReadResults();
+                var timeSpan = DateTime.Parse(_testRunData.CompleteDate) - DateTime.Parse(_testRunData.StartDate);
+                Assert.Equal(6.08, timeSpan.TotalSeconds);
+
+                //verify duration as sum of test case time when test suite time tag is not available
+                _junitResultsToBeRead = c_jUnitMultiSuiteParallelXml.Replace("timestamp", "ts").Replace("time=\"2.016\"", "tm =\"2.016\"");
+                ReadResults();
+                timeSpan = DateTime.Parse(_testRunData.CompleteDate) - DateTime.Parse(_testRunData.StartDate);
+                Assert.Equal(6.006, Math.Round(timeSpan.TotalSeconds, 3));
+            }
+            finally
+            {
+                CultureInfo.CurrentCulture = current;
+            }
         }
 
         [Fact]
