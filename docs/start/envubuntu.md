@@ -14,6 +14,9 @@ Tested on 16.04 LTS (Yosemite) and 14.04 LTS (El Capitan).  Not domain joined.
 sudo apt-get install -y libunwind8 libcurl3
 ```
 
+If you're still having issues:
+[Full List Needed](https://github.com/dotnet/core/blob/master/Documentation/prereqs.md)
+
 ## Git
 
 If you use git, git >= 2.9.0 is a pre-requisite for Ubuntu agents.

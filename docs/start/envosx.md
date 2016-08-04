@@ -10,15 +10,16 @@ Tested on 10.10 (Yosemite) and 10.11 (El Capitan).  Not domain joined.
 
 Net core requires update OpenSSL - [issue 110](https://github.com/Microsoft/vsts-agent/issues/110) 
 
-**UPDATE:** recent brew update breaks this.  [For latest steps see this issue](https://github.com/Microsoft/vsts-agent/issues/470) - still validating
+[From Net Core Instructions](https://www.microsoft.com/net/core#macos)
 
 ```bash
-$ brew update
-$ brew install openssl
-$ brew link --force openssl
-$ openssl version
-OpenSSL 1.0.2f  28 Jan 2016
+brew update
+brew install openssl
+ln -s /usr/local/opt/openssl/lib/libcrypto.1.0.0.dylib /usr/local/lib/
+ln -s /usr/local/opt/openssl/lib/libssl.1.0.0.dylib /usr/local/lib/
 ```
+
+This was a recent change from brew.  [Issue here](https://github.com/Microsoft/vsts-agent/issues/470)
 
 ## Git
 

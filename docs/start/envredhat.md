@@ -11,6 +11,8 @@ Tested on Redhat 7.1.  Not domain joined.
 ```bash
 sudo yum -y install libunwind.x86_64 icu
 ```
+If you're still having issues:
+[Full List Needed](https://github.com/dotnet/core/blob/master/Documentation/prereqs.md)
 
 ## Git
 
