@@ -3,7 +3,6 @@ using Microsoft.VisualStudio.Services.Agent.Util;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -54,7 +53,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 SetCulture(jobMessage);
 
                 // Start the job.
-                Trace.Info($"Job message: {channelMessage.Body}");
+                Trace.Info($"Job message:{Environment.NewLine} {StringUtil.ConvertToJson(jobMessage)}");
                 Task<TaskResult> jobRunnerTask = jobRunner.RunAsync(jobMessage, jobRequestCancellationToken.Token);
 
                 // Start listening for a cancel message from the channel.
