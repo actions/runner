@@ -119,6 +119,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         {
             Trace.Entering();
 
+#if OS_WINDOWS
+            Trace.Verbose("Trim double quotes around filepath type input on Windows.");
+            inputValue = inputValue.Trim('\"');
+#endif 
             // if inputValue is rooted, return full path.
             string fullPath;
             if (!string.IsNullOrEmpty(inputValue) &&
