@@ -144,8 +144,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 {
                     try
                     {
-                        Trace.Info($"Ensure WorkerDispather for job {currentDispatch.JobId} run to finish.");
-                        await EnsureDispatchFinished(currentDispatch);
+                        Trace.Info($"Ensure WorkerDispather for job {currentDispatch.JobId} run to finish, cancel any running job.");
+                        await EnsureDispatchFinished(currentDispatch, cancelRunningJob: true);
                     }
                     catch (Exception ex)
                     {
@@ -165,10 +165,21 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             }
         }
 
-        private async Task EnsureDispatchFinished(WorkerDispatcher jobDispatch)
+        private async Task EnsureDispatchFinished(WorkerDispatcher jobDispatch, bool cancelRunningJob = false)
         {
             if (!jobDispatch.WorkerDispatch.IsCompleted)
             {
+                if (cancelRunningJob)
+                {
+                    // cancel running job when shutting down the agent.
+                    // this will happen when agent get Ctrl+C or message queue loop crashed.
+                    jobDispatch.WorkerCancellationTokenSource.Cancel();
+                    // wait for worker process exit then return.
+                    await jobDispatch.WorkerDispatch;
+
+                    return;
+                }
+
                 // base on the current design, server will only send one job for a given agent everytime.
                 // if the agent received a new job request while a previous job request is still running, this typically indicate two situations
                 // 1. an agent bug cause server and agent mismatch on the state of the job request, ex. agent not renew jobrequest properly but think it still own the job reqest, however server already abandon the jobrequest.

@@ -118,7 +118,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             ArgUtil.File(_gitPath, nameof(_gitPath));
 
             // Get the Git version.
-            _version = await GitVersion(context);
+            // Due to a protential bug in coreclr that sometime lost redirected stdout,
+            // we will retry get git version 3 times.
+            for (int retry = 0; retry < 3; retry++)
+            {
+                _version = await GitVersion(context);
+                if (_version != null)
+                {
+                    break;
+                }
+            }
+
             ArgUtil.NotNull(_version, nameof(_version));
             context.Debug($"Detect git version: {_version.ToString()}.");
 
@@ -281,7 +291,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             // ignore any outputs by redirect them into a string list, since the output might contains secrets.
             List<string> outputStrings = new List<string>();
             int exitcode = await ExecuteGitCommandAsync(context, repositoryPath, "config", StringUtil.Format($"--get-all {configKey}"), outputStrings);
-            
+
             return exitcode == 0;
         }
 
