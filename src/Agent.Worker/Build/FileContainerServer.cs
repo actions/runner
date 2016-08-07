@@ -16,14 +16,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
     public class FileContainerServer
     {
         private readonly ConcurrentQueue<string> _fileUploadQueue = new ConcurrentQueue<string>();
-        private readonly ConcurrentBag<Exception> _exceptionsDuringFileUpload = new ConcurrentBag<Exception>();
+        private readonly ConcurrentDictionary<string, ConcurrentQueue<string>> _fileUploadTraceLog = new ConcurrentDictionary<string, ConcurrentQueue<string>>();
+        private readonly ConcurrentDictionary<string, ConcurrentQueue<string>> _fileUploadProgressLog = new ConcurrentDictionary<string, ConcurrentQueue<string>>();
         private readonly FileContainerHttpClient _fileContainerHttpClient;
 
         private CancellationTokenSource _uploadCancellationTokenSource;
+        private TaskCompletionSource<int> _uploadFinished;
         private Guid _projectId;
         private long _containerId;
         private string _containerPath;
-        private int _filesUploaded = 0;
+        private int _filesProcessed = 0;
         private string _sourceParentDirectory;
 
         public FileContainerServer(
@@ -56,7 +58,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             int maxConcurrentUploads = Math.Min(Environment.ProcessorCount, 2);
             //context.Output($"Max Concurrent Uploads {maxConcurrentUploads}");
 
-            IEnumerable<String> files;
+            List<String> files;
             if (File.Exists(source))
             {
                 files = new List<String>() { source };
@@ -64,105 +66,228 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             }
             else
             {
-                files = Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories);
+                files = Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories).ToList();
                 _sourceParentDirectory = source.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
             }
 
             context.Output(StringUtil.Loc("TotalUploadFiles", files.Count()));
+            using (_uploadCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken))
+            {
+                // hook up reporting event from file container client.
+                _fileContainerHttpClient.UploadFileReportTrace += UploadFileTraceReportReceived;
+                _fileContainerHttpClient.UploadFileReportProgress += UploadFileProgressReportReceived;
+
+                try
+                {
+                    // try upload all files for the first time.
+                    List<string> failedFiles = await ParallelUploadAsync(context, files, maxConcurrentUploads, _uploadCancellationTokenSource.Token);
+
+                    if (failedFiles.Count == 0)
+                    {
+                        // all files have been upload suceed.
+                        context.Output(StringUtil.Loc("FileUploadSucceed"));
+                        return;
+                    }
+                    else
+                    {
+                        context.Output(StringUtil.Loc("FileUploadFailedRetryLater", failedFiles.Count));
+                    }
+
+                    // Delay 1 min then retry failed files.
+                    for (int timer = 60; timer > 0; timer -= 5)
+                    {
+                        context.Output(StringUtil.Loc("FileUploadRetryInSecond", timer));
+                        await Task.Delay(TimeSpan.FromSeconds(5), _uploadCancellationTokenSource.Token);
+                    }
+
+                    // Retry upload all failed files.
+                    context.Output(StringUtil.Loc("FileUploadRetry", failedFiles.Count));
+                    failedFiles = await ParallelUploadAsync(context, failedFiles, maxConcurrentUploads, _uploadCancellationTokenSource.Token);
+
+                    if (failedFiles.Count == 0)
+                    {
+                        // all files have been upload suceed after retry.
+                        context.Output(StringUtil.Loc("FileUploadRetrySucceed"));
+                        return;
+                    }
+                    else
+                    {
+                        throw new Exception(StringUtil.Loc("FileUploadFailedAfterRetry"));
+                    }
+                }
+                finally
+                {
+                    _fileContainerHttpClient.UploadFileReportTrace -= UploadFileTraceReportReceived;
+                    _fileContainerHttpClient.UploadFileReportProgress -= UploadFileProgressReportReceived;
+                }
+            }
+        }
+
+        private async Task<List<string>> ParallelUploadAsync(IAsyncCommandContext context, List<string> files, int concurrentUploads, CancellationToken token)
+        {
+            // return files that fail to upload
+            List<string> failedFiles = new List<string>();
+
+            // nothing needs to upload
+            if (files.Count == 0)
+            {
+                return failedFiles;
+            }
+
+            // ensure the file upload queue is empty.
+            if (!_fileUploadQueue.IsEmpty)
+            {
+                throw new ArgumentOutOfRangeException(nameof(_fileUploadQueue));
+            }
+
+            // enqueue file into upload queue.
             foreach (var file in files)
             {
                 _fileUploadQueue.Enqueue(file);
             }
 
-            using (_uploadCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken))
+            // Start upload monitor task.
+            _filesProcessed = 0;
+            _uploadFinished = new TaskCompletionSource<int>();
+            _fileUploadTraceLog.Clear();
+            _fileUploadProgressLog.Clear();
+            Task uploadMonitor = ReportingAsync(context, files.Count(), _uploadCancellationTokenSource.Token);
+
+            // Start parallel upload tasks.
+            List<Task<List<string>>> parallelUploadingTasks = new List<Task<List<string>>>();
+            for (int uploader = 0; uploader < concurrentUploads; uploader++)
             {
-                List<Task> allRunningTasks = new List<Task>();
-                // start reporting task to keep tracking upload progress.
-                allRunningTasks.Add(ReportingAsync(context, files.Count(), _uploadCancellationTokenSource.Token));
-
-                // start parallel upload task.
-                for (int i = 0; i < maxConcurrentUploads; i++)
-                {
-                    allRunningTasks.Add(ParallelUploadAsync(context, i, _uploadCancellationTokenSource.Token));
-                }
-
-                // the only expected type of exception will throw from both parallel upload task and reporting task is OperationCancelledException.
-                try
-                {
-                    await Task.WhenAll(allRunningTasks);
-                }
-                catch (OperationCanceledException)
-                {
-                    // throw aggregate exception for all non-operationcancelexception we catched during file upload.
-                    if (_exceptionsDuringFileUpload.Count > 0)
-                    {
-                        throw new AggregateException(_exceptionsDuringFileUpload).Flatten();
-                    }
-
-                    throw;
-                }
+                parallelUploadingTasks.Add(UploadAsync(context, uploader, _uploadCancellationTokenSource.Token));
             }
+
+            // Wait for parallel upload finish.
+            await Task.WhenAll(parallelUploadingTasks);
+            foreach (var uploadTask in parallelUploadingTasks)
+            {
+                // record all failed files.
+                failedFiles.AddRange(await uploadTask);
+            }
+
+            // Stop monitor task;
+            _uploadFinished.TrySetResult(0);
+            await uploadMonitor;
+
+            return failedFiles;
         }
 
-        private async Task ParallelUploadAsync(IAsyncCommandContext context, int uploaderId, CancellationToken token)
+        private async Task<List<string>> UploadAsync(IAsyncCommandContext context, int uploaderId, CancellationToken token)
         {
+            List<string> failedFiles = new List<string>();
             string fileToUpload;
             Stopwatch uploadTimer = new Stopwatch();
             while (_fileUploadQueue.TryDequeue(out fileToUpload))
             {
                 token.ThrowIfCancellationRequested();
-                try
-                {
-                    context.Output(StringUtil.Loc("StartFileUpload", fileToUpload, new FileInfo(fileToUpload).Length));
-                    using (FileStream fs = File.Open(fileToUpload, FileMode.Open, FileAccess.Read))
-                    {
-                        string itemPath = (_containerPath.TrimEnd('/') + "/" + fileToUpload.Remove(0, _sourceParentDirectory.Length + 1)).Replace('\\', '/');
-                        uploadTimer.Restart();
-                        HttpResponseMessage response = null;
-                        try
-                        {
-                            response = await _fileContainerHttpClient.UploadFileAsync(_containerId, itemPath, fs, _projectId, token);
-                        }
-                        catch (OperationCanceledException) when (token.IsCancellationRequested)
-                        {
-                            context.Output(StringUtil.Loc("FileUploadCancelled", fileToUpload));
-                            throw;
-                        }
-                        catch (Exception ex)
-                        {
-                            context.Output(StringUtil.Loc("FileUploadFailed", fileToUpload, ex.Message));
-                            throw;
-                        }
+                Interlocked.Increment(ref _filesProcessed);
 
-                        uploadTimer.Stop();
-                        if (response.StatusCode != System.Net.HttpStatusCode.Created)
-                        {
-                            throw new Exception(StringUtil.Loc("FileContainerUploadFailed", response.StatusCode, response.ReasonPhrase, fileToUpload, itemPath));
-                        }
-                        else
-                        {
-                            context.Output(StringUtil.Loc("FileUploadFinish", fileToUpload, uploadTimer.ElapsedMilliseconds));
-                        }
+                using (FileStream fs = File.Open(fileToUpload, FileMode.Open, FileAccess.Read))
+                {
+                    string itemPath = (_containerPath.TrimEnd('/') + "/" + fileToUpload.Remove(0, _sourceParentDirectory.Length + 1)).Replace('\\', '/');
+                    uploadTimer.Restart();
+                    bool catchExceptionDuringUpload = false;
+                    HttpResponseMessage response = null;
+                    try
+                    {
+                        response = await _fileContainerHttpClient.UploadFileAsync(_containerId, itemPath, fs, _projectId, token);
+                    }
+                    catch (OperationCanceledException) when (token.IsCancellationRequested)
+                    {
+                        context.Output(StringUtil.Loc("FileUploadCancelled", fileToUpload));
+                        throw;
+                    }
+                    catch (Exception ex)
+                    {
+                        catchExceptionDuringUpload = true;
+                        context.Output(StringUtil.Loc("FileUploadFailed", fileToUpload, ex.Message));
+                        context.Output(ex.ToString());
                     }
 
-                    Interlocked.Increment(ref _filesUploaded);
-                }
-                catch (Exception ex) when (!(ex is OperationCanceledException))
-                {
-                    _exceptionsDuringFileUpload.Add(ex);
-                    _uploadCancellationTokenSource.Cancel();
-                    return;
+                    uploadTimer.Stop();
+                    if (catchExceptionDuringUpload || response.StatusCode != System.Net.HttpStatusCode.Created)
+                    {
+                        if (response != null)
+                        {
+                            context.Output(StringUtil.Loc("FileContainerUploadFailed", response.StatusCode, response.ReasonPhrase, fileToUpload, itemPath));
+                        }
+
+                        // output detail upload trace for the file.
+                        ConcurrentQueue<string> logQueue;
+                        if (_fileUploadTraceLog.TryGetValue(itemPath, out logQueue))
+                        {
+                            context.Output(StringUtil.Loc("FileUploadDetailTrace", itemPath));
+                            string message;
+                            while (logQueue.TryDequeue(out message))
+                            {
+                                context.Output(message);
+                            }
+                        }
+
+                        // tracking file that failed to upload.
+                        failedFiles.Add(fileToUpload);
+                    }
+                    else
+                    {
+                        context.Debug(StringUtil.Loc("FileUploadFinish", fileToUpload, uploadTimer.ElapsedMilliseconds));
+
+                        // debug detail upload trace for the file.
+                        ConcurrentQueue<string> logQueue;
+                        if (_fileUploadTraceLog.TryGetValue(itemPath, out logQueue))
+                        {
+                            context.Debug($"Detail upload trace for file: {itemPath}");
+                            string message;
+                            while (logQueue.TryDequeue(out message))
+                            {
+                                context.Debug(message);
+                            }
+                        }
+                    }
                 }
             }
+
+            return failedFiles;
         }
 
         private async Task ReportingAsync(IAsyncCommandContext context, int totalFiles, CancellationToken token)
         {
-            while (_filesUploaded != totalFiles)
+            int traceInterval = 0;
+            while (!_uploadFinished.Task.IsCompleted && !token.IsCancellationRequested)
             {
-                context.Output(StringUtil.Loc("FileUploadProgress", totalFiles, _filesUploaded));
-                await Task.Delay(2000, token);
+                bool hasDetailProgress = false;
+                foreach (var file in _fileUploadProgressLog)
+                {
+                    string message;
+                    while (file.Value.TryDequeue(out message))
+                    {
+                        hasDetailProgress = true;
+                        context.Output(message);
+                    }
+                }
+
+                // trace total file progress every 25 seconds when there is no file level detail progress
+                if (++traceInterval % 2 == 0 && !hasDetailProgress)
+                {
+                    context.Output(StringUtil.Loc("FileUploadProgress", totalFiles, _filesProcessed, (_filesProcessed * 100) / totalFiles));
+                }
+
+                await Task.WhenAny(_uploadFinished.Task, Task.Delay(5000, token));
             }
+        }
+
+        private void UploadFileTraceReportReceived(object sender, ReportTraceEventArgs e)
+        {
+            ConcurrentQueue<string> logQueue = _fileUploadTraceLog.GetOrAdd(e.File, new ConcurrentQueue<string>());
+            logQueue.Enqueue(e.Message);
+        }
+
+        private void UploadFileProgressReportReceived(object sender, ReportProgressEventArgs e)
+        {
+            ConcurrentQueue<string> progressQueue = _fileUploadProgressLog.GetOrAdd(e.File, new ConcurrentQueue<string>());
+            progressQueue.Enqueue(StringUtil.Loc("FileUploadProgressDetail", e.File, (e.CurrentChunk * 100) / e.TotalChunks));
         }
     }
 }
