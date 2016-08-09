@@ -50,7 +50,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 typeof(IExtension),
                 typeof(IHostContext),
                 typeof(ITraceManager),
-                typeof(ISecret)
+                typeof(ISecret),
+                typeof(IThrottlingReporter)
             };
             Validate(
                 assembly: typeof(IHostContext).GetTypeInfo().Assembly,

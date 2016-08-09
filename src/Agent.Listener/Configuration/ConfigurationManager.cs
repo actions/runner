@@ -253,6 +253,31 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 }
             }
 
+            // respect the serverUrl resolve by server.
+            // in case of agent configured using collection url instead of account url.
+            string agentServerUrl;
+            if (agent.Properties.TryGetValidatedValue<string>("ServerUrl", out agentServerUrl) &&
+                !string.IsNullOrEmpty(agentServerUrl))
+            {
+                Trace.Info($"Agent server url resolve by server: '{agentServerUrl}'.");
+
+                // we need make sure the Host component of the url remain the same.
+                Uri inputServerUrl = new Uri(serverUrl);
+                Uri serverReturnedServerUrl = new Uri(agentServerUrl);
+                if (Uri.Compare(inputServerUrl, serverReturnedServerUrl, UriComponents.Host, UriFormat.Unescaped, StringComparison.OrdinalIgnoreCase) != 0)
+                {
+                    UriBuilder replaceHostUrl = new UriBuilder(serverReturnedServerUrl);
+                    replaceHostUrl.Host = inputServerUrl.Host;
+
+                    Trace.Info($"Replace server returned url's host component with user input server url's host: '{replaceHostUrl.Uri.AbsoluteUri}'.");
+                    serverUrl = replaceHostUrl.Uri.AbsoluteUri;
+                }
+                else
+                {
+                    serverUrl = agentServerUrl;
+                }
+            }
+
             // See if the server supports our OAuth key exchange for credentials
             if (agent.Authorization != null &&
                 agent.Authorization.ClientId != Guid.Empty &&
