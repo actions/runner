@@ -64,6 +64,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 // Print agent version into log for better diagnostic experience 
                 jobContext.Output(StringUtil.Loc("AgentVersion", Constants.Agent.Version));
 
+                // Print proxy setting information for better diagnostic experience
+                var proxyConfig = HostContext.GetService<IProxyConfiguration>();
+                if (!string.IsNullOrEmpty(proxyConfig.ProxyUrl))
+                {
+                    jobContext.Output(StringUtil.Loc("AgentRunningBehindProxy", proxyConfig.ProxyUrl));
+                }
+
                 // Set agent variables.
                 AgentSettings settings = HostContext.GetService<IConfigurationStore>().GetSettings();
                 jobContext.Variables.Set(Constants.Variables.Agent.Id, settings.AgentId.ToString(CultureInfo.InvariantCulture));

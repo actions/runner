@@ -33,7 +33,7 @@
             "target": "project",
             "version": "1.0.0-*"
         },
-        "vss-api-netcore": "0.5.23-private",
+        "vss-api-netcore": "0.5.24-private",
         "System.Collections.NonGeneric": "4.0.1",
         "System.Diagnostics.TraceSource": "4.0.0",
         "System.Linq": "4.1.0",

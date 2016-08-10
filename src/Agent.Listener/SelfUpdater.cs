@@ -114,7 +114,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
             try
             {
-                using (var httpClient = new HttpClient())
+                var proxyConfig = HostContext.GetService<IProxyConfiguration>();
+                using (var httpClient = new HttpClient(proxyConfig.HttpClientHandlerWithProxySetting))
                 {
                     //open zip stream in async mode
                     using (FileStream fs = new FileStream(archiveFile, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 4096, useAsync: true))
