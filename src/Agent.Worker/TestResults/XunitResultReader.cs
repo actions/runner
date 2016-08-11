@@ -89,16 +89,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                         dateTimeParseError = false;
                     }
                     assemblyRunStartTimeStamp = startDate + startTime;
-					if(minStartTime > assemblyRunStartTimeStamp)
-					{
-						minStartTime = assemblyRunStartTimeStamp;
-					}
+                    if (minStartTime > assemblyRunStartTimeStamp)
+                    {
+                        minStartTime = assemblyRunStartTimeStamp;
+                    }
                 }
-				else 
-				{
-					assemblyRunDateTimeAttributesNotPresent = true;
-				}
-				if (!assemblyTimeAttributeNotPresent && assemblyNode.Attributes["time"] != null)
+                else 
+                {
+                    assemblyRunDateTimeAttributesNotPresent = true;
+                }
+                if (!assemblyTimeAttributeNotPresent && assemblyNode.Attributes["time"] != null)
                 {
                     double assemblyDuration = 0;
                     Double.TryParse(assemblyNode.Attributes["time"].Value, NumberStyles.Any, NumberFormatInfo.InvariantInfo, out assemblyDuration);
@@ -229,7 +229,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                     }
                 }
             }
-			if (dateTimeParseError || assemblyRunDateTimeAttributesNotPresent)
+            if (dateTimeParseError || assemblyRunDateTimeAttributesNotPresent)
             {
                 executionContext.Warning("Atleast for one assembly start time was not obtained due to tag not present or parsing issue, total run duration will now be summation of time taken by each assembly");
 

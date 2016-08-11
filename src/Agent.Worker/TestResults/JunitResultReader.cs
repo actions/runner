@@ -101,7 +101,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
             }
             else
             {
-                executionContext.Warning("Only single test suite found, parsing its information");
+                executionContext.Output("Only single test suite found, parsing its information");
                 XmlNode testSuiteNode = doc.SelectSingleNode("testsuite");
                 if (testSuiteNode != null)
                 {
@@ -240,7 +240,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                     var testCaseDuration = GetTimeSpan(testCaseNode, out TestCaseTimeDataAvailable);
                     totalTestCaseDuration = totalTestCaseDuration + testCaseDuration;
                     resultCreateModel.DurationInMs = testCaseDuration.TotalMilliseconds;
-
                     resultCreateModel.StartedDate = testCaseStartTime;
                     resultCreateModel.CompletedDate = testCaseStartTime.AddTicks(testCaseDuration.Ticks);
                     testCaseStartTime = testCaseStartTime.AddTicks(1) + testCaseDuration; //next start time

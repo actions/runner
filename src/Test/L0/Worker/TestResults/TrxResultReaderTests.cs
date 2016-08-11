@@ -4,9 +4,9 @@ using Microsoft.VisualStudio.Services.Agent.Worker.TestResults;
 using Moq;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Runtime.CompilerServices;
-using System.Globalization;
 using System.Threading;
 using Xunit;
 
@@ -53,13 +53,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
         {
             SetupMocks();
             String trxContents = "<?xml version = \"1.0\" encoding = \"UTF-8\"?>" +
-               "<TestRun id = \"asdf\" name = \"kaadhina@KAADHINA1 2015-03-20 16:53:32\" runUser = \"FAREAST\\kaadhina\" xmlns =\"http://microsoft.com/schemas/VisualStudio/TeamTest/2010\"><Times creation = \"2015-03-20T16:53:32.3309380+05:30\" queuing = \"2015-03-20T16:53:32.3319381+05:30\" start = \"2015-03-20T16:53:32.3349628+05:30\" finish = \"2015-03-20T16:53:32.9232329+05:30\" />" +
+               "<TestRun id = \"asdf\" name = \"somerandomusername@SOMERANDOMCOMPUTERNAME 2015-03-20 16:53:32\" runUser = \"FAREAST\\somerandomusername\" xmlns =\"http://microsoft.com/schemas/VisualStudio/TeamTest/2010\"><Times creation = \"2015-03-20T16:53:32.3309380+05:30\" queuing = \"2015-03-20T16:53:32.3319381+05:30\" start = \"2015-03-20T16:53:32.3349628+05:30\" finish = \"2015-03-20T16:53:32.9232329+05:30\" />" +
 
                  "<TestDefinitions>" +
-                   "<UnitTest name = \"TestMethod2\" storage = \"c:\\users\\kaadhina\\source\\repos\\projectx\\unittestproject4\\unittestproject4\\bin\\debug\\unittestproject4.dll\" priority = \"1\" id = \"asdf\"><Owners><Owner name = \"asdf2\" /></Owners><Execution id = \"asdf\" /><TestMethod codeBase = \"C:\\Users\\kaadhina\\Source\\Repos\\Projectx\\UnitTestProject4\\UnitTestProject4\\bin\\Debug\\UnitTestProject4.dll\" adapterTypeName = \"Microsoft.VisualStudio.TestTools.TestTypes.Unit.UnitTestAdapter\" className = \"UnitTestProject4.UnitTest1\" name = \"TestMethod2\" /></UnitTest>" +
+                   "<UnitTest name = \"TestMethod2\" storage = \"c:\\users\\somerandomusername\\source\\repos\\projectx\\unittestproject4\\unittestproject4\\bin\\debug\\unittestproject4.dll\" priority = \"1\" id = \"asdf\"><Owners><Owner name = \"asdf2\" /></Owners><Execution id = \"asdf\" /><TestMethod codeBase = \"C:\\Users\\somerandomusername\\Source\\Repos\\Projectx\\UnitTestProject4\\UnitTestProject4\\bin\\Debug\\UnitTestProject4.dll\" adapterTypeName = \"Microsoft.VisualStudio.TestTools.TestTypes.Unit.UnitTestAdapter\" className = \"UnitTestProject4.UnitTest1\" name = \"TestMethod2\" /></UnitTest>" +
                  "</TestDefinitions>" +
                   "<Results>" +
-                   "<UnitTestResult executionId = \"asdf\" testId = \"asdf\" testName = \"TestMethod2\" computerName = \"KAADHINA1\" duration = \"00:00:00.0834563\" startTime = \"2015-03-20T16:53:32.3099353+05:30\" endTime = \"2015-03-20T16:53:32.3939623+05:30\" testType = \"asfd\" outcome = \"Failed\" testListId = \"asdf\" relativeResultsDirectory = \"48ec1e47-b9df-43b9-aef2-a2cc8742353d\" ><Output><StdOut>Show console log output.</StdOut><ErrorInfo><Message>Assert.Fail failed.</Message><StackTrace>at UnitTestProject4.UnitTest1.TestMethod2() in C:\\Users\\kaadhina\\Source\\Repos\\Projectx\\UnitTestProject4\\UnitTestProject4\\UnitTest1.cs:line 21</StackTrace></ErrorInfo></Output>" +
+                   "<UnitTestResult executionId = \"asdf\" testId = \"asdf\" testName = \"TestMethod2\" computerName = \"SOMERANDOMCOMPUTERNAME\" duration = \"00:00:00.0834563\" startTime = \"2015-03-20T16:53:32.3099353+05:30\" endTime = \"2015-03-20T16:53:32.3939623+05:30\" testType = \"asfd\" outcome = \"Failed\" testListId = \"asdf\" relativeResultsDirectory = \"48ec1e47-b9df-43b9-aef2-a2cc8742353d\" ><Output><StdOut>Show console log output.</StdOut><ErrorInfo><Message>Assert.Fail failed.</Message><StackTrace>at UnitTestProject4.UnitTest1.TestMethod2() in C:\\Users\\somerandomusername\\Source\\Repos\\Projectx\\UnitTestProject4\\UnitTestProject4\\UnitTest1.cs:line 21</StackTrace></ErrorInfo></Output>" +
                      "<ResultFiles><ResultFile path=\"DIGANR-DEV4\\x.txt\" /></ResultFiles>" +
                    "</UnitTestResult>" +
                    "</Results></TestRun>";
@@ -111,10 +111,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
         {
             SetupMocks();
             String trxContents = "<?xml version = \"1.0\" encoding = \"UTF-8\"?>" +
-               "<TestRun id = \"ee3d8b3b-1ac9-4a7e-abfa-3d3ed2008613\" name = \"kaadhina@KAADHINA1 2015-03-20 16:53:32\" runUser = \"FAREAST\\kaadhina\" xmlns =\"http://microsoft.com/schemas/VisualStudio/TeamTest/2010\"><Times creation = \"2015-03-20T16:53:32.3309380+05:30\" queuing = \"2015-03-20T16:53:32.3319381+05:30\" start = \"2015-03-20T16:53:32.3349628+05:30\" finish = \"2015-03-20T16:53:32.9232329+05:30\" />" +
+               "<TestRun id = \"ee3d8b3b-1ac9-4a7e-abfa-3d3ed2008613\" name = \"somerandomusername@SOMERANDOMCOMPUTERNAME 2015-03-20 16:53:32\" runUser = \"FAREAST\\somerandomusername\" xmlns =\"http://microsoft.com/schemas/VisualStudio/TeamTest/2010\"><Times creation = \"2015-03-20T16:53:32.3309380+05:30\" queuing = \"2015-03-20T16:53:32.3319381+05:30\" start = \"2015-03-20T16:53:32.3349628+05:30\" finish = \"2015-03-20T16:53:32.9232329+05:30\" />" +
 
                  "<TestDefinitions>" +
-                   "<UnitTest name = \"TestMethod2\" storage = \"c:/users/kaadhina/source/repos/projectx/unittestproject4/unittestproject4/bin/debug/unittestproject4.dll\" priority = \"1\" id = \"f0d6b58f-dc08-9c0b-aab7-0a1411d4a346\"><Owners><Owner name = \"asdf2\" /></Owners><Execution id = \"48ec1e47-b9df-43b9-aef2-a2cc8742353d\" /><TestMethod codeBase = \"c:/users/kaadhina/source/repos/projectx/unittestproject4/unittestproject4/bin/debug/unittestproject4.dll\" adapterTypeName = \"Microsoft.VisualStudio.TestTools.TestTypes.Unit.UnitTestAdapter\" className = \"UnitTestProject4.UnitTest1\" name = \"TestMethod2\" /></UnitTest>" +
+                   "<UnitTest name = \"TestMethod2\" storage = \"c:/users/somerandomusername/source/repos/projectx/unittestproject4/unittestproject4/bin/debug/unittestproject4.dll\" priority = \"1\" id = \"f0d6b58f-dc08-9c0b-aab7-0a1411d4a346\"><Owners><Owner name = \"asdf2\" /></Owners><Execution id = \"48ec1e47-b9df-43b9-aef2-a2cc8742353d\" /><TestMethod codeBase = \"c:/users/somerandomusername/source/repos/projectx/unittestproject4/unittestproject4/bin/debug/unittestproject4.dll\" adapterTypeName = \"Microsoft.VisualStudio.TestTools.TestTypes.Unit.UnitTestAdapter\" className = \"UnitTestProject4.UnitTest1\" name = \"TestMethod2\" /></UnitTest>" +
                    "<WebTest name=\"PSD_Startseite\" storage=\"c:\\vsoagent\\a284d2cc\\vseqa1\\psd_startseite.webtest\" id=\"01da1a13-b160-4ee6-9d84-7a6dfe37b1d2\" persistedWebTest=\"7\"><TestCategory><TestCategoryItem TestCategory=\"PSD\" /></TestCategory><Execution id=\"eb421c16-4546-435a-9c24-0d2878ea76d4\" /></WebTest>" +
                  "</TestDefinitions>" +
 
@@ -133,7 +133,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
                  "</TestSettings>" +
 
                  "<Results>" +
-                   "<UnitTestResult executionId = \"48ec1e47-b9df-43b9-aef2-a2cc8742353d\" testId = \"f0d6b58f-dc08-9c0b-aab7-0a1411d4a346\" testName = \"TestMethod2\" computerName = \"KAADHINA1\" duration = \"00:00:00.0834563\" startTime = \"2015-03-20T16:53:32.3099353+05:30\" endTime = \"2015-03-20T16:53:32.3939623+05:30\" testType = \"13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b\" outcome = \"Failed\" testListId = \"8c84fa94-04c1-424b-9868-57a2d4851a1d\" relativeResultsDirectory = \"48ec1e47-b9df-43b9-aef2-a2cc8742353d\" ><Output><StdOut>Show console log output.</StdOut><ErrorInfo><Message>Assert.Fail failed.</Message><StackTrace>at UnitTestProject4.UnitTest1.TestMethod2() in C:\\Users\\kaadhina\\Source\\Repos\\Projectx\\UnitTestProject4\\UnitTestProject4\\UnitTest1.cs:line 21</StackTrace></ErrorInfo></Output>" +
+                   "<UnitTestResult executionId = \"48ec1e47-b9df-43b9-aef2-a2cc8742353d\" testId = \"f0d6b58f-dc08-9c0b-aab7-0a1411d4a346\" testName = \"TestMethod2\" computerName = \"SOMERANDOMCOMPUTERNAME\" duration = \"00:00:00.0834563\" startTime = \"2015-03-20T16:53:32.3099353+05:30\" endTime = \"2015-03-20T16:53:32.3939623+05:30\" testType = \"13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b\" outcome = \"Failed\" testListId = \"8c84fa94-04c1-424b-9868-57a2d4851a1d\" relativeResultsDirectory = \"48ec1e47-b9df-43b9-aef2-a2cc8742353d\" ><Output><StdOut>Show console log output.</StdOut><ErrorInfo><Message>Assert.Fail failed.</Message><StackTrace>at UnitTestProject4.UnitTest1.TestMethod2() in C:\\Users\\somerandomusername\\Source\\Repos\\Projectx\\UnitTestProject4\\UnitTestProject4\\UnitTest1.cs:line 21</StackTrace></ErrorInfo></Output>" +
                      "<ResultFiles><ResultFile path=\"DIGANR-DEV4\\x.txt\" /></ResultFiles>" +
                    "</UnitTestResult>" +
 
@@ -183,14 +183,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
             Assert.Equal(runData.Results[0].Outcome, "Failed");
             Assert.Equal(runData.Results[0].TestCaseTitle, "TestMethod2");
-            Assert.Equal(runData.Results[0].ComputerName, "KAADHINA1");
+            Assert.Equal(runData.Results[0].ComputerName, "SOMERANDOMCOMPUTERNAME");
             Assert.Equal(runData.Results[0].AutomatedTestType, "UnitTest");
             Assert.Equal(runData.Results[0].AutomatedTestName, "UnitTestProject4.UnitTest1.TestMethod2");
             Assert.Equal(runData.Results[0].AutomatedTestId, "f0d6b58f-dc08-9c0b-aab7-0a1411d4a346");
             Assert.Equal(runData.Results[0].AutomatedTestStorage, "unittestproject4.dll");
             Assert.Equal(runData.Results[0].AutomatedTestTypeId, "13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b");
             Assert.Equal(runData.Results[0].ErrorMessage, "Assert.Fail failed.");
-            Assert.Equal(runData.Results[0].StackTrace, "at UnitTestProject4.UnitTest1.TestMethod2() in C:\\Users\\kaadhina\\Source\\Repos\\Projectx\\UnitTestProject4\\UnitTestProject4\\UnitTest1.cs:line 21");
+            Assert.Equal(runData.Results[0].StackTrace, "at UnitTestProject4.UnitTest1.TestMethod2() in C:\\Users\\somerandomusername\\Source\\Repos\\Projectx\\UnitTestProject4\\UnitTestProject4\\UnitTest1.cs:line 21");
             Assert.Equal(runData.Results[0].Priority.ToString(), "1");
             Assert.Equal(runData.Results[0].ConsoleLog, "Show console log output.");
             Assert.Equal(runData.Results[0].Attachments.Length, 1);
@@ -230,10 +230,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
                 CultureInfo.CurrentCulture = new CultureInfo("de-DE");
 
                 String trxContents = "<?xml version = \"1.0\" encoding = \"UTF-8\"?>" +
-               "<TestRun id = \"ee3d8b3b-1ac9-4a7e-abfa-3d3ed2008613\" name = \"kaadhina@KAADHINA1 2015-03-20 16:53:32\" runUser = \"FAREAST\\kaadhina\" xmlns =\"http://microsoft.com/schemas/VisualStudio/TeamTest/2010\"><Times creation = \"2015-03-20T16:53:32.3309380+05:30\" queuing = \"2015-03-20T16:53:32.3319381+05:30\" start = \"2015-03-20T16:53:32.3349628+05:30\" finish = \"2015-03-20T16:53:32.9232329+05:30\" />" +
+               "<TestRun id = \"ee3d8b3b-1ac9-4a7e-abfa-3d3ed2008613\" name = \"somerandomusername@SOMERANDOMCOMPUTERNAME 2015-03-20 16:53:32\" runUser = \"FAREAST\\somerandomusername\" xmlns =\"http://microsoft.com/schemas/VisualStudio/TeamTest/2010\"><Times creation = \"2015-03-20T16:53:32.3309380+05:30\" queuing = \"2015-03-20T16:53:32.3319381+05:30\" start = \"2015-03-20T16:53:32.3349628+05:30\" finish = \"2015-03-20T16:53:32.9232329+05:30\" />" +
 
                  "<TestDefinitions>" +
-                   "<UnitTest name = \"TestMethod2\" storage = \"c:/users/kaadhina/source/repos/projectx/unittestproject4/unittestproject4/bin/debug/unittestproject4.dll\" priority = \"1\" id = \"f0d6b58f-dc08-9c0b-aab7-0a1411d4a346\"><Owners><Owner name = \"asdf2\" /></Owners><Execution id = \"48ec1e47-b9df-43b9-aef2-a2cc8742353d\" /><TestMethod codeBase = \"c:/users/kaadhina/source/repos/projectx/unittestproject4/unittestproject4/bin/debug/unittestproject4.dll\" adapterTypeName = \"Microsoft.VisualStudio.TestTools.TestTypes.Unit.UnitTestAdapter\" className = \"UnitTestProject4.UnitTest1\" name = \"TestMethod2\" /></UnitTest>" +
+                   "<UnitTest name = \"TestMethod2\" storage = \"c:/users/somerandomusername/source/repos/projectx/unittestproject4/unittestproject4/bin/debug/unittestproject4.dll\" priority = \"1\" id = \"f0d6b58f-dc08-9c0b-aab7-0a1411d4a346\"><Owners><Owner name = \"asdf2\" /></Owners><Execution id = \"48ec1e47-b9df-43b9-aef2-a2cc8742353d\" /><TestMethod codeBase = \"c:/users/somerandomusername/source/repos/projectx/unittestproject4/unittestproject4/bin/debug/unittestproject4.dll\" adapterTypeName = \"Microsoft.VisualStudio.TestTools.TestTypes.Unit.UnitTestAdapter\" className = \"UnitTestProject4.UnitTest1\" name = \"TestMethod2\" /></UnitTest>" +
                    "<WebTest name=\"PSD_Startseite\" storage=\"c:\\vsoagent\\a284d2cc\\vseqa1\\psd_startseite.webtest\" id=\"01da1a13-b160-4ee6-9d84-7a6dfe37b1d2\" persistedWebTest=\"7\"><TestCategory><TestCategoryItem TestCategory=\"PSD\" /></TestCategory><Execution id=\"eb421c16-4546-435a-9c24-0d2878ea76d4\" /></WebTest>" +
                  "</TestDefinitions>" +
 
@@ -252,7 +252,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
                  "</TestSettings>" +
 
                  "<Results>" +
-                   "<UnitTestResult executionId = \"48ec1e47-b9df-43b9-aef2-a2cc8742353d\" testId = \"f0d6b58f-dc08-9c0b-aab7-0a1411d4a346\" testName = \"TestMethod2\" computerName = \"KAADHINA1\" duration = \"00:00:00.0834563\" startTime = \"2015-03-20T16:53:32.3099353+05:30\" endTime = \"2015-03-20T16:53:32.3939623+05:30\" testType = \"13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b\" outcome = \"Failed\" testListId = \"8c84fa94-04c1-424b-9868-57a2d4851a1d\" relativeResultsDirectory = \"48ec1e47-b9df-43b9-aef2-a2cc8742353d\" ><Output><StdOut>Show console log output.</StdOut><ErrorInfo><Message>Assert.Fail failed.</Message><StackTrace>at UnitTestProject4.UnitTest1.TestMethod2() in C:\\Users\\kaadhina\\Source\\Repos\\Projectx\\UnitTestProject4\\UnitTestProject4\\UnitTest1.cs:line 21</StackTrace></ErrorInfo></Output>" +
+                   "<UnitTestResult executionId = \"48ec1e47-b9df-43b9-aef2-a2cc8742353d\" testId = \"f0d6b58f-dc08-9c0b-aab7-0a1411d4a346\" testName = \"TestMethod2\" computerName = \"SOMERANDOMCOMPUTERNAME\" duration = \"00:00:00.0834563\" startTime = \"2015-03-20T16:53:32.3099353+05:30\" endTime = \"2015-03-20T16:53:32.3939623+05:30\" testType = \"13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b\" outcome = \"Failed\" testListId = \"8c84fa94-04c1-424b-9868-57a2d4851a1d\" relativeResultsDirectory = \"48ec1e47-b9df-43b9-aef2-a2cc8742353d\" ><Output><StdOut>Show console log output.</StdOut><ErrorInfo><Message>Assert.Fail failed.</Message><StackTrace>at UnitTestProject4.UnitTest1.TestMethod2() in C:\\Users\\somerandomusername\\Source\\Repos\\Projectx\\UnitTestProject4\\UnitTestProject4\\UnitTest1.cs:line 21</StackTrace></ErrorInfo></Output>" +
                      "<ResultFiles><ResultFile path=\"DIGANR-DEV4\\x.txt\" /></ResultFiles>" +
                    "</UnitTestResult>" +
 
@@ -302,14 +302,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
                 Assert.Equal(runData.Results[0].Outcome, "Failed");
                 Assert.Equal(runData.Results[0].TestCaseTitle, "TestMethod2");
-                Assert.Equal(runData.Results[0].ComputerName, "KAADHINA1");
+                Assert.Equal(runData.Results[0].ComputerName, "SOMERANDOMCOMPUTERNAME");
                 Assert.Equal(runData.Results[0].AutomatedTestType, "UnitTest");
                 Assert.Equal(runData.Results[0].AutomatedTestName, "UnitTestProject4.UnitTest1.TestMethod2");
                 Assert.Equal(runData.Results[0].AutomatedTestId, "f0d6b58f-dc08-9c0b-aab7-0a1411d4a346");
                 Assert.Equal(runData.Results[0].AutomatedTestStorage, "unittestproject4.dll");
                 Assert.Equal(runData.Results[0].AutomatedTestTypeId, "13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b");
                 Assert.Equal(runData.Results[0].ErrorMessage, "Assert.Fail failed.");
-                Assert.Equal(runData.Results[0].StackTrace, "at UnitTestProject4.UnitTest1.TestMethod2() in C:\\Users\\kaadhina\\Source\\Repos\\Projectx\\UnitTestProject4\\UnitTestProject4\\UnitTest1.cs:line 21");
+                Assert.Equal(runData.Results[0].StackTrace, "at UnitTestProject4.UnitTest1.TestMethod2() in C:\\Users\\somerandomusername\\Source\\Repos\\Projectx\\UnitTestProject4\\UnitTestProject4\\UnitTest1.cs:line 21");
                 Assert.Equal(runData.Results[0].Priority.ToString(), "1");
                 Assert.Equal(runData.Results[0].ConsoleLog, "Show console log output.");
                 Assert.Equal(runData.Results[0].Attachments.Length, 1);
@@ -334,8 +334,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
                 Assert.Equal(runData.ReleaseUri, "releaseUri");
                 Assert.Equal(runData.ReleaseEnvironmentUri, "releaseEnvironmentUri");
-
-
             }
             finally
             {
@@ -402,7 +400,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
         {
             SetupMocks();
             string trxContents = "<?xml version =\"1.0\" encoding=\"UTF-8\"?>" +
-                "<TestRun id = \"ee3d8b3b-1ac9-4a7e-abfa-3d3ed2008613\" name = \"kaadhina@KAADHINA1 2015-03-20 16:53:32\" runUser = \"FAREAST\\kaadhina\" xmlns =\"http://microsoft.com/schemas/VisualStudio/TeamTest/2010\"><Times creation = \"2015-03-20T16:53:32.3309380+05:30\" queuing = \"2015-03-20T16:53:32.3319381+05:30\" finish = \"2015-03-20T16:53:32.9232329+05:30\" />" +
+                "<TestRun id = \"ee3d8b3b-1ac9-4a7e-abfa-3d3ed2008613\" name = \"somerandomusername@SOMERANDOMCOMPUTERNAME 2015-03-20 16:53:32\" runUser = \"FAREAST\\somerandomusername\" xmlns =\"http://microsoft.com/schemas/VisualStudio/TeamTest/2010\"><Times creation = \"2015-03-20T16:53:32.3309380+05:30\" queuing = \"2015-03-20T16:53:32.3319381+05:30\" finish = \"2015-03-20T16:53:32.9232329+05:30\" />" +
                 "<Results>" +
                 "<UnitTestResult testId=\"fd1a9d66-d059-cd84-23d7-f655dce255f5\" testName=\"TestMethod1\" outcome=\"Passed\" />" +
                 "</Results>" +
@@ -427,7 +425,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
         {
             SetupMocks();
             string trxContents = "<?xml version =\"1.0\" encoding=\"UTF-8\"?>" +
-                "<TestRun id = \"ee3d8b3b-1ac9-4a7e-abfa-3d3ed2008613\" name = \"kaadhina@KAADHINA1 2015-03-20 16:53:32\" runUser = \"FAREAST\\kaadhina\" xmlns =\"http://microsoft.com/schemas/VisualStudio/TeamTest/2010\"><Times creation = \"2015-03-20T16:53:32.3309380+05:30\" queuing = \"2015-03-20T16:53:32.3319381+05:30\" start = \"2015-03-20T16:53:32.3349628+05:30\" />" +
+                "<TestRun id = \"ee3d8b3b-1ac9-4a7e-abfa-3d3ed2008613\" name = \"somerandomusername@SOMERANDOMCOMPUTERNAME 2015-03-20 16:53:32\" runUser = \"FAREAST\\somerandomusername\" xmlns =\"http://microsoft.com/schemas/VisualStudio/TeamTest/2010\"><Times creation = \"2015-03-20T16:53:32.3309380+05:30\" queuing = \"2015-03-20T16:53:32.3319381+05:30\" start = \"2015-03-20T16:53:32.3349628+05:30\" />" +
                 "<Results>" +
                 "<UnitTestResult testId=\"fd1a9d66-d059-cd84-23d7-f655dce255f5\" testName=\"TestMethod1\" outcome=\"Passed\" />" +
                 "</Results>" +
@@ -496,7 +494,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
             Assert.Equal(3, runData.Attachments.Length);
         }
 
-
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "PublishTestResults")]
@@ -556,15 +553,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
         {
             SetupMocks();
             String trxContents = "<?xml version = \"1.0\" encoding = \"UTF-8\"?>" +
-               "<TestRun id = \"ee3d8b3b-1ac9-4a7e-abfa-3d3ed2008613\" name = \"kaadhina@KAADHINA1 2015-03-20 16:53:32\" runUser = \"FAREAST\\kaadhina\" xmlns =\"http://microsoft.com/schemas/VisualStudio/TeamTest/2010\"><Times creation = \"2015-03-20T16:53:32.3309380+05:30\" queuing = \"2015-03-20T16:53:32.3319381+05:30\" start = \"2015-03-20T16:53:32.3349628+05:30\" finish = \"2015-03-20T16:53:32.9232329+05:30\" />" +
+               "<TestRun id = \"ee3d8b3b-1ac9-4a7e-abfa-3d3ed2008613\" name = \"somerandomusername@SOMERANDOMCOMPUTERNAME 2015-03-20 16:53:32\" runUser = \"FAREAST\\somerandomusername\" xmlns =\"http://microsoft.com/schemas/VisualStudio/TeamTest/2010\"><Times creation = \"2015-03-20T16:53:32.3309380+05:30\" queuing = \"2015-03-20T16:53:32.3319381+05:30\" start = \"2015-03-20T16:53:32.3349628+05:30\" finish = \"2015-03-20T16:53:32.9232329+05:30\" />" +
 
                  "<TestDefinitions>" +
-                   "<UnitTest name = \"TestMethod2\" storage = \"c:\\users\\kaadhina\\source\\repos\\projectx\\unittestproject4\\unittestproject4\\bin\\debug\\unittestproject4.dll\" priority = \"1\" id = \"f0d6b58f-dc08-9c0b-aab7-0a1411d4a346\"><Owners><Owner name = \"asdf2\" /></Owners><Execution id = \"48ec1e47-b9df-43b9-aef2-a2cc8742353d\" /><TestMethod codeBase = \"C:\\Users\\kaadhina\\Source\\Repos\\Projectx\\UnitTestProject4\\UnitTestProject4\\bin\\Debug\\UnitTestProject4.dll\" adapterTypeName = \"Microsoft.VisualStudio.TestTools.TestTypes.Unit.UnitTestAdapter\" className = \"UnitTestProject4.UnitTest1\" name = \"TestMethod2\" /></UnitTest>" +
+                   "<UnitTest name = \"TestMethod2\" storage = \"c:\\users\\somerandomusername\\source\\repos\\projectx\\unittestproject4\\unittestproject4\\bin\\debug\\unittestproject4.dll\" priority = \"1\" id = \"f0d6b58f-dc08-9c0b-aab7-0a1411d4a346\"><Owners><Owner name = \"asdf2\" /></Owners><Execution id = \"48ec1e47-b9df-43b9-aef2-a2cc8742353d\" /><TestMethod codeBase = \"C:\\Users\\somerandomusername\\Source\\Repos\\Projectx\\UnitTestProject4\\UnitTestProject4\\bin\\Debug\\UnitTestProject4.dll\" adapterTypeName = \"Microsoft.VisualStudio.TestTools.TestTypes.Unit.UnitTestAdapter\" className = \"UnitTestProject4.UnitTest1\" name = \"TestMethod2\" /></UnitTest>" +
                    "<WebTest name=\"PSD_Startseite\" storage=\"c:\\vsoagent\\a284d2cc\\vseqa1\\psd_startseite.webtest\" id=\"01da1a13-b160-4ee6-9d84-7a6dfe37b1d2\" persistedWebTest=\"7\"><TestCategory><TestCategoryItem TestCategory=\"PSD\" /></TestCategory><Execution id=\"eb421c16-4546-435a-9c24-0d2878ea76d4\" /></WebTest>" +
                  "</TestDefinitions>" +
 
                  "<Results>" +
-                   "<UnitTestResult executionId = \"48ec1e47-b9df-43b9-aef2-a2cc8742353d\" testId = \"f0d6b58f-dc08-9c0b-aab7-0a1411d4a346\" testName = \"TestMethod2\" computerName = \"KAADHINA1\" duration = \"00:00:00.0834563\" startTime = \"2015-03-20T16:53:32.3099353+05:30\" endTime = \"2015-03-20T16:53:32.3939623+05:30\" testType = \"13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b\" outcome = \"Failed\" testListId = \"8c84fa94-04c1-424b-9868-57a2d4851a1d\" relativeResultsDirectory = \"48ec1e47-b9df-43b9-aef2-a2cc8742353d\" ><Output><StdOut>Show console log output.</StdOut><ErrorInfo><Message>Assert.Fail failed.</Message><StackTrace>at UnitTestProject4.UnitTest1.TestMethod2() in C:\\Users\\kaadhina\\Source\\Repos\\Projectx\\UnitTestProject4\\UnitTestProject4\\UnitTest1.cs:line 21</StackTrace></ErrorInfo></Output>" +
+                   "<UnitTestResult executionId = \"48ec1e47-b9df-43b9-aef2-a2cc8742353d\" testId = \"f0d6b58f-dc08-9c0b-aab7-0a1411d4a346\" testName = \"TestMethod2\" computerName = \"SOMERANDOMCOMPUTERNAME\" duration = \"00:00:00.0834563\" startTime = \"2015-03-20T16:53:32.3099353+05:30\" endTime = \"2015-03-20T16:53:32.3939623+05:30\" testType = \"13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b\" outcome = \"Failed\" testListId = \"8c84fa94-04c1-424b-9868-57a2d4851a1d\" relativeResultsDirectory = \"48ec1e47-b9df-43b9-aef2-a2cc8742353d\" ><Output><StdOut>Show console log output.</StdOut><ErrorInfo><Message>Assert.Fail failed.</Message><StackTrace>at UnitTestProject4.UnitTest1.TestMethod2() in C:\\Users\\somerandomusername\\Source\\Repos\\Projectx\\UnitTestProject4\\UnitTestProject4\\UnitTest1.cs:line 21</StackTrace></ErrorInfo></Output>" +
                      "<ResultFiles><ResultFile path=\"DIGANR-DEV4\\x.txt\" /></ResultFiles>" +
                    "</UnitTestResult>" +
 
@@ -607,7 +604,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
         private TestRunData GetTestRunDataBasic(TrxResultReader myReader = null)
         {
             string trxContents = "<?xml version =\"1.0\" encoding=\"UTF-8\"?>" +
-                                 "<TestRun id = \"ee3d8b3b-1ac9-4a7e-abfa-3d3ed2008613\" name = \"kaadhina@KAADHINA1 2015-03-20 16:53:32\" runUser = \"FAREAST\\kaadhina\" xmlns =\"http://microsoft.com/schemas/VisualStudio/TeamTest/2010\"><Times creation = \"2015-03-20T16:53:32.3309380+05:30\" queuing = \"2015-03-20T16:53:32.3319381+05:30\" start = \"2015-03-20T16:53:32.3349628+05:30\" finish = \"2014-03-20T16:53:32.3349628+05:30\" />" +
+                                 "<TestRun id = \"ee3d8b3b-1ac9-4a7e-abfa-3d3ed2008613\" name = \"somerandomusername@SOMERANDOMCOMPUTERNAME 2015-03-20 16:53:32\" runUser = \"FAREAST\\somerandomusername\" xmlns =\"http://microsoft.com/schemas/VisualStudio/TeamTest/2010\"><Times creation = \"2015-03-20T16:53:32.3309380+05:30\" queuing = \"2015-03-20T16:53:32.3319381+05:30\" start = \"2015-03-20T16:53:32.3349628+05:30\" finish = \"2014-03-20T16:53:32.3349628+05:30\" />" +
                                  "<Results>" +
                                  "<UnitTestResult testId=\"fd1a9d66-d059-cd84-23d7-f655dce255f5\" testName=\"TestMethod1\" outcome=\"Passed\" />" +
                                  "</Results>" +
@@ -624,10 +621,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
         private TestRunData GetTestRunDataWithAttachments(int val, TrxResultReader myReader = null, TestRunContext trContext = null)
         {
             var trxContents = "<?xml version = \"1.0\" encoding = \"UTF-8\"?>" +
-              "<TestRun id = \"ee3d8b3b-1ac9-4a7e-abfa-3d3ed2008613\" name = \"kaadhina@KAADHINA1 2015-03-20 16:53:32\" runUser = \"FAREAST\\kaadhina\" xmlns =\"http://microsoft.com/schemas/VisualStudio/TeamTest/2010\"><Times creation = \"2015-03-20T16:53:32.3309380+05:30\" queuing = \"2015-03-20T16:53:32.3319381+05:30\" start = \"2015-03-20T16:53:32.3349628+05:30\" finish = \"2015-03-20T16:53:32.9232329+05:30\" />" +
+              "<TestRun id = \"ee3d8b3b-1ac9-4a7e-abfa-3d3ed2008613\" name = \"somerandomusername@SOMERANDOMCOMPUTERNAME 2015-03-20 16:53:32\" runUser = \"FAREAST\\somerandomusername\" xmlns =\"http://microsoft.com/schemas/VisualStudio/TeamTest/2010\"><Times creation = \"2015-03-20T16:53:32.3309380+05:30\" queuing = \"2015-03-20T16:53:32.3319381+05:30\" start = \"2015-03-20T16:53:32.3349628+05:30\" finish = \"2015-03-20T16:53:32.9232329+05:30\" />" +
 
                 "<TestDefinitions>" +
-                  "<UnitTest name = \"TestMethod2\" storage = \"c:\\users\\kaadhina\\source\\repos\\projectx\\unittestproject4\\unittestproject4\\bin\\debug\\unittestproject4.dll\" priority = \"1\" id = \"f0d6b58f-dc08-9c0b-aab7-0a1411d4a346\"><Owners><Owner name = \"asdf2\" /></Owners><Execution id = \"48ec1e47-b9df-43b9-aef2-a2cc8742353d\" /><TestMethod codeBase = \"C:\\Users\\kaadhina\\Source\\Repos\\Projectx\\UnitTestProject4\\UnitTestProject4\\bin\\Debug\\UnitTestProject4.dll\" adapterTypeName = \"Microsoft.VisualStudio.TestTools.TestTypes.Unit.UnitTestAdapter\" className = \"UnitTestProject4.UnitTest1\" name = \"TestMethod2\" /></UnitTest>" +
+                  "<UnitTest name = \"TestMethod2\" storage = \"c:\\users\\somerandomusername\\source\\repos\\projectx\\unittestproject4\\unittestproject4\\bin\\debug\\unittestproject4.dll\" priority = \"1\" id = \"f0d6b58f-dc08-9c0b-aab7-0a1411d4a346\"><Owners><Owner name = \"asdf2\" /></Owners><Execution id = \"48ec1e47-b9df-43b9-aef2-a2cc8742353d\" /><TestMethod codeBase = \"C:\\Users\\somerandomusername\\Source\\Repos\\Projectx\\UnitTestProject4\\UnitTestProject4\\bin\\Debug\\UnitTestProject4.dll\" adapterTypeName = \"Microsoft.VisualStudio.TestTools.TestTypes.Unit.UnitTestAdapter\" className = \"UnitTestProject4.UnitTest1\" name = \"TestMethod2\" /></UnitTest>" +
                   "<WebTest name=\"PSD_Startseite\" storage=\"c:\\vsoagent\\a284d2cc\\vseqa1\\psd_startseite.webtest\" id=\"01da1a13-b160-4ee6-9d84-7a6dfe37b1d2\" persistedWebTest=\"7\"><TestCategory><TestCategoryItem TestCategory=\"PSD\" /></TestCategory><Execution id=\"eb421c16-4546-435a-9c24-0d2878ea76d4\" /></WebTest>" +
                 "</TestDefinitions>" +
 
@@ -645,7 +642,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
                   "</Execution>" +
                 "</TestSettings>" +
 
-
                 "{0}" +
                 "{1}" +
 
@@ -657,7 +653,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
               "</TestRun>";
 
             var part0 = "<Results>" +
-                  "<UnitTestResult executionId = \"48ec1e47-b9df-43b9-aef2-a2cc8742353d\" testId = \"f0d6b58f-dc08-9c0b-aab7-0a1411d4a346\" testName = \"TestMethod2\" computerName = \"KAADHINA1\" duration = \"00:00:00.0834563\" startTime = \"2015-03-20T16:53:32.3099353+05:30\" endTime = \"2015-03-20T16:53:32.3939623+05:30\" testType = \"13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b\" outcome = \"Failed\" testListId = \"8c84fa94-04c1-424b-9868-57a2d4851a1d\" relativeResultsDirectory = \"48ec1e47-b9df-43b9-aef2-a2cc8742353d\" ><Output><ErrorInfo><Message>Assert.Fail failed.</Message><StackTrace>at UnitTestProject4.UnitTest1.TestMethod2() in C:\\Users\\kaadhina\\Source\\Repos\\Projectx\\UnitTestProject4\\UnitTestProject4\\UnitTest1.cs:line 21</StackTrace></ErrorInfo></Output>" +
+                  "<UnitTestResult executionId = \"48ec1e47-b9df-43b9-aef2-a2cc8742353d\" testId = \"f0d6b58f-dc08-9c0b-aab7-0a1411d4a346\" testName = \"TestMethod2\" computerName = \"SOMERANDOMCOMPUTERNAME\" duration = \"00:00:00.0834563\" startTime = \"2015-03-20T16:53:32.3099353+05:30\" endTime = \"2015-03-20T16:53:32.3939623+05:30\" testType = \"13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b\" outcome = \"Failed\" testListId = \"8c84fa94-04c1-424b-9868-57a2d4851a1d\" relativeResultsDirectory = \"48ec1e47-b9df-43b9-aef2-a2cc8742353d\" ><Output><ErrorInfo><Message>Assert.Fail failed.</Message><StackTrace>at UnitTestProject4.UnitTest1.TestMethod2() in C:\\Users\\somerandomusername\\Source\\Repos\\Projectx\\UnitTestProject4\\UnitTestProject4\\UnitTest1.cs:line 21</StackTrace></ErrorInfo></Output>" +
                     "<ResultFiles><ResultFile path=\"DIGANR-DEV4\\x.txt\" /></ResultFiles>" +
                   "</UnitTestResult>" +
 

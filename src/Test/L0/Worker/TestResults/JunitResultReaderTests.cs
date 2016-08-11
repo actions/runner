@@ -375,7 +375,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
             var testCase1CompletedDate = _testRunData.Results[0].CompletedDate;
             var testCase2StartDate = _testRunData.Results[1].StartedDate;
             Assert.True(testCase1CompletedDate <= testCase2StartDate, "first test case end should be before second test case start time");
-
         }
 
         [Fact]
