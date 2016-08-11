@@ -7,12 +7,13 @@ using System.Net.Http.Headers;
 using System.Runtime.InteropServices;
 using Microsoft.VisualStudio.Services.WebApi;
 using Microsoft.VisualStudio.Services.OAuth;
+using System.Net.Http;
 
 namespace Microsoft.VisualStudio.Services.Agent.Util
 {
     public static class ApiUtil
     {
-        public static VssConnection CreateConnection(Uri serverUri, VssCredentials credentials)
+        public static VssConnection CreateConnection(Uri serverUri, VssCredentials credentials, IEnumerable<DelegatingHandler> additionalDelegatingHandler = null)
         {
             VssClientHttpRequestSettings settings = VssClientHttpRequestSettings.Default.Clone();
 
@@ -54,7 +55,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
 
             settings.UserAgent = headerValues;
 
-            VssConnection connection = new VssConnection(serverUri, credentials, settings);
+            VssConnection connection = new VssConnection(serverUri, new VssHttpMessageHandler(credentials, settings), additionalDelegatingHandler);
             return connection;
         }
 
