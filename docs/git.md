@@ -53,7 +53,7 @@ $ make prefix=/usr/local/git all
 $ make prefix=/usr/local/git install
 ```
 
-In /etc/bash.rs
+In /etc/bashrc
 ```bash
 export PATH=$PATH:/usr/local/git/bin
 ```
