@@ -42,6 +42,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         // get remote set-url --push <origin> <url>
         Task<int> GitRemoteSetPushUrl(IExecutionContext context, string repositoryPath, string remoteName, string remoteUrl);
 
+        // git submodule foreach git clean -fdx
+        Task<int> GitSubmoduleClean(IExecutionContext context, string repositoryPath);
+
+        // git submodule foreach git reset --hard HEAD
+        Task<int> GitSubmoduleReset(IExecutionContext context, string repositoryPath);
+
         // git submodule init
         Task<int> GitSubmoduleInit(IExecutionContext context, string repositoryPath);
 
@@ -220,6 +226,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         {
             context.Debug($"Set git push url to: {remoteUrl} for remote: {remoteName}.");
             return await ExecuteGitCommandAsync(context, repositoryPath, "remote", StringUtil.Format($"set-url --push {remoteName} {remoteUrl}"));
+        }
+
+        // git submodule foreach git clean -fdx
+        public async Task<int> GitSubmoduleClean(IExecutionContext context, string repositoryPath)
+        {
+            context.Debug($"Delete untracked files/folders for submodules at {repositoryPath}.");
+            return await ExecuteGitCommandAsync(context, repositoryPath, "submodule", "foreach git clean -fdx");
+        }
+
+        // git submodule foreach git reset --hard HEAD
+        public async Task<int> GitSubmoduleReset(IExecutionContext context, string repositoryPath)
+        {
+            context.Debug($"Undo any changes to tracked files in the working tree for submodules at {repositoryPath}.");
+            return await ExecuteGitCommandAsync(context, repositoryPath, "submodule", "foreach git reset --hard HEAD");
         }
 
         // git submodule init

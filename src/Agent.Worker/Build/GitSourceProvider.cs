@@ -191,28 +191,52 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 // If any git commands exit with non-zero return code or any exception happened during git.exe invoke, fall back to delete the repo folder.
                 if (clean)
                 {
-                    Boolean softClean = false;
+                    Boolean softCleanSucceed = true;
+
                     // git clean -fdx
-                    // git reset --hard HEAD
                     int exitCode_clean = await _gitCommandManager.GitClean(executionContext, targetPath);
                     if (exitCode_clean != 0)
                     {
                         executionContext.Debug($"'git clean -fdx' failed with exit code {exitCode_clean}, this normally caused by:\n    1) Path too long\n    2) Permission issue\n    3) File in use\nFor futher investigation, manually run 'git clean -fdx' on repo root: {targetPath} after each build.");
+                        softCleanSucceed = false;
                     }
-                    else
+
+                    // git reset --hard HEAD
+                    if (softCleanSucceed)
                     {
                         int exitCode_reset = await _gitCommandManager.GitReset(executionContext, targetPath);
                         if (exitCode_reset != 0)
                         {
                             executionContext.Debug($"'git reset --hard HEAD' failed with exit code {exitCode_reset}\nFor futher investigation, manually run 'git reset --hard HEAD' on repo root: {targetPath} after each build.");
-                        }
-                        else
-                        {
-                            softClean = true;
+                            softCleanSucceed = false;
                         }
                     }
 
-                    if (!softClean)
+                    // git clean -fdx and git reset --hard HEAD for each submodule
+                    if (checkoutSubmodules)
+                    {
+                        if (softCleanSucceed)
+                        {
+                            int exitCode_submoduleclean = await _gitCommandManager.GitSubmoduleClean(executionContext, targetPath);
+                            if (exitCode_submoduleclean != 0)
+                            {
+                                executionContext.Debug($"'git submodule foreach git clean -fdx' failed with exit code {exitCode_submoduleclean}\nFor futher investigation, manually run 'git submodule foreach git clean -fdx' on repo root: {targetPath} after each build.");
+                                softCleanSucceed = false;
+                            }
+                        }
+
+                        if (softCleanSucceed)
+                        {
+                            int exitCode_submodulereset = await _gitCommandManager.GitSubmoduleReset(executionContext, targetPath);
+                            if (exitCode_submodulereset != 0)
+                            {
+                                executionContext.Debug($"'git submodule foreach git reset --hard HEAD' failed with exit code {exitCode_submodulereset}\nFor futher investigation, manually run 'git submodule foreach git reset --hard HEAD' on repo root: {targetPath} after each build.");
+                                softCleanSucceed = false;
+                            }
+                        }
+                    }
+
+                    if (!softCleanSucceed)
                     {
                         //fall back
                         executionContext.Warning("Unable to run \"git clean -fdx\" and \"git reset --hard HEAD\" successfully, delete source folder instead.");

@@ -61,7 +61,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         private bool _throttlingReported = false;
 
         // only job level ExecutionContext will track throttling delay.
-        private TimeSpan _totalThrottlingDelay = TimeSpan.FromSeconds(0);
+        private long _totalThrottlingDelayInMilliseconds = 0;
 
         public CancellationToken CancellationToken => _cancellationTokenSource.Token;
         public List<ServiceEndpoint> Endpoints { get; private set; }
@@ -159,9 +159,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             }
 
             // report total delay caused by server throttling.
-            if (_totalThrottlingDelay.TotalSeconds > 0)
+            if (_totalThrottlingDelayInMilliseconds > 0)
             {
-                this.Warning(StringUtil.Loc("TotalThrottlingDelay", _totalThrottlingDelay.TotalSeconds));
+                this.Warning(StringUtil.Loc("TotalThrottlingDelay", TimeSpan.FromMilliseconds(_totalThrottlingDelayInMilliseconds).TotalSeconds));
             }
 
             _record.CurrentOperation = currentOperation ?? _record.CurrentOperation;
@@ -390,7 +390,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         private void JobServerQueueThrottling_EventReceived(object sender, ThrottlingEventArgs data)
         {
-            _totalThrottlingDelay = _totalThrottlingDelay.Add(data.Delay);
+            Interlocked.Add(ref _totalThrottlingDelayInMilliseconds, Convert.ToInt64(data.Delay.TotalMilliseconds));
 
             if (!_throttlingReported)
             {
