@@ -453,6 +453,57 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
             Assert.Throws<XmlException>(() => enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_ec.Object, "Ant", ccInputs)));
         }
 
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "EnableCodeCoverage")]
+        public void MoreThanOneBuildFilesExistInBuildSources()
+        {
+            SetupMocks();
+
+            LoadBuildFile(CodeCoverageTestConstants.BuildXml);
+            var buildFile2 = Path.Combine(_sourceDirectory, "build2.xml");
+            File.WriteAllText(buildFile2, CodeCoverageTestConstants.BuildXml);
+            var enableCodeCoverage = new CodeCoverageEnablerForCoberturaAnt();
+            enableCodeCoverage.Initialize(_hc);
+            var ccInputs = new Dictionary<string, string>();
+            ccInputs.Add("buildfile", _sampleBuildFilePath);
+            ccInputs.Add("classfilesdirectories", _classDirectories);
+            ccInputs.Add("classfilter", _classFilter);
+            ccInputs.Add("ccreporttask", _cCReportTask);
+            ccInputs.Add("reportdirectory", _reportDirectory);
+            ccInputs.Add("sourcedirectories", _srcDirectory);
+            ccInputs.Add("reportbuildfile", _sampleReportBuildFilePath);
+
+            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_ec.Object, "Ant", ccInputs));
+            VerifyCoberturaCoverageForAnt(numberOfTestNodes: 1, buildFilePath: _sampleBuildFilePath);
+            VerifyCoberturaCoverageForAnt(numberOfTestNodes: 1, buildFilePath: buildFile2);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "EnableCodeCoverage")]
+        public void VerifyBuildFileOutsideSourcesShouldNotBeModified()
+        {
+            SetupMocks();
+            LoadBuildFile(CodeCoverageTestConstants.BuildXml);
+            var buildFile2 = Path.Combine(Path.GetTempPath(), "build2.xml");
+            File.WriteAllText(buildFile2, CodeCoverageTestConstants.BuildXml);
+            var enableCodeCoverage = new CodeCoverageEnablerForCoberturaAnt();
+            enableCodeCoverage.Initialize(_hc);
+            var ccInputs = new Dictionary<string, string>();
+            ccInputs.Add("buildfile", _sampleBuildFilePath);
+            ccInputs.Add("classfilesdirectories", _classDirectories);
+            ccInputs.Add("classfilter", _classFilter);
+            ccInputs.Add("ccreporttask", _cCReportTask);
+            ccInputs.Add("reportdirectory", _reportDirectory);
+            ccInputs.Add("sourcedirectories", _srcDirectory);
+            ccInputs.Add("reportbuildfile", _sampleReportBuildFilePath);
+
+            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_ec.Object, "Ant", ccInputs));
+            VerifyCoberturaCoverageForAnt(numberOfTestNodes: 1, buildFilePath: _sampleBuildFilePath);
+            VerifyCoberturaCoverageForAnt(numberOfTestNodes: 1, buildFilePath: buildFile2, coberturaEnabled: false);
+        }
+
         public void Dispose()
         {
             if (Directory.Exists(_sourceDirectory))
@@ -476,7 +527,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
             _warningMessage = e;
         }
 
-        private void VerifyCoberturaCoverageForAnt(int numberOfTestNodes, string buildFilePath, string includes = "**/com/*/*/**,**/app/me*/*/**", string excludes = "**/me/*/*/**,**/a/b/*/**,**/my/com/*/*/**")
+        private void VerifyCoberturaCoverageForAnt(int numberOfTestNodes, string buildFilePath, string includes = "**/com/*/*/**,**/app/me*/*/**", string excludes = "**/me/*/*/**,**/a/b/*/**,**/my/com/*/*/**", bool coberturaEnabled = true)
         {
             var buildXmlDoc = new XmlDocument();
             using (XmlReader reader = XmlReader.Create(buildFilePath))
@@ -494,6 +545,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
             //Verifying the test nodes
             var junitNodes = buildXmlDoc.SelectNodes("//junit");
             Assert.Equal(junitNodes.Count, numberOfTestNodes);
+
+            if (!coberturaEnabled && numberOfTestNodes > 0)
+            {
+                Assert.Equal("target", junitNodes[0].ParentNode.Name);
+                return;
+            }
 
             foreach (XmlElement junitNode in junitNodes)
             {
@@ -589,11 +646,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
 
             _warnings = new List<string>();
             _errors = new List<string>();
-
-            List<string> warnings;
-            var variables = new Variables(_hc, new Dictionary<string, string>(), new List<MaskHint>(), out warnings);
-            variables.Set("build.sourcesdirectory", _sourceDirectory);
-            _ec.Setup(x => x.Variables).Returns(variables);
 
             _ec.Setup(x => x.AddIssue(It.IsAny<Issue>()))
             .Callback<Issue>

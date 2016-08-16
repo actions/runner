@@ -21,7 +21,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
 
             ccInputs.VerifyInputsForCoberturaAnt(context);
 
-            string sourcesDirectory = context.Variables.Build_SourcesDirectory;
+            var sourcesDirectory = Path.GetDirectoryName(ccInputs.BuildFile);
             if (string.IsNullOrWhiteSpace(sourcesDirectory))
             {
                 throw new InvalidOperationException(StringUtil.Loc("InvalidSourceDirectory"));
