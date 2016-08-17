@@ -75,11 +75,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
             DateTime runFinishDate = DateTime.MinValue;
             if (node != null && node.Attributes["start"] != null && node.Attributes["finish"] != null)
             {
-                if (DateTime.TryParse(node.Attributes["start"].Value, out runStartDate))
+                if (DateTime.TryParse(node.Attributes["start"].Value, DateTimeFormatInfo.InvariantInfo,DateTimeStyles.None, out runStartDate))
                 {
                     _executionContext.Debug(string.Format(CultureInfo.InvariantCulture, "Setting run start and finish times."));
                     //Only if there is a valid start date.
-                    DateTime.TryParse(node.Attributes["finish"].Value, out runFinishDate);
+                    DateTime.TryParse(node.Attributes["finish"].Value, DateTimeFormatInfo.InvariantInfo,DateTimeStyles.None, out runFinishDate);
                     if (runFinishDate < runStartDate)
                     {
                         runFinishDate = runStartDate = DateTime.MinValue;
@@ -264,7 +264,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                 TimeSpan duration;
                 if (resultNode.Attributes["duration"] != null && resultNode.Attributes["duration"].Value != null)
                 {
-                    TimeSpan.TryParse(resultNode.Attributes["duration"].Value, out duration);
+                    TimeSpan.TryParse(resultNode.Attributes["duration"].Value, CultureInfo.InvariantCulture, out duration);
                 }
                 else
                 {
@@ -275,7 +275,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                 DateTime startedDate;
                 if (resultNode.Attributes["startTime"] != null && resultNode.Attributes["startTime"].Value != null)
                 {
-                    DateTime.TryParse(resultNode.Attributes["startTime"].Value, out startedDate);
+                    DateTime.TryParse(resultNode.Attributes["startTime"].Value, DateTimeFormatInfo.InvariantInfo, DateTimeStyles.None, out startedDate);
                 }
                 else
                 {

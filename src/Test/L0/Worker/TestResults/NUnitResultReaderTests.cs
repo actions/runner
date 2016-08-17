@@ -7,6 +7,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Threading;
+using System.Globalization;
 using Xunit;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
@@ -315,6 +317,61 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
             _nunitResultsToBeRead = _nUnitBasicResultsXml.Replace("time", "timer").Replace("date", "dater");
             ReadResults(new TestRunContext("owner", "platform", "configuration", 1, "buildUri", "releaseUri", "releaseEnvironmentUri"));
             Assert.Equal(string.Empty, _testRunData.CompleteDate);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
+        public void VerifyTestRunDuration()
+        {
+            SetupMocks();
+            _nunitResultsToBeRead = _nUnitSimpleResultsXml;
+            ReadResults(new TestRunContext("owner", "platform", "configuration", 1, "buildUri", "releaseUri", "releaseEnvironment"));
+            DateTime testStartDate, testCompleteDate;
+            DateTime.TryParse(_testRunData.StartDate, out testStartDate);
+            DateTime.TryParse(_testRunData.CompleteDate, out testCompleteDate);
+            TimeSpan duration = testCompleteDate - testStartDate;
+            Assert.Equal(1.653, duration.TotalSeconds);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
+        public void VerifyDateTimeAndDurationCalculationsInDifferentCulture()
+        {
+            SetupMocks();
+            CultureInfo current = CultureInfo.CurrentCulture;
+            try
+            {
+                //German is used, as in this culture decimal seperator is comma & thousand seperator is dot
+                CultureInfo.CurrentCulture = new CultureInfo("de-DE");
+
+                //Verify test case start date
+                _nunitResultsToBeRead = _nUnitSimpleResultsXml;
+                ReadResults(new TestRunContext("owner", "platform", "configuration", 1, "buildUri", "releaseUri", "releaseEnvironmentUri"));
+                Assert.Equal(_testRunData.StartDate, _testRunData.Results[0].StartedDate.ToString("o"));
+
+                //Verify test case completed date
+                _nunitResultsToBeRead = _nUnitSimpleResultsXml;
+                ReadResults(new TestRunContext("owner", "platform", "configuration", 1, "buildUri", "releaseUri", "releaseEnvironmentUri"));
+                var testCase1CompletedDate = _testRunData.Results[0].CompletedDate;
+                var testCase2StartDate = _testRunData.Results[1].StartedDate;
+                Assert.True(testCase1CompletedDate <= testCase2StartDate, "first test case end should be before second test case start time");
+
+                //Verify test case run duration 
+                _nunitResultsToBeRead = _nUnitSimpleResultsXml;
+                ReadResults(new TestRunContext("owner", "platform", "configuration", 1, "buildUri", "releaseUri", "releaseEnvironment"));
+                DateTime testStartDate, testCompleteDate;
+                DateTime.TryParse(_testRunData.StartDate, out testStartDate);
+                DateTime.TryParse(_testRunData.CompleteDate, out testCompleteDate);
+                TimeSpan duration = testCompleteDate - testStartDate;
+                Assert.Equal(1.653, duration.TotalSeconds);
+
+            }
+            finally
+            {
+                CultureInfo.CurrentCulture = current;
+            }
         }
 
         [Fact]

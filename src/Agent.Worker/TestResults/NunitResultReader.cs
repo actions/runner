@@ -60,13 +60,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                 DateTime dateFromXml = DateTime.MinValue.Date; //Use local time instead of UTC as TestRunData uses local time for defaults.
                 if (testResultsNode.Attributes["date"] != null)
                 {
-                    DateTime.TryParse(testResultsNode.Attributes["date"].Value, out dateFromXml);
+                    DateTime.TryParse(testResultsNode.Attributes["date"].Value, DateTimeFormatInfo.InvariantInfo, DateTimeStyles.None, out dateFromXml);
                 }
 
                 TimeSpan timeFromXml = TimeSpan.Zero;
                 if (testResultsNode.Attributes["time"] != null)
                 {
-                    TimeSpan.TryParse(testResultsNode.Attributes["time"].Value, out timeFromXml);
+                    TimeSpan.TryParse(testResultsNode.Attributes["time"].Value, CultureInfo.InvariantCulture, out timeFromXml);
                 }
 
                 //assume runtimes from xml are current local time since timezone information is not in the xml, if xml datetime > current local time, fallback to local start time
@@ -193,7 +193,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                     if (testCaseNode.Attributes["time"] != null && testCaseNode.Attributes["time"].Value != null)
                     {
                         double duration = 0;
-                        double.TryParse(testCaseNode.Attributes["time"].Value, out duration);
+                        double.TryParse(testCaseNode.Attributes["time"].Value, NumberStyles.Any, NumberFormatInfo.InvariantInfo, out duration);
                         testCaseDuration = TimeSpan.FromSeconds(duration);
                     }
                     resultCreateModel.DurationInMs = testCaseDuration.TotalMilliseconds;
