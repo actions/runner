@@ -56,6 +56,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                 // we expect the first line of the file is the proxy url
                 Trace.Verbose($"Try read proxy setting from file: {proxyConfigFile}.");
                 ProxyUrl = File.ReadLines(proxyConfigFile).FirstOrDefault() ?? string.Empty;
+                ProxyUrl = ProxyUrl.Trim();
                 Trace.Verbose($"{ProxyUrl}");
             }
 
@@ -63,6 +64,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             {
                 Trace.Verbose("Try read proxy setting from environment variable: 'VSTS_HTTP_PROXY'.");
                 ProxyUrl = Environment.GetEnvironmentVariable("VSTS_HTTP_PROXY") ?? string.Empty;
+                ProxyUrl = ProxyUrl.Trim();
                 Trace.Verbose($"{ProxyUrl}");
             }
 
