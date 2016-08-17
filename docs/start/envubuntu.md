@@ -4,14 +4,20 @@
 
 ## Versions
 
-Tested on 16.04 LTS (Yosemite) and 14.04 LTS (El Capitan).  Not domain joined.  
+Tested on 16.04 LTS (Xenial) and 14.04 LTS (Trusty).  Not domain joined.  
 
 16.04 is recommended since latest and supports SystemD for runnings as a service.
 
 ## Dependency Packages
 
+### Ubuntu 16.04
 ```bash
 sudo apt-get install -y libunwind8 libcurl3
+```
+
+### Ubuntu 14.04
+```bash
+sudo apt-get install -y libunwind8 libcurl3 libicu52
 ```
 
 If you're still having issues:
