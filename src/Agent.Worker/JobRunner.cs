@@ -73,6 +73,21 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     jobContext.Output(StringUtil.Loc("AgentRunningBehindProxy", proxyConfig.ProxyUrl));
                 }
 
+                // Validate directory permissions.
+                string workDirectory = HostContext.GetDirectory(WellKnownDirectory.Work);
+                Trace.Info($"Validating directory permissions for: '{workDirectory}'");
+                try
+                {
+                    Directory.CreateDirectory(workDirectory);
+                    IOUtil.ValidateExecutePermission(workDirectory);
+                }
+                catch (Exception ex)
+                {
+                    Trace.Error(ex);
+                    jobContext.Error(ex);
+                    return jobContext.Complete(TaskResult.Failed);
+                }
+
                 // Set agent variables.
                 AgentSettings settings = HostContext.GetService<IConfigurationStore>().GetSettings();
                 jobContext.Variables.Set(Constants.Variables.Agent.Id, settings.AgentId.ToString(CultureInfo.InvariantCulture));
