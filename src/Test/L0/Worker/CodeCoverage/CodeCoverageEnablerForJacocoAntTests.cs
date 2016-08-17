@@ -17,7 +17,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
         private TestHostContext _hc;
         private List<string> _warnings = new List<string>();
         private List<string> _errors = new List<string>();
-        private Variables _variables;
         private string _classDirectories = "class1,class2";
         private string _srcDirectory = "src";
         private string _summaryFile = "summary.xml";
@@ -419,7 +418,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
             var enableCodeCoverage = new CodeCoverageEnablerForJacocoAnt();
             enableCodeCoverage.Initialize(_hc);
             var ccInputs = new Dictionary<string, string>();
-            ccInputs.Add("buildfile", _sampleBuildFilePath);
+            ccInputs.Add("buildfile", "");
             ccInputs.Add("classfilesdirectories", _classDirectories);
             ccInputs.Add("classfilter", _classFilter);
             ccInputs.Add("sourcedirectories", _srcDirectory);
@@ -427,7 +426,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
             ccInputs.Add("reportdirectory", _reportDirectory);
             ccInputs.Add("ccreporttask", _cCReportTask);
             ccInputs.Add("reportbuildfile", _sampleReportBuildFilePath);
-            Assert.Throws<InvalidOperationException>(() => enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_ec.Object, "Ant", ccInputs)));
+            Assert.Throws<ArgumentException>(() => enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_ec.Object, "Ant", ccInputs)));
         }
 
         [Fact]
@@ -507,6 +506,58 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
             Assert.Throws<XmlException>(() => enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_ec.Object, "Ant", ccInputs)));
         }
 
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "EnableCodeCoverage")]
+        public void MoreThanOneBuildFilesExistInBuildSources()
+        {
+            SetupMocks(_sourceDirectory);
+            LoadBuildFile(CodeCoverageTestConstants.BuildXml);
+            var buildFile2 = Path.Combine(_sourceDirectory, "build2.xml");
+            File.WriteAllText(buildFile2, CodeCoverageTestConstants.BuildXml);
+            var enableCodeCoverage = new CodeCoverageEnablerForJacocoAnt();
+            enableCodeCoverage.Initialize(_hc);
+            var ccInputs = new Dictionary<string, string>();
+            ccInputs.Add("buildfile", _sampleBuildFilePath);
+            ccInputs.Add("classfilesdirectories", _classDirectories);
+            ccInputs.Add("classfilter", _classFilter);
+            ccInputs.Add("sourcedirectories", _srcDirectory);
+            ccInputs.Add("summaryfile", _summaryFile);
+            ccInputs.Add("reportdirectory", _reportDirectory);
+            ccInputs.Add("ccreporttask", _cCReportTask);
+            ccInputs.Add("reportbuildfile", _sampleReportBuildFilePath);
+
+            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_ec.Object, "Ant", ccInputs));
+            VerifyJacocoCoverageForAnt(numberOfTestNodes: 1, buildFilePath: _sampleBuildFilePath);
+            VerifyJacocoCoverageForAnt(numberOfTestNodes: 1, buildFilePath: buildFile2);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "EnableCodeCoverage")]
+        public void VerifyBuildFileOutsideSourcesShouldNotBeModified()
+        {
+            SetupMocks(_sourceDirectory);
+            LoadBuildFile(CodeCoverageTestConstants.BuildXml);
+            var buildFile2 = Path.Combine(Path.GetTempPath(), "build2.xml");
+            File.WriteAllText(buildFile2, CodeCoverageTestConstants.BuildXml);
+            var enableCodeCoverage = new CodeCoverageEnablerForJacocoAnt();
+            enableCodeCoverage.Initialize(_hc);
+            var ccInputs = new Dictionary<string, string>();
+            ccInputs.Add("buildfile", _sampleBuildFilePath);
+            ccInputs.Add("classfilesdirectories", _classDirectories);
+            ccInputs.Add("classfilter", _classFilter);
+            ccInputs.Add("sourcedirectories", _srcDirectory);
+            ccInputs.Add("summaryfile", _summaryFile);
+            ccInputs.Add("reportdirectory", _reportDirectory);
+            ccInputs.Add("ccreporttask", _cCReportTask);
+            ccInputs.Add("reportbuildfile", _sampleReportBuildFilePath);
+
+            enableCodeCoverage.EnableCodeCoverage(_ec.Object, new CodeCoverageEnablerInputs(_ec.Object, "Ant", ccInputs));
+            VerifyJacocoCoverageForAnt(numberOfTestNodes: 1, buildFilePath: _sampleBuildFilePath);
+            VerifyJacocoCoverageForAnt(numberOfTestNodes: 1, buildFilePath: buildFile2, jacocoEnabled: false);
+        }
+
         public void Dispose()
         {
             Directory.Delete(_sourceDirectory, true);
@@ -521,7 +572,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
             _sampleReportBuildFilePath = Path.Combine(_sourceDirectory, "jacocoReport.xml");
         }
 
-        private void VerifyJacocoCoverageForAnt(int numberOfTestNodes, string buildFilePath, string includes = null, string excludes = null)
+        private void VerifyJacocoCoverageForAnt(int numberOfTestNodes, string buildFilePath, string includes = null, string excludes = null, bool jacocoEnabled = true)
         {
             var _includeFilter = (includes == null) ? _include : includes;
             var excludeFilter = (excludes == null) ? _exclude : excludes;
@@ -533,6 +584,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
             }
             var junitNodes = buildXmlDoc.SelectNodes("//junit");
             Assert.Equal(junitNodes.Count, numberOfTestNodes);
+
+            if (!jacocoEnabled && numberOfTestNodes > 0)
+            {
+                Assert.Equal("target", junitNodes[0].ParentNode.Name);
+                return;
+            }
 
             foreach (XmlElement junitNode in junitNodes)
             {
@@ -640,11 +697,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
 
             _warnings = new List<string>();
             _errors = new List<string>();
-
-            List<string> warnings;
-            _variables = new Variables(_hc, new Dictionary<string, string>(), new List<MaskHint>(), out warnings);
-            _variables.Set("build.sourcesdirectory", sourceDirectory);
-            _ec.Setup(x => x.Variables).Returns(_variables);
 
             _ec.Setup(x => x.AddIssue(It.IsAny<Issue>()))
             .Callback<Issue>
