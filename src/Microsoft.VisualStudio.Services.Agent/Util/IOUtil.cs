@@ -333,6 +333,41 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             }
         }
 
+        public static void ValidateExecutePermission(string directory)
+        {
+            ArgUtil.Directory(directory, nameof(directory));
+            string dir = directory;
+            string failsafeString = Environment.GetEnvironmentVariable("AGENT_TEST_VALIDATE_EXECUTE_PERMISSIONS_FAILSAFE");
+            int failsafe;
+            if (string.IsNullOrEmpty(failsafeString) || !int.TryParse(failsafeString, out failsafe))
+            {
+                failsafe = 100;
+            }
+
+            for (int i = 0 ; i < failsafe ; i++)
+            {
+                try
+                {
+                    Directory.EnumerateFileSystemEntries(dir).FirstOrDefault();
+                }
+                catch (UnauthorizedAccessException ex)
+                {
+                    // Permission to read the directory contents is required for '{0}' and each directory up the hierarchy. {1}
+                    string message = StringUtil.Loc("DirectoryHierarchyUnauthorized", directory, ex.Message);
+                    throw new UnauthorizedAccessException(message, ex);
+                }
+
+                dir = Path.GetDirectoryName(dir);
+                if (string.IsNullOrEmpty(dir))
+                {
+                    return;
+                }
+            }
+
+            // This should never happen.
+            throw new NotSupportedException($"Unable to validate execute permissions for directory '{directory}'. Exceeded maximum iterations.");
+        }
+
         /// <summary>
         /// Recursively enumerates a directory without following directory reparse points.
         /// </summary>

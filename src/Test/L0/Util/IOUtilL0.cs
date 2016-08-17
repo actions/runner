@@ -762,6 +762,75 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Util
             }
         }
 
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void ValidateExecutePermission_DoesNotExceedFailsafe()
+        {
+            using (TestHostContext hc = new TestHostContext(this))
+            {
+                Tracing trace = hc.GetTrace();
+
+                // Arrange: Create a directory.
+                string directory = Path.Combine(IOUtil.GetBinPath(), Path.GetRandomFileName());
+                try
+                {
+                    Directory.CreateDirectory(directory);
+
+                    // Act/Assert: Call "ValidateExecutePermission". The method should not blow up.
+                    IOUtil.ValidateExecutePermission(directory);
+                }
+                finally
+                {
+                    // Cleanup.
+                    if (Directory.Exists(directory))
+                    {
+                        Directory.Delete(directory, recursive: true);
+                    }
+                }
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void ValidateExecutePermission_ExceedsFailsafe()
+        {
+            using (TestHostContext hc = new TestHostContext(this))
+            {
+                Tracing trace = hc.GetTrace();
+
+                // Arrange: Create a deep directory.
+                string directory = Path.Combine(IOUtil.GetBinPath(), Path.GetRandomFileName(), "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20");
+                try
+                {
+                    Directory.CreateDirectory(directory);
+                    Environment.SetEnvironmentVariable("AGENT_TEST_VALIDATE_EXECUTE_PERMISSIONS_FAILSAFE", "20");
+
+                    try
+                    {
+                        // Act: Call "ValidateExecutePermission". The method should throw since
+                        // it exceeds the failsafe recursion depth.
+                        IOUtil.ValidateExecutePermission(directory);
+
+                        // Assert.
+                        throw new Exception("Should have thrown not supported exception.");
+                    }
+                    catch (NotSupportedException)
+                    {
+                    }
+                }
+                finally
+                {
+                    // Cleanup.
+                    if (Directory.Exists(directory))
+                    {
+                        Directory.Delete(directory, recursive: true);
+                    }
+                }
+            }
+        }
+
         private static async Task CreateDirectoryReparsePoint(IHostContext context, string link, string target)
         {
 #if OS_WINDOWS

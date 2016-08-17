@@ -65,11 +65,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 trace.Info($"Culture: {CultureInfo.CurrentCulture.Name}");
                 trace.Info($"UI Culture: {CultureInfo.CurrentUICulture.Name}");
 
-                //
-                // TODO (bryanmac): Need VsoAgent.exe compat shim for SCM
-                //                  That shim will also provide a compat arg parse 
-                //                  and translate / to -- etc...
-                //
+                // Validate directory permissions.
+                string agentDirectory = context.GetDirectory(WellKnownDirectory.Root);
+                trace.Info($"Validating directory permissions for: '{agentDirectory}'");
+                try
+                {
+                    IOUtil.ValidateExecutePermission(agentDirectory);
+                }
+                catch (Exception e)
+                {
+                    terminal.WriteError(StringUtil.Loc("ErrorOccurred", e.Message));
+                    trace.Error(e);
+                    return Constants.Agent.ReturnCode.TerminatedError;
+                }
 
                 // Parse the command line args.
                 var command = new CommandSettings(context, args);
