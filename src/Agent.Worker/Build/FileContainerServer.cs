@@ -39,11 +39,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             _containerId = containerId;
             _containerPath = containerPath;
 
-            // default file upload request timeout to 300 seconds
+            // default file upload request timeout to 600 seconds
             var fileContainerClientConnectionSetting = connection.Settings.Clone();
-            if (fileContainerClientConnectionSetting.SendTimeout < TimeSpan.FromSeconds(300))
+            if (fileContainerClientConnectionSetting.SendTimeout < TimeSpan.FromSeconds(600))
             {
-                fileContainerClientConnectionSetting.SendTimeout = TimeSpan.FromSeconds(300);
+                fileContainerClientConnectionSetting.SendTimeout = TimeSpan.FromSeconds(600);
             }
 
             var fileContainerClientConnection = new VssConnection(connection.Uri, connection.Credentials, fileContainerClientConnectionSetting);
@@ -192,7 +192,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                     HttpResponseMessage response = null;
                     try
                     {
-                        response = await _fileContainerHttpClient.UploadFileAsync(_containerId, itemPath, fs, _projectId, token);
+                        response = await _fileContainerHttpClient.UploadFileAsync(_containerId, itemPath, fs, _projectId, token, chunkSize: 4 * 1024 * 1024);
                     }
                     catch (OperationCanceledException) when (token.IsCancellationRequested)
                     {
