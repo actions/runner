@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
+using Microsoft.VisualStudio.Services.Agent.Listener.Capabilities;
 using Xunit;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
@@ -18,12 +19,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
         private Mock<ICredentialManager> _credMgr;
         private Mock<IPromptManager> _promptManager;
         private Mock<IConfigurationStore> _store;
+        private Mock<IExtensionManager> _extnMgr;
+        private Mock<IServiceControlManager> _serviceControlManager;
+        private IRSAKeyManager _rsaKeyManager;
+        private ICapabilitiesManager _capabilitiesManager;
         private string _expectedToken = "expectedToken";
         private string _expectedServerUrl = "https://localhost";
         private string _expectedAgentName = "expectedAgentName";
         private string _expectedPoolName = "poolName";
         private string _expectedAuthType = "pat";
         private string _expectedWorkFolder = "_work";
+        private int _expectedPoolId = 1;
+        private AgentSettings _configMgrAgentSettings = new AgentSettings();
+
 
         public ConfigurationManagerL0()
         {
@@ -31,21 +39,38 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
             _credMgr = new Mock<ICredentialManager>();
             _promptManager = new Mock<IPromptManager>();
             _store = new Mock<IConfigurationStore>();
+            _extnMgr = new Mock<IExtensionManager>();
+            _serviceControlManager = new Mock<IServiceControlManager>();
+            _rsaKeyManager = new RSAEncryptedFileKeyManager();
+            _capabilitiesManager = new CapabilitiesManager();
 
             _agentServer.Setup(x => x.ConnectAsync(It.IsAny<VssConnection>())).Returns(Task.FromResult<object>(null));
 
             _store.Setup(x => x.IsConfigured()).Returns(false);
             _store.Setup(x => x.HasCredentials()).Returns(false);
+
             _store.Setup(x => x.GetSettings()).Returns(
-                new AgentSettings
-                {
-                    ServerUrl = _expectedServerUrl,
-                    AgentName = _expectedAgentName,
-                    PoolName = _expectedPoolName,
-                    WorkFolder = _expectedWorkFolder
-                });
+                () => _configMgrAgentSettings
+                );
+
+            _store.Setup(x => x.SaveSettings(It.IsAny<AgentSettings>())).Callback((AgentSettings settings) =>
+            {
+                _configMgrAgentSettings = settings;
+            });
 
             _credMgr.Setup(x => x.GetCredentialProvider(It.IsAny<string>())).Returns(new TestAgentCredential());
+
+            _serviceControlManager.Setup(x => x.GenerateScripts(It.IsAny<AgentSettings>()));
+
+            var expectedPools = new List<TaskAgentPool>() { new TaskAgentPool(_expectedPoolName) { Id = _expectedPoolId } };
+            _agentServer.Setup(x => x.GetAgentPoolsAsync(It.IsAny<string>())).Returns(Task.FromResult(expectedPools));
+
+            var expectedAgents = new List<TaskAgent>();
+            _agentServer.Setup(x => x.GetAgentsAsync(It.IsAny<int>(), It.IsAny<string>())).Returns(Task.FromResult(expectedAgents));
+
+            var expectedAgent = new TaskAgent(_expectedAgentName) { Id = 1 };
+            _agentServer.Setup(x => x.AddAgentAsync(It.IsAny<int>(), It.IsAny<TaskAgent>())).Returns(Task.FromResult(expectedAgent));
+            _agentServer.Setup(x => x.UpdateAgentAsync(It.IsAny<int>(), It.IsAny<TaskAgent>())).Returns(Task.FromResult(expectedAgent));
         }
 
         private TestHostContext CreateTestContext([CallerMemberName] String testName = "")
@@ -54,6 +79,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
             tc.SetSingleton<ICredentialManager>(_credMgr.Object);
             tc.SetSingleton<IPromptManager>(_promptManager.Object);
             tc.SetSingleton<IConfigurationStore>(_store.Object);
+            tc.SetSingleton<IExtensionManager>(_extnMgr.Object);
+            tc.SetSingleton<IAgentServer>(_agentServer.Object);
+            tc.SetSingleton<ICapabilitiesManager>(_capabilitiesManager);
+            tc.SetSingleton<IServiceControlManager>(_serviceControlManager.Object);
+
+            tc.SetSingleton<IRSAKeyManager>(_rsaKeyManager);
             tc.EnqueueInstance<IAgentServer>(_agentServer.Object);
 
             return tc;
@@ -77,25 +108,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
                     tc,
                     new[]
                     {
-                        "configure",
-                        "--url", _expectedServerUrl,
-                        "--agent", _expectedAgentName,
-                        "--pool", _expectedPoolName,
-                        "--work", _expectedWorkFolder,
-                        "--auth", _expectedAuthType,
-                        "--token", _expectedToken
+                       "configure",
+                       "--url", _expectedServerUrl,
+                       "--agent", _expectedAgentName,
+                       "--pool", _expectedPoolName,
+                       "--work", _expectedWorkFolder,
+                       "--auth", _expectedAuthType,
+                       "--token", _expectedToken
                     });
                 trace.Info("Constructed.");
-
-                var expectedPools = new List<TaskAgentPool>() { new TaskAgentPool(_expectedPoolName) { Id = 1 } };
-                _agentServer.Setup(x => x.GetAgentPoolsAsync(It.IsAny<string>())).Returns(Task.FromResult(expectedPools));
-
-                var expectedAgents = new List<TaskAgent>();
-                _agentServer.Setup(x => x.GetAgentsAsync(It.IsAny<int>(), It.IsAny<string>())).Returns(Task.FromResult(expectedAgents));
-
-                var expectedAgent = new TaskAgent(_expectedAgentName) { Id = 1 };
-                _agentServer.Setup(x => x.AddAgentAsync(It.IsAny<int>(), It.IsAny<TaskAgent>())).Returns(Task.FromResult(expectedAgent));
-                _agentServer.Setup(x => x.UpdateAgentAsync(It.IsAny<int>(), It.IsAny<TaskAgent>())).Returns(Task.FromResult(expectedAgent));
+                _store.Setup(x => x.IsConfigured()).Returns(false);
+                _configMgrAgentSettings = null;
 
                 trace.Info("Ensuring all the required parameters are available in the command line parameter");
                 configManager.ConfigureAsync(command);
@@ -106,7 +129,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
                 var s = configManager.LoadSettings();
                 Assert.True(s.ServerUrl.Equals(_expectedServerUrl));
                 Assert.True(s.AgentName.Equals(_expectedAgentName));
-                Assert.True(s.PoolName.Equals(_expectedPoolName));
+                Assert.True(s.PoolId.Equals(_expectedPoolId));
                 Assert.True(s.WorkFolder.Equals(_expectedWorkFolder));
             }
         }
