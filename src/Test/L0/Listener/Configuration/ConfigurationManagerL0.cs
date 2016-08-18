@@ -7,12 +7,11 @@ using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.Services.Agent.Listener.Capabilities;
 using Xunit;
+using Microsoft.VisualStudio.Services.Agent.Listener.Configuration;
+using Microsoft.VisualStudio.Services.WebApi;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
 {
-    using Microsoft.VisualStudio.Services.Agent.Listener.Configuration;
-    using WebApi;
-
     public class ConfigurationManagerL0
     {
         private Mock<IAgentServer> _agentServer;
@@ -41,7 +40,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
             _store = new Mock<IConfigurationStore>();
             _extnMgr = new Mock<IExtensionManager>();
             _serviceControlManager = new Mock<IServiceControlManager>();
+
+#if OS_WINDOWS
             _rsaKeyManager = new RSAEncryptedFileKeyManager();
+#else
+            _rsaKeyManager = new RSAFileKeyManager();
+#endif
+
             _capabilitiesManager = new CapabilitiesManager();
 
             _agentServer.Setup(x => x.ConnectAsync(It.IsAny<VssConnection>())).Returns(Task.FromResult<object>(null));
