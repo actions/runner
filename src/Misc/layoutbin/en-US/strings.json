@@ -1,5 +1,5 @@
 ﻿{
-  "AcceptTeeEula": "accept the Team Explorer Everywhere license agreement now? (Y/N)",
+  "AcceptTeeEula": "(Y/N) Accept the Team Explorer Everywhere license agreement now?",
   "AccessDenied": "Access Denied",
   "AccessDeniedSettingRecoveryOption": "Access Denied while setting service recovery options.",
   "AddAgentFailed": "Failed to add the agent.  Try again or ctrl-c to quit",
