@@ -11,6 +11,8 @@ using Microsoft.VisualStudio.Services.Agent.Listener.Configuration;
 using Microsoft.VisualStudio.Services.WebApi;
 using System.Security.Cryptography;
 using System.Threading;
+using Microsoft.VisualStudio.Services.Agent.Util;
+using System.IO;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
 {
