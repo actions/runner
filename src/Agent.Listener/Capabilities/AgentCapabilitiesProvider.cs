@@ -2,7 +2,6 @@ using Microsoft.VisualStudio.Services.Agent.Util;
 using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener.Capabilities
@@ -13,7 +12,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Capabilities
 
         public int Order => 99; // Process last to override prior.
 
-        public Task<List<Capability>> GetCapabilitiesAsync(AgentSettings settings, CancellationToken cancellationToken)
+        public Task<List<Capability>> GetCapabilitiesAsync(AgentSettings settings)
         {
             ArgUtil.NotNull(settings, nameof(settings));
             var capabilities = new List<Capability>();

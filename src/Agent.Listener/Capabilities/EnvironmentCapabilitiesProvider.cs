@@ -2,7 +2,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener.Capabilities
@@ -28,7 +27,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Capabilities
 
         public int Order => 1; // Process first so other providers can override.
 
-        public Task<List<Capability>> GetCapabilitiesAsync(AgentSettings settings, CancellationToken cancellationToken)
+        public Task<List<Capability>> GetCapabilitiesAsync(AgentSettings settings)
         {
             Trace.Entering();
             var capabilities = new List<Capability>();

@@ -2,7 +2,6 @@ using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Listener;
 using Moq;
 using System;
-using System.IO;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
@@ -10,8 +9,8 @@ using Microsoft.VisualStudio.Services.Agent.Listener.Capabilities;
 using Xunit;
 using Microsoft.VisualStudio.Services.Agent.Listener.Configuration;
 using Microsoft.VisualStudio.Services.WebApi;
-using Microsoft.VisualStudio.Services.Agent.Util;
 using System.Security.Cryptography;
+using System.Threading;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
 {
@@ -56,7 +55,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
 
             _capabilitiesManager = new CapabilitiesManager();
 
-            _agentServer.Setup(x => x.ConnectAsync(It.IsAny<VssConnection>())).Returns(Task.FromResult<object>(null));
+            _agentServer.Setup(x => x.ConnectAsync(It.IsAny<VssConnection>(), It.IsAny<CancellationToken>())).Returns(Task.FromResult<object>(null));
 
             _store.Setup(x => x.IsConfigured()).Returns(false);
             _store.Setup(x => x.HasCredentials()).Returns(false);
@@ -75,14 +74,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
             _serviceControlManager.Setup(x => x.GenerateScripts(It.IsAny<AgentSettings>()));
 
             var expectedPools = new List<TaskAgentPool>() { new TaskAgentPool(_expectedPoolName) { Id = _expectedPoolId } };
-            _agentServer.Setup(x => x.GetAgentPoolsAsync(It.IsAny<string>())).Returns(Task.FromResult(expectedPools));
+            _agentServer.Setup(x => x.GetAgentPoolsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).Returns(Task.FromResult(expectedPools));
 
             var expectedAgents = new List<TaskAgent>();
-            _agentServer.Setup(x => x.GetAgentsAsync(It.IsAny<int>(), It.IsAny<string>())).Returns(Task.FromResult(expectedAgents));
+            _agentServer.Setup(x => x.GetAgentsAsync(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<CancellationToken>())).Returns(Task.FromResult(expectedAgents));
 
             var expectedAgent = new TaskAgent(_expectedAgentName) { Id = 1 };
-            _agentServer.Setup(x => x.AddAgentAsync(It.IsAny<int>(), It.IsAny<TaskAgent>())).Returns(Task.FromResult(expectedAgent));
-            _agentServer.Setup(x => x.UpdateAgentAsync(It.IsAny<int>(), It.IsAny<TaskAgent>())).Returns(Task.FromResult(expectedAgent));
+            _agentServer.Setup(x => x.AddAgentAsync(It.IsAny<int>(), It.IsAny<TaskAgent>(), It.IsAny<CancellationToken>())).Returns(Task.FromResult(expectedAgent));
+            _agentServer.Setup(x => x.UpdateAgentAsync(It.IsAny<int>(), It.IsAny<TaskAgent>(), It.IsAny<CancellationToken>())).Returns(Task.FromResult(expectedAgent));
 
             rsa = RSA.Create();
             rsa.KeySize = 2048;
@@ -137,17 +136,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
                        "--token", _expectedToken
                     });
                 trace.Info("Constructed.");
+
                 _store.Setup(x => x.IsConfigured()).Returns(false);
                 _configMgrAgentSettings = null;
 
                 trace.Info("Ensuring all the required parameters are available in the command line parameter");
-                await configManager.ConfigureAsync(command);
+                await configManager.ConfigureAsync(command, CancellationToken.None);
 
                 _store.Setup(x => x.IsConfigured()).Returns(true);
 
                 trace.Info("Configured, verifying all the parameter value");
                 var s = configManager.LoadSettings();
-                Assert.NotNull(s);
                 Assert.True(s.ServerUrl.Equals(_expectedServerUrl));
                 Assert.True(s.AgentName.Equals(_expectedAgentName));
                 Assert.True(s.PoolId.Equals(_expectedPoolId));

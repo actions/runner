@@ -20,9 +20,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
     {
         bool IsConfigured();
         bool IsServiceConfigured();
-        Task EnsureConfiguredAsync(CommandSettings command);
-        Task ConfigureAsync(CommandSettings command);
-        Task UnconfigureAsync(CommandSettings command);
+        Task EnsureConfiguredAsync(CommandSettings command, CancellationToken token);
+        Task ConfigureAsync(CommandSettings command, CancellationToken token);
+        Task UnconfigureAsync(CommandSettings command, CancellationToken token);
         AgentSettings LoadSettings();
     }
 
@@ -55,12 +55,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             return result;
         }
 
-        public async Task EnsureConfiguredAsync(CommandSettings command)
+        public async Task EnsureConfiguredAsync(CommandSettings command, CancellationToken token)
         {
             Trace.Info(nameof(EnsureConfiguredAsync));
             if (!IsConfigured())
             {
-                await ConfigureAsync(command);
+                await ConfigureAsync(command, token);
             }
         }
 
@@ -78,7 +78,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             return settings;
         }
 
-        public async Task ConfigureAsync(CommandSettings command)
+        public async Task ConfigureAsync(CommandSettings command, CancellationToken token)
         {
             Trace.Info(nameof(ConfigureAsync));
             if (IsConfigured())
@@ -104,7 +104,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                     _term.WriteLine();
 
                     // Prompt to acccept the TEE EULA.
-                    acceptTeeEula = command.GetAcceptTeeEula();
+                    acceptTeeEula = await command.GetAcceptTeeEula(token);
                     break;
                 case Constants.OSPlatform.Windows:
                     break;
@@ -112,7 +112,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                     throw new NotSupportedException();
             }
 
-            // TODO: Check if its running with elevated permission and stop early if its not
+            // Stop config on cancellation
+            token.ThrowIfCancellationRequested();
 
             // Loop getting url and creds until you can connect
             string serverUrl = null;
@@ -121,18 +122,29 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             while (true)
             {
                 // Get the URL
-                serverUrl = command.GetUrl();
+                serverUrl = await command.GetUrl(token);
+
+                // Stop config on cancellation
+                token.ThrowIfCancellationRequested();
 
                 // Get the credentials
-                credProvider = GetCredentialProvider(command, serverUrl);
+                credProvider = await GetCredentialProvider(command, serverUrl, token);
                 VssCredentials creds = credProvider.GetVssCredentials(HostContext);
                 Trace.Info("cred retrieved");
+
+                // Stop config on cancellation
+                token.ThrowIfCancellationRequested();
+
                 try
                 {
                     // Validate can connect.
-                    await TestConnectAsync(serverUrl, creds);
+                    await TestConnectAsync(serverUrl, creds, token);
                     Trace.Info("Connect complete.");
                     break;
+                }
+                catch (OperationCanceledException) when (token.IsCancellationRequested)
+                {
+                    throw;
                 }
                 catch (Exception e) when (!command.Unattended)
                 {
@@ -141,6 +153,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                     // TODO: If the connection fails, shouldn't the URL/creds be cleared from the command line parser? Otherwise retry may be immediately attempted using the same values without prompting the user for new values. The same general problem applies to every retry loop during configure.
                 }
             }
+
+            // Stop config on cancellation
+            token.ThrowIfCancellationRequested();
 
             // We want to use the native CSP of the platform for storage, so we use the RSACSP directly
             RSAParameters publicKey;
@@ -157,10 +172,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             WriteSection(StringUtil.Loc("RegisterAgentSectionHeader"));
             while (true)
             {
-                poolName = command.GetPool();
+                poolName = await command.GetPool(token);
+
+                // Stop config on cancellation
+                token.ThrowIfCancellationRequested();
+
                 try
                 {
-                    poolId = await GetPoolId(poolName);
+                    poolId = await GetPoolId(poolName, token);
+                }
+                catch (OperationCanceledException) when (token.IsCancellationRequested)
+                {
+                    throw;
                 }
                 catch (Exception e) when (!command.Unattended)
                 {
@@ -175,22 +198,24 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 _term.WriteError(StringUtil.Loc("FailedToFindPool"));
             }
 
+            // Stop config on cancellation
+            token.ThrowIfCancellationRequested();
+
             TaskAgent agent;
             while (true)
             {
-                agentName = command.GetAgentName();
+                agentName = await command.GetAgentName(token);
 
                 // Get the system capabilities.
-                // TODO: Hook up to ctrl+c cancellation token.
                 _term.WriteLine(StringUtil.Loc("ScanToolCapabilities"));
-                Dictionary<string, string> systemCapabilities = await HostContext.GetService<ICapabilitiesManager>().GetCapabilitiesAsync(
-                    new AgentSettings { AgentName = agentName }, CancellationToken.None);
+                var capabilitiesManager = HostContext.GetService<ICapabilitiesManager>();
+                Dictionary<string, string> systemCapabilities = await capabilitiesManager.GetCapabilitiesAsync(new AgentSettings { AgentName = agentName }, token);
 
                 _term.WriteLine(StringUtil.Loc("ConnectToServer"));
-                agent = await GetAgent(agentName, poolId);
+                agent = await GetAgent(agentName, poolId, token);
                 if (agent != null)
                 {
-                    if (command.GetReplace())
+                    if (await command.GetReplace(token))
                     {
                         agent.Authorization = new TaskAgentAuthorization
                         {
@@ -207,9 +232,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
                         try
                         {
-                            agent = await _agentServer.UpdateAgentAsync(poolId, agent);
+                            agent = await _agentServer.UpdateAgentAsync(poolId, agent, token);
                             _term.WriteLine(StringUtil.Loc("AgentReplaced"));
                             break;
+                        }
+                        catch (OperationCanceledException) when (token.IsCancellationRequested)
+                        {
+                            throw;
                         }
                         catch (Exception e) when (!command.Unattended)
                         {
@@ -241,9 +270,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
                     try
                     {
-                        agent = await _agentServer.AddAgentAsync(poolId, agent);
+                        agent = await _agentServer.AddAgentAsync(poolId, agent, token);
                         _term.WriteLine(StringUtil.Loc("AgentAddedSuccessfully"));
                         break;
+                    }
+                    catch (OperationCanceledException) when (token.IsCancellationRequested)
+                    {
+                        throw;
                     }
                     catch (Exception e) when (!command.Unattended)
                     {
@@ -252,6 +285,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                     }
                 }
             }
+
+            // Stop config on cancellation
+            token.ThrowIfCancellationRequested();
 
             // respect the serverUrl resolve by server.
             // in case of agent configured using collection url instead of account url.
@@ -302,6 +338,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 _store.SaveCredential(credProvider.CredentialData);
             }
 
+            // Stop config on cancellation
+            token.ThrowIfCancellationRequested();
+
             // Testing agent connection, detect any protential connection issue, like local clock skew that cause OAuth token expired.
             _term.WriteLine(StringUtil.Loc("TestAgentConnection"));
             var credMgr = HostContext.GetService<ICredentialManager>();
@@ -310,7 +349,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             var agentSvr = HostContext.GetService<IAgentServer>();
             try
             {
-                await agentSvr.ConnectAsync(conn);
+                await agentSvr.ConnectAsync(conn, token);
             }
             catch (VssOAuthTokenRequestException ex) when (ex.Message.Contains("Current server time is"))
             {
@@ -323,7 +362,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             }
 
             // We will Combine() what's stored with root.  Defaults to string a relative path
-            string workFolder = command.GetWork();
+            string workFolder = await command.GetWork(token);
             string notificationPipeName = command.GetNotificationPipeName();
 
             // Get Agent settings
@@ -339,6 +378,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 WorkFolder = workFolder,
             };
 
+            // Stop config on cancellation
+            token.ThrowIfCancellationRequested();
+
             _store.SaveSettings(settings);
             _term.WriteLine(StringUtil.Loc("SavedSettings", DateTime.UtcNow));
 
@@ -346,7 +388,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
             if (Constants.Agent.Platform == Constants.OSPlatform.Windows)
             {
-                runAsService = command.GetRunAsService();
+                runAsService = await command.GetRunAsService(token);
                 if (runAsService)
                 {
                     if (!new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator))
@@ -364,7 +406,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             if (runAsService)
             {
                 Trace.Info("Configuring to run the agent as service");
-                successfullyConfigured = serviceControlManager.ConfigureService(settings, command);
+                successfullyConfigured = await serviceControlManager.ConfigureService(settings, command, token);
             }
 
             if (runAsService && successfullyConfigured)
@@ -374,7 +416,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             }
         }
 
-        public async Task UnconfigureAsync(CommandSettings command)
+        public async Task UnconfigureAsync(CommandSettings command, CancellationToken token)
         {
             string currentAction = StringUtil.Loc("UninstallingService");
             try
@@ -399,24 +441,24 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                     var credentialManager = HostContext.GetService<ICredentialManager>();
 
                     // Get the credentials
-                    var credProvider = GetCredentialProvider(command, settings.ServerUrl);
+                    var credProvider = await GetCredentialProvider(command, settings.ServerUrl, token);
                     VssCredentials creds = credProvider.GetVssCredentials(HostContext);
                     Trace.Info("cred retrieved");
 
                     Uri uri = new Uri(settings.ServerUrl);
                     VssConnection conn = ApiUtil.CreateConnection(uri, creds);
                     var agentSvr = HostContext.GetService<IAgentServer>();
-                    await agentSvr.ConnectAsync(conn);
+                    await agentSvr.ConnectAsync(conn, token);
                     Trace.Info("Connect complete.");
 
-                    List<TaskAgent> agents = await agentSvr.GetAgentsAsync(settings.PoolId, settings.AgentName);
+                    List<TaskAgent> agents = await agentSvr.GetAgentsAsync(settings.PoolId, settings.AgentName, token);
                     if (agents.Count == 0)
                     {
                         _term.WriteLine(StringUtil.Loc("Skipping") + currentAction);
                     }
                     else
                     {
-                        await agentSvr.DeleteAgentAsync(settings.PoolId, settings.AgentId);
+                        await agentSvr.DeleteAgentAsync(settings.PoolId, settings.AgentId, token);
                         _term.WriteLine(StringUtil.Loc("Success") + currentAction);
                     }
                 }
@@ -460,7 +502,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             }
         }
 
-        private ICredentialProvider GetCredentialProvider(CommandSettings command, string serverUrl)
+        private async Task<ICredentialProvider> GetCredentialProvider(CommandSettings command, string serverUrl, CancellationToken token)
         {
             Trace.Info(nameof(GetCredentialProvider));
 
@@ -471,28 +513,28 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 || serverUrl.IndexOf("tfsallin.net", StringComparison.OrdinalIgnoreCase) != -1;
             string defaultAuth = isHosted ? Constants.Configuration.PAT :
                 (Constants.Agent.Platform == Constants.OSPlatform.Windows ? Constants.Configuration.Integrated : Constants.Configuration.Negotiate);
-            string authType = command.GetAuth(defaultValue: defaultAuth);
+            string authType = await command.GetAuth(defaultValue: defaultAuth, token: token);
 
             // Create the credential.
             Trace.Info("Creating credential for auth: {0}", authType);
             var provider = credentialManager.GetCredentialProvider(authType);
-            provider.EnsureCredential(HostContext, command, serverUrl);
+            await provider.EnsureCredential(HostContext, command, serverUrl, token);
             return provider;
         }
 
-        private async Task TestConnectAsync(string url, VssCredentials creds)
+        private async Task TestConnectAsync(string url, VssCredentials creds, CancellationToken token)
         {
             _term.WriteLine(StringUtil.Loc("ConnectingToServer"));
             VssConnection connection = ApiUtil.CreateConnection(new Uri(url), creds);
 
             _agentServer = HostContext.CreateService<IAgentServer>();
-            await _agentServer.ConnectAsync(connection);
+            await _agentServer.ConnectAsync(connection, token);
         }
 
-        private async Task<int> GetPoolId(string poolName)
+        private async Task<int> GetPoolId(string poolName, CancellationToken token)
         {
             int id = 0;
-            List<TaskAgentPool> pools = await _agentServer.GetAgentPoolsAsync(poolName);
+            List<TaskAgentPool> pools = await _agentServer.GetAgentPoolsAsync(poolName, token);
             Trace.Verbose("Returned {0} pools", pools.Count);
 
             if (pools.Count == 1)
@@ -504,9 +546,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             return id;
         }
 
-        private async Task<TaskAgent> GetAgent(string name, int poolId)
+        private async Task<TaskAgent> GetAgent(string name, int poolId, CancellationToken token)
         {
-            List<TaskAgent> agents = await _agentServer.GetAgentsAsync(poolId, name);
+            List<TaskAgent> agents = await _agentServer.GetAgentsAsync(poolId, name, token);
             Trace.Verbose("Returns {0} agents", agents.Count);
             TaskAgent agent = agents.FirstOrDefault();
 

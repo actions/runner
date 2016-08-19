@@ -1,26 +1,28 @@
 using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
-using System.Collections.Generic;
-using System.Diagnostics;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 {
     [ServiceLocator(Default = typeof(PromptManager))]
-    public interface IPromptManager: IAgentService
+    public interface IPromptManager : IAgentService
     {
-        bool ReadBool(
+        Task<bool> ReadBool(
             string argName,
             string description,
             bool defaultValue,
-            bool unattended);
+            bool unattended,
+            CancellationToken token);
 
-        string ReadValue(
+        Task<string> ReadValue(
             string argName,
             string description,
             bool secret,
             string defaultValue,
             Func<String, bool> validator,
-            bool unattended);
+            bool unattended,
+            CancellationToken token);
     }
 
     public sealed class PromptManager : AgentService, IPromptManager
@@ -33,30 +35,33 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             _terminal = HostContext.GetService<ITerminal>();
         }
 
-        public bool ReadBool(
+        public async Task<bool> ReadBool(
             string argName,
             string description,
             bool defaultValue,
-            bool unattended)
+            bool unattended,
+            CancellationToken token)
         {
-            string answer = ReadValue(
+            string answer = await ReadValue(
                 argName: argName,
                 description: description,
                 secret: false,
                 defaultValue: defaultValue ? StringUtil.Loc("Y") : StringUtil.Loc("N"),
                 validator: Validators.BoolValidator,
-                unattended: unattended);
+                unattended: unattended,
+                token: token);
             return String.Equals(answer, "true", StringComparison.OrdinalIgnoreCase) ||
                 String.Equals(answer, StringUtil.Loc("Y"), StringComparison.CurrentCultureIgnoreCase);
         }
 
-        public string ReadValue(
+        public async Task<string> ReadValue(
             string argName,
             string description,
             bool secret,
             string defaultValue,
             Func<string, bool> validator,
-            bool unattended)
+            bool unattended,
+            CancellationToken token)
         {
             Trace.Info(nameof(ReadValue));
             ArgUtil.NotNull(validator, nameof(validator));
@@ -78,6 +83,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             // Prompt until a valid value is read.
             while (true)
             {
+                token.ThrowIfCancellationRequested();
+
                 // Write the message prompt.
                 string prompt =
                     string.IsNullOrEmpty(defaultValue)
@@ -86,7 +93,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 _terminal.Write($"{prompt} > ");
 
                 // Read and trim the value.
-                value = secret ? _terminal.ReadSecret() : _terminal.ReadLine();
+                value = secret ? await _terminal.ReadSecretAsync(token) : await _terminal.ReadLineAsync(token);
+
                 value = value?.Trim() ?? string.Empty;
 
                 // Return the default if not specified.

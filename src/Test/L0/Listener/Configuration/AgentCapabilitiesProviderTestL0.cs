@@ -23,7 +23,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                 var settings = new AgentSettings() { AgentName = "IAmAgent007" };
 
                 // Act
-                List<Capability> capabilities = await provider.GetCapabilitiesAsync(settings, tokenSource.Token);
+                List<Capability> capabilities = await provider.GetCapabilitiesAsync(settings);
 
                 // Assert
                 Assert.NotNull(capabilities);

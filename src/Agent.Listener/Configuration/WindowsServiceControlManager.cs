@@ -6,6 +6,7 @@ using System.Runtime.InteropServices;
 using System.Security.Principal;
 using System.ServiceProcess;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 {
@@ -33,7 +34,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
         }
 
-        public override bool ConfigureService(AgentSettings settings, CommandSettings command)
+        public override async Task<bool> ConfigureService(AgentSettings settings, CommandSettings command, CancellationToken token)
         {
             Trace.Entering();
             // TODO: add entering with info level. By default the error leve would be info. Config changes can get lost with this as entering is at Verbose level. For config all the logs should be logged.
@@ -42,7 +43,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             string logonPassword = string.Empty;
 
             NTAccount defaultServiceAccount = _windowsServiceHelper.GetDefaultServiceAccount();
-            _logonAccount = command.GetWindowsLogonAccount(defaultValue: defaultServiceAccount.ToString());
+            _logonAccount = await command.GetWindowsLogonAccount(defaultValue: defaultServiceAccount.ToString(), token: token);
             NativeWindowsServiceHelper.GetAccountSegments(_logonAccount, out _domainName, out _userName);
             if ((string.IsNullOrEmpty(_domainName) || _domainName.Equals(".", StringComparison.CurrentCultureIgnoreCase)) && !_logonAccount.Contains('@'))
             {
@@ -55,7 +56,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             {
                 while (true)
                 {
-                    logonPassword = command.GetWindowsLogonPassword(_logonAccount);
+                    logonPassword = await command.GetWindowsLogonPassword(_logonAccount, token);
 
                     // TODO: Fix this for unattended (should throw if not valid).
                     // TODO: If account is locked there is no point in retrying, translate error to useful message

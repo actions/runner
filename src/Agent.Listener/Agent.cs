@@ -21,8 +21,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
         private IMessageListener _listener;
         private ITerminal _term;
-        private bool _inConfigStage;
-        private ManualResetEvent _completedCommand = new ManualResetEvent(false);
 
         public override void Initialize(IHostContext hostContext)
         {
@@ -37,12 +35,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 var proxyConfig = HostContext.GetService<IProxyConfiguration>();
                 proxyConfig.ApplyProxySettings();
 
-                _inConfigStage = true;
-                _completedCommand.Reset();
-                _term.CancelKeyPress += CtrlCHandler;
-
                 //register a SIGTERM handler
-                HostContext.Unloading += Agent_Unloading;
+                _term.CancelKeyPress += CtrlCHandler;
 
                 // TODO Unit test to cover this logic
                 Trace.Info(nameof(ExecuteCommand));
@@ -75,8 +69,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 {
                     try
                     {
-                        await configManager.UnconfigureAsync(command);
+                        await configManager.UnconfigureAsync(command, TokenSource.Token);
                         return Constants.Agent.ReturnCode.Success;
+                    }
+                    catch (OperationCanceledException) when (TokenSource.Token.IsCancellationRequested)
+                    {
+                        throw;
                     }
                     catch (Exception ex)
                     {
@@ -98,8 +96,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 {
                     try
                     {
-                        await configManager.ConfigureAsync(command);
+                        await configManager.ConfigureAsync(command, TokenSource.Token);
                         return Constants.Agent.ReturnCode.Success;
+                    }
+                    catch (OperationCanceledException) when (TokenSource.Token.IsCancellationRequested)
+                    {
+                        throw;
                     }
                     catch (Exception ex)
                     {
@@ -110,9 +112,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 }
 
                 Trace.Info("Done evaluating commands");
-                await configManager.EnsureConfiguredAsync(command);
-
-                _inConfigStage = false;
+                await configManager.EnsureConfiguredAsync(command, TokenSource.Token);
 
                 if (command.NoStart)
                 {
@@ -151,32 +151,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             finally
             {
                 _term.CancelKeyPress -= CtrlCHandler;
-                HostContext.Unloading -= Agent_Unloading;
-                _completedCommand.Set();
-            }
-        }
-
-        private void Agent_Unloading(object sender, EventArgs e)
-        {
-            if ((!_inConfigStage) && (!TokenSource.IsCancellationRequested))
-            {
-                TokenSource.Cancel();
-                _completedCommand.WaitOne(Constants.Agent.ExitOnUnloadTimeout);
             }
         }
 
         private void CtrlCHandler(object sender, EventArgs e)
         {
+            TokenSource.Cancel();
+            _term.WriteLine();
             _term.WriteLine("Exiting...");
-            if (_inConfigStage)
-            {
-                HostContext.Dispose();
-                Environment.Exit(Constants.Agent.ReturnCode.TerminatedError);
-            }
-            else
-            {
-                TokenSource.Cancel();
-            }
         }
 
         //create worker manager, create message listener and start listening to the queue

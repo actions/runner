@@ -89,7 +89,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                     .Returns(settings);
                 _configurationManager.Setup(x => x.IsConfigured())
                     .Returns(true);
-                _configurationManager.Setup(x => x.EnsureConfiguredAsync(It.IsAny<CommandSettings>()))
+                _configurationManager.Setup(x => x.EnsureConfiguredAsync(It.IsAny<CommandSettings>(), It.IsAny<CancellationToken>()))
                     .Returns(Task.CompletedTask);
                 _messageListener.Setup(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()))
                     .Returns(Task.FromResult<bool>(true));

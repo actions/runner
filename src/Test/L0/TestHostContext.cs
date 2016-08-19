@@ -1,15 +1,11 @@
-using Microsoft.VisualStudio.Services.Agent.Worker;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
 using System.Collections.Concurrent;
-using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Runtime.Loader;
-using System.Reflection;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests
 {
@@ -23,16 +19,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         private string _suiteName;
         private string _testName;
         private Tracing _trace;
-        private AssemblyLoadContext _loadContext;
-
-        public event EventHandler Unloading;
 
         public TestHostContext(object testClass, [CallerMemberName] string testName = "")
         {
             ArgUtil.NotNull(testClass, nameof(testClass));
             ArgUtil.NotNullOrEmpty(testName, nameof(testName));
-            _loadContext = AssemblyLoadContext.GetLoadContext(typeof(TestHostContext).GetTypeInfo().Assembly);
-            _loadContext.Unloading += LoadContext_Unloading;
             _testName = testName;
 
             // Trim the test assembly's root namespace from the test class's full name.
@@ -72,7 +63,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             await Task.Delay(TimeSpan.Zero);
         }
 
-        public T CreateService<T>() where T: class, IAgentService
+        public T CreateService<T>() where T : class, IAgentService
         {
             _trace.Verbose($"Create service: '{typeof(T).Name}'");
 
@@ -164,20 +155,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         {
             if (disposing)
             {
-                if (_loadContext != null)
-                {
-                    _loadContext.Unloading -= LoadContext_Unloading;
-                    _loadContext = null;
-                }
                 _traceManager?.Dispose();
-            }
-        }
-
-        private void LoadContext_Unloading(AssemblyLoadContext obj)
-        {
-            if (Unloading != null)
-            {
-                Unloading(this, null);
             }
         }
     }

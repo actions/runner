@@ -5,6 +5,8 @@ using Moq;
 using System;
 using System.Runtime.CompilerServices;
 using Xunit;
+using System.Threading.Tasks;
+using System.Threading;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests
 {
@@ -18,7 +20,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", nameof(CommandSettings))]
-        public void GetsArg()
+        public async Task GetsArg()
         {
             using (TestHostContext hc = CreateTestContext())
             {
@@ -26,7 +28,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 var command = new CommandSettings(hc, args: new string[] { "--agent", "some agent" });
 
                 // Act.
-                string actual = command.GetAgentName();
+                string actual = await command.GetAgentName(CancellationToken.None);
 
                 // Assert.
                 Assert.Equal("some agent", actual);
@@ -90,7 +92,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", nameof(CommandSettings))]
-        public void GetsFlagAcceptTeeEula()
+        public async Task GetsFlagAcceptTeeEula()
         {
             using (TestHostContext hc = CreateTestContext())
             {
@@ -98,7 +100,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 var command = new CommandSettings(hc, args: new string[] { "--acceptteeeula" });
 
                 // Act.
-                bool actual = command.GetAcceptTeeEula();
+                bool actual = await command.GetAcceptTeeEula(CancellationToken.None);
 
                 // Assert.
                 Assert.True(actual);
@@ -162,7 +164,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", nameof(CommandSettings))]
-        public void GetsFlagReplace()
+        public async Task GetsFlagReplace()
         {
             using (TestHostContext hc = CreateTestContext())
             {
@@ -170,7 +172,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 var command = new CommandSettings(hc, args: new string[] { "--replace" });
 
                 // Act.
-                bool actual = command.GetReplace();
+                bool actual = await command.GetReplace(CancellationToken.None);
 
                 // Assert.
                 Assert.True(actual);
@@ -180,7 +182,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", nameof(CommandSettings))]
-        public void GetsFlagRunAsService()
+        public async Task GetsFlagRunAsService()
         {
             using (TestHostContext hc = CreateTestContext())
             {
@@ -188,7 +190,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 var command = new CommandSettings(hc, args: new string[] { "--runasservice" });
 
                 // Act.
-                bool actual = command.GetRunAsService();
+                bool actual = await command.GetRunAsService(CancellationToken.None);
 
                 // Assert.
                 Assert.True(actual);
@@ -234,7 +236,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", nameof(CommandSettings))]
-        public void PassesUnattendedToReadBool()
+        public async Task PassesUnattendedToReadBool()
         {
             using (TestHostContext hc = CreateTestContext())
             {
@@ -245,11 +247,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                         Constants.Agent.CommandLine.Flags.AcceptTeeEula, // argName
                         StringUtil.Loc("AcceptTeeEula"), // description
                         false, // defaultValue
-                        true)) // unattended
-                    .Returns(true);
+                        true, // unattended
+                        CancellationToken.None))
+                    .Returns(Task.FromResult<bool>(true));
 
                 // Act.
-                bool actual = command.GetAcceptTeeEula();
+                bool actual = await command.GetAcceptTeeEula(CancellationToken.None);
 
                 // Assert.
                 Assert.True(actual);
@@ -259,7 +262,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", nameof(CommandSettings))]
-        public void PassesUnattendedToReadValue()
+        public async Task PassesUnattendedToReadValue()
         {
             using (TestHostContext hc = CreateTestContext())
             {
@@ -272,11 +275,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                         false, // secret
                         Environment.MachineName, // defaultValue
                         Validators.NonEmptyValidator, // validator
-                        true)) // unattended
-                    .Returns("some agent");
+                        true, // unattended
+                        CancellationToken.None))
+                    .Returns(Task.FromResult<string>("some agent"));
 
                 // Act.
-                string actual = command.GetAgentName();
+                string actual = await command.GetAgentName(CancellationToken.None);
 
                 // Assert.
                 Assert.Equal("some agent", actual);
@@ -286,7 +290,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", nameof(CommandSettings))]
-        public void PromptsForAcceptTeeEula()
+        public async Task PromptsForAcceptTeeEula()
         {
             using (TestHostContext hc = CreateTestContext())
             {
@@ -297,11 +301,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                         Constants.Agent.CommandLine.Flags.AcceptTeeEula, // argName
                         StringUtil.Loc("AcceptTeeEula"), // description
                         false, // defaultValue
-                        false)) // unattended
-                    .Returns(true);
+                        false, // unattended
+                        CancellationToken.None))
+                    .Returns(Task.FromResult<bool>(true));
 
                 // Act.
-                bool actual = command.GetAcceptTeeEula();
+                bool actual = await command.GetAcceptTeeEula(CancellationToken.None);
 
                 // Assert.
                 Assert.True(actual);
@@ -311,7 +316,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", nameof(CommandSettings))]
-        public void PromptsForAgent()
+        public async Task PromptsForAgent()
         {
             using (TestHostContext hc = CreateTestContext())
             {
@@ -324,11 +329,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                         false, // secret
                         Environment.MachineName, // defaultValue
                         Validators.NonEmptyValidator, // validator
-                        false)) // unattended
-                    .Returns("some agent");
+                        false, // unattended
+                        CancellationToken.None))
+                    .Returns(Task.FromResult<string>("some agent"));
 
                 // Act.
-                string actual = command.GetAgentName();
+                string actual = await command.GetAgentName(CancellationToken.None);
 
                 // Assert.
                 Assert.Equal("some agent", actual);
@@ -338,7 +344,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", nameof(CommandSettings))]
-        public void PromptsForAuth()
+        public async Task PromptsForAuth()
         {
             using (TestHostContext hc = CreateTestContext())
             {
@@ -351,11 +357,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                         false, // secret
                         "some default auth", // defaultValue
                         Validators.AuthSchemeValidator, // validator
-                        false)) // unattended
-                    .Returns("some auth");
+                        false, // unattended
+                        CancellationToken.None))
+                    .Returns(Task.FromResult<string>("some auth"));
 
                 // Act.
-                string actual = command.GetAuth("some default auth");
+                string actual = await command.GetAuth("some default auth", CancellationToken.None);
 
                 // Assert.
                 Assert.Equal("some auth", actual);
@@ -365,7 +372,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", nameof(CommandSettings))]
-        public void PromptsForPassword()
+        public async Task PromptsForPassword()
         {
             using (TestHostContext hc = CreateTestContext())
             {
@@ -378,11 +385,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                         true, // secret
                         string.Empty, // defaultValue
                         Validators.NonEmptyValidator, // validator
-                        false)) // unattended
-                    .Returns("some password");
+                        false, // unattended
+                        CancellationToken.None))
+                    .Returns(Task.FromResult<string>("some password"));
 
                 // Act.
-                string actual = command.GetPassword();
+                string actual = await command.GetPassword(CancellationToken.None);
 
                 // Assert.
                 Assert.Equal("some password", actual);
@@ -392,7 +400,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", nameof(CommandSettings))]
-        public void PromptsForPool()
+        public async Task PromptsForPool()
         {
             using (TestHostContext hc = CreateTestContext())
             {
@@ -405,11 +413,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                         false, // secret
                         "default", // defaultValue
                         Validators.NonEmptyValidator, // validator
-                        false)) // unattended
-                    .Returns("some pool");
+                        false, // unattended
+                        CancellationToken.None))
+                    .Returns(Task.FromResult<string>("some pool"));
 
                 // Act.
-                string actual = command.GetPool();
+                string actual = await command.GetPool(CancellationToken.None);
 
                 // Assert.
                 Assert.Equal("some pool", actual);
@@ -419,7 +428,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", nameof(CommandSettings))]
-        public void PromptsForReplace()
+        public async Task PromptsForReplace()
         {
             using (TestHostContext hc = CreateTestContext())
             {
@@ -430,11 +439,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                         Constants.Agent.CommandLine.Flags.Replace, // argName
                         StringUtil.Loc("Replace"), // description
                         false, // defaultValue
-                        false)) // unattended
-                    .Returns(true);
+                        false, // unattended
+                        CancellationToken.None))
+                    .Returns(Task.FromResult<bool>(true));
 
                 // Act.
-                bool actual = command.GetReplace();
+                bool actual = await command.GetReplace(CancellationToken.None);
 
                 // Assert.
                 Assert.True(actual);
@@ -444,7 +454,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", nameof(CommandSettings))]
-        public void PromptsForRunAsService()
+        public async Task PromptsForRunAsService()
         {
             using (TestHostContext hc = CreateTestContext())
             {
@@ -455,11 +465,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                         Constants.Agent.CommandLine.Flags.RunAsService, // argName
                         StringUtil.Loc("RunAgentAsServiceDescription"), // description
                         false, // defaultValue
-                        false)) // unattended
-                    .Returns(true);
+                        false, // unattended
+                        CancellationToken.None))
+                    .Returns(Task.FromResult<bool>(true));
 
                 // Act.
-                bool actual = command.GetRunAsService();
+                bool actual = await command.GetRunAsService(CancellationToken.None);
 
                 // Assert.
                 Assert.True(actual);
@@ -469,7 +480,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", nameof(CommandSettings))]
-        public void PromptsForToken()
+        public async Task PromptsForToken()
         {
             using (TestHostContext hc = CreateTestContext())
             {
@@ -482,11 +493,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                         true, // secret
                         string.Empty, // defaultValue
                         Validators.NonEmptyValidator, // validator
-                        false)) // unattended
-                    .Returns("some token");
+                        false, // unattended
+                        CancellationToken.None))
+                    .Returns(Task.FromResult<string>("some token"));
 
                 // Act.
-                string actual = command.GetToken();
+                string actual = await command.GetToken(CancellationToken.None);
 
                 // Assert.
                 Assert.Equal("some token", actual);
@@ -496,7 +508,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", nameof(CommandSettings))]
-        public void PromptsForUrl()
+        public async Task PromptsForUrl()
         {
             using (TestHostContext hc = CreateTestContext())
             {
@@ -509,11 +521,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                         false, // secret
                         string.Empty, // defaultValue
                         Validators.ServerUrlValidator, // validator
-                        false)) // unattended
-                    .Returns("some url");
+                        false, // unattended
+                        CancellationToken.None))
+                    .Returns(Task.FromResult<string>("some url"));
 
                 // Act.
-                string actual = command.GetUrl();
+                string actual = await command.GetUrl(CancellationToken.None);
 
                 // Assert.
                 Assert.Equal("some url", actual);
@@ -523,7 +536,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", nameof(CommandSettings))]
-        public void PromptsForUserName()
+        public async Task PromptsForUserName()
         {
             using (TestHostContext hc = CreateTestContext())
             {
@@ -536,11 +549,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                         false, // secret
                         string.Empty, // defaultValue
                         Validators.NonEmptyValidator, // validator
-                        false)) // unattended
-                    .Returns("some user name");
+                        false, // unattended
+                        CancellationToken.None))
+                    .Returns(Task.FromResult<string>("some user name"));
 
                 // Act.
-                string actual = command.GetUserName();
+                string actual = await command.GetUserName(CancellationToken.None);
 
                 // Assert.
                 Assert.Equal("some user name", actual);
@@ -550,7 +564,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", nameof(CommandSettings))]
-        public void PromptsForWindowsLogonAccount()
+        public async Task PromptsForWindowsLogonAccount()
         {
             using (TestHostContext hc = CreateTestContext())
             {
@@ -563,11 +577,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                         false, // secret
                         "some default account", // defaultValue
                         Validators.NTAccountValidator, // validator
-                        false)) // unattended
-                    .Returns("some windows logon account");
+                        false, // unattended
+                        CancellationToken.None))
+                    .Returns(Task.FromResult<string>("some windows logon account"));
 
                 // Act.
-                string actual = command.GetWindowsLogonAccount("some default account");
+                string actual = await command.GetWindowsLogonAccount("some default account", CancellationToken.None);
 
                 // Assert.
                 Assert.Equal("some windows logon account", actual);
@@ -577,7 +592,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", nameof(CommandSettings))]
-        public void PromptsForWindowsLogonPassword()
+        public async Task PromptsForWindowsLogonPassword()
         {
             using (TestHostContext hc = CreateTestContext())
             {
@@ -591,11 +606,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                         true, // secret
                         string.Empty, // defaultValue
                         Validators.NonEmptyValidator, // validator
-                        false)) // unattended
-                    .Returns("some windows logon password");
+                        false, // unattended 
+                        CancellationToken.None))
+                    .Returns(Task.FromResult<string>("some windows logon password"));
 
                 // Act.
-                string actual = command.GetWindowsLogonPassword(accountName);
+                string actual = await command.GetWindowsLogonPassword(accountName, CancellationToken.None);
 
                 // Assert.
                 Assert.Equal("some windows logon password", actual);
@@ -605,7 +621,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", nameof(CommandSettings))]
-        public void PromptsForWork()
+        public async Task PromptsForWork()
         {
             using (TestHostContext hc = CreateTestContext())
             {
@@ -618,11 +634,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                         false, // secret
                         "_work", // defaultValue
                         Validators.NonEmptyValidator, // validator
-                        false)) // unattended
-                    .Returns("some work");
+                        false,  // unattended
+                        CancellationToken.None))
+                    .Returns(Task.FromResult<string>("some work"));
 
                 // Act.
-                string actual = command.GetWork();
+                string actual = await command.GetWork(CancellationToken.None);
 
                 // Assert.
                 Assert.Equal("some work", actual);
@@ -634,7 +651,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", nameof(CommandSettings))]
-        public void PromptsWhenEmpty()
+        public async Task PromptsWhenEmpty()
         {
             using (TestHostContext hc = CreateTestContext())
             {
@@ -647,11 +664,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                         false, // secret
                         string.Empty, // defaultValue
                         Validators.ServerUrlValidator, // validator
-                        false)) // unattended
-                    .Returns("some url");
+                        false,  // unattended
+                        CancellationToken.None))
+                    .Returns(Task.FromResult<string>("some url"));
 
                 // Act.
-                string actual = command.GetUrl();
+                string actual = await command.GetUrl(CancellationToken.None);
 
                 // Assert.
                 Assert.Equal("some url", actual);
@@ -663,7 +681,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", nameof(CommandSettings))]
-        public void PromptsWhenInvalid()
+        public async Task PromptsWhenInvalid()
         {
             using (TestHostContext hc = CreateTestContext())
             {
@@ -676,11 +694,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                         false, // secret
                         string.Empty, // defaultValue
                         Validators.ServerUrlValidator, // validator
-                        false)) // unattended
-                    .Returns("some url");
+                        false, // unattended
+                        CancellationToken.None))
+                    .Returns(Task.FromResult<string>("some url"));
 
                 // Act.
-                string actual = command.GetUrl();
+                string actual = await command.GetUrl(CancellationToken.None);
 
                 // Assert.
                 Assert.Equal("some url", actual);

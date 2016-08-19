@@ -3,6 +3,8 @@ using System.Linq;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using System.IO;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 {
@@ -18,7 +20,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
     {
         void GenerateScripts(AgentSettings settings);
 
-        bool ConfigureService(AgentSettings settings, CommandSettings command);
+        Task<bool> ConfigureService(AgentSettings settings, CommandSettings command, CancellationToken token);
 
         void UnconfigureService();
 
@@ -60,18 +62,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         protected void SaveServiceSettings()
         {
             string serviceConfigPath = IOUtil.GetServiceConfigFilePath();
-            if(File.Exists(serviceConfigPath))
+            if (File.Exists(serviceConfigPath))
             {
                 IOUtil.DeleteFile(serviceConfigPath);
             }
-            
+
             File.WriteAllText(serviceConfigPath, ServiceName, new UTF8Encoding(false));
             File.SetAttributes(serviceConfigPath, File.GetAttributes(serviceConfigPath) | FileAttributes.Hidden);
         }
 
         public abstract void GenerateScripts(AgentSettings settings);
 
-        public abstract bool ConfigureService(AgentSettings settings, CommandSettings command);
+        public abstract Task<bool> ConfigureService(AgentSettings settings, CommandSettings command, CancellationToken token);
 
         public abstract void UnconfigureService();
 

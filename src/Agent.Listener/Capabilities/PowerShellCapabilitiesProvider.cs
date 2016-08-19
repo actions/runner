@@ -16,7 +16,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Capabilities
         // Only runs on Windows.
         public int Order => 2;
 
-        public async Task<List<Capability>> GetCapabilitiesAsync(AgentSettings settings, CancellationToken cancellationToken)
+        public async Task<List<Capability>> GetCapabilitiesAsync(AgentSettings settings)
         {
             Trace.Entering();
             var capabilities = new List<Capability>();
@@ -47,7 +47,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Capabilities
                     fileName: powerShellExe,
                     arguments: arguments,
                     environment: null,
-                    cancellationToken: cancellationToken);
+                    cancellationToken: CancellationToken.None);
             }
 
             // Validate .NET Framework x64 4.5 or higher is installed.

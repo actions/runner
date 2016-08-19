@@ -10,14 +10,14 @@ namespace Microsoft.VisualStudio.Services.Agent
     [ServiceLocator(Default = typeof(AgentServer))]
     public interface IAgentServer : IAgentService
     {
-        Task ConnectAsync(VssConnection agentConnection);
+        Task ConnectAsync(VssConnection agentConnection, CancellationToken cancellationToken);
 
         // Configuration
-        Task<TaskAgent> AddAgentAsync(Int32 agentPoolId, TaskAgent agent);
-        Task DeleteAgentAsync(int agentPoolId, int agentId);
-        Task<List<TaskAgentPool>> GetAgentPoolsAsync(string agentPoolName);
-        Task<List<TaskAgent>> GetAgentsAsync(int agentPoolId, string agentName = null);
-        Task<TaskAgent> UpdateAgentAsync(int agentPoolId, TaskAgent agent);
+        Task<TaskAgent> AddAgentAsync(Int32 agentPoolId, TaskAgent agent, CancellationToken cancellationToken);
+        Task DeleteAgentAsync(int agentPoolId, int agentId, CancellationToken cancellationToken);
+        Task<List<TaskAgentPool>> GetAgentPoolsAsync(string agentPoolName, CancellationToken cancellationToken);
+        Task<List<TaskAgent>> GetAgentsAsync(int agentPoolId, string agentName, CancellationToken cancellationToken);
+        Task<TaskAgent> UpdateAgentAsync(int agentPoolId, TaskAgent agent, CancellationToken cancellationToken);
 
         // messagequeue
         Task<TaskAgentSession> CreateAgentSessionAsync(Int32 poolId, TaskAgentSession session, CancellationToken cancellationToken);
@@ -40,12 +40,12 @@ namespace Microsoft.VisualStudio.Services.Agent
         private VssConnection _connection;
         private TaskAgentHttpClient _taskAgentClient;
 
-        public async Task ConnectAsync(VssConnection agentConnection)
+        public async Task ConnectAsync(VssConnection agentConnection, CancellationToken cancellationToken)
         {
             _connection = agentConnection;
             if (!_connection.HasAuthenticated)
             {
-                await _connection.ConnectAsync();
+                await _connection.ConnectAsync(cancellationToken);
             }
 
             _taskAgentClient = _connection.GetClient<TaskAgentHttpClient>();
@@ -64,34 +64,34 @@ namespace Microsoft.VisualStudio.Services.Agent
         // Configuration
         //-----------------------------------------------------------------
 
-        public Task<List<TaskAgentPool>> GetAgentPoolsAsync(string agentPoolName)
+        public Task<List<TaskAgentPool>> GetAgentPoolsAsync(string agentPoolName, CancellationToken cancellationToken)
         {
             CheckConnection();
-            return _taskAgentClient.GetAgentPoolsAsync(agentPoolName);
+            return _taskAgentClient.GetAgentPoolsAsync(agentPoolName, cancellationToken: cancellationToken);
         }
 
-        public Task<TaskAgent> AddAgentAsync(Int32 agentPoolId, TaskAgent agent)
+        public Task<TaskAgent> AddAgentAsync(Int32 agentPoolId, TaskAgent agent, CancellationToken cancellationToken)
         {
             CheckConnection();
-            return _taskAgentClient.AddAgentAsync(agentPoolId, agent);
+            return _taskAgentClient.AddAgentAsync(agentPoolId, agent, cancellationToken: cancellationToken);
         }
 
-        public Task<List<TaskAgent>> GetAgentsAsync(int agentPoolId, string agentName = null)
+        public Task<List<TaskAgent>> GetAgentsAsync(int agentPoolId, string agentName, CancellationToken cancellationToken)
         {
             CheckConnection();
-            return _taskAgentClient.GetAgentsAsync(agentPoolId, agentName, false);
+            return _taskAgentClient.GetAgentsAsync(agentPoolId, agentName, false, cancellationToken: cancellationToken);
         }
 
-        public Task<TaskAgent> UpdateAgentAsync(int agentPoolId, TaskAgent agent)
+        public Task<TaskAgent> UpdateAgentAsync(int agentPoolId, TaskAgent agent, CancellationToken cancellationToken)
         {
             CheckConnection();
-            return _taskAgentClient.ReplaceAgentAsync(agentPoolId, agent);
+            return _taskAgentClient.ReplaceAgentAsync(agentPoolId, agent, cancellationToken: cancellationToken);
         }
 
-        public Task DeleteAgentAsync(int agentPoolId, int agentId)
+        public Task DeleteAgentAsync(int agentPoolId, int agentId, CancellationToken cancellationToken)
         {
             CheckConnection();
-            return _taskAgentClient.DeleteAgentAsync(agentPoolId, agentId);
+            return _taskAgentClient.DeleteAgentAsync(agentPoolId, agentId, cancellationToken: cancellationToken);
         }
 
         //-----------------------------------------------------------------
