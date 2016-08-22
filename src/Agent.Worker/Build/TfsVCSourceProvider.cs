@@ -285,8 +285,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                     try
                     {
                         commentFile = Path.GetTempFileName();
-                        // TODO: FIGURE OUT WHAT ENCODING TF EXPECTS
-                        File.WriteAllText(path: commentFile, contents: comment.ToString());
+                        File.WriteAllText(path: commentFile, contents: comment.ToString(), encoding: Encoding.UTF8);
 
                         // Reshelve.
                         await tf.ShelveAsync(shelveset: gatedShelvesetName, commentFile: commentFile);

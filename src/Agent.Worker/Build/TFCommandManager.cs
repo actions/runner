@@ -92,8 +92,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             // an unmapped root folder. For example, if a workspace contains only two mappings,
             // $/foo -> $(build.sourcesDirectory)\foo and $/bar -> $(build.sourcesDirectory)\bar,
             // then "tf status $(build.sourcesDirectory) /r" will not be able to resolve the workspace.
-            // Therefore, the "localPath" parameter is not passed to the "status" subcommand - the
-            // collection URL and workspace name are used instead.
+            // Therefore, the "localPath" parameter is not actually passed to the "status" subcommand -
+            // the collection URL and workspace name are used instead.
             ArgUtil.Equal(SourcesDirectory, localPath, nameof(localPath));
             string xml = await RunPorcelainCommandAsync("vc", "status", $"/workspace:{WorkspaceName}", "/recursive", "/nodetect", "/format:xml");
             var serializer = new XmlSerializer(typeof(TFStatus));
@@ -162,7 +162,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
         public async Task WorkspaceNewAsync()
         {
-            await RunCommandAsync("vc", "workspace", "/new", "/location:server", "/permission:Public", WorkspaceName);
+            await RunCommandAsync("vc", "workspace", "/new", "/location:local", "/permission:Public", WorkspaceName);
         }
 
         public async Task<ITfsVCWorkspace[]> WorkspacesAsync(bool matchWorkspaceNameOnAnyComputer = false)

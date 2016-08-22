@@ -1,14 +1,9 @@
-using Microsoft.TeamFoundation.DistributedTask.WebApi;
-using Microsoft.VisualStudio.Services.Agent;
 using Microsoft.VisualStudio.Services.Agent.Util;
-using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
 
@@ -85,7 +80,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         public async Task<ITfsVCStatus> StatusAsync(string localPath)
         {
             ArgUtil.NotNullOrEmpty(localPath, nameof(localPath));
-            string xml = await RunPorcelainCommandAsync(FormatFlags.OmitCollectionUrl, "status", "-recursive", "-format:xml", localPath);
+            string xml = await RunPorcelainCommandAsync(FormatFlags.OmitCollectionUrl, "status", "-recursive", "-nodetect", "-format:xml", localPath);
             var serializer = new XmlSerializer(typeof(TeeStatus));
             using (var reader = new StringReader(xml ?? string.Empty))
             {
@@ -191,7 +186,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
         public async Task WorkspaceNewAsync()
         {
-            await RunCommandAsync("workspace", "-new", "-location:server", "-permission:Public", WorkspaceName);
+            await RunCommandAsync("workspace", "-new", "-location:local", "-permission:Public", WorkspaceName);
         }
 
         public async Task<ITfsVCWorkspace[]> WorkspacesAsync(bool matchWorkspaceNameOnAnyComputer = false)
