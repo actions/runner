@@ -378,8 +378,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                         continue;
                     }
 
-                    if (string.Equals(tfMapping.LocalPath, directory, StringComparison.Ordinal) ||
-                        (tfMapping.LocalPath ?? string.Empty).StartsWith(directorySlash, StringComparison.Ordinal))
+                    if (string.Equals(tfMapping.LocalPath, directory, StringComparison.CurrentCultureIgnoreCase) ||
+                        (tfMapping.LocalPath ?? string.Empty).StartsWith(directorySlash, StringComparison.CurrentCultureIgnoreCase))
                     {
                         // Try deleting the workspace from the server.
                         if (!(await tf.TryWorkspaceDeleteAsync(tfWorkspace)))
