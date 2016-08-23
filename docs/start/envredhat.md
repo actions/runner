@@ -40,7 +40,7 @@ export PATH=$PATH:/usr/local/git/bin
 
 ## Optionally Java if TfsVc
 
-The agent distributes team explorer everywhere.
+The agent distributes [Team Explorer Everywhere (TEE)](https://www.visualstudio.com/products/team-explorer-everywhere-vs.aspx).
 
 But, if you are using TfsVc, install Oracle Java 1.6+ as TEE uses Java.
 
