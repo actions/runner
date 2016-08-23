@@ -286,13 +286,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                 DateTime completedDate = startedDate.AddTicks(duration.Ticks);
                 resultCreateModel.CompletedDate = completedDate;
 
-                if (resultNode.Attributes["outcome"] == null || resultNode.Attributes["outcome"].Value == null)
+                if (resultNode.Attributes["outcome"] == null || resultNode.Attributes["outcome"].Value == null || string.Equals(resultNode.Attributes["outcome"].Value, "failed", StringComparison.OrdinalIgnoreCase))
                 {
-                    resultCreateModel.Outcome = "Failed";
+                    resultCreateModel.Outcome = TestOutcome.Failed.ToString(); ;
                 }               
-                else if (string.Equals(resultNode.Attributes["outcome"].Value, "passed", StringComparison.OrdinalIgnoreCase) || string.Equals(resultNode.Attributes["outcome"].Value, "failed", StringComparison.OrdinalIgnoreCase))
+                else if (string.Equals(resultNode.Attributes["outcome"].Value, "passed", StringComparison.OrdinalIgnoreCase))
                 {
-                    resultCreateModel.Outcome = resultNode.Attributes["outcome"].Value;
+                    resultCreateModel.Outcome = TestOutcome.Passed.ToString();
                 }
                 else
                 {                    
