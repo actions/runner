@@ -49,6 +49,49 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "PublishTestResults")]
+        public void PendingOutcomeTreatedAsNotExecuted()
+        {
+            SetupMocks();
+            String trxContents = "<?xml version = \"1.0\" encoding = \"UTF-8\"?>" +
+               "<TestRun id = \"ee3d8b3b-1ac9-4a7e-abfa-3d3ed2008613\" name = \"somerandomusername@SOMERANDOMCOMPUTERNAME 2015-03-20 16:53:32\" runUser = \"FAREAST\\somerandomusername\" xmlns =\"http://microsoft.com/schemas/VisualStudio/TeamTest/2010\"><Times creation = \"2015-03-20T16:53:32.3309380+05:30\" queuing = \"2015-03-20T16:53:32.3319381+05:30\" start = \"2015-03-20T16:53:32.3349628+05:30\" finish = \"2015-03-20T16:53:32.9232329+05:30\" />" +
+
+                 "<TestDefinitions>" +
+                   "<UnitTest name = \"TestMethod2\" storage = \"c:/users/somerandomusername/source/repos/projectx/unittestproject4/unittestproject4/bin/debug/unittestproject4.dll\" priority = \"1\" id = \"f0d6b58f-dc08-9c0b-aab7-0a1411d4a346\"><Owners><Owner name = \"asdf2\" /></Owners><Execution id = \"48ec1e47-b9df-43b9-aef2-a2cc8742353d\" /><TestMethod codeBase = \"c:/users/somerandomusername/source/repos/projectx/unittestproject4/unittestproject4/bin/debug/unittestproject4.dll\" adapterTypeName = \"Microsoft.VisualStudio.TestTools.TestTypes.Unit.UnitTestAdapter\" className = \"UnitTestProject4.UnitTest1\" name = \"TestMethod2\" /></UnitTest>" +
+                   "<WebTest name=\"PSD_Startseite\" storage=\"c:\\vsoagent\\a284d2cc\\vseqa1\\psd_startseite.webtest\" id=\"01da1a13-b160-4ee6-9d84-7a6dfe37b1d2\" persistedWebTest=\"7\"><TestCategory><TestCategoryItem TestCategory=\"PSD\" /></TestCategory><Execution id=\"eb421c16-4546-435a-9c24-0d2878ea76d4\" /></WebTest>" +
+                 "</TestDefinitions>" +                
+
+                 "<Results>" +
+                   "<UnitTestResult executionId = \"48ec1e47-b9df-43b9-aef2-a2cc8742353d\" testId = \"f0d6b58f-dc08-9c0b-aab7-0a1411d4a346\" testName = \"TestMethod2\" computerName = \"SOMERANDOMCOMPUTERNAME\" duration = \"00:00:00.0834563\" startTime = \"2015-03-20T16:53:32.3099353+05:30\" endTime = \"2015-03-20T16:53:32.3939623+05:30\" testType = \"13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b\" outcome = \"Failed\" testListId = \"8c84fa94-04c1-424b-9868-57a2d4851a1d\" relativeResultsDirectory = \"48ec1e47-b9df-43b9-aef2-a2cc8742353d\" ><Output><StdOut>Show console log output.</StdOut><ErrorInfo><Message>Assert.Fail failed.</Message><StackTrace>at UnitTestProject4.UnitTest1.TestMethod2() in C:\\Users\\somerandomusername\\Source\\Repos\\Projectx\\UnitTestProject4\\UnitTestProject4\\UnitTest1.cs:line 21</StackTrace></ErrorInfo></Output>" +
+                     "<ResultFiles><ResultFile path=\"DIGANR-DEV4\\x.txt\" /></ResultFiles>" +
+                   "</UnitTestResult>" +
+
+                   "<WebTestResult executionId=\"eb421c16-4546-435a-9c24-0d2878ea76d4\" testId=\"01da1a13-b160-4ee6-9d84-7a6dfe37b1d2\" testName=\"PSD_Startseite\" computerName=\"LAB-BUILDVNEXT\" duration=\"00:00:01.6887389\" startTime=\"2015-05-20T18:53:51.1063165+00:00\" endTime=\"2015-05-20T18:54:03.9160742+00:00\" testType=\"4e7599fa-5ecb-43e9-a887-cd63cf72d207\" outcome=\"Passed\" testListId=\"8c84fa94-04c1-424b-9868-57a2d4851a1d\" relativeResultsDirectory=\"eb421c16-4546-435a-9c24-0d2878ea76d4\"><Output><StdOut>Do not show console log output.</StdOut></Output>" +
+                     "<ResultFiles>" +
+                       "<ResultFile path=\"PSD_Startseite.webtestResult\" />" +
+                     "</ResultFiles>" +
+                     "<WebTestResultFilePath>LOCAL SERVICE_LAB-BUILDVNEXT 2015-05-20 18_53_41\\In\\eb421c16-4546-435a-9c24-0d2878ea76d4\\PSD_Startseite.webtestResult</WebTestResultFilePath>" +
+                   "</WebTestResult>" +
+                 "</Results>" +
+
+                 "<ResultSummary outcome=\"Failed\"><Counters total = \"2\" executed = \"2\" passed=\"1\" failed=\"1\" error=\"0\" timeout=\"0\" aborted=\"0\" inconclusive=\"0\" passedButRunAborted=\"0\" notRunnable=\"0\" notExecuted=\"0\" disconnected=\"0\" warning=\"0\" completed=\"0\" inProgress=\"0\" pending=\"0\" />" +
+                 "</ResultSummary>" +
+
+               "</TestRun>";
+
+            var runData = GetTestRunData(trxContents, null, new TestRunContext("Owner", "any cpu", "debug", 1, "", "releaseUri", "releaseEnvironmentUri"));
+          
+            Assert.Equal(runData.Results.Length, 2);
+
+            Assert.Equal(runData.Results[0].Outcome, "Failed");
+            Assert.Equal(runData.Results[0].TestCaseTitle, "TestMethod2");           
+
+            Assert.Equal(runData.Results[1].Outcome, "Passed");
+            Assert.Equal(runData.Results[1].TestCaseTitle, "PSD_Startseite");            
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void ThereAreNoResultsWithInvalidGuid()
         {
             SetupMocks();
