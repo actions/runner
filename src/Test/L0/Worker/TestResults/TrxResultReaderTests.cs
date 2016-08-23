@@ -61,7 +61,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
                  "</TestDefinitions>" +                
 
                  "<Results>" +
-                   "<UnitTestResult executionId = \"48ec1e47-b9df-43b9-aef2-a2cc8742353d\" testId = \"f0d6b58f-dc08-9c0b-aab7-0a1411d4a346\" testName = \"TestMethod2\" computerName = \"SOMERANDOMCOMPUTERNAME\" duration = \"00:00:00.0834563\" startTime = \"2015-03-20T16:53:32.3099353+05:30\" endTime = \"2015-03-20T16:53:32.3939623+05:30\" testType = \"13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b\" outcome = \"Failed\" testListId = \"8c84fa94-04c1-424b-9868-57a2d4851a1d\" relativeResultsDirectory = \"48ec1e47-b9df-43b9-aef2-a2cc8742353d\" ><Output><StdOut>Show console log output.</StdOut><ErrorInfo><Message>Assert.Fail failed.</Message><StackTrace>at UnitTestProject4.UnitTest1.TestMethod2() in C:\\Users\\somerandomusername\\Source\\Repos\\Projectx\\UnitTestProject4\\UnitTestProject4\\UnitTest1.cs:line 21</StackTrace></ErrorInfo></Output>" +
+                   "<UnitTestResult executionId = \"48ec1e47-b9df-43b9-aef2-a2cc8742353d\" testId = \"f0d6b58f-dc08-9c0b-aab7-0a1411d4a346\" testName = \"TestMethod2\" computerName = \"SOMERANDOMCOMPUTERNAME\" duration = \"00:00:00.0834563\" startTime = \"2015-03-20T16:53:32.3099353+05:30\" endTime = \"2015-03-20T16:53:32.3939623+05:30\" testType = \"13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b\" outcome = \"Pending\" testListId = \"8c84fa94-04c1-424b-9868-57a2d4851a1d\" relativeResultsDirectory = \"48ec1e47-b9df-43b9-aef2-a2cc8742353d\" ><Output><StdOut>Show console log output.</StdOut><ErrorInfo><Message>Assert.Fail failed.</Message><StackTrace>at UnitTestProject4.UnitTest1.TestMethod2() in C:\\Users\\somerandomusername\\Source\\Repos\\Projectx\\UnitTestProject4\\UnitTestProject4\\UnitTest1.cs:line 21</StackTrace></ErrorInfo></Output>" +
                      "<ResultFiles><ResultFile path=\"DIGANR-DEV4\\x.txt\" /></ResultFiles>" +
                    "</UnitTestResult>" +
 
@@ -82,7 +82,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
           
             Assert.Equal(runData.Results.Length, 2);
 
-            Assert.Equal(runData.Results[0].Outcome, "Failed");
+            Assert.Equal(runData.Results[0].Outcome, "Pending");
             Assert.Equal(runData.Results[0].TestCaseTitle, "TestMethod2");           
 
             Assert.Equal(runData.Results[1].Outcome, "Passed");
