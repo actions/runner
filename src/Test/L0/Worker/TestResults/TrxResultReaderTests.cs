@@ -82,7 +82,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
           
             Assert.Equal(runData.Results.Length, 2);
 
-            Assert.Equal(runData.Results[0].Outcome, "Pending");
+            Assert.Equal(runData.Results[0].Outcome, "NotExecuted");
             Assert.Equal(runData.Results[0].TestCaseTitle, "TestMethod2");           
 
             Assert.Equal(runData.Results[1].Outcome, "Passed");
