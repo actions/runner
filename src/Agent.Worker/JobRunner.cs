@@ -50,7 +50,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             // jobServerQueue is the throttling reporter.
             var jobServerQueue = HostContext.GetService<IJobServerQueue>();
             var jobConnection = ApiUtil.CreateConnection(jobServerUrl, jobServerCredential, new DelegatingHandler[] { new ThrottlingReportHandler(jobServerQueue) });
-            await jobServer.ConnectAsync(jobConnection, jobRequestCancellationToken);
+            await jobServer.ConnectAsync(jobConnection);
 
             jobServerQueue.Start(message);
 
@@ -118,7 +118,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 if (taskServerUri != null)
                 {
                     Trace.Info($"Creating task server with {taskServerUri}");
-                    await taskServer.ConnectAsync(ApiUtil.CreateConnection(taskServerUri, taskServerCredential), jobRequestCancellationToken);
+                    await taskServer.ConnectAsync(ApiUtil.CreateConnection(taskServerUri, taskServerCredential));
                 }
 
                 if (taskServerUri == null || !await taskServer.TaskDefinitionEndpointExist(jobRequestCancellationToken))
@@ -127,7 +127,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     var configStore = HostContext.GetService<IConfigurationStore>();
                     taskServerUri = new Uri(configStore.GetSettings().ServerUrl);
                     Trace.Info($"Recreate task server with configuration server url: {taskServerUri}");
-                    await taskServer.ConnectAsync(ApiUtil.CreateConnection(taskServerUri, taskServerCredential), jobRequestCancellationToken);
+                    await taskServer.ConnectAsync(ApiUtil.CreateConnection(taskServerUri, taskServerCredential));
                 }
 
                 // Expand the endpoint data values.

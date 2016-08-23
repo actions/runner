@@ -1,7 +1,7 @@
+using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
 using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
+using System.Globalization;
 
 namespace Microsoft.VisualStudio.Services.Agent
 {
@@ -16,8 +16,8 @@ namespace Microsoft.VisualStudio.Services.Agent
         event EventHandler CancelKeyPress;
 
         bool Silent { get; set; }
-        Task<string> ReadLineAsync(CancellationToken token);
-        Task<string> ReadSecretAsync(CancellationToken token);
+        string ReadLine();
+        string ReadSecret();
         void Write(string message);
         void WriteLine();
         void WriteLine(string line);
@@ -46,56 +46,40 @@ namespace Microsoft.VisualStudio.Services.Agent
             CancelKeyPress?.Invoke(this, e);
         }
 
-        public async Task<string> ReadLineAsync(CancellationToken token)
+        public string ReadLine()
         {
             // Read and trace the value.
             Trace.Info("READ LINE");
             string value = Console.ReadLine();
-
-            // when we get Ctrl+C/Break from console, Console.Readline() will return null.
-            if (value == null)
-            {
-                // wait for 100 milliseconds for CancellationToken got fired.
-                // Task.Delay() will throw OperationCancelException on cancellation.
-                await Task.Delay(100, token);
-            }
-
             Trace.Info($"Read value: '{value}'");
             return value;
         }
 
         // TODO: Consider using SecureString.
-        public async Task<string> ReadSecretAsync(CancellationToken token)
+        public string ReadSecret()
         {
             Trace.Info("READ SECRET");
             var chars = new List<char>();
             while (true)
             {
-                if (Console.KeyAvailable)
+                ConsoleKeyInfo key = Console.ReadKey(intercept: true);
+                if (key.Key == ConsoleKey.Enter)
                 {
-                    ConsoleKeyInfo key = Console.ReadKey(intercept: true);
-                    if (key.Key == ConsoleKey.Enter)
+                    Console.WriteLine();
+                    break;
+                }
+                else if (key.Key == ConsoleKey.Backspace)
+                {
+                    if (chars.Count > 0)
                     {
-                        Console.WriteLine();
-                        break;
-                    }
-                    else if (key.Key == ConsoleKey.Backspace)
-                    {
-                        if (chars.Count > 0)
-                        {
-                            chars.RemoveAt(chars.Count - 1);
-                            Console.Write("\b \b");
-                        }
-                    }
-                    else if (key.KeyChar > 0)
-                    {
-                        chars.Add(key.KeyChar);
-                        Console.Write("*");
+                        chars.RemoveAt(chars.Count - 1);
+                        Console.Write("\b \b");
                     }
                 }
-                else
+                else if (key.KeyChar > 0)
                 {
-                    await Task.Delay(100, token);
+                    chars.Add(key.KeyChar);
+                    Console.Write("*");
                 }
             }
 

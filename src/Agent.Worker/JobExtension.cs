@@ -1,3 +1,6 @@
+using Microsoft.VisualStudio.Services.Agent;
+using System.Threading.Tasks;
+
 namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
     public interface IJobExtension : IExtension

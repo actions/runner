@@ -11,7 +11,7 @@ namespace Microsoft.VisualStudio.Services.Agent
     [ServiceLocator(Default = typeof(JobServer))]
     public interface IJobServer : IAgentService
     {
-        Task ConnectAsync(VssConnection jobConnection, CancellationToken cancellationToken);
+        Task ConnectAsync(VssConnection jobConnection);
 
         // logging and console
         Task<TaskLog> AppendLogContentAsync(Guid scopeIdentifier, string hubName, Guid planId, int logId, Stream uploadStream, CancellationToken cancellationToken);
@@ -28,13 +28,13 @@ namespace Microsoft.VisualStudio.Services.Agent
         private VssConnection _connection;
         private TaskHttpClient _taskClient;
 
-        public async Task ConnectAsync(VssConnection jobConnection, CancellationToken cancellationToken)
+        public async Task ConnectAsync(VssConnection jobConnection)
         {
             _connection = jobConnection;
 
             if (!_connection.HasAuthenticated)
             {
-                await _connection.ConnectAsync(cancellationToken);
+                await _connection.ConnectAsync();
             }
 
             _taskClient = _connection.GetClient<TaskHttpClient>();

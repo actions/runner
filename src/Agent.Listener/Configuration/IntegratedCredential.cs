@@ -1,8 +1,6 @@
 using Microsoft.VisualStudio.Services.Agent.Util;
 using Microsoft.VisualStudio.Services.Common;
 using System.Collections.Generic;
-using System.Threading.Tasks;
-using System.Threading;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 {
@@ -24,9 +22,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             return creds;
         }
 
-        public override Task EnsureCredential(IHostContext context, CommandSettings command, string serverUrl, CancellationToken token)
+        public override void EnsureCredential(IHostContext context, CommandSettings command, string serverUrl)
         {
-            return Task.CompletedTask;
             //Integrated credentials do not require any configuration parameters
         }
     }

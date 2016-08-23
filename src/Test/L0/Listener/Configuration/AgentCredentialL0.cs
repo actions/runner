@@ -2,14 +2,14 @@ using Microsoft.VisualStudio.Services.Agent.Listener;
 using Microsoft.VisualStudio.Services.Agent.Listener.Configuration;
 using Microsoft.VisualStudio.Services.Client;
 using Microsoft.VisualStudio.Services.Common;
-using System.Threading.Tasks;
-using System.Threading;
+using System.Collections.Generic;
+using System.Diagnostics;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
 {
     public class TestAgentCredential : CredentialProvider
     {
-        public TestAgentCredential() : base("TEST") { }
+        public TestAgentCredential(): base("TEST") {}
         public override VssCredentials GetVssCredentials(IHostContext context)
         {
             Tracing trace = context.GetTrace("PersonalAccessToken");
@@ -20,10 +20,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
             trace.Verbose("cred created");
 
             return creds;
-        }
-        public override Task EnsureCredential(IHostContext context, CommandSettings command, string serverUrl, CancellationToken token)
+        }        
+        public override void EnsureCredential(IHostContext context, CommandSettings command, string serverUrl)
         {
-            return Task.CompletedTask;
         }
     }
 }

@@ -33,10 +33,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Capabilities
             // Add each capability returned from each provider.
             foreach (ICapabilitiesProvider provider in providers ?? new ICapabilitiesProvider[0])
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                List<Capability> caps = await provider.GetCapabilitiesAsync(settings) ?? new List<Capability>();
-                Trace.Info($"Find {caps.Count} capabilities thought {provider.GetType().Name}.");
-                foreach (Capability capability in caps)
+                foreach (Capability capability in await provider.GetCapabilitiesAsync(settings, cancellationToken) ?? new List<Capability>())
                 {
                     capabilities[capability.Name] = capability.Value;
                 }
@@ -50,7 +47,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Capabilities
     {
         int Order { get; }
 
-        Task<List<Capability>> GetCapabilitiesAsync(AgentSettings settings);
+        Task<List<Capability>> GetCapabilitiesAsync(AgentSettings settings, CancellationToken cancellationToken);
     }
 
     public sealed class Capability

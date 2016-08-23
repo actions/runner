@@ -3,8 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
+
 using Microsoft.VisualStudio.Services.Agent.Util;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
@@ -47,13 +46,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             {
                 Trace.Error(ex);
                 throw;
-            }
+            }            
         }
 
-        public override Task<bool> ConfigureService(
+        public override bool ConfigureService(
             AgentSettings settings,
-            CommandSettings command,
-            CancellationToken token)
+            CommandSettings command)
         {
             Trace.Entering();
 

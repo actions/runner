@@ -86,7 +86,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 try
                 {
                     Trace.Info("Connecting to the Agent Server...");
-                    await _agentServer.ConnectAsync(conn, token);
+                    await _agentServer.ConnectAsync(conn);
 
                     _session = await _agentServer.CreateAgentSessionAsync(
                                                         _settings.PoolId,

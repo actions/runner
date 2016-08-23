@@ -2,8 +2,6 @@
 using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
 using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener
 {
@@ -44,134 +42,121 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         //
         // Interactive flags.
         //
-        public async Task<bool> GetAcceptTeeEula(CancellationToken token)
+        public bool GetAcceptTeeEula()
         {
-            return await TestFlagOrPrompt(
+            return TestFlagOrPrompt(
                 name: Constants.Agent.CommandLine.Flags.AcceptTeeEula,
                 description: StringUtil.Loc("AcceptTeeEula"),
-                defaultValue: false,
-                token: token);
+                defaultValue: false);
         }
 
-        public async Task<bool> GetReplace(CancellationToken token)
+        public bool GetReplace()
         {
-            return await TestFlagOrPrompt(
+            return TestFlagOrPrompt(
                 name: Constants.Agent.CommandLine.Flags.Replace,
                 description: StringUtil.Loc("Replace"),
-                defaultValue: false,
-                token: token);
+                defaultValue: false);
         }
 
-        public async Task<bool> GetRunAsService(CancellationToken token)
+        public bool GetRunAsService()
         {
-            return await TestFlagOrPrompt(
+            return TestFlagOrPrompt(
                 name: Constants.Agent.CommandLine.Flags.RunAsService,
                 description: StringUtil.Loc("RunAgentAsServiceDescription"),
-                defaultValue: false,
-                token: token);
+                defaultValue: false);
         }
 
         //
         // Args.
         //
-        public async Task<string> GetAgentName(CancellationToken token)
+        public string GetAgentName()
         {
-            return await GetArgOrPrompt(
+            return GetArgOrPrompt(
                 name: Constants.Agent.CommandLine.Args.Agent,
                 description: StringUtil.Loc("AgentName"),
                 defaultValue: Environment.MachineName ?? "myagent",
-                validator: Validators.NonEmptyValidator,
-                token: token);
+                validator: Validators.NonEmptyValidator);
         }
 
-        public async Task<string> GetAuth(string defaultValue, CancellationToken token)
+        public string GetAuth(string defaultValue)
         {
-            return await GetArgOrPrompt(
+            return GetArgOrPrompt(
                 name: Constants.Agent.CommandLine.Args.Auth,
                 description: StringUtil.Loc("AuthenticationType"),
                 defaultValue: defaultValue,
-                validator: Validators.AuthSchemeValidator,
-                token: token);
+                validator: Validators.AuthSchemeValidator);
         }
 
-        public async Task<string> GetPassword(CancellationToken token)
+        public string GetPassword()
         {
-            return await GetArgOrPrompt(
+            return GetArgOrPrompt(
                 name: Constants.Agent.CommandLine.Args.Password,
                 description: StringUtil.Loc("Password"),
                 defaultValue: string.Empty,
-                validator: Validators.NonEmptyValidator,
-                token: token);
+                validator: Validators.NonEmptyValidator);
         }
 
-        public async Task<string> GetPool(CancellationToken token)
+        public string GetPool()
         {
-            return await GetArgOrPrompt(
+            return GetArgOrPrompt(
                 name: Constants.Agent.CommandLine.Args.Pool,
                 description: StringUtil.Loc("AgentMachinePoolNameLabel"),
                 defaultValue: "default",
-                validator: Validators.NonEmptyValidator,
-                token: token);
+                validator: Validators.NonEmptyValidator);
         }
 
-        public async Task<string> GetToken(CancellationToken token)
+        public string GetToken()
         {
-            return await GetArgOrPrompt(
+            return GetArgOrPrompt(
                 name: Constants.Agent.CommandLine.Args.Token,
                 description: StringUtil.Loc("PersonalAccessToken"),
                 defaultValue: string.Empty,
-                validator: Validators.NonEmptyValidator,
-                token: token);
+                validator: Validators.NonEmptyValidator);
         }
 
-        public async Task<string> GetUrl(CancellationToken token)
+        public string GetUrl()
         {
-            return await GetArgOrPrompt(
+            return GetArgOrPrompt(
                 name: Constants.Agent.CommandLine.Args.Url,
                 description: StringUtil.Loc("ServerUrl"),
                 defaultValue: string.Empty,
-                validator: Validators.ServerUrlValidator,
-                token: token);
+                validator: Validators.ServerUrlValidator);
         }
 
-        public async Task<string> GetUserName(CancellationToken token)
+        public string GetUserName()
         {
-            return await GetArgOrPrompt(
+            return GetArgOrPrompt(
                 name: Constants.Agent.CommandLine.Args.UserName,
                 description: StringUtil.Loc("UserName"),
                 defaultValue: string.Empty,
-                validator: Validators.NonEmptyValidator,
-                token: token);
+                validator: Validators.NonEmptyValidator);
         }
 
-        public async Task<string> GetWindowsLogonAccount(string defaultValue, CancellationToken token)
+        public string GetWindowsLogonAccount(string defaultValue)
         {
-            return await GetArgOrPrompt(
+            return GetArgOrPrompt(
                 name: Constants.Agent.CommandLine.Args.WindowsLogonAccount,
                 description: StringUtil.Loc("WindowsLogonAccountNameDescription"),
                 defaultValue: defaultValue,
-                validator: Validators.NTAccountValidator,
-                token: token);
+                validator: Validators.NTAccountValidator);
         }
 
-        public async Task<string> GetWindowsLogonPassword(string accountName, CancellationToken token)
+        public string GetWindowsLogonPassword(string accountName)
         {
-            return await GetArgOrPrompt(
+            return GetArgOrPrompt(
                 name: Constants.Agent.CommandLine.Args.WindowsLogonPassword,
                 description: StringUtil.Loc("WindowsLogonPasswordDescription", accountName),
                 defaultValue: string.Empty,
-                validator: Validators.NonEmptyValidator,
-                token: token);
+                validator: Validators.NonEmptyValidator);
         }
 
-        public async Task<string> GetWork(CancellationToken token)
+        public string GetWork()
         {
-            return await GetArgOrPrompt(
+            return GetArgOrPrompt(
                 name: Constants.Agent.CommandLine.Args.Work,
                 description: StringUtil.Loc("WorkFolderDescription"),
                 defaultValue: Constants.Path.WorkDirectory,
-                validator: Validators.NonEmptyValidator,
-                token: token);
+                validator: Validators.NonEmptyValidator);
         }
 
         public string GetNotificationPipeName()
@@ -193,12 +178,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             return result;
         }
 
-        private async Task<string> GetArgOrPrompt(
+        private string GetArgOrPrompt(
             string name,
             string description,
             string defaultValue,
-            Func<string, bool> validator,
-            CancellationToken token)
+            Func<string, bool> validator)
         {
             // Check for the arg in the command line parser.
             ArgUtil.NotNull(validator, nameof(validator));
@@ -217,14 +201,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             }
 
             // Otherwise prompt for the arg.
-            return await _promptManager.ReadValue(
+            return _promptManager.ReadValue(
                 argName: name,
                 description: description,
                 secret: Constants.Agent.CommandLine.Args.Secrets.Any(x => string.Equals(x, name, StringComparison.OrdinalIgnoreCase)),
                 defaultValue: defaultValue,
                 validator: validator,
-                unattended: Unattended,
-                token: token);
+                unattended: Unattended);
         }
 
         private bool TestCommand(string name)
@@ -241,21 +224,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             return result;
         }
 
-        private async Task<bool> TestFlagOrPrompt(
+        private bool TestFlagOrPrompt(
             string name,
             string description,
-            bool defaultValue,
-            CancellationToken token)
+            bool defaultValue)
         {
             bool result = TestFlag(name);
             if (!result)
             {
-                result = await _promptManager.ReadBool(
+                result = _promptManager.ReadBool(
                     argName: name,
                     description: description,
                     defaultValue: defaultValue,
-                    unattended: Unattended,
-                    token: token);
+                    unattended: Unattended);
             }
 
             return result;

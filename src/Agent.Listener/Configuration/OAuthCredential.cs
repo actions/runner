@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.VisualStudio.Services.Common;
 using Microsoft.VisualStudio.Services.OAuth;
 using Microsoft.VisualStudio.Services.WebApi;
@@ -9,19 +7,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 {
     public class OAuthCredential : CredentialProvider
     {
-        public OAuthCredential()
+        public OAuthCredential() 
             : base(Constants.Configuration.OAuth)
         {
         }
 
-        public override Task EnsureCredential(
-            IHostContext context,
-            CommandSettings command,
-            String serverUrl,
-            CancellationToken token)
+        public override void EnsureCredential(
+            IHostContext context, 
+            CommandSettings command, 
+            String serverUrl)
         {
             // Nothing to verify here
-            return Task.CompletedTask;
         }
 
         public override VssCredentials GetVssCredentials(IHostContext context)

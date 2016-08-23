@@ -3,6 +3,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
+using Microsoft.VisualStudio.Services.Client;
 using Microsoft.VisualStudio.Services.WebApi;
 
 namespace Microsoft.VisualStudio.Services.Agent
@@ -10,7 +11,7 @@ namespace Microsoft.VisualStudio.Services.Agent
     [ServiceLocator(Default = typeof(TaskServer))]
     public interface ITaskServer : IAgentService
     {
-        Task ConnectAsync(VssConnection jobConnection, CancellationToken cancellationToken);
+        Task ConnectAsync(VssConnection jobConnection);
 
         // task download
         Task<Stream> GetTaskContentZipAsync(Guid taskId, TaskVersion taskVersion, CancellationToken token);
@@ -26,13 +27,13 @@ namespace Microsoft.VisualStudio.Services.Agent
 
         private TaskAgentHttpClient _taskAgentClient;
 
-        public async Task ConnectAsync(VssConnection jobConnection, CancellationToken cancellationToken)
+        public async Task ConnectAsync(VssConnection jobConnection)
         {
             _connection = jobConnection;
 
             if (!_connection.HasAuthenticated)
             {
-                await _connection.ConnectAsync(cancellationToken);
+                await _connection.ConnectAsync();
             }
 
             _taskAgentClient = _connection.GetClient<TaskAgentHttpClient>();

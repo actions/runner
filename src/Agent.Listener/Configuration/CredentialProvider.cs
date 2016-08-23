@@ -1,6 +1,4 @@
 using System;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using Microsoft.VisualStudio.Services.Client;
 using Microsoft.VisualStudio.Services.Common;
@@ -11,7 +9,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
     {
         CredentialData CredentialData { get; set; }
         VssCredentials GetVssCredentials(IHostContext context);
-        Task EnsureCredential(IHostContext context, CommandSettings command, string serverUrl, CancellationToken token);
+        void EnsureCredential(IHostContext context, CommandSettings command, string serverUrl);
     }
 
     public abstract class CredentialProvider : ICredentialProvider
@@ -25,13 +23,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         public CredentialData CredentialData { get; set; }
 
         public abstract VssCredentials GetVssCredentials(IHostContext context);
-        public abstract Task EnsureCredential(IHostContext context, CommandSettings command, string serverUrl, CancellationToken token);
+        public abstract void EnsureCredential(IHostContext context, CommandSettings command, string serverUrl);
     }
 
     public sealed class PersonalAccessToken : CredentialProvider
     {
-        public PersonalAccessToken() : base(Constants.Configuration.PAT) { }
-
+        public PersonalAccessToken(): base(Constants.Configuration.PAT) {}
+        
         public override VssCredentials GetVssCredentials(IHostContext context)
         {
             ArgUtil.NotNull(context, nameof(context));
@@ -56,19 +54,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             return creds;
         }
 
-        public override async Task EnsureCredential(IHostContext context, CommandSettings command, string serverUrl, CancellationToken token)
+        public override void EnsureCredential(IHostContext context, CommandSettings command, string serverUrl)
         {
             ArgUtil.NotNull(context, nameof(context));
             Tracing trace = context.GetTrace(nameof(PersonalAccessToken));
             trace.Info(nameof(EnsureCredential));
             ArgUtil.NotNull(command, nameof(command));
-            CredentialData.Data[Constants.Agent.CommandLine.Args.Token] = await command.GetToken(token);
+            CredentialData.Data[Constants.Agent.CommandLine.Args.Token] = command.GetToken();
         }
     }
 
     public sealed class ServiceIdentityCredential : CredentialProvider
     {
-        public ServiceIdentityCredential() : base(Constants.Configuration.ServiceIdentity) { }
+        public ServiceIdentityCredential(): base(Constants.Configuration.ServiceIdentity) {}
 
         public override VssCredentials GetVssCredentials(IHostContext context)
         {
@@ -102,20 +100,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             return creds;
         }
 
-        public override async Task EnsureCredential(IHostContext context, CommandSettings command, string serverUrl, CancellationToken token)
+        public override void EnsureCredential(IHostContext context, CommandSettings command, string serverUrl)
         {
             ArgUtil.NotNull(context, nameof(context));
             Tracing trace = context.GetTrace(nameof(PersonalAccessToken));
             trace.Info(nameof(EnsureCredential));
             ArgUtil.NotNull(command, nameof(command));
-            CredentialData.Data[Constants.Agent.CommandLine.Args.Token] = await command.GetToken(token);
-            CredentialData.Data[Constants.Agent.CommandLine.Args.UserName] = await command.GetUserName(token);
+            CredentialData.Data[Constants.Agent.CommandLine.Args.Token] = command.GetToken();
+            CredentialData.Data[Constants.Agent.CommandLine.Args.UserName] = command.GetUserName();
         }
     }
 
     public sealed class AlternateCredential : CredentialProvider
     {
-        public AlternateCredential() : base(Constants.Configuration.Alternate) { }
+        public AlternateCredential(): base(Constants.Configuration.Alternate) {}
 
         public override VssCredentials GetVssCredentials(IHostContext context)
         {
@@ -147,10 +145,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             throw new NotImplementedException();
         }
 
-        public override async Task EnsureCredential(IHostContext context, CommandSettings command, string serverUrl, CancellationToken token)
+        public override void EnsureCredential(IHostContext context, CommandSettings command, string serverUrl)
         {
-            CredentialData.Data[Constants.Agent.CommandLine.Args.UserName] = await command.GetUserName(token);
-            CredentialData.Data[Constants.Agent.CommandLine.Args.Password] = await command.GetPassword(token);
+            CredentialData.Data[Constants.Agent.CommandLine.Args.UserName] = command.GetUserName();
+            CredentialData.Data[Constants.Agent.CommandLine.Args.Password] = command.GetPassword();
         }
     }
 }

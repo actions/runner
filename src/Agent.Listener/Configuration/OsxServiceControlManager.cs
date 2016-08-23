@@ -53,7 +53,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             }
         }
 
-        public override Task<bool> ConfigureService(AgentSettings settings, CommandSettings command, CancellationToken token)
+        public override bool ConfigureService(AgentSettings settings, CommandSettings command)
         {
             Trace.Entering();
 

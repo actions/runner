@@ -4,8 +4,6 @@ using Microsoft.VisualStudio.Services.Common;
 using System;
 using System.Collections.Generic;
 using System.Net;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 {
@@ -63,13 +61,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                     credentialCache.Add(new Uri(url), "Negotiate", credential);
                     break;
             }
-
+            
             VssCredentials creds = new VssClientCredentials(new WindowsCredential(credentialCache));
             trace.Verbose("cred created");
             return creds;
         }
 
-        public override async Task EnsureCredential(IHostContext context, CommandSettings command, string serverUrl, CancellationToken token)
+        public override void EnsureCredential(IHostContext context, CommandSettings command, string serverUrl)
         {
             ArgUtil.NotNull(context, nameof(context));
             Tracing trace = context.GetTrace(nameof(PersonalAccessToken));
@@ -77,8 +75,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             ArgUtil.NotNull(command, nameof(command));
             ArgUtil.NotNullOrEmpty(serverUrl, nameof(serverUrl));
             //TODO: use Validators.NTAccountValidator when it works on Linux
-            CredentialData.Data[Constants.Agent.CommandLine.Args.UserName] = await command.GetUserName(token);
-            CredentialData.Data[Constants.Agent.CommandLine.Args.Password] = await command.GetPassword(token);
+            CredentialData.Data[Constants.Agent.CommandLine.Args.UserName] = command.GetUserName();
+            CredentialData.Data[Constants.Agent.CommandLine.Args.Password] = command.GetPassword();
             CredentialData.Data[Constants.Agent.CommandLine.Args.Url] = serverUrl;
         }
     }

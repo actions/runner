@@ -1,6 +1,7 @@
 using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Threading;
@@ -17,7 +18,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Capabilities
         // Only runs on Linux/OSX.
         public int Order => 2;
 
-        public async Task<List<Capability>> GetCapabilitiesAsync(AgentSettings settings)
+        public async Task<List<Capability>> GetCapabilitiesAsync(AgentSettings settings, CancellationToken cancellationToken)
         {
             Trace.Entering();
 
@@ -29,7 +30,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Capabilities
             }
 
             // Build the list of capabilities.
-            var builder = new CapabilitiesBuilder(HostContext);
+            var builder = new CapabilitiesBuilder(HostContext, cancellationToken);
             builder.Check(
                 name: "AndroidSDK",
                 fileName: "android",
@@ -81,14 +82,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Capabilities
         private sealed class CapabilitiesBuilder
         {
             private readonly List<Capability> _capabilities = new List<Capability>();
+            private readonly CancellationToken _cancellationToken;
             private readonly IHostContext _hostContext;
             private readonly Tracing _trace;
             private readonly IWhichUtil _whichUtil;
 
-            public CapabilitiesBuilder(IHostContext hostContext)
+            public CapabilitiesBuilder(IHostContext hostContext, CancellationToken cancellationToken)
             {
                 ArgUtil.NotNull(hostContext, nameof(hostContext));
                 _hostContext = hostContext;
+                _cancellationToken = cancellationToken;
                 _trace = _hostContext.GetTrace(this.GetType().Name);
                 _whichUtil = _hostContext.GetService<IWhichUtil>();
             }
@@ -96,6 +99,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Capabilities
             public void Check(string name, string fileName = null, string[] filePaths = null)
             {
                 ArgUtil.NotNullOrEmpty(name, nameof(name));
+                _cancellationToken.ThrowIfCancellationRequested();
 
                 try
                 {
@@ -158,7 +162,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Capabilities
                             fileName: filePath,
                             arguments: arguments ?? string.Empty,
                             environment: null,
-                            cancellationToken: CancellationToken.None);
+                            cancellationToken: _cancellationToken);
                     }
 
                     // Add the capability.
