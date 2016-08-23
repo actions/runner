@@ -138,7 +138,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 {
                     _term.WriteError(e);
                     _term.WriteError(StringUtil.Loc("FailedToConnect"));
-                    // TODO: If the connection fails, shouldn't the URL/creds be cleared from the command line parser? Otherwise retry may be immediately attempted using the same values without prompting the user for new values. The same general problem applies to every retry loop during configure.
                 }
             }
 
@@ -150,7 +149,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 publicKey = rsa.ExportParameters(false);
             }
 
-            // Loop getting agent name and pool
+            // Loop getting agent name and pool name
             string poolName = null;
             int poolId = 0;
             string agentName = null;
@@ -161,18 +160,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 try
                 {
                     poolId = await GetPoolId(poolName);
+                    Trace.Info($"PoolId for agent pool '{poolName}' is '{poolId}'.");
+                    break;
                 }
                 catch (Exception e) when (!command.Unattended)
                 {
                     _term.WriteError(e);
+                    _term.WriteError(StringUtil.Loc("FailedToFindPool"));
                 }
-
-                if (poolId > 0)
-                {
-                    break;
-                }
-
-                _term.WriteError(StringUtil.Loc("FailedToFindPool"));
             }
 
             TaskAgent agent;
@@ -217,9 +212,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                             _term.WriteError(StringUtil.Loc("FailedToReplaceAgent"));
                         }
                     }
-                    else
+                    else if (command.Unattended)
                     {
-                        // TODO: ?
+                        // if not replace and it is unattended config.
+                        throw new TaskAgentExistsException(StringUtil.Loc("AgentWithSameNameAlreadyExistInPool", poolId, agentName));
                     }
                 }
                 else
@@ -324,6 +320,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
             // We will Combine() what's stored with root.  Defaults to string a relative path
             string workFolder = command.GetWork();
+
+            // notificationPipeName for Hosted agent provisioner.
             string notificationPipeName = command.GetNotificationPipeName();
 
             // Get Agent settings

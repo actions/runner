@@ -12,6 +12,7 @@
   "AgentReplaced": "Successfully replaced the agent",
   "AgentRunningBehindProxy": "Agent is running behind proxy server: '{0}'",
   "AgentVersion": "Current agent version: '{0}'",
+  "AgentWithSameNameAlreadyExistInPool": "Pool {0} already contains an agent with name {1}.",
   "AlreadyConfiguredError": "Cannot configure the agent because it is already configured. To reconfigure the agent, run 'config.cmd remove' or './config.sh remove' first.",
   "ArgumentNeeded": "'{0}' has to be specified.",
   "ArtifactCommandNotFound": "##vso[artifact.{0}] is not a recognized command for Artifact command extension. Please reference documentaion (http://go.microsoft.com/fwlink/?LinkId=817296)",

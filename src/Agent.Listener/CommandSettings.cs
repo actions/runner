@@ -178,6 +178,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             return result;
         }
 
+
+        private void RemoveArg(string name)
+        {
+            if (_parser.Args.ContainsKey(name))
+            {
+                _parser.Args.Remove(name);
+            }
+        }
+
         private string GetArgOrPrompt(
             string name,
             string description,
@@ -192,6 +201,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             _trace.Info($"Arg '{name}': '{result}'");
             if (!string.IsNullOrEmpty(result))
             {
+                // After read the arg from input commandline args, remove it from Arg dictionary,
+                // This will help if bad arg value passed through CommandLine arg, when ConfigurationManager ask CommandSetting the second time, 
+                // It will prompt for input intead of continue use the bad input.
+                _trace.Info($"Remove {name} from Arg dictionary.");
+                RemoveArg(name);
+
                 if (validator(result))
                 {
                     return result;
