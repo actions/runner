@@ -127,15 +127,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             // the job timeline record is at order 1.
             child.InitializeTimelineRecord(_mainTimelineId, recordId, _record.Id, ExecutionContextType.Task, name, _childExecutionContextCount + 2);
 
+            child._logger = HostContext.CreateService<IPagingLogger>();
+            child._logger.Setup(_mainTimelineId, recordId);
+
             _childExecutionContextCount++;
             return child;
         }
 
         public void Start(string currentOperation = null, TimeSpan? timeout = null)
         {
-            _logger = HostContext.CreateService<IPagingLogger>();
-            _logger.Setup(_mainTimelineId, _record.Id);
-
             _record.CurrentOperation = currentOperation ?? _record.CurrentOperation;
             _record.StartTime = DateTime.UtcNow;
             _record.State = TimelineRecordState.InProgress;
@@ -308,6 +308,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 recordType: ExecutionContextType.Job,
                 name: message.JobName,
                 order: 1); // The job timeline record must be at order 1.
+
+            // Initialize the logger before writing warnings.
+            _logger = HostContext.CreateService<IPagingLogger>();
+            _logger.Setup(_mainTimelineId, _record.Id);
 
             // Log any warnings from recursive variable expansion.
             warnings?.ForEach(x => this.Warning(x));
