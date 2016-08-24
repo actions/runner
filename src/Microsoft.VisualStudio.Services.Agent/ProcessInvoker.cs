@@ -128,6 +128,19 @@ namespace Microsoft.VisualStudio.Services.Agent
             _proc.StartInfo.RedirectStandardInput = true;
             _proc.StartInfo.RedirectStandardError = true;
             _proc.StartInfo.RedirectStandardOutput = true;
+
+            // Ensure we process STDERR even the process exit event happen before we start read STDERR stream. 
+            if (_proc.StartInfo.RedirectStandardError)
+            {
+                Interlocked.Increment(ref _asyncStreamReaderCount);
+            }
+
+            // Ensure we process STDOUT even the process exit event happen before we start read STDOUT stream.
+            if (_proc.StartInfo.RedirectStandardOutput)
+            {
+                Interlocked.Increment(ref _asyncStreamReaderCount);
+            }
+
 #if OS_WINDOWS
             // If StandardErrorEncoding or StandardOutputEncoding is not specified the on the
             // ProcessStartInfo object, then .NET PInvokes to resolve the default console output
@@ -341,7 +354,6 @@ namespace Microsoft.VisualStudio.Services.Agent
 
         private void StartReadStream(StreamReader reader, ConcurrentQueue<string> dataBuffer)
         {
-            Interlocked.Increment(ref _asyncStreamReaderCount);
             Task.Run(() =>
             {
                 while (!reader.EndOfStream)
