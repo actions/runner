@@ -10,12 +10,12 @@ Tested on 16.04 LTS (Xenial) and 14.04 LTS (Trusty).  Not domain joined.
 
 ## Dependency Packages
 
-### Ubuntu 16.04
+### Ubuntu 16.04 (64-bit only)
 ```bash
 sudo apt-get install -y libunwind8 libcurl3
 ```
 
-### Ubuntu 14.04
+### Ubuntu 14.04 (64-bit only)
 ```bash
 sudo apt-get install -y libunwind8 libcurl3 libicu52
 ```

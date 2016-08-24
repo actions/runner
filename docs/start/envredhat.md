@@ -6,6 +6,8 @@
 
 Tested on Redhat 7.1.  Not domain joined.
 
+64-bit supported.
+
 ## Dependency Packages
 
 ```bash
