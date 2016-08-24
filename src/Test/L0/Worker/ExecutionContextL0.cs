@@ -53,7 +53,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                 ec.InitializeJob(jobRequest, CancellationToken.None);
 
                 // Assert.
-                pagingLogger.Verify(x => It.Is<string>(y => y.IndexOf("##[warning]") >= 0), Times.Exactly(2));
+                pagingLogger.Verify(x => x.Write(It.Is<string>(y => y.IndexOf("##[warning]") >= 0)), Times.Exactly(2));
             }
         }
     }
