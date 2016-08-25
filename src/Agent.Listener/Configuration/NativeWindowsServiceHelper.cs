@@ -1,3 +1,4 @@
+#if OS_WINDOWS 
 using System;
 using System.Collections;
 using System.ComponentModel;
@@ -23,9 +24,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
         void CreateLocalGroup(string groupName);
 
+        void DeleteLocalGroup(string groupName);
+
         void AddMemberToLocalGroup(string accountName, string groupName);
 
         void GrantFullControlToGroup(string path, string groupName);
+
+        void RemoveGroupFromFolderSecuritySetting(string folderPath, string groupName);
 
         bool CheckUserHasLogonAsServicePrivilege(string domain, string userName);
 
@@ -147,6 +152,33 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             }
         }
 
+        public void DeleteLocalGroup(string groupName)
+        {
+            int returnCode = NetLocalGroupDel(null,  // computer name 
+                                              groupName);
+
+            // return on success
+            if (returnCode == ReturnCode.S_OK)
+            {
+                return;
+            }
+
+            // Error Cases
+            switch (returnCode)
+            {
+                case ReturnCode.NERR_GroupNotFound:
+                case ReturnCode.ERROR_NO_SUCH_ALIAS:
+                    Trace.Info(StringUtil.Format("Group {0} not exists.", groupName));
+                    break;
+
+                case ReturnCode.ERROR_ACCESS_DENIED:
+                    throw new UnauthorizedAccessException(StringUtil.Loc("AccessDenied"));
+
+                default:
+                    throw new Exception(StringUtil.Loc("OperationFailed", nameof(NetLocalGroupDel), returnCode));
+            }
+        }
+
         public void AddMemberToLocalGroup(string accountName, string groupName)
         {
             Trace.Entering();
@@ -188,22 +220,48 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         public void GrantFullControlToGroup(string path, string groupName)
         {
             Trace.Entering();
+            if (!IsGroupHasFullControl(path, groupName))
+            {
+                DirectoryInfo dInfo = new DirectoryInfo(path);
+                DirectorySecurity dSecurity = dInfo.GetAccessControl();
+
+                if (!dSecurity.AreAccessRulesCanonical)
+                {
+                    Trace.Warning("Acls are not canonical, this may cause failure");
+                }
+
+                dSecurity.AddAccessRule(
+                    new FileSystemAccessRule(
+                        groupName,
+                        FileSystemRights.FullControl,
+                        InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit,
+                        PropagationFlags.None,
+                        AccessControlType.Allow));
+                dInfo.SetAccessControl(dSecurity);
+            }
+        }
+
+        private bool IsGroupHasFullControl(string path, string groupName)
+        {
             DirectoryInfo dInfo = new DirectoryInfo(path);
             DirectorySecurity dSecurity = dInfo.GetAccessControl();
 
-            if (!dSecurity.AreAccessRulesCanonical)
-            {
-                Trace.Warning("Acls are not canonical, this may cause failure");
-            }
+            var allAccessRuls = dSecurity.GetAccessRules(true, true, typeof(SecurityIdentifier)).Cast<FileSystemAccessRule>();
 
-            dSecurity.AddAccessRule(
-                new FileSystemAccessRule(
-                    groupName,
-                    FileSystemRights.FullControl,
-                    InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit,
-                    PropagationFlags.None,
-                    AccessControlType.Allow));
-            dInfo.SetAccessControl(dSecurity);
+            SecurityIdentifier sid = (SecurityIdentifier)new NTAccount(groupName).Translate(typeof(SecurityIdentifier));
+
+            if (allAccessRuls.Any(x => x.IdentityReference.Value == sid.ToString() &&
+                                       x.AccessControlType == AccessControlType.Allow &&
+                                       x.FileSystemRights.HasFlag(FileSystemRights.FullControl) &&
+                                       x.InheritanceFlags == (InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit) &&
+                                       x.PropagationFlags == PropagationFlags.None))
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
         }
 
         public bool CheckUserHasLogonAsServicePrivilege(string domain, string userName)
@@ -371,8 +429,30 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             AddMemberToLocalGroup(accountName, groupName);
 
             Trace.Info(StringUtil.Format("Set full access control to group for the folder {0}", path));
-            // TODO Check if permission exists
+
             GrantFullControlToGroup(path, groupName);
+        }
+
+        public void RemoveGroupFromFolderSecuritySetting(string folderPath, string groupName)
+        {
+            DirectoryInfo dInfo = new DirectoryInfo(folderPath);
+            if (dInfo.Exists)
+            {
+                DirectorySecurity dSecurity = dInfo.GetAccessControl();
+
+                var allAccessRuls = dSecurity.GetAccessRules(true, true, typeof(SecurityIdentifier)).Cast<FileSystemAccessRule>();
+
+                SecurityIdentifier sid = (SecurityIdentifier)new NTAccount(groupName).Translate(typeof(SecurityIdentifier));
+
+                foreach (FileSystemAccessRule ace in allAccessRuls)
+                {
+                    if (String.Equals(sid.ToString(), ace.IdentityReference.Value, StringComparison.OrdinalIgnoreCase))
+                    {
+                        dSecurity.RemoveAccessRuleSpecific(ace);
+                    }
+                }
+                dInfo.SetAccessControl(dSecurity);
+            }
         }
 
         public void InstallService(string serviceName, string serviceDisplayName, string logonAccount, string logonPassword)
@@ -817,16 +897,25 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
         [DllImport("Netapi32.dll")]
         private extern static int NetLocalGroupAdd([MarshalAs(UnmanagedType.LPWStr)] string servername,
-                                                         int level,
-                                                         ref LocalGroupInfo buf,
-                                                         int parm_err);
+                                                   int level,
+                                                   ref LocalGroupInfo buf,
+                                                   int parm_err);
 
         [DllImport("Netapi32.dll")]
         private extern static int NetLocalGroupAddMembers([MarshalAs(UnmanagedType.LPWStr)] string serverName,
+                                                          [MarshalAs(UnmanagedType.LPWStr)] string groupName,
+                                                          int level,
+                                                          ref LocalGroupMemberInfo buf,
+                                                          int totalEntries);
+        [DllImport("Netapi32.dll")]
+        public extern static int NetLocalGroupDelMembers([MarshalAs(UnmanagedType.LPWStr)] string serverName,
                                                          [MarshalAs(UnmanagedType.LPWStr)] string groupName,
                                                          int level,
                                                          ref LocalGroupMemberInfo buf,
                                                          int totalEntries);
+
+        [DllImport("Netapi32.dll")]
+        public extern static int NetLocalGroupDel([MarshalAs(UnmanagedType.LPWStr)] string servername, [MarshalAs(UnmanagedType.LPWStr)] string groupname);
 
         [DllImport("advapi32.dll")]
         private static extern Int32 LsaClose(IntPtr ObjectHandle);
@@ -903,3 +992,4 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
     }
 }
+#endif

@@ -1,28 +1,28 @@
+#if OS_OSX
 using System;
 using System.IO;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.VisualStudio.Services.Agent.Util;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 {
-    public class OsxServiceControlManager : ServiceControlManager
+    public class OsxServiceControlManager : ServiceControlManager, ILinuxServiceControlManager
     {
         // This is the name you would see when you do `systemctl list-units | grep vsts`
         private const string _svcNamePattern = "vsts.agent.{0}.{1}";
         private const string _svcDisplayPattern = "VSTS Agent ({0}.{1})";
-        private const string _plistTemplate = "vsts.agent.plist.template";
         private const string _shTemplate = "darwin.svc.sh.template";
         private const string _svcShName = "svc.sh";
 
-        public override void GenerateScripts(AgentSettings settings)
+        public void GenerateScripts(AgentSettings settings)
         {
             Trace.Entering();
 
-            CalculateServiceName(settings, _svcNamePattern, _svcDisplayPattern);
+            string serviceName;
+            string serviceDisplayName;
+            CalculateServiceName(settings, _svcNamePattern, _svcDisplayPattern, out serviceName, out serviceDisplayName);
+
             try
             {
                 string svcShPath = Path.Combine(IOUtil.GetRootPath(), _svcShName);
@@ -32,8 +32,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 string svcShContent = File.ReadAllText(Path.Combine(IOUtil.GetBinPath(), _shTemplate));
                 var tokensToReplace = new Dictionary<string, string>
                                           {
-                                              { "{{SvcDescription}}", ServiceDisplayName },
-                                              { "{{SvcNameVar}}", ServiceName }
+                                              { "{{SvcDescription}}", serviceDisplayName },
+                                              { "{{SvcNameVar}}", serviceName }
                                           };
 
                 svcShContent = tokensToReplace.Aggregate(
@@ -52,38 +52,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 throw;
             }
         }
-
-        public override bool ConfigureService(AgentSettings settings, CommandSettings command)
-        {
-            Trace.Entering();
-
-            throw new NotSupportedException("OSX Configure Service");
         }
-
-        public override void UnconfigureService()
-        {
-            Trace.Entering();
-
-            throw new NotSupportedException("OSX unconfigure service");
-        }
-
-        public override void StartService()
-        {
-            Trace.Entering();
-
-            throw new NotSupportedException("OSX start service");
-        }
-
-        public override void StopService()
-        {
-            Trace.Entering();
-
-            throw new NotSupportedException("OSX stop service");
-        }
-
-        public override bool CheckServiceExists(string serviceName)
-        {
-            return false;
         }        
-    }
-}
+#endif

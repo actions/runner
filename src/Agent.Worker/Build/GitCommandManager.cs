@@ -123,18 +123,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
             ArgUtil.File(_gitPath, nameof(_gitPath));
 
-            // Get the Git version.
-            // Due to a protential bug in coreclr that sometime lost redirected stdout,
-            // we will retry get git version 3 times.
-            for (int retry = 0; retry < 3; retry++)
-            {
-                _version = await GitVersion(context);
-                if (_version != null)
-                {
-                    break;
-                }
-            }
-
+            // Get the Git version.    
+            _version = await GitVersion(context);
             ArgUtil.NotNull(_version, nameof(_version));
             context.Debug($"Detect git version: {_version.ToString()}.");
 
