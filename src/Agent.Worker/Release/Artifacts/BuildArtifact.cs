@@ -54,7 +54,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
             var buildClient = vssConnection.GetClient<BuildHttpClient>();
             var xamlBuildClient = vssConnection.GetClient<XamlBuildHttpClient>();
             List<ServerBuildArtifact> buildArtifacts = null;
-            DefinitionType buildDefinitionType = DefinitionType.Build;
 
             try
             {
@@ -63,7 +62,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
             catch (BuildNotFoundException)
             {
                 buildArtifacts = await xamlBuildClient.GetArtifactsAsync(buildArtifactDetails.Project, buildId);
-                buildDefinitionType = DefinitionType.Xaml;
             }
 
             // No artifacts found in the build => Fail it. 
@@ -79,7 +77,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
                 if (Match(buildArtifact, artifactDefinition))
                 {
                     executionContext.Output(StringUtil.Loc("RMPreparingToDownload", buildArtifact.Name));
-                    await this.DownloadArtifactAsync(executionContext, buildArtifact, artifactDefinition, localFolderPath, buildClient, xamlBuildClient, buildDefinitionType, buildId);
+                    await this.DownloadArtifactAsync(executionContext, buildArtifact, artifactDefinition, localFolderPath);
                 }
                 else
                 {
@@ -144,11 +142,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
             IExecutionContext executionContext,
             ServerBuildArtifact buildArtifact,
             ArtifactDefinition artifactDefinition,
-            string localFolderPath,
-            BuildHttpClient buildClient,
-            XamlBuildHttpClient xamlBuildClient,
-            DefinitionType definitionType,
-            int buildId)
+            string localFolderPath)
         {
             var downloadFolderPath = Path.Combine(localFolderPath, buildArtifact.Name);
             var buildArtifactDetails = artifactDefinition.Details as BuildArtifactDetails;
