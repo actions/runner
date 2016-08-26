@@ -12,9 +12,13 @@ Net core requires update OpenSSL - [issue 110](https://github.com/Microsoft/vsts
 
 [From Net Core Instructions](https://www.microsoft.com/net/core#macos)
 
+In order to use .NET Core, we first need the latest version of OpenSSL. The easiest way to get this is from [Homebrew](http://brew.sh). After installing brew, do the following:
+
 ```bash
 brew update
 brew install openssl
+# Ensure folder exists on machine
+mkdir -p /usr/local/lib/
 ln -s /usr/local/opt/openssl/lib/libcrypto.1.0.0.dylib /usr/local/lib/
 ln -s /usr/local/opt/openssl/lib/libssl.1.0.0.dylib /usr/local/lib/
 ```
