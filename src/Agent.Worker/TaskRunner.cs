@@ -130,8 +130,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             Trace.Entering();
 
 #if OS_WINDOWS
-            Trace.Verbose("Trim double quotes around filepath type input on Windows.");
-            inputValue = inputValue.Trim('\"');
+            if (!string.IsNullOrEmpty(inputValue))
+            {
+                Trace.Verbose("Trim double quotes around filepath type input on Windows.");
+                inputValue = inputValue.Trim('\"');
+
+                Trace.Verbose($"Replace any '{Path.AltDirectorySeparatorChar}' with '{Path.DirectorySeparatorChar}'.");
+                inputValue = inputValue.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
+            }
 #endif 
             // if inputValue is rooted, return full path.
             string fullPath;
