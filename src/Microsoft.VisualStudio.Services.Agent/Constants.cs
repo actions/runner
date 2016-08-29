@@ -191,6 +191,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                 public static readonly string OSVersion = "agent.osversion";
                 public static readonly string RootDirectory = "agent.RootDirectory";
                 public static readonly string ServerOMDirectory = "agent.ServerOMDirectory";
+                public static readonly string Version = "agent.version";
                 public static readonly string WorkFolder = "agent.workfolder";
                 public static readonly string WorkingDirectory = "agent.WorkingDirectory";
             }

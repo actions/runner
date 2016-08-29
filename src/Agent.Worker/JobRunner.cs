@@ -63,6 +63,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 Trace.Info("Starting the job execution context.");
                 jobContext.Start();
 
+                // Set agent version into ExecutionContext's variables dictionary.
+                jobContext.Variables.Set(Constants.Variables.Agent.Version, Constants.Agent.Version);
+
                 // Print agent version into log for better diagnostic experience 
                 jobContext.Output(StringUtil.Loc("AgentVersion", Constants.Agent.Version));
 
@@ -323,7 +326,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 message.Environment.Variables[WellKnownDistributedTaskVariables.TaskDefinitionsUrl] = ReplaceWithConfigUriBase(new Uri(taskDefinitionsUrl)).AbsoluteUri;
                 Trace.Info($"Ensure System.TaskDefinitionsUrl match config url base. {message.Environment.Variables[WellKnownDistributedTaskVariables.TaskDefinitionsUrl]}");
             }
-            
+
             if (message.Environment.Variables.ContainsKey(WellKnownDistributedTaskVariables.TFCollectionUrl))
             {
                 string tfsCollectionUrl = message.Environment.Variables[WellKnownDistributedTaskVariables.TFCollectionUrl];
@@ -332,7 +335,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
                 // back compat server url
                 message.Environment.Variables[Constants.Variables.System.TFServerUrl] = message.Environment.Variables[WellKnownDistributedTaskVariables.TFCollectionUrl];
-                Trace.Info($"Ensure System.TFServerUrl match config url base. {message.Environment.Variables[Constants.Variables.System.TFServerUrl]}");                                
+                Trace.Info($"Ensure System.TFServerUrl match config url base. {message.Environment.Variables[Constants.Variables.System.TFServerUrl]}");
             }
 
             // fixup SystemConnection Url

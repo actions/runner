@@ -43,6 +43,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             // TODO: Add a try catch here to give a better error message.
             Definition definition = taskManager.Load(TaskInstance);
             ArgUtil.NotNull(definition, nameof(definition));
+
+            if ((definition.Data?.Execution?.All.Any(x => x is PowerShell3HandlerData)).Value &&
+                (definition.Data?.Execution?.All.Any(x => x is PowerShellHandlerData && x.Platforms != null && x.Platforms.Contains("windows", StringComparer.OrdinalIgnoreCase))).Value)
+            {
+                // When task contains both PS and PS3 implementations, we will always prefer PS3 over PS regardless of the platform pinning.
+                Trace.Info("Ignore platform pinning for legacy PowerShell execution handler.");
+                var legacyPShandler = definition.Data?.Execution?.All.Where(x => x is PowerShellHandlerData).FirstOrDefault();
+                legacyPShandler.Platforms = null;
+            }
+
             HandlerData handlerData =
                 definition.Data?.Execution?.All
                 .OrderBy(x => !x.PreferredOnCurrentPlatform()) // Sort true to false.
