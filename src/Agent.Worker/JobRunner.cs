@@ -323,19 +323,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 message.Environment.Variables[WellKnownDistributedTaskVariables.TaskDefinitionsUrl] = ReplaceWithConfigUriBase(new Uri(taskDefinitionsUrl)).AbsoluteUri;
                 Trace.Info($"Ensure System.TaskDefinitionsUrl match config url base. {message.Environment.Variables[WellKnownDistributedTaskVariables.TaskDefinitionsUrl]}");
             }
-
-            if (message.Environment.Variables.ContainsKey(Constants.Variables.System.TFServerUrl))
-            {
-                string tfsServerUrl = message.Environment.Variables[Constants.Variables.System.TFServerUrl];
-                message.Environment.Variables[Constants.Variables.System.TFServerUrl] = ReplaceWithConfigUriBase(new Uri(tfsServerUrl)).AbsoluteUri;
-                Trace.Info($"Ensure System.TFServerUrl match config url base. {message.Environment.Variables[Constants.Variables.System.TFServerUrl]}");
-            }
-
+            
             if (message.Environment.Variables.ContainsKey(WellKnownDistributedTaskVariables.TFCollectionUrl))
             {
                 string tfsCollectionUrl = message.Environment.Variables[WellKnownDistributedTaskVariables.TFCollectionUrl];
                 message.Environment.Variables[WellKnownDistributedTaskVariables.TFCollectionUrl] = ReplaceWithConfigUriBase(new Uri(tfsCollectionUrl)).AbsoluteUri;
                 Trace.Info($"Ensure System.TFCollectionUrl match config url base. {message.Environment.Variables[WellKnownDistributedTaskVariables.TFCollectionUrl]}");
+
+                // back compat server url
+                message.Environment.Variables[Constants.Variables.System.TFServerUrl] = message.Environment.Variables[WellKnownDistributedTaskVariables.TFCollectionUrl];
+                Trace.Info($"Ensure System.TFServerUrl match config url base. {message.Environment.Variables[Constants.Variables.System.TFServerUrl]}");                                
             }
 
             // fixup SystemConnection Url
