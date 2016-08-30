@@ -86,7 +86,6 @@ namespace Microsoft.VisualStudio.Services.Agent
                     public static readonly string AcceptTeeEula = "acceptteeeula";
                     public static readonly string Commit = "commit";
                     public static readonly string Help = "help";
-                    public static readonly string NoStart = "nostart";
                     public static readonly string Replace = "replace";
                     public static readonly string RunAsService = "runasservice";
                     public static readonly string Unattended = "unattended";

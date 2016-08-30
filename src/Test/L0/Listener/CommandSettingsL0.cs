@@ -144,24 +144,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", nameof(CommandSettings))]
-        public void GetsFlagNoStart()
-        {
-            using (TestHostContext hc = CreateTestContext())
-            {
-                // Arrange.
-                var command = new CommandSettings(hc, args: new string[] { "--nostart" });
-
-                // Act.
-                bool actual = command.NoStart;
-
-                // Assert.
-                Assert.True(actual);
-            }
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", nameof(CommandSettings))]
         public void GetsFlagReplace()
         {
             using (TestHostContext hc = CreateTestContext())

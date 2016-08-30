@@ -4,7 +4,6 @@ using Microsoft.VisualStudio.Services.Agent.Listener.Configuration;
 using Moq;
 using System;
 using System.Collections.Generic;
-using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
@@ -89,8 +88,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                     .Returns(settings);
                 _configurationManager.Setup(x => x.IsConfigured())
                     .Returns(true);
-                _configurationManager.Setup(x => x.EnsureConfiguredAsync(It.IsAny<CommandSettings>()))
-                    .Returns(Task.CompletedTask);
                 _messageListener.Setup(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()))
                     .Returns(Task.FromResult<bool>(true));
                 _messageListener.Setup(x => x.GetNextMessageAsync(It.IsAny<CancellationToken>()))
@@ -122,7 +119,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                 hc.EnqueueInstance<IJobDispatcher>(_jobDispatcher.Object);
 
                 //Act
-                var command = new CommandSettings(hc, new string[0]);
+                var command = new CommandSettings(hc, new string[] { "run" });
                 Task agentTask = agent.ExecuteCommand(command);
 
                 //Assert
@@ -159,10 +156,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                                                                     {
                                                                         // staring with run command, configured as run as service, should start the agent
                                                                         { new [] { "run" }, true, Times.Once() },
-                                                                        // starting with no argument, configured as run as service, should not start agent
-                                                                        { new string[] { }, true, Times.Never() },
                                                                         // starting with no argument, configured not to run as service, should start agent interactively
-                                                                        { new string[] { }, false, Times.Once() }
+                                                                        { new [] { "run" }, false, Times.Once() }
                                                                     };
         [Theory]
         [MemberData("RunAsServiceTestData")]

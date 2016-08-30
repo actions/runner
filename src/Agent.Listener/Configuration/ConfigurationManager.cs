@@ -20,7 +20,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
     {
         bool IsConfigured();
         bool IsServiceConfigured();
-        Task EnsureConfiguredAsync(CommandSettings command);
         Task ConfigureAsync(CommandSettings command);
         Task UnconfigureAsync(CommandSettings command);
         AgentSettings LoadSettings();
@@ -53,15 +52,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             bool result = _store.IsConfigured();
             Trace.Info($"Is configured: {result}");
             return result;
-        }
-
-        public async Task EnsureConfiguredAsync(CommandSettings command)
-        {
-            Trace.Info(nameof(EnsureConfiguredAsync));
-            if (!IsConfigured())
-            {
-                await ConfigureAsync(command);
-            }
         }
 
         public AgentSettings LoadSettings()

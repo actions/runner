@@ -20,7 +20,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         // Flags.
         public bool Commit => TestFlag(Constants.Agent.CommandLine.Flags.Commit);
         public bool Help => TestFlag(Constants.Agent.CommandLine.Flags.Help);
-        public bool NoStart => TestFlag(Constants.Agent.CommandLine.Flags.NoStart);
         public bool Unattended => TestFlag(Constants.Agent.CommandLine.Flags.Unattended);
         public bool Version => TestFlag(Constants.Agent.CommandLine.Flags.Version);
 
