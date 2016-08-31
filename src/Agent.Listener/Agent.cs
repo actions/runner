@@ -109,36 +109,38 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 bool runAsService = configManager.IsServiceConfigured();
 
                 // Run agent
-                if (command.Run)
-                {
-                    // Error if agent not configured.
-                    if (!configManager.IsConfigured())
-                    {
-                        _term.WriteError(StringUtil.Loc("AgentIsNotConfigured"));
-                        PrintUsage();
-                        return Constants.Agent.ReturnCode.TerminatedError;
-                    }
+                //if (command.Run) // this line is current break machine provisioner.
+                //{
 
-                    // Run the agent interactively or as service
-                    Trace.Verbose($"Run as service: '{runAsService}'");
-                    return await RunAsync(TokenSource.Token, settings, runAsService);
+                // Error if agent not configured.
+                if (!configManager.IsConfigured())
+                {
+                    _term.WriteError(StringUtil.Loc("AgentIsNotConfigured"));
+                    PrintUsage();
+                    return Constants.Agent.ReturnCode.TerminatedError;
                 }
 
-#if OS_WINDOWS
-                // this code is for migrated .net windows agent that running as windows service.
-                // leave the code as is untill we have a real plan for auto-migration.
-                if (runAsService && configManager.IsConfigured() && File.Exists(Path.Combine(IOUtil.GetBinPath(), "VsoAgentService.exe")))
-                {
-                    // The old .net windows servicehost doesn't pass correct args while invoke Agent.Listener.exe
-                    // When we detect the agent is a migrated .net windows agent, we will just run the agent.listener.exe even the servicehost doesn't pass correct args.
-                    Trace.Verbose($"Run the agent for compat reason.");
-                    return await RunAsync(TokenSource.Token, settings, runAsService);
-                }
-#endif
+                // Run the agent interactively or as service
+                Trace.Verbose($"Run as service: '{runAsService}'");
+                return await RunAsync(TokenSource.Token, settings, runAsService);
 
-                Trace.Info("Doesn't match any existing command option, print usage.");
-                PrintUsage();
-                return Constants.Agent.ReturnCode.TerminatedError;
+                //}
+
+// #if OS_WINDOWS
+//                 // this code is for migrated .net windows agent that running as windows service.
+//                 // leave the code as is untill we have a real plan for auto-migration.
+//                 if (runAsService && configManager.IsConfigured() && File.Exists(Path.Combine(IOUtil.GetBinPath(), "VsoAgentService.exe")))
+//                 {
+//                     // The old .net windows servicehost doesn't pass correct args while invoke Agent.Listener.exe
+//                     // When we detect the agent is a migrated .net windows agent, we will just run the agent.listener.exe even the servicehost doesn't pass correct args.
+//                     Trace.Verbose($"Run the agent for compat reason.");
+//                     return await RunAsync(TokenSource.Token, settings, runAsService);
+//                 }
+// #endif
+
+//                 Trace.Info("Doesn't match any existing command option, print usage.");
+//                 PrintUsage();
+//                 return Constants.Agent.ReturnCode.TerminatedError;
             }
             finally
             {
