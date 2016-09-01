@@ -273,7 +273,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             using (var lockRenewalTokenSource = new CancellationTokenSource())
             using (var workerProcessCancelTokenSource = new CancellationTokenSource())
             {
-                await notification.JobStarted(message.JobId);
                 long requestId = message.RequestId;
                 Guid lockToken = message.LockToken;
 
@@ -298,6 +297,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     await CompleteJobRequestAsync(_poolId, message, lockToken, TaskResult.Canceled);
                     return;
                 }
+
+                // we get first jobrequest renew succeed.
+                // send notification to machine provisioner.
+                await notification.JobStarted(message.JobId);
 
                 Task<int> workerProcessTask = null;
                 using (var processChannel = HostContext.CreateService<IProcessChannel>())
