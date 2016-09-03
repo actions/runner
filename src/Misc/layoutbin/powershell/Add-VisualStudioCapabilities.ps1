@@ -52,9 +52,34 @@ if ((Add-CapabilityFromRegistry -Name 'VisualStudio_14.0' -Hive 'LocalMachine' -
     Add-TestCapability -Name 'VSTest_14.0' -ShellPath $latestVS -Value ([ref]$latestTest)
 }
 
-if ((Add-CapabilityFromRegistry -Name 'VisualStudio_15.0' -Hive 'LocalMachine' -View 'Registry32' -KeyName $keyName15 -ValueName 'ShellFolder' -Value ([ref]$latestVS))) {
-    $null = Add-CapabilityFromRegistry -Name 'VisualStudio_IDE_15.0' -Hive 'LocalMachine' -View 'Registry32' -KeyName $keyName15 -ValueName 'InstallDir' -Value ([ref]$latestIde)
-    Add-TestCapability -Name 'VSTest_15.0' -ShellPath $latestVS -Value ([ref]$latestTest)
+$vs15 = Get-VisualStudio_15_0
+if ($vs15 -and $vs15.Path) {
+    # Add VisualStudio_15.0.
+    # End with "\" for consistency with old ShellFolder values.
+    $shellFolder15 = $vs15.Path.TrimEnd('\'[0]) + "\"
+    Write-Capability -Name 'VisualStudio_15.0' -Value $shellFolder15
+    $latestVS = $shellFolder15
+
+    # Add VisualStudio_IDE_15.0.
+    # End with "\" for consistency with old InstallDir values.
+    $installDir15 = ([System.IO.Path]::Combine($shellFolder15, 'Common7', 'IDE')) + '\'
+    if ((Test-Container -LiteralPath $installDir15)) {
+        Write-Capability -Name 'VisualStudio_IDE_15.0' -Value $installDir15
+        $latestIde = $installDir15
+    }
+
+    # Add VSTest_15.0.
+    $testWindowDir15 = [System.IO.Path]::Combine($installDir15, 'CommonExtensions\Microsoft\TestWindow')
+    $vstestConsole15 = [System.IO.Path]::Combine($testWindowDir15, 'vstest.console.exe')
+    if ((Test-Leaf -LiteralPath $vstestConsole15)) {
+        Write-Capability -Name 'VSTest_15.0' -Value $testWindowDir15
+        $latestTest = $testWindowDir15
+    }
+} else {
+    if ((Add-CapabilityFromRegistry -Name 'VisualStudio_15.0' -Hive 'LocalMachine' -View 'Registry32' -KeyName $keyName15 -ValueName 'ShellFolder' -Value ([ref]$latestVS))) {
+        $null = Add-CapabilityFromRegistry -Name 'VisualStudio_IDE_15.0' -Hive 'LocalMachine' -View 'Registry32' -KeyName $keyName15 -ValueName 'InstallDir' -Value ([ref]$latestIde)
+        Add-TestCapability -Name 'VSTest_15.0' -ShellPath $latestVS -Value ([ref]$latestTest)
+    }
 }
 
 if ($latestVS) {
