@@ -382,6 +382,7 @@
   "UnconfigureServiceDService": "Unconfigure service first according to https://www.visualstudio.com/en-us/docs/build/admin/agents/v2-linux",
   "UninstallingService": "Removing service",
   "UnknownCodeCoverageTool": "Code coverage tool '{0}' is not supported.",
+  "UnrecognizedCmdArgs": "Unrecognized commandline input arguments: '{0}'.",
   "UnregisteringAgent": "Removing agent from the server",
   "UpdateBuildNumber": "Update Build Number",
   "UpdateBuildNumberForBuild": "Update build number to {0} for build {1}",

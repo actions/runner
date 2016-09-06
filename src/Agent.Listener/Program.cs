@@ -83,6 +83,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 var command = new CommandSettings(context, args);
                 trace.Info("Arguments parsed");
 
+                // Up front validation, warn for unrecognized commandline args.
+                var unknownCommandlines = command.Validate();
+                if (unknownCommandlines.Count > 0)
+                {
+                    terminal.WriteError(StringUtil.Loc("UnrecognizedCmdArgs", string.Join(", ", unknownCommandlines)));
+                }
+
                 // Defer to the Agent class to execute the command.
                 IAgent agent = context.GetService<IAgent>();
                 using (agent.TokenSource = new CancellationTokenSource())

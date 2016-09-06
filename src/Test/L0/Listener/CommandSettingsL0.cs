@@ -669,6 +669,71 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             }
         }
 
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", nameof(CommandSettings))]
+        public void ValidateCommands()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange.
+                var command = new CommandSettings(hc, args: new string[] { "badcommand" });
+
+                // Assert.
+                Assert.True(command.Validate().Contains("badcommand"));
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", nameof(CommandSettings))]
+        public void ValidateFlags()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange.
+                var command = new CommandSettings(hc, args: new string[] { "--badflag" });
+
+                // Assert.
+                Assert.True(command.Validate().Contains("badflag"));
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", nameof(CommandSettings))]
+        public void ValidateArgs()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange.
+                var command = new CommandSettings(hc, args: new string[] { "--badargname", "bad arg value" });
+
+                // Assert.
+                Assert.True(command.Validate().Contains("badargname"));
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", nameof(CommandSettings))]
+        public void ValidateGoodCommandline()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange.
+                var command = new CommandSettings(hc,
+                    args: new string[] {
+                        "configure",
+                        "--unattended",
+                        "--agent",
+                        "test agent" });
+
+                // Assert.
+                Assert.True(command.Validate().Count == 0);
+            }
+        }
+
         private TestHostContext CreateTestContext([CallerMemberName] string testName = "")
         {
             TestHostContext hc = new TestHostContext(this, testName);
