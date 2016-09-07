@@ -32,7 +32,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
         void RemoveGroupFromFolderSecuritySetting(string folderPath, string groupName);
 
-        bool CheckUserHasLogonAsServicePrivilege(string domain, string userName);
+        bool IsUserHasLogonAsServicePrivilege(string domain, string userName);
 
         bool GrantUserLogonAsServicePrivilage(string domain, string userName);
 
@@ -40,11 +40,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
         NTAccount GetDefaultServiceAccount();
 
-        void SetPermissionForAccount(string path, string accountName);
-
-        ServiceController TryGetServiceController(string serviceName);
+        bool IsServiceExists(string serviceName);
 
         void InstallService(string serviceName, string serviceDisplayName, string logonAccount, string logonPassword);
+
+        void UninstallService(string serviceName);
+
+        void StartService(string serviceName);
+
+        void StopService(string serviceName);
 
         void CreateVstsAgentRegistryKey();
 
@@ -67,15 +71,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             return AgentServiceLocalGroupPrefix + IOUtil.GetBinPathHash().Substring(0, 5);
         }
 
-        public ServiceController TryGetServiceController(string serviceName)
-        {
-            Trace.Entering();
-
-            return
-                ServiceController.GetServices()
-                    .FirstOrDefault(x => x.ServiceName.Equals(serviceName, StringComparison.OrdinalIgnoreCase));
-        }
-
         // TODO: Make sure to remove Old agent's group and registry changes made during auto upgrade to vsts-agent.
         public bool LocalGroupExists(string groupName)
         {
@@ -83,13 +78,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             bool exists = false;
 
             IntPtr bufptr;
-            int returnCode = NetLocalGroupGetInfo(null, groupName, 1, out bufptr);
+            int returnCode = NetLocalGroupGetInfo(null,            // computer name
+                                                  groupName,
+                                                  1,               // group info with comment
+                                                  out bufptr);     // Win32GroupAPI.LocalGroupInfo
 
             try
             {
                 switch (returnCode)
                 {
                     case ReturnCode.S_OK:
+                        Trace.Info($"Local group '{groupName}' exist.");
                         exists = true;
                         break;
 
@@ -126,11 +125,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             groupInfo.Name = groupName;
             groupInfo.Comment = StringUtil.Format("Built-in group used by Team Foundation Server.");
 
-            int returnCode = NetLocalGroupAdd(null, 1, ref groupInfo, 0);
+            int returnCode = NetLocalGroupAdd(null,               // computer name
+                                              1,                  // 1 means include comment 
+                                              ref groupInfo,
+                                              0);                 // param error number 
 
             // return on success
             if (returnCode == ReturnCode.S_OK)
             {
+                Trace.Info($"Local Group '{groupName}' created");
                 return;
             }
 
@@ -154,12 +157,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
         public void DeleteLocalGroup(string groupName)
         {
+            Trace.Entering();
             int returnCode = NetLocalGroupDel(null,  // computer name 
                                               groupName);
 
             // return on success
             if (returnCode == ReturnCode.S_OK)
             {
+                Trace.Info($"Local Group '{groupName}' deleted");
                 return;
             }
 
@@ -185,11 +190,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             LocalGroupMemberInfo memberInfo = new LocalGroupMemberInfo();
             memberInfo.FullName = accountName;
 
-            int returnCode = NetLocalGroupAddMembers(null, groupName, 3, ref memberInfo, 1);
+            int returnCode = NetLocalGroupAddMembers(null,              // computer name
+                                                     groupName,
+                                                     3,                 // group info with fullname (vs sid)
+                                                     ref memberInfo,
+                                                     1);                //total entries
 
             // return on success
             if (returnCode == ReturnCode.S_OK)
             {
+                Trace.Info($"Account '{accountName}' is added to local group '{groupName}'.");
                 return;
             }
 
@@ -220,25 +230,28 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         public void GrantFullControlToGroup(string path, string groupName)
         {
             Trace.Entering();
-            if (!IsGroupHasFullControl(path, groupName))
+            if (IsGroupHasFullControl(path, groupName))
             {
-                DirectoryInfo dInfo = new DirectoryInfo(path);
-                DirectorySecurity dSecurity = dInfo.GetAccessControl();
-
-                if (!dSecurity.AreAccessRulesCanonical)
-                {
-                    Trace.Warning("Acls are not canonical, this may cause failure");
-                }
-
-                dSecurity.AddAccessRule(
-                    new FileSystemAccessRule(
-                        groupName,
-                        FileSystemRights.FullControl,
-                        InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit,
-                        PropagationFlags.None,
-                        AccessControlType.Allow));
-                dInfo.SetAccessControl(dSecurity);
+                Trace.Info($"Local group '{groupName}' already has full control to path '{path}'.");
+                return;
             }
+
+            DirectoryInfo dInfo = new DirectoryInfo(path);
+            DirectorySecurity dSecurity = dInfo.GetAccessControl();
+
+            if (!dSecurity.AreAccessRulesCanonical)
+            {
+                Trace.Warning("Acls are not canonical, this may cause failure");
+            }
+
+            dSecurity.AddAccessRule(
+                new FileSystemAccessRule(
+                    groupName,
+                    FileSystemRights.FullControl,
+                    InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit,
+                    PropagationFlags.None,
+                    AccessControlType.Allow));
+            dInfo.SetAccessControl(dSecurity);
         }
 
         private bool IsGroupHasFullControl(string path, string groupName)
@@ -264,7 +277,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             }
         }
 
-        public bool CheckUserHasLogonAsServicePrivilege(string domain, string userName)
+        public bool IsUserHasLogonAsServicePrivilege(string domain, string userName)
         {
             Trace.Entering();
 
@@ -284,7 +297,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                         for (int i = 0; i < count; i++)
                         {
                             LSA_UNICODE_STRING nativeRightString = Marshal.PtrToStructure<LSA_UNICODE_STRING>(incrementPtr);
-                            string rightString = Marshal.PtrToStringAnsi(nativeRightString.Buffer);
+                            string rightString = Marshal.PtrToStringUni(nativeRightString.Buffer);
+                            Trace.Verbose($"Account {userName} has '{rightString}' right.");
                             if (string.Equals(rightString, s_logonAsServiceName, StringComparison.OrdinalIgnoreCase))
                             {
                                 userHasPermission = true;
@@ -292,6 +306,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
                             incrementPtr += Marshal.SizeOf(nativeRightString);
                         }
+                    }
+                    else
+                    {
+                        Trace.Error($"Can't enumerate account rights, return code {result}.");
                     }
                 }
                 finally
@@ -303,62 +321,28 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                     }
                 }
             }
+
             return userHasPermission;
         }
 
         public bool GrantUserLogonAsServicePrivilage(string domain, string userName)
         {
             Trace.Entering();
-            IntPtr lsaPolicyHandle = IntPtr.Zero;
-
             ArgUtil.NotNullOrEmpty(userName, nameof(userName));
-
-            try
+            using (LsaPolicy lsaPolicy = new LsaPolicy())
             {
-                LSA_UNICODE_STRING system = new LSA_UNICODE_STRING();
-                LSA_OBJECT_ATTRIBUTES attrib = new LSA_OBJECT_ATTRIBUTES()
+                // STATUS_SUCCESS == 0
+                uint result = LsaAddAccountRights(lsaPolicy.Handle, GetSidBinaryFromWindows(domain, userName), LogonAsServiceRights, 1);
+                if (result == 0)
                 {
-                    Length = 0,
-                    RootDirectory = IntPtr.Zero,
-                    Attributes = 0,
-                    SecurityDescriptor = IntPtr.Zero,
-                    SecurityQualityOfService = IntPtr.Zero,
-                };
-
-                uint result = LsaOpenPolicy(ref system, ref attrib, LSA_POLICY_ALL_ACCESS, out lsaPolicyHandle);
-                if (result != 0 || lsaPolicyHandle == IntPtr.Zero)
-                {
-                    if (result == ReturnCode.STATUS_ACCESS_DENIED)
-                    {
-                        throw new Exception(StringUtil.Loc("ShouldBeAdmin"));
-                    }
-                    throw new Exception(StringUtil.Loc("OperationFailed", nameof(LsaOpenPolicy), result));
+                    Trace.Info($"Successfully grant logon as service privilage to account '{userName}'");
+                    return true;
                 }
-
-                result = LsaAddAccountRights(lsaPolicyHandle, GetSidBinaryFromWindows(domain, userName), LogonAsServiceRights, 1);
-                Trace.Info("LsaAddAccountRights return with error code {0} ", result);
-
-                return result == 0;
-            }
-            finally
-            {
-                int result = LsaClose(lsaPolicyHandle);
-                if (result != 0)
+                else
                 {
-                    Trace.Error(StringUtil.Format("Can not close LasPolicy handler. LsaClose failed with error code {0}", result));
+                    Trace.Info($"Fail to grant logon as service privilage to account '{userName}', error code {result}.");
+                    return false;
                 }
-            }
-        }
-
-        public static void GetAccountSegments(string account, out string domain, out string user)
-        {
-            string[] segments = account.Split('\\');
-            domain = string.Empty;
-            user = account;
-            if (segments.Length == 2)
-            {
-                domain = segments[0];
-                user = segments[1];
             }
         }
 
@@ -383,7 +367,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
             ArgUtil.NotNullOrEmpty(userName, nameof(userName));
 
-            Trace.Verbose(StringUtil.Format("Received domain {0} and username {1} from logonaccount", domain, userName));
+            Trace.Info($"Verify credential for account {userName}.");
             int result = LogonUser(userName, domain, logonPassword, LOGON32_LOGON_NETWORK, LOGON32_PROVIDER_DEFAULT, out tokenHandle);
 
             if (tokenHandle.ToInt32() != 0)
@@ -391,12 +375,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 if (!CloseHandle(tokenHandle))
                 {
                     Trace.Error("Failed during CloseHandle on token from LogonUser");
-                    throw new InvalidOperationException(StringUtil.Loc("CanNotVerifyLogonAccountPassword"));
                 }
             }
 
-            Trace.Verbose(StringUtil.Format("LogonUser returned with result {0}", result));
-            return result != 0;
+            if (result != 0)
+            {
+                Trace.Info($"Credential for account '{userName}' is valid.");
+                return true;
+            }
+            else
+            {
+                Trace.Info($"Credential for account '{userName}' is invalid.");
+                return false;
+            }
         }
 
         public NTAccount GetDefaultServiceAccount()
@@ -410,27 +401,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             }
 
             return account;
-        }
-
-        public void SetPermissionForAccount(string path, string accountName)
-        {
-            Trace.Entering();
-
-            string groupName = GetUniqueBuildGroupName();
-
-            Trace.Info(StringUtil.Format("Calculated unique group name {0}", groupName));
-            if (!LocalGroupExists(groupName))
-            {
-                Trace.Info(StringUtil.Format("Trying to create group {0}", groupName));
-                CreateLocalGroup(groupName);
-            }
-
-            Trace.Info(StringUtil.Format("Trying to add userName {0} to the group {0}", accountName, groupName));
-            AddMemberToLocalGroup(accountName, groupName);
-
-            Trace.Info(StringUtil.Format("Set full access control to group for the folder {0}", path));
-
-            GrantFullControlToGroup(path, groupName);
         }
 
         public void RemoveGroupFromFolderSecuritySetting(string folderPath, string groupName)
@@ -453,6 +423,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 }
                 dInfo.SetAccessControl(dSecurity);
             }
+        }
+
+        public bool IsServiceExists(string serviceName)
+        {
+            Trace.Entering();
+            ServiceController service = ServiceController.GetServices().FirstOrDefault(x => x.ServiceName.Equals(serviceName, StringComparison.OrdinalIgnoreCase));
+            return service != null;
         }
 
         public void InstallService(string serviceName, string serviceDisplayName, string logonAccount, string logonPassword)
@@ -594,6 +571,120 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             }
         }
 
+        public void UninstallService(string serviceName)
+        {
+            Trace.Entering();
+            Trace.Verbose(StringUtil.Format("Trying to open SCManager."));
+            IntPtr scmHndl = OpenSCManager(null, null, ServiceManagerRights.Connect);
+
+            if (scmHndl.ToInt64() <= 0)
+            {
+                throw new Exception(StringUtil.Loc("FailedToOpenSCManager"));
+            }
+
+            try
+            {
+                Trace.Verbose(StringUtil.Format("Opened SCManager. query installed service {0}", serviceName));
+                IntPtr serviceHndl = OpenService(scmHndl,
+                                                 serviceName,
+                                                 ServiceRights.StandardRightsRequired | ServiceRights.Stop | ServiceRights.QueryStatus);
+
+                if (serviceHndl == IntPtr.Zero)
+                {
+                    int lastError = Marshal.GetLastWin32Error();
+                    throw new Win32Exception(lastError);
+                }
+
+                try
+                {
+                    Trace.Info(StringUtil.Format("Trying to delete service {0}", serviceName));
+                    int result = DeleteService(serviceHndl);
+                    if (result == 0)
+                    {
+                        result = Marshal.GetLastWin32Error();
+                        throw new Win32Exception(result, StringUtil.Loc("CouldNotRemoveService", serviceName));
+                    }
+
+                    Trace.Info("successfully removed the service");
+                }
+                finally
+                {
+                    CloseServiceHandle(serviceHndl);
+                }
+            }
+            finally
+            {
+                CloseServiceHandle(scmHndl);
+            }
+        }
+
+        public void StartService(string serviceName)
+        {
+            Trace.Entering();
+            try
+            {
+                ServiceController service = ServiceController.GetServices().FirstOrDefault(x => x.ServiceName.Equals(serviceName, StringComparison.OrdinalIgnoreCase));
+                if (service != null)
+                {
+                    service.Start();
+                    _term.WriteLine(StringUtil.Loc("ServiceStartedSuccessfully", serviceName));
+                }
+                else
+                {
+                    throw new InvalidOperationException(StringUtil.Loc("CanNotFindService", serviceName));
+                }
+            }
+            catch (Exception exception)
+            {
+                Trace.Error(exception);
+                _term.WriteError(StringUtil.Loc("CanNotStartService"));
+
+                // This is the last step in the configuration. Even if the start failed the status of the configuration should be error
+                // If its configured through scripts its mandatory we indicate the failure where configuration failed to start the service
+                throw;
+            }
+        }
+
+        public void StopService(string serviceName)
+        {
+            Trace.Entering();
+            try
+            {
+                ServiceController service = ServiceController.GetServices().FirstOrDefault(x => x.ServiceName.Equals(serviceName, StringComparison.OrdinalIgnoreCase));
+                if (service != null)
+                {
+                    if (service.Status == ServiceControllerStatus.Running)
+                    {
+                        Trace.Info("Trying to stop the service");
+                        service.Stop();
+
+                        try
+                        {
+                            _term.WriteLine(StringUtil.Loc("WaitForServiceToStop"));
+                            service.WaitForStatus(ServiceControllerStatus.Stopped, TimeSpan.FromSeconds(35));
+                        }
+                        catch (System.ServiceProcess.TimeoutException)
+                        {
+                            throw new InvalidOperationException(StringUtil.Loc("CanNotStopService", serviceName));
+                        }
+                    }
+
+                    Trace.Info("Successfully stopped the service");
+                }
+                else
+                {
+                    Trace.Info(StringUtil.Loc("CanNotFindService", serviceName));
+                }
+            }
+            catch (Exception exception)
+            {
+                Trace.Error(exception);
+                _term.WriteError(StringUtil.Loc("CanNotStopService", serviceName));
+
+                // Log the exception but do not report it as error. We can try uninstalling the service and then report it as error if something goes wrong.
+            }
+        }
+
         public void CreateVstsAgentRegistryKey()
         {
             RegistryKey tfsKey = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\TeamFoundationServer\15.0", true);
@@ -669,7 +760,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             }
         }
 
-
         // Helper class not to repeat whenever we deal with LSA* api
         internal class LsaPolicy : IDisposable
         {
@@ -692,10 +782,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 uint result = LsaOpenPolicy(ref system, ref attrib, LSA_POLICY_ALL_ACCESS, out handle);
                 if (result != 0 || handle == IntPtr.Zero)
                 {
-                    if (result == ReturnCode.STATUS_ACCESS_DENIED)
-                    {
-                        throw new Exception(StringUtil.Loc("ShouldBeAdmin"));
-                    }
                     throw new Exception(StringUtil.Loc("OperationFailed", nameof(LsaOpenPolicy), result));
                 }
 
@@ -704,12 +790,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
             void IDisposable.Dispose()
             {
-                int result = LsaClose(Handle);
-                if (result != 0)
-                {
-                    throw new Exception(StringUtil.Format("OperationFailed", nameof(LsaClose), result));
-                }
-
+                // We will ignore LsaClose error
+                LsaClose(Handle);
                 GC.SuppressFinalize(this);
             }
         }

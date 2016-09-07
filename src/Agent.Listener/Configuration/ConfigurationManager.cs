@@ -457,17 +457,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
         private async Task<int> GetPoolId(string poolName)
         {
-            int id = 0;
-            List<TaskAgentPool> pools = await _agentServer.GetAgentPoolsAsync(poolName);
-            Trace.Verbose("Returned {0} pools", pools.Count);
-
-            if (pools.Count == 1)
+            TaskAgentPool agentPool = (await _agentServer.GetAgentPoolsAsync(poolName)).FirstOrDefault();
+            if (agentPool == null)
             {
-                id = pools[0].Id;
-                Trace.Info("Found pool {0} with id {1}", poolName, id);
+                throw new TaskAgentPoolNotFoundException(StringUtil.Loc("PoolNotFound", poolName));
             }
-
-            return id;
+            else
+            {
+                Trace.Info("Found pool {0} with id {1}", poolName, agentPool.Id);
+                return agentPool.Id;
+            }
         }
 
         private async Task<TaskAgent> GetAgent(string name, int poolId)

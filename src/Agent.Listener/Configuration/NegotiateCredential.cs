@@ -2,7 +2,6 @@ using Microsoft.VisualStudio.Services.Agent.Util;
 using Microsoft.VisualStudio.Services.Client;
 using Microsoft.VisualStudio.Services.Common;
 using System;
-using System.Collections.Generic;
 using System.Net;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
@@ -61,7 +60,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                     credentialCache.Add(new Uri(url), "Negotiate", credential);
                     break;
             }
-            
+
             VssCredentials creds = new VssClientCredentials(new WindowsCredential(credentialCache));
             trace.Verbose("cred created");
             return creds;

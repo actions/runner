@@ -3,9 +3,7 @@ using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
 using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Security.Principal;
-using System.ServiceProcess;
 using System.Security;
 using System.Text;
 
@@ -21,10 +19,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         private INativeWindowsServiceHelper _windowsServiceHelper;
         private ITerminal _term;
 
-        private string _logonAccount;
-        private string _domainName;
-        private string _userName;
-
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
@@ -39,23 +33,26 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
             // We use NetworkService as default account.
             NTAccount defaultServiceAccount = _windowsServiceHelper.GetDefaultServiceAccount();
+            string logonAccount = command.GetWindowsLogonAccount(defaultValue: defaultServiceAccount.ToString());
 
-            _logonAccount = command.GetWindowsLogonAccount(defaultValue: defaultServiceAccount.ToString());
-            NativeWindowsServiceHelper.GetAccountSegments(_logonAccount, out _domainName, out _userName);
-            if ((string.IsNullOrEmpty(_domainName) || _domainName.Equals(".", StringComparison.CurrentCultureIgnoreCase)) && !_logonAccount.Contains('@'))
+            string domainName;
+            string userName;
+            GetAccountSegments(logonAccount, out domainName, out userName);
+
+            if ((string.IsNullOrEmpty(domainName) || domainName.Equals(".", StringComparison.CurrentCultureIgnoreCase)) && !logonAccount.Contains('@'))
             {
-                _logonAccount = String.Format("{0}\\{1}", Environment.MachineName, _userName);
+                logonAccount = String.Format("{0}\\{1}", Environment.MachineName, userName);
             }
 
-            Trace.Info("LogonAccount after transforming: {0}, user: {1}, domain: {2}", _logonAccount, _userName, _domainName);
+            Trace.Info("LogonAccount after transforming: {0}, user: {1}, domain: {2}", logonAccount, userName, domainName);
 
             string logonPassword = string.Empty;
-            if (!defaultServiceAccount.Equals(new NTAccount(_logonAccount)) && !NativeWindowsServiceHelper.IsWellKnownIdentity(_logonAccount))
+            if (!defaultServiceAccount.Equals(new NTAccount(logonAccount)) && !NativeWindowsServiceHelper.IsWellKnownIdentity(logonAccount))
             {
                 while (true)
                 {
-                    logonPassword = command.GetWindowsLogonPassword(_logonAccount);
-                    if (_windowsServiceHelper.IsValidCredential(_domainName, _userName, logonPassword))
+                    logonPassword = command.GetWindowsLogonPassword(logonAccount);
+                    if (_windowsServiceHelper.IsValidCredential(domainName, userName, logonPassword))
                     {
                         Trace.Info("Credential validation succeed");
                         break;
@@ -77,32 +74,31 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
             string serviceName;
             string serviceDisplayName;
-
             CalculateServiceName(settings, ServiceNamePattern, ServiceDisplayNamePattern, out serviceName, out serviceDisplayName);
-            if (CheckServiceExists(serviceName))
+            if (_windowsServiceHelper.IsServiceExists(serviceName))
             {
                 _term.WriteLine(StringUtil.Loc("ServiceAlreadyExists", serviceName));
-                UninstallService(serviceName);
+                _windowsServiceHelper.UninstallService(serviceName);
             }
 
             Trace.Info("Verifying if the account has LogonAsService permission");
-            if (!_windowsServiceHelper.CheckUserHasLogonAsServicePrivilege(_domainName, _userName))
+            if (_windowsServiceHelper.IsUserHasLogonAsServicePrivilege(domainName, userName))
             {
-                Trace.Info($"Account: {_logonAccount} already has Logon As Service Privilege.");
+                Trace.Info($"Account: {logonAccount} already has Logon As Service Privilege.");
             }
             else
             {
-                if (!_windowsServiceHelper.GrantUserLogonAsServicePrivilage(_domainName, _userName))
+                if (!_windowsServiceHelper.GrantUserLogonAsServicePrivilage(domainName, userName))
                 {
-                    throw new InvalidOperationException(StringUtil.Loc("CanNotGrantPermission", _logonAccount));
+                    throw new InvalidOperationException(StringUtil.Loc("CanNotGrantPermission", logonAccount));
                 }
             }
 
             Trace.Info("Create local group and grant folder permission to service logon account.");
-            GrantDirectoryPermissionForAccount();
+            GrantDirectoryPermissionForAccount(logonAccount);
 
             // install service.
-            _windowsServiceHelper.InstallService(serviceName, serviceDisplayName, _logonAccount, logonPassword);
+            _windowsServiceHelper.InstallService(serviceName, serviceDisplayName, logonAccount, logonPassword);
 
             // create .service file with service name.
             SaveServiceSettings(serviceName);
@@ -111,10 +107,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             _windowsServiceHelper.CreateVstsAgentRegistryKey();
 
             Trace.Info("Configuration was successful, trying to start the service");
-            StartService(serviceName);
+            _windowsServiceHelper.StartService(serviceName);
         }
 
-        private void GrantDirectoryPermissionForAccount()
+        private void GrantDirectoryPermissionForAccount(string accountName)
         {
             Trace.Entering();
             string groupName = _windowsServiceHelper.GetUniqueBuildGroupName();
@@ -126,8 +122,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 _windowsServiceHelper.CreateLocalGroup(groupName);
             }
 
-            Trace.Info(StringUtil.Format("Trying to add userName {0} to the group {0}", _logonAccount, groupName));
-            _windowsServiceHelper.AddMemberToLocalGroup(_logonAccount, groupName);
+            Trace.Info(StringUtil.Format("Trying to add userName {0} to the group {1}", accountName, groupName));
+            _windowsServiceHelper.AddMemberToLocalGroup(accountName, groupName);
 
             // grant permssion for agent root folder
             string agentRoot = IOUtil.GetRootPath();
@@ -172,10 +168,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         {
             string serviceConfigPath = IOUtil.GetServiceConfigFilePath();
             string serviceName = File.ReadAllText(serviceConfigPath);
-            if (CheckServiceExists(serviceName))
+            if (_windowsServiceHelper.IsServiceExists(serviceName))
             {
-                StopService(serviceName);
-                UninstallService(serviceName);
+                _windowsServiceHelper.StopService(serviceName);
+                _windowsServiceHelper.UninstallService(serviceName);
 
                 // Delete local group we created during confiure.
                 RevokeDirectoryPermissionForAccount();
@@ -199,139 +195,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             File.SetAttributes(serviceConfigPath, File.GetAttributes(serviceConfigPath) | FileAttributes.Hidden);
         }
 
-        private void UninstallService(string serviceName)
+        private void GetAccountSegments(string account, out string domain, out string user)
         {
-            Trace.Entering();
-            IntPtr scmHndl = NativeWindowsServiceHelper.OpenSCManager(null, null, NativeWindowsServiceHelper.ServiceManagerRights.Connect);
-
-            if (scmHndl.ToInt64() <= 0)
+            string[] segments = account.Split('\\');
+            domain = string.Empty;
+            user = account;
+            if (segments.Length == 2)
             {
-                throw new Exception(StringUtil.Loc("FailedToOpenSCManager"));
-            }
-
-            try
-            {
-                IntPtr serviceHndl = NativeWindowsServiceHelper.OpenService(
-                    scmHndl,
-                    serviceName,
-                    NativeWindowsServiceHelper.ServiceRights.StandardRightsRequired | NativeWindowsServiceHelper.ServiceRights.Stop | NativeWindowsServiceHelper.ServiceRights.QueryStatus);
-
-                if (serviceHndl == IntPtr.Zero)
-                {
-                    int lastError = Marshal.GetLastWin32Error();
-                    if (lastError == NativeWindowsServiceHelper.ReturnCode.ERROR_ACCESS_DENIED)
-                    {
-                        throw new Exception(StringUtil.Loc("ShouldBeAdmin"));
-                    }
-                    Trace.Info("Service is not installed");
-                    return;
-                }
-
-                try
-                {
-                    Trace.Info(StringUtil.Format("Trying to delete service {0}", serviceName));
-                    int result = NativeWindowsServiceHelper.DeleteService(serviceHndl);
-                    if (result == 0)
-                    {
-                        result = Marshal.GetLastWin32Error();
-                        Trace.Error(StringUtil.Format("Could not delete service, result: {0}", result));
-                        throw new InvalidOperationException(StringUtil.Loc("CouldNotRemoveService", serviceName));
-                    }
-
-                    Trace.Info("successfully removed the service");
-                }
-                finally
-                {
-                    NativeWindowsServiceHelper.CloseServiceHandle(serviceHndl);
-                }
-            }
-            finally
-            {
-                NativeWindowsServiceHelper.CloseServiceHandle(scmHndl);
-            }
-        }
-
-        private void StopService(string serviceName)
-        {
-            Trace.Entering();
-            try
-            {
-                ServiceController service = _windowsServiceHelper.TryGetServiceController(serviceName);
-                if (service != null)
-                {
-                    if (service.Status == ServiceControllerStatus.Running)
-                    {
-                        Trace.Info("Trying to stop the service");
-                        service.Stop();
-
-                        try
-                        {
-                            _term.WriteLine(StringUtil.Loc("WaitForServiceToStop"));
-                            service.WaitForStatus(ServiceControllerStatus.Stopped, TimeSpan.FromSeconds(35));
-                        }
-                        catch (System.ServiceProcess.TimeoutException)
-                        {
-                            throw new InvalidOperationException(StringUtil.Loc("CanNotStopService", serviceName));
-                        }
-                    }
-
-                    Trace.Info("Successfully stopped the service");
-                }
-                else
-                {
-                    Trace.Info(StringUtil.Loc("CanNotFindService", serviceName));
-                }
-            }
-            catch (Exception exception)
-            {
-                Trace.Error(exception);
-                _term.WriteError(StringUtil.Loc("CanNotStopService", serviceName));
-
-                // Log the exception but do not report it as error. We can try uninstalling the service and then report it as error if something goes wrong.
-            }
-        }
-
-        private bool CheckServiceExists(string serviceName)
-        {
-            Trace.Entering();
-            try
-            {
-                ServiceController service = _windowsServiceHelper.TryGetServiceController(serviceName);
-                return service != null;
-            }
-            catch (Exception exception)
-            {
-                Trace.Error(exception);
-
-                // If we can't check the status of the service, probably we can't do anything else too. Report it as error.
-                throw;
-            }
-        }
-
-        private void StartService(string serviceName)
-        {
-            Trace.Entering();
-            try
-            {
-                ServiceController service = _windowsServiceHelper.TryGetServiceController(serviceName);
-                if (service != null)
-                {
-                    service.Start();
-                    _term.WriteLine(StringUtil.Loc("ServiceStartedSuccessfully", serviceName));
-                }
-                else
-                {
-                    throw new InvalidOperationException(StringUtil.Loc("CanNotFindService", serviceName));
-                }
-            }
-            catch (Exception exception)
-            {
-                Trace.Error(exception);
-                _term.WriteError(StringUtil.Loc("CanNotStartService"));
-
-                // This is the last step in the configuration. Even if the start failed the status of the configuration should be error
-                // If its configured through scripts its mandatory we indicate the failure where configuration failed to start the service
-                throw;
+                domain = segments[0];
+                user = segments[1];
             }
         }
     }
