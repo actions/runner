@@ -342,6 +342,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 if (_store.IsServiceConfigured())
                 {
 #if OS_WINDOWS
+                    if (!new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator))
+                    {
+                        Trace.Error("Needs Administrator privileges for unconfigure windows service agent.");
+                        throw new SecurityException(StringUtil.Loc("NeedAdminForUnconfigWinServiceAgent"));
+                    }
+
                     var serviceControlManager = HostContext.GetService<IWindowsServiceControlManager>();
                     serviceControlManager.UnconfigureService();
                     _term.WriteLine(StringUtil.Loc("Success") + currentAction);
