@@ -52,6 +52,9 @@ This agent can be used for the VSTS service and it replaces the node agent for T
 | TFS2015 (onprem)   |  Yes  | No    | Windows use agent with 2015 |
 | TFS.vNext (onprem)   |  Yes  | Yes    |  |
 
+## More Documentation
+
+[Documentation Here](https://aka.ms/tfbuild)
 
 ## Troubleshooting
 
