@@ -110,8 +110,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             string latestAgentDirectory = IOUtil.GetUpdatePath(HostContext);
             IOUtil.DeleteDirectory(latestAgentDirectory, token);
             Directory.CreateDirectory(latestAgentDirectory);
-            string archiveFile = Path.Combine(latestAgentDirectory, $"{new Uri(_latestPackage.DownloadUrl).Segments.Last()}");
 
+            string archiveFile;
+            if (_latestPackage.Platform.StartsWith("win"))
+            {
+                archiveFile = Path.Combine(latestAgentDirectory, "agent.zip");
+            }
+            else
+            {
+                archiveFile = Path.Combine(latestAgentDirectory, "agent.tar.gz");
+            }
+
+            Trace.Info($"Save latest agent into {archiveFile}.");
             try
             {
                 var proxyConfig = HostContext.GetService<IProxyConfiguration>();
