@@ -47,6 +47,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Capabilities
                     fileName: powerShellExe,
                     arguments: arguments,
                     environment: null,
+                    requireExitCodeZero: false,
+                    outputEncoding: null,
+                    killProcessOnCancel: true,
                     cancellationToken: cancellationToken);
             }
 

@@ -42,6 +42,16 @@ namespace Microsoft.VisualStudio.Services.Agent
             bool requireExitCodeZero,
             Encoding outputEncoding,
             CancellationToken cancellationToken);
+
+        Task<int> ExecuteAsync(
+            string workingDirectory,
+            string fileName,
+            string arguments,
+            IDictionary<string, string> environment,
+            bool requireExitCodeZero,
+            Encoding outputEncoding,
+            bool killProcessOnCancel,
+            CancellationToken cancellationToken);
     }
 
     // The implementation of the process invoker does not hook up DataReceivedEvent and ErrorReceivedEvent of Process,
@@ -101,6 +111,26 @@ namespace Microsoft.VisualStudio.Services.Agent
                 cancellationToken: cancellationToken);
         }
 
+        public Task<int> ExecuteAsync(
+            string workingDirectory,
+            string fileName,
+            string arguments,
+            IDictionary<string, string> environment,
+            bool requireExitCodeZero,
+            Encoding outputEncoding,
+            CancellationToken cancellationToken)
+        {
+            return ExecuteAsync(
+                workingDirectory: workingDirectory,
+                fileName: fileName,
+                arguments: arguments,
+                environment: environment,
+                requireExitCodeZero: requireExitCodeZero,
+                outputEncoding: outputEncoding,
+                killProcessOnCancel: false,
+                cancellationToken: cancellationToken);
+        }
+
         public async Task<int> ExecuteAsync(
             string workingDirectory,
             string fileName,
@@ -108,6 +138,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             IDictionary<string, string> environment,
             bool requireExitCodeZero,
             Encoding outputEncoding,
+            bool killProcessOnCancel,
             CancellationToken cancellationToken)
         {
             ArgUtil.Null(_proc, nameof(_proc));
@@ -119,6 +150,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             Trace.Info($"  Working directory: '{workingDirectory}'");
             Trace.Info($"  Require exit code zero: '{requireExitCodeZero}'");
             Trace.Info($"  Encoding web name: {outputEncoding?.WebName} ; code page: '{outputEncoding?.CodePage}'");
+            Trace.Info($"  Force kill process on cancellation: '{killProcessOnCancel}'");
             _proc = new Process();
             _proc.StartInfo.FileName = fileName;
             _proc.StartInfo.Arguments = arguments;
@@ -193,7 +225,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                 StartReadStream(_proc.StandardOutput, _outputData);
             }
 
-            using (var registration = cancellationToken.Register(async () => await CancelAndKillProcessTree()))
+            using (var registration = cancellationToken.Register(async () => await CancelAndKillProcessTree(killProcessOnCancel)))
             {
                 Trace.Info($"Process started with process id {_proc.Id}, waiting for process exit.");
                 while (true)
@@ -293,21 +325,24 @@ namespace Microsoft.VisualStudio.Services.Agent
             }
         }
 
-        private async Task CancelAndKillProcessTree()
+        private async Task CancelAndKillProcessTree(bool killProcessOnCancel)
         {
             ArgUtil.NotNull(_proc, nameof(_proc));
-            bool sigint_succeed = await SendSIGINT(_sigintTimeout);
-            if (sigint_succeed)
+            if (!killProcessOnCancel)
             {
-                Trace.Info("Process cancelled successfully through Ctrl+C/SIGINT.");
-                return;
-            }
+                bool sigint_succeed = await SendSIGINT(_sigintTimeout);
+                if (sigint_succeed)
+                {
+                    Trace.Info("Process cancelled successfully through Ctrl+C/SIGINT.");
+                    return;
+                }
 
-            bool sigterm_succeed = await SendSIGTERM(_sigtermTimeout);
-            if (sigterm_succeed)
-            {
-                Trace.Info("Process terminate successfully through Ctrl+Break/SIGTERM.");
-                return;
+                bool sigterm_succeed = await SendSIGTERM(_sigtermTimeout);
+                if (sigterm_succeed)
+                {
+                    Trace.Info("Process terminate successfully through Ctrl+Break/SIGTERM.");
+                    return;
+                }
             }
 
             Trace.Info("Kill entire process tree since both cancel and terminate signal has been ignored by the target process.");

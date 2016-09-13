@@ -12,6 +12,7 @@ using System.IO;
 using System.Text;
 using Microsoft.VisualStudio.Services.WebApi;
 using Microsoft.VisualStudio.Services.OAuth;
+using System.Diagnostics;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener
 {
@@ -149,6 +150,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             ArgUtil.NotNull(_settings, nameof(_settings));
             bool encounteringError = false;
             string errorMessage = string.Empty;
+            Stopwatch heartbeat = new Stopwatch();
+            heartbeat.Restart();
             while (true)
             {
                 token.ThrowIfCancellationRequested();
@@ -209,11 +212,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
                 if (message == null)
                 {
-                    Trace.Verbose($"No message retrieved from session '{_session.SessionId}'.");
+                    if (heartbeat.Elapsed > TimeSpan.FromMinutes(30))
+                    {
+                        Trace.Info($"No message retrieved from session '{_session.SessionId}' within last 30 minutes.");
+                        heartbeat.Restart();
+                    }
+                    else
+                    {
+                        Trace.Verbose($"No message retrieved from session '{_session.SessionId}'.");
+                    }
+
                     continue;
                 }
 
-                Trace.Verbose($"Message '{message.MessageId}' received from session '{_session.SessionId}'.");
+                Trace.Info($"Message '{message.MessageId}' received from session '{_session.SessionId}'.");
                 return message;
             }
         }

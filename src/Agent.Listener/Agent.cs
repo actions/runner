@@ -126,21 +126,21 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
                 //}
 
-// #if OS_WINDOWS
-//                 // this code is for migrated .net windows agent that running as windows service.
-//                 // leave the code as is untill we have a real plan for auto-migration.
-//                 if (runAsService && configManager.IsConfigured() && File.Exists(Path.Combine(IOUtil.GetBinPath(), "VsoAgentService.exe")))
-//                 {
-//                     // The old .net windows servicehost doesn't pass correct args while invoke Agent.Listener.exe
-//                     // When we detect the agent is a migrated .net windows agent, we will just run the agent.listener.exe even the servicehost doesn't pass correct args.
-//                     Trace.Verbose($"Run the agent for compat reason.");
-//                     return await RunAsync(TokenSource.Token, settings, runAsService);
-//                 }
-// #endif
+                // #if OS_WINDOWS
+                //                 // this code is for migrated .net windows agent that running as windows service.
+                //                 // leave the code as is untill we have a real plan for auto-migration.
+                //                 if (runAsService && configManager.IsConfigured() && File.Exists(Path.Combine(IOUtil.GetBinPath(), "VsoAgentService.exe")))
+                //                 {
+                //                     // The old .net windows servicehost doesn't pass correct args while invoke Agent.Listener.exe
+                //                     // When we detect the agent is a migrated .net windows agent, we will just run the agent.listener.exe even the servicehost doesn't pass correct args.
+                //                     Trace.Verbose($"Run the agent for compat reason.");
+                //                     return await RunAsync(TokenSource.Token, settings, runAsService);
+                //                 }
+                // #endif
 
-//                 Trace.Info("Doesn't match any existing command option, print usage.");
-//                 PrintUsage();
-//                 return Constants.Agent.ReturnCode.TerminatedError;
+                //                 Trace.Info("Doesn't match any existing command option, print usage.");
+                //                 PrintUsage();
+                //                 return Constants.Agent.ReturnCode.TerminatedError;
             }
             finally
             {
@@ -275,6 +275,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                             var cancelJobMessage = JsonUtility.FromString<JobCancelMessage>(message.Body);
                             bool jobCancelled = jobDispatcher.Cancel(cancelJobMessage);
                             skipMessageDeletion = autoUpdateInProgress && !jobCancelled;
+                        }
+                        else
+                        {
+                            Trace.Error($"Received message {message.MessageId} with unsupported message type {message.MessageType}.");
                         }
                     }
                     finally

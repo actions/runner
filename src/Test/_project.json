@@ -11,7 +11,8 @@
                     "DEBUG",
                     "TRACE",
                     "OS_WINDOWS"
-                ]
+                ],
+                "debugType": "portable"
             }
         },
         "Release": {
