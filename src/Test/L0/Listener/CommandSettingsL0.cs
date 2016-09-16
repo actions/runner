@@ -495,7 +495,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                     .Returns("some url");
 
                 // Act.
-                string actual = command.GetUrl(StringUtil.Loc("ServerUrl"));
+                string actual = command.GetUrl();
 
                 // Assert.
                 Assert.Equal("some url", actual);
@@ -633,7 +633,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                     .Returns("some url");
 
                 // Act.
-                string actual = command.GetUrl(StringUtil.Loc("ServerUrl"));
+                string actual = command.GetUrl();
 
                 // Assert.
                 Assert.Equal("some url", actual);
@@ -662,86 +662,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                     .Returns("some url");
 
                 // Act.
-                string actual = command.GetUrl(StringUtil.Loc("ServerUrl"));
+                string actual = command.GetUrl();
 
                 // Assert.
                 Assert.Equal("some url", actual);
-            }
-        }
-
-        /*
-         * Deployment Agent Tests
-        */
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", nameof(CommandSettings))]
-        public void GetsFlagDeploymentAgent()
-        {
-            using (TestHostContext hc = CreateTestContext())
-            {
-                // Arrange.
-                var command = new CommandSettings(hc, args: new string[] { "--machinegroup" });
-
-                // Act.
-                bool actual = command.MachineGroup;
-
-                // Assert.
-                Assert.True(actual);
-            }
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", nameof(CommandSettings))]
-        public void PromptsForProjectName()
-        {
-            using (TestHostContext hc = CreateTestContext())
-            {
-                // Arrange.
-                var command = new CommandSettings(hc, args: new string[0]);
-                _promptManager
-                    .Setup(x => x.ReadValue(
-                        Constants.Agent.CommandLine.Args.ProjectName, // argName
-                        StringUtil.Loc("ProjectName"), // description
-                        false, // secret
-                        string.Empty, // defaultValue
-                        Validators.NonEmptyValidator, // validator
-                        false)) // unattended
-                    .Returns("TestProject");
-
-                // Act.
-                string actual = command.GetProjectName(string.Empty);
-
-                // Assert.
-                Assert.Equal("TestProject", actual);
-            }
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", nameof(CommandSettings))]
-        public void PromptsForMachineGroupName()
-        {
-            using (TestHostContext hc = CreateTestContext())
-            {
-                // Arrange.
-                var command = new CommandSettings(hc, args: new string[0]);
-                _promptManager
-                    .Setup(x => x.ReadValue(
-                        Constants.Agent.CommandLine.Args.MachineGroupName, // argName
-                        StringUtil.Loc("MachineGroupName"), // description
-                        false, // secret
-                        string.Empty, // defaultValue
-                        Validators.NonEmptyValidator, // validator
-                        false)) // unattended
-                    .Returns("Test Machine Group");
-
-                // Act.
-                string actual = command.GetMachineGroupName();
-
-                // Assert.
-                Assert.Equal("Test Machine Group", actual);
             }
         }
 

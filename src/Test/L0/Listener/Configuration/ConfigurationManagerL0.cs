@@ -23,7 +23,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
         private Mock<IPromptManager> _promptManager;
         private Mock<IConfigurationStore> _store;
         private Mock<IExtensionManager> _extnMgr;
-        private Mock<IMachineGroupServer> _machineGroupServer;
 
 #if OS_WINDOWS
         private Mock<IWindowsServiceControlManager> _serviceControlManager;
@@ -35,19 +34,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
 
         private Mock<IRSAKeyManager> _rsaKeyManager;
         private ICapabilitiesManager _capabilitiesManager;
-        private MachineGroupAgentConfigProvider _machineGroupAgentConfigProvider;
         private string _expectedToken = "expectedToken";
         private string _expectedServerUrl = "https://localhost";
-        private string _expectedVSTSServerUrl = "https://L0ConfigTest.visualstudio.com";
         private string _expectedAgentName = "expectedAgentName";
         private string _expectedPoolName = "poolName";
-        private string _expectedProjectName = "testProjectName";
-        private string _expectedMachineGroupName = "testMachineGroupName";
         private string _expectedAuthType = "pat";
         private string _expectedWorkFolder = "_work";
         private int _expectedPoolId = 1;
         private RSA rsa = null;
         private AgentSettings _configMgrAgentSettings = new AgentSettings();
+
 
         public ConfigurationManagerL0()
         {
@@ -57,7 +53,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
             _store = new Mock<IConfigurationStore>();
             _extnMgr = new Mock<IExtensionManager>();
             _rsaKeyManager = new Mock<IRSAKeyManager>();
-            _machineGroupServer = new Mock<IMachineGroupServer>();
 
 #if OS_WINDOWS
             _serviceControlManager = new Mock<IWindowsServiceControlManager>();
@@ -77,15 +72,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
             _capabilitiesManager = new CapabilitiesManager();
 
             _agentServer.Setup(x => x.ConnectAsync(It.IsAny<VssConnection>())).Returns(Task.FromResult<object>(null));
-            _machineGroupServer.Setup(x => x.ConnectAsync(It.IsAny<VssConnection>())).Returns(Task.FromResult<object>(null));
 
             _store.Setup(x => x.IsConfigured()).Returns(false);
             _store.Setup(x => x.HasCredentials()).Returns(false);
+
             _store.Setup(x => x.GetSettings()).Returns(
                 () => _configMgrAgentSettings
                 );
 
-           _store.Setup(x => x.SaveSettings(It.IsAny<AgentSettings>())).Callback((AgentSettings settings) =>
+            _store.Setup(x => x.SaveSettings(It.IsAny<AgentSettings>())).Callback((AgentSettings settings) =>
             {
                 _configMgrAgentSettings = settings;
             });
@@ -120,7 +115,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
             tc.SetSingleton<IConfigurationStore>(_store.Object);
             tc.SetSingleton<IExtensionManager>(_extnMgr.Object);
             tc.SetSingleton<IAgentServer>(_agentServer.Object);
-            tc.SetSingleton<IMachineGroupServer>(_machineGroupServer.Object);
             tc.SetSingleton<ICapabilitiesManager>(_capabilitiesManager);
 
 #if OS_WINDOWS
@@ -133,7 +127,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
 
             tc.SetSingleton<IRSAKeyManager>(_rsaKeyManager.Object);
             tc.EnqueueInstance<IAgentServer>(_agentServer.Object);
-            tc.EnqueueInstance<IMachineGroupServer>(_machineGroupServer.Object);
 
             return tc;
         }
@@ -171,69 +164,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
                 _store.Setup(x => x.IsConfigured()).Returns(false);
                 _configMgrAgentSettings = null;
 
-                _extnMgr.Setup(x => x.GetExtensions<IConfigurationProvider>()).Returns(GetConfigurationProviderList(tc));
-
-                trace.Info("Ensuring all the required parameters are available in the command line parameter");
-                await configManager.ConfigureAsync(command);
-
-                _store.Setup(x => x.IsConfigured()).Returns(true);
-
-               trace.Info("Configured, verifying all the parameter value");
-               var s = configManager.LoadSettings();
-               Assert.NotNull(s);
-               Assert.True(s.ServerUrl.Equals(_expectedServerUrl));
-               Assert.True(s.AgentName.Equals(_expectedAgentName));
-               Assert.True(s.PoolId.Equals(_expectedPoolId));
-               Assert.True(s.WorkFolder.Equals(_expectedWorkFolder));
-           }
-       }
-
-
-       /*
-        * Agent configuartion as deployment agent against VSTS account
-        * Collectioion name is not required
-        */
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "ConfigurationManagement")]
-        public async Task CanEnsureMachineGroupAgentConfigureVSTSScenario()
-        {
-            using (TestHostContext tc = CreateTestContext())
-            {
-                Tracing trace = tc.GetTrace();
-
-                trace.Info("Creating config manager");
-                IConfigurationManager configManager = new ConfigurationManager();
-                configManager.Initialize(tc);
-
-                string url = _expectedVSTSServerUrl + "/" + _expectedProjectName;
-                trace.Info("Preparing command line arguments for vsts scenario");
-                var command = new CommandSettings(
-                    tc,
-                    new[]
-                    {
-                        "configure",
-#if !OS_WINDOWS
-                       "--acceptteeeula",
-#endif
-                        "--machinegroup",
-                        "--url", url,
-                        "--agent", _expectedAgentName,
-                        "--machinegroupname", _expectedMachineGroupName,
-                        "--work", _expectedWorkFolder,
-                        "--auth", _expectedAuthType,
-                        "--token", _expectedToken
-                    });
-                trace.Info("Constructed.");
-
-                _store.Setup(x => x.IsConfigured()).Returns(false);
-                _configMgrAgentSettings = null;
-
-                _extnMgr.Setup(x => x.GetExtensions<IConfigurationProvider>()).Returns(GetConfigurationProviderList(tc));
-
-                var expectedMachineGroups = new List<DeploymentMachineGroup>() { new DeploymentMachineGroup() { Pool = new TaskAgentPoolReference(new Guid(), 3), Name = "Test-MachineGroup"} };
-                _machineGroupServer.Setup(x => x.GetDeploymentMachineGroupsAsync(It.IsAny<string>(),It.IsAny<string>())).Returns(Task.FromResult(expectedMachineGroups));
-                
                 trace.Info("Ensuring all the required parameters are available in the command line parameter");
                 await configManager.ConfigureAsync(command);
 
@@ -242,25 +172,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
                 trace.Info("Configured, verifying all the parameter value");
                 var s = configManager.LoadSettings();
                 Assert.NotNull(s);
-                Assert.True(s.ServerUrl.Equals(_expectedVSTSServerUrl,StringComparison.CurrentCultureIgnoreCase));
+                Assert.True(s.ServerUrl.Equals(_expectedServerUrl));
                 Assert.True(s.AgentName.Equals(_expectedAgentName));
-                Assert.True(s.PoolId.Equals(3));
+                Assert.True(s.PoolId.Equals(_expectedPoolId));
                 Assert.True(s.WorkFolder.Equals(_expectedWorkFolder));
-                Assert.True(s.MachineGroupName.Equals(_expectedMachineGroupName));
             }
         }
-        
-        // Init the Agent Config Provider
-        private List<IConfigurationProvider> GetConfigurationProviderList(TestHostContext tc)
-        {
-            IConfigurationProvider buildReleasesAgentConfigProvider = new BuildReleasesAgentConfigProvider();
-            buildReleasesAgentConfigProvider.Initialize(tc);
 
-            _machineGroupAgentConfigProvider = new MachineGroupAgentConfigProvider();
-            _machineGroupAgentConfigProvider.Initialize(tc);
-
-            return new List<IConfigurationProvider> { buildReleasesAgentConfigProvider, _machineGroupAgentConfigProvider };
-        }
         // TODO Unit Test for IsConfigured - Rename config file and make sure it returns false
 
     }

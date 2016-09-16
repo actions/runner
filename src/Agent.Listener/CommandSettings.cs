@@ -25,7 +25,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             Constants.Agent.CommandLine.Flags.AcceptTeeEula,
             Constants.Agent.CommandLine.Flags.Commit,
             Constants.Agent.CommandLine.Flags.Help,
-            Constants.Agent.CommandLine.Flags.MachineGroup,
             Constants.Agent.CommandLine.Flags.Replace,
             Constants.Agent.CommandLine.Flags.RunAsService,
             Constants.Agent.CommandLine.Flags.Unattended,
@@ -36,11 +35,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         {
             Constants.Agent.CommandLine.Args.Agent,
             Constants.Agent.CommandLine.Args.Auth,
-            Constants.Agent.CommandLine.Args.MachineGroupName,
             Constants.Agent.CommandLine.Args.NotificationPipeName,
             Constants.Agent.CommandLine.Args.Password,
             Constants.Agent.CommandLine.Args.Pool,
-            Constants.Agent.CommandLine.Args.ProjectName,
             Constants.Agent.CommandLine.Args.Token,
             Constants.Agent.CommandLine.Args.Url,
             Constants.Agent.CommandLine.Args.UserName,
@@ -59,7 +56,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         public bool Help => TestFlag(Constants.Agent.CommandLine.Flags.Help);
         public bool Unattended => TestFlag(Constants.Agent.CommandLine.Flags.Unattended);
         public bool Version => TestFlag(Constants.Agent.CommandLine.Flags.Version);
-        public bool MachineGroup => TestFlag(Constants.Agent.CommandLine.Flags.MachineGroup);
 
         // Constructor.
         public CommandSettings(IHostContext context, string[] args)
@@ -168,31 +164,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 validator: Validators.NonEmptyValidator);
         }
 
-        public string GetUrl(string urlDescription)
+        public string GetUrl()
         {
             return GetArgOrPrompt(
                 name: Constants.Agent.CommandLine.Args.Url,
-                description: urlDescription,
+                description: StringUtil.Loc("ServerUrl"),
                 defaultValue: string.Empty,
                 validator: Validators.ServerUrlValidator);
-        }
-
-        public string GetMachineGroupName()
-        {
-            return GetArgOrPrompt(
-                name: Constants.Agent.CommandLine.Args.MachineGroupName,
-                description: StringUtil.Loc("MachineGroupName"),
-                defaultValue: string.Empty,
-                validator: Validators.NonEmptyValidator);
-        }
-
-        public string GetProjectName(string defaultValue)
-        {
-            return GetArgOrPrompt(
-                name: Constants.Agent.CommandLine.Args.ProjectName,
-                description: StringUtil.Loc("ProjectName"),
-                defaultValue: defaultValue,
-                validator: Validators.NonEmptyValidator);
         }
 
         public string GetUserName()
