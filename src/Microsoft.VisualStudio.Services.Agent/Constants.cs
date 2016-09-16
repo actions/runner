@@ -61,6 +61,8 @@ namespace Microsoft.VisualStudio.Services.Agent
                     public static readonly string UserName = "username";
                     public static readonly string WindowsLogonAccount = "windowslogonaccount";
                     public static readonly string Work = "work";
+                    public static readonly string MachineGroupName = "machinegroupname";
+                    public static readonly string ProjectName = "projectname";
 
                     // Secret args. Must be added to the "Secrets" getter as well.
                     public static readonly string Password = "password";
@@ -90,6 +92,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                     public static readonly string RunAsService = "runasservice";
                     public static readonly string Unattended = "unattended";
                     public static readonly string Version = "version";
+                    public static readonly string MachineGroup = "machinegroup";
                 }
             }
 
@@ -99,6 +102,12 @@ namespace Microsoft.VisualStudio.Services.Agent
                 public const int TerminatedError = 1;
                 public const int RetryableError = 2;
                 public const int AgentUpdating = 3;
+            }
+
+            public static class AgentConfigurationProvider
+            {
+                public static readonly string BuildReleasesAgentConfiguration = "BuildReleasesAgentConfiguration";
+                public static readonly string DeploymentAgentConfiguration = "DeploymentAgentConfiguration";
             }
         }
 

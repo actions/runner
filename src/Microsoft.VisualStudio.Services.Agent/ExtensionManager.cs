@@ -49,6 +49,11 @@ namespace Microsoft.VisualStudio.Services.Agent
                     Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Listener.Capabilities.PowerShellCapabilitiesProvider, Agent.Listener");
 #endif
                     break;
+                // Listener agent configuration providers
+                case "Microsoft.VisualStudio.Services.Agent.Listener.Configuration.IConfigurationProvider":
+                    Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Listener.Configuration.BuildReleasesAgentConfigProvider, Agent.Listener");
+                    Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Listener.Configuration.MachineGroupAgentConfigProvider, Agent.Listener");
+                    break;
                 // Worker job extensions.
                 case "Microsoft.VisualStudio.Services.Agent.Worker.IJobExtension":
                     Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.Build.BuildJobExtension, Agent.Worker");

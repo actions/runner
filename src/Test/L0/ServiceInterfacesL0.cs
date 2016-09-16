@@ -30,6 +30,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             {
                 typeof(ICapabilitiesProvider),
                 typeof(ICredentialProvider),
+                typeof(IConfigurationProvider)
             };
             Validate(
                 assembly: typeof(IMessageListener).GetTypeInfo().Assembly,

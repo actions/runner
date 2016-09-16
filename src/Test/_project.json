@@ -31,7 +31,7 @@
         "System.Buffers": "4.0.0",
         "System.Reflection.TypeExtensions": "4.1.0",
         "System.Threading.ThreadPool": "4.0.10",
-        "vss-api-netcore": "0.5.25-private",
+        "vss-api-netcore": "0.5.26-private",
         "Moq": "4.6.36-alpha",
         "xunit": "2.1.0",
         "xunit.console.netcore": "1.0.3-prerelease-00520-02",
