@@ -27,7 +27,7 @@
     },
     "dependencies": {
         "NETStandard.Library": "1.6.0",
-        "vss-api-netcore": "0.5.25-private",
+        "vss-api-netcore": "0.5.26-private",
         "Microsoft.Win32.Registry": "4.0.0",
         "Newtonsoft.Json": "8.0.3",
         "System.Diagnostics.TraceSource": "4.0.0",

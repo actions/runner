@@ -34,6 +34,16 @@ namespace Microsoft.VisualStudio.Services.Agent
 
         [DataMember(EmitDefaultValue = false)]
         public string WorkFolder { get; set; }
+
+        // This flag is used to set if agent is configured as deployment agent or automation agent.
+        [DataMember(EmitDefaultValue = false)]
+        public bool MachineGroup { get; set; }
+
+        [DataMember(EmitDefaultValue = false)]
+        public string ProjectName { get; set; }
+
+        [DataMember(EmitDefaultValue = false)]
+        public string MachineGroupName { get; set; }
     }
 
     [ServiceLocator(Default = typeof(ConfigurationStore))]
