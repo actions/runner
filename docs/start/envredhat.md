@@ -4,7 +4,7 @@
 
 ## Versions
 
-Tested on Redhat 7.1.  Not domain joined.
+Tested on Redhat 7.2.  Not domain joined.
 
 64-bit supported.
 
