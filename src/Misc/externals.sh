@@ -131,7 +131,7 @@ function acquireExternalTool() {
 if [[ "$PLATFORM" == "windows" ]]; then
     acquireExternalTool "$CONTAINER_URL/azcopy/1/azcopy.zip" azcopy
     acquireExternalTool "$CONTAINER_URL/pdbstr/1/pdbstr.zip" pdbstr
-    acquireExternalTool "$CONTAINER_URL/portablewingit/3/portablewingit.zip" git
+    acquireExternalTool "$CONTAINER_URL/mingit/1/mingit.zip" git
     acquireExternalTool "$CONTAINER_URL/symstore/1/symstore.zip" symstore
     acquireExternalTool "$CONTAINER_URL/vstshost/m105_924d5fb6/vstshost.zip" vstshost
     acquireExternalTool "$CONTAINER_URL/vstsom/m105_924d5fb6/vstsom.zip" vstsom

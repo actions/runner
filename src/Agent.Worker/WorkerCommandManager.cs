@@ -2,8 +2,6 @@
 using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
@@ -59,13 +57,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 {
                     try
                     {
-                        // trace the ##vso command as long as the command is not a ##vso[task.debug] command.
-                        if (!(string.Equals(command.Area, "task", StringComparison.OrdinalIgnoreCase) &&
-                              string.Equals(command.Event, "debug", StringComparison.OrdinalIgnoreCase)))
-                        {
-                            context.Debug($"Processing: {input}");
-                        }
-
                         extension.ProcessCommand(context, command);
                     }
                     catch (Exception ex)
@@ -73,6 +64,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                         context.Error(StringUtil.Loc("CommandProcessFailed", input));
                         context.Error(ex);
                         context.CommandResult = TaskResult.Failed;
+                    }
+                    finally
+                    {
+                        // trace the ##vso command as long as the command is not a ##vso[task.debug] command.
+                        if (!(string.Equals(command.Area, "task", StringComparison.OrdinalIgnoreCase) &&
+                              string.Equals(command.Event, "debug", StringComparison.OrdinalIgnoreCase)))
+                        {
+                            context.Debug($"Processed: {input}");
+                        }
                     }
                 }
             }

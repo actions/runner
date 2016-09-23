@@ -332,15 +332,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 string tfsCollectionUrl = message.Environment.Variables[WellKnownDistributedTaskVariables.TFCollectionUrl];
                 message.Environment.Variables[WellKnownDistributedTaskVariables.TFCollectionUrl] = ReplaceWithConfigUriBase(new Uri(tfsCollectionUrl)).AbsoluteUri;
                 Trace.Info($"Ensure System.TFCollectionUrl match config url base. {message.Environment.Variables[WellKnownDistributedTaskVariables.TFCollectionUrl]}");
-
-                // back compat server url
-                message.Environment.Variables[Constants.Variables.System.TFServerUrl] = message.Environment.Variables[WellKnownDistributedTaskVariables.TFCollectionUrl];
-                Trace.Info($"Ensure System.TFServerUrl match config url base. {message.Environment.Variables[Constants.Variables.System.TFServerUrl]}");
             }
 
             // fixup SystemConnection Url
             message.Environment.SystemConnection.Url = ReplaceWithConfigUriBase(message.Environment.SystemConnection.Url);
             Trace.Info($"Ensure SystemConnection url match config url base. {message.Environment.SystemConnection.Url}");
+
+            // back compat server url
+            message.Environment.Variables[Constants.Variables.System.TFServerUrl] = message.Environment.SystemConnection.Url.AbsoluteUri;
+            Trace.Info($"Ensure System.TFServerUrl match config url base. {message.Environment.SystemConnection.Url.AbsoluteUri}");
         }
     }
 }

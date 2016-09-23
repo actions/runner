@@ -37,6 +37,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             {
                 ProcessTaskCompleteCommand(context, command.Properties, command.Data);
             }
+            else if (String.Equals(command.Event, WellKnownTaskCommand.SetSecret, StringComparison.OrdinalIgnoreCase))
+            {
+                ProcessTaskSetSecretCommand(context, command.Data);
+            }
             else if (String.Equals(command.Event, WellKnownTaskCommand.SetVariable, StringComparison.OrdinalIgnoreCase))
             {
                 ProcessTaskSetVariableCommand(context, command.Properties, command.Data);
@@ -440,6 +444,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             context.Progress(percentComplete, data);
         }
 
+        private void ProcessTaskSetSecretCommand(IExecutionContext context, string data)
+        {
+            if (!string.IsNullOrEmpty(data))
+            {
+                var _secretMasker = HostContext.GetService<ISecretMasker>();
+                _secretMasker.AddRegex(data);
+            }
+        }
+
         private void ProcessTaskSetVariableCommand(IExecutionContext context, Dictionary<string, string> eventProperties, string data)
         {
             String name;
@@ -495,6 +508,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         public static readonly String LogIssue = "logissue";
         public static readonly String LogIssue_xplatCompat = "issue";
         public static readonly String SetProgress = "setprogress";
+        public static readonly String SetSecret = "setsecret";
         public static readonly String SetVariable = "setvariable";
         public static readonly String UploadFile = "uploadfile";
         public static readonly String UploadSummary = "uploadsummary";
