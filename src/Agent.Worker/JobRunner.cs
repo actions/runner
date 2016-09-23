@@ -19,8 +19,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
     public sealed class JobRunner : AgentService, IJobRunner
     {
-        private readonly string[] _releaseManagementUrlSuffix = { ".visualstudio.com", ".vsallin.net", ".tfsallin.net" };
-
         public async Task<TaskResult> RunAsync(AgentJobRequestMessage message, CancellationToken jobRequestCancellationToken)
         {
             // Validate parameters.
@@ -262,11 +260,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             AgentSettings settings = HostContext.GetService<IConfigurationStore>().GetSettings();
             try
             {
-                string jobServerHost = messageUri.GetComponents(UriComponents.Host, UriFormat.Unescaped);
-                if (!string.IsNullOrEmpty(jobServerHost)
-                    && _releaseManagementUrlSuffix.Any(x => jobServerHost.EndsWith(x, StringComparison.OrdinalIgnoreCase)))
+                if (UrlUtil.IsHosted(messageUri.AbsoluteUri))
                 {
-                    // If its hosted and has RM service URL, return the messageUri as it is.
+                    // If messageUri is hosted service URL, return the messageUri as it is.
                     return messageUri;
                 }
 
