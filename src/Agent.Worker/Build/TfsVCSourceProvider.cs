@@ -32,6 +32,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             tf.Endpoint = endpoint;
             tf.ExecutionContext = executionContext;
 
+            // Setup proxy.
+            if (!string.IsNullOrEmpty(executionContext.Variables.Agent_ProxyUrl))
+            {
+                executionContext.Debug($"Configure '{tf.FilePath}' to work through proxy server '{executionContext.Variables.Agent_ProxyUrl}'.");
+                tf.SetupProxy(executionContext.Variables.Agent_ProxyUrl, executionContext.Variables.Agent_ProxyUsername, executionContext.Variables.Agent_ProxyPassword);
+            }
+
             // Add TF to the PATH.
             string tfPath = tf.FilePath;
             ArgUtil.File(tfPath, nameof(tfPath));
@@ -300,6 +307,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                     }
                 }
             }
+
+            // Cleanup proxy settings.
+            if (!string.IsNullOrEmpty(executionContext.Variables.Agent_ProxyUrl))
+            {
+                executionContext.Debug($"Remove proxy setting for '{tf.FilePath}' to work through proxy server '{executionContext.Variables.Agent_ProxyUrl}'.");
+                tf.CleanupProxySetting();
+            }
         }
 
         public Task PostJobCleanupAsync(IExecutionContext executionContext, ServiceEndpoint endpoint)
@@ -455,7 +469,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                         .ThenBy(x => !x.Recursive) // Then recursive maps
                         .ThenBy(x => x.NormalizedServerPath) // Then sort by the normalized server path
                         .ToList();
-                    for (int i = 0 ; i < sortedDefinitionMappings.Count ; i++)
+                    for (int i = 0; i < sortedDefinitionMappings.Count; i++)
                     {
                         DefinitionWorkspaceMapping mapping = sortedDefinitionMappings[i];
                         executionContext.Debug($"Definition mapping[{i}]: cloak '{mapping.MappingType == DefinitionMappingType.Cloak}', recursive '{mapping.Recursive}', server path '{mapping.NormalizedServerPath}', local path '{mapping.GetRootedLocalPath(sourcesDirectory)}'");
@@ -468,7 +482,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                         .ThenBy(x => !x.Recursive) // Then recursive maps
                         .ThenBy(x => x.ServerPath) // Then sort by server path
                         .ToList();
-                    for (int i = 0 ; i< sortedTFMappings.Count ; i++)
+                    for (int i = 0; i < sortedTFMappings.Count; i++)
                     {
                         ITfsVCMapping mapping = sortedTFMappings[i];
                         executionContext.Debug($"Found mapping[{i}]: cloak '{mapping.Cloak}', recursive '{mapping.Recursive}', server path '{mapping.ServerPath}', local path '{mapping.LocalPath}'");
@@ -476,7 +490,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
                     // Compare the mappings.
                     bool allMatch = true;
-                    for (int i = 0 ; i < sortedTFMappings.Count ; i++)
+                    for (int i = 0; i < sortedTFMappings.Count; i++)
                     {
                         ITfsVCMapping tfMapping = sortedTFMappings[i];
                         DefinitionWorkspaceMapping definitionMapping = sortedDefinitionMappings[i];

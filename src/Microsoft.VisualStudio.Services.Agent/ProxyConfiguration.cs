@@ -12,16 +12,20 @@ namespace Microsoft.VisualStudio.Services.Agent
     public interface IProxyConfiguration : IAgentService
     {
         HttpClientHandler HttpClientHandlerWithProxySetting { get; }
-        String ProxyUrl { get; }
+        string ProxyUrl { get; }
+        string ProxyUsername { get; }
+        string ProxyPassword { get; }
         void ApplyProxySettings();
     }
 
     public class ProxyConfiguration : AgentService, IProxyConfiguration
     {
         private bool _proxySettingsApplied = false;
-        private ICredentials _proxyCredential = null;
 
-        public String ProxyUrl { get; private set; }
+        public string ProxyUrl { get; private set; }
+        public string ProxyUsername { get; private set; }
+        public string ProxyPassword { get; private set; }
+
         public HttpClientHandler HttpClientHandlerWithProxySetting
         {
             get
@@ -32,9 +36,19 @@ namespace Microsoft.VisualStudio.Services.Agent
                 if (_proxySettingsApplied && !string.IsNullOrEmpty(ProxyUrl))
                 {
                     clientHandler.UseProxy = true;
+                    ICredentials proxyCredential = null;
+                    if (string.IsNullOrEmpty(ProxyUsername) || string.IsNullOrEmpty(ProxyPassword))
+                    {
+                        proxyCredential = CredentialCache.DefaultNetworkCredentials;
+                    }
+                    else
+                    {
+                        proxyCredential = new NetworkCredential(ProxyUsername, ProxyPassword);
+                    }
+
                     clientHandler.Proxy = new WebProxy(new Uri(ProxyUrl))
                     {
-                        Credentials = _proxyCredential
+                        Credentials = proxyCredential
                     };
                 }
 
@@ -47,7 +61,8 @@ namespace Microsoft.VisualStudio.Services.Agent
             Trace.Entering();
             if (_proxySettingsApplied)
             {
-                return;
+                // agent and worker process should apply proxy setting upfront only once. 
+                throw new InvalidOperationException(nameof(ApplyProxySettings));
             }
 
             string proxyConfigFile = IOUtil.GetProxyConfigFilePath();
@@ -78,37 +93,38 @@ namespace Microsoft.VisualStudio.Services.Agent
             {
                 Trace.Info($"Config proxy at: {ProxyUrl}.");
 
-                string username = Environment.GetEnvironmentVariable("VSTS_HTTP_PROXY_USERNAME");
-                string password = Environment.GetEnvironmentVariable("VSTS_HTTP_PROXY_PASSWORD");
+                ProxyUsername = Environment.GetEnvironmentVariable("VSTS_HTTP_PROXY_USERNAME");
+                ProxyPassword = Environment.GetEnvironmentVariable("VSTS_HTTP_PROXY_PASSWORD");
 
-                if (!string.IsNullOrEmpty(password))
+                if (!string.IsNullOrEmpty(ProxyPassword))
                 {
                     var secretMasker = HostContext.GetService<ISecretMasker>();
-                    secretMasker.AddValue(password);
+                    secretMasker.AddValue(ProxyPassword);
                 }
 
-                if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
+                ICredentials proxyCredential = null;
+                if (string.IsNullOrEmpty(ProxyUsername) || string.IsNullOrEmpty(ProxyPassword))
                 {
                     Trace.Info($"Config proxy use DefaultNetworkCredentials.");
-                    _proxyCredential = CredentialCache.DefaultNetworkCredentials;
+                    proxyCredential = CredentialCache.DefaultNetworkCredentials;
                 }
                 else
                 {
-                    Trace.Info($"Config authentication proxy as: {username}.");
-                    _proxyCredential = new NetworkCredential(username, password);
+                    Trace.Info($"Config authentication proxy as: {ProxyUsername}.");
+                    proxyCredential = new NetworkCredential(ProxyUsername, ProxyPassword);
                 }
 
                 VssHttpMessageHandler.DefaultWebProxy = new WebProxy(new Uri(ProxyUrl))
                 {
-                    Credentials = _proxyCredential
+                    Credentials = proxyCredential
                 };
-
-                _proxySettingsApplied = true;
             }
             else
             {
                 Trace.Info($"No proxy setting found.");
             }
+
+            _proxySettingsApplied = true;
         }
     }
 

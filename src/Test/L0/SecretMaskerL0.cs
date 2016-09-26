@@ -121,5 +121,29 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
 
             Assert.Equal("a********h", result);
         }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void HandlesJsonEscapedInput()
+        {
+            var secretMasker = new SecretMasker();
+            secretMasker.AddValue(@"b\c");
+
+            var result = secretMasker.MaskSecrets(@"ab\\cd");
+            Assert.Equal("a********d", result);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void HandlesUrlEscapedInput()
+        {
+            var secretMasker = new SecretMasker();
+            secretMasker.AddValue("b c");
+
+            var result = secretMasker.MaskSecrets("ab%20cd");
+            Assert.Equal("a********d", result);
+        }
     }
 }

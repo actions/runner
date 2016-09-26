@@ -1,11 +1,9 @@
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
-using Microsoft.VisualStudio.Services.Agent;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using Microsoft.VisualStudio.Services.Agent.Worker.Build;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using BuildWebApi = Microsoft.TeamFoundation.Build.WebApi;
 
@@ -104,6 +102,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         }
 
         public string Agent_ServerOMDirectory => Get(Constants.Variables.Agent.ServerOMDirectory);
+
+        public string Agent_ProxyUrl => Get(Constants.Variables.Agent.ProxyUrl);
+
+        public string Agent_ProxyUsername => Get(Constants.Variables.Agent.ProxyUsername);
+
+        public string Agent_ProxyPassword => Get(Constants.Variables.Agent.ProxyPassword);
 
         public int? Build_BuildId => GetInt(BuildWebApi.WellKnownBuildVariables.BuildId);
 

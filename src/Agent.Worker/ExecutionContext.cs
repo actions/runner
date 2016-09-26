@@ -300,6 +300,26 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             List<string> warnings;
             Variables = new Variables(HostContext, message.Environment.Variables, message.Environment.MaskHints, out warnings);
 
+            // Proxy setting flows
+            var proxyConfiguration = HostContext.GetService<IProxyConfiguration>();
+            if (!string.IsNullOrEmpty(proxyConfiguration.ProxyUrl))
+            {
+                Variables.Set(Constants.Variables.Agent.ProxyUrl, proxyConfiguration.ProxyUrl);
+                Environment.SetEnvironmentVariable("VSTS_HTTP_PROXY", string.Empty);
+
+                if (!string.IsNullOrEmpty(proxyConfiguration.ProxyUsername))
+                {
+                    Variables.Set(Constants.Variables.Agent.ProxyUsername, proxyConfiguration.ProxyUsername);
+                    Environment.SetEnvironmentVariable("VSTS_HTTP_PROXY_USERNAME", string.Empty);
+                }
+
+                if (!string.IsNullOrEmpty(proxyConfiguration.ProxyPassword))
+                {
+                    Variables.Set(Constants.Variables.Agent.ProxyPassword, proxyConfiguration.ProxyPassword, true);
+                    Environment.SetEnvironmentVariable("VSTS_HTTP_PROXY_PASSWORD", string.Empty);
+                }
+            }
+
             // Initialize the job timeline record.
             InitializeTimelineRecord(
                 timelineId: message.Timeline.Id,

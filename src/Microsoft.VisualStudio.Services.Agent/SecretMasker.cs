@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using Newtonsoft.Json;
 
 namespace Microsoft.VisualStudio.Services.Agent
 {
@@ -109,8 +110,21 @@ namespace Microsoft.VisualStudio.Services.Agent
         {
             if (!string.IsNullOrEmpty(value))
             {
-                // TODO: Also add json-escaped value and URI escaped value as an extra precaution?
                 _valueSecrets.TryAdd(value, new ValueSecret(value));
+
+                // Add URI escaped value as an extra precaution
+                string uriEscaped = Uri.EscapeDataString(value);
+                if (!uriEscaped.Equals(value, StringComparison.OrdinalIgnoreCase))
+                {
+                    _valueSecrets.TryAdd($"{value}_uriescaped", new ValueSecret(uriEscaped));
+                }
+
+                // Add json escaped value as an extra precaution
+                string jsonEscaped = JsonConvert.ToString(value).Trim('\"');
+                if (!jsonEscaped.Equals(value, StringComparison.OrdinalIgnoreCase))
+                {
+                    _valueSecrets.TryAdd($"{value}_jsonescaped", new ValueSecret(jsonEscaped));
+                }
             }
         }
     }

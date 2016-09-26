@@ -44,6 +44,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                 var pagingLogger = new Mock<IPagingLogger>();
                 hc.EnqueueInstance(pagingLogger.Object);
 
+                // Arrange: Setup the proxy configation.
+                var proxy = new Mock<IProxyConfiguration>();
+                hc.SetSingleton(proxy.Object);
+
                 // Arrange: Create the execution context.
                 hc.SetSingleton(new Mock<IJobServerQueue>().Object);
                 var ec = new Microsoft.VisualStudio.Services.Agent.Worker.ExecutionContext();

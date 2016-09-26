@@ -17,6 +17,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
         public string FilePath => Path.Combine(IOUtil.GetExternalsPath(), Constants.Path.TeeDirectory, "tf");
 
+        public void CleanupProxySetting()
+        {
+            // no-opt for TEE.
+        }
+
         public async Task EulaAsync()
         {
             await RunCommandAsync(FormatFlags.All, "eula", "-accept");
@@ -48,6 +53,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         public Task ScorchAsync()
         {
             throw new NotSupportedException();
+        }
+
+        public void SetupProxy(string proxyUrl, string proxyUsername, string proxyPassword)
+        {
+            if (!string.IsNullOrEmpty(proxyUrl))
+            {
+                Uri proxy = UrlUtil.GetCredentialEmbeddedUrl(new Uri(proxyUrl), proxyUsername, proxyPassword);
+                AdditionalEnvironmentVariables["http_proxy"] = proxy.AbsoluteUri;
+            }
         }
 
         public async Task ShelveAsync(string shelveset, string commentFile)

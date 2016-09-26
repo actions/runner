@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
 using System.Text;
+using System.Xml;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 {
@@ -29,6 +30,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         protected override string Switch => "/";
 
         public string FilePath => Path.Combine(ExecutionContext.Variables.Agent_ServerOMDirectory, "tf.exe");
+
+        private string AppConfigFile => Path.Combine(ExecutionContext.Variables.Agent_ServerOMDirectory, "tf.exe.config");
+
+        private string AppConfigRestoreFile => Path.Combine(ExecutionContext.Variables.Agent_ServerOMDirectory, "tf.exe.config.restore");
+
+        public void CleanupProxySetting()
+        {
+            ArgUtil.File(AppConfigRestoreFile, "tf.exe.config.restore");
+            ExecutionContext.Debug("Restore default tf.exe.config.");
+            IOUtil.DeleteFile(AppConfigFile);
+            File.Copy(AppConfigRestoreFile, AppConfigFile);
+        }
 
         public Task EulaAsync()
         {
@@ -57,6 +70,74 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         // The current approach taken is: allow the exception to bubble. The TfsVCSourceProvider
         // will catch the exception, log it as a warning, throw away the workspace, and re-clone.
         public async Task ScorchAsync() => await RunCommandAsync(FormatFlags.OmitCollectionUrl, "vc", "scorch", SourcesDirectory, "/recursive", "/diff", "/unmapped");
+
+        public void SetupProxy(string proxyUrl, string proxyUsername, string proxyPassword)
+        {
+            ArgUtil.File(AppConfigFile, "tf.exe.config");
+            if (!File.Exists(AppConfigRestoreFile))
+            {
+                Trace.Info("Take snapshot of current appconfig for restore modified appconfig.");
+                File.Copy(AppConfigFile, AppConfigRestoreFile);
+            }
+            else
+            {
+                // cleanup any appconfig changes from previous build.
+                CleanupProxySetting();
+            }
+
+            if (!string.IsNullOrEmpty(proxyUrl))
+            {
+                XmlDocument appConfig = new XmlDocument();
+                using (var appConfigStream = new FileStream(AppConfigFile, FileMode.Open, FileAccess.Read))
+                {
+                    appConfig.Load(appConfigStream);
+                }
+
+                var configuration = appConfig.SelectSingleNode("configuration");
+                ArgUtil.NotNull(configuration, "configuration");
+
+                var exist_defaultProxy = appConfig.SelectSingleNode("configuration/system.net/defaultProxy");
+                if (exist_defaultProxy == null)
+                {
+                    var system_net = appConfig.SelectSingleNode("configuration/system.net");
+                    if (system_net == null)
+                    {
+                        Trace.Verbose("Create system.net section in appconfg.");
+                        system_net = appConfig.CreateElement("system.net");
+                    }
+
+                    Trace.Verbose("Create defaultProxy section in appconfg.");
+                    var defaultProxy = appConfig.CreateElement("defaultProxy");
+                    defaultProxy.SetAttribute("useDefaultCredentials", "True");
+
+                    Trace.Verbose("Create proxy section in appconfg.");
+                    var proxy = appConfig.CreateElement("proxy");
+                    proxy.SetAttribute("proxyaddress", proxyUrl);
+
+                    defaultProxy.AppendChild(proxy);
+                    system_net.AppendChild(defaultProxy);
+                    configuration.AppendChild(system_net);
+
+                    using (var appConfigStream = new FileStream(AppConfigFile, FileMode.Open, FileAccess.ReadWrite))
+                    {
+                        appConfig.Save(appConfigStream);
+                    }
+                }
+                else
+                {
+                    //proxy setting exist.
+                    ExecutionContext.Debug("Proxy setting already exist in app.config file.");
+                }
+
+                // when tf.exe talk to any devfabric site, it will always bypass proxy. 
+                // for testing, we need set this variable to let tf.exe hit the proxy server on devfabric.
+                if (Endpoint.Url.Host.Contains(".me.tfsallin.net"))
+                {
+                    ExecutionContext.Debug("Set TFS_BYPASS_PROXY_ON_LOCAL on devfabric.");
+                    AdditionalEnvironmentVariables["TFS_BYPASS_PROXY_ON_LOCAL"] = "0";
+                }
+            }
+        }
 
         public async Task ShelveAsync(string shelveset, string commentFile)
         {

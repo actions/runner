@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -277,7 +276,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 ArgUtil.Equal(1, info.Entries.Length, nameof(info.Entries.Length));
 
                 long revision = 0;
-                long.TryParse(info.Entries[0].Commit?.Revision?? sourceRevision, out revision);
+                long.TryParse(info.Entries[0].Commit?.Revision ?? sourceRevision, out revision);
 
                 return revision;
             }
@@ -437,7 +436,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             Trace.Verbose("Clean up Svn workspace.");
             oldMappings.Where(m => !newMappings.ContainsKey(m.Key))
                 .AsParallel()
-                .ForAll(m => {
+                .ForAll(m =>
+                {
                     Trace.Verbose($@"Delete unmapped folder: '{m.Key}'");
                     IOUtil.DeleteDirectory(m.Key, CancellationToken.None);
                 });
@@ -452,7 +452,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         {
             Trace.Verbose($@"Update '{mapping.LocalPath}'.");
             await RunCommandAsync(
-                "update", 
+                "update",
                 mapping.LocalPath,
                 "--revision", mapping.Revision,
                 "--depth", ToDepthArgument(mapping.Depth),
@@ -513,7 +513,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         private string FormatArgumentsWithDefaults(params string[] args)
         {
             // Format each arg.
-            List < string> formattedArgs = new List<string>();
+            List<string> formattedArgs = new List<string>();
             foreach (string arg in args ?? new string[0])
             {
                 if (!string.IsNullOrEmpty(arg))
@@ -549,6 +549,30 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
             formattedArgs.Add("--non-interactive");
 
+            // Add proxy setting parameters
+            if (!string.IsNullOrEmpty(_context.Variables.Agent_ProxyUrl))
+            {
+                _context.Debug($"Add proxy setting parameters to '{_svn}' for proxy server '{_context.Variables.Agent_ProxyUrl}'.");
+
+                formattedArgs.Add("--config-option");
+                formattedArgs.Add(QuotedArgument($"servers:global:http-proxy-host={new Uri(_context.Variables.Agent_ProxyUrl).Host}"));
+
+                formattedArgs.Add("--config-option");
+                formattedArgs.Add(QuotedArgument($"servers:global:http-proxy-port={new Uri(_context.Variables.Agent_ProxyUrl).Port}"));
+
+                if (!string.IsNullOrEmpty(_context.Variables.Agent_ProxyUsername))
+                {
+                    formattedArgs.Add("--config-option");
+                    formattedArgs.Add(QuotedArgument($"servers:global:http-proxy-username={_context.Variables.Agent_ProxyUsername}"));
+                }
+
+                if (!string.IsNullOrEmpty(_context.Variables.Agent_ProxyPassword))
+                {
+                    formattedArgs.Add("--config-option");
+                    formattedArgs.Add(QuotedArgument($"servers:global:http-proxy-password={_context.Variables.Agent_ProxyPassword}"));
+                }
+            }
+
             return string.Join(" ", formattedArgs);
         }
 
@@ -563,21 +587,21 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 altQuote = '\"';
             }
 
-            return (arg.IndexOfAny(new char[] { ' ', altQuote}) ==-1) ? arg : $"{quote}{arg}{quote}";
+            return (arg.IndexOfAny(new char[] { ' ', altQuote }) == -1) ? arg : $"{quote}{arg}{quote}";
         }
 
         private string ToDepthArgument(int depth)
         {
             switch (depth)
             {
-            case 0:
-                return "empty";
-            case 1:
-                return "files";
-            case 2:
-                return "immediates";
-            default:
-                return "infinity";
+                case 0:
+                    return "empty";
+                case 1:
+                    return "files";
+                case 2:
+                    return "immediates";
+                default:
+                    return "infinity";
             }
         }
 
@@ -699,7 +723,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 {
                     localPaths.Add(localPath);
                 }
-                
+
                 if (distinctMappings.ContainsKey(serverPath))
                 {
                     _context.Debug(StringUtil.Loc("SvnMappingDuplicateServer", serverPath));

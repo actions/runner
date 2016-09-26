@@ -189,5 +189,71 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                 _messageListener.Verify(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()), expectedTimes);
             }
         }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Agent")]
+        //process 2 new job messages, and one cancel message
+        public async void TestMachineProvisionerCLI()
+        {
+            using (var hc = new TestHostContext(this))
+            {
+                hc.SetSingleton<IConfigurationManager>(_configurationManager.Object);
+                hc.SetSingleton<IPromptManager>(_promptManager.Object);
+                hc.SetSingleton<IMessageListener>(_messageListener.Object);
+                hc.SetSingleton<IProxyConfiguration>(_proxy.Object);
+
+                var command = new CommandSettings(hc, new[] { "run" });
+
+                _configurationManager.Setup(x => x.IsConfigured()).
+                    Returns(true);
+                _configurationManager.Setup(x => x.LoadSettings())
+                    .Returns(new AgentSettings { });
+                _configurationManager.Setup(x => x.IsServiceConfigured()).
+                    Returns(false);
+                _messageListener.Setup(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()))
+                    .Returns(Task.FromResult(false));
+
+                var agent = new Agent.Listener.Agent();
+                agent.Initialize(hc);
+                agent.TokenSource = new CancellationTokenSource();
+                await agent.ExecuteCommand(command);
+
+                _messageListener.Verify(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()), Times.Once());
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Agent")]
+        //process 2 new job messages, and one cancel message
+        public async void TestMachineProvisionerCLICompat()
+        {
+            using (var hc = new TestHostContext(this))
+            {
+                hc.SetSingleton<IConfigurationManager>(_configurationManager.Object);
+                hc.SetSingleton<IPromptManager>(_promptManager.Object);
+                hc.SetSingleton<IMessageListener>(_messageListener.Object);
+                hc.SetSingleton<IProxyConfiguration>(_proxy.Object);
+
+                var command = new CommandSettings(hc, new string[] { });
+
+                _configurationManager.Setup(x => x.IsConfigured()).
+                    Returns(true);
+                _configurationManager.Setup(x => x.LoadSettings())
+                    .Returns(new AgentSettings { });
+                _configurationManager.Setup(x => x.IsServiceConfigured()).
+                    Returns(false);
+                _messageListener.Setup(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()))
+                    .Returns(Task.FromResult(false));
+
+                var agent = new Agent.Listener.Agent();
+                agent.Initialize(hc);
+                agent.TokenSource = new CancellationTokenSource();
+                await agent.ExecuteCommand(command);
+
+                _messageListener.Verify(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()), Times.Once());
+            }
+        }
     }
 }
