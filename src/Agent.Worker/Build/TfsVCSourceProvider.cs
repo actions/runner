@@ -14,6 +14,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 {
     public sealed class TfsVCSourceProvider : SourceProvider, ISourceProvider
     {
+        private bool _undoShelvesetPendingChanges = false;
+
         public override string RepositoryType => WellKnownRepositoryTypes.TfsVersionControl;
 
         public async Task GetSourceAsync(
@@ -272,6 +274,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 // Unshelve.
                 await tf.UnshelveAsync(shelveset: shelvesetName);
 
+                // Ensure we undo pending changes for shelveset build at the end.
+                _undoShelvesetPendingChanges = true;
+
                 if (!string.IsNullOrEmpty(gatedShelvesetName))
                 {
                     // Create the comment file for reshelve.
@@ -316,9 +321,84 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             }
         }
 
-        public Task PostJobCleanupAsync(IExecutionContext executionContext, ServiceEndpoint endpoint)
+        public async Task PostJobCleanupAsync(IExecutionContext executionContext, ServiceEndpoint endpoint)
         {
-            return Task.CompletedTask;
+            if (_undoShelvesetPendingChanges)
+            {
+                string shelvesetName = GetEndpointData(endpoint, Constants.EndpointData.SourceTfvcShelveset);
+                executionContext.Debug($"Undo pending changes left by shelveset '{shelvesetName}'.");
+
+                // Create the tf command manager.
+                var tf = HostContext.CreateService<ITfsVCCommandManager>();
+                tf.CancellationToken = executionContext.CancellationToken;
+                tf.Endpoint = endpoint;
+                tf.ExecutionContext = executionContext;
+
+                // Get the definition mappings.
+                DefinitionWorkspaceMapping[] definitionMappings =
+                    JsonConvert.DeserializeObject<DefinitionWorkspaceMappings>(endpoint.Data[WellKnownEndpointData.TfvcWorkspaceMapping])?.Mappings;
+
+                // Determine the sources directory.
+                string sourcesDirectory = GetEndpointData(endpoint, Constants.EndpointData.SourcesDirectory);
+                ArgUtil.NotNullOrEmpty(sourcesDirectory, nameof(sourcesDirectory));
+
+                try
+                {
+                    if (tf.Features.HasFlag(TfsVCFeatures.GetFromUnmappedRoot))
+                    {
+                        // Undo pending changes.
+                        ITfsVCStatus tfStatus = await tf.StatusAsync(localPath: sourcesDirectory);
+                        if (tfStatus?.HasPendingChanges ?? false)
+                        {
+                            await tf.UndoAsync(localPath: sourcesDirectory);
+
+                            // Cleanup remaining files/directories from pend adds.
+                            tfStatus.AllAdds
+                                .OrderByDescending(x => x.LocalItem) // Sort descending so nested items are deleted before their parent is deleted.
+                                .ToList()
+                                .ForEach(x =>
+                                {
+                                    executionContext.Output(StringUtil.Loc("Deleting", x.LocalItem));
+                                    IOUtil.Delete(x.LocalItem, executionContext.CancellationToken);
+                                });
+                        }
+                    }
+                    else
+                    {
+                        // Perform "undo" for each map.
+                        foreach (DefinitionWorkspaceMapping definitionMapping in definitionMappings ?? new DefinitionWorkspaceMapping[0])
+                        {
+                            if (definitionMapping.MappingType == DefinitionMappingType.Map)
+                            {
+                                // Check the status.
+                                string localPath = definitionMapping.GetRootedLocalPath(sourcesDirectory);
+                                ITfsVCStatus tfStatus = await tf.StatusAsync(localPath: localPath);
+                                if (tfStatus?.HasPendingChanges ?? false)
+                                {
+                                    // Undo.
+                                    await tf.UndoAsync(localPath: localPath);
+
+                                    // Cleanup remaining files/directories from pend adds.
+                                    tfStatus.AllAdds
+                                        .OrderByDescending(x => x.LocalItem) // Sort descending so nested items are deleted before their parent is deleted.
+                                        .ToList()
+                                        .ForEach(x =>
+                                        {
+                                            executionContext.Output(StringUtil.Loc("Deleting", x.LocalItem));
+                                            IOUtil.Delete(x.LocalItem, executionContext.CancellationToken);
+                                        });
+                                }
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // We can't undo pending changes, log a warning and continue.
+                    executionContext.Debug(ex.ToString());
+                    executionContext.Warning(ex.Message);
+                }
+            }
         }
 
         public override string GetLocalPath(IExecutionContext executionContext, ServiceEndpoint endpoint, string path)
