@@ -7,22 +7,110 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.IO;
 using System.Text.RegularExpressions;
+using System.Text;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 {
     public class ExternalGitSourceProvider : GitSourceProvider
     {
         public override string RepositoryType => WellKnownRepositoryTypes.Git;
+
+        // external git repository won't use auth header cmdline arg, since we don't know the auth scheme.
+        public override bool UseAuthHeaderCmdlineArg => false;
+
+        public override void RequirementCheck(IExecutionContext executionContext, ServiceEndpoint endpoint)
+        {
+            // no-opt for external git repo, there is no additional requirements.
+        }
+
+        public override string GenerateAuthHeader(string username, string password)
+        {
+            // can't generate auth header for external git. 
+            throw new NotSupportedException(nameof(ExternalGitSourceProvider.GenerateAuthHeader));
+        }
     }
 
     public sealed class GitHubSourceProvider : GitSourceProvider
     {
         public override string RepositoryType => WellKnownRepositoryTypes.GitHub;
+
+        public override bool UseAuthHeaderCmdlineArg
+        {
+            get
+            {
+                // v2.9 git exist use auth header for github repository.
+                ArgUtil.NotNull(_gitCommandManager, nameof(_gitCommandManager));
+                return _gitCommandManager.EnsureGitVersion(_minGitVersionSupportAuthHeader, throwOnNotMatch: false);
+            }
+        }
+
+        public override void RequirementCheck(IExecutionContext executionContext, ServiceEndpoint endpoint)
+        {
+            // no-opt for github repo, there is no additional requirements.
+        }
+
+        public override string GenerateAuthHeader(string username, string password)
+        {
+            // github use basic auth header with username:password in base64encoding. 
+            string authHeader = $"{username ?? string.Empty}:{password ?? string.Empty}";
+            string base64encodedAuthHeader = Convert.ToBase64String(Encoding.UTF8.GetBytes(authHeader));
+
+            // add base64 encoding auth header into secretMasker.
+            var secretMasker = HostContext.GetService<ISecretMasker>();
+            secretMasker.AddValue(base64encodedAuthHeader);
+            return $"basic {base64encodedAuthHeader}";
+        }
     }
 
     public sealed class TfsGitSourceProvider : GitSourceProvider
     {
         public override string RepositoryType => WellKnownRepositoryTypes.TfsGit;
+
+        public override bool UseAuthHeaderCmdlineArg
+        {
+            get
+            {
+                // v2.9 git exist use auth header for tfsgit repository.
+                ArgUtil.NotNull(_gitCommandManager, nameof(_gitCommandManager));
+                return _gitCommandManager.EnsureGitVersion(_minGitVersionSupportAuthHeader, throwOnNotMatch: false);
+            }
+        }
+
+        // When the repository is a TfsGit, figure out the endpoint is hosted vsts git or on-prem tfs git
+        // if repository is on-prem tfs git, make sure git version greater than 2.9
+        // we have to use http.extraheader option to provide auth header for on-prem tfs git
+        public override void RequirementCheck(IExecutionContext executionContext, ServiceEndpoint endpoint)
+        {
+            ArgUtil.NotNull(_gitCommandManager, nameof(_gitCommandManager));
+            var selfManageGitCreds = executionContext.Variables.GetBoolean(Constants.Variables.System.SelfManageGitCreds) ?? false;
+            if (selfManageGitCreds)
+            {
+                // Customer choose to own git creds by themselves, we don't have to worry about git version anymore.
+                return;
+            }
+
+            // Since that variable is added around TFS 2015 Qu2.
+            // Old TFS AT will not send this variable to build agent, and VSTS will always send it to build agent.
+            bool? onPremTfsGit = true;
+            string onPremTfsGitString;
+            if (endpoint.Data.TryGetValue(WellKnownEndpointData.OnPremTfsGit, out onPremTfsGitString))
+            {
+                onPremTfsGit = StringUtil.ConvertToBoolean(onPremTfsGitString);
+            }
+
+            // only ensure git version for on-prem tfsgit.
+            if (onPremTfsGit.Value)
+            {
+                _gitCommandManager.EnsureGitVersion(_minGitVersionSupportAuthHeader, throwOnNotMatch: true);
+            }
+        }
+
+        public override string GenerateAuthHeader(string username, string password)
+        {
+            // tfsgit use bearer auth header with JWToken from systemconnection.
+            ArgUtil.NotNullOrEmpty(password, nameof(password));
+            return $"bearer {password}";
+        }
     }
 
     public abstract class GitSourceProvider : SourceProvider, ISourceProvider
@@ -33,13 +121,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         private const string _remoteRefsPrefix = "refs/remotes/origin/";
         private const string _pullRefsPrefix = "refs/pull/";
         private const string _remotePullRefsPrefix = "refs/remotes/pull/";
-
         private readonly Dictionary<string, string> _configModifications = new Dictionary<string, string>();
-
-        private IGitCommandManager _gitCommandManager;
         private bool _selfManageGitCreds = false;
         private Uri _repositoryUrlWithCred = null;
         private Uri _proxyUrlWithCred = null;
+
+        protected IGitCommandManager _gitCommandManager;
+
+        // min git version that support add extra auth header.
+        protected Version _minGitVersionSupportAuthHeader = new Version(2, 9);
+
+        public abstract bool UseAuthHeaderCmdlineArg { get; }
+        public abstract void RequirementCheck(IExecutionContext executionContext, ServiceEndpoint endpoint);
+        public abstract string GenerateAuthHeader(string username, string password);
 
         public async Task GetSourceAsync(
             IExecutionContext executionContext,
@@ -106,29 +200,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             _gitCommandManager = HostContext.GetService<IGitCommandManager>();
             await _gitCommandManager.LoadGitExecutionInfo(executionContext, useBuiltInGit: !preferGitFromPath);
 
-            // min git version that support add extra auth header.
-            Version minGitVersionSupportAuthHeader = new Version(2, 9);
-
-            // When the repository is a TfsGit, figure out the endpoint is hosted vsts git or on-prem tfs git
-            bool? onPremTfsGit = null;
-            if (RepositoryType == WellKnownRepositoryTypes.TfsGit)
-            {
-                // When repository type is TfsGit, set OnPremTfsGit to True, since that variable is added around TFS 2015 Qu2.
-                // Old TFS AT will not send this variable to build agent, and VSTS will always send it to build agent.
-                onPremTfsGit = true;
-                string onPremTfsGitString;
-                if (endpoint.Data.TryGetValue(WellKnownEndpointData.OnPremTfsGit, out onPremTfsGitString))
-                {
-                    onPremTfsGit = StringUtil.ConvertToBoolean(onPremTfsGitString);
-                }
-
-                if (!_selfManageGitCreds && onPremTfsGit.Value)
-                {
-                    // When repository is TFS on-prem git, and we own manage git creds, 
-                    // we require git version 2.9.0 to support adding extra auth header.
-                    _gitCommandManager.EnsureGitVersion(minGitVersionSupportAuthHeader, throwOnNotMatch: true);
-                }
-            }
+            // Make sure the build machine met all requirements for the git repository
+            // For now, the only requirement we have is git version greater than 2.9 for on-prem tfsgit
+            RequirementCheck(executionContext, endpoint);
 
             // retrieve credential from endpoint.
             string username = string.Empty;
@@ -304,11 +378,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             List<string> additionalFetchArgs = new List<string>();
             if (!_selfManageGitCreds)
             {
-                if (RepositoryType == WellKnownRepositoryTypes.TfsGit &&
-                    (onPremTfsGit.Value || _gitCommandManager.EnsureGitVersion(minGitVersionSupportAuthHeader, throwOnNotMatch: false)))
+                // v2.9 git support provide auth header as cmdline arg. 
+                // as long 2.9 git exist, VSTS repo, TFS repo and Github repo will use this to handle auth challenge. 
+                if (UseAuthHeaderCmdlineArg)
                 {
-                    //  When repository is TfsGit on-prem git or vsts-git with git version support adding auth header.
-                    additionalFetchArgs.Add($"-c http.extraheader=\"AUTHORIZATION: bearer {password}\"");
+                    additionalFetchArgs.Add($"-c http.extraheader=\"AUTHORIZATION: {GenerateAuthHeader(username, password)}\"");
                 }
                 else
                 {
@@ -391,11 +465,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 List<string> additionalSubmoduleUpdateArgs = new List<string>();
                 if (!_selfManageGitCreds)
                 {
-                    if (RepositoryType == WellKnownRepositoryTypes.TfsGit &&
-                        (onPremTfsGit.Value || _gitCommandManager.EnsureGitVersion(minGitVersionSupportAuthHeader, throwOnNotMatch: false)))
+                    if (UseAuthHeaderCmdlineArg)
                     {
-                        string tfsAccountUrl = repositoryUrl.AbsoluteUri.Replace(repositoryUrl.PathAndQuery, string.Empty);
-                        additionalSubmoduleUpdateArgs.Add($"-c http.{tfsAccountUrl}.extraheader=\"AUTHORIZATION: bearer {password}\"");
+                        string authorityUrl = repositoryUrl.AbsoluteUri.Replace(repositoryUrl.PathAndQuery, string.Empty);
+                        additionalSubmoduleUpdateArgs.Add($"-c http.{authorityUrl}.extraheader=\"AUTHORIZATION: {GenerateAuthHeader(username, password)}\"");
                     }
 
                     // Prepare proxy config for submodule update.
@@ -417,28 +490,22 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             // handle expose creds, related to 'Allow Scripts to Access OAuth Token' option
             if (!_selfManageGitCreds)
             {
-                if (RepositoryType == WellKnownRepositoryTypes.TfsGit &&
-                    (onPremTfsGit.Value || _gitCommandManager.EnsureGitVersion(minGitVersionSupportAuthHeader, throwOnNotMatch: false)))
+                if (UseAuthHeaderCmdlineArg && exposeCred)
                 {
-                    if (exposeCred)
+                    string configKey = $"http.{repositoryUrl.AbsoluteUri}.extraheader";
+                    string configValue = $"\"AUTHORIZATION: {GenerateAuthHeader(username, password)}\"";
+                    _configModifications[configKey] = configValue.Trim('\"');
+                    int exitCode_config = await _gitCommandManager.GitConfig(executionContext, targetPath, configKey, configValue);
+                    if (exitCode_config != 0)
                     {
-                        string configKey = $"http.{repositoryUrl.AbsoluteUri}.extraheader";
-                        string configValue = $"\"AUTHORIZATION: bearer {password}\"";
-                        _configModifications[configKey] = configValue.Trim('\"');
-                        int exitCode_config = await _gitCommandManager.GitConfig(executionContext, targetPath, configKey, configValue);
-                        if (exitCode_config != 0)
-                        {
-                            throw new InvalidOperationException($"Git config failed with exit code: {exitCode_config}");
-                        }
+                        throw new InvalidOperationException($"Git config failed with exit code: {exitCode_config}");
                     }
                 }
-                else
+
+                if (!UseAuthHeaderCmdlineArg && !exposeCred)
                 {
-                    if (!exposeCred)
-                    {
-                        // remove cached credential from origin's fetch/push url.
-                        await RemoveCachedCredential(executionContext, targetPath, repositoryUrl, "origin");
-                    }
+                    // remove cached credential from origin's fetch/push url.
+                    await RemoveCachedCredential(executionContext, targetPath, repositoryUrl, "origin");
                 }
 
                 if (exposeCred)

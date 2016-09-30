@@ -366,7 +366,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 context.Output(message.Data);
             };
 
-            Dictionary<string, string> _gitEnv = new Dictionary<string, string>();
+            Dictionary<string, string> _gitEnv = new Dictionary<string, string>()
+            {
+                { "GIT_TERMINAL_PROMPT", "0" },
+            };
+
             if (!string.IsNullOrEmpty(_gitHttpUserAgentEnv))
             {
                 _gitEnv["GIT_HTTP_USER_AGENT"] = _gitHttpUserAgentEnv;
@@ -410,7 +414,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 }
             };
 
-            Dictionary<string, string> _gitEnv = new Dictionary<string, string>();
+            Dictionary<string, string> _gitEnv = new Dictionary<string, string>()
+            {
+                { "GIT_TERMINAL_PROMPT", "0" },
+            };
+
             if (!string.IsNullOrEmpty(_gitHttpUserAgentEnv))
             {
                 _gitEnv["GIT_HTTP_USER_AGENT"] = _gitHttpUserAgentEnv;
@@ -442,7 +450,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 context.Output(message.Data);
             };
 
-            Dictionary<string, string> _gitEnv = new Dictionary<string, string>();
+            Dictionary<string, string> _gitEnv = new Dictionary<string, string>()
+            {
+                { "GIT_TERMINAL_PROMPT", "0" },
+            };
+
             if (!string.IsNullOrEmpty(_gitHttpUserAgentEnv))
             {
                 _gitEnv["GIT_HTTP_USER_AGENT"] = _gitHttpUserAgentEnv;
