@@ -90,6 +90,6 @@ if ($latestIde) {
     Write-Capability -Name 'VisualStudio_IDE' -Value $latestIde
 }
 
-if ($latestVS) {
+if ($latestTest) {
     Write-Capability -Name 'VSTest' -Value $latestTest
 }
