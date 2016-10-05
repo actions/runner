@@ -351,6 +351,7 @@
   "SessionCreateFailed": "Failed to create session. {0}",
   "SessionExist": "A session for this agent already exists.",
   "SessionExistStopRetry": "Stop retry on SessionConflictException after retried for {0} seconds.",
+  "ShallowCheckoutFail": "Git checkout failed on shallow repository, this might because of git fetch with depth '{0}' doesn't include the checkout commit '{1}'. Please reference documentaion (http://go.microsoft.com/fwlink/?LinkId=829603)",
   "Skipping": "Does not exist. Skipping ",
   "SourceArtifactProviderNotFound": "Can not find source provider for artifact of type {0}",
   "SourceDirectoriesNotSpecified": "Source directories field is not specified. Specify valid source directories for code coverage reports to include highlighted source code and try again.",

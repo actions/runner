@@ -31,7 +31,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
                 .Setup(x => x.GitRemoteAdd(It.IsAny<IExecutionContext>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
                 .Returns(Task.FromResult<int>(0));
             _gitCommandManager
-                .Setup(x => x.GitFetch(It.IsAny<IExecutionContext>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<List<string>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .Setup(x => x.GitFetch(It.IsAny<IExecutionContext>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<List<string>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult<int>(0));
             _gitCommandManager
                 .Setup(x => x.GitCheckout(It.IsAny<IExecutionContext>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
@@ -92,7 +92,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
             return executionContext;
         }
 
-        private ServiceEndpoint GetTestSourceEndpoint(string url, bool clean, bool checkoutSubmodules)
+        private ServiceEndpoint GetTestSourceEndpoint(
+            string url,
+            bool clean = false,
+            bool checkoutSubmodules = false,
+            bool gitLfsSupport = false,
+            int fetchDepth = 0)
         {
             var endpoint = new ServiceEndpoint();
             endpoint.Data[WellKnownEndpointData.Clean] = clean.ToString();
@@ -104,6 +109,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
             };
             endpoint.Authorization.Parameters[EndpointAuthorizationParameters.Username] = "someuser";
             endpoint.Authorization.Parameters[EndpointAuthorizationParameters.Password] = "SomePassword!";
+
+            endpoint.Data["FetchDepth"] = fetchDepth.ToString();
+            endpoint.Data["GitLfsSupport"] = gitLfsSupport.ToString();
 
             return endpoint;
         }
@@ -176,7 +184,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
                     _gitCommandManager.Verify(x => x.GitDisableAutoGC(executionContext.Object, dumySourceFolder));
                     _gitCommandManager.Verify(x => x.GitRemoteSetUrl(executionContext.Object, dumySourceFolder, "origin", "https://someuser:SomePassword%21@github.com/Microsoft/vsts-agent"));
                     _gitCommandManager.Verify(x => x.GitRemoteSetPushUrl(executionContext.Object, dumySourceFolder, "origin", "https://someuser:SomePassword%21@github.com/Microsoft/vsts-agent"));
-                    _gitCommandManager.Verify(x => x.GitFetch(executionContext.Object, dumySourceFolder, "origin", It.IsAny<List<string>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()));
+                    _gitCommandManager.Verify(x => x.GitFetch(executionContext.Object, dumySourceFolder, "origin", It.IsAny<int>(), It.IsAny<List<string>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()));
                     _gitCommandManager.Verify(x => x.GitRemoteSetUrl(executionContext.Object, dumySourceFolder, "origin", "https://github.com/Microsoft/vsts-agent"));
                     _gitCommandManager.Verify(x => x.GitRemoteSetPushUrl(executionContext.Object, dumySourceFolder, "origin", "https://github.com/Microsoft/vsts-agent"));
                     _gitCommandManager.Verify(x => x.GitCheckout(executionContext.Object, dumySourceFolder, "a596e13f5db8869f44574be0392fb8fe1e790ce4", It.IsAny<CancellationToken>()));
@@ -215,7 +223,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
                 // Assert.
                 _gitCommandManager.Verify(x => x.GitInit(executionContext.Object, dumySourceFolder));
                 _gitCommandManager.Verify(x => x.GitRemoteAdd(executionContext.Object, dumySourceFolder, "origin", "https://github.com/Microsoft/vsts-agent"));
-                _gitCommandManager.Verify(x => x.GitFetch(executionContext.Object, dumySourceFolder, "origin", new List<string>() { "+refs/pull/12345:refs/remotes/pull/12345" }, It.IsAny<string>(), It.IsAny<CancellationToken>()));
+                _gitCommandManager.Verify(x => x.GitFetch(executionContext.Object, dumySourceFolder, "origin", It.IsAny<int>(), new List<string>() { "+refs/heads/*:refs/remotes/origin/*", "+refs/pull/12345:refs/remotes/pull/12345" }, It.IsAny<string>(), It.IsAny<CancellationToken>()));
                 _gitCommandManager.Verify(x => x.GitRemoteSetUrl(executionContext.Object, dumySourceFolder, "origin", "https://github.com/Microsoft/vsts-agent"));
                 _gitCommandManager.Verify(x => x.GitRemoteSetPushUrl(executionContext.Object, dumySourceFolder, "origin", "https://github.com/Microsoft/vsts-agent"));
                 _gitCommandManager.Verify(x => x.GitCheckout(executionContext.Object, dumySourceFolder, It.Is<string>(s => s.Equals("refs/remotes/pull/12345")), It.IsAny<CancellationToken>()));
@@ -258,7 +266,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
                     _gitCommandManager.Verify(x => x.GitDisableAutoGC(executionContext.Object, dumySourceFolder));
                     _gitCommandManager.Verify(x => x.GitRemoteSetUrl(executionContext.Object, dumySourceFolder, "origin", "https://someuser:SomePassword%21@github.com/Microsoft/vsts-agent"));
                     _gitCommandManager.Verify(x => x.GitRemoteSetPushUrl(executionContext.Object, dumySourceFolder, "origin", "https://someuser:SomePassword%21@github.com/Microsoft/vsts-agent"));
-                    _gitCommandManager.Verify(x => x.GitFetch(executionContext.Object, dumySourceFolder, "origin", new List<string>() { "+refs/pull/12345/merge:refs/remotes/pull/12345/merge" }, It.IsAny<string>(), It.IsAny<CancellationToken>()));
+                    _gitCommandManager.Verify(x => x.GitFetch(executionContext.Object, dumySourceFolder, "origin", It.IsAny<int>(), new List<string>() { "+refs/heads/*:refs/remotes/origin/*", "+refs/pull/12345/merge:refs/remotes/pull/12345/merge" }, It.IsAny<string>(), It.IsAny<CancellationToken>()));
                     _gitCommandManager.Verify(x => x.GitRemoteSetUrl(executionContext.Object, dumySourceFolder, "origin", "https://github.com/Microsoft/vsts-agent"));
                     _gitCommandManager.Verify(x => x.GitRemoteSetPushUrl(executionContext.Object, dumySourceFolder, "origin", "https://github.com/Microsoft/vsts-agent"));
                     _gitCommandManager.Verify(x => x.GitCheckout(executionContext.Object, dumySourceFolder, "refs/remotes/pull/12345/merge", It.IsAny<CancellationToken>()));
@@ -356,9 +364,138 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
                     _gitCommandManager.Verify(x => x.GitDisableAutoGC(executionContext.Object, dumySourceFolder));
                     _gitCommandManager.Verify(x => x.GitRemoteSetUrl(executionContext.Object, dumySourceFolder, "origin", It.Is<string>(s => s.Equals("https://someuser:SomePassword%21@github.com/Microsoft/vsts-agent"))));
                     _gitCommandManager.Verify(x => x.GitRemoteSetPushUrl(executionContext.Object, dumySourceFolder, "origin", It.Is<string>(s => s.Equals("https://someuser:SomePassword%21@github.com/Microsoft/vsts-agent"))));
-                    _gitCommandManager.Verify(x => x.GitFetch(executionContext.Object, dumySourceFolder, "origin", It.IsAny<List<string>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()));
+                    _gitCommandManager.Verify(x => x.GitFetch(executionContext.Object, dumySourceFolder, "origin", It.IsAny<int>(), It.IsAny<List<string>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()));
                     _gitCommandManager.Verify(x => x.GitRemoteSetUrl(executionContext.Object, dumySourceFolder, "origin", "https://github.com/Microsoft/vsts-agent"));
                     _gitCommandManager.Verify(x => x.GitRemoteSetPushUrl(executionContext.Object, dumySourceFolder, "origin", "https://github.com/Microsoft/vsts-agent"));
+                    _gitCommandManager.Verify(x => x.GitCheckout(executionContext.Object, dumySourceFolder, "refs/remotes/origin/master", It.IsAny<CancellationToken>()));
+                }
+                finally
+                {
+                    IOUtil.DeleteDirectory(dumySourceFolder, CancellationToken.None);
+                }
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void GetSourceGitShallowFetch()
+        {
+            using (TestHostContext tc = new TestHostContext(this))
+            {
+                var trace = tc.GetTrace();
+                // Arrange.
+                string dumySourceFolder = Path.Combine(IOUtil.GetBinPath(), "SourceProviderL0");
+                try
+                {
+                    Directory.CreateDirectory(dumySourceFolder);
+                    var executionContext = GetTestExecutionContext(tc, dumySourceFolder, "refs/remotes/origin/master", "", false);
+                    var endpoint = GetTestSourceEndpoint("https://github.com/Microsoft/vsts-agent", false, false, false, 1);
+
+                    var _gitCommandManager = GetDefaultGitCommandMock();
+                    tc.SetSingleton<IGitCommandManager>(_gitCommandManager.Object);
+                    tc.SetSingleton<IWhichUtil>(new WhichUtil());
+
+                    GitSourceProvider gitSourceProvider = new ExternalGitSourceProvider();
+                    gitSourceProvider.Initialize(tc);
+                    gitSourceProvider.SetVariablesInEndpoint(executionContext.Object, endpoint);
+
+                    // Act.
+                    gitSourceProvider.GetSourceAsync(executionContext.Object, endpoint, default(CancellationToken)).GetAwaiter().GetResult();
+
+                    // Assert.
+                    _gitCommandManager.Verify(x => x.GitInit(executionContext.Object, dumySourceFolder));
+                    _gitCommandManager.Verify(x => x.GitRemoteAdd(executionContext.Object, dumySourceFolder, "origin", "https://github.com/Microsoft/vsts-agent"));
+                    _gitCommandManager.Verify(x => x.GitFetch(executionContext.Object, dumySourceFolder, "origin", 1, It.IsAny<List<string>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()));
+                    _gitCommandManager.Verify(x => x.GitCheckout(executionContext.Object, dumySourceFolder, "refs/remotes/origin/master", It.IsAny<CancellationToken>()));
+                }
+                finally
+                {
+                    IOUtil.DeleteDirectory(dumySourceFolder, CancellationToken.None);
+                }
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void GetSourceGitFetchWithLFS()
+        {
+            using (TestHostContext tc = new TestHostContext(this))
+            {
+                var trace = tc.GetTrace();
+                // Arrange.
+                string dumySourceFolder = Path.Combine(IOUtil.GetBinPath(), "SourceProviderL0");
+                try
+                {
+                    Directory.CreateDirectory(dumySourceFolder);
+                    var executionContext = GetTestExecutionContext(tc, dumySourceFolder, "refs/remotes/origin/master", "", false);
+                    var endpoint = GetTestSourceEndpoint("https://github.com/Microsoft/vsts-agent", false, false, true);
+
+                    var _gitCommandManager = GetDefaultGitCommandMock();
+                    tc.SetSingleton<IGitCommandManager>(_gitCommandManager.Object);
+                    tc.SetSingleton<IWhichUtil>(new WhichUtil());
+
+                    GitSourceProvider gitSourceProvider = new ExternalGitSourceProvider();
+                    gitSourceProvider.Initialize(tc);
+                    gitSourceProvider.SetVariablesInEndpoint(executionContext.Object, endpoint);
+
+                    // Act.
+                    gitSourceProvider.GetSourceAsync(executionContext.Object, endpoint, default(CancellationToken)).GetAwaiter().GetResult();
+
+                    // Assert.
+                    _gitCommandManager.Verify(x => x.GitInit(executionContext.Object, dumySourceFolder));
+                    _gitCommandManager.Verify(x => x.GitRemoteAdd(executionContext.Object, dumySourceFolder, "origin", "https://github.com/Microsoft/vsts-agent"));
+                    _gitCommandManager.Verify(x => x.GitLFSInstall(executionContext.Object, dumySourceFolder));
+                    _gitCommandManager.Verify(x => x.GitConfig(executionContext.Object, dumySourceFolder, "remote.origin.lfsurl", "https://someuser:SomePassword%21@github.com/Microsoft/vsts-agent.git/info/lfs"));
+                    _gitCommandManager.Verify(x => x.GitConfig(executionContext.Object, dumySourceFolder, "remote.origin.lfspushurl", "https://someuser:SomePassword%21@github.com/Microsoft/vsts-agent.git/info/lfs"));
+                    _gitCommandManager.Verify(x => x.GitFetch(executionContext.Object, dumySourceFolder, "origin", It.IsAny<int>(), It.IsAny<List<string>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()));
+                    _gitCommandManager.Verify(x => x.GitCheckout(executionContext.Object, dumySourceFolder, "refs/remotes/origin/master", It.IsAny<CancellationToken>()));
+                }
+                finally
+                {
+                    IOUtil.DeleteDirectory(dumySourceFolder, CancellationToken.None);
+                }
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void GetSourcePreferFeatureVariables()
+        {
+            using (TestHostContext tc = new TestHostContext(this))
+            {
+                var trace = tc.GetTrace();
+                // Arrange.
+                string dumySourceFolder = Path.Combine(IOUtil.GetBinPath(), "SourceProviderL0");
+                try
+                {
+                    Directory.CreateDirectory(dumySourceFolder);
+                    var executionContext = GetTestExecutionContext(tc, dumySourceFolder, "refs/remotes/origin/master", "", false);
+                    executionContext.Object.Variables.Set("agent.source.git.lfs", "true");
+                    executionContext.Object.Variables.Set("agent.source.git.shallowFetchDepth", "10");
+
+                    var endpoint = GetTestSourceEndpoint("https://github.com/Microsoft/vsts-agent", false, false, false, 0);
+
+                    var _gitCommandManager = GetDefaultGitCommandMock();
+                    tc.SetSingleton<IGitCommandManager>(_gitCommandManager.Object);
+                    tc.SetSingleton<IWhichUtil>(new WhichUtil());
+
+                    GitSourceProvider gitSourceProvider = new ExternalGitSourceProvider();
+                    gitSourceProvider.Initialize(tc);
+                    gitSourceProvider.SetVariablesInEndpoint(executionContext.Object, endpoint);
+
+                    // Act.
+                    gitSourceProvider.GetSourceAsync(executionContext.Object, endpoint, default(CancellationToken)).GetAwaiter().GetResult();
+
+                    // Assert.
+                    _gitCommandManager.Verify(x => x.GitInit(executionContext.Object, dumySourceFolder));
+                    _gitCommandManager.Verify(x => x.GitRemoteAdd(executionContext.Object, dumySourceFolder, "origin", "https://github.com/Microsoft/vsts-agent"));
+                    _gitCommandManager.Verify(x => x.GitLFSInstall(executionContext.Object, dumySourceFolder));
+                    _gitCommandManager.Verify(x => x.GitConfig(executionContext.Object, dumySourceFolder, "remote.origin.lfsurl", "https://someuser:SomePassword%21@github.com/Microsoft/vsts-agent.git/info/lfs"));
+                    _gitCommandManager.Verify(x => x.GitConfig(executionContext.Object, dumySourceFolder, "remote.origin.lfspushurl", "https://someuser:SomePassword%21@github.com/Microsoft/vsts-agent.git/info/lfs"));
+                    _gitCommandManager.Verify(x => x.GitFetch(executionContext.Object, dumySourceFolder, "origin", 10, It.IsAny<List<string>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()));
                     _gitCommandManager.Verify(x => x.GitCheckout(executionContext.Object, dumySourceFolder, "refs/remotes/origin/master", It.IsAny<CancellationToken>()));
                 }
                 finally

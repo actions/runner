@@ -240,6 +240,17 @@ namespace Microsoft.VisualStudio.Services.Agent
                 public static readonly string TestResultsDirectory = "common.testresultsdirectory";
             }
 
+            public static class Features
+            {
+                //
+                // Keep alphabetical
+                //
+                public static readonly string BuildDirectoryClean = "agent.clean.buildDirectory";
+                public static readonly string GitLfsSupport = "agent.source.git.lfs";
+                public static readonly string GitShallowDepth = "agent.source.git.shallowFetchDepth";
+
+            }
+
             public static class Release
             {
                 //

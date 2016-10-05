@@ -125,6 +125,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         private bool _selfManageGitCreds = false;
         private Uri _repositoryUrlWithCred = null;
         private Uri _proxyUrlWithCred = null;
+        private Uri _gitLfsUrlWithCred = null;
 
         protected IGitCommandManager _gitCommandManager;
 
@@ -168,6 +169,23 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 checkoutSubmodules = StringUtil.ConvertToBoolean(endpoint.Data[WellKnownEndpointData.CheckoutSubmodules]);
             }
 
+            int fetchDepth = 0;
+            if (endpoint.Data.ContainsKey("fetchDepth") &&
+                (!int.TryParse(endpoint.Data["fetchDepth"], out fetchDepth) || fetchDepth < 0))
+            {
+                fetchDepth = 0;
+            }
+            // prefer feature variable over endpoint data
+            fetchDepth = executionContext.Variables.GetInt(Constants.Variables.Features.GitShallowDepth) ?? fetchDepth;
+
+            bool gitLfsSupport = false;
+            if (endpoint.Data.ContainsKey("GitLfsSupport"))
+            {
+                gitLfsSupport = StringUtil.ConvertToBoolean(endpoint.Data["GitLfsSupport"]);
+            }
+            // prefer feature variable over endpoint data
+            gitLfsSupport = executionContext.Variables.GetBoolean(Constants.Variables.Features.GitLfsSupport) ?? gitLfsSupport;
+
             bool exposeCred = executionContext.Variables.GetBoolean(Constants.Variables.System.EnableAccessToken) ?? false;
 
             Trace.Info($"Repository url={repositoryUrl}");
@@ -177,6 +195,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             Trace.Info($"clean={clean}");
             Trace.Info($"checkoutSubmodules={checkoutSubmodules}");
             Trace.Info($"exposeCred={exposeCred}");
+            Trace.Info($"fetchDepth={fetchDepth}");
+            Trace.Info($"gitLfsSupport={gitLfsSupport}");
 
             // Determine which git will be use
             // On windows, we prefer the built-in portable git within the agent's externals folder, set system.prefergitfrompath=true can change the behavior, 
@@ -241,6 +261,22 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             if (!string.IsNullOrEmpty(executionContext.Variables.Agent_ProxyUrl))
             {
                 _proxyUrlWithCred = UrlUtil.GetCredentialEmbeddedUrl(new Uri(executionContext.Variables.Agent_ProxyUrl), executionContext.Variables.Agent_ProxyUsername, executionContext.Variables.Agent_ProxyPassword);
+            }
+
+            if (gitLfsSupport)
+            {
+                // Construct git-lfs url
+                UriBuilder gitLfsUrl = new UriBuilder(_repositoryUrlWithCred);
+                if (gitLfsUrl.Path.EndsWith(".git"))
+                {
+                    gitLfsUrl.Path = gitLfsUrl.Path + "/info/lfs";
+                }
+                else
+                {
+                    gitLfsUrl.Path = gitLfsUrl.Path + ".git/info/lfs";
+                }
+
+                _gitLfsUrlWithCred = gitLfsUrl.Uri;
             }
 
             // Check the current contents of the root folder to see if there is already a repo
@@ -415,13 +451,52 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                     ArgUtil.NotNull(_proxyUrlWithCred, nameof(_proxyUrlWithCred));
                     additionalFetchArgs.Add($"-c http.proxy=\"{_proxyUrlWithCred.AbsoluteUri}\"");
                 }
+
+                // Prepare gitlfs url for fetch and checkout
+                if (gitLfsSupport)
+                {
+                    // Initialize git lfs by execute 'git lfs install'
+                    executionContext.Debug("Setup the global Git hooks for Git LFS.");
+                    int exitCode_lfsInstall = await _gitCommandManager.GitLFSInstall(executionContext, targetPath);
+                    if (exitCode_lfsInstall != 0)
+                    {
+                        throw new InvalidOperationException($"Git-lfs installation failed with exit code: {exitCode_lfsInstall}");
+                    }
+
+                    // Inject credential into lfs fetch/push url
+                    executionContext.Debug("Inject credential into git-lfs remote url.");
+                    ArgUtil.NotNull(_gitLfsUrlWithCred, nameof(_gitLfsUrlWithCred));
+
+                    // inject credential into fetch url
+                    executionContext.Debug("Inject credential into git-lfs remote fetch url.");
+                    _configModifications["remote.origin.lfsurl"] = _gitLfsUrlWithCred.AbsoluteUri;
+                    int exitCode_configlfsurl = await _gitCommandManager.GitConfig(executionContext, targetPath, "remote.origin.lfsurl", _gitLfsUrlWithCred.AbsoluteUri);
+                    if (exitCode_configlfsurl != 0)
+                    {
+                        throw new InvalidOperationException($"Git config failed with exit code: {exitCode_configlfsurl}");
+                    }
+
+                    // inject credential into push url
+                    executionContext.Debug("Inject credential into git-lfs remote push url.");
+                    _configModifications["remote.origin.lfspushurl"] = _gitLfsUrlWithCred.AbsoluteUri;
+                    int exitCode_configlfspushurl = await _gitCommandManager.GitConfig(executionContext, targetPath, "remote.origin.lfspushurl", _gitLfsUrlWithCred.AbsoluteUri);
+                    if (exitCode_configlfspushurl != 0)
+                    {
+                        throw new InvalidOperationException($"Git config failed with exit code: {exitCode_configlfspushurl}");
+                    }
+                }
             }
 
             // If this is a build for a pull request, then include
             // the pull request reference as an additional ref.
-            string fetchSpec = IsPullRequest(sourceBranch) ? StringUtil.Format("+{0}:{1}", sourceBranch, GetRemoteRefName(sourceBranch)) : null;
+            List<string> additionalFetchSpecs = new List<string>();
+            if (IsPullRequest(sourceBranch))
+            {
+                additionalFetchSpecs.Add("+refs/heads/*:refs/remotes/origin/*");
+                additionalFetchSpecs.Add(StringUtil.Format("+{0}:{1}", sourceBranch, GetRemoteRefName(sourceBranch)));
+            }
 
-            int exitCode_fetch = await _gitCommandManager.GitFetch(executionContext, targetPath, "origin", new List<string>() { fetchSpec }, string.Join(" ", additionalFetchArgs), cancellationToken);
+            int exitCode_fetch = await _gitCommandManager.GitFetch(executionContext, targetPath, "origin", fetchDepth, additionalFetchSpecs, string.Join(" ", additionalFetchArgs), cancellationToken);
             if (exitCode_fetch != 0)
             {
                 throw new InvalidOperationException($"Git fetch failed with exit code: {exitCode_fetch}");
@@ -448,6 +523,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             int exitCode_checkout = await _gitCommandManager.GitCheckout(executionContext, targetPath, sourcesToBuild, cancellationToken);
             if (exitCode_checkout != 0)
             {
+                // local repository is shallow repository, checkout may fail due to lack of commits history.
+                // this will happen when the checkout commit is older than tip -> fetchDepth
+                if (fetchDepth > 0)
+                {
+                    executionContext.Warning(StringUtil.Loc("ShallowCheckoutFail", fetchDepth, sourcesToBuild));
+                }
+
                 throw new InvalidOperationException($"Git checkout failed with exit code: {exitCode_checkout}");
             }
 
@@ -526,6 +608,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                             throw new InvalidOperationException($"Git config failed with exit code: {exitCode_proxyconfig}");
                         }
                     }
+                }
+
+                if (gitLfsSupport && !exposeCred)
+                {
+                    executionContext.Debug("Remove git-lfs fetch and push url setting from git config.");
+                    await RemoveGitConfig(executionContext, targetPath, "remote.origin.lfsurl", _gitLfsUrlWithCred.AbsoluteUri);
+                    _configModifications.Remove("remote.origin.lfsurl");
+                    await RemoveGitConfig(executionContext, targetPath, "remote.origin.lfspushurl", _gitLfsUrlWithCred.AbsoluteUri);
+                    _configModifications.Remove("remote.origin.lfspushurl");
                 }
             }
         }

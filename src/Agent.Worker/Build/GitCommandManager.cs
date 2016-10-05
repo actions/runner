@@ -21,8 +21,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         // git init <LocalDir>
         Task<int> GitInit(IExecutionContext context, string repositoryPath);
 
-        // git fetch --tags --prune --progress origin [+refs/pull/*:refs/remote/pull/*]
-        Task<int> GitFetch(IExecutionContext context, string repositoryPath, string remoteName, List<string> refSpec, string additionalCommandLine, CancellationToken cancellationToken);
+        // git fetch --tags --prune --progress [--depth=15] origin [+refs/pull/*:refs/remote/pull/*]
+        Task<int> GitFetch(IExecutionContext context, string repositoryPath, string remoteName, int fetchDepth, List<string> refSpec, string additionalCommandLine, CancellationToken cancellationToken);
 
         // git checkout -f --progress <commitId/branch>
         Task<int> GitCheckout(IExecutionContext context, string repositoryPath, string committishOrBranchSpec, CancellationToken cancellationToken);
@@ -68,6 +68,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
         // git config gc.auto 0
         Task<int> GitDisableAutoGC(IExecutionContext context, string repositoryPath);
+
+        // git lfs install
+        Task<int> GitLFSInstall(IExecutionContext context, string repositoryPath);
 
         // git version
         Task<Version> GitVersion(IExecutionContext context);
@@ -152,8 +155,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             return await ExecuteGitCommandAsync(context, repositoryPath, "init", StringUtil.Format($"{repoRootEscapeSpace}"));
         }
 
-        // git fetch --tags --prune --progress origin [+refs/pull/*:refs/remote/pull/*]
-        public async Task<int> GitFetch(IExecutionContext context, string repositoryPath, string remoteName, List<string> refSpec, string additionalCommandLine, CancellationToken cancellationToken)
+        // git fetch --tags --prune --progress [--depth=15] origin [+refs/pull/*:refs/remote/pull/*]
+        public async Task<int> GitFetch(IExecutionContext context, string repositoryPath, string remoteName, int fetchDepth, List<string> refSpec, string additionalCommandLine, CancellationToken cancellationToken)
         {
             context.Debug($"Fetch git repository at: {repositoryPath} remote: {remoteName}.");
             if (refSpec != null && refSpec.Count > 0)
@@ -161,7 +164,25 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 refSpec = refSpec.Where(r => !string.IsNullOrEmpty(r)).ToList();
             }
 
-            return await ExecuteGitCommandAsync(context, repositoryPath, "fetch", StringUtil.Format($"--tags --prune --progress {remoteName} {string.Join(" ", refSpec)}"), additionalCommandLine, cancellationToken);
+            // default options for git fetch.
+            string options = StringUtil.Format($"--tags --prune --progress {remoteName} {string.Join(" ", refSpec)}");
+
+            // If shallow fetch add --depth arg
+            // If the local repository is shallowed but there is no fetch depth provide for this build,
+            // add --unshallow to convert the shallow repository to a complete repository
+            if (fetchDepth > 0)
+            {
+                options = StringUtil.Format($"--tags --prune --progress --depth={fetchDepth} {remoteName} {string.Join(" ", refSpec)}");
+            }
+            else
+            {
+                if (File.Exists(Path.Combine(repositoryPath, ".git", "shallow")))
+                {
+                    options = StringUtil.Format($"--tags --prune --progress --unshallow {remoteName} {string.Join(" ", refSpec)}");
+                }
+            }
+
+            return await ExecuteGitCommandAsync(context, repositoryPath, "fetch", options, additionalCommandLine, cancellationToken);
         }
 
         // git checkout -f --progress <commitId/branch>
@@ -317,6 +338,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         {
             context.Debug("Disable git auto garbage collection.");
             return await ExecuteGitCommandAsync(context, repositoryPath, "config", "gc.auto 0");
+        }
+
+        // git lfs install
+        public async Task<int> GitLFSInstall(IExecutionContext context, string repositoryPath)
+        {
+            context.Debug("Ensure git-lfs installed.");
+            return await ExecuteGitCommandAsync(context, repositoryPath, "lfs", "install");
         }
 
         // git version

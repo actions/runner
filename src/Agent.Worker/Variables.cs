@@ -113,7 +113,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         public string Build_BuildUri => Get(BuildWebApi.WellKnownBuildVariables.BuildUri);
 
-        public BuildCleanOption? Build_Clean => GetEnum<BuildCleanOption>(Constants.Variables.Build.Clean);
+        public BuildCleanOption? Build_Clean => GetEnum<BuildCleanOption>(Constants.Variables.Features.BuildDirectoryClean) ?? GetEnum<BuildCleanOption>(Constants.Variables.Build.Clean);
 
         public long? Build_ContainerId => GetLong(BuildWebApi.WellKnownBuildVariables.ContainerId);
 
