@@ -17,6 +17,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             get
             {
                 return TfsVCFeatures.DefaultWorkfoldMap |
+                    TfsVCFeatures.EscapedUrl |
                     TfsVCFeatures.GetFromUnmappedRoot |
                     TfsVCFeatures.LoginType |
                     TfsVCFeatures.Scorch;
