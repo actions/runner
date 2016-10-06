@@ -232,7 +232,29 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             // Add the common parameters.
             if (!formatFlags.HasFlag(FormatFlags.OmitCollectionUrl))
             {
-                formattedArgs.Add($"{Switch}collection:{Endpoint.Url.AbsoluteUri}");
+                if (Features.HasFlag(TfsVCFeatures.EscapedUrl))
+                {
+                    formattedArgs.Add($"{Switch}collection:{Endpoint.Url.AbsoluteUri}");
+                }
+                else
+                {
+                    // TEE CLC expects the URL in unescaped form.
+                    string url;
+                    try
+                    {
+                        url = Uri.UnescapeDataString(Endpoint.Url.AbsoluteUri);
+                    }
+                    catch (Exception ex)
+                    {
+                        // Unlikely (impossible?), but don't fail if encountered. If we don't hear complaints
+                        // about this warning then it is likely OK to remove the try/catch altogether and have
+                        // faith that UnescapeDataString won't throw for this scenario.
+                        url = Endpoint.Url.AbsoluteUri;
+                        ExecutionContext.Warning($"{ex.Message} ({url})");
+                    }
+
+                    formattedArgs.Add($"\"{Switch}collection:{url}\"");
+                }
             }
 
             if (!formatFlags.HasFlag(FormatFlags.OmitLogin))
@@ -288,21 +310,24 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         // Indicates whether "workspace /new" adds a default mapping.
         DefaultWorkfoldMap = 1,
 
+        // Indicates whether the CLI accepts the collection URL in escaped form.
+        EscapedUrl = 2,
+
         // Indicates whether the "eula" subcommand is supported.
-        Eula = 2,
+        Eula = 4,
 
         // Indicates whether the "get" and "undo" subcommands will correctly resolve
         // the workspace from an unmapped root folder. For example, if a workspace
         // contains only two mappings, $/foo -> $(build.sourcesDirectory)\foo and
         // $/bar -> $(build.sourcesDirectory)\bar, then "tf get $(build.sourcesDirectory)"
         // will not be able to resolve the workspace unless this feature is supported.
-        GetFromUnmappedRoot = 4,
+        GetFromUnmappedRoot = 8,
 
         // Indicates whether the "loginType" parameter is supported.
-        LoginType = 8,
+        LoginType = 16,
 
         // Indicates whether the "scorch" subcommand is supported.
-        Scorch = 16,
+        Scorch = 32,
     }
 
     public sealed class TfsVCPorcelainCommandResult
