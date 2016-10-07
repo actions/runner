@@ -118,6 +118,62 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
             "</test-suite>" +
             "</test-results>";
 
+        private const string _nUnit3SimpleResultsXml =
+            "<?xml version =\"1.0\" encoding=\"UTF-8\"?>" +
+            "<test-run not-run=\"0\" failures=\"0\" total=\"17\" time=\"10:34:42\" date=\"2015-06-22\">" +
+            "<test-suite time =\"1.943\" name=\"Tests.dll\" success=\"True\">" +
+            "<test-case time=\"0.0003414\" name=\"VVO.RentalApartmentStore.Tests.Core.Integrations.Paytrail.PaytrailRESTTests.PaytrailCreatePaymentResponse_Deserializes\" success=\"True\" executed=\"True\"> </test-case>" +
+            "<test-case time=\"0.0002827\" name=\"VVO.RentalApartmentStore.Tests.Core.Integrations.Paytrail.PaytrailRESTTests.PaytrailErrorMessage_Deserializes\" success=\"True\" executed=\"True\"> </test-case>" +
+            "<test-case time=\"0.022023\" name=\"VVO.RentalApartmentStore.Tests.Core.Integrations.Paytrail.PaytrailRESTTests.PaytrailCreatePaymentMessage_Serializes\" success=\"True\" executed=\"True\"> </test-case>" +
+            "<test-case time=\"0.0081796\" name=\"VVO.RentalApartmentStore.Tests.Core.Database.RasContextTests.RasContext_EmptyByDefault\" success=\"True\" executed=\"True\"> </test-case>" +
+            "<test-case time=\"0.0011515\" name=\"VVO.RentalApartmentStore.Tests.Core.Database.RasContextTests.RasContext_Insert_Ok\" success=\"True\" executed=\"True\"> </test-case>" +
+            "<test-case time=\"0.0001928\" name=\"VVO.RentalApartmentStore.Tests.DummyTest.EnsureTestFrameworkWorksInBuildEnvironment\" success=\"True\" executed=\"True\"> </test-case>" +
+            "<test-case time=\"0.7327256\" name=\"VVO.RentalApartmentStore.Tests.Core.Integrations.Paytrail.PaytrailIntegrationTests.ValidateSuccessResponse_AuthCodeError_Fails\" success=\"True\" executed=\"True\"> </test-case>" +
+            "<test-case time=\"0.3111823\" name=\"VVO.RentalApartmentStore.Tests.Core.Integrations.Paytrail.PaytrailIntegrationTests.CreatePayment_Success\" success=\"True\" executed=\"True\"> </test-case>" +
+            "<test-case time=\"0.5112726\" name=\"VVO.RentalApartmentStore.Tests.Core.Integrations.Paytrail.PaytrailIntegrationTests.ValidateFailureResponse_NoExistingLogEntry_Throws\" success=\"True\" executed=\"True\"> </test-case>" +
+            "<test-case time=\"0.0071163\" name=\"VVO.RentalApartmentStore.Tests.Core.Integrations.Paytrail.PaytrailIntegrationTests.CreatePayment_ErrorReturned_ThrowsPaytrailException\" success=\"True\" executed=\"True\"> </test-case>" +
+            "<test-case time=\"0.0349477\" name=\"VVO.RentalApartmentStore.Tests.Core.Integrations.Paytrail.PaytrailIntegrationTests.ValidateFailureResponse_UpdatesLogEntry\" success=\"True\" executed=\"True\"> </test-case>" +
+            "<test-case time=\"0.0017853\" name=\"VVO.RentalApartmentStore.Tests.Core.Integrations.Paytrail.PaytrailIntegrationTests.ValidateFailureResponse_AuthCodeError_Fails\" success=\"True\" executed=\"True\"> </test-case>" +
+            "<test-case time=\"0.0013893\" name=\"VVO.RentalApartmentStore.Tests.Core.Integrations.Paytrail.PaytrailIntegrationTests.CreatePayment_HttpErrorReturned_ThrowsException\" success=\"True\" executed=\"True\"> </test-case>" +
+            "<test-case time=\"0.0117449\" name=\"VVO.RentalApartmentStore.Tests.Core.Integrations.Paytrail.PaytrailIntegrationTests.ValidateSuccessResponse_NoExistingLogEntry_Throws\" success=\"True\" executed=\"True\"> </test-case>" +
+            "<test-case time=\"0.002887\" name=\"VVO.RentalApartmentStore.Tests.Core.Integrations.Paytrail.PaytrailIntegrationTests.CreatePayment_Success_CreatesLogEntry\" success=\"True\" executed=\"True\"> </test-case>" +
+            "<test-case time=\"0.0026852\" name=\"VVO.RentalApartmentStore.Tests.Core.Integrations.Paytrail.PaytrailIntegrationTests.ValidateSuccessResponse_UpdatedLogEntry\" success=\"True\" executed=\"True\"> </test-case>" +
+            "<test-case time=\"0.0020365\" name=\"VVO.RentalApartmentStore.Tests.Core.Entities.ISupportChangeTrackingTests.Insert_UpdatedCreatedByAndModifiedBy\" success=\"True\" executed=\"True\"> </test-case>" +
+            "<test-case time=\"0.0020365\" name=\"VVO.RentalApartmentStore.Tests.Core.Entities.ISupportChangeTrackingTests.Insert_UpdatedCreatedByAndDeletedBy\" success=\"True\" result=\"Ignored\" executed=\"True\"> </test-case>" +
+            "</test-suite>" +
+            "</test-run>";
+        
+        private const string _nunit3Sample2 = 
+            "<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"no\"?>" + 
+            "<test-run id=\"2\" testcasecount=\"6\" result=\"Passed\" total=\"6\" passed=\"0\" failed=\"0\" inconclusive=\"0\" skipped=\"0\" asserts=\"0\" start-time=\"2016-10-07 10:25:39Z\" end-time=\"2016-10-07 10:25:39Z\" duration=\"10\">" + 
+                "<test-suite type=\"Assembly\" id=\"1-1009\" name=\"FabrikamFiber.Web.Tests.dll\" runstate=\"Runnable\" testcasecount=\"6\" result=\"Passed\" duration=\"0.068036\" total=\"6\" passed=\"0\" failed=\"0\" inconclusive=\"0\" skipped=\"0\" asserts=\"0\">" + 
+                    "<properties>" + 
+                    "<property name=\"_PID\" value=\"5664\" />" + 
+                    "<property name=\"_APPDOMAIN\" value=\"test-domain-\" />" + 
+                    "</properties>" + 
+                    "<test-suite type=\"Namespace\" id=\"1-1010\" name=\"FabrikamFiber\" fullname=\"FabrikamFiber\" runstate=\"Runnable\" testcasecount=\"6\" result=\"Passed\" duration=\"0.059105\" total=\"6\" passed=\"0\" failed=\"0\" inconclusive=\"0\" skipped=\"0\" asserts=\"0\">" + 
+                        "<test-suite type=\"Namespace\" id=\"1-1011\" name=\"Web\" fullname=\"FabrikamFiber.Web\" runstate=\"Runnable\" testcasecount=\"6\" result=\"Passed\" duration=\"0.058846\" total=\"6\" passed=\"0\" failed=\"0\" inconclusive=\"0\" skipped=\"0\" asserts=\"0\">" + 
+                            "<test-suite type=\"Namespace\" id=\"1-1012\" name=\"Tests\" fullname=\"FabrikamFiber.Web.Tests\" runstate=\"Runnable\" testcasecount=\"6\" result=\"Passed\" duration=\"0.058600\" total=\"6\" passed=\"0\" failed=\"0\" inconclusive=\"0\" skipped=\"0\" asserts=\"0\">" + 
+                                "<test-suite type=\"Namespace\" id=\"1-1014\" name=\"Controllers\" fullname=\"FabrikamFiber.Web.Tests.Controllers\" runstate=\"Runnable\" testcasecount=\"0\" result=\"Inconclusive\" duration=\"0.008896\" total=\"0\" passed=\"0\" failed=\"0\" inconclusive=\"0\" skipped=\"0\" asserts=\"0\">" + 
+                                    "<test-suite type=\"TestFixture\" id=\"1-1008\" name=\"HomeControllerTest\" fullname=\"FabrikamFiber.Web.Tests.Controllers.HomeControllerTest\" runstate=\"Runnable\" testcasecount=\"0\" result=\"Inconclusive\" duration=\"0.003347\" total=\"0\" passed=\"0\" failed=\"0\" inconclusive=\"0\" skipped=\"0\" asserts=\"0\" />" + 
+                                    "<test-suite type=\"TestFixture\" id=\"1-1007\" name=\"ServiceTicketsControllerTest\" fullname=\"FabrikamFiber.Web.Tests.Controllers.ServiceTicketsControllerTest\" runstate=\"Runnable\" testcasecount=\"0\" result=\"Inconclusive\" duration=\"0.000126\" total=\"0\" passed=\"0\" failed=\"0\" inconclusive=\"0\" skipped=\"0\" asserts=\"0\" />" + 
+                                "</test-suite>" + 
+                                "<test-suite type=\"Namespace\" id=\"1-1013\" name=\"Helpers\" fullname=\"FabrikamFiber.Web.Tests.Helpers\" runstate=\"Runnable\" testcasecount=\"6\" result=\"Passed\" duration=\"0.048231\" total=\"6\" passed=\"0\" failed=\"0\" inconclusive=\"0\" skipped=\"0\" asserts=\"0\">" + 
+                                    "<test-suite type=\"TestFixture\" id=\"1-1000\" name=\"GuardTest\" fullname=\"FabrikamFiber.Web.Tests.Helpers.GuardTest\" runstate=\"Runnable\" testcasecount=\"6\" result=\"Passed\" duration=\"0.047721\" total=\"6\" passed=\"0\" failed=\"0\" inconclusive=\"0\" skipped=\"0\" asserts=\"0\">" + 
+                                        "<test-case id=\"1-1006\" name=\"ItShouldNotThrowExceptionIfArgumentIsNotLesserThanZero\" fullname=\"FabrikamFiber.Web.Tests.Helpers.GuardTest.ItShouldNotThrowExceptionIfArgumentIsNotLesserThanZero\" runstate=\"Runnable\" result=\"Passed\" duration=\"0.035279\" asserts=\"0\" />" + 
+                                        "<test-case id=\"1-1002\" name=\"ItShouldNotThrowExceptionIfArgumentIsNotNull\" fullname=\"FabrikamFiber.Web.Tests.Helpers.GuardTest.ItShouldNotThrowExceptionIfArgumentIsNotNull\" runstate=\"Runnable\" result=\"Passed\" duration=\"0.000247\" asserts=\"0\" />" + 
+                                        "<test-case id=\"1-1004\" name=\"ItShouldNotThrowExceptionIfArgumentIsNotNullOrEmpty\" fullname=\"FabrikamFiber.Web.Tests.Helpers.GuardTest.ItShouldNotThrowExceptionIfArgumentIsNotNullOrEmpty\" runstate=\"Runnable\" result=\"Passed\" duration=\"0.000254\" asserts=\"0\" />" + 
+                                        "<test-case id=\"1-1005\" name=\"ItShouldThrowExceptionIfArgumentIsLesserThanZero\" fullname=\"FabrikamFiber.Web.Tests.Helpers.GuardTest.ItShouldThrowExceptionIfArgumentIsLesserThanZero\" runstate=\"Runnable\" result=\"Passed\" duration=\"0.003538\" asserts=\"0\" />" + 
+                                        "<test-case id=\"1-1001\" name=\"ItShouldThrowExceptionIfArgumentIsNull\" fullname=\"FabrikamFiber.Web.Tests.Helpers.GuardTest.ItShouldThrowExceptionIfArgumentIsNull\" runstate=\"Runnable\" result=\"Passed\" duration=\"0.000657\" asserts=\"0\" />" + 
+                                        "<test-case id=\"1-1003\" name=\"ItShouldThrowExceptionIfArgumentIsNullOrEmpty\" fullname=\"FabrikamFiber.Web.Tests.Helpers.GuardTest.ItShouldThrowExceptionIfArgumentIsNullOrEmpty\" runstate=\"Runnable\" result=\"Passed\" duration=\"0.000491\" asserts=\"0\" />" + 
+                                    "</test-suite>" + 
+                                "</test-suite>" + 
+                            "</test-suite>" + 
+                        "</test-suite>" + 
+                    "</test-suite>" + 
+                "</test-suite>" + 
+            "</test-run>";
+
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "PublishTestResults")]
@@ -152,6 +208,23 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "PublishTestResults")]
+        public void PublishNUnit3SimpleTransformResults()
+        {
+            SetupMocks();
+            _nunitResultsToBeRead = _nUnit3SimpleResultsXml;
+            ReadResults(new TestRunContext("owner", "platform", "configuration", 1, "buildUri", "releaseUri", "releaseEnvironmentUri"));
+
+            Assert.NotNull(_testRunData);
+            Assert.Equal(18, _testRunData.Results.Length);
+            Assert.Equal(17, _testRunData.Results.Count(r => r.Outcome.Equals("Passed")));
+            Assert.Equal(0, _testRunData.Results.Count(r => r.Outcome.Equals("Failed")));
+            Assert.Equal(1, _testRunData.Results.Count(r => r.Outcome.Equals("NotExecuted")));
+            Assert.Equal(1, _testRunData.Attachments.Length);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void PublishNUnitResultFile()
         {
             SetupMocks();
@@ -170,6 +243,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
             Assert.Equal(null, _testRunData.Results[0].AutomatedTestId);
             Assert.Equal(null, _testRunData.Results[0].AutomatedTestTypeId);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
+        public void PublishNUnit3ResultFile()
+        {
+            SetupMocks();
+            _nunitResultsToBeRead = _nunit3Sample2;
+            ReadResults(new TestRunContext("owner", "platform", "configuration", 1, "buildUri", "releaseUri", "releaseEnvironmentUri"));
+
+            Assert.NotNull(_testRunData);
+            Assert.Equal("NUnit Test Run", _testRunData.Name);
+            Assert.Equal(6, _testRunData.Results.Length);
         }
 
         [Fact]
