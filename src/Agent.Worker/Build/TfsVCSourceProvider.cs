@@ -257,17 +257,72 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 }
             }
 
+            // Steps for shelveset/gated.
             string shelvesetName = GetEndpointData(endpoint, Constants.EndpointData.SourceTfvcShelveset);
             if (!string.IsNullOrEmpty(shelvesetName))
             {
-                // Get the shelveset details.
+                // Steps for gated.
                 ITfsVCShelveset tfShelveset = null;
                 string gatedShelvesetName = GetEndpointData(endpoint, Constants.EndpointData.GatedShelvesetName);
                 if (!string.IsNullOrEmpty(gatedShelvesetName))
                 {
+                    // Clean the last-saved-checkin-metadata for existing workspaces.
+                    //
+                    // A better long term fix is to add a switch to "tf unshelve" that completely overwrites
+                    // the last-saved-checkin-metadata, instead of merging associated work items.
+                    //
+                    // The targeted workaround for now is to create a trivial change and "tf shelve /move",
+                    // which will delete the last-saved-checkin-metadata.
+                    if (existingTFWorkspace != null)
+                    {
+                        executionContext.Output("Cleaning last saved checkin metadata.");
+
+                        // Find a local mapped directory.
+                        string firstLocalDirectory =
+                            (definitionMappings ?? new DefinitionWorkspaceMapping[0])
+                            .Where(x => x.MappingType == DefinitionMappingType.Map)
+                            .Select( x=> x.GetRootedLocalPath(sourcesDirectory))
+                            .FirstOrDefault(x => Directory.Exists(x));
+                        if (firstLocalDirectory == null)
+                        {
+                            executionContext.Warning("No mapped folder found. Unable to clean last-saved-checkin-metadata.");
+                        }
+                        else
+                        {
+                            // Create a trival change and "tf shelve /move" to clear the
+                            // last-saved-checkin-metadata.
+                            string cleanName = "__tf_clean_wksp_metadata";
+                            string tempCleanFile = Path.Combine(firstLocalDirectory, cleanName);
+                            try
+                            {
+                                File.WriteAllText(path: tempCleanFile, contents: "clean last-saved-checkin-metadata", encoding: Encoding.UTF8);
+                                await tf.AddAsync(tempCleanFile);
+                                await tf.ShelveAsync(shelveset: cleanName, commentFile: tempCleanFile, move: true);
+                            }
+                            catch (Exception ex)
+                            {
+                                executionContext.Warning($"Unable to clean last-saved-checkin-metadata. {ex.Message}");
+                                try
+                                {
+                                    await tf.UndoAsync(tempCleanFile);
+                                }
+                                catch (Exception ex2)
+                                {
+                                    executionContext.Warning($"Unable to undo '{tempCleanFile}'. {ex2.Message}");
+                                }
+
+                            }
+                            finally
+                            {
+                                IOUtil.DeleteFile(tempCleanFile);
+                            }
+                        }
+                    }
+
+                    // Get the shelveset metadata.
                     tfShelveset = await tf.ShelvesetsAsync(shelveset: shelvesetName);
-                    // The command throws if the shelveset is not found.
-                    // This assertion should never fail.
+                    // The above command throws if the shelveset is not found,
+                    // so the following assertion should never fail.
                     ArgUtil.NotNull(tfShelveset, nameof(tfShelveset));
                 }
 
@@ -300,7 +355,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                         File.WriteAllText(path: commentFile, contents: comment.ToString(), encoding: Encoding.UTF8);
 
                         // Reshelve.
-                        await tf.ShelveAsync(shelveset: gatedShelvesetName, commentFile: commentFile);
+                        await tf.ShelveAsync(shelveset: gatedShelvesetName, commentFile: commentFile, move: false);
                     }
                     finally
                     {

@@ -36,6 +36,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
         private string AppConfigRestoreFile => Path.Combine(ExecutionContext.Variables.Agent_ServerOMDirectory, "tf.exe.config.restore");
 
+        // TODO: Remove AddAsync after last-saved-checkin-metadata problem is fixed properly.
+        public async Task AddAsync(string localPath)
+        {
+            ArgUtil.NotNullOrEmpty(localPath, nameof(localPath));
+            await RunPorcelainCommandAsync(FormatFlags.All, "vc", "add", localPath);
+        }
+
         public void CleanupProxySetting()
         {
             ArgUtil.File(AppConfigRestoreFile, "tf.exe.config.restore");
@@ -140,10 +147,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             }
         }
 
-        public async Task ShelveAsync(string shelveset, string commentFile)
+        public async Task ShelveAsync(string shelveset, string commentFile, bool move)
         {
             ArgUtil.NotNullOrEmpty(shelveset, nameof(shelveset));
             ArgUtil.NotNullOrEmpty(commentFile, nameof(commentFile));
+
+            // TODO: Remove parameter "move" after last-saved-checkin-metadata problem is fixed properly.
+            if (move)
+            {
+                await RunPorcelainCommandAsync(FormatFlags.OmitCollectionUrl, "vc", "shelve", "/move", "/replace", "/recursive", $"/comment:@{commentFile}", shelveset, SourcesDirectory);
+                return;
+            }
+
             await RunPorcelainCommandAsync(FormatFlags.OmitCollectionUrl, "vc", "shelve", "/saved", "/replace", "/recursive", $"/comment:@{commentFile}", shelveset, SourcesDirectory);
         }
 
