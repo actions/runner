@@ -17,9 +17,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
         public string FilePath => Path.Combine(IOUtil.GetExternalsPath(), Constants.Path.TeeDirectory, "tf");
 
+        // TODO: Remove AddAsync after last-saved-checkin-metadata problem is fixed properly.
+        public async Task AddAsync(string localPath)
+        {
+            ArgUtil.NotNullOrEmpty(localPath, nameof(localPath));
+            await RunPorcelainCommandAsync(FormatFlags.All, "add", localPath);
+        }
+
         public void CleanupProxySetting()
         {
-            // no-opt for TEE.
+            // no-op for TEE.
         }
 
         public async Task EulaAsync()
@@ -64,10 +71,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             }
         }
 
-        public async Task ShelveAsync(string shelveset, string commentFile)
+        public async Task ShelveAsync(string shelveset, string commentFile, bool move)
         {
             ArgUtil.NotNullOrEmpty(shelveset, nameof(shelveset));
             ArgUtil.NotNullOrEmpty(commentFile, nameof(commentFile));
+
+            // TODO: Remove parameter move after last-saved-checkin-metadata problem is fixed properly.
+            if (move)
+            {
+                await RunPorcelainCommandAsync(FormatFlags.OmitCollectionUrl, "shelve", $"-workspace:{WorkspaceName}", "-move", "-replace", "-recursive", $"-comment:@{commentFile}", shelveset);
+                return;
+            }
+
             await RunPorcelainCommandAsync(FormatFlags.OmitCollectionUrl, "shelve", $"-workspace:{WorkspaceName}", "-saved", "-replace", "-recursive", $"-comment:@{commentFile}", shelveset);
         }
 

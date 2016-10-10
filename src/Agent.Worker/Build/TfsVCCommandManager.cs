@@ -21,13 +21,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         TfsVCFeatures Features { get; }
         string FilePath { get; }
 
+        // TODO: Remove AddAsync after last-saved-checkin-metadata problem is fixed properly.
+        Task AddAsync(string localPath);
         Task EulaAsync();
         Task GetAsync(string localPath);
         string ResolvePath(string serverPath);
         Task ScorchAsync();
         void SetupProxy(string proxyUrl, string proxyUsername, string proxyPassword);
         void CleanupProxySetting();
-        Task ShelveAsync(string shelveset, string commentFile);
+        // TODO: Remove parameter move after last-saved-checkin-metadata problem is fixed properly.
+        Task ShelveAsync(string shelveset, string commentFile, bool move);
         Task<ITfsVCShelveset> ShelvesetsAsync(string shelveset);
         Task<ITfsVCStatus> StatusAsync(string localPath);
         bool TestEulaAccepted();
