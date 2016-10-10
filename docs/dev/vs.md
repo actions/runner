@@ -7,11 +7,11 @@ Install Visual Studio 2015 update 1 or later
 2. Run cmd.exe as Administrator
 3. Execute this command → `mklink /D %USERPROFILE%\.dnx\packages %USERPROFILE%\.nuget\packages`
 
-## Package restore
-Restore the packages from a command prompt because VS won't be able to do it.
+## Build once from cmdline
+Run the layout script once (restores packages, downloads externals, generates source files, etc). Building from VS won't do these steps.
 
 1. Navigate to the `src` folder from the command prompt
-2. Run => `dev restore`
+2. Run => `dev layout`
   
 ## VS2015
 1. Open File->Open->Project/Solution
