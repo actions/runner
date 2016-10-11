@@ -41,9 +41,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             // Craft the args to pass to PowerShell.exe.
             string powerShellExeArgs = StringUtil.Format(
                 @"-NoLogo -Sta -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -Command "". ([scriptblock]::Create('if (!$PSHOME) {{ $null = Get-Item -LiteralPath ''variable:PSHOME'' }} else {{ Import-Module -Name ([System.IO.Path]::Combine($PSHOME, ''Modules\Microsoft.PowerShell.Management\Microsoft.PowerShell.Management.psd1'')) ; Import-Module -Name ([System.IO.Path]::Combine($PSHOME, ''Modules\Microsoft.PowerShell.Utility\Microsoft.PowerShell.Utility.psd1'')) }}')) 2>&1 | ForEach-Object {{ Write-Verbose $_.Exception.Message -Verbose }} ; Import-Module -Name '{0}' -ArgumentList @{{ NonInteractive = $true }} -ErrorAction Stop ; $VerbosePreference = '{1}' ; $DebugPreference = '{1}' ; Invoke-VstsTaskScript -ScriptBlock ([scriptblock]::Create('. ''{2}'''))""",
-                moduleFile.Replace("'", "''"),
+                moduleFile.Replace("'", "''"), // nested within a single-quoted string
                 ExecutionContext.Variables.System_Debug == true ? "Continue" : "SilentlyContinue",
-                scriptFile.Replace("'", "''"));
+                scriptFile.Replace("'", "''''")); // nested within a single-quoted string within a single-quoted string
 
             // Resolve powershell.exe.
             string powerShellExe = HostContext.GetService<IPowerShellExeUtil>().GetPath();
