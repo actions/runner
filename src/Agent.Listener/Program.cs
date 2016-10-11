@@ -79,6 +79,29 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     return Constants.Agent.ReturnCode.TerminatedError;
                 }
 
+#if OS_WINDOWS
+                // Validate PowerShell 3.0 or higher is installed.
+                var powerShellExeUtil = context.GetService<IPowerShellExeUtil>();
+                try
+                {
+                    powerShellExeUtil.GetPath();
+                }
+                catch (Exception e)
+                {
+                    terminal.WriteError(StringUtil.Loc("ErrorOccurred", e.Message));
+                    trace.Error(e);
+                    return Constants.Agent.ReturnCode.TerminatedError;
+                }
+
+                // Validate .NET Framework 4.5 or higher is installed.
+                var netFrameworkUtil = context.GetService<INetFrameworkUtil>();
+                if (!netFrameworkUtil.Test(new Version(4, 5)))
+                {
+                    terminal.WriteError(StringUtil.Loc("MinimumNetFramework"));
+                    return Constants.Agent.ReturnCode.TerminatedError;
+                }
+#endif
+
                 // Parse the command line args.
                 var command = new CommandSettings(context, args);
                 trace.Info("Arguments parsed");

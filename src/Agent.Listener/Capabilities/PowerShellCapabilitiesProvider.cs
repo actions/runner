@@ -53,27 +53,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Capabilities
                     cancellationToken: cancellationToken);
             }
 
-            // Validate .NET Framework x64 4.5 or higher is installed.
-            var regex = new Regex(pattern: @"DotNetFramework_[0-9]+(\.[0-9]+)+_x64", options: RegexOptions.None);
-            var minimum = new Version(4, 5);
-            bool meetsMinimum =
-                capabilities
-                // Filter to include only .Net framework x64 capabilities.
-                .Where(x => regex.IsMatch(x.Name))
-                // Extract the version number.
-                .Select(x => x.Name.Substring(startIndex: "DotNetFramework_".Length, length: x.Name.Length - "DotNetFramework__x64".Length))
-                // Parse the version number.
-                .Select(x =>
-                {
-                    Version v;
-                    return (Version.TryParse(x, out v)) ? v : new Version(0, 0);
-                })
-                .Any(x => x >= minimum);
-            if (!meetsMinimum)
-            {
-                throw new NonRetryableException(StringUtil.Loc("MinimumNetFramework"));
-            }
-
             return capabilities;
         }
 

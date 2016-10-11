@@ -28,6 +28,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             ArgUtil.NotNull(executionContext, nameof(executionContext));
             ArgUtil.NotNull(endpoint, nameof(endpoint));
 
+#if OS_WINDOWS
+            // Validate .NET Framework 4.6 or higher is installed.
+            //
+            // Note, system.NoVerifyNet46 is a temporary variable to bypass .NET 4.6 validation.
+            // Remove this variable after we have more confidence in this validation check.
+            var netFrameworkUtil = HostContext.GetService<INetFrameworkUtil>();
+            if (!(executionContext.Variables.GetBoolean("system.noVerifyNet46") ?? false) &&
+                !netFrameworkUtil.Test(new Version(4, 6)))
+            {
+                throw new Exception(StringUtil.Loc("MinimumNetFramework46"));
+            }
+#endif
+
             // Create the tf command manager.
             var tf = HostContext.CreateService<ITfsVCCommandManager>();
             tf.CancellationToken = cancellationToken;

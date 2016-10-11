@@ -60,7 +60,7 @@ function Add-Versions {
             continue
         }
 
-        # Get the profile sub-key names.
+        # Get the profile key names.
         $profileKeyNames =
             Get-RegistrySubKeyNames -Hive 'LocalMachine' -View $View -KeyName $versionKeyName |
             ForEach-Object { "$versionKeyName\$_" }
@@ -87,7 +87,7 @@ function Add-Versions {
             # Determine the version string.
             $release = Get-RegistryValue -Hive 'LocalMachine' -View $View -KeyName $profileKeyName -ValueName 'Release'
             $versionString = switch ($release) {
-                # We put the releaseVersion into version range, since customer might install beta/preview version .net framework.
+                # We put the releaseVersion into version range, since customer might install beta/preview version .NET Framework.
                 378389 { "4.5.0" }
                 { $_ -gt 378389 -and $_ -le 378758 } { "4.5.1" }
                 { $_ -gt 378758 -and $_ -le 379893 } { "4.5.2" }
@@ -109,8 +109,6 @@ function Add-Versions {
 
 $latest = $null
 Add-Versions -NameFormat 'DotNetFramework_{0}' -View 'Registry32' -LatestValue ([ref]$latest)
-# The .Net prerequisite validation check in the agent depends on the format
-# of the capability name (including the _x64 suffix).
 Add-Versions -NameFormat 'DotNetFramework_{0}_x64' -View 'Registry64' -LatestValue ([ref]$latest)
 if ($latest) {
     Write-Capability -Name 'DotNetFramework' -Value $latest

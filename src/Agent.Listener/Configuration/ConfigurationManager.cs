@@ -97,6 +97,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                     acceptTeeEula = command.GetAcceptTeeEula();
                     break;
                 case Constants.OSPlatform.Windows:
+                    // Warn and continue if .NET 4.6 is not installed.
+                    var netFrameworkUtil = HostContext.GetService<INetFrameworkUtil>();
+                    if (!netFrameworkUtil.Test(new Version(4, 6)))
+                    {
+                        WriteSection(StringUtil.Loc("PrerequisitesSectionHeader")); // Section header.
+                        _term.WriteLine(StringUtil.Loc("MinimumNetFrameworkTfvc")); // Warning.
+                    }
+
                     break;
                 default:
                     throw new NotSupportedException();

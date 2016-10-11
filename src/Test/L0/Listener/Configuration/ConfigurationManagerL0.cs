@@ -1,19 +1,17 @@
-using Microsoft.TeamFoundation.DistributedTask.WebApi;
-using Microsoft.VisualStudio.Services.Agent.Listener;
-using Moq;
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
-using Microsoft.VisualStudio.Services.Agent.Listener.Capabilities;
-using Xunit;
-using Microsoft.VisualStudio.Services.Agent.Listener.Configuration;
-using Microsoft.VisualStudio.Services.WebApi;
 using System.Security.Cryptography;
-#if !OS_WINDOWS
+using System.Threading.Tasks;
+using Microsoft.TeamFoundation.DistributedTask.WebApi;
+using Microsoft.VisualStudio.Services.Agent.Listener;
+using Microsoft.VisualStudio.Services.Agent.Listener.Capabilities;
+using Microsoft.VisualStudio.Services.Agent.Listener.Configuration;
 using Microsoft.VisualStudio.Services.Agent.Util;
-using System.IO;
-#endif
+using Microsoft.VisualStudio.Services.WebApi;
+using Moq;
+using Xunit;
+
 namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
 {
     public class ConfigurationManagerL0
@@ -24,6 +22,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
         private Mock<IConfigurationStore> _store;
         private Mock<IExtensionManager> _extnMgr;
         private Mock<IMachineGroupServer> _machineGroupServer;
+        private Mock<INetFrameworkUtil> _netFrameworkUtil;
 
 #if OS_WINDOWS
         private Mock<IWindowsServiceControlManager> _serviceControlManager;
@@ -59,6 +58,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
             _extnMgr = new Mock<IExtensionManager>();
             _rsaKeyManager = new Mock<IRSAKeyManager>();
             _machineGroupServer = new Mock<IMachineGroupServer>();
+            _netFrameworkUtil = new Mock<INetFrameworkUtil>();
 
 #if OS_WINDOWS
             _serviceControlManager = new Mock<IWindowsServiceControlManager>();
@@ -79,17 +79,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
 
             _agentServer.Setup(x => x.ConnectAsync(It.IsAny<VssConnection>())).Returns(Task.FromResult<object>(null));
             _machineGroupServer.Setup(x => x.ConnectAsync(It.IsAny<VssConnection>())).Returns(Task.FromResult<object>(null));
+            _netFrameworkUtil.Setup(x => x.Test(It.IsAny<Version>())).Returns(true);
 
             _store.Setup(x => x.IsConfigured()).Returns(false);
             _store.Setup(x => x.HasCredentials()).Returns(false);
-            _store.Setup(x => x.GetSettings()).Returns(
-                () => _configMgrAgentSettings
-                );
+            _store.Setup(x => x.GetSettings()).Returns(() => _configMgrAgentSettings);
 
-           _store.Setup(x => x.SaveSettings(It.IsAny<AgentSettings>())).Callback((AgentSettings settings) =>
-            {
-                _configMgrAgentSettings = settings;
-            });
+            _store.Setup(x => x.SaveSettings(It.IsAny<AgentSettings>()))
+                .Callback((AgentSettings settings) =>
+                {
+                    _configMgrAgentSettings = settings;
+                });
 
             _credMgr.Setup(x => x.GetCredentialProvider(It.IsAny<string>())).Returns(new TestAgentCredential());
 
@@ -122,6 +122,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
             tc.SetSingleton<IExtensionManager>(_extnMgr.Object);
             tc.SetSingleton<IAgentServer>(_agentServer.Object);
             tc.SetSingleton<IMachineGroupServer>(_machineGroupServer.Object);
+            tc.SetSingleton<INetFrameworkUtil>(_netFrameworkUtil.Object);
             tc.SetSingleton<ICapabilitiesManager>(_capabilitiesManager);
 
 #if OS_WINDOWS
