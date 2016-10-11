@@ -309,6 +309,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             // notificationPipeName for Hosted agent provisioner.
             string notificationPipeName = command.GetNotificationPipeName();
 
+            string notificationSocketAddress = command.GetNotificationSocketAddress();
+
             // Get Agent settings
             var settings = new AgentSettings
             {
@@ -316,6 +318,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 AgentId = agent.Id,
                 AgentName = agentName,
                 NotificationPipeName = notificationPipeName,
+                NotificationSocketAddress = notificationSocketAddress,
                 PoolId = poolId,
                 PoolName = poolName,
                 ServerUrl = serverUrl,

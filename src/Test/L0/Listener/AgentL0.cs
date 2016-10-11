@@ -115,6 +115,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                     {
 
                     });
+                _jobNotification.Setup(x => x.StartClient(It.IsAny<String>()))
+                    .Callback(() =>
+                    {
+                    
+                    });
 
                 hc.EnqueueInstance<IJobDispatcher>(_jobDispatcher.Object);
 

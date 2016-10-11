@@ -246,6 +246,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             return GetArg(Constants.Agent.CommandLine.Args.NotificationPipeName);
         }
 
+        public string GetNotificationSocketAddress()
+        {
+            return GetArg(Constants.Agent.CommandLine.Args.NotificationSocketAddress);
+        }
+
         //
         // Private helpers.
         //
