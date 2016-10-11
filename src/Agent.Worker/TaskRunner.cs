@@ -44,6 +44,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             Definition definition = taskManager.Load(TaskInstance);
             ArgUtil.NotNull(definition, nameof(definition));
 
+            // Print out task metadata
+            PrintTaskMetaData(definition);
+
             if ((definition.Data?.Execution?.All.Any(x => x is PowerShell3HandlerData)).Value &&
                 (definition.Data?.Execution?.All.Any(x => x is PowerShellHandlerData && x.Platforms != null && x.Platforms.Contains("windows", StringComparer.OrdinalIgnoreCase))).Value)
             {
@@ -179,6 +182,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             // return original inputValue.
             Trace.Info("Can't root path even by using JobExtension, return original input.");
             return inputValue;
+        }
+
+        private void PrintTaskMetaData(Definition taskDefinition)
+        {
+            ArgUtil.NotNull(TaskInstance, nameof(TaskInstance));
+            ArgUtil.NotNull(taskDefinition.Data, nameof(taskDefinition.Data));
+            ExecutionContext.Output("==============================================================================");
+            ExecutionContext.Output($"Task         : {taskDefinition.Data.FriendlyName}");
+            ExecutionContext.Output($"Description  : {taskDefinition.Data.Description}");
+            ExecutionContext.Output($"Version      : {TaskInstance.Version}");
+            ExecutionContext.Output($"Author       : {taskDefinition.Data.Author}");
+            ExecutionContext.Output($"Help         : {taskDefinition.Data.HelpMarkDown}");
+            ExecutionContext.Output("==============================================================================");
         }
     }
 }

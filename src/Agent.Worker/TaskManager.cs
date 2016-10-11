@@ -160,6 +160,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
     public sealed class DefinitionData
     {
+        public string FriendlyName { get; set; }
+        public string Description { get; set; }
+        public string HelpMarkDown { get; set; }
+        public string Author { get; set; }
+
         public TaskInputDefinition[] Inputs { get; set; }
         public ExecutionData Execution { get; set; }
     }
