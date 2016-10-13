@@ -23,11 +23,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
 
             UriBuilder credUri = new UriBuilder(baseUrl);
 
-            // escape chars in username for uri
-            if (!string.IsNullOrEmpty(username))
+            // ensure we have a username, uribuild will throw if username is empty but password is not.
+            if (string.IsNullOrEmpty(username))
             {
-                credUri.UserName = Uri.EscapeDataString(username);
+                username = "emptyusername";
             }
+
+            // escape chars in username for uri
+            credUri.UserName = Uri.EscapeDataString(username);
 
             // escape chars in password for uri
             if (!string.IsNullOrEmpty(password))
