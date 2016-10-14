@@ -4,7 +4,6 @@ using Microsoft.VisualStudio.Services.Agent.Worker;
 using Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage;
 using Moq;
 using System;
-using System.Linq;
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.CompilerServices;

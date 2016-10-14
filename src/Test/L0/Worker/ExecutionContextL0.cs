@@ -1,5 +1,4 @@
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
-using Microsoft.VisualStudio.Services.Agent.Worker;
 using Moq;
 using System;
 using System.Collections.Generic;

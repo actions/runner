@@ -248,7 +248,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                 public static readonly string BuildDirectoryClean = "agent.clean.buildDirectory";
                 public static readonly string GitLfsSupport = "agent.source.git.lfs";
                 public static readonly string GitShallowDepth = "agent.source.git.shallowFetchDepth";
-
+                public static readonly string SkipSyncSource = "agent.source.skip";
             }
 
             public static class Release

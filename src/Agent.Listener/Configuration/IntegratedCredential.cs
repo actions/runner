@@ -1,6 +1,5 @@
 using Microsoft.VisualStudio.Services.Agent.Util;
 using Microsoft.VisualStudio.Services.Common;
-using System.Collections.Generic;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 {

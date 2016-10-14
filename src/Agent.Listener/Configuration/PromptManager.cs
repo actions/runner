@@ -1,12 +1,10 @@
 using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
-using System.Collections.Generic;
-using System.Diagnostics;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 {
     [ServiceLocator(Default = typeof(PromptManager))]
-    public interface IPromptManager: IAgentService
+    public interface IPromptManager : IAgentService
     {
         bool ReadBool(
             string argName,

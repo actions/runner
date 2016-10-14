@@ -8,7 +8,6 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Threading;
 using Xunit;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults

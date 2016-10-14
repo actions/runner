@@ -1,5 +1,4 @@
 using Microsoft.VisualStudio.Services.Agent.Listener.Configuration;
-using System;
 using Xunit;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration

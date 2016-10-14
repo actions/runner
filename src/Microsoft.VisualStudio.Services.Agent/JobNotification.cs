@@ -1,4 +1,3 @@
-using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
 using System.IO;
 using System.IO.Pipes;

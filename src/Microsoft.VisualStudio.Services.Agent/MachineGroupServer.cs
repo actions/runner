@@ -1,7 +1,6 @@
 ﻿using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using System;
 using System.Collections.Generic;
-using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.Services.WebApi;
 

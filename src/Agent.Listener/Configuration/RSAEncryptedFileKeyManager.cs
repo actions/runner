@@ -1,5 +1,4 @@
 ﻿#if OS_WINDOWS
-using System;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;

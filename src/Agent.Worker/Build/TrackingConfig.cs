@@ -2,10 +2,8 @@
 using Newtonsoft.Json;
 using System;
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Globalization;
 using System.IO;
-using System.Linq;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 {

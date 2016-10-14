@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
@@ -193,9 +192,28 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 }
             }
 
-            executionContext.Debug($"Sync source for endpoint: {SourceEndpoint.Name}");
             SourceProvider.SetVariablesInEndpoint(executionContext, SourceEndpoint);
-            await SourceProvider.GetSourceAsync(executionContext, SourceEndpoint, executionContext.CancellationToken);
+
+            // Read skipSyncSource property fron endpoint data
+            string skipSyncSourceText;
+            bool skipSyncSource = false;
+            if (SourceEndpoint.Data.TryGetValue("skipSyncSource", out skipSyncSourceText))
+            {
+                skipSyncSource = StringUtil.ConvertToBoolean(skipSyncSourceText, false);
+            }
+
+            // Prefer feature variable over endpoint data
+            skipSyncSource = executionContext.Variables.GetBoolean(Constants.Variables.Features.SkipSyncSource) ?? skipSyncSource;
+
+            if (skipSyncSource)
+            {
+                executionContext.Output($"Skip sync source for endpoint: {SourceEndpoint.Name}");
+            }
+            else
+            {
+                executionContext.Debug($"Sync source for endpoint: {SourceEndpoint.Name}");
+                await SourceProvider.GetSourceAsync(executionContext, SourceEndpoint, executionContext.CancellationToken);
+            }
         }
 
         private async Task FinallyAsync()
@@ -208,7 +226,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
             // If syncSources = false, we will not reset repository.
             bool syncSources = executionContext.Variables.Build_SyncSources ?? true;
-            if (!syncSources)
+
+            // Read skipSyncSource property fron endpoint data
+            string skipSyncSourceText;
+            bool skipSyncSource = false;
+            if (SourceEndpoint.Data.TryGetValue("skipSyncSource", out skipSyncSourceText))
+            {
+                skipSyncSource = StringUtil.ConvertToBoolean(skipSyncSourceText, false);
+            }
+
+            // Prefer feature variable over endpoint data
+            skipSyncSource = executionContext.Variables.GetBoolean(Constants.Variables.Features.SkipSyncSource) ?? skipSyncSource;
+
+            if (!syncSources || skipSyncSource)
             {
                 Trace.Verbose($"{Constants.Variables.Build.SyncSources} = false, we will not run post job cleanup for this repository");
                 return;
