@@ -15,7 +15,7 @@ using Newtonsoft.Json;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
 {
-    public sealed class ReleaseJobExtension : AgentService, IJobExtension
+    public class ReleaseJobExtension : AgentService, IJobExtension
     {
         private const string DownloadArtifactsFailureSystemError = "DownloadArtifactsFailureSystemError";
 
@@ -25,7 +25,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
 
         public Type ExtensionType => typeof(IJobExtension);
 
-        public string HostType => "release";
+        public virtual string HostType => "release";
 
         public IStep PrepareStep { get; private set; }
 
