@@ -43,7 +43,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         public string ProjectName { get; set; }
 
         [DataMember(EmitDefaultValue = false)]
-        public string MachineGroupName { get; set; }
+        public int MachineGroupId { get; set; }
     }
 
     [ServiceLocator(Default = typeof(ConfigurationStore))]

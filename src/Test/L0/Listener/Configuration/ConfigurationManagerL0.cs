@@ -249,7 +249,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
                 Assert.True(s.AgentName.Equals(_expectedAgentName));
                 Assert.True(s.PoolId.Equals(3));
                 Assert.True(s.WorkFolder.Equals(_expectedWorkFolder));
-                Assert.True(s.MachineGroupName.Equals(_expectedMachineGroupName));
+                Assert.True(s.MachineGroupId.Equals(0));
                 Assert.True(s.ProjectName.Equals(_expectedProjectName));
             }
         }
@@ -314,7 +314,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
                 Assert.True(s.AgentName.Equals(_expectedAgentName));
                 Assert.True(s.PoolId.Equals(7));
                 Assert.True(s.WorkFolder.Equals(_expectedWorkFolder));
-                Assert.True(s.MachineGroupName.Equals(_expectedMachineGroupName));
+                Assert.True(s.MachineGroupId.Equals(0));
                 Assert.True(s.ProjectName.Equals(_expectedProjectName));
             }
         }

@@ -116,7 +116,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
         private string _projectName = string.Empty;
         private string _collectionName;
-        private string _machineGroupName;
+        private int _machineGroupId;
         private string _serverUrl;
         private bool _isHosted = false;
         private IMachineGroupServer _machineGroupServer = null;
@@ -154,10 +154,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             int poolId;
 
             _projectName = command.GetProjectName(_projectName);
-            _machineGroupName = command.GetMachineGroupName();
+            var machineGroupName = command.GetMachineGroupName();
 
-            poolId =  await GetPoolIdAsync(_projectName, _machineGroupName);
-            Trace.Info($"PoolId for machine group '{_machineGroupName}' is '{poolId}'.");
+            poolId =  await GetPoolIdAsync(_projectName, machineGroupName);
+            Trace.Info($"PoolId for machine group '{machineGroupName}' is '{poolId}'.");
             
             return poolId;
         }
@@ -204,7 +204,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
         public void UpdateAgentSetting(AgentSettings settings)
         {
-            settings.MachineGroupName = _machineGroupName;
+            settings.MachineGroupId = _machineGroupId;
             settings.ProjectName = _projectName;
         }
 
@@ -219,6 +219,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 throw new DeploymentMachineGroupNotFoundException(StringUtil.Loc("MachineGroupNotFound", machineGroupName));
             }
 
+            _machineGroupId = machineGroup.Id;
             Trace.Info("Found machine group {0} with id {1}", machineGroupName, machineGroup.Id);
             Trace.Info("Found poolId {0} for machine group {1}", machineGroup.Pool.Id, machineGroupName);
 
