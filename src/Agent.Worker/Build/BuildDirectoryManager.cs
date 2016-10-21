@@ -2,6 +2,7 @@ using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
 using System.IO;
+using Microsoft.TeamFoundation.Build.WebApi;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 {
@@ -14,8 +15,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             ISourceProvider sourceProvider);
 
         void CreateDirectory(
-            IExecutionContext executionContext, 
-            string description, string path, 
+            IExecutionContext executionContext,
+            string description, string path,
             bool deleteExisting);
     }
 
@@ -89,11 +90,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             }
 
             // Prepare the build directory.
-            // Delete entire build directory if clean=all is set.
-            // Always recreate artifactstaging dir and testresult dir.
-            // Recreate binaries dir if clean=binary is set.
-            // Delete source dir if clean=src is set.
-            BuildCleanOption? cleanOption = executionContext.Variables.Build_Clean;
+            // There are 2 ways to provide build directory clean policy.
+            //     1> set definition variable build.clean or agent.clean.buildDirectory. (on-prem user need to use this, since there is no Web UI in TFS 2016)
+            //     2> select source clean option in definition repository tab. (VSTS will have this option in definition designer UI)
+            BuildCleanOption cleanOption = GetBuildDirectoryCleanOption(executionContext, endpoint);
+
             CreateDirectory(
                 executionContext,
                 description: "build directory",
@@ -201,5 +202,58 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 IOUtil.DeleteDirectory(path, executionContext.CancellationToken);
             }
         }
+
+        // Prefer variable over endpoint data when get build directory clean option.
+        // Prefer agent.clean.builddirectory over build.clean when use variable
+        // available value for build.clean or agent.clean.builddirectory:
+        //      Delete entire build directory if build.clean=all is set.
+        //      Recreate binaries dir if clean=binary is set.
+        //      Recreate source dir if clean=src is set.
+        private BuildCleanOption GetBuildDirectoryCleanOption(IExecutionContext executionContext, ServiceEndpoint endpoint)
+        {
+            BuildCleanOption? cleanOption = executionContext.Variables.Build_Clean;
+            if (cleanOption != null)
+            {
+                return cleanOption.Value;
+            }
+
+            bool clean = false;
+            if (endpoint.Data.ContainsKey(WellKnownEndpointData.Clean))
+            {
+                clean = StringUtil.ConvertToBoolean(endpoint.Data[WellKnownEndpointData.Clean]);
+            }
+
+            if (clean && endpoint.Data.ContainsKey("cleanOptions"))
+            {
+                RepositoryCleanOptions? cleanOptionFromEndpoint = EnumUtil.TryParse<RepositoryCleanOptions>(endpoint.Data["cleanOptions"]);
+                if (cleanOptionFromEndpoint != null)
+                {
+                    if (cleanOptionFromEndpoint == RepositoryCleanOptions.AllBuildDir)
+                    {
+                        return BuildCleanOption.All;
+                    }
+                    else if (cleanOptionFromEndpoint == RepositoryCleanOptions.SourceDir)
+                    {
+                        return BuildCleanOption.Source;
+                    }
+                    else if (cleanOptionFromEndpoint == RepositoryCleanOptions.SourceAndOutput)
+                    {
+                        return BuildCleanOption.Binary;
+                    }
+                }
+            }
+
+            return BuildCleanOption.None;
+        }
+    }
+
+
+    // TODO: use enum defined in build2.webapi when it's available.
+    public enum RepositoryCleanOptions
+    {
+        Source,
+        SourceAndOutput,
+        SourceDir,
+        AllBuildDir,
     }
 }
