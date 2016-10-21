@@ -86,7 +86,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 {
                     Trace.Error(ex);
                     jobContext.Error(ex);
-                    return jobContext.Complete(TaskResult.Failed);
+                    return await CompleteJob(jobServer, jobContext, message, TaskResult.Failed);
                 }
 
                 // Set agent variables.
@@ -195,14 +195,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     // set the job to canceled
                     Trace.Error($"Caught exception: {ex}");
                     jobContext.Error(ex);
-                    return jobContext.Complete(TaskResult.Canceled);
+                    return await CompleteJob(jobServer, jobContext, message, TaskResult.Canceled);
                 }
                 catch (Exception ex)
                 {
                     // Log the error and fail the job.
                     Trace.Error($"Caught exception from {nameof(TaskManager)}: {ex}");
                     jobContext.Error(ex);
-                    return jobContext.Complete(TaskResult.Failed);
+                    return await CompleteJob(jobServer, jobContext, message, TaskResult.Failed);
                 }
 
                 // Run the steps.
@@ -216,21 +216,21 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     // set the job to canceled
                     Trace.Error($"Caught exception: {ex}");
                     jobContext.Error(ex);
-                    return jobContext.Complete(TaskResult.Canceled);
+                    return await CompleteJob(jobServer, jobContext, message, TaskResult.Canceled);
                 }
                 catch (Exception ex)
                 {
                     // Log the error and fail the job.
                     Trace.Error($"Caught exception from {nameof(StepsRunner)}: {ex}");
                     jobContext.Error(ex);
-                    return jobContext.Complete(TaskResult.Failed);
+                    return await CompleteJob(jobServer, jobContext, message, TaskResult.Failed);
                 }
 
                 Trace.Info($"Job result: {jobContext.Result}");
 
                 // Complete the job.
                 Trace.Info("Completing the job execution context.");
-                return jobContext.Complete();
+                return await CompleteJob(jobServer, jobContext, message);
             }
             finally
             {
@@ -248,6 +248,35 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     }
                 }
             }
+        }
+
+        private static async Task<TaskResult> CompleteJob(IJobServer jobServer, IExecutionContext jobContext, AgentJobRequestMessage message, TaskResult? taskResult = null)
+        {
+            var result = jobContext.Complete(taskResult);
+            var outputVariables = jobContext.Variables.GetOutputVariables();
+            var webApiVariables = ToWebApiVariables(outputVariables);
+            var jobCompletedEvent = new JobCompletedEvent(message.RequestId, message.JobId, result, webApiVariables.ToList());
+            await jobServer.RaisePlanEventAsync(message.Plan.ScopeIdentifier, message.Plan.PlanType, message.Plan.PlanId, jobCompletedEvent, default(CancellationToken));
+            return result;
+        }
+
+        private static IEnumerable<TeamFoundation.DistributedTask.WebApi.Variable> ToWebApiVariables(IEnumerable<Variable> outputVariables)
+        {
+            if (outputVariables == null || !outputVariables.Any())
+            {
+                return new List<TeamFoundation.DistributedTask.WebApi.Variable>();
+            }
+
+            var variables = outputVariables.Select(
+                v =>
+                    new TeamFoundation.DistributedTask.WebApi.Variable
+                    {
+                        Name = v.Name,
+                        Value = v.Value,
+                        Secret = v.Secret
+                    });
+
+            return variables;
         }
 
         // the hostname (how the agent knows the server) is external to our server

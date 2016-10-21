@@ -239,38 +239,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         public void Set(string name, string val, bool secret = false)
         {
-            // Validate the args.
-            ArgUtil.NotNullOrEmpty(name, nameof(name));
+            Set(name, val, secret, output: false);
+        }
 
-            // Add or update the variable.
-            lock (_setLock)
-            {
-                // Determine whether the value should be a secret. The approach taken here is somewhat
-                // conservative. If the previous expanded variable is a secret, then assume the new
-                // value should be a secret as well.
-                //
-                // Keep in mind, the two goals of flagging variables as secret:
-                // 1) Mask secrets from the logs.
-                // 2) Keep secrets out of environment variables for tasks. Secrets must be passed into
-                //    tasks via inputs. It's better to take a conservative approach when determining
-                //    whether a variable should be marked secret. Otherwise nested secret values may
-                //    inadvertantly end up in public environment variables.
-                secret = secret || (_expanded.ContainsKey(name) && _expanded[name].Secret);
+        public void SetOutputVariable(string name, string val, bool secret = false)
+        {
+            Set(name, val, secret, output: true);
+        }
 
-                // Register the secret. Secret masker handles duplicates gracefully.
-                if (secret && !string.IsNullOrEmpty(val))
-                {
-                    _secretMasker.AddValue(val);
-                }
-
-                // Store the value as-is to the expanded dictionary and the non-expanded dictionary.
-                // It is not expected that the caller needs to store an non-expanded value and then
-                // retrieve the expanded value in the same context.
-                var variable = new Variable(name, val, secret);
-                _expanded[name] = variable;
-                _nonexpanded[name] = variable;
-                _trace.Verbose($"Set '{name}' = '{val}'");
-            }
+        public IEnumerable<Variable> GetOutputVariables()
+        {
+            return _expanded.Values.Where(var => var.Output);
         }
 
         public bool TryGetValue(string name, out string val)
@@ -439,6 +418,42 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             } // End of critical section.
         }
 
+        private void Set(string name, string val, bool secret, bool output)
+        {
+            // Validate the args.
+            ArgUtil.NotNullOrEmpty(name, nameof(name));
+
+            // Add or update the variable.
+            lock (_setLock)
+            {
+                // Determine whether the value should be a secret. The approach taken here is somewhat
+                // conservative. If the previous expanded variable is a secret, then assume the new
+                // value should be a secret as well.
+                //
+                // Keep in mind, the two goals of flagging variables as secret:
+                // 1) Mask secrets from the logs.
+                // 2) Keep secrets out of environment variables for tasks. Secrets must be passed into
+                //    tasks via inputs. It's better to take a conservative approach when determining
+                //    whether a variable should be marked secret. Otherwise nested secret values may
+                //    inadvertantly end up in public environment variables.
+                secret = secret || (_expanded.ContainsKey(name) && _expanded[name].Secret);
+
+                // Register the secret. Secret masker handles duplicates gracefully.
+                if (secret && !string.IsNullOrEmpty(val))
+                {
+                    _secretMasker.AddValue(val);
+                }
+
+                // Store the value as-is to the expanded dictionary and the non-expanded dictionary.
+                // It is not expected that the caller needs to store an non-expanded value and then
+                // retrieve the expanded value in the same context.
+                var variable = new Variable(name, val, secret, output);
+                _expanded[name] = variable;
+                _nonexpanded[name] = variable;
+                _trace.Verbose($"Set '{name}' = '{val}'");
+            }
+        }
+
         private sealed class RecursionState
         {
             public RecursionState(string name, string value)
@@ -460,13 +475,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         public string Name { get; private set; }
         public bool Secret { get; private set; }
         public string Value { get; private set; }
+        public bool Output { get; private set; }
 
         public Variable(string name, string value, bool secret)
+            : this(name, value, secret, false)
+        {
+        }
+
+        public Variable(string name, string value, bool secret, bool output)
         {
             ArgUtil.NotNullOrEmpty(name, nameof(name));
             Name = name;
             Value = value ?? string.Empty;
             Secret = secret;
+            Output = output;
         }
     }
 }

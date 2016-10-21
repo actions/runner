@@ -468,7 +468,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 Boolean.TryParse(isSecretValue, out isSecret);
             }
 
-            context.Variables.Set(name, data, isSecret);
+            context.Variables.SetOutputVariable(name, data, isSecret);
         }
 
         private void ProcessTaskDebugCommand(IExecutionContext context, String data)
