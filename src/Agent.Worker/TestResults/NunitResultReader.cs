@@ -158,7 +158,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                         resultCreateModel.TestCaseTitle = testCaseNode.Attributes["name"].Value;
                         resultCreateModel.AutomatedTestName = testCaseNode.Attributes["name"].Value;
                     }
-
+                    
                     if (!string.IsNullOrEmpty(testStorage))
                     {
                         resultCreateModel.AutomatedTestStorage = testStorage;
@@ -267,15 +267,163 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
         }
     }
 
-    internal class NUnit3ResultsXmlReader: NUnitResultsXmlReader, INUnitResultsXmlReader
+    internal class NUnit3ResultsXmlReader: INUnitResultsXmlReader
     {
-        public new TestRunData GetTestRunData(string filePath, XmlDocument doc, XmlNode testResultsNode, TestRunContext runContext, bool addResultsAsAttachments)
+        private IdentityRef _runUserIdRef;
+        private string _platform;
+        private const string _defaultRunName = "NUnit Test Run";
+        private TestCaseResultData getTestCaseResultData(XmlNode testCaseResultNode, string assemblyName, string hostname)
         {
-            this.InnerTestSuiteNodeName = "./test-suite";
-            this.TestCaseNodeName = "./test-case";
-            this.RootNodeName = "test-run";
+            var testCaseResultData = new TestCaseResultData();
 
-            return base.GetTestRunData(filePath, doc, testResultsNode, runContext, addResultsAsAttachments);
+            if (!string.IsNullOrEmpty(assemblyName))
+            {
+                testCaseResultData.AutomatedTestStorage = assemblyName;
+            }
+
+            testCaseResultData.ComputerName = hostname;
+
+            if (testCaseResultNode.Attributes["name"] != null)
+            {
+                testCaseResultData.TestCaseTitle = testCaseResultNode.Attributes["name"].Value; 
+            }
+
+            if (testCaseResultNode.Attributes["fullname"] != null)
+            {
+                testCaseResultData.AutomatedTestName = testCaseResultNode.Attributes["fullname"].Value;
+            }
+
+            if (testCaseResultNode.Attributes["duration"] != null)
+            {
+                double duration = 0;
+                double.TryParse(testCaseResultNode.Attributes["duration"].Value, NumberStyles.Any, NumberFormatInfo.InvariantInfo, out duration);
+                testCaseResultData.DurationInMs = TimeSpan.FromSeconds(duration).TotalMilliseconds;
+            }
+
+            if (testCaseResultNode.Attributes["start-time"] != null)
+            {
+                var testExecutionStartedOn = DateTime.MinValue;
+                DateTime.TryParse(testCaseResultNode.Attributes["start-time"].Value, DateTimeFormatInfo.InvariantInfo, DateTimeStyles.None, out testExecutionStartedOn);
+                testCaseResultData.StartedDate = testExecutionStartedOn;
+            }
+
+            if (testCaseResultNode.Attributes["end-time"] != null)
+            {
+                var testExecutionEndedOn = DateTime.MinValue;
+                DateTime.TryParse(testCaseResultNode.Attributes["end-time"].Value, DateTimeFormatInfo.InvariantInfo, DateTimeStyles.None, out testExecutionEndedOn);
+                testCaseResultData.CompletedDate = testExecutionEndedOn; 
+            }
+
+            if (testCaseResultNode.Attributes["result"] != null)
+            {
+                if (testCaseResultNode.Attributes["result"].Value == "Passed")
+                {
+                    testCaseResultData.Outcome = TestOutcome.Passed.ToString();
+                }
+                else if (testCaseResultNode.Attributes["result"].Value == "Failed")
+                {
+                    testCaseResultData.Outcome = TestOutcome.Failed.ToString();
+                }
+                else if (testCaseResultNode.Attributes["result"].Value == "Skipped")
+                {
+                    testCaseResultData.Outcome = TestOutcome.NotExecuted.ToString();
+                } 
+                else
+                {
+                    testCaseResultData.Outcome = TestOutcome.Inconclusive.ToString();
+                }
+                var failureNode = testCaseResultNode.SelectSingleNode("failure");
+                if (failureNode != null)
+                {
+                    var failureMessageNode = failureNode.SelectSingleNode("message");
+                    var failureStackTraceNode = failureNode.SelectSingleNode("stack-trace");
+                    if (failureMessageNode != null && !string.IsNullOrEmpty(failureMessageNode.InnerText))
+                    {
+                        testCaseResultData.ErrorMessage = failureMessageNode.InnerText; 
+                    }
+                    if (failureStackTraceNode != null && !string.IsNullOrEmpty(failureStackTraceNode.InnerText))
+                    {
+                        testCaseResultData.StackTrace = failureStackTraceNode.InnerText; 
+                    }
+                }
+            }
+
+            testCaseResultData.State = "Completed";
+
+            testCaseResultData.AutomatedTestType = "NUnit";
+
+            if (_runUserIdRef != null)
+            {
+                testCaseResultData.RunBy = _runUserIdRef;
+                testCaseResultData.Owner = _runUserIdRef;
+            }
+
+            return testCaseResultData;
+        }
+        public TestRunData GetTestRunData(string filePath, XmlDocument doc, XmlNode testResultsNode, TestRunContext runContext, bool addResultsAsAttachments)
+        {
+            var testRunNode = doc.SelectSingleNode("test-run");
+            var testRunStartedOn = DateTime.MinValue;
+            var testRunEndedOn = DateTime.MinValue;
+            var testCaseResults = new List<TestCaseResultData>();
+            _runUserIdRef = runContext != null ? new IdentityRef() { DisplayName = runContext.Owner } : null;
+            _platform = runContext != null ? runContext.Platform : string.Empty;
+            if (testRunNode.Attributes["start-time"] != null)
+            {
+                if (testRunNode.Attributes["start-time"] != null)
+                {
+                    DateTime.TryParse(testRunNode.Attributes["start-time"].Value, DateTimeFormatInfo.InvariantInfo, DateTimeStyles.None, out testRunStartedOn);
+                }
+                if (testRunNode.Attributes["end-time"] != null)
+                {
+                    DateTime.TryParse(testRunNode.Attributes["end-time"].Value, DateTimeFormatInfo.InvariantInfo, DateTimeStyles.None, out testRunEndedOn);
+                }
+                var testAssemblyNodes = testRunNode.SelectNodes("//test-suite[@type='Assembly']");
+                if (testAssemblyNodes != null)
+                {
+                    foreach (XmlNode testAssemblyNode in testAssemblyNodes)
+                    {
+                        var environmentNode = testAssemblyNode.SelectSingleNode("environment");
+                        var hostname = String.Empty;
+                        var assemblyName = (testAssemblyNode.Attributes["name"] != null ? testAssemblyNode.Attributes["name"].Value : null);  
+                        if (environmentNode != null)
+                        {
+                            if (environmentNode.Attributes["machine-name"] != null)
+                            {
+                                hostname = environmentNode.Attributes["machine-name"].Value;
+                            }
+                            if (environmentNode.Attributes["platform"] != null)
+                            {
+                                // override platform
+                                _platform = environmentNode.Attributes["platform"].Value;
+                            }
+                        }
+                        var testCaseNodes = testAssemblyNode.SelectNodes(".//test-case");
+                        if (testCaseNodes != null)
+                        {
+                            foreach (XmlNode testCaseNode in testCaseNodes)
+                            {
+                                testCaseResults.Add(getTestCaseResultData(testCaseNode, assemblyName, hostname));
+                            }
+                        }
+                    }
+                }
+            }
+            TestRunData testRunData = new TestRunData(
+                name: runContext != null && !string.IsNullOrWhiteSpace(runContext.RunName) ? runContext.RunName : _defaultRunName,
+                startedDate: (testRunStartedOn == DateTime.MinValue ? string.Empty : testRunStartedOn.ToString("o")),
+                completedDate: (testRunEndedOn == DateTime.MinValue ? string.Empty : testRunEndedOn.ToString("o")),
+                state: TestRunState.InProgress.ToString(),
+                isAutomated: true,
+                buildId: runContext != null ? runContext.BuildId : 0,
+                buildFlavor: runContext != null ? runContext.Configuration : string.Empty,
+                buildPlatform: _platform,
+                releaseUri: runContext != null ? runContext.ReleaseUri : null,
+                releaseEnvironmentUri: runContext != null ? runContext.ReleaseEnvironmentUri : null
+            );
+            testRunData.Results = testCaseResults.ToArray();
+            testRunData.Attachments = addResultsAsAttachments ? new string[] { filePath } : new string[0];
+            return testRunData;
         }
     }
 
