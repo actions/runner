@@ -135,7 +135,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
                 }
 
                 // Add the variable using the formatted name.
-                string formattedKey = (pair.Key ?? string.Empty).Replace('.', '_').ToUpperInvariant();
+                string formattedKey = (pair.Key ?? string.Empty).Replace('.', '_').Replace(' ', '_').ToUpperInvariant();
                 AddEnvironmentVariable(formattedKey, pair.Value);
 
                 // Store the name.
