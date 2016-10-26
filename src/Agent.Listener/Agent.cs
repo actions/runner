@@ -189,7 +189,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             try
             {
                 var notification = HostContext.GetService<IJobNotification>();
-                notification.StartClient(settings.NotificationPipeName, token);
+                if (!String.IsNullOrEmpty(settings.NotificationSocketAddress))
+                {
+                    notification.StartClient(settings.NotificationSocketAddress);
+                }
+                else
+                {
+                    notification.StartClient(settings.NotificationPipeName, token);
+                }
                 // this is not a reliable way to disable auto update.
                 // we need server side work to really enable the feature
                 // https://github.com/Microsoft/vsts-agent/issues/446 (Feature: Allow agent / pool to opt out of automatic updates)

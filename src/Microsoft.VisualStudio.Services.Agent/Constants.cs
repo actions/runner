@@ -56,6 +56,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                     public static readonly string Agent = "agent";
                     public static readonly string Auth = "auth";
                     public static readonly string NotificationPipeName = "notificationpipename";
+                    public static readonly string NotificationSocketAddress = "notificationsocketaddress";
                     public static readonly string Pool = "pool";
                     public static readonly string Url = "url";
                     public static readonly string UserName = "username";

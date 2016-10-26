@@ -24,6 +24,9 @@ namespace Microsoft.VisualStudio.Services.Agent
         public string NotificationPipeName { get; set; }
 
         [DataMember(EmitDefaultValue = false)]
+        public string NotificationSocketAddress { get; set; }
+
+        [DataMember(EmitDefaultValue = false)]
         public int PoolId { get; set; }
 
         [DataMember(EmitDefaultValue = false)]
