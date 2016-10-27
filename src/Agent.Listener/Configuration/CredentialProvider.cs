@@ -28,8 +28,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
     public sealed class PersonalAccessToken : CredentialProvider
     {
-        public PersonalAccessToken(): base(Constants.Configuration.PAT) {}
-        
+        public PersonalAccessToken() : base(Constants.Configuration.PAT) { }
+
         public override VssCredentials GetVssCredentials(IHostContext context)
         {
             ArgUtil.NotNull(context, nameof(context));
@@ -66,7 +66,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
     public sealed class ServiceIdentityCredential : CredentialProvider
     {
-        public ServiceIdentityCredential(): base(Constants.Configuration.ServiceIdentity) {}
+        public ServiceIdentityCredential() : base(Constants.Configuration.ServiceIdentity) { }
 
         public override VssCredentials GetVssCredentials(IHostContext context)
         {
@@ -113,7 +113,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
     public sealed class AlternateCredential : CredentialProvider
     {
-        public AlternateCredential(): base(Constants.Configuration.Alternate) {}
+        public AlternateCredential() : base(Constants.Configuration.Alternate) { }
 
         public override VssCredentials GetVssCredentials(IHostContext context)
         {
@@ -121,32 +121,37 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             Tracing trace = context.GetTrace(nameof(AlternateCredential));
             trace.Info(nameof(GetVssCredentials));
 
-            // TODO: This is busted.
-            /*
-            if (CredentialData == null || !CredentialData.Data.ContainsKey("token"))
+            string username;
+            if (!CredentialData.Data.TryGetValue(Constants.Agent.CommandLine.Args.UserName, out username))
             {
-                throw new InvalidOperationException("Must call ReadCredential first.");
+                username = null;
             }
 
-            string username = CredentialData.Data["Username"];
-            trace.Info("username retrieved: {0} chars", username.Length);
+            string password;
+            if (!CredentialData.Data.TryGetValue(Constants.Agent.CommandLine.Args.Password, out password))
+            {
+                password = null;
+            }
 
-            string password = CredentialData.Data["Password"];
+            ArgUtil.NotNull(username, nameof(username));
+            ArgUtil.NotNull(password, nameof(password));
+
+            trace.Info("username retrieved: {0} chars", username.Length);
             trace.Info("password retrieved: {0} chars", password.Length);
 
-            // PAT uses a basic credential
             VssBasicCredential loginCred = new VssBasicCredential(username, password);
             VssCredentials creds = new VssClientCredentials(loginCred);
             trace.Verbose("cred created");
 
             return creds;
-            */
-
-            throw new NotImplementedException();
         }
 
         public override void EnsureCredential(IHostContext context, CommandSettings command, string serverUrl)
         {
+            ArgUtil.NotNull(context, nameof(context));
+            Tracing trace = context.GetTrace(nameof(AlternateCredential));
+            trace.Info(nameof(EnsureCredential));
+            ArgUtil.NotNull(command, nameof(command));
             CredentialData.Data[Constants.Agent.CommandLine.Args.UserName] = command.GetUserName();
             CredentialData.Data[Constants.Agent.CommandLine.Args.Password] = command.GetPassword();
         }
