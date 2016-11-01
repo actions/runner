@@ -226,11 +226,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
             // If syncSources = false, we will not reset repository.
             bool syncSources = executionContext.Variables.Build_SyncSources ?? true;
+            if (!syncSources)
+            {
+                Trace.Verbose($"{Constants.Variables.Build.SyncSources} = false, we will not run post job cleanup for this repository");
+                return;
+            }
 
             // Read skipSyncSource property fron endpoint data
             string skipSyncSourceText;
             bool skipSyncSource = false;
-            if (SourceEndpoint.Data.TryGetValue("skipSyncSource", out skipSyncSourceText))
+            if (SourceEndpoint != null && SourceEndpoint.Data.TryGetValue("skipSyncSource", out skipSyncSourceText))
             {
                 skipSyncSource = StringUtil.ConvertToBoolean(skipSyncSourceText, false);
             }
@@ -238,7 +243,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             // Prefer feature variable over endpoint data
             skipSyncSource = executionContext.Variables.GetBoolean(Constants.Variables.Features.SkipSyncSource) ?? skipSyncSource;
 
-            if (!syncSources || skipSyncSource)
+            if (skipSyncSource)
             {
                 Trace.Verbose($"{Constants.Variables.Build.SyncSources} = false, we will not run post job cleanup for this repository");
                 return;
