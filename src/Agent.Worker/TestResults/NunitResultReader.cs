@@ -294,15 +294,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
             testCaseResultData.CompletedDate = testExecutionEndedOn; 
             if (testCaseResultNode.Attributes["result"] != null)
             {
-                if (testCaseResultNode.Attributes["result"].Value == "Passed")
+                if (string.Equals(testCaseResultNode.Attributes["result"].Value, "Passed", StringComparison.OrdinalIgnoreCase))
                 {
                     testCaseResultData.Outcome = TestOutcome.Passed.ToString();
                 }
-                else if (testCaseResultNode.Attributes["result"].Value == "Failed")
+                else if (string.Equals(testCaseResultNode.Attributes["result"].Value, "Failed", StringComparison.OrdinalIgnoreCase))
                 {
                     testCaseResultData.Outcome = TestOutcome.Failed.ToString();
                 }
-                else if (testCaseResultNode.Attributes["result"].Value == "Skipped")
+                else if (string.Equals(testCaseResultNode.Attributes["result"].Value, "Skipped", StringComparison.OrdinalIgnoreCase))
                 {
                     testCaseResultData.Outcome = TestOutcome.NotExecuted.ToString();
                 } 
