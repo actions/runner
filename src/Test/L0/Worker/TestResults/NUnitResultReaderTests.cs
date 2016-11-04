@@ -169,7 +169,23 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
             Assert.Equal("   at ExpectedExceptionExample.ExpectedExceptionTests.SomeFailingTest()", failedTestResult.StackTrace);
             Assert.Equal(1, _testRunData.Results.Count(r => r.Outcome.Equals("NotExecuted")));
             Assert.Equal(1, _testRunData.Results.Count(r => r.Outcome.Equals("Inconclusive")));
+            Assert.Equal(1, _testRunData.Attachments.Length);
+            Assert.Equal("NUnit Test Run", _testRunData.Name);
         }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
+        public void CustomRunTitleIsHonourednunit3()
+        {
+            SetupMocks();
+            _nunitResultsToBeRead = _nUnit3ResultsXml;
+            ReadResults(new TestRunContext("owner", "platform", "configuration", 1, "buildUri", "releaseUri", "releaseEnvironmentUri", "MyRunTitle"));
+
+            Assert.NotNull(_testRunData);
+            Assert.Equal("MyRunTitle", _testRunData.Name);
+        }
+        
 
         [Fact]
         [Trait("Level", "L0")]
@@ -284,6 +300,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "PublishTestResults")]
+        public void PublishBasicNUnitResultsSkipsAddingResultsFileWhenFlaggednunit3()
+        {
+            SetupMocks();
+            _nunitResultsToBeRead = _nUnit3ResultsXml;
+
+            ReadResults(new TestRunContext("owner", "platform", "configuration", 1, "buildUri", "releaseUri", "releaseEnvironmentUri"), false);
+            Assert.True(_testRunData.Attachments.Length == 0, "the run level attachment is present even though the flag was set to false");
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void VerifyTestCaseStartDate()
         {
             SetupMocks();
@@ -333,10 +361,32 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "PublishTestResults")]
+        public void VerifyStartDateIsEmptyWhenStartTimeisUnavailablenunit3()
+        {
+            SetupMocks();
+            _nunitResultsToBeRead = _nUnit3ResultsXml.Replace("start-time", "start-timexyz");
+            ReadResults(new TestRunContext("owner", "platform", "configuration", 1, "buildUri", "releaseUri", "releaseEnvironmentUri"));
+            Assert.Equal(string.Empty, _testRunData.StartDate);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void VerifyEndDateIsEmptyWhenNoRunTimeIsAvailable()
         {
             SetupMocks();
             _nunitResultsToBeRead = _nUnitBasicResultsXml.Replace("time", "timer").Replace("date", "dater");
+            ReadResults(new TestRunContext("owner", "platform", "configuration", 1, "buildUri", "releaseUri", "releaseEnvironmentUri"));
+            Assert.Equal(string.Empty, _testRunData.CompleteDate);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
+        public void VerifyEndDateIsEmptyWhenEndTimeisUnavailablenunit3()
+        {
+            SetupMocks();
+            _nunitResultsToBeRead = _nUnit3ResultsXml.Replace("end-time", "end-timexyz");
             ReadResults(new TestRunContext("owner", "platform", "configuration", 1, "buildUri", "releaseUri", "releaseEnvironmentUri"));
             Assert.Equal(string.Empty, _testRunData.CompleteDate);
         }
