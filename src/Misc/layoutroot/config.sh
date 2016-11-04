@@ -1,3 +1,5 @@
+#!/bin/bash
+
 user_id=`id -u`
 
 # we want to snapshot the environment of the config user

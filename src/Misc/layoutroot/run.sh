@@ -1,3 +1,5 @@
+#!/bin/bash
+
 user_id=`id -u`
 
 if [ $user_id -eq 0 ]; then
