@@ -280,40 +280,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
             {
                 testCaseResultData.AutomatedTestStorage = assemblyName;
             }
-
             testCaseResultData.ComputerName = hostname;
-
-            if (testCaseResultNode.Attributes["name"] != null)
-            {
-                testCaseResultData.TestCaseTitle = testCaseResultNode.Attributes["name"].Value; 
-            }
-
-            if (testCaseResultNode.Attributes["fullname"] != null)
-            {
-                testCaseResultData.AutomatedTestName = testCaseResultNode.Attributes["fullname"].Value;
-            }
-
-            if (testCaseResultNode.Attributes["duration"] != null)
-            {
-                double duration = 0;
-                double.TryParse(testCaseResultNode.Attributes["duration"].Value, NumberStyles.Any, NumberFormatInfo.InvariantInfo, out duration);
-                testCaseResultData.DurationInMs = TimeSpan.FromSeconds(duration).TotalMilliseconds;
-            }
-
-            if (testCaseResultNode.Attributes["start-time"] != null)
-            {
-                var testExecutionStartedOn = DateTime.MinValue;
-                DateTime.TryParse(testCaseResultNode.Attributes["start-time"].Value, DateTimeFormatInfo.InvariantInfo, DateTimeStyles.None, out testExecutionStartedOn);
-                testCaseResultData.StartedDate = testExecutionStartedOn;
-            }
-
-            if (testCaseResultNode.Attributes["end-time"] != null)
-            {
-                var testExecutionEndedOn = DateTime.MinValue;
-                DateTime.TryParse(testCaseResultNode.Attributes["end-time"].Value, DateTimeFormatInfo.InvariantInfo, DateTimeStyles.None, out testExecutionEndedOn);
-                testCaseResultData.CompletedDate = testExecutionEndedOn; 
-            }
-
+            testCaseResultData.TestCaseTitle = testCaseResultNode.Attributes["name"]?.Value;
+            testCaseResultData.AutomatedTestName = testCaseResultNode.Attributes["fullname"]?.Value;
+            double duration = 0;
+            double.TryParse(testCaseResultNode.Attributes["duration"]?.Value, NumberStyles.Any, NumberFormatInfo.InvariantInfo, out duration);
+            testCaseResultData.DurationInMs = TimeSpan.FromSeconds(duration).TotalMilliseconds;
+            var testExecutionStartedOn = DateTime.MinValue;
+            DateTime.TryParse(testCaseResultNode.Attributes["start-time"]?.Value, DateTimeFormatInfo.InvariantInfo, DateTimeStyles.None, out testExecutionStartedOn);
+            testCaseResultData.StartedDate = testExecutionStartedOn;
+            var testExecutionEndedOn = DateTime.MinValue;
+            DateTime.TryParse(testCaseResultNode.Attributes["end-time"]?.Value, DateTimeFormatInfo.InvariantInfo, DateTimeStyles.None, out testExecutionEndedOn);
+            testCaseResultData.CompletedDate = testExecutionEndedOn; 
             if (testCaseResultNode.Attributes["result"] != null)
             {
                 if (testCaseResultNode.Attributes["result"].Value == "Passed")
@@ -337,27 +315,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                 {
                     var failureMessageNode = failureNode.SelectSingleNode("message");
                     var failureStackTraceNode = failureNode.SelectSingleNode("stack-trace");
-                    if (failureMessageNode != null && !string.IsNullOrEmpty(failureMessageNode.InnerText))
-                    {
-                        testCaseResultData.ErrorMessage = failureMessageNode.InnerText; 
-                    }
-                    if (failureStackTraceNode != null && !string.IsNullOrEmpty(failureStackTraceNode.InnerText))
-                    {
-                        testCaseResultData.StackTrace = failureStackTraceNode.InnerText; 
-                    }
+                    testCaseResultData.ErrorMessage = failureMessageNode?.InnerText;
+                    testCaseResultData.StackTrace = failureStackTraceNode?.InnerText;
                 }
             }
-
             testCaseResultData.State = "Completed";
-
             testCaseResultData.AutomatedTestType = "NUnit";
-
             if (_runUserIdRef != null)
             {
                 testCaseResultData.RunBy = _runUserIdRef;
                 testCaseResultData.Owner = _runUserIdRef;
             }
-
             return testCaseResultData;
         }
         public TestRunData GetTestRunData(string filePath, XmlDocument doc, XmlNode testResultsNode, TestRunContext runContext, bool addResultsAsAttachments)
@@ -370,14 +338,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
             _platform = runContext != null ? runContext.Platform : string.Empty;
             if (testRunNode.Attributes["start-time"] != null)
             {
-                if (testRunNode.Attributes["start-time"] != null)
-                {
-                    DateTime.TryParse(testRunNode.Attributes["start-time"].Value, DateTimeFormatInfo.InvariantInfo, DateTimeStyles.None, out testRunStartedOn);
-                }
-                if (testRunNode.Attributes["end-time"] != null)
-                {
-                    DateTime.TryParse(testRunNode.Attributes["end-time"].Value, DateTimeFormatInfo.InvariantInfo, DateTimeStyles.None, out testRunEndedOn);
-                }
+                DateTime.TryParse(testRunNode.Attributes["start-time"]?.Value, DateTimeFormatInfo.InvariantInfo, DateTimeStyles.None, out testRunStartedOn);
+                DateTime.TryParse(testRunNode.Attributes["end-time"]?.Value, DateTimeFormatInfo.InvariantInfo, DateTimeStyles.None, out testRunEndedOn);
                 var testAssemblyNodes = testRunNode.SelectNodes("//test-suite[@type='Assembly']");
                 if (testAssemblyNodes != null)
                 {
