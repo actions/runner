@@ -427,7 +427,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                 testResultsNode = doc.SelectSingleNode("test-run");
                 if (testResultsNode == null)
                 {
-                    throw new NotSupportedException("invalid file format");
+                    throw new NotSupportedException(StringUtil.Loc("InvalidFileFormat"));
                 }
                 nunitResultsReader = new NUnit3ResultsXmlReader();
             }
