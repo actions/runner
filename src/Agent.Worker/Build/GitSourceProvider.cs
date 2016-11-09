@@ -125,6 +125,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         private bool _selfManageGitCreds = false;
         private Uri _repositoryUrlWithCred = null;
         private Uri _proxyUrlWithCred = null;
+        private string _proxyUrlWithCredString = null;
         private Uri _gitLfsUrlWithCred = null;
 
         protected IGitCommandManager _gitCommandManager;
@@ -261,6 +262,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             if (!string.IsNullOrEmpty(executionContext.Variables.Agent_ProxyUrl))
             {
                 _proxyUrlWithCred = UrlUtil.GetCredentialEmbeddedUrl(new Uri(executionContext.Variables.Agent_ProxyUrl), executionContext.Variables.Agent_ProxyUsername, executionContext.Variables.Agent_ProxyPassword);
+
+                // uri.absoluteuri will not contains port info if the scheme is http/https and the port is 80/443
+                // however, git.exe always require you provide port info, if nothing passed in, it will use 1080 as default
+                // as result, we need prefer the uri.originalstring when it's different than uri.absoluteuri.
+                if (string.Equals(_proxyUrlWithCred.AbsoluteUri, _proxyUrlWithCred.OriginalString, StringComparison.OrdinalIgnoreCase))
+                {
+                    _proxyUrlWithCredString = _proxyUrlWithCred.AbsoluteUri;
+                }
+                else
+                {
+                    _proxyUrlWithCredString = _proxyUrlWithCred.OriginalString;
+                }
             }
 
             if (gitLfsSupport)
@@ -448,8 +461,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 if (!string.IsNullOrEmpty(executionContext.Variables.Agent_ProxyUrl))
                 {
                     executionContext.Debug($"Config proxy server '{executionContext.Variables.Agent_ProxyUrl}' for git fetch.");
-                    ArgUtil.NotNull(_proxyUrlWithCred, nameof(_proxyUrlWithCred));
-                    additionalFetchArgs.Add($"-c http.proxy=\"{_proxyUrlWithCred.AbsoluteUri}\"");
+                    ArgUtil.NotNullOrEmpty(_proxyUrlWithCredString, nameof(_proxyUrlWithCredString));
+                    additionalFetchArgs.Add($"-c http.proxy=\"{_proxyUrlWithCredString}\"");
                 }
 
                 // Prepare gitlfs url for fetch and checkout
@@ -557,8 +570,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                     if (!string.IsNullOrEmpty(executionContext.Variables.Agent_ProxyUrl))
                     {
                         executionContext.Debug($"Config proxy server '{executionContext.Variables.Agent_ProxyUrl}' for git submodule update.");
-                        ArgUtil.NotNull(_proxyUrlWithCred, nameof(_proxyUrlWithCred));
-                        additionalSubmoduleUpdateArgs.Add($"-c http.proxy=\"{_proxyUrlWithCred.AbsoluteUri}\"");
+                        ArgUtil.NotNullOrEmpty(_proxyUrlWithCredString, nameof(_proxyUrlWithCredString));
+                        additionalSubmoduleUpdateArgs.Add($"-c http.proxy=\"{_proxyUrlWithCredString}\"");
                     }
                 }
 
@@ -596,10 +609,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                     if (!string.IsNullOrEmpty(executionContext.Variables.Agent_ProxyUrl))
                     {
                         executionContext.Debug($"Save proxy config for proxy server '{executionContext.Variables.Agent_ProxyUrl}' into git config.");
-                        ArgUtil.NotNull(_proxyUrlWithCred, nameof(_proxyUrlWithCred));
+                        ArgUtil.NotNullOrEmpty(_proxyUrlWithCredString, nameof(_proxyUrlWithCredString));
 
                         string proxyConfigKey = "http.proxy";
-                        string proxyConfigValue = $"\"{_proxyUrlWithCred.AbsoluteUri}\"";
+                        string proxyConfigValue = $"\"{_proxyUrlWithCredString}\"";
                         _configModifications[proxyConfigKey] = proxyConfigValue.Trim('\"');
 
                         int exitCode_proxyconfig = await _gitCommandManager.GitConfig(executionContext, targetPath, proxyConfigKey, proxyConfigValue);
