@@ -11,6 +11,8 @@ using System.Net.Http;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
+    using Extensions;
+
     [ServiceLocator(Default = typeof(JobRunner))]
     public interface IJobRunner : IAgentService
     {
@@ -254,29 +256,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         {
             var result = jobContext.Complete(taskResult);
             var outputVariables = jobContext.Variables.GetOutputVariables();
-            var webApiVariables = ToWebApiVariables(outputVariables);
-            var jobCompletedEvent = new JobCompletedEvent(message.RequestId, message.JobId, result, webApiVariables.ToList());
+            var webApiVariables = outputVariables.ToWebApiVariables();
+            var jobCompletedEvent = new JobCompletedEvent(message.RequestId, message.JobId, result, webApiVariables);
+
             await jobServer.RaisePlanEventAsync(message.Plan.ScopeIdentifier, message.Plan.PlanType, message.Plan.PlanId, jobCompletedEvent, default(CancellationToken));
             return result;
-        }
-
-        private static IEnumerable<TeamFoundation.DistributedTask.WebApi.Variable> ToWebApiVariables(IEnumerable<Variable> outputVariables)
-        {
-            if (outputVariables == null || !outputVariables.Any())
-            {
-                return new List<TeamFoundation.DistributedTask.WebApi.Variable>();
-            }
-
-            var variables = outputVariables.Select(
-                v =>
-                    new TeamFoundation.DistributedTask.WebApi.Variable
-                    {
-                        Name = v.Name,
-                        Value = v.Value,
-                        Secret = v.Secret
-                    });
-
-            return variables;
         }
 
         // the hostname (how the agent knows the server) is external to our server
