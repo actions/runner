@@ -93,10 +93,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
 
             if (string.Equals(streamType, WellKnownStreamTypes.FileShare, StringComparison.OrdinalIgnoreCase))
             {
+#if !OS_WINDOWS
+                throw new NotSupportedException(StringUtil.Loc("RMFileShareArtifactErrorOnNonWindowsAgent"));
+#else
                 var fileShareArtifact = new FileShareArtifact();
                 customArtifactDetails.RelativePath = artifact.RelativePath ?? string.Empty;
                 var location = artifact.FileShareLocation ?? artifact.DownloadUrl;
                 await fileShareArtifact.DownloadArtifactAsync(executionContext, hostContext, new ArtifactDefinition { Details = customArtifactDetails }, new Uri(location).LocalPath, localFolderPath);
+#endif
             }
             else if (string.Equals(streamType, WellKnownStreamTypes.Zip, StringComparison.OrdinalIgnoreCase))
             {

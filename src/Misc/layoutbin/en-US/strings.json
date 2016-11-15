@@ -323,6 +323,7 @@
   "RMEnvironmentVariablesAvailable": "Environment variables available are below.  Note that these environment variables can be referred to in the task (in the ReleaseDefinition) by replacing \"_\" with \".\" e.g. AGENT_NAME environment variable can be referenced using Agent.Name in the ReleaseDefinition: {0}",
   "RMErrorDownloadingContainerItem": "Error downloading {0}: {1}",
   "RMErrorDuringArtifactDownload": "An error occurred during download: {0}",
+  "RMFileShareArtifactErrorOnNonWindowsAgent": "Cannot download artifacts from a file share using OSX or Linux agent. You can download artifact from server or use a Windows agent.",
   "RMGetFileAsyncTimedOut": "FetchEngine.GetFileAsync task timed out after {0} minute(s).",
   "RMGitEndpointNotFound": "Cannot find required information in the job to download the Team Foundation Git artifact.",
   "RMGitHubEndpointNotFound": "Cannot find required information in the job to download the GitHub artifact: {0}",
