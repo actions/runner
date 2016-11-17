@@ -19,7 +19,7 @@ using Newtonsoft.Json;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
 {
-   // TODO: Write tests for this
+    // TODO: Write tests for this
     public class JenkinsArtifact : AgentService, IArtifactExtension
     {
         public Type ExtensionType => typeof(IArtifactExtension);
@@ -43,33 +43,41 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
             executionContext.Output(StringUtil.Loc("RMJenkinsBuildId", jenkinsDetails.BuildId));
 
             Stream downloadedStream = null;
-            using (HttpClient client = new HttpClient())
+            using (HttpClientHandler handler = new HttpClientHandler())
             {
-                SetupHttpClient(client, jenkinsDetails.AccountName, jenkinsDetails.AccountPassword);
-                var downloadArtifactsUrl =
-                    new Uri(
-                        string.Format(
-                            CultureInfo.InvariantCulture,
-                            "{0}/job/{1}/{2}/artifact/{3}/*zip*/",
-                            jenkinsDetails.Url,
-                            jenkinsDetails.JobName,
-                            jenkinsDetails.BuildId,
-                            jenkinsDetails.RelativePath));
+                handler.ServerCertificateCustomValidationCallback = (message, certificate, chain, sslPolicyErrors) =>
+                {
+                    return jenkinsDetails.AcceptUntrustedCertificates;
+                };
 
-                executionContext.Output(StringUtil.Loc("RMPrepareToGetFromJenkinsServer"));
-                HttpResponseMessage response = client.GetAsync(downloadArtifactsUrl).Result;
+                using (HttpClient client = new HttpClient(handler))
+                {
+                    SetupHttpClient(client, jenkinsDetails.AccountName, jenkinsDetails.AccountPassword);
+                    var downloadArtifactsUrl =
+                        new Uri(
+                            string.Format(
+                                CultureInfo.InvariantCulture,
+                                "{0}/job/{1}/{2}/artifact/{3}/*zip*/",
+                                jenkinsDetails.Url,
+                                jenkinsDetails.JobName,
+                                jenkinsDetails.BuildId,
+                                jenkinsDetails.RelativePath));
 
-                if (response.IsSuccessStatusCode)
-                {
-                    downloadedStream = response.Content.ReadAsStreamAsync().Result;
-                }
-                else if (response.StatusCode == HttpStatusCode.NotFound)
-                {
-                    throw new ArtifactDownloadException(StringUtil.Loc("RMNoArtifactsFound", jenkinsDetails.RelativePath));
-                }
-                else
-                {
-                    throw new ArtifactDownloadException(StringUtil.Loc("RMDownloadArtifactUnexpectedError"));
+                    executionContext.Output(StringUtil.Loc("RMPrepareToGetFromJenkinsServer"));
+                    HttpResponseMessage response = client.GetAsync(downloadArtifactsUrl).Result;
+
+                    if (response.IsSuccessStatusCode)
+                    {
+                        downloadedStream = response.Content.ReadAsStreamAsync().Result;
+                    }
+                    else if (response.StatusCode == HttpStatusCode.NotFound)
+                    {
+                        throw new ArtifactDownloadException(StringUtil.Loc("RMNoArtifactsFound", jenkinsDetails.RelativePath));
+                    }
+                    else
+                    {
+                        throw new ArtifactDownloadException(StringUtil.Loc("RMDownloadArtifactUnexpectedError"));
+                    }
                 }
             }
 
@@ -104,6 +112,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
 
             var allFieldsPresents = artifactDetails.TryGetValue("RelativePath", out relativePath)
                                     && artifactDetails.TryGetValue("JobName", out jobName);
+
+            bool acceptUntrusted = jenkinsEndpoint.Data != null && 
+                                   jenkinsEndpoint.Data.ContainsKey("acceptUntrustedCerts") &&
+                                   StringUtil.ConvertToBoolean(jenkinsEndpoint.Data["acceptUntrustedCerts"]);
+
             if (allFieldsPresents)
             {
                 return new JenkinsArtifactDetails
@@ -113,7 +126,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
                     AccountPassword = jenkinsEndpoint.Authorization.Parameters[EndpointAuthorizationParameters.Password],
                     BuildId = Convert.ToInt32(agentArtifactDefinition.Version, CultureInfo.InvariantCulture),
                     JobName = jobName,
-                    Url = jenkinsEndpoint.Url
+                    Url = jenkinsEndpoint.Url,
+                    AcceptUntrustedCertificates = acceptUntrusted
                 };
             }
             else

@@ -21,5 +21,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts.Definit
         public string JobName { get; set; }
 
         public int BuildId { get; set; }
+
+        public bool AcceptUntrustedCertificates { get; set; }
     }
 }
