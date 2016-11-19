@@ -2,6 +2,7 @@ using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Moq;
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using Xunit;
 
@@ -14,7 +15,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
         [Trait("Category", "Worker")]
         public void InitializeJob_LogsWarningsFromVariables()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = CreateTestContext())
             {
                 // Arrange: Create a job request message.
                 TaskOrchestrationPlanReference plan = new TaskOrchestrationPlanReference();
@@ -28,28 +29,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                 string jobName = "some job name";
                 var jobRequest = new AgentJobRequestMessage(plan, timeline, JobId, jobName, environment, tasks);
 
-                // Arrange: Setup the configation store.
-                var configurationStore = new Mock<IConfigurationStore>();
-                configurationStore.Setup(x => x.GetSettings()).Returns(new AgentSettings());
-                hc.SetSingleton(configurationStore.Object);
-
-                // Arrange: Setup the secret masker.
-                var secretMasker = new Mock<ISecretMasker>();
-                secretMasker.Setup(x => x.MaskSecrets(It.IsAny<string>()))
-                    .Returns((string x) => x);
-                hc.SetSingleton(secretMasker.Object);
-
                 // Arrange: Setup the paging logger.
                 var pagingLogger = new Mock<IPagingLogger>();
                 hc.EnqueueInstance(pagingLogger.Object);
 
-                // Arrange: Setup the proxy configation.
-                var proxy = new Mock<IProxyConfiguration>();
-                hc.SetSingleton(proxy.Object);
-
-                // Arrange: Create the execution context.
-                hc.SetSingleton(new Mock<IJobServerQueue>().Object);
-                var ec = new Microsoft.VisualStudio.Services.Agent.Worker.ExecutionContext();
+                var ec = new Agent.Worker.ExecutionContext();
                 ec.Initialize(hc);
 
                 // Act.
@@ -58,6 +42,100 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                 // Assert.
                 pagingLogger.Verify(x => x.Write(It.Is<string>(y => y.IndexOf("##[warning]") >= 0)), Times.Exactly(2));
             }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void CanNotSkipTimelineAfterStarting()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange: Setup the paging logger.
+                var pagingLogger = new Mock<IPagingLogger>();
+                hc.EnqueueInstance(pagingLogger.Object);
+
+                var ec = new Agent.Worker.ExecutionContext();
+                ec.Initialize(hc);
+
+                var jobRequest = CreateJobRequestMessage();
+                ec.InitializeJob(jobRequest, CancellationToken.None);
+
+                // Act
+                ec.Start();
+
+                // Assert
+                Assert.Throws<InvalidOperationException>(() => ec.Skip());
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void VerifySkippedTimeLineRecord()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange: Create the execution context.
+                var jobServerQueue = new Mock<IJobServerQueue>();
+                hc.SetSingleton(jobServerQueue.Object);
+
+                // Arrange: Setup the paging logger.
+                var pagingLogger = new Mock<IPagingLogger>();
+                hc.EnqueueInstance(pagingLogger.Object);
+
+                var ec = new Agent.Worker.ExecutionContext();
+                ec.Initialize(hc);
+                ec.InitializeJob(CreateJobRequestMessage(), CancellationToken.None);
+                
+                // Act
+                ec.Skip();
+
+                // Assert
+                Assert.Equal(TaskResult.Skipped, ec.Result);
+                jobServerQueue.Verify(
+                    x => x.QueueTimelineRecordUpdate(
+                        It.IsAny<Guid>(),
+                        It.Is<TimelineRecord>(r => r.StartTime != null && r.StartTime == r.FinishTime && r.State == TimelineRecordState.Completed && r.Result == TaskResult.Skipped && r.PercentComplete == 0)),
+                    Times.AtLeastOnce());
+            }
+        }
+
+        private TestHostContext CreateTestContext([CallerMemberName] String testName = "")
+        {
+            var hc = new TestHostContext(this, testName);
+
+            // Arrange: Setup the configation store.
+            var configurationStore = new Mock<IConfigurationStore>();
+            configurationStore.Setup(x => x.GetSettings()).Returns(new AgentSettings());
+            hc.SetSingleton(configurationStore.Object);
+
+            // Arrange: Setup the secret masker.
+            var secretMasker = new Mock<ISecretMasker>();
+            secretMasker.Setup(x => x.MaskSecrets(It.IsAny<string>()))
+                .Returns((string x) => x);
+            hc.SetSingleton(secretMasker.Object);
+
+            // Arrange: Setup the proxy configation.
+            var proxy = new Mock<IProxyConfiguration>();
+            hc.SetSingleton(proxy.Object);
+
+            // Arrange: Create the execution context.
+            hc.SetSingleton(new Mock<IJobServerQueue>().Object);
+            return hc;
+        }
+
+        private JobRequestMessage CreateJobRequestMessage()
+        {
+            TaskOrchestrationPlanReference plan = new TaskOrchestrationPlanReference();
+            TimelineReference timeline = new TimelineReference();
+            JobEnvironment environment = new JobEnvironment();
+            environment.SystemConnection = new ServiceEndpoint();
+            environment.Variables["v1"] = "v1";
+            List<TaskInstance> tasks = new List<TaskInstance>();
+            Guid JobId = Guid.NewGuid();
+            string jobName = "some job name";
+            return new AgentJobRequestMessage(plan, timeline, JobId, jobName, environment, tasks);
         }
     }
 }

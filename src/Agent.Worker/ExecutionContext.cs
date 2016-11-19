@@ -35,6 +35,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         // timeline record update methods
         void Start(string currentOperation = null, TimeSpan? timeout = null);
         TaskResult Complete(TaskResult? result = null, string currentOperation = null);
+        void Skip();
         void AddIssue(Issue issue);
         void Progress(int percentage, string currentOperation = null);
         void UpdateDetailTimelineRecord(TimelineRecord record);
@@ -207,6 +208,25 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             _record.PercentComplete = Math.Max(percentage, _record.PercentComplete.Value);
 
             _jobServerQueue.QueueTimelineRecordUpdate(_mainTimelineId, _record);
+        }
+
+        public void Skip()
+        {
+            if (_record.State != TimelineRecordState.Pending)
+            {
+                throw new InvalidOperationException(StringUtil.Loc("CanNotSkipTask"));
+            }
+
+            Result = TaskResult.Skipped;
+
+            _record.StartTime = _record.FinishTime = DateTime.UtcNow;
+            _record.State = TimelineRecordState.Completed;
+            _record.PercentComplete = 0;
+            _record.Result = TaskResult.Skipped;
+
+            _jobServerQueue.QueueTimelineRecordUpdate(_mainTimelineId, _record);
+            _cancellationTokenSource?.Dispose();
+            _logger.End();
         }
 
         // This is not thread safe, the caller need to take lock before calling issue()

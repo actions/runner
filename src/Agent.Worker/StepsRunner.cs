@@ -64,7 +64,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     || (criticalStepFailed && !step.Finally))
                 {
                     Trace.Info("Skipping step.");
-                    step.ExecutionContext.Result = TaskResult.Skipped;
+                    
+                    // Skip the step context.
+                    step.ExecutionContext.Skip();
+
                     continue;
                 }
 

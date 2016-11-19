@@ -280,6 +280,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                 {
                     _ec.Object.Result = null;
 
+                    Mock<IExecutionContext> stepContext = CreateStepContext();
+                    variableSet[1].Setup(x => x.ExecutionContext).Returns(stepContext.Object);
+
                     // Act.
                     await _stepsRunner.RunAsync(
                         jobContext: _ec.Object,
@@ -290,6 +293,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                     Assert.Equal(2, variableSet.Length);
                     variableSet[0].Verify(x => x.RunAsync());
                     variableSet[1].Verify(x => x.RunAsync(), Times.Never());
+                    stepContext.Verify(x => x.Skip(), Times.Once());
                 }
             }
         }
@@ -316,6 +320,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                 {
                     _ec.Object.Result = null;
 
+                    Mock<IExecutionContext> stepContext = CreateStepContext();
+                    variableSet[1].Setup(x => x.ExecutionContext).Returns(stepContext.Object);
+
                     // Act.
                     await _stepsRunner.RunAsync(
                         jobContext: _ec.Object,
@@ -326,6 +333,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                     Assert.Equal(2, variableSet.Length);
                     variableSet[0].Verify(x => x.RunAsync());
                     variableSet[1].Verify(x => x.RunAsync(), Times.Never());
+                    stepContext.Verify(x => x.Skip(), Times.Once());
                 }
             }
         }
@@ -342,12 +350,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             step.Setup(x => x.RunAsync()).Returns(Task.CompletedTask);
 
             // Setup the step execution context.
+            Mock<IExecutionContext> stepContext = CreateStepContext(result);
+            step.Setup(x => x.ExecutionContext).Returns(stepContext.Object);
+
+            return step;
+        }
+
+        private Mock<IExecutionContext> CreateStepContext(TaskResult? result = null)
+        {
             var stepContext = new Mock<IExecutionContext>();
             stepContext.SetupAllProperties();
             stepContext.Setup(x => x.Variables).Returns(_variables);
             stepContext.Object.Result = result;
-            step.Setup(x => x.ExecutionContext).Returns(stepContext.Object);
-            return step;
+
+            return stepContext;
         }
 
         private string FormatSteps(IEnumerable<Mock<IStep>> steps)

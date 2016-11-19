@@ -36,6 +36,7 @@
   "CannotFindHostName": "Cannot find VSTS account name from server url: '{0}'",
   "CanNotFindService": "Cannot find service {0}",
   "CanNotGrantPermission": "Cannot grant LogonAsService permission to the user {0}",
+  "CanNotSkipTask": "Cannot skip a task which is already started.",
   "CanNotStartService": "Cannot start the service. Check the logs for more details.",
   "CanNotStopService": "Cannot stop the service {0} in a timely fashion.",
   "CannotUploadFile": "Cannot upload file because file location is not specified.",
