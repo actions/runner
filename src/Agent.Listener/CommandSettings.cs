@@ -23,6 +23,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         private readonly string[] validFlags =
         {
             Constants.Agent.CommandLine.Flags.AcceptTeeEula,
+            Constants.Agent.CommandLine.Flags.AddMachineGroupTags,
             Constants.Agent.CommandLine.Flags.Commit,
             Constants.Agent.CommandLine.Flags.Help,
             Constants.Agent.CommandLine.Flags.MachineGroup,
@@ -38,6 +39,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             Constants.Agent.CommandLine.Args.Auth,
             Constants.Agent.CommandLine.Args.CollectionName,
             Constants.Agent.CommandLine.Args.MachineGroupName,
+            Constants.Agent.CommandLine.Args.MachineGroupTags,
             Constants.Agent.CommandLine.Args.NotificationPipeName,
             Constants.Agent.CommandLine.Args.Password,
             Constants.Agent.CommandLine.Args.Pool,
@@ -118,6 +120,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             return TestFlagOrPrompt(
                 name: Constants.Agent.CommandLine.Flags.RunAsService,
                 description: StringUtil.Loc("RunAgentAsServiceDescription"),
+                defaultValue: false);
+        }
+
+        public bool GetMachineGroupTagsRequired()
+        {
+            return TestFlagOrPrompt(
+                name: Constants.Agent.CommandLine.Flags.AddMachineGroupTags,
+                description: StringUtil.Loc("AddMachineGroupTagsFlagDescription"),
                 defaultValue: false);
         }
 
@@ -202,6 +212,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 name: Constants.Agent.CommandLine.Args.CollectionName,
                 description: StringUtil.Loc("CollectionName"),
                 defaultValue: "DefaultCollection",
+                validator: Validators.NonEmptyValidator);
+        }
+
+        public string GetMachineGroupTags()
+        {
+            return GetArgOrPrompt(
+                name: Constants.Agent.CommandLine.Args.MachineGroupTags,
+                description: StringUtil.Loc("MachineGroupTags"),
+                defaultValue: string.Empty,
                 validator: Validators.NonEmptyValidator);
         }
 

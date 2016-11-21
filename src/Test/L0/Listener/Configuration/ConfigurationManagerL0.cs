@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
@@ -80,6 +81,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
 
             _agentServer.Setup(x => x.ConnectAsync(It.IsAny<VssConnection>())).Returns(Task.FromResult<object>(null));
             _machineGroupServer.Setup(x => x.ConnectAsync(It.IsAny<VssConnection>())).Returns(Task.FromResult<object>(null));
+            _machineGroupServer.Setup(
+                x =>
+                    x.UpdateDeploymentMachineGroupAsync(It.IsAny<string>(), It.IsAny<int>(),
+                        It.IsAny<List<DeploymentMachine>>()));
             _netFrameworkUtil.Setup(x => x.Test(It.IsAny<Version>())).Returns(true);
 
             _store.Setup(x => x.IsConfigured()).Returns(false);
@@ -188,6 +193,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
                Assert.True(s.AgentName.Equals(_expectedAgentName));
                Assert.True(s.PoolId.Equals(_expectedPoolId));
                Assert.True(s.WorkFolder.Equals(_expectedWorkFolder));
+
+               // For build and release agent, tags logic should not get trigger
+               _machineGroupServer.Verify(x =>
+                    x.UpdateDeploymentMachineGroupAsync(It.IsAny<string>(), It.IsAny<int>(),
+                        It.IsAny<List<DeploymentMachine>>()), Times.Never);
            }
        }
 
@@ -251,6 +261,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
                 Assert.True(s.WorkFolder.Equals(_expectedWorkFolder));
                 Assert.True(s.MachineGroupId.Equals(0));
                 Assert.True(s.ProjectName.Equals(_expectedProjectName));
+
+                // Tags logic should not get trigger
+                _machineGroupServer.Verify(x =>
+                    x.UpdateDeploymentMachineGroupAsync(It.IsAny<string>(), It.IsAny<int>(),
+                        It.IsAny<List<DeploymentMachine>>()), Times.Never);
             }
         }
 
@@ -316,6 +331,96 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
                 Assert.True(s.WorkFolder.Equals(_expectedWorkFolder));
                 Assert.True(s.MachineGroupId.Equals(0));
                 Assert.True(s.ProjectName.Equals(_expectedProjectName));
+
+                // Tags logic should not get trigger
+                _machineGroupServer.Verify(x =>
+                    x.UpdateDeploymentMachineGroupAsync(It.IsAny<string>(), It.IsAny<int>(),
+                        It.IsAny<List<DeploymentMachine>>()), Times.Never);
+            }
+        }
+
+        /*
+        * Agent configuartion as deployment agent against VSTS account
+        * Collectioion name is not required
+        */
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "ConfigurationManagement")]
+        public async Task CanEnsureMachineGroupAgentConfigureVSTSScenarioWithTags()
+        {
+            string receivedProjectName = string.Empty;
+            string expectedProcessedTags = string.Empty;
+            string tags = "Tag3, ,, Tag4  , , ,  Tag1,  , tag3 ";
+            string expectedTags = "Tag3,Tag4,Tag1";
+
+            _machineGroupServer.Setup(x =>
+                x.UpdateDeploymentMachineGroupAsync(It.IsAny<string>(), It.IsAny<int>(),
+                    It.IsAny<List<DeploymentMachine>>())).Callback((string project, int machineGroupId, List<DeploymentMachine> deploymentMachine) =>
+                    {
+                        receivedProjectName = project;
+                        expectedProcessedTags = string.Join(",",deploymentMachine.FirstOrDefault().Tags.ToArray());
+                    }
+                );
+
+            using (TestHostContext tc = CreateTestContext())
+            {
+                Tracing trace = tc.GetTrace();
+
+                trace.Info("Creating config manager");
+                IConfigurationManager configManager = new ConfigurationManager();
+                configManager.Initialize(tc);
+
+                trace.Info("Preparing command line arguments for vsts scenario");
+                var command = new CommandSettings(
+                    tc,
+                    new[]
+                    {
+                        "configure",
+#if !OS_WINDOWS
+                       "--acceptteeeula",
+#endif
+                        "--machinegroup",
+                        "--addmachinegrouptags",
+                        "--url", _expectedVSTSServerUrl,
+                        "--agent", _expectedAgentName,
+                        "--projectname", _expectedProjectName,
+                        "--machinegroupname", _expectedMachineGroupName,
+                        "--work", _expectedWorkFolder,
+                        "--auth", _expectedAuthType,
+                        "--token", _expectedToken,
+                        "--machinegrouptags", tags
+                    });
+                trace.Info("Constructed.");
+
+                _store.Setup(x => x.IsConfigured()).Returns(false);
+                _configMgrAgentSettings = null;
+
+                _extnMgr.Setup(x => x.GetExtensions<IConfigurationProvider>()).Returns(GetConfigurationProviderList(tc));
+
+                var expectedMachineGroups = new List<DeploymentMachineGroup>() { new DeploymentMachineGroup() { Pool = new TaskAgentPoolReference(new Guid(), 3), Name = "Test-MachineGroup" } };
+                _machineGroupServer.Setup(x => x.GetDeploymentMachineGroupsAsync(It.IsAny<string>(), It.IsAny<string>())).Returns(Task.FromResult(expectedMachineGroups));
+
+                trace.Info("Ensuring all the required parameters are available in the command line parameter");
+                await configManager.ConfigureAsync(command);
+
+                _store.Setup(x => x.IsConfigured()).Returns(true);
+
+                trace.Info("Configured, verifying all the parameter value");
+                var s = configManager.LoadSettings();
+                Assert.NotNull(s);
+                Assert.True(s.ServerUrl.Equals(_expectedVSTSServerUrl, StringComparison.CurrentCultureIgnoreCase));
+                Assert.True(s.AgentName.Equals(_expectedAgentName));
+                Assert.True(s.PoolId.Equals(3));
+                Assert.True(s.WorkFolder.Equals(_expectedWorkFolder));
+                Assert.True(s.MachineGroupId.Equals(0));
+                Assert.True(s.ProjectName.Equals(_expectedProjectName));
+
+                Assert.True(receivedProjectName.Equals(_expectedProjectName), "UpdateDeploymentMachineGroupAsync should get call with correct project name");
+                Assert.True(expectedTags.Equals(expectedProcessedTags),"Before applying the tags, should get processed ( Trim, Remove duplicate)");
+                // Tags logic should get trigger
+                _machineGroupServer.Verify(x =>
+                    x.UpdateDeploymentMachineGroupAsync(It.IsAny<string>(), It.IsAny<int>(),
+                        It.IsAny<List<DeploymentMachine>>()), Times.Once);
             }
         }
 

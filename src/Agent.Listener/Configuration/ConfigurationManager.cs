@@ -201,7 +201,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
                         try
                         {
-                            agent = await agentProvider.UpdateAgentAsync(poolId, agent);
+                            agent = await agentProvider.UpdateAgentAsync(poolId, agent, command);
                             _term.WriteLine(StringUtil.Loc("AgentReplaced"));
                             break;
                         }
@@ -224,7 +224,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
                     try
                     {
-                        agent = await agentProvider.AddAgentAsync(poolId, agent);
+                        agent = await agentProvider.AddAgentAsync(poolId, agent, command);
                         _term.WriteLine(StringUtil.Loc("AgentAddedSuccessfully"));
                         break;
                     }
@@ -334,11 +334,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 #if OS_WINDOWS
             // config windows service as part of configuration
             bool runAsService = command.GetRunAsService();
-            if (!runAsService)
-            {
-                return;
-            }
-            else
+            if (runAsService)
             {
                 if (!new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator))
                 {

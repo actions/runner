@@ -694,6 +694,24 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", nameof(CommandSettings))]
+        public void GetsFlagAddMachineGroupTags()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange.
+                var command = new CommandSettings(hc, args: new string[] { "--addmachinegrouptags" });
+
+                // Act.
+                bool actual = command.GetMachineGroupTagsRequired();
+
+                // Assert.
+                Assert.True(actual);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", nameof(CommandSettings))]
         public void PromptsForProjectName()
         {
             using (TestHostContext hc = CreateTestContext())
@@ -769,6 +787,33 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
 
                 // Assert.
                 Assert.Equal("Test Machine Group", actual);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", nameof(CommandSettings))]
+        public void PromptsForMachineGrouTags()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange.
+                var command = new CommandSettings(hc, args: new string[0]);
+                _promptManager
+                    .Setup(x => x.ReadValue(
+                        Constants.Agent.CommandLine.Args.MachineGroupTags, // argName
+                        StringUtil.Loc("MachineGroupTags"), // description
+                        false, // secret
+                        string.Empty, // defaultValue
+                        Validators.NonEmptyValidator, // validator
+                        false)) // unattended
+                    .Returns("Test-Tag1,Test-Tg2");
+
+                // Act.
+                string actual = command.GetMachineGroupTags();
+
+                // Assert.
+                Assert.Equal("Test-Tag1,Test-Tg2", actual);
             }
         }
 
