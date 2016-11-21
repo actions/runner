@@ -30,12 +30,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Capabilities
             // Initialize a dictionary of capabilities.
             var capabilities = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
+            // Make sure we mask secrets in capabilitie values.
+            var secretMasker = HostContext.GetService<ISecretMasker>();
+
             // Add each capability returned from each provider.
             foreach (ICapabilitiesProvider provider in providers ?? new ICapabilitiesProvider[0])
             {
                 foreach (Capability capability in await provider.GetCapabilitiesAsync(settings, cancellationToken) ?? new List<Capability>())
                 {
-                    capabilities[capability.Name] = capability.Value;
+                    capabilities[capability.Name] = secretMasker.MaskSecrets(capability.Value);
                 }
             }
 

@@ -167,7 +167,15 @@ namespace Microsoft.VisualStudio.Services.Agent
                 {
                     if (log.LastWriteTimeUtc.AddDays(_retentionDays) < DateTime.UtcNow)
                     {
-                        log.Delete();
+                        try
+                        {
+                            log.Delete();
+                        }
+                        catch (Exception)
+                        {
+                            // catch Exception and continue
+                            // we shouldn't block logging and fail the agent if the agent can't delete an older log file.
+                        }
                     }
                 }
             }
