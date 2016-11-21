@@ -182,14 +182,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
                 // Get the local path where this artifact should be downloaded. 
                 string downloadFolderPath = Path.GetFullPath(Path.Combine(artifactsWorkingFolder, agentArtifactDefinition.Alias ?? string.Empty));
 
-                // Create the directory if it does not exist. 
-                if (!Directory.Exists(downloadFolderPath))
-                {
-                    // TODO: old windows agent has a directory cache, verify and implement it if its required.
-                    Directory.CreateDirectory(downloadFolderPath);
-                    executionContext.Output(StringUtil.Loc("RMArtifactFolderCreated", downloadFolderPath));
-                }
-
                 // download the artifact to this path. 
                 RetryExecutor retryExecutor = new RetryExecutor();
                 retryExecutor.ShouldRetryAction = (ex) =>
@@ -204,6 +196,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
                     else
                     {
                         executionContext.Output(StringUtil.Loc("RMRetryingArtifactDownload"));
+                        Trace.Warning(ex.ToString());
                     }
 
                     return retry;
@@ -212,9 +205,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
                 await retryExecutor.ExecuteAsync(
                     async () =>
                         {
-                            //TODO:SetAttributesToNormal
                             var releaseFileSystemManager = HostContext.GetService<IReleaseFileSystemManager>();
+                            executionContext.Output(StringUtil.Loc("RMEnsureArtifactFolderExistsAndIsClean", downloadFolderPath));
                             releaseFileSystemManager.CleanupDirectory(downloadFolderPath, executionContext.CancellationToken);
+
                             await extension.DownloadAsync(executionContext, artifactDefinition, downloadFolderPath);
                         });
 
