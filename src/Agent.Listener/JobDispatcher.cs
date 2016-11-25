@@ -396,6 +396,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                             // renew job request should never blows up.
                             await renewJobRequest;
 
+                            // complete job request
+                            await CompleteJobRequestAsync(_poolId, message, lockToken, result);
                             return;
                         }
                         else if (completedTask == renewJobRequest)
@@ -465,6 +467,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                         lockRenewalTokenSource.Cancel();
                         // renew job request should never blows up.
                         await renewJobRequest;
+
+                        // complete job request
+                        await CompleteJobRequestAsync(_poolId, message, lockToken, resultOnAbandonOrCancel);
                     }
                     finally
                     {
