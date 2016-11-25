@@ -268,6 +268,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             TaskCompletionSource<int> firstJobRequestRenewed = new TaskCompletionSource<int>();
             var notification = HostContext.GetService<IJobNotification>();
 
+            var agentMessage = new AgentMessage
+            {
+                JobRequest = message,
+                CanRaiseJobCompletedEvent = false
+            };
+
             // lock renew cancellation token.
             using (var lockRenewalTokenSource = new CancellationTokenSource())
             using (var workerProcessCancelTokenSource = new CancellationTokenSource())
@@ -299,7 +305,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     await renewJobRequest;
 
                     // complete job request with result Cancelled
-                    await CompleteJobRequestAsync(_poolId, message, lockToken, TaskResult.Canceled);
+                    await CompleteJobRequestAsync(_poolId, agentMessage, lockToken, TaskResult.Canceled);
                     return;
                 }
 
@@ -332,6 +338,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                                 cancellationToken: workerProcessCancelTokenSource.Token);
                         });
 
+                    agentMessage.CanRaiseJobCompletedEvent = !CanFinishAgentRequest();
+
                     // Send the job request message.
                     // Kill the worker process if sending the job message times out. The worker
                     // process may have successfully received the job message.
@@ -342,7 +350,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                         {
                             await processChannel.SendAsync(
                                 messageType: MessageType.NewJobRequest,
-                                body: JsonUtility.ToString(message),
+                                body: JsonUtility.ToString(agentMessage),
                                 cancellationToken: csSendJobRequest.Token);
                         }
                     }
@@ -397,7 +405,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                             await renewJobRequest;
 
                             // complete job request
-                            await CompleteJobRequestAsync(_poolId, message, lockToken, result);
+                            await CompleteJobRequestAsync(_poolId, agentMessage, lockToken, result);
                             return;
                         }
                         else if (completedTask == renewJobRequest)
@@ -469,7 +477,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                         await renewJobRequest;
 
                         // complete job request
-                        await CompleteJobRequestAsync(_poolId, message, lockToken, resultOnAbandonOrCancel);
+                        await CompleteJobRequestAsync(_poolId, agentMessage, lockToken, resultOnAbandonOrCancel);
                     }
                     finally
                     {
@@ -478,6 +486,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     }
                 }
             }
+        }
+
+        // Determine if Agent.Listener should finish the request or worker should raise job completed event.
+        // this is required to handle back compat with tfs released before TFS 2017 Update1
+        private bool CanFinishAgentRequest()
+        {
+            var agentServer = HostContext.GetService<IAgentServer>();
+            var tfs2017Update1 = new Version(3, 1);
+            var agentMessageResourceMaxVersion = agentServer.GetAgentMessageResourceMaxVersion(CancellationToken.None);
+
+            return agentMessageResourceMaxVersion < tfs2017Update1;
         }
 
         private async Task RenewJobRequestAsync(int poolId, long requestId, Guid lockToken, TaskCompletionSource<int> firstJobRequestRenewed, CancellationToken token)
@@ -567,32 +586,36 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             }
         }
 
-        private async Task CompleteJobRequestAsync(int poolId, AgentJobRequestMessage message, Guid lockToken, TaskResult result)
+        private async Task CompleteJobRequestAsync(int poolId, AgentMessage agentMessage, Guid lockToken, TaskResult result)
         {
             Trace.Entering();
             var agentServer = HostContext.GetService<IAgentServer>();
             int completeJobRequestRetryLimit = 5;
             List<Exception> exceptions = new List<Exception>();
+            var jobRequest = agentMessage.JobRequest;
             while (completeJobRequestRetryLimit-- > 0)
             {
                 try
                 {
-                    await agentServer.FinishAgentRequestAsync(poolId, message.RequestId, lockToken, DateTime.UtcNow, result, CancellationToken.None);
+                    if (!agentMessage.CanRaiseJobCompletedEvent)
+                    {
+                        await agentServer.FinishAgentRequestAsync(poolId, jobRequest.RequestId, lockToken, DateTime.UtcNow, result, CancellationToken.None);
+                    }
                     return;
                 }
                 catch (TaskAgentJobNotFoundException)
                 {
-                    Trace.Info($"TaskAgentJobNotFoundException received, job {message.JobId} is no longer valid.");
+                    Trace.Info($"TaskAgentJobNotFoundException received, job {jobRequest.JobId} is no longer valid.");
                     return;
                 }
                 catch (TaskAgentJobTokenExpiredException)
                 {
-                    Trace.Info($"TaskAgentJobTokenExpiredException received, job {message.JobId} is no longer valid.");
+                    Trace.Info($"TaskAgentJobTokenExpiredException received, job {jobRequest.JobId} is no longer valid.");
                     return;
                 }
                 catch (Exception ex)
                 {
-                    Trace.Error($"Catch exception during complete agent jobrequest {message.RequestId}.");
+                    Trace.Error($"Catch exception during complete agent jobrequest {jobRequest.RequestId}.");
                     Trace.Error(ex);
                     exceptions.Add(ex);
                 }

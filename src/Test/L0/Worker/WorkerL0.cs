@@ -22,7 +22,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             _proxy = new Mock<IProxyConfiguration>();
         }
 
-        private JobRequestMessage CreateJobRequestMessage(string jobName)
+        private AgentJobRequestMessage CreateJobRequestMessage(string jobName)
         {
             TaskOrchestrationPlanReference plan = new TaskOrchestrationPlanReference();
             TimelineReference timeline = null;
@@ -53,12 +53,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                 hc.SetSingleton<IJobRunner>(_jobRunner.Object);
                 hc.SetSingleton<IProxyConfiguration>(_proxy.Object);
                 worker.Initialize(hc);
-                var jobMessage = CreateJobRequestMessage("job1");
+                var agentMessage = new AgentMessage
+                {
+                    JobRequest = CreateJobRequestMessage("job1"),
+                    CanRaiseJobCompletedEvent = true
+                };
                 var arWorkerMessages = new WorkerMessage[]
                     {
                         new WorkerMessage
                         {
-                            Body = JsonUtility.ToString(jobMessage),
+                            Body = JsonUtility.ToString(agentMessage),
                             MessageType = MessageType.NewJobRequest
                         }
                     };
@@ -78,7 +82,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                         await Task.Delay(-1, tokenSource.Token);
                         return default(WorkerMessage);
                     });
-                _jobRunner.Setup(x => x.RunAsync(It.IsAny<AgentJobRequestMessage>(), It.IsAny<CancellationToken>()))
+                _jobRunner.Setup(x => x.RunAsync(It.IsAny<AgentMessage>(), It.IsAny<CancellationToken>()))
                     .Returns(Task.FromResult<TaskResult>(TaskResult.Succeeded));
 
                 //Act
@@ -87,7 +91,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                 //Assert
                 _processChannel.Verify(x => x.StartClient("1", "2"), Times.Once());
                 _jobRunner.Verify(x => x.RunAsync(
-                    It.Is<AgentJobRequestMessage>(y => JsonUtility.ToString(y) == arWorkerMessages[0].Body), It.IsAny<CancellationToken>()));
+                    It.Is<AgentMessage>(y => JsonUtility.ToString(y) == arWorkerMessages[0].Body), It.IsAny<CancellationToken>()));
                 tokenSource.Cancel();
             }
         }
@@ -105,13 +109,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                 hc.SetSingleton<IJobRunner>(_jobRunner.Object);
                 hc.SetSingleton<IProxyConfiguration>(_proxy.Object);
                 worker.Initialize(hc);
-                var jobMessage = CreateJobRequestMessage("job1");
-                var cancelMessage = CreateJobCancelMessage(jobMessage.JobId);
+                var agentMessage = new AgentMessage { JobRequest = CreateJobRequestMessage("job1") };
+                var cancelMessage = CreateJobCancelMessage(agentMessage.JobRequest.JobId);
                 var arWorkerMessages = new WorkerMessage[]
                     {
                         new WorkerMessage
                         {
-                            Body = JsonUtility.ToString(jobMessage),
+                            Body = JsonUtility.ToString(agentMessage),
                             MessageType = MessageType.NewJobRequest
                         },
                         new WorkerMessage
@@ -125,9 +129,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
 
                 _processChannel.Setup(x => x.ReceiveAsync(It.IsAny<CancellationToken>()))
                     .Returns(() => Task.FromResult(workerMessages.Dequeue()));
-                _jobRunner.Setup(x => x.RunAsync(It.IsAny<AgentJobRequestMessage>(), It.IsAny<CancellationToken>()))
+                _jobRunner.Setup(x => x.RunAsync(It.IsAny<AgentMessage>(), It.IsAny<CancellationToken>()))
                     .Returns(
-                    async (JobRequestMessage jm, CancellationToken ct) =>
+                    async (AgentMessage jm, CancellationToken ct) =>
                     {
                         await Task.Delay(-1, ct);
                         return TaskResult.Canceled;
@@ -140,7 +144,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                 //Assert
                 _processChannel.Verify(x => x.StartClient("1", "2"), Times.Once());
                 _jobRunner.Verify(x => x.RunAsync(
-                    It.Is<AgentJobRequestMessage>(y => JsonUtility.ToString(y) == arWorkerMessages[0].Body), It.IsAny<CancellationToken>()));
+                    It.Is<AgentMessage>(y => JsonUtility.ToString(y) == arWorkerMessages[0].Body), It.IsAny<CancellationToken>()));
             }
         }
     }

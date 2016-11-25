@@ -29,6 +29,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         Task<TaskAgentJobRequest> GetAgentRequestAsync(int poolId, long requestId, CancellationToken cancellationToken);
         Task<TaskAgentJobRequest> RenewAgentRequestAsync(int poolId, long requestId, Guid lockToken, CancellationToken cancellationToken);
         Task<TaskAgentJobRequest> FinishAgentRequestAsync(int poolId, long requestId, Guid lockToken, DateTime finishTime, TaskResult result, CancellationToken cancellationToken);
+        Version GetAgentMessageResourceMaxVersion(CancellationToken cancellationToken);
 
         // agent package
         Task<List<PackageMetadata>> GetPackagesAsync(string packageType, string platform, int top, CancellationToken cancellationToken);
@@ -139,6 +140,12 @@ namespace Microsoft.VisualStudio.Services.Agent
         {
             CheckConnection();
             return _taskAgentClient.FinishAgentRequestAsync(poolId, requestId, lockToken, finishTime, result, cancellationToken);
+        }
+
+        public Version GetAgentMessageResourceMaxVersion(CancellationToken cancellationToken = default(CancellationToken))
+        {
+            CheckConnection();
+            return _taskAgentClient.GetMessageResourceMaxVersion(null, cancellationToken);
         }
 
         public Task<TaskAgentJobRequest> GetAgentRequestAsync(int poolId, long requestId, CancellationToken cancellationToken = default(CancellationToken))
