@@ -570,6 +570,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         private async Task CompleteJobRequestAsync(int poolId, AgentJobRequestMessage message, Guid lockToken, TaskResult result)
         {
             Trace.Entering();
+            if (message.Plan.Version > 7)
+            {
+                Trace.Verbose($"Skip FinishAgentRequest call from Listener because Plan version is {message.Plan.Version}");
+
+                return;
+            }
+
             var agentServer = HostContext.GetService<IAgentServer>();
             int completeJobRequestRetryLimit = 5;
             List<Exception> exceptions = new List<Exception>();
@@ -577,10 +584,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             {
                 try
                 {
-                    if (message.Plan.Version <= 7)
-                    {
-                        await agentServer.FinishAgentRequestAsync(poolId, message.RequestId, lockToken, DateTime.UtcNow, result, CancellationToken.None);
-                    }
+                    await agentServer.FinishAgentRequestAsync(poolId, message.RequestId, lockToken, DateTime.UtcNow, result, CancellationToken.None);
 
                     return;
                 }

@@ -16,7 +16,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Extensions
                 return webApiVariables;
             }
 
-            foreach (var outputVariable in outputVariables)
+            foreach (Variable outputVariable in outputVariables)
             {
                 var variableValue = new VariableValue
                 {

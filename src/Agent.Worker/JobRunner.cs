@@ -256,6 +256,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         private async Task<TaskResult> CompleteJobAsync(IJobServer jobServer, IExecutionContext jobContext, AgentJobRequestMessage message, TaskResult? taskResult = null)
         {
             var result = jobContext.Complete(taskResult);
+            if (message.Plan.Version <= 7)
+            {
+                Trace.Verbose($"Skip raise job completed event call from worker because Plan version is {message.Plan.Version}");
+
+                return result;
+            }
+
             var outputVariables = jobContext.Variables.GetOutputVariables();
             var webApiVariables = outputVariables.ToWebApiVariables();
             var jobCompletedEvent = new JobCompletedEvent(message.RequestId, message.JobId, result, webApiVariables);
@@ -266,10 +273,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             {
                 try
                 {
-                    if (message.Plan.Version > 7)
-                    {
-                        await jobServer.RaisePlanEventAsync(message.Plan.ScopeIdentifier, message.Plan.PlanType, message.Plan.PlanId, jobCompletedEvent, default(CancellationToken));
-                    }
+                    await jobServer.RaisePlanEventAsync(message.Plan.ScopeIdentifier, message.Plan.PlanType, message.Plan.PlanId, jobCompletedEvent, default(CancellationToken));
                     return result;
                 }
                 catch (TaskOrchestrationPlanNotFoundException ex)
