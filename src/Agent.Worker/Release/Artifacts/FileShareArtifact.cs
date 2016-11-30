@@ -35,10 +35,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
             {
                 foreach (var filePath in filePaths)
                 {
-                    var filePathRelativeToDrop = filePath.Replace(dropLocation, string.Empty).Trim(trimChars);
-                    using (var fileReader = fileSystemManager.GetFileReader(filePath))
+                    string fullPath = Path.GetFullPath(filePath);
+                    if (File.Exists(fullPath))
                     {
-                        await fileSystemManager.WriteStreamToFile(fileReader.BaseStream, Path.Combine(localFolderPath, filePathRelativeToDrop));
+                        string filePathRelativeToDrop = filePath.Replace(dropLocation, string.Empty).Trim(trimChars);
+                        using (StreamReader fileReader = fileSystemManager.GetFileReader(filePath))
+                        {
+                            await fileSystemManager.WriteStreamToFile(fileReader.BaseStream, Path.Combine(localFolderPath, filePathRelativeToDrop));
+                        }
+                    }
+                    else
+                    {
+                        executionContext.Warning(StringUtil.Loc("FileNotFound", fullPath));
                     }
                 }
             }

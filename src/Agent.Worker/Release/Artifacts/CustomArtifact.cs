@@ -130,9 +130,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
             else
             {
                 string resourceType = streamType;
-                var errorMessage = StringUtil.Loc("RMStreamTypeNotSupported", resourceType);
-                executionContext.Output(errorMessage);
-                throw new NotSupportedException(errorMessage);
+                var warningMessage = StringUtil.Loc("RMStreamTypeNotSupported", resourceType);
+                executionContext.Warning(warningMessage);
             }
         }
 

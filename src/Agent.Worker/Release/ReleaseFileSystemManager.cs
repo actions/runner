@@ -50,7 +50,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
             string path = Path.Combine(ValidatePath(filePath));
             if (!File.Exists(path))
             {
-                throw new FileNotFoundException("fileName");
+                throw new FileNotFoundException(StringUtil.Loc("FileNotFound", path));
             }
 
             return new StreamReader(new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, StreamBufferSize, true));
