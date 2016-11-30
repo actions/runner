@@ -47,8 +47,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 Trace.Info("Message received.");
                 ArgUtil.Equal(MessageType.NewJobRequest, channelMessage.MessageType, nameof(channelMessage.MessageType));
                 ArgUtil.NotNullOrEmpty(channelMessage.Body, nameof(channelMessage.Body));
-                var agentMessage = JsonUtility.FromString<AgentMessage>(channelMessage.Body);
-                var jobMessage = agentMessage.JobRequest;
+                var jobMessage = JsonUtility.FromString<AgentJobRequestMessage>(channelMessage.Body);
                 ArgUtil.NotNull(jobMessage, nameof(jobMessage));
 
                 // Initialize the secret masker and set the thread culture.
@@ -57,7 +56,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
                 // Start the job.
                 Trace.Info($"Job message:{Environment.NewLine} {StringUtil.ConvertToJson(jobMessage)}");
-                Task<TaskResult> jobRunnerTask = jobRunner.RunAsync(agentMessage, jobRequestCancellationToken.Token);
+                Task<TaskResult> jobRunnerTask = jobRunner.RunAsync(jobMessage, jobRequestCancellationToken.Token);
 
                 // Start listening for a cancel message from the channel.
                 Trace.Info("Listening for cancel message from the channel.");

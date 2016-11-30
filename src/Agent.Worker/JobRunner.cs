@@ -17,37 +17,35 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
     [ServiceLocator(Default = typeof(JobRunner))]
     public interface IJobRunner : IAgentService
     {
-        Task<TaskResult> RunAsync(AgentMessage message, CancellationToken jobRequestCancellationToken);
+        Task<TaskResult> RunAsync(AgentJobRequestMessage message, CancellationToken jobRequestCancellationToken);
     }
 
     public sealed class JobRunner : AgentService, IJobRunner
     {
-        public async Task<TaskResult> RunAsync(AgentMessage agentMessage, CancellationToken jobRequestCancellationToken)
+        public async Task<TaskResult> RunAsync(AgentJobRequestMessage message, CancellationToken jobRequestCancellationToken)
         {
             // Validate parameters.
             Trace.Entering();
-            ArgUtil.NotNull(agentMessage, nameof(agentMessage));
-            var jobRequest = agentMessage.JobRequest;
-            ArgUtil.NotNull(jobRequest, nameof(jobRequest));
-            ArgUtil.NotNull(jobRequest.Environment, nameof(jobRequest.Environment));
-            ArgUtil.NotNull(jobRequest.Environment.Variables, nameof(jobRequest.Environment.Variables));
-            ArgUtil.NotNull(jobRequest.Tasks, nameof(jobRequest.Tasks));
-            Trace.Info("Job ID {0}", jobRequest.JobId);
+            ArgUtil.NotNull(message, nameof(message));
+            ArgUtil.NotNull(message.Environment, nameof(message.Environment));
+            ArgUtil.NotNull(message.Environment.Variables, nameof(message.Environment.Variables));
+            ArgUtil.NotNull(message.Tasks, nameof(message.Tasks));
+            Trace.Info("Job ID {0}", message.JobId);
 
-            if (jobRequest.Environment.Variables.ContainsKey(Constants.Variables.System.EnableAccessToken) &&
-                StringUtil.ConvertToBoolean(jobRequest.Environment.Variables[Constants.Variables.System.EnableAccessToken]))
+            if (message.Environment.Variables.ContainsKey(Constants.Variables.System.EnableAccessToken) &&
+                StringUtil.ConvertToBoolean(message.Environment.Variables[Constants.Variables.System.EnableAccessToken]))
             {
                 // TODO: get access token use Util Method
-                jobRequest.Environment.Variables[Constants.Variables.System.AccessToken] = jobRequest.Environment.SystemConnection.Authorization.Parameters["AccessToken"];
+                message.Environment.Variables[Constants.Variables.System.AccessToken] = message.Environment.SystemConnection.Authorization.Parameters["AccessToken"];
             }
 
             // Make sure SystemConnection Url and Endpoint Url match Config Url base
-            ReplaceConfigUriBaseInJobRequestMessage(jobRequest);
+            ReplaceConfigUriBaseInJobRequestMessage(message);
 
             // Setup the job server and job server queue.
             var jobServer = HostContext.GetService<IJobServer>();
-            var jobServerCredential = ApiUtil.GetVssCredential(jobRequest.Environment.SystemConnection);
-            Uri jobServerUrl = jobRequest.Environment.SystemConnection.Url;
+            var jobServerCredential = ApiUtil.GetVssCredential(message.Environment.SystemConnection);
+            Uri jobServerUrl = message.Environment.SystemConnection.Url;
 
             Trace.Info($"Creating job server with URL: {jobServerUrl}");
             // jobServerQueue is the throttling reporter.
@@ -55,14 +53,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             var jobConnection = ApiUtil.CreateConnection(jobServerUrl, jobServerCredential, new DelegatingHandler[] { new ThrottlingReportHandler(jobServerQueue) });
             await jobServer.ConnectAsync(jobConnection);
 
-            jobServerQueue.Start(jobRequest);
+            jobServerQueue.Start(message);
 
             IExecutionContext jobContext = null;
             try
             {
                 // Create the job execution context.
                 jobContext = HostContext.CreateService<IExecutionContext>();
-                jobContext.InitializeJob(jobRequest, jobRequestCancellationToken);
+                jobContext.InitializeJob(message, jobRequestCancellationToken);
                 Trace.Info("Starting the job execution context.");
                 jobContext.Start();
 
@@ -91,14 +89,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 {
                     Trace.Error(ex);
                     jobContext.Error(ex);
-                    return await CompleteJobAsync(jobServer, jobContext, agentMessage, TaskResult.Failed);
+                    return await CompleteJobAsync(jobServer, jobContext, message, TaskResult.Failed);
                 }
 
                 // Set agent variables.
                 AgentSettings settings = HostContext.GetService<IConfigurationStore>().GetSettings();
                 jobContext.Variables.Set(Constants.Variables.Agent.Id, settings.AgentId.ToString(CultureInfo.InvariantCulture));
                 jobContext.Variables.Set(Constants.Variables.Agent.HomeDirectory, IOUtil.GetRootPath());
-                jobContext.Variables.Set(Constants.Variables.Agent.JobName, jobRequest.JobName);
+                jobContext.Variables.Set(Constants.Variables.Agent.JobName, message.JobName);
                 jobContext.Variables.Set(Constants.Variables.Agent.MachineName, Environment.MachineName);
                 jobContext.Variables.Set(Constants.Variables.Agent.Name, settings.AgentName);
                 jobContext.Variables.Set(Constants.Variables.Agent.RootDirectory, IOUtil.GetWorkPath(HostContext));
@@ -120,7 +118,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     taskServerUri = new Uri(jobContext.Variables.System_TFCollectionUrl);
                 }
 
-                var taskServerCredential = ApiUtil.GetVssCredential(jobRequest.Environment.SystemConnection);
+                var taskServerCredential = ApiUtil.GetVssCredential(message.Environment.SystemConnection);
                 if (taskServerUri != null)
                 {
                     Trace.Info($"Creating task server with {taskServerUri}");
@@ -167,7 +165,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
                 // Add the task steps.
                 Trace.Info("Adding tasks.");
-                foreach (TaskInstance taskInstance in jobRequest.Tasks)
+                foreach (TaskInstance taskInstance in message.Tasks)
                 {
                     Trace.Verbose($"Adding {taskInstance.DisplayName}.");
                     var taskRunner = HostContext.CreateService<ITaskRunner>();
@@ -193,21 +191,21 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 var taskManager = HostContext.GetService<ITaskManager>();
                 try
                 {
-                    await taskManager.DownloadAsync(jobContext, jobRequest.Tasks);
+                    await taskManager.DownloadAsync(jobContext, message.Tasks);
                 }
                 catch (OperationCanceledException ex)
                 {
                     // set the job to canceled
                     Trace.Error($"Caught exception: {ex}");
                     jobContext.Error(ex);
-                    return await CompleteJobAsync(jobServer, jobContext, agentMessage, TaskResult.Canceled);
+                    return await CompleteJobAsync(jobServer, jobContext, message, TaskResult.Canceled);
                 }
                 catch (Exception ex)
                 {
                     // Log the error and fail the job.
                     Trace.Error($"Caught exception from {nameof(TaskManager)}: {ex}");
                     jobContext.Error(ex);
-                    return await CompleteJobAsync(jobServer, jobContext, agentMessage, TaskResult.Failed);
+                    return await CompleteJobAsync(jobServer, jobContext, message, TaskResult.Failed);
                 }
 
                 // Run the steps.
@@ -221,21 +219,21 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     // set the job to canceled
                     Trace.Error($"Caught exception: {ex}");
                     jobContext.Error(ex);
-                    return await CompleteJobAsync(jobServer, jobContext, agentMessage, TaskResult.Canceled);
+                    return await CompleteJobAsync(jobServer, jobContext, message, TaskResult.Canceled);
                 }
                 catch (Exception ex)
                 {
                     // Log the error and fail the job.
                     Trace.Error($"Caught exception from {nameof(StepsRunner)}: {ex}");
                     jobContext.Error(ex);
-                    return await CompleteJobAsync(jobServer, jobContext, agentMessage, TaskResult.Failed);
+                    return await CompleteJobAsync(jobServer, jobContext, message, TaskResult.Failed);
                 }
 
                 Trace.Info($"Job result: {jobContext.Result}");
 
                 // Complete the job.
                 Trace.Info("Completing the job execution context.");
-                return await CompleteJobAsync(jobServer, jobContext, agentMessage);
+                return await CompleteJobAsync(jobServer, jobContext, message);
             }
             finally
             {
@@ -255,13 +253,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             }
         }
 
-        private async Task<TaskResult> CompleteJobAsync(IJobServer jobServer, IExecutionContext jobContext, AgentMessage agentMessage, TaskResult? taskResult = null)
+        private async Task<TaskResult> CompleteJobAsync(IJobServer jobServer, IExecutionContext jobContext, AgentJobRequestMessage message, TaskResult? taskResult = null)
         {
             var result = jobContext.Complete(taskResult);
             var outputVariables = jobContext.Variables.GetOutputVariables();
             var webApiVariables = outputVariables.ToWebApiVariables();
-            var jobRequest = agentMessage.JobRequest;
-            var jobCompletedEvent = new JobCompletedEvent(jobRequest.RequestId, jobRequest.JobId, result, webApiVariables);
+            var jobCompletedEvent = new JobCompletedEvent(message.RequestId, message.JobId, result, webApiVariables);
 
             var completeJobRetryLimit = 5;
             var exceptions = new List<Exception>();
@@ -269,26 +266,25 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             {
                 try
                 {
-                    if(agentMessage.CanRaiseJobCompletedEvent)
+                    if (message.Plan.Version > 7)
                     {
-                        await jobServer.RaisePlanEventAsync(jobRequest.Plan.ScopeIdentifier, jobRequest.Plan.PlanType, jobRequest.Plan.PlanId, jobCompletedEvent, default(CancellationToken));
+                        await jobServer.RaisePlanEventAsync(message.Plan.ScopeIdentifier, message.Plan.PlanType, message.Plan.PlanId, jobCompletedEvent, default(CancellationToken));
                     }
-
                     return result;
                 }
                 catch (TaskOrchestrationPlanNotFoundException ex)
                 {
-                    Trace.Error($"TaskOrchestrationPlanNotFoundException received, while attempting to raise JobCompletedEvent for job {jobRequest.JobId}. Error: {ex}");
+                    Trace.Error($"TaskOrchestrationPlanNotFoundException received, while attempting to raise JobCompletedEvent for job {message.JobId}. Error: {TeamFoundationExceptionFormatter.FormatException(ex, false)}");
                     return TaskResult.Failed;
                 }
                 catch (TaskOrchestrationPlanSecurityException ex)
                 {
-                    Trace.Error($"TaskOrchestrationPlanSecurityException received, while attempting to raise JobCompletedEvent for job {jobRequest.JobId}. Error: {ex}");
+                    Trace.Error($"TaskOrchestrationPlanSecurityException received, while attempting to raise JobCompletedEvent for job {message.JobId}. Error: {TeamFoundationExceptionFormatter.FormatException(ex, false)}");
                     return TaskResult.Failed;
                 }
                 catch (Exception ex)
                 {
-                    Trace.Error($"Catch exception while attempting to raise JobCompletedEvent for job {jobRequest.JobId}, job request {jobRequest.RequestId}.");
+                    Trace.Error($"Catch exception while attempting to raise JobCompletedEvent for job {message.JobId}, job request {message.RequestId}.");
                     Trace.Error(ex);
                     exceptions.Add(ex);
                 }
