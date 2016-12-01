@@ -13,7 +13,6 @@ using Microsoft.VisualStudio.Services.Agent.Worker.Extensions;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
-
     [ServiceLocator(Default = typeof(JobRunner))]
     public interface IJobRunner : IAgentService
     {
@@ -256,7 +255,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         private async Task<TaskResult> CompleteJobAsync(IJobServer jobServer, IExecutionContext jobContext, AgentJobRequestMessage message, TaskResult? taskResult = null)
         {
             var result = jobContext.Complete(taskResult);
-            if (message.Plan.Version <= 7)
+            const int RunPlanVersion = 7;
+            if (message.Plan.Version <= RunPlanVersion)
             {
                 Trace.Verbose($"Skip raise job completed event call from worker because Plan version is {message.Plan.Version}");
 
@@ -278,12 +278,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 }
                 catch (TaskOrchestrationPlanNotFoundException ex)
                 {
-                    Trace.Error($"TaskOrchestrationPlanNotFoundException received, while attempting to raise JobCompletedEvent for job {message.JobId}. Error: {TeamFoundationExceptionFormatter.FormatException(ex, false)}");
+                    Trace.Error($"TaskOrchestrationPlanNotFoundException received, while attempting to raise JobCompletedEvent for job {message.JobId}. Error: {ex}");
                     return TaskResult.Failed;
                 }
                 catch (TaskOrchestrationPlanSecurityException ex)
                 {
-                    Trace.Error($"TaskOrchestrationPlanSecurityException received, while attempting to raise JobCompletedEvent for job {message.JobId}. Error: {TeamFoundationExceptionFormatter.FormatException(ex, false)}");
+                    Trace.Error($"TaskOrchestrationPlanSecurityException received, while attempting to raise JobCompletedEvent for job {message.JobId}. Error: {ex}");
                     return TaskResult.Failed;
                 }
                 catch (Exception ex)

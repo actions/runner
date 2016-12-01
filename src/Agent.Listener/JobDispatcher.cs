@@ -570,10 +570,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         private async Task CompleteJobRequestAsync(int poolId, AgentJobRequestMessage message, Guid lockToken, TaskResult result)
         {
             Trace.Entering();
-            if (message.Plan.Version > 7)
+            const int RunPlanVersion = 7;
+            if (message.Plan.Version > RunPlanVersion)
             {
                 Trace.Verbose($"Skip FinishAgentRequest call from Listener because Plan version is {message.Plan.Version}");
-
                 return;
             }
 
@@ -585,7 +585,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 try
                 {
                     await agentServer.FinishAgentRequestAsync(poolId, message.RequestId, lockToken, DateTime.UtcNow, result, CancellationToken.None);
-
                     return;
                 }
                 catch (TaskAgentJobNotFoundException)
