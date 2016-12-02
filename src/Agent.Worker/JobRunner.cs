@@ -8,7 +8,6 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Net.Http;
-using Microsoft.TeamFoundation;
 using Microsoft.VisualStudio.Services.Agent.Worker.Extensions;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
@@ -255,8 +254,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         private async Task<TaskResult> CompleteJobAsync(IJobServer jobServer, IExecutionContext jobContext, AgentJobRequestMessage message, TaskResult? taskResult = null)
         {
             var result = jobContext.Complete(taskResult);
-            const int RunPlanVersion = 7;
-            if (message.Plan.Version <= RunPlanVersion)
+            
+            if (message.Plan.Version < Constants.OmitFinishAgentRequestRunPlanVersion)
             {
                 Trace.Verbose($"Skip raise job completed event call from worker because Plan version is {message.Plan.Version}");
 
@@ -264,7 +263,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             }
 
             var outputVariables = jobContext.Variables.GetOutputVariables();
-            var webApiVariables = outputVariables.ToWebApiVariables();
+            var webApiVariables = outputVariables.ToJobCompletedEventOutputVariables();
             var jobCompletedEvent = new JobCompletedEvent(message.RequestId, message.JobId, result, webApiVariables);
 
             var completeJobRetryLimit = 5;

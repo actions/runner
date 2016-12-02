@@ -570,8 +570,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         private async Task CompleteJobRequestAsync(int poolId, AgentJobRequestMessage message, Guid lockToken, TaskResult result)
         {
             Trace.Entering();
-            const int RunPlanVersion = 7;
-            if (message.Plan.Version > RunPlanVersion)
+            if (message.Plan.Version >= Constants.OmitFinishAgentRequestRunPlanVersion)
             {
                 Trace.Verbose($"Skip FinishAgentRequest call from Listener because Plan version is {message.Plan.Version}");
                 return;

@@ -7,7 +7,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Extensions
 {
     public static class VariablesExtension
     {
-        public static Dictionary<string, VariableValue> ToWebApiVariables(this IEnumerable<Variable> outputVariables)
+        public static Dictionary<string, VariableValue> ToJobCompletedEventOutputVariables(this IEnumerable<Variable> outputVariables)
         {
             var webApiVariables = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
 
