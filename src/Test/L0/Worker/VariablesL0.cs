@@ -765,5 +765,67 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                 Assert.Equal("bar", variables.Get("foo"));
             }
         }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void Set_DoesNotStoreAsOutputValueByDefault()
+        {
+            using (TestHostContext hc = new TestHostContext(this))
+            {
+                // Arrange.
+                List<string> warnings;
+                var variables = new Variables(hc, new Dictionary<string, string>(), new List<MaskHint>(), out warnings);
+
+                // Act.
+                variables.Set("foo", "bar");
+
+                // Assert.
+                Assert.Equal(0, variables.GetOutputVariables().Count());
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void SetOutputVariable_StoresOutputValue()
+        {
+            using (TestHostContext hc = new TestHostContext(this))
+            {
+                // Arrange.
+                List<string> warnings;
+                var variables = new Variables(hc, new Dictionary<string, string>(), new List<MaskHint>(), out warnings);
+
+                // Act.
+                variables.Set("foo", "bar", output: true);
+
+                // Assert.
+                Assert.Equal("bar", variables.Get("foo"));
+                Assert.Equal(1, variables.GetOutputVariables().Count());
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void GetOutputVariables_ReturnOutputVariablesOnly()
+        {
+            using (TestHostContext hc = new TestHostContext(this))
+            {
+                // Arrange.
+                List<string> warnings;
+                var variables = new Variables(hc, new Dictionary<string, string>(), new List<MaskHint>(), out warnings);
+
+                // Act.
+                variables.Set("foo", "bar");
+                variables.Set("var1", "op1", output: true);
+                variables.Set("var2", "op2", secret:true, output: true);
+
+                // Assert.
+                Assert.Equal(2, variables.GetOutputVariables().Count());
+                Assert.Equal(true, variables.GetOutputVariables().First(v => v.Secret).Name.Equals("var2"));
+                Assert.Equal(false, variables.GetOutputVariables().Any(v => v.Name.Equals("foo")));
+            }
+        }
     }
 }

@@ -237,7 +237,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             return null;
         }
 
-        public void Set(string name, string val, bool secret = false)
+        public void Set(string name, string val, bool secret = false, bool output = false)
         {
             // Validate the args.
             ArgUtil.NotNullOrEmpty(name, nameof(name));
@@ -266,11 +266,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 // Store the value as-is to the expanded dictionary and the non-expanded dictionary.
                 // It is not expected that the caller needs to store an non-expanded value and then
                 // retrieve the expanded value in the same context.
-                var variable = new Variable(name, val, secret);
+                var variable = new Variable(name, val, secret, output);
                 _expanded[name] = variable;
                 _nonexpanded[name] = variable;
                 _trace.Verbose($"Set '{name}' = '{val}'");
             }
+        }
+
+        public IEnumerable<Variable> GetOutputVariables()
+        {
+            return _expanded.Values.Where(var => var.Output);
         }
 
         public bool TryGetValue(string name, out string val)
@@ -460,13 +465,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         public string Name { get; private set; }
         public bool Secret { get; private set; }
         public string Value { get; private set; }
+        public bool Output { get; private set; }
 
         public Variable(string name, string value, bool secret)
+            : this(name, value, secret, false)
+        {
+        }
+
+        public Variable(string name, string value, bool secret, bool output)
         {
             ArgUtil.NotNullOrEmpty(name, nameof(name));
             Name = name;
             Value = value ?? string.Empty;
             Secret = secret;
+            Output = output;
         }
     }
 }

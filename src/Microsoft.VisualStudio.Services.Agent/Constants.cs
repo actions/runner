@@ -26,6 +26,7 @@ namespace Microsoft.VisualStudio.Services.Agent
 #endif
         public static string SecretMask = "********";
         public static string TFBuild = "TF_BUILD";
+        public static int OmitFinishAgentRequestRunPlanVersion = 8;
 
         // This enum is embedded within the Constants class to make it easier to reference and avoid
         // ambiguous type reference with System.Runtime.InteropServices.OSPlatform.

@@ -8,6 +8,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Net.Http;
+using Microsoft.VisualStudio.Services.Agent.Worker.Extensions;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
@@ -86,7 +87,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 {
                     Trace.Error(ex);
                     jobContext.Error(ex);
-                    return jobContext.Complete(TaskResult.Failed);
+                    return await CompleteJobAsync(jobServer, jobContext, message, TaskResult.Failed);
                 }
 
                 // Set agent variables.
@@ -195,14 +196,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     // set the job to canceled
                     Trace.Error($"Caught exception: {ex}");
                     jobContext.Error(ex);
-                    return jobContext.Complete(TaskResult.Canceled);
+                    return await CompleteJobAsync(jobServer, jobContext, message, TaskResult.Canceled);
                 }
                 catch (Exception ex)
                 {
                     // Log the error and fail the job.
                     Trace.Error($"Caught exception from {nameof(TaskManager)}: {ex}");
                     jobContext.Error(ex);
-                    return jobContext.Complete(TaskResult.Failed);
+                    return await CompleteJobAsync(jobServer, jobContext, message, TaskResult.Failed);
                 }
 
                 // Run the steps.
@@ -216,21 +217,21 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     // set the job to canceled
                     Trace.Error($"Caught exception: {ex}");
                     jobContext.Error(ex);
-                    return jobContext.Complete(TaskResult.Canceled);
+                    return await CompleteJobAsync(jobServer, jobContext, message, TaskResult.Canceled);
                 }
                 catch (Exception ex)
                 {
                     // Log the error and fail the job.
                     Trace.Error($"Caught exception from {nameof(StepsRunner)}: {ex}");
                     jobContext.Error(ex);
-                    return jobContext.Complete(TaskResult.Failed);
+                    return await CompleteJobAsync(jobServer, jobContext, message, TaskResult.Failed);
                 }
 
                 Trace.Info($"Job result: {jobContext.Result}");
 
                 // Complete the job.
                 Trace.Info("Completing the job execution context.");
-                return jobContext.Complete();
+                return await CompleteJobAsync(jobServer, jobContext, message);
             }
             finally
             {
@@ -248,6 +249,55 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     }
                 }
             }
+        }
+
+        private async Task<TaskResult> CompleteJobAsync(IJobServer jobServer, IExecutionContext jobContext, AgentJobRequestMessage message, TaskResult? taskResult = null)
+        {
+            var result = jobContext.Complete(taskResult);
+            
+            if (message.Plan.Version < Constants.OmitFinishAgentRequestRunPlanVersion)
+            {
+                Trace.Verbose($"Skip raise job completed event call from worker because Plan version is {message.Plan.Version}");
+
+                return result;
+            }
+
+            var outputVariables = jobContext.Variables.GetOutputVariables();
+            var webApiVariables = outputVariables.ToJobCompletedEventOutputVariables();
+            var jobCompletedEvent = new JobCompletedEvent(message.RequestId, message.JobId, result, webApiVariables);
+
+            var completeJobRetryLimit = 5;
+            var exceptions = new List<Exception>();
+            while (completeJobRetryLimit-- > 0)
+            {
+                try
+                {
+                    await jobServer.RaisePlanEventAsync(message.Plan.ScopeIdentifier, message.Plan.PlanType, message.Plan.PlanId, jobCompletedEvent, default(CancellationToken));
+                    return result;
+                }
+                catch (TaskOrchestrationPlanNotFoundException ex)
+                {
+                    Trace.Error($"TaskOrchestrationPlanNotFoundException received, while attempting to raise JobCompletedEvent for job {message.JobId}. Error: {ex}");
+                    return TaskResult.Failed;
+                }
+                catch (TaskOrchestrationPlanSecurityException ex)
+                {
+                    Trace.Error($"TaskOrchestrationPlanSecurityException received, while attempting to raise JobCompletedEvent for job {message.JobId}. Error: {ex}");
+                    return TaskResult.Failed;
+                }
+                catch (Exception ex)
+                {
+                    Trace.Error($"Catch exception while attempting to raise JobCompletedEvent for job {message.JobId}, job request {message.RequestId}.");
+                    Trace.Error(ex);
+                    exceptions.Add(ex);
+                }
+
+                // delay 5 seconds before next retry.
+                await Task.Delay(TimeSpan.FromSeconds(5));
+            }
+
+            // rethrow all catched exceptions during retry.
+            throw new AggregateException(exceptions);
         }
 
         // the hostname (how the agent knows the server) is external to our server
