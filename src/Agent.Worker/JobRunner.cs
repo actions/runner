@@ -8,7 +8,6 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Net.Http;
-using Microsoft.VisualStudio.Services.Agent.Worker.Extensions;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
@@ -263,8 +262,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             }
 
             var outputVariables = jobContext.Variables.GetOutputVariables();
-            var webApiVariables = outputVariables.ToJobCompletedEventOutputVariables();
-            var jobCompletedEvent = new JobCompletedEvent(message.RequestId, message.JobId, result, webApiVariables);
+            //var webApiVariables = outputVariables.ToJobCompletedEventOutputVariables();
+            //var jobCompletedEvent = new JobCompletedEvent(message.RequestId, message.JobId, result, webApiVariables);
+            var jobCompletedEvent = new JobCompletedEvent(message.RequestId, message.JobId, result);
 
             var completeJobRetryLimit = 5;
             var exceptions = new List<Exception>();
