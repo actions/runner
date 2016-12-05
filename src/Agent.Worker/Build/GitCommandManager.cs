@@ -121,7 +121,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             else
             {
                 var whichUtil = HostContext.GetService<IWhichUtil>();
-                _gitPath = whichUtil.Which("git");
+                _gitPath = whichUtil.Which("git", require: true);
             }
 
             ArgUtil.File(_gitPath, nameof(_gitPath));

@@ -7,13 +7,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
     [ServiceLocator(Default = typeof(WhichUtil))]
     public interface IWhichUtil : IAgentService
     {
-        string Which(string command);
+        string Which(string command, bool require = false);
     }
 
     // TODO: Should also search for a file with the exact file name match regardless of extension. For example, should be able to resolve a PowerShell script from the PATH even though ps1 is not included in PATHEXT.
     public sealed class WhichUtil : AgentService, IWhichUtil
     {
-        public string Which(string command)
+        public string Which(string command, bool require = false)
         {
             ArgUtil.NotNullOrEmpty(command, nameof(command));
             Trace.Info($"Which: '{command}'");
@@ -25,7 +25,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             if (string.IsNullOrEmpty(path))
             {
                 Trace.Info("PATH environment variable not defined.");
-                return null;
+                path = path ?? string.Empty;
             }
 
             string[] pathSegments = path.Split(new Char[] { Path.PathSeparator }, StringSplitOptions.RemoveEmptyEntries);
@@ -90,6 +90,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             }
 
             Trace.Info("Not found.");
+            if (require)
+            {
+                throw new FileNotFoundException(
+                    message: StringUtil.Loc("FileNotFound", command),
+                    fileName: command);
+            }
+
             return null;
         }
     }
