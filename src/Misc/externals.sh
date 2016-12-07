@@ -48,7 +48,7 @@ function failed() {
 function checkRC() {
     local rc=$?
     if [ $rc -ne 0 ]; then
-        failed "${1} Failed with return code $rc"
+        failed "${1} failed with return code $rc"
     fi
 }
 
@@ -71,33 +71,36 @@ function acquireExternalTool() {
     else
         # Delete any previous partial file.
         local partial_target="$DOWNLOAD_DIR/partial/$download_basename"
-        mkdir -p "$(dirname "$partial_target")"
+        mkdir -p "$(dirname "$partial_target")" || checkRC 'mkdir'
         if [ -f "$partial_target" ]; then
-            rm "$partial_target"
+            rm "$partial_target" || checkRC 'rm'
         fi
 
         # Download from source to the partial file.
         echo "Downloading $download_source"
-        mkdir -p "$(dirname $download_target)"
+        mkdir -p "$(dirname $download_target)" || checkRC 'mkdir'
         # curl -f Fail silently (no output at all) on HTTP errors (H)
         #      -k Allow connections to SSL sites without certs (H)
         #      -S Show error. With -s, make curl show errors when they occur
         #      -L Follow redirects (H)
         #      -o FILE    Write to FILE instead of stdout
-        curl -fkSL -o "$partial_target" "$download_source" 2>"${download_target}_download.log"
-        checkRC "Download (curl)"
+        curl -fkSL -o "$partial_target" "$download_source" 2>"${download_target}_download.log" || checkRC 'curl'
 
         # Move the partial file to the download target.
-        mv "$partial_target" "$download_target"
+        mv "$partial_target" "$download_target" || checkRC 'mv'
     fi
 
     # Extract to layout.
-    mkdir -p "$target_dir"
+    mkdir -p "$target_dir" || checkRC 'mkdir'
     local nested_dir=""
     if [[ "$download_basename" == *.zip ]]; then
         # Extract the zip.
         echo "Extracting zip to layout"
         unzip "$download_target" -d "$target_dir" > /dev/null
+        local rc=$?
+        if [[ $rc -ne 0 && $rc -ne 1 ]]; then
+            failed "unzip failed with return code $rc"
+        fi
 
         # Capture the nested directory path if the fix_nested_dir flag is set.
         if [[ "$fix_nested_dir" == "fix_nested_dir" ]]; then
@@ -106,7 +109,7 @@ function acquireExternalTool() {
     elif [[ "$download_basename" == *.tar.gz ]]; then
         # Extract the tar gz.
         echo "Extracting tar gz to layout"
-        tar xzf "$download_target" -C "$target_dir" > /dev/null
+        tar xzf "$download_target" -C "$target_dir" > /dev/null || checkRC 'tar'
 
         # Capture the nested directory path if the fix_nested_dir flag is set.
         if [[ "$fix_nested_dir" == "fix_nested_dir" ]]; then
@@ -115,14 +118,14 @@ function acquireExternalTool() {
     else
         # Copy the file.
         echo "Copying to layout"
-        cp "$download_target" "$target_dir/"
+        cp "$download_target" "$target_dir/" || checkRC 'cp'
     fi
 
     # Fixup the nested directory.
     if [[ "$nested_dir" != "" ]]; then
         if [ -d "$target_dir/$nested_dir" ]; then
-            mv "$target_dir/$nested_dir"/* "$target_dir/"
-            rmdir "$target_dir/$nested_dir"
+            mv "$target_dir/$nested_dir"/* "$target_dir/" || checkRC 'mv'
+            rmdir "$target_dir/$nested_dir" || checkRC 'rmdir'
         fi
     fi
 }
