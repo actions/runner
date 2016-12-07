@@ -11,9 +11,9 @@ fi
 source ./env.sh
 
 if [[ "$1" == "remove" ]]; then
-    ./bin/Agent.Listener $*
+    ./bin/Agent.Listener "$@"
 else
     # user_name=`id -nu $user_id`
 
-    ./bin/Agent.Listener configure $*
+    ./bin/Agent.Listener configure "$@"
 fi
