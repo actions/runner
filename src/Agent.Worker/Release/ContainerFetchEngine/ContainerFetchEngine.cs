@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.ContainerFetchEngine
@@ -13,11 +14,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.ContainerFetchEng
         {
         }
 
-        public async Task FetchAsync()
+        public async Task FetchAsync(CancellationToken cancellationToken)
         {
             IEnumerable<ContainerItem> containerItems = await Provider.GetItemsAsync().ConfigureAwait(false);
 
-            await FetchItemsAsync(containerItems).ConfigureAwait(false);
+            await FetchItemsAsync(containerItems, cancellationToken).ConfigureAwait(false);
         }
     }
 }

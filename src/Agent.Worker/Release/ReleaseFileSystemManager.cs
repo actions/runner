@@ -11,7 +11,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
     {
         StreamReader GetFileReader(string filePath);
 
-        Task WriteStreamToFile(Stream stream, string filePath);
+        Task WriteStreamToFile(Stream stream, string filePath, CancellationToken cancellationToken);
 
         void CleanupDirectory(string directoryPath, CancellationToken cancellationToken);
 
@@ -107,7 +107,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
             return Path.Combine(rootDirectory, relativePath);
         }
 
-        public async Task WriteStreamToFile(Stream stream, string filePath)
+        public async Task WriteStreamToFile(Stream stream, string filePath, CancellationToken cancellationToken)
         {
             ArgUtil.NotNull(stream, nameof(stream));
             ArgUtil.NotNullOrEmpty(filePath, nameof(filePath));
@@ -115,7 +115,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
             EnsureDirectoryExists(Path.GetDirectoryName(filePath));
             using (var targetStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None, StreamBufferSize, true))
             {
-                await stream.CopyToAsync(targetStream, StreamBufferSize);
+                await stream.CopyToAsync(targetStream, StreamBufferSize, cancellationToken);
             }
         }
     }

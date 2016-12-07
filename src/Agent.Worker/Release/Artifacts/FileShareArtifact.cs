@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.VisualStudio.Services.Agent.Util;
@@ -41,7 +42,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
                         string filePathRelativeToDrop = filePath.Replace(dropLocation, string.Empty).Trim(trimChars);
                         using (StreamReader fileReader = fileSystemManager.GetFileReader(filePath))
                         {
-                            await fileSystemManager.WriteStreamToFile(fileReader.BaseStream, Path.Combine(localFolderPath, filePathRelativeToDrop));
+                            await
+                                fileSystemManager.WriteStreamToFile(
+                                    fileReader.BaseStream,
+                                    Path.Combine(localFolderPath, filePathRelativeToDrop),
+                                    executionContext.CancellationToken);
                         }
                     }
                     else
