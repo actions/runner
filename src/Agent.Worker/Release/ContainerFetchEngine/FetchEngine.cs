@@ -207,11 +207,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.ContainerFetchEng
                     {
                         var taskStates = remainingTasks.GroupBy(dt => dt.Status);
 
-                        ExecutionLogger.Warning(StringUtil.Loc("RMDownloadTaskCompletedStatus", (int)timeSinceLastTaskCompletion.TotalMinutes));
-
-                        foreach (IGrouping<TaskStatus, Task> group in taskStates)
+                        lock (_lock)
                         {
-                            ExecutionLogger.Warning(StringUtil.Loc("RMDownloadTaskStates", group.Key, group.Count()));
+                            ExecutionLogger.Warning(StringUtil.Loc("RMDownloadTaskCompletedStatus", (int) timeSinceLastTaskCompletion.TotalMinutes));
+                            foreach (IGrouping<TaskStatus, Task> group in taskStates)
+                            {
+                                ExecutionLogger.Warning(StringUtil.Loc("RMDownloadTaskStates", group.Key, group.Count()));
+                            }
                         }
 
                         _lastTaskDiagTime = DateTime.UtcNow;
@@ -315,7 +317,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.ContainerFetchEng
                         throw new Exception(StringUtil.Loc("RMErrorDownloadingContainerItem", tmpDownloadPath, exception));
                     }
 
-                    ExecutionLogger.Warning(StringUtil.Loc("RMReAttemptingDownloadOfContainerItem", tmpDownloadPath, exception.Message));
+                    lock (_lock)
+                    {
+                        ExecutionLogger.Warning(StringUtil.Loc("RMReAttemptingDownloadOfContainerItem", tmpDownloadPath, exception.Message));
+                    }
                 }
 
                 // "Sleep" inbetween attempts. (Can't await inside a catch clause.)
@@ -369,6 +374,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.ContainerFetchEng
         private int _downloadedFiles;
         private TimeSpan _elapsedDownloadTime;
         private long _bytesDownloaded;
+        private readonly object _lock = new object();
 
         private static readonly TimeSpan ProgressInterval = TimeSpan.FromSeconds(5);
         private static readonly TimeSpan TaskDiagThreshold = TimeSpan.FromMinutes(1);
