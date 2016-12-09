@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using Microsoft.VisualStudio.Services.Agent.Worker.Release.ContainerFetchEngine;
@@ -79,15 +80,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.ContainerProvider
                 });
         }
 
-        public async Task<Stream> GetFileTask(ContainerItem ticketedItem)
+        public async Task<Stream> GetFileTask(ContainerItem ticketedItem, CancellationToken cancellationToken)
         {
-            var vssConnection = await GetVssConnection();
+            VssConnection vssConnection = await GetVssConnection();
             var fileContainer = vssConnection.GetClient<FileContainerHttpClient>();
 
             Stream stream = await fileContainer.DownloadFileAsync(
                 ticketedItem.ContainerId,
                 ticketedItem.Path,
-                this._executionContext.CancellationToken,
+                cancellationToken,
                 scopeIdentifier: ticketedItem.ScopeIdentifier);
 
             return stream;

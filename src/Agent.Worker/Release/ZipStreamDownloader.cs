@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.VisualStudio.Services.Agent.Util;
@@ -82,7 +83,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
                         path = path.Substring(normalizedRelativePath.Length);
                     }
 
-                    await fileSystemManager.WriteStreamToFile(stream.ZipStream, Path.Combine(localFolderPath, path));
+                    await fileSystemManager.WriteStreamToFile(stream.ZipStream, Path.Combine(localFolderPath, path), executionContext.CancellationToken);
 
                     streamsDownloaded++;
                 }

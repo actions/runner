@@ -31,6 +31,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Release
 
         private static readonly ContainerItem DummyConatinerItem1 = new ContainerItem
         {
+            ContainerId = 1,
             ItemType = ItemType.File,
             FileLength = 52,
             Path = "c:\\drop\\file1.txt"
@@ -38,6 +39,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Release
 
         private static readonly ContainerItem DummyConatinerItem2 = new ContainerItem
         {
+            ContainerId = 2,
             ItemType = ItemType.File,
             FileLength = 52,
             Path = "c:\\drop\\file2.txt"
@@ -48,10 +50,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Release
         [Trait("Category", "Worker")]
         public async void ShouldDownloadAllTheFiles()
         {
-            var stubContainerProvider = new StubContainerProvider(mockContainerItems, item => mockItemContent);
-            var fetchEngine = GetFetchEngine(stubContainerProvider);
+            var stubContainerProvider = new StubContainerProvider(mockContainerItems, (item1, c) => mockItemContent);
+            var fetchEngine = GetFetchEngine(stubContainerProvider, CancellationToken.None);
 
-            Task fetchAsync = fetchEngine.FetchAsync();
+            Task fetchAsync = fetchEngine.FetchAsync(CancellationToken.None);
             await fetchAsync;
 
             Assert.Equal(1, stubContainerProvider.GetItemsAsynCounter);
@@ -65,7 +67,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Release
         {
             int concurrentAccessCount = 0;
             var stubContainerProvider = new StubContainerProvider(mockContainerItems,
-                item =>
+                (item1, c) =>
                 {
                     concurrentAccessCount++;
                     Thread.Sleep(10);
@@ -76,9 +78,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Release
                     return mockItemContent;
                 });
             containerFetchEngineTestOptions.ParallelDownloadLimit = 1;
-            ContainerFetchEngine fetchEngine = GetFetchEngine(stubContainerProvider);
+            ContainerFetchEngine fetchEngine = GetFetchEngine(stubContainerProvider, CancellationToken.None);
 
-            Task fetchAsync = fetchEngine.FetchAsync();
+            Task fetchAsync = fetchEngine.FetchAsync(CancellationToken.None);
             await fetchAsync;
 
             Assert.Equal(0, concurrentAccessCount);
@@ -95,7 +97,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Release
                 {
                     DummyConatinerItem1
                 },
-                item1 =>
+                (item1, c) =>
                 {
                     fetchCount++;
                     if (fetchCount == 1)
@@ -105,12 +107,55 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Release
                     return mockItemContent;
                 });
             containerFetchEngineTestOptions.RetryLimit = 2;
-            var fetchEngine = GetFetchEngine(stubContainerProvider);
+            var fetchEngine = GetFetchEngine(stubContainerProvider, CancellationToken.None);
 
-            Task fetchAsync = fetchEngine.FetchAsync();
+            Task fetchAsync = fetchEngine.FetchAsync(CancellationToken.None);
             await fetchAsync;
 
             Assert.Equal(containerFetchEngineTestOptions.RetryLimit, fetchCount);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task ShouldCancelAllDownloadsOnException()
+        {
+            bool isTaskCancelled = false;
+            var stubContainerProvider = new StubContainerProvider(
+                new List<ContainerItem>
+                {
+                    DummyConatinerItem1,
+                    DummyConatinerItem2
+                },
+                (item1, c) =>
+                {
+                    Thread.Sleep(300);
+                    if (((ContainerItem)item1).ContainerId == 1)
+                    {
+                        throw new FileNotFoundException();
+                    }
+                    while (!c.IsCancellationRequested)
+                    {
+                    }
+
+                    isTaskCancelled = c.IsCancellationRequested;
+                    return mockItemContent;
+                });
+            containerFetchEngineTestOptions.RetryLimit = 0;
+            containerFetchEngineTestOptions.ParallelDownloadLimit = 2;
+            var fetchEngine = GetFetchEngine(stubContainerProvider, CancellationToken.None);
+
+            Task fetchAsync = fetchEngine.FetchAsync(CancellationToken.None);
+            try
+            {
+                await fetchAsync;
+            }
+            catch
+            {
+                // ignored
+            }
+
+            Assert.Equal(isTaskCancelled, true);
         }
 
         [Fact]
@@ -120,22 +165,21 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Release
         {
             var stubContainerProvider = new StubContainerProvider(
                 mockContainerItems,
-                item1 =>
+                (item1, c) =>
                 {
                     Thread.Sleep(30);
                     return mockItemContent;
                 });
             var cancellationTokenSource = new CancellationTokenSource();
-            containerFetchEngineTestOptions.CancellationToken = cancellationTokenSource.Token;
-            ContainerFetchEngine fetchEngine = GetFetchEngine(stubContainerProvider);
+            ContainerFetchEngine fetchEngine = GetFetchEngine(stubContainerProvider, CancellationToken.None);
             cancellationTokenSource.Cancel();
-            Task fetchAsync = fetchEngine.FetchAsync();
+            Task fetchAsync = fetchEngine.FetchAsync(cancellationTokenSource.Token);
             await fetchAsync;
 
             Assert.Equal(0, stubContainerProvider.GetFileTaskArguments.Count);
         }
 
-        private ContainerFetchEngine GetFetchEngine(StubContainerProvider stubContainerProvider)
+        private ContainerFetchEngine GetFetchEngine(StubContainerProvider stubContainerProvider, CancellationToken token)
         {
             return new ContainerFetchEngine(stubContainerProvider,
                 string.Empty,
@@ -149,9 +193,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Release
 
     public class StubContainerProvider : IContainerProvider
     {
-        private readonly Func<object, byte[]> getItemFunc;
+        private readonly Func<object, CancellationToken, byte[]> getItemFunc;
 
-        public StubContainerProvider(IEnumerable<ContainerItem> containerItems, Func<object, byte[]> itemFunc)
+        public StubContainerProvider(IEnumerable<ContainerItem> containerItems, Func<object, CancellationToken, byte[]> itemFunc)
         {
             Items = containerItems;
             getItemFunc = itemFunc;
@@ -171,13 +215,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Release
             return Task.Run(() => Items);
         }
 
-        public Task<Stream> GetFileTask(ContainerItem item)
+        public Task<Stream> GetFileTask(ContainerItem item, CancellationToken cancellationToken)
         {
             GetFileTaskArguments.Add(item);
             Task<Stream> fileTask = Task.Run(
                 () =>
                 {
-                    Stream memoryStream = new MemoryStream(getItemFunc(item));
+                    Stream memoryStream = new MemoryStream(getItemFunc(item, cancellationToken));
                     return memoryStream;
                 });
 

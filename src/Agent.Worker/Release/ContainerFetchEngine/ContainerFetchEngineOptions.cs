@@ -5,7 +5,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.ContainerFetchEng
 {
     public class ContainerFetchEngineOptions
     {
-        public CancellationToken CancellationToken { get; set; }
         public int RetryLimit { get; set; }
         public TimeSpan RetryInterval { get; set; }
         public TimeSpan GetFileAsyncTimeout { get; set; }
@@ -17,7 +16,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.ContainerFetchEng
             ParallelDownloadLimit = ContainerFetchEngineDefaultOptions.DefaultParallelDownloadLimit;
             RetryInterval = ContainerFetchEngineDefaultOptions.DefaultRetryInterval;
             GetFileAsyncTimeout = ContainerFetchEngineDefaultOptions.GetFileAsyncTimeout;
-            CancellationToken = new CancellationToken();
         }
     }
 }

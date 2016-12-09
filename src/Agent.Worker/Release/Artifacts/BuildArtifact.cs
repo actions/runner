@@ -209,14 +209,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
                 var containerFetchEngineOptions = new ContainerFetchEngineOptions
                 {
                     ParallelDownloadLimit = 4,
-                    CancellationToken = executionContext.CancellationToken
                 };
 
                 using (var engine = new ContainerFetchEngine.ContainerFetchEngine(containerProvider, rootLocation, rootDestinationDir))
                 {
                     engine.ContainerFetchEngineOptions = containerFetchEngineOptions;
                     engine.ExecutionLogger = new ExecutionLogger(executionContext);
-                    await engine.FetchAsync();
+                    await engine.FetchAsync(executionContext.CancellationToken);
                 }
             }
             else
