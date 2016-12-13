@@ -91,6 +91,37 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Release
             }
         }
 
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void GitHubArtifactShouldMapSourceProviderInvalidOperationExceptionToArtifactDownloadException()
+        {
+            using (TestHostContext tc = Setup())
+            {
+                var gitHubArtifact = new GitHubArtifact();
+                gitHubArtifact.Initialize(tc);
+
+                _ec.Setup(x => x.Endpoints)
+                    .Returns(
+                        new List<ServiceEndpoint>
+                        {
+                            new ServiceEndpoint
+                            {
+                                Name = _githubConnectionName,
+                                Url = new Uri("http://contoso.visualstudio.com"),
+                                Authorization = new EndpointAuthorization()
+                            }
+                        });
+
+                _sourceProvider.Setup(
+                    x => x.GetSourceAsync(It.IsAny<IExecutionContext>(), It.IsAny<ServiceEndpoint>(), It.IsAny<CancellationToken>()))
+                    .Returns(() => { throw new InvalidOperationException("InvalidOperationException"); });
+
+                Assert.Throws<ArtifactDownloadException>(
+                    () => gitHubArtifact.DownloadAsync(_ec.Object, _artifactDefinition, "localFolderPath").SyncResult());
+            }
+        }
+
         private TestHostContext Setup([CallerMemberName] string name = "")
         {
             TestHostContext hc = new TestHostContext(this, name);

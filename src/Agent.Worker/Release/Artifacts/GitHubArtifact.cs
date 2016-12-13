@@ -53,7 +53,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
             gitHubEndpoint.Data.Add(Constants.EndpointData.SourceBranch, gitHubDetails.Branch);
             gitHubEndpoint.Data.Add(Constants.EndpointData.SourceVersion, artifactDefinition.Version);
 
-            await sourceProvider.GetSourceAsync(executionContext, gitHubEndpoint, executionContext.CancellationToken);
+            try
+            {
+                await sourceProvider.GetSourceAsync(executionContext, gitHubEndpoint, executionContext.CancellationToken);
+            }
+            catch (InvalidOperationException ex)
+            {
+                throw new ArtifactDownloadException(StringUtil.Loc("RMDownloadArtifactUnexpectedError"), ex);
+            }
         }
 
         public IArtifactDetails GetArtifactDetails(
