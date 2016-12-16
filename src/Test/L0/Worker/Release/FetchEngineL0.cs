@@ -86,6 +86,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Release
             Assert.Equal(0, concurrentAccessCount);
         }
 
+/*
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
@@ -157,6 +158,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Release
 
             Assert.Equal(isTaskCancelled, true);
         }
+*/
 
         [Fact]
         [Trait("Level", "L0")]
