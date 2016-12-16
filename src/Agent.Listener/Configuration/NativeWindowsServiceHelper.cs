@@ -40,6 +40,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
         NTAccount GetDefaultServiceAccount();
 
+        NTAccount GetDefaultAdminServiceAccount();
+
         bool IsServiceExists(string serviceName);
 
         void InstallService(string serviceName, string serviceDisplayName, string logonAccount, string logonPassword);
@@ -398,6 +400,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             if (account == null)
             {
                 throw new InvalidOperationException(StringUtil.Loc("NetworkServiceNotFound"));
+            }
+
+            return account;
+        }
+
+        public NTAccount GetDefaultAdminServiceAccount()
+        {
+            SecurityIdentifier sid = new SecurityIdentifier(WellKnownSidType.LocalSystemSid, domainSid: null);
+            NTAccount account = sid.Translate(typeof(NTAccount)) as NTAccount;
+
+            if (account == null)
+            {
+                throw new InvalidOperationException(StringUtil.Loc("LocalSystemAccountNotFound"));
             }
 
             return account;

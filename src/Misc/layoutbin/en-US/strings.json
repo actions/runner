@@ -232,6 +232,7 @@
   ],
   "ListenForJobs": "{0:u}: Listening for Jobs",
   "LocalClockSkewed": "The local machine's clock may be out of sync with the server time by more than five minutes. Please sync your clock with your domain or internet time and try again.",
+  "LocalSystemAccountNotFound": "Cannot find local system account",
   "MachineGroupName": "Machine Group name",
   "MachineGroupNotFound": "MachineGroup not found: '{0}'",
   "MachineGroupTags": "Comma separated list of tags (e.g tag1,tag2)",
