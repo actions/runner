@@ -40,7 +40,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         public async Task AddAsync(string localPath)
         {
             ArgUtil.NotNullOrEmpty(localPath, nameof(localPath));
-            await RunPorcelainCommandAsync(FormatFlags.All, "vc", "add", localPath);
+            await RunPorcelainCommandAsync(FormatFlags.OmitCollectionUrl, "vc", "add", localPath);
         }
 
         public void CleanupProxySetting()
