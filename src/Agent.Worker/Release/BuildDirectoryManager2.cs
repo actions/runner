@@ -1,7 +1,10 @@
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
+using System.Globalization;
 using System.IO;
+using System.Security.Cryptography;
+using System.Text;
 using Microsoft.TeamFoundation.Build.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Worker.Build;
 
@@ -12,8 +15,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
     {
         TrackingConfig2 PrepareDirectory(
             IExecutionContext executionContext,
-            ServiceEndpoint endpoint,
-            ISourceProvider sourceProvider);
+            string repositoryUrl);
 
         void CreateDirectory(
             IExecutionContext executionContext,
@@ -25,20 +27,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
     {
         public TrackingConfig2 PrepareDirectory(
             IExecutionContext executionContext,
-            ServiceEndpoint endpoint,
-            ISourceProvider sourceProvider)
+            string repositoryUrl)
         {
             // Validate parameters.
             Trace.Entering();
             ArgUtil.NotNull(executionContext, nameof(executionContext));
             ArgUtil.NotNull(executionContext.Variables, nameof(executionContext.Variables));
-            ArgUtil.NotNull(endpoint, nameof(endpoint));
-            ArgUtil.NotNull(sourceProvider, nameof(sourceProvider));
             var trackingManager = HostContext.GetService<ITrackingManager2>();
 
             // Defer to the source provider to calculate the hash key.
             Trace.Verbose("Calculating build directory hash key.");
-            string hashKey = sourceProvider.GetBuildDirectoryHashKey(executionContext, endpoint);
+            string hashKey = GetBuildDirectoryHashKey(executionContext, repositoryUrl);
             Trace.Verbose($"Hash key: {hashKey}");
 
             // Load the existing tracking file if one already exists.
@@ -65,12 +64,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
                 existingConfig = null;
             }
 
+            //TODO(omeshp): figure out what goes here
+            var endpoint = new ServiceEndpoint { Name = "s" };
+
             // Create a new tracking config if required.
             TrackingConfig2 newConfig;
             if (existingConfig == null)
             {
                 Trace.Verbose("Creating a new tracking config file.");
-                newConfig = trackingManager.Create(executionContext, endpoint.Url.AbsoluteUri, hashKey, trackingFile);
+                newConfig = trackingManager.Create(executionContext, repositoryUrl, hashKey, trackingFile);
                 ArgUtil.NotNull(newConfig, nameof(newConfig));
             }
             else
@@ -123,6 +125,34 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
                 deleteExisting: cleanOption == BuildCleanOption.Source);
 
             return newConfig;
+        }
+
+        public string GetBuildDirectoryHashKey(IExecutionContext executionContext, string repositoryUrl)
+        {
+            // Validate parameters.
+            Trace.Entering();
+            ArgUtil.NotNull(executionContext, nameof(executionContext));
+            ArgUtil.NotNull(executionContext.Variables, nameof(executionContext.Variables));
+
+            // Calculate the hash key.
+            const string Format = "{{{{ \r\n    \"system\" : \"build\", \r\n    \"collectionId\" = \"{0}\", \r\n    \"definitionId\" = \"{1}\", \r\n    \"repositoryUrl\" = \"{2}\", \r\n    \"sourceFolder\" = \"{{0}}\",\r\n    \"hashKey\" = \"{{1}}\"\r\n}}}}";
+            string hashInput = string.Format(
+                CultureInfo.InvariantCulture,
+                Format,
+                executionContext.Variables.System_CollectionId,
+                executionContext.Variables.System_DefinitionId,
+                repositoryUrl);
+            using (SHA1 sha1Hash = SHA1.Create())
+            {
+                byte[] data = sha1Hash.ComputeHash(Encoding.UTF8.GetBytes(hashInput));
+                StringBuilder hexString = new StringBuilder();
+                for (int i = 0; i < data.Length; i++)
+                {
+                    hexString.Append(data[i].ToString("x2"));
+                }
+
+                return hexString.ToString();
+            }
         }
 
         private TrackingConfig2 ConvertToNewFormat(
