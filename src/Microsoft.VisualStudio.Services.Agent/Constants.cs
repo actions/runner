@@ -26,7 +26,6 @@ namespace Microsoft.VisualStudio.Services.Agent
 #endif
         public static string SecretMask = "********";
         public static string TFBuild = "TF_BUILD";
-        public static int OmitFinishAgentRequestRunPlanVersion = 8;
 
         // This enum is embedded within the Constants class to make it easier to reference and avoid
         // ambiguous type reference with System.Runtime.InteropServices.OSPlatform.
@@ -153,6 +152,14 @@ namespace Microsoft.VisualStudio.Services.Agent
             public static readonly string SourceTfvcShelveset = "SourceTfvcShelveset";
             public static readonly string GatedShelvesetName = "GatedShelvesetName";
             public static readonly string GatedRunCI = "GatedRunCI";
+        }
+
+        public static class Expressions
+        {
+            public static readonly string Always = "always";
+            public static readonly string Succeeded = "succeeded";
+            public static readonly string SucceededOrFailed = "succeededOrFailed";
+            public static readonly string Variables = "variables";
         }
 
         public static class Path

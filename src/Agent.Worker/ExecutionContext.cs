@@ -20,6 +20,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         TaskResult? CommandResult { get; set; }
         CancellationToken CancellationToken { get; }
         List<ServiceEndpoint> Endpoints { get; }
+        PlanFeatures Features { get; }
         Variables Variables { get; }
         List<IAsyncCommandContext> AsyncCommands { get; }
 
@@ -33,9 +34,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         void QueueAttachFile(string type, string name, string filePath);
 
         // timeline record update methods
-        void Start(string currentOperation = null, TimeSpan? timeout = null);
+        void Start(string currentOperation = null);
         TaskResult Complete(TaskResult? result = null, string currentOperation = null);
-        void Skip();
+        void SetTimeout(TimeSpan timeout);
         void AddIssue(Issue issue);
         void Progress(int percentage, string currentOperation = null);
         void UpdateDetailTimelineRecord(TimelineRecord record);
@@ -69,13 +70,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         public Variables Variables { get; private set; }
         public bool WriteDebug { get; private set; }
 
-        public List<IAsyncCommandContext> AsyncCommands
-        {
-            get
-            {
-                return _asyncCommands;
-            }
-        }
+        public List<IAsyncCommandContext> AsyncCommands => _asyncCommands;
 
         public TaskResult? Result
         {
@@ -91,13 +86,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         public TaskResult? CommandResult { get; set; }
 
-        private string ContextType
-        {
-            get
-            {
-                return _record.RecordType;
-            }
-        }
+        private string ContextType => _record.RecordType;
 
         // might remove this.
         // TODO: figure out how do we actually use the result code.
@@ -113,12 +102,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             }
         }
 
+        public PlanFeatures Features { get; private set; }
+
         public IExecutionContext CreateChild(Guid recordId, string name)
         {
             Trace.Entering();
 
             var child = new ExecutionContext();
             child.Initialize(HostContext);
+            child.Features = Features;
             child.Variables = Variables;
             child.Endpoints = Endpoints;
             child._cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(CancellationToken);
@@ -135,21 +127,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             return child;
         }
 
-        public void Start(string currentOperation = null, TimeSpan? timeout = null)
+        public void Start(string currentOperation = null)
         {
             _record.CurrentOperation = currentOperation ?? _record.CurrentOperation;
             _record.StartTime = DateTime.UtcNow;
             _record.State = TimelineRecordState.InProgress;
 
             _jobServerQueue.QueueTimelineRecordUpdate(_mainTimelineId, _record);
-
-            if (timeout != null)
-            {
-                _cancellationTokenSource.CancelAfter(timeout.Value);
-            }
-
-            //Section
-            this.Section($"Starting: {_record.Name}");
         }
 
         public TaskResult Complete(TaskResult? result = null, string currentOperation = null)
@@ -187,14 +171,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 }
             }
 
-            //Section
-            this.Section($"Finishing: {_record.Name}");
-
             _cancellationTokenSource?.Dispose();
 
             _logger.End();
 
             return Result.Value;
+        }
+
+        public void SetTimeout(TimeSpan timeout)
+        {
+            _cancellationTokenSource.CancelAfter(timeout);
         }
 
         public void Progress(int percentage, string currentOperation = null)
@@ -208,25 +194,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             _record.PercentComplete = Math.Max(percentage, _record.PercentComplete.Value);
 
             _jobServerQueue.QueueTimelineRecordUpdate(_mainTimelineId, _record);
-        }
-
-        public void Skip()
-        {
-            if (_record.State != TimelineRecordState.Pending)
-            {
-                throw new InvalidOperationException(StringUtil.Loc("CanNotSkipTask"));
-            }
-
-            Result = TaskResult.Skipped;
-
-            _record.StartTime = _record.FinishTime = DateTime.UtcNow;
-            _record.State = TimelineRecordState.Completed;
-            _record.PercentComplete = 0;
-            _record.Result = TaskResult.Skipped;
-
-            _jobServerQueue.QueueTimelineRecordUpdate(_mainTimelineId, _record);
-            _cancellationTokenSource?.Dispose();
-            _logger.End();
         }
 
         // This is not thread safe, the caller need to take lock before calling issue()
@@ -300,27 +267,29 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         public void InitializeJob(JobRequestMessage message, CancellationToken token)
         {
-            // Validate/store parameters.
+            // Validation
             Trace.Entering();
             ArgUtil.NotNull(message, nameof(message));
             ArgUtil.NotNull(message.Environment, nameof(message.Environment));
             ArgUtil.NotNull(message.Environment.SystemConnection, nameof(message.Environment.SystemConnection));
             ArgUtil.NotNull(message.Environment.Endpoints, nameof(message.Environment.Endpoints));
             ArgUtil.NotNull(message.Environment.Variables, nameof(message.Environment.Variables));
+            ArgUtil.NotNull(message.Plan, nameof(message.Plan));
 
             _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(token);
 
-            // Initialize the environment.
-            Endpoints = message.Environment.Endpoints;
+            // Features
+            Features = ApiUtil.GetFeatures(message.Plan);
 
-            // Add the system connection to the endpoint list.
+            // Endpoints
+            Endpoints = message.Environment.Endpoints;
             Endpoints.Add(message.Environment.SystemConnection);
 
-            // Initialize the variables. The constructor handles the initial recursive expansion.
+            // Variables (constructor performs initial recursive expansion)
             List<string> warnings;
             Variables = new Variables(HostContext, message.Environment.Variables, message.Environment.MaskHints, out warnings);
 
-            // Proxy setting flows
+            // Proxy variables
             var proxyConfiguration = HostContext.GetService<IProxyConfiguration>();
             if (!string.IsNullOrEmpty(proxyConfiguration.ProxyUrl))
             {
@@ -340,7 +309,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 }
             }
 
-            // Initialize the job timeline record.
+            // Job timeline record.
             InitializeTimelineRecord(
                 timelineId: message.Timeline.Id,
                 timelineRecordId: message.JobId,
@@ -349,14 +318,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 name: message.JobName,
                 order: 1); // The job timeline record must be at order 1.
 
-            // Initialize the logger before writing warnings.
+            // Logger (must be initialized before writing warnings).
             _logger = HostContext.CreateService<IPagingLogger>();
             _logger.Setup(_mainTimelineId, _record.Id);
 
-            // Log any warnings from recursive variable expansion.
+            // Log warnings from recursive variable expansion.
             warnings?.ForEach(x => this.Warning(x));
 
-            // Initialize the verbosity (based on system.debug).
+            // Verbosity (from system.debug).
             WriteDebug = Variables.System_Debug ?? false;
 
             // Hook up JobServerQueueThrottling event, we will log warning on server tarpit.

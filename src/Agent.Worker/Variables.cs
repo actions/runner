@@ -28,7 +28,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             }
         }
 
-        // This should only used by AzurePowerShell/PowerShell handler
         public IEnumerable<KeyValuePair<string, string>> Private
         {
             get

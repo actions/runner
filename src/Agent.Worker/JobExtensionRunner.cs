@@ -9,7 +9,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         public JobExtensionRunner(
             Func<Task> runAsync,
-            bool alwaysRun,
             bool continueOnError,
             bool critical,
             string displayName,
@@ -17,7 +16,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             bool @finally)
         {
             _runAsync = runAsync;
-            AlwaysRun = alwaysRun;
             ContinueOnError = continueOnError;
             Critical = critical;
             DisplayName = displayName;
@@ -25,13 +23,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             Finally = @finally;
         }
 
-        public bool AlwaysRun { get; private set; }
+        public string Condition => Finally ? $"{Constants.Expressions.Always}()" : $"{Constants.Expressions.Succeeded}()";
         public bool ContinueOnError { get; private set; }
         public bool Critical { get; private set; }
         public string DisplayName { get; private set; }
         public bool Enabled { get; private set; }
         public IExecutionContext ExecutionContext { get; set; }
         public bool Finally { get; private set; }
+        public TimeSpan? Timeout => null;
 
         public async Task RunAsync()
         {

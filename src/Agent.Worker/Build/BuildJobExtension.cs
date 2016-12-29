@@ -22,7 +22,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         {
             PrepareStep = new JobExtensionRunner(
                 runAsync: PrepareAsync,
-                alwaysRun: false,
                 continueOnError: false,
                 critical: true,
                 displayName: StringUtil.Loc("GetSources"),
@@ -31,7 +30,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
             FinallyStep = new JobExtensionRunner(
                 runAsync: FinallyAsync,
-                alwaysRun: false,
                 continueOnError: false,
                 critical: false,
                 displayName: StringUtil.Loc("Cleanup"),

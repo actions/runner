@@ -1,13 +1,13 @@
-using Microsoft.TeamFoundation.DistributedTask.WebApi;
-using Microsoft.VisualStudio.Services.Common;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Runtime.InteropServices;
+using Microsoft.TeamFoundation.DistributedTask.WebApi;
+using Microsoft.VisualStudio.Services.Common;
 using Microsoft.VisualStudio.Services.WebApi;
 using Microsoft.VisualStudio.Services.OAuth;
-using System.Net.Http;
 
 namespace Microsoft.VisualStudio.Services.Agent.Util
 {
@@ -101,5 +101,30 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
 
             return credentials;
         }
+
+        public static PlanFeatures GetFeatures(TaskOrchestrationPlanReference plan)
+        {
+            ArgUtil.NotNull(plan, nameof(plan));
+            PlanFeatures features = PlanFeatures.None;
+            if (plan.Version >= 8)
+            {
+                features |= PlanFeatures.JobCompletedPlanEvent;
+            }
+
+            if (plan.Version >= 123456)
+            {
+                features |= PlanFeatures.TaskCondition;
+            }
+
+            return features;
+        }
+    }
+
+    [Flags]
+    public enum PlanFeatures
+    {
+        None = 0,
+        JobCompletedPlanEvent = 1,
+        TaskCondition = 2,
     }
 }

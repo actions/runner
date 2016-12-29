@@ -44,63 +44,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             }
         }
 
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Worker")]
-        public void CanNotSkipTimelineAfterStarting()
-        {
-            using (TestHostContext hc = CreateTestContext())
-            {
-                // Arrange: Setup the paging logger.
-                var pagingLogger = new Mock<IPagingLogger>();
-                hc.EnqueueInstance(pagingLogger.Object);
-
-                var ec = new Agent.Worker.ExecutionContext();
-                ec.Initialize(hc);
-
-                var jobRequest = CreateJobRequestMessage();
-                ec.InitializeJob(jobRequest, CancellationToken.None);
-
-                // Act
-                ec.Start();
-
-                // Assert
-                Assert.Throws<InvalidOperationException>(() => ec.Skip());
-            }
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Worker")]
-        public void VerifySkippedTimeLineRecord()
-        {
-            using (TestHostContext hc = CreateTestContext())
-            {
-                // Arrange: Create the execution context.
-                var jobServerQueue = new Mock<IJobServerQueue>();
-                hc.SetSingleton(jobServerQueue.Object);
-
-                // Arrange: Setup the paging logger.
-                var pagingLogger = new Mock<IPagingLogger>();
-                hc.EnqueueInstance(pagingLogger.Object);
-
-                var ec = new Agent.Worker.ExecutionContext();
-                ec.Initialize(hc);
-                ec.InitializeJob(CreateJobRequestMessage(), CancellationToken.None);
-                
-                // Act
-                ec.Skip();
-
-                // Assert
-                Assert.Equal(TaskResult.Skipped, ec.Result);
-                jobServerQueue.Verify(
-                    x => x.QueueTimelineRecordUpdate(
-                        It.IsAny<Guid>(),
-                        It.Is<TimelineRecord>(r => r.StartTime != null && r.StartTime == r.FinishTime && r.State == TimelineRecordState.Completed && r.Result == TaskResult.Skipped && r.PercentComplete == 0)),
-                    Times.AtLeastOnce());
-            }
-        }
-
         private TestHostContext CreateTestContext([CallerMemberName] String testName = "")
         {
             var hc = new TestHostContext(this, testName);

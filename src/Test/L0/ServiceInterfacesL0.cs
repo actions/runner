@@ -50,9 +50,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 typeof(ICredentialProvider),
                 typeof(IExtension),
                 typeof(IHostContext),
-                typeof(ITraceManager),
                 typeof(ISecret),
-                typeof(IThrottlingReporter)
+                typeof(ITraceManager),
+                typeof(IThrottlingReporter),
+                typeof(Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressions.IFunctionInfo),
+                typeof(Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressions.INode),
+                typeof(Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressions.ITraceWriter),
             };
             Validate(
                 assembly: typeof(IHostContext).GetTypeInfo().Assembly,

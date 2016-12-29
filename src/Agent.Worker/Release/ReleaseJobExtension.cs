@@ -92,7 +92,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
         {
             PrepareStep = new JobExtensionRunner(
                 runAsync: PrepareAsync,
-                alwaysRun: false,
                 continueOnError: false,
                 critical: true,
                 displayName: StringUtil.Loc("DownloadArtifacts"),

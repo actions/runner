@@ -17,14 +17,36 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
     public sealed class TaskRunner : AgentService, ITaskRunner
     {
-        public bool AlwaysRun => TaskInstance?.AlwaysRun ?? default(bool);
+        public string Condition
+        {
+            get
+            {
+                if (ExecutionContext.Features.HasFlag(PlanFeatures.TaskCondition) || !string.IsNullOrEmpty(ExecutionContext.Variables.Get("VSTS_TEMP_FEATURE_TASKCONDITION")))
+                {
+                    return ExecutionContext.Variables.Get($"VSTS_TEMP_CONDITION_{DisplayName}"); //taskInstance.Condition;
+                }
+                else
+                {
+                    return TaskInstance.AlwaysRun ? $"{Constants.Expressions.SucceededOrFailed}()" : $"{Constants.Expressions.Succeeded}()";
+                }
+            }
+        }
+
         public bool ContinueOnError => TaskInstance?.ContinueOnError ?? default(bool);
+
         public bool Critical => false;
+
         public string DisplayName => TaskInstance?.DisplayName;
+
         public bool Enabled => TaskInstance?.Enabled ?? default(bool);
+
         public IExecutionContext ExecutionContext { get; set; }
+
         public bool Finally => false;
+
         public TaskInstance TaskInstance { get; set; }
+
+        public TimeSpan? Timeout => (TaskInstance?.TimeoutInMinutes ?? 0) > 0 ? (TimeSpan?)TimeSpan.FromMinutes(TaskInstance.TimeoutInMinutes) : null;
 
         public async Task RunAsync()
         {
