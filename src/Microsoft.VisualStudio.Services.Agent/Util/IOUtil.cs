@@ -384,8 +384,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
                 directory = directories.Pop();
                 foreach (FileSystemInfo item in directory.GetFileSystemInfos())
                 {
-                    yield return item;
-
                     // Push non-reparse-point directories onto the processing stack.
                     directory = item as DirectoryInfo;
                     if (directory != null &&
@@ -393,6 +391,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
                     {
                         directories.Push(directory);
                     }
+
+                    // Then yield the directory. Otherwise there is a race condition when this method attempts to initialize
+                    // the Attributes and the caller is deleting the reparse point in parallel (FileNotFoundException).
+                    yield return item;
                 }
             }
         }

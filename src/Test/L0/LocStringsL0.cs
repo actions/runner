@@ -73,12 +73,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             Assert.True(File.Exists(stringsFile), $"File does not exist: {stringsFile}");
             var resourceDictionary = IOUtil.LoadObject<Dictionary<string, object>>(stringsFile);
 
-            // find all loc string key in source file
+            // Find all loc string key in source file.
+            //
+            // Note, narrow the search to each project folder only. Otherwise intermittent errors occur
+            // when recursively searching due to parallel tests are deleting temp folders (DirectoryNotFoundException).
             var keys = new List<string>();
-            string[] sourceFiles = Directory.GetFiles(
-                    TestUtil.GetSrcPath(),
-                    "*.cs",
-                    SearchOption.AllDirectories);
+            string[] sourceFiles =
+                Directory.GetFiles(TestUtil.GetProjectPath("Microsoft.VisualStudio.Services.Agent"), "*.cs", SearchOption.AllDirectories)
+                .Concat(Directory.GetFiles(TestUtil.GetProjectPath("Agent.Listener"), "*.cs", SearchOption.AllDirectories))
+                .Concat(Directory.GetFiles(TestUtil.GetProjectPath("Agent.Worker"), "*.cs", SearchOption.AllDirectories))
+                .ToArray();
             foreach (string sourceFile in sourceFiles)
             {
                 // Skip files in the obj directory.
