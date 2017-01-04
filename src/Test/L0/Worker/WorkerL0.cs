@@ -50,7 +50,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             {
                 var worker = new Microsoft.VisualStudio.Services.Agent.Worker.Worker();
                 hc.EnqueueInstance<IProcessChannel>(_processChannel.Object);
-                hc.SetSingleton<IJobRunner>(_jobRunner.Object);
+                hc.EnqueueInstance<IJobRunner>(_jobRunner.Object);
                 hc.SetSingleton<IProxyConfiguration>(_proxy.Object);
                 worker.Initialize(hc);
                 var jobMessage = CreateJobRequestMessage("job1");
@@ -102,7 +102,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             {
                 var worker = new Microsoft.VisualStudio.Services.Agent.Worker.Worker();
                 hc.EnqueueInstance<IProcessChannel>(_processChannel.Object);
-                hc.SetSingleton<IJobRunner>(_jobRunner.Object);
+                hc.EnqueueInstance<IJobRunner>(_jobRunner.Object);
                 hc.SetSingleton<IProxyConfiguration>(_proxy.Object);
                 worker.Initialize(hc);
                 var jobMessage = CreateJobRequestMessage("job1");

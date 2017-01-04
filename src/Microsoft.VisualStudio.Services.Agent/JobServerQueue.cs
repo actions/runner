@@ -110,7 +110,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         {
             if (!_queueInProcess)
             {
-                Trace.Info("No-opt, all queue process tasks have been stopped.");
+                Trace.Info("No-op, all queue process tasks have been stopped.");
             }
 
             Trace.Info("Fire signal to shutdown all queues.");
@@ -119,7 +119,6 @@ namespace Microsoft.VisualStudio.Services.Agent
             await Task.WhenAll(_allDequeueTasks);
             _queueInProcess = false;
             Trace.Info("All queue process task stopped.");
-
 
             //Drain the queue
             List<Exception> queueShutdownExceptions = new List<Exception>();

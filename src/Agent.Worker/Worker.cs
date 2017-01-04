@@ -26,7 +26,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             var proxyConfig = HostContext.GetService<IProxyConfiguration>();
             proxyConfig.ApplyProxySettings();
 
-            var jobRunner = HostContext.GetService<IJobRunner>();
+            var jobRunner = HostContext.CreateService<IJobRunner>();
 
             using (var channel = HostContext.CreateService<IProcessChannel>())
             using (var jobRequestCancellationToken = new CancellationTokenSource())

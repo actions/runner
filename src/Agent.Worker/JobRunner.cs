@@ -1,5 +1,7 @@
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Util;
+using Microsoft.VisualStudio.Services.Common;
+using Microsoft.VisualStudio.Services.WebApi;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -19,6 +21,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
     public sealed class JobRunner : AgentService, IJobRunner
     {
+        private IJobServerQueue _jobServerQueue;
+
         public async Task<TaskResult> RunAsync(AgentJobRequestMessage message, CancellationToken jobRequestCancellationToken)
         {
             // Validate parameters.
@@ -41,16 +45,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
             // Setup the job server and job server queue.
             var jobServer = HostContext.GetService<IJobServer>();
-            var jobServerCredential = ApiUtil.GetVssCredential(message.Environment.SystemConnection);
+            VssCredentials jobServerCredential = ApiUtil.GetVssCredential(message.Environment.SystemConnection);
             Uri jobServerUrl = message.Environment.SystemConnection.Url;
 
             Trace.Info($"Creating job server with URL: {jobServerUrl}");
             // jobServerQueue is the throttling reporter.
-            var jobServerQueue = HostContext.GetService<IJobServerQueue>();
-            var jobConnection = ApiUtil.CreateConnection(jobServerUrl, jobServerCredential, new DelegatingHandler[] { new ThrottlingReportHandler(jobServerQueue) });
+            _jobServerQueue = HostContext.GetService<IJobServerQueue>();
+            VssConnection jobConnection = ApiUtil.CreateConnection(jobServerUrl, jobServerCredential, new DelegatingHandler[] { new ThrottlingReportHandler(_jobServerQueue) });
             await jobServer.ConnectAsync(jobConnection);
 
-            jobServerQueue.Start(message);
+            _jobServerQueue.Start(message);
 
             IExecutionContext jobContext = null;
             try
@@ -234,34 +238,24 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             }
             finally
             {
-                // Drain the job server queue.
-                if (jobServerQueue != null)
-                {
-                    try
-                    {
-                        Trace.Info("Shutting down the job server queue.");
-                        await jobServerQueue.ShutdownAsync();
-                    }
-                    catch (Exception ex)
-                    {
-                        Trace.Error($"Caught exception from {nameof(JobServerQueue)}.{nameof(jobServerQueue.ShutdownAsync)}: {ex}");
-                    }
-                }
+                await ShutdownQueue();
             }
         }
 
         private async Task<TaskResult> CompleteJobAsync(IJobServer jobServer, IExecutionContext jobContext, AgentJobRequestMessage message, TaskResult? taskResult = null)
         {
-            var result = jobContext.Complete(taskResult);
-            
+            TaskResult result = jobContext.Complete(taskResult);
+
             if (message.Plan.Version < Constants.OmitFinishAgentRequestRunPlanVersion)
             {
-                Trace.Verbose($"Skip raise job completed event call from worker because Plan version is {message.Plan.Version}");
-
+                Trace.Info($"Skip raise job completed event call from worker because Plan version is {message.Plan.Version}");
                 return result;
             }
 
-            var outputVariables = jobContext.Variables.GetOutputVariables();
+            await ShutdownQueue();
+
+            Trace.Info("Raising job completed event.");
+            IEnumerable<Variable> outputVariables = jobContext.Variables.GetOutputVariables();
             //var webApiVariables = outputVariables.ToJobCompletedEventOutputVariables();
             //var jobCompletedEvent = new JobCompletedEvent(message.RequestId, message.JobId, result, webApiVariables);
             var jobCompletedEvent = new JobCompletedEvent(message.RequestId, message.JobId, result);
@@ -296,8 +290,28 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 await Task.Delay(TimeSpan.FromSeconds(5));
             }
 
-            // rethrow all catched exceptions during retry.
+            // rethrow exceptions from all attempts.
             throw new AggregateException(exceptions);
+        }
+
+        private async Task ShutdownQueue()
+        {
+            if (_jobServerQueue != null)
+            {
+                try
+                {
+                    Trace.Info("Shutting down the job server queue.");
+                    await _jobServerQueue.ShutdownAsync();
+                }
+                catch (Exception ex)
+                {
+                    Trace.Error($"Caught exception from {nameof(JobServerQueue)}.{nameof(_jobServerQueue.ShutdownAsync)}: {ex}");
+                }
+                finally
+                {
+                    _jobServerQueue = null; // Prevent multiple attempts.
+                }
+            }
         }
 
         // the hostname (how the agent knows the server) is external to our server
