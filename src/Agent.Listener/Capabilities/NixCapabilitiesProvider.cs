@@ -63,7 +63,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Capabilities
             builder.Check(
                 name: "Xamarin.iOS",
                 fileName: "mdtool",
-                filePaths: new string[] { "/Applications/Xamarin Studio.app/Contents/MacOS/mdtool" });
+                filePaths: new string[] { 
+                    "/Applications/Xamarin Studio.app/Contents/MacOS/mdtool",
+                    "/Applications/Visual Studio.app/Contents/MacOS/vstool"
+                });
             builder.Check(
                 name: "Xamarin.Android",
                 fileName: "generator",
