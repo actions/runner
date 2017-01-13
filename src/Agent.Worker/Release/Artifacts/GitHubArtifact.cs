@@ -55,6 +55,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
             gitHubEndpoint.Data.Add(WellKnownEndpointData.CheckoutSubmodules, gitHubDetails.CheckoutSubmodules);
             gitHubEndpoint.Data.Add("fetchDepth", gitHubDetails.FetchDepth);
             gitHubEndpoint.Data.Add("GitLfsSupport", gitHubDetails.GitLfsSupport);
+            gitHubEndpoint.Data.Add(WellKnownEndpointData.Clean, executionContext.Variables.Get("pipeline.artifact.clean"));
 
             try
             {
