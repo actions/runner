@@ -52,7 +52,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
             executionContext.Variables.Set(Constants.Variables.Agent.BuildDirectory, rootDirectory);
             tfsVCEndpoint.Data.Add(Constants.EndpointData.SourcesDirectory, downloadFolderPath);
             tfsVCEndpoint.Data.Add(Constants.EndpointData.SourceVersion, artifactDefinition.Version);
-            tfsVCEndpoint.Data.Add(WellKnownEndpointData.Clean, executionContext.Variables.Get("pipeline.artifact.clean"));
 
             await sourceProvider.GetSourceAsync(executionContext, tfsVCEndpoint, executionContext.CancellationToken);
         }

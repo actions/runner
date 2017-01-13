@@ -248,22 +248,29 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
                 return cleanOption.Value;
             }
 
-            bool clean = executionContext.Variables.GetBoolean("pipeline.artifact.clean") ?? false;
-            RepositoryCleanOptions? repositoryCleanOptions = executionContext.Variables.GetEnum<RepositoryCleanOptions>("pipeline.artifact.cleanOptions");
-
-            if (clean && repositoryCleanOptions != null)
+            bool clean = false;
+            if (endpoint.Data.ContainsKey(WellKnownEndpointData.Clean))
             {
-                if (repositoryCleanOptions == RepositoryCleanOptions.AllBuildDir)
+                clean = StringUtil.ConvertToBoolean(endpoint.Data[WellKnownEndpointData.Clean]);
+            }
+
+            if (clean && endpoint.Data.ContainsKey("cleanOptions"))
+            {
+                RepositoryCleanOptions? cleanOptionFromEndpoint = EnumUtil.TryParse<RepositoryCleanOptions>(endpoint.Data["cleanOptions"]);
+                if (cleanOptionFromEndpoint != null)
                 {
-                    return BuildCleanOption.All;
-                }
-                else if (repositoryCleanOptions == RepositoryCleanOptions.SourceDir)
-                {
-                    return BuildCleanOption.Source;
-                }
-                else if (repositoryCleanOptions == RepositoryCleanOptions.SourceAndOutput)
-                {
-                    return BuildCleanOption.Binary;
+                    if (cleanOptionFromEndpoint == RepositoryCleanOptions.AllBuildDir)
+                    {
+                        return BuildCleanOption.All;
+                    }
+                    else if (cleanOptionFromEndpoint == RepositoryCleanOptions.SourceDir)
+                    {
+                        return BuildCleanOption.Source;
+                    }
+                    else if (cleanOptionFromEndpoint == RepositoryCleanOptions.SourceAndOutput)
+                    {
+                        return BuildCleanOption.Binary;
+                    }
                 }
             }
 
