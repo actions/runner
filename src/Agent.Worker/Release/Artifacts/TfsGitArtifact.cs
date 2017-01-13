@@ -44,7 +44,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
             tfsGitEndpoint.Data.Add(Constants.EndpointData.SourceBranch, gitArtifactDetails.Branch);
             tfsGitEndpoint.Data.Add(Constants.EndpointData.SourceVersion, artifactDefinition.Version);
             tfsGitEndpoint.Data.Add(WellKnownEndpointData.CheckoutSubmodules, gitArtifactDetails.CheckoutSubmodules);
-            tfsGitEndpoint.Data.Add(WellKnownEndpointData.Clean, executionContext.Variables.Get("pipeline.artifact.clean"));
             tfsGitEndpoint.Data.Add("fetchDepth", gitArtifactDetails.FetchDepth);
             tfsGitEndpoint.Data.Add("GitLfsSupport", gitArtifactDetails.GitLfsSupport);
             try
