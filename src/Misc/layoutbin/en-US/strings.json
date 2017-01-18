@@ -4,7 +4,7 @@
   "AccessDeniedSettingRecoveryOption": "Access Denied while setting service recovery options.",
   "AddAgentFailed": "Failed to add the agent.  Try again or ctrl-c to quit",
   "AddBuildTag": "Add Build Tag",
-  "AddMachineGroupTagsFlagDescription": "configure machine group tags for agent? (Y/N)",
+  "AddMachineGroupTagsFlagDescription": "machine group tags for agent? (Y/N)",
   "AgentAddedSuccessfully": "Successfully added the agent",
   "AgentExit": "Agent will exit shortly for update.",
   "AgentIsNotConfigured": "Agent is not configured.",
