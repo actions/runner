@@ -156,7 +156,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
             var filteredReleaseArtifacts = FilterArtifactDefintions(releaseArtifacts);
             filteredReleaseArtifacts.ToList().ForEach(x => Trace.Info($"Found Artifact = {x.Alias} of type {x.ArtifactType}"));
 
-            CleanUpArtifactsFolder(executionContext, artifactsWorkingFolder);
+            string definitionType = executionContext.Variables.Get("Pipeline.DefinitionType");
+            if (!string.Equals(definitionType, "Build", StringComparison.OrdinalIgnoreCase))
+            {
+                CleanUpArtifactsFolder(executionContext, artifactsWorkingFolder);
+            }
+
             await DownloadArtifacts(executionContext, filteredReleaseArtifacts, artifactsWorkingFolder);
         }
 
