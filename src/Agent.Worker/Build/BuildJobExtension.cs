@@ -258,7 +258,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             Trace.Entering();
             var extensionManager = HostContext.GetService<IExtensionManager>();
             List<ISourceProvider> sourceProviders = extensionManager.GetExtensions<ISourceProvider>();
-            foreach (ServiceEndpoint ep in executionContext.Endpoints)
+            foreach (ServiceEndpoint ep in executionContext.Endpoints.Where(e => e.Data.ContainsKey("repositoryId")))
             {
                 SourceProvider = sourceProviders
                     .FirstOrDefault(x => string.Equals(x.RepositoryType, ep.Type, StringComparison.OrdinalIgnoreCase));
