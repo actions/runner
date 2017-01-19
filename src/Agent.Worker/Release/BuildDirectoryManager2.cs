@@ -248,29 +248,22 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
                 return cleanOption.Value;
             }
 
-            bool clean = false;
-            if (endpoint.Data.ContainsKey(WellKnownEndpointData.Clean))
-            {
-                clean = StringUtil.ConvertToBoolean(endpoint.Data[WellKnownEndpointData.Clean]);
-            }
+            bool clean = executionContext.Variables.GetBoolean("pipeline.artifact.clean") ?? false;
+            RepositoryCleanOptions? repositoryCleanOptions = executionContext.Variables.GetEnum<RepositoryCleanOptions>("pipeline.artifact.cleanOptions");
 
-            if (clean && endpoint.Data.ContainsKey("cleanOptions"))
+            if (clean && repositoryCleanOptions != null)
             {
-                RepositoryCleanOptions? cleanOptionFromEndpoint = EnumUtil.TryParse<RepositoryCleanOptions>(endpoint.Data["cleanOptions"]);
-                if (cleanOptionFromEndpoint != null)
+                if (repositoryCleanOptions == RepositoryCleanOptions.AllBuildDir)
                 {
-                    if (cleanOptionFromEndpoint == RepositoryCleanOptions.AllBuildDir)
-                    {
-                        return BuildCleanOption.All;
-                    }
-                    else if (cleanOptionFromEndpoint == RepositoryCleanOptions.SourceDir)
-                    {
-                        return BuildCleanOption.Source;
-                    }
-                    else if (cleanOptionFromEndpoint == RepositoryCleanOptions.SourceAndOutput)
-                    {
-                        return BuildCleanOption.Binary;
-                    }
+                    return BuildCleanOption.All;
+                }
+                else if (repositoryCleanOptions == RepositoryCleanOptions.SourceDir)
+                {
+                    return BuildCleanOption.Source;
+                }
+                else if (repositoryCleanOptions == RepositoryCleanOptions.SourceAndOutput)
+                {
+                    return BuildCleanOption.Binary;
                 }
             }
 
