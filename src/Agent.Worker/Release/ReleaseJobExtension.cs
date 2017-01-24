@@ -36,6 +36,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
 
         public string GetRootedPath(IExecutionContext context, string path)
         {
+            string definitionType = context.Variables.Get("Pipeline.DefinitionType");
+            if (string.Equals(definitionType, "Build", StringComparison.OrdinalIgnoreCase))
+            {
+                return GetRootedPathForBuildFlow(context, path);
+            }
+
+            return GetRootedPathForRmFlow(context, path);
+        }
+
+        private string GetRootedPathForRmFlow(IExecutionContext context, string path)
+        {
             string rootedPath = null;
 
             if (!string.IsNullOrEmpty(path) &&
@@ -76,6 +87,39 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
                     {
                         Trace.Info($"After prefix Artifact Path Root provide by JobExtension. The Path is a rooted path, but it is not fully qualified, return the path: {path}");
                         Trace.Error(ex);
+                        return path;
+                    }
+                }
+            }
+
+            return rootedPath;
+        }
+
+        // TODO(omeshp): 1. use source provide to solve path, if solved result is rooted, return full path.
+        // 2. prefix default path root (build.sourcesDirectory), if result is rooted, return full path.
+        private string GetRootedPathForBuildFlow(IExecutionContext context, string path)
+        {
+            string rootedPath = null;
+            string defaultPathRoot = context.Variables.Get(Constants.Variables.Build.SourcesDirectory) ?? string.Empty;
+            Trace.Info($"The Default Path Root of Build JobExtension is build.sourcesDirectory: {defaultPathRoot}");
+
+            if (defaultPathRoot != null && defaultPathRoot.IndexOfAny(Path.GetInvalidPathChars()) < 0 &&
+                path != null && path.IndexOfAny(Path.GetInvalidPathChars()) < 0)
+            {
+                path = Path.Combine(defaultPathRoot, path);
+                Trace.Info($"After prefix Default Path Root provide by JobExtension: {path}");
+                if (Path.IsPathRooted(path))
+                {
+                    try
+                    {
+                        rootedPath = Path.GetFullPath(path);
+                        Trace.Info($"Return absolute path after prefix DefaultPathRoot: {rootedPath}");
+                        return rootedPath;
+                    }
+                    catch (Exception ex)
+                    {
+                        Trace.Error(ex);
+                        Trace.Info($"After prefix Default Path Root provide by JobExtension, the Path is a rooted path, but it is not full qualified, return the path: {path}.");
                         return path;
                     }
                 }
