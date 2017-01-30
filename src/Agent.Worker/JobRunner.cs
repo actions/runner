@@ -194,11 +194,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 {
                     await taskManager.DownloadAsync(jobContext, message.Tasks);
                 }
-                catch (OperationCanceledException ex)
+                catch (OperationCanceledException ex) when (jobContext.CancellationToken.IsCancellationRequested)
                 {
                     // set the job to canceled
+                    // don't log error issue to job ExecutionContext, since server owns the job level issue
                     Trace.Error($"Caught exception: {ex}");
-                    jobContext.Error(ex);
                     return await CompleteJobAsync(jobServer, jobContext, message, TaskResult.Canceled);
                 }
                 catch (Exception ex)
@@ -215,11 +215,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 {
                     await stepsRunner.RunAsync(jobContext, steps);
                 }
-                catch (OperationCanceledException ex)
+                catch (OperationCanceledException ex) when (jobContext.CancellationToken.IsCancellationRequested)
                 {
                     // set the job to canceled
+                    // don't log error issue to job ExecutionContext, since server owns the job level issue
                     Trace.Error($"Caught exception: {ex}");
-                    jobContext.Error(ex);
                     return await CompleteJobAsync(jobServer, jobContext, message, TaskResult.Canceled);
                 }
                 catch (Exception ex)
