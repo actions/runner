@@ -1,3 +1,5 @@
+// TODO: Delete this file. This file unnecessarily starts a new convention (extensions namespace and variables extentension class for a function that is called from exactly one place).
+
 //using System;
 //using System.Collections.Generic;
 //using System.Linq;
