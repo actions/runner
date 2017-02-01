@@ -6,15 +6,12 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 using Agent.Worker.Release;
-using Microsoft.TeamFoundation.Build.WebApi;
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using Microsoft.VisualStudio.Services.ReleaseManagement.WebApi.Contracts;
 using Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts;
 using Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts.Definition;
 using Newtonsoft.Json;
-using Issue = Microsoft.TeamFoundation.DistributedTask.WebApi.Issue;
-using IssueType = Microsoft.TeamFoundation.DistributedTask.WebApi.IssueType;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
 {
@@ -35,17 +32,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
         public IStep FinallyStep { get; private set; }
 
         public string GetRootedPath(IExecutionContext context, string path)
-        {
-            string definitionType = context.Variables.Get("Pipeline.DefinitionType");
-            if (string.Equals(definitionType, "Build", StringComparison.OrdinalIgnoreCase))
-            {
-                return GetRootedPathForBuildFlow(context, path);
-            }
-
-            return GetRootedPathForRmFlow(context, path);
-        }
-
-        private string GetRootedPathForRmFlow(IExecutionContext context, string path)
         {
             string rootedPath = null;
 
@@ -87,39 +73,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
                     {
                         Trace.Info($"After prefix Artifact Path Root provide by JobExtension. The Path is a rooted path, but it is not fully qualified, return the path: {path}");
                         Trace.Error(ex);
-                        return path;
-                    }
-                }
-            }
-
-            return rootedPath;
-        }
-
-        // TODO(omeshp): 1. use source provide to solve path, if solved result is rooted, return full path.
-        // 2. prefix default path root (build.sourcesDirectory), if result is rooted, return full path.
-        private string GetRootedPathForBuildFlow(IExecutionContext context, string path)
-        {
-            string rootedPath = null;
-            string defaultPathRoot = context.Variables.Get(Constants.Variables.Build.SourcesDirectory) ?? string.Empty;
-            Trace.Info($"The Default Path Root of Build JobExtension is build.sourcesDirectory: {defaultPathRoot}");
-
-            if (defaultPathRoot != null && defaultPathRoot.IndexOfAny(Path.GetInvalidPathChars()) < 0 &&
-                path != null && path.IndexOfAny(Path.GetInvalidPathChars()) < 0)
-            {
-                path = Path.Combine(defaultPathRoot, path);
-                Trace.Info($"After prefix Default Path Root provide by JobExtension: {path}");
-                if (Path.IsPathRooted(path))
-                {
-                    try
-                    {
-                        rootedPath = Path.GetFullPath(path);
-                        Trace.Info($"Return absolute path after prefix DefaultPathRoot: {rootedPath}");
-                        return rootedPath;
-                    }
-                    catch (Exception ex)
-                    {
-                        Trace.Error(ex);
-                        Trace.Info($"After prefix Default Path Root provide by JobExtension, the Path is a rooted path, but it is not full qualified, return the path: {path}.");
                         return path;
                     }
                 }
@@ -200,18 +153,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
             var filteredReleaseArtifacts = FilterArtifactDefintions(releaseArtifacts);
             filteredReleaseArtifacts.ToList().ForEach(x => Trace.Info($"Found Artifact = {x.Alias} of type {x.ArtifactType}"));
 
-            string definitionType = executionContext.Variables.Get("Pipeline.DefinitionType");
-            if (!string.Equals(definitionType, "Build", StringComparison.OrdinalIgnoreCase))
-            {
-                CleanUpArtifactsFolder(executionContext, artifactsWorkingFolder);
-            }
-
+            CleanUpArtifactsFolder(executionContext, artifactsWorkingFolder);
             await DownloadArtifacts(executionContext, filteredReleaseArtifacts, artifactsWorkingFolder);
         }
 
         private async Task DownloadArtifacts(IExecutionContext executionContext, IList<AgentArtifactDefinition> agentArtifactDefinitions, string artifactsWorkingFolder)
         {
             Trace.Entering();
+
             foreach (AgentArtifactDefinition agentArtifactDefinition in agentArtifactDefinitions)
             {
                 // We don't need to check if its old style artifact anymore. All the build data has been fixed and all the build artifact has Alias now.
@@ -231,18 +180,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
                 executionContext.Output(StringUtil.Loc("RMArtifactDownloadBegin", agentArtifactDefinition.Alias, agentArtifactDefinition.ArtifactType));
 
                 // Get the local path where this artifact should be downloaded. 
-                string downloadFolderPath;
+                string downloadFolderPath = Path.GetFullPath(Path.Combine(artifactsWorkingFolder, agentArtifactDefinition.Alias ?? string.Empty));
 
-                string definitionType = executionContext.Variables.Get("Pipeline.DefinitionType");
-                if (string.Equals(definitionType, "Build", StringComparison.OrdinalIgnoreCase))
-                {
-                    downloadFolderPath = artifactsWorkingFolder;
-                }
-                else
-                {
-                    downloadFolderPath = Path.GetFullPath(Path.Combine(artifactsWorkingFolder, agentArtifactDefinition.Alias ?? string.Empty));
-                }
-                
                 // download the artifact to this path. 
                 RetryExecutor retryExecutor = new RetryExecutor();
                 retryExecutor.ShouldRetryAction = (ex) =>
@@ -322,83 +261,55 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
             executionContext.Output(StringUtil.Loc("RMCleanedUpArtifactsDirectory", artifactsWorkingFolder));
         }
 
-        private void InitializeAgent(IExecutionContext executionContext, out bool skipArtifactsDownload, out Guid teamProjectId, out string artifactsWorkingFolder, out int pipelineInstanceId)
+        private void InitializeAgent(IExecutionContext executionContext, out bool skipArtifactsDownload, out Guid teamProjectId, out string artifactsWorkingFolder, out int releaseId)
         {
             Trace.Entering();
 
+            var directoryManager = HostContext.GetService<IReleaseDirectoryManager>();
+            releaseId = executionContext.Variables.GetInt(Constants.Variables.Release.ReleaseId) ?? 0;
             teamProjectId = executionContext.Variables.GetGuid(Constants.Variables.System.TeamProjectId) ?? Guid.Empty;
+            skipArtifactsDownload = executionContext.Variables.GetBoolean(Constants.Variables.Release.SkipArtifactsDownload) ?? false;
+            string releaseDefinitionName = executionContext.Variables.Get(Constants.Variables.Release.ReleaseDefinitionName);
 
-            string definitionType = executionContext.Variables.Get("Pipeline.DefinitionType");
-            if (string.Equals(definitionType, "Build", StringComparison.OrdinalIgnoreCase))
+            // TODO: Should we also write to log in executionContext.Output methods? so that we don't have to repeat writing into logs?
+            // Log these values here to debug scenarios where downloading the artifact fails.
+            executionContext.Output($"ReleaseId={releaseId}, TeamProjectId={teamProjectId}, ReleaseDefinitionName={releaseDefinitionName}");
+
+            var releaseDefinition = executionContext.Variables.Get(Constants.Variables.Release.ReleaseDefinitionId);
+            if (string.IsNullOrEmpty(releaseDefinition))
             {
-                pipelineInstanceId = executionContext.Variables.GetInt(WellKnownBuildVariables.BuildId) ?? 0;
-                string buildDefinitionName = executionContext.Variables.Get(WellKnownBuildVariables.DefinitionName);
-                executionContext.Output($"BuildId={pipelineInstanceId}, TeamProjectId={teamProjectId}, ReleaseDefinitionName={buildDefinitionName}");
-
-                skipArtifactsDownload = executionContext.Variables.GetBoolean(Constants.Variables.Release.SkipArtifactsDownload) ?? false;
-                string repositoryUrl = executionContext.Variables.Get(WellKnownBuildVariables.RepoUri);
-                var directoryManager = HostContext.GetService<IBuildDirectoryManager2>();
-                TrackingConfig2 trackingConfig = directoryManager.PrepareDirectory(executionContext, repositoryUrl);
-                string workDirectory = IOUtil.GetWorkPath(HostContext);
-                executionContext.Variables.Set(Constants.Variables.Agent.BuildDirectory, Path.Combine(workDirectory, trackingConfig.BuildDirectory));
-                executionContext.Variables.Set(Constants.Variables.System.ArtifactsDirectory, Path.Combine(workDirectory, trackingConfig.ArtifactsDirectory));
-                executionContext.Variables.Set(Constants.Variables.System.DefaultWorkingDirectory, Path.Combine(workDirectory, trackingConfig.SourcesDirectory));
-                executionContext.Variables.Set(Constants.Variables.Common.TestResultsDirectory, Path.Combine(workDirectory, trackingConfig.TestResultsDirectory));
-                executionContext.Variables.Set(Constants.Variables.Build.BinariesDirectory, Path.Combine(workDirectory, trackingConfig.BuildDirectory, Constants.Build.Path.BinariesDirectory));
-                executionContext.Variables.Set(Constants.Variables.Build.SourcesDirectory, Path.Combine(workDirectory, trackingConfig.SourcesDirectory));
-                executionContext.Variables.Set(Constants.Variables.Build.StagingDirectory, Path.Combine(workDirectory, trackingConfig.ArtifactsDirectory));
-                executionContext.Variables.Set(Constants.Variables.Build.ArtifactStagingDirectory, Path.Combine(workDirectory, trackingConfig.ArtifactsDirectory));
-                executionContext.Variables.Set(Constants.Variables.Build.RepoLocalPath, Path.Combine(workDirectory, trackingConfig.SourcesDirectory));
-
-                artifactsWorkingFolder = executionContext.Variables.Get(Constants.Variables.System.DefaultWorkingDirectory);
+                string pattern = new string(Path.GetInvalidFileNameChars()) + new string(Path.GetInvalidPathChars());
+                Regex regex = new Regex(string.Format("[{0}]", Regex.Escape(pattern)));
+                releaseDefinition = regex.Replace(releaseDefinitionName, string.Empty);
             }
-            else
-            {
-                var directoryManager = HostContext.GetService<IReleaseDirectoryManager>();
-                pipelineInstanceId = executionContext.Variables.GetInt(Constants.Variables.Release.ReleaseId) ?? 0;
-                skipArtifactsDownload = executionContext.Variables.GetBoolean(Constants.Variables.Release.SkipArtifactsDownload) ?? false;
-                string releaseDefinitionName = executionContext.Variables.Get(Constants.Variables.Release.ReleaseDefinitionName);
 
-                // TODO: Should we also write to log in executionContext.Output methods? so that we don't have to repeat writing into logs?
-                // Log these values here to debug scenarios where downloading the artifact fails.
-                executionContext.Output($"ReleaseId={pipelineInstanceId}, TeamProjectId={teamProjectId}, ReleaseDefinitionName={releaseDefinitionName}");
+            var releaseDefinitionToFolderMap = directoryManager.PrepareArtifactsDirectory(
+                IOUtil.GetWorkPath(HostContext),
+                executionContext.Variables.System_CollectionId,
+                executionContext.Variables.System_TeamProjectId.ToString(),
+                releaseDefinition);
 
-                var releaseDefinition = executionContext.Variables.Get(Constants.Variables.Release.ReleaseDefinitionId);
-                if (string.IsNullOrEmpty(releaseDefinition))
-                {
-                    string pattern = new string(Path.GetInvalidFileNameChars()) + new string(Path.GetInvalidPathChars());
-                    Regex regex = new Regex(string.Format("[{0}]", Regex.Escape(pattern)));
-                    releaseDefinition = regex.Replace(releaseDefinitionName, string.Empty);
-                }
-
-                var releaseDefinitionToFolderMap = directoryManager.PrepareArtifactsDirectory(
-                    IOUtil.GetWorkPath(HostContext),
-                    executionContext.Variables.System_CollectionId,
-                    executionContext.Variables.System_TeamProjectId.ToString(),
-                    releaseDefinition);
-
-                artifactsWorkingFolder = Path.Combine(
-                    IOUtil.GetWorkPath(HostContext),
-                    releaseDefinitionToFolderMap.ReleaseDirectory,
+            artifactsWorkingFolder = Path.Combine(
+                IOUtil.GetWorkPath(HostContext),
+                releaseDefinitionToFolderMap.ReleaseDirectory,
                 Constants.Release.Path.ArtifactsDirectory);
-                executionContext.Output($"Release folder: {artifactsWorkingFolder}");
+            executionContext.Output($"Release folder: {artifactsWorkingFolder}");
 
-                SetLocalVariables(executionContext, artifactsWorkingFolder);
+            SetLocalVariables(executionContext, artifactsWorkingFolder);
 
-                // Log the environment variables available after populating the variable service with our variables
-                LogEnvironmentVariables(executionContext);
+            // Log the environment variables available after populating the variable service with our variables
+            LogEnvironmentVariables(executionContext);
 
-                if (skipArtifactsDownload)
-                {
-                    // If this is the first time the agent is executing a task, we need to create the artifactsFolder
-                    // otherwise Process.StartWithCreateProcess() will fail with the error "The directory name is invalid"
-                    // because the working folder doesn't exist
-                    CreateWorkingFolderIfRequired(executionContext, artifactsWorkingFolder);
+            if (skipArtifactsDownload)
+            {
+                // If this is the first time the agent is executing a task, we need to create the artifactsFolder
+                // otherwise Process.StartWithCreateProcess() will fail with the error "The directory name is invalid"
+                // because the working folder doesn't exist
+                CreateWorkingFolderIfRequired(executionContext, artifactsWorkingFolder);
 
-                    // log the message that the user chose to skip artifact download and move on
-                    executionContext.Output(StringUtil.Loc("RMUserChoseToSkipArtifactDownload"));
-                    Trace.Info("Skipping artifact download based on the setting specified.");
-                }
+                // log the message that the user chose to skip artifact download and move on
+                executionContext.Output(StringUtil.Loc("RMUserChoseToSkipArtifactDownload"));
+                Trace.Info("Skipping artifact download based on the setting specified.");
             }
         }
 
