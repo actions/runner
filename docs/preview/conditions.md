@@ -35,7 +35,10 @@ Example: Run a task for all branches other than master
  - TODO: Wrap `Value` in single-quotes, unless already contains a single-quote? (required to enable `in`)
 * Custom
  - When custom is selected, a text area becomes visible.
- - Evaluation will implicitly wrap `and(success(), ...)` if agent.jobstatus variable or job status functions not referenced.
+ - ~~~Evaluation will implicitly wrap `and(success(), ...)` if agent.jobstatus variable or job status functions not referenced.~~~ Coalesce with `success()` when custom condition is selected and the text area is left empty.
+
+## Open issues
+* Need to determine whether variable macro expansion is supported within the expression. Matters for how rules are applied in the future w.r.t. inline expressions.
 
 ## Technical reference
 
@@ -44,20 +47,23 @@ Example: Run a task for all branches other than master
 #### Boolean
 `true` or `false` (ordinal case insensitive)
 
+#### Null
+Null is a special type that is returned from a dictionary miss only, e.g. (`variables('noSuch')`). There is no keyword for null.
+
 #### Number
 Starts with `-` `.` or `0-9`. Internally parses into .Net `Decimal` type using invariant culture.
 
 Cannot contain `,` since it is a separator.
 
-#### Version
-Starts with a number and contains two or three `.`. Internall parses into .Net `Version` type.
-
-Note, only one `.` is present, then the value would be parsed as a number.
-
 #### String
 Single-quoted, e.g. 'this is a string' or ''
 
 Literal single-quote escaped by two single quotes, e.g. 'all y''all'
+
+#### Version
+Starts with a number and contains two or three `.`. Internall parses into .Net `Version` type.
+
+Note, only one `.` is present, then the value would be parsed as a number.
 
 <!--#### Object
 Pre-defined complex objects are available depending on the context.
@@ -89,155 +95,158 @@ Examples for complex objects:
 * When an accessor is applied against a non-dictionary object (including null), null is returned.
  - This means that `someObject('noSuchKey').alsoNoSuchKey.alsoAlsoNoSuchKey` will simply return null.
 -->
-#### Null
-Null is a special type that is returned from a dictionary miss only, e.g. (`variables('noSuch')`). There is no keyword for null.
 
 ### Type Casting
 
-Based on the context, a value may be implicitly cast to another type.
+#### Conversion chart
+Detailed conversion rules are listed further below.
+
+|          |             | To          |             |             |             |             |             |             |
+| -------- | ----------- | ----------- | ----------- | ----------- | ----------- | ----------- | ----------- | ----------- |
+|          |             | **Array**   | **Boolean** | **Null**    | **Number**  | **Object**  | **String**  | **Version** |
+| **From** | **Array**   | -           | Yes         | -           | -           | -           | -           | -           |
+|          | **Boolean** | -           | -           | -           | Yes         | -           | Yes         | -           |
+|          | **Null**    | -           | Yes         | -           | Yes         | -           | Yes         | -           |
+|          | **Number**  | -           | Yes         | -           | -           | -           | Yes         | Partial     |
+|          | **Object**  | -           | Yes         | -           | -           | -           | -           | -           |
+|          | **String**  | -           | Yes         | Partial     | Partial     | -           | -           | Partial     |
+|          | **Version** | -           | Yes         | -           | -           | -           | Yes         | -           |
+
+Note, Array and Object not currently exposed via any expressions available on the agent
+
+#### Array to Boolean
+* =\> True
 
 #### Boolean to Number
 * False =\> 0
 * True =\> 1
 
-#### Boolean to Version
-* Not convertible
-
 #### Boolean to String
 * False =\> 'False'
 * True =\> 'True'
 
+#### Null to Boolean
+* =\> False
+
+#### Null to Number
+* =\> 0
+
+#### Null to String
+* =\> Empty string
+
 #### Number to Boolean
 * 0 =\> False
-* Otherwise True
+* Otherwise =\> True
 
 #### Number to Version
 * Must be greater than zero and must contain a non-zero decimal. Must be less than Int32.MaxValue (decimal component also).
 
 #### Number to String
-* Invariant-culture ToString
+* =\> Invariant-culture ToString
+
+#### Object to Boolean
+* =\> True
 
 #### String to Boolean
 * Empty string =\> False
-* Otherwise True
+* Otherwise =\> True
+
+#### String to Null
+* Empty string =\> Null
+* Otherwise not convertible
 
 #### String to Number
-* Empty string => 0
-* Otherwise parsed using invariant-culture and the following rules: AllowDecimalPoint | AllowLeadingSign | AllowLeadingWhite | AllowThousands | AllowTrailingWhite
+* Empty string =\> 0
+* Otherwise try-parse using invariant-culture and the following rules: AllowDecimalPoint | AllowLeadingSign | AllowLeadingWhite | AllowThousands | AllowTrailingWhite. If try-parse fails, then not convertible.
 
 #### String to Version
-* Must contain Major and Minor component at minimum.
+* Try-parse. Must contain Major and Minor component at minimum. If try-parse fails, then not convertible.
 
 #### Version to Boolean
-* True
-
-#### Version to Number
-* Not convertible
+* =\> True
 
 #### Version to String
 * Major.Minor
 * or Major.Minor.Build
 * or Major.Minor.Build.Revision
 
-<!--#### Object to Boolean
-* True
-
-#### Object to Number
-* Not convertible
-
-#### Object to Version
-* Not convertible
-
-#### Object to String
-* Empty string-->
-
-#### Null to Boolean
-* False
-
-#### Null to Number
-* 0
-
-#### Null to Version
-* Not convertible
-
-#### Null to String
-* Empty string
-
 ### Functions
 
 #### and
-* Evaluates true if all parameters are true
+* Evaluates True if all parameters are True
 * Min parameters: 2. Max parameters: N
-* Converts parameters to Boolean for evaluation
+* Casts parameters to Boolean for evaluation
 * Short-circuits after first False
 
 #### contains
-* Evaluates true if left parameter string contains right parameter
+* Evaluates True if left parameter String contains right parameter
 * Min parameters: 2. Max parameters: 2
-* Converts parameters to string for evaluation
+* Casts parameters to String for evaluation
 * Performs ordinal ignore-case comparison
 
 #### endsWith
-* Evaluates true if left parameter string ends with right parameter
+* Evaluates True if left parameter String ends with right parameter
 * Min parameters: 2. Max parameters: 2
-* Converts parameters to string for evaluation
+* Casts parameters to String for evaluation
 * Performs ordinal ignore-case comparison
 
 #### eq
-* Evaluates true if parameters are equal
+* Evaluates True if parameters are equal
 * Min parameters: 2. Max parameters: 2
 * Converts right parameter to match type of left parameter. Returns False if conversion fails.
-* Ordinal ignore-case comparison for strings
+* Ordinal ignore-case comparison for Strings
 
 #### ge
-* Evaluates true if left parameter is greater than or equal to the right parameter
-* Exactly 2 parameters
+* Evaluates True if left parameter is greater than or equal to the right parameter
+* Min parameters: 2. Max parameters: 2
 * Converts right parameter to match type of left parameter. Errors if conversion fails.
-* Ordinal ignore-case comparison for strings
+* Ordinal ignore-case comparison for Strings
 
 #### gt
-* Evaluates true if left parameter is greater than the right parameter
+* Evaluates True if left parameter is greater than the right parameter
 * Min parameters: 2. Max parameters: 2
 * Converts right parameter to match type of left parameter. Errors if conversion fails.
-* Ordinal ignore-case comparison for strings
+* Ordinal ignore-case comparison for Strings
 
 #### in
-* Evaluates true if left parameter is equal to any right parameter
+* Evaluates True if left parameter is equal to any right parameter
 * Min parameters: 1. Max parameters: N
-* Converts right parameters to match type of left parameter. Equality comparison evaluates false if conversion fails.
-* Ordinal ignore-case comparison for strings
+* Converts right parameters to match type of left parameter. Equality comparison evaluates False if conversion fails.
+* Ordinal ignore-case comparison for Strings
+* Short-circuits after first match
 
 #### le
-* Evaluates true if left parameter is less than or equal to the right parameter
+* Evaluates True if left parameter is less than or equal to the right parameter
 * Min parameters: 2. Max parameters: 2
 * Converts right parameter to match type of left parameter. Errors if conversion fails.
-* Ordinal ignore-case comparison for strings
+* Ordinal ignore-case comparison for Strings
 
 #### lt
-* Evaluates true if left parameter is less than the right parameter
+* Evaluates True if left parameter is less than the right parameter
 * Min parameters: 2. Max parameters: 2
 * Converts right parameter to match type of left parameter. Errors if conversion fails.
-* Ordinal ignore-case comparison for strings
+* Ordinal ignore-case comparison for Strings
 
 #### ne
-* Evaluates true if parameters are not equal
+* Evaluates True if parameters are not equal
 * Min parameters: 2. Max parameters: 2
 * Converts right parameter to match type of left parameter. Returns True if conversion fails.
-* Ordinal ignore-case comparison for strings
+* Ordinal ignore-case comparison for Strings
 
 #### not
-* Evaluates true if parameter is false
+* Evaluates True if parameter is False
 * Min parameters: 1. Max parameters: 1
 * Converts value to Boolean for evaluation
 
 #### notIn
-* Evaluates true if left parameter is not equal to any right parameter
+* Evaluates True if left parameter is not equal to any right parameter
 * Min parameters: 1. Max parameters: N
-* Converts right parameters to match type of left parameter. Equality comparison evaluates false if conversion fails.
-* Ordinal ignore-case comparison for strings
+* Converts right parameters to match type of left parameter. Equality comparison evaluates False if conversion fails.
+* Ordinal ignore-case comparison for Strings
+* Short-circuits after first match
 
 #### or
-* Evaluates true if any parameter is true
+* Evaluates True if any parameter is true
 * Min parameters: 2. Max parameters: N
 * Casts parameters to Boolean for evaluation
 * Short-circuits after first True
@@ -245,27 +254,27 @@ Based on the context, a value may be implicitly cast to another type.
 #### startsWith
 * Evaluates true if left parameter string starts with right parameter
 * Min parameters: 2. Max parameters: 2
-* Converts parameters to string for evaluation
+* Casts parameters to String for evaluation
 * Performs ordinal ignore-case comparison
 
 #### xor
-* Evaluates true if exactly one parameter is true
+* Evaluates True if exactly one parameter is True
 * Min parameters: 2. Max parameters: 2
 * Casts parameters to Boolean for evaluation
 
 #### variables
-* Returns a variable or null if not found. For example: `variables('Build.Reason')`
+* Returns a variable or Null if not found. For example: `variables('Build.Reason')`
 * Min parameters: 1. Max parameters: 1
 * Casts parameter to String for evaluation
 
 #### succeeded
-* Evaluates true when `in(variables('Agent.JobStatus'), 'Succeeded', 'PartiallySucceeded')`
+* Evaluates True when `in(variables('Agent.JobStatus'), 'Succeeded', 'PartiallySucceeded')`
 * Min parameters: 0. Max parameters: 0
 
 #### succeededOrFailed
-* Evaluates true when `in(variables('Agent.JobStatus'), 'Succeeded', 'PartiallySucceeded', 'Failed')`
+* Evaluates True when `in(variables('Agent.JobStatus'), 'Succeeded', 'PartiallySucceeded', 'Failed')`
 * Min parameters: 0. Max parameters: 0
 
 #### always
-* Evaluates true when `in(variables('Agent.JobStatus'), 'Succeeded', 'PartiallySucceeded', 'Failed', 'Canceled')`. Note, critical-failure may still prevent a task from running - e.g. get sources plugin failed.
+* Evaluates True when `in(variables('Agent.JobStatus'), 'Succeeded', 'PartiallySucceeded', 'Failed', 'Canceled')`. Note, critical-failure may still prevent a task from running - e.g. get sources plugin failed.
 * Min parameters: 0. Max parameters: 0
