@@ -35,7 +35,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
 
             // Trim the test assembly's root namespace from the test class's full name.
             _suiteName = testClass.GetType().FullName.Substring(
-                startIndex: typeof(Tests.Program).FullName.LastIndexOf(nameof(Program)));
+                startIndex: typeof(Tests.TestHostContext).FullName.LastIndexOf(nameof(TestHostContext)));
             _suiteName = _suiteName.Replace(".", "_");
 
             // Setup the trace manager.

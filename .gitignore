@@ -1,7 +1,5 @@
 **/bin
 **/obj
-**/project.json
-**/project.lock.json
 **/libs
 **/*.xproj
 **/*.xproj.user
@@ -14,6 +12,8 @@ node_modules
 _downloads
 _layout
 _package
+_dotnetsdk
+TestResults
 
 #generated
 src/Microsoft.VisualStudio.Services.Agent/BuildConstants.cs

@@ -4,6 +4,9 @@ DEV_SUBCMD=$2
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LAYOUT_DIR="$SCRIPT_DIR/../_layout"
 DOWNLOAD_DIR="$SCRIPT_DIR/../_downloads"
+DOTNETSDK_ROOT="$SCRIPT_DIR/../_dotnetsdk"
+DOTNETSDK_VERSION="1.0.0-rc4-004771"
+DOTNETSDK_INSTALLDIR="$DOTNETSDK_ROOT/$DOTNETSDK_VERSION"
 
 pushd $SCRIPT_DIR
 
@@ -20,10 +23,30 @@ fi
 
 # allow for #if defs in code
 define_os='OS_WINDOWS'
+runtime_id='win7-x64'
 if [[ "$PLATFORM" == 'linux' ]]; then
    define_os='OS_LINUX'
+   if [ -e /etc/os-release ]; then
+        . /etc/os-release
+        case "$ID.$VERSION_ID" in
+            "centos.7")
+                runtime_id='centos.7-x64';;
+            "rhel.7.2")
+                runtime_id='rhel.7.2-x64';;
+            "ubuntu.14.04")
+                runtime_id='ubuntu.14.04-x64';;
+            "ubuntu.16.04")
+                runtime_id='ubuntu.16.04-x64';;
+        esac
+        if [[ ("$runtime_id" == "win7-x64") ]]; then
+            failed "Can not determine runtime identifier from '$ID.$VERSION_ID'"
+        fi
+    else
+        failed "Can not read os information from /etc/os-release"
+    fi
 elif [[ "$PLATFORM" == 'darwin' ]]; then
    define_os='OS_OSX'
+   runtime_id='osx.10.11-x64'
 fi
 
 build_dirs=("Microsoft.VisualStudio.Services.Agent" "Agent.Listener" "Agent.Worker" "Test")
@@ -66,55 +89,57 @@ function rundotnet ()
 {
     dotnet_cmd=${1}
     err_handle=${2:-failed}
-    run_dirs=("${!3}")
+
+    if [[ ( "${!3}" == "" ) ]]; then
+        run_dirs=("${3}")
+    else 
+        run_dirs=("${!3}")
+    fi
 
     heading ${1} ...
 
     cfg_args=""
-    if [[ ("$dotnet_cmd" == "build") || ("$dotnet_cmd" == "publish") ]]; then
+    msbuild_args=""
+    runtime_args=""
+    if [[ ("$dotnet_cmd" == "build") ]]; then
         cfg_args="-c ${BUILD_CONFIG}"
-        echo "${cfg_args}"
+        if [[ "$define_os" == 'OS_WINDOWS' ]]; then
+            msbuild_args="//p:OSConstant=${define_os}"
+        else
+            msbuild_args="/p:OSConstant=${define_os}"
+        fi    
     fi
-    
+
+    if [[ ("$dotnet_cmd" == "publish") ]]; then
+        cfg_args="-c ${BUILD_CONFIG}"
+        runtime_args="--runtime ${runtime_id}"        
+        if [[ "$define_os" == 'OS_WINDOWS' ]]; then
+            msbuild_args="//p:OSConstant=${define_os}"
+        else
+            msbuild_args="/p:OSConstant=${define_os}"
+        fi    
+    fi
+
+    echo "${cfg_args}"
+    echo "${msbuild_args}"
+    echo "${runtime_args}"
+
     for dir_name in ${run_dirs[@]}
     do
         echo
         echo -- Running: dotnet $dotnet_cmd $dir_name --
         echo
-        dotnet ${dotnet_cmd} $dir_name $cfg_args || ${err_handle} "${dotnet_cmd} $dir_name"
+        dotnet ${dotnet_cmd} $runtime_args $dir_name $cfg_args $msbuild_args|| ${err_handle} "${dotnet_cmd} $dir_name"
     done   
 }
 
 function generateConstant()
 {
-    # we are trying to get the runtime constant provide by dotnet cli
-    # the only way to get the constant is run dotnet publish on a project, and the constant is in the output folder path
-    # so we need dotnet publish 'Microsoft.VisualStudio.Services.Agent' to get the runtime constant
-    # however, the 'Microsoft.VisualStudio.Services.Agent' is take dependency on those generate constants
-    # we need copy the generate file template, so we won't get complie error
-    # after we get generate constants, we will overwrite the generated file
-    cat "Misc/BuildConstants.ch" > "Microsoft.VisualStudio.Services.Agent/BuildConstants.cs"
-    rundotnet publish failed build_dirs[0]
-    
-    # get the runtime we are build for
-    # if exist Agent.Listener/bin/${BUILD_CONFIG}/netcoreapp1.0
-    build_folder="Microsoft.VisualStudio.Services.Agent/bin/${BUILD_CONFIG}/netcoreapp1.0"
-    if [ ! -d "${build_folder}" ]; then
-        echo "You must build first.  Expecting to find ${build_folder}"
-    fi
-
-    pushd "${build_folder}" > /dev/null
-    pwd
-    runtime_folder=`ls -d */`
-    popd > /dev/null
-
     commit_token="_COMMIT_HASH_"
     package_token="_PACKAGE_NAME_"
     commit_hash=`git rev-parse HEAD` || failed "git commit hash"
-    package_name=${runtime_folder%/}
-    echo "Building ${commit_hash} --- ${package_name}"
-
-    sed -e "s/$commit_token/$commit_hash/g" -e "s/$package_token/$package_name/g" "Misc/BuildConstants.ch" > "Microsoft.VisualStudio.Services.Agent/BuildConstants.cs"
+    echo "Building ${commit_hash} --- ${runtime_id}"
+    sed -e "s/$commit_token/$commit_hash/g" -e "s/$package_token/$runtime_id/g" "Misc/BuildConstants.ch" > "Microsoft.VisualStudio.Services.Agent/BuildConstants.cs"
 }
 
 function build ()
@@ -140,13 +165,6 @@ function build ()
 
 function restore ()
 {
-    echo Generating project.json files ...
-    for dir_name in ${build_dirs[@]}
-    do
-        rm $dir_name/project.json
-        sed -e "s/OS_WINDOWS/$define_os/g" ./$dir_name/_project.json > ./$dir_name/project.json
-    done
-
     rundotnet restore warn build_dirs[@]
 }
 
@@ -169,7 +187,7 @@ function publish ()
 function copyBin ()
 {
     echo Copying ${1}
-    pushd ${1}/bin/${BUILD_CONFIG}/netcoreapp1.0 > /dev/null
+    pushd ${1}/bin/${BUILD_CONFIG}/netcoreapp1.1 > /dev/null
 
     source_dir=$(ls -d */)publish/
     if [ ! -d "$source_dir" ]; then
@@ -232,9 +250,9 @@ function update ()
     for update_dir in ${update_dirs[@]}
     do
         echo Updating ${update_dir}
-        dotnet build ${update_dir} || failed "failed build"
+        rundotnet build failed ${update_dir}
         echo Publishing ${update_dir}
-        dotnet publish ${update_dir} || failed "failed publish"
+        rundotnet publish failed ${update_dir}
         copyBin ${update_dir}
     done
 }
@@ -246,13 +264,10 @@ function runtest ()
     fi
 
     heading Testing ...
-    dotnet publish Test || failed "publishing Test"
-    rm -Rf Test/bin/${BUILD_CONFIG}/netcoreapp1.0/_diag
-    pushd Test/bin/${BUILD_CONFIG}/netcoreapp1.0 > /dev/null
-    pushd $(ls -d */ | grep -v '_')publish > /dev/null
-    ./corerun xunit.console.netcore.exe Test.dll -xml testresults.xml || failed "failed tests"
-    popd > /dev/null
-    popd > /dev/null
+    pushd Test> /dev/null    
+    export VSTS_AGENT_SRC_DIR=${SCRIPT_DIR}
+    dotnet test --no-build --logger:trx || failed "failed tests"
+    popd > /dev/null    
 }
 
 function validate ()
@@ -273,8 +288,8 @@ function buildtest ()
 function package ()
 {
     # get the runtime we are build for
-    # if exist Agent.Listener/bin/${BUILD_CONFIG}/netcoreapp1.0
-    build_folder="Agent.Listener/bin/${BUILD_CONFIG}/netcoreapp1.0"
+    # if exist Agent.Listener/bin/${BUILD_CONFIG}/netcoreapp1.1
+    build_folder="Agent.Listener/bin/${BUILD_CONFIG}/netcoreapp1.1"
     if [ ! -d "${build_folder}" ]; then
         echo "You must build first.  Expecting to find ${build_folder}"
     fi
@@ -315,6 +330,37 @@ function package ()
 
     popd > /dev/null
 }
+
+if [[ (! -d "${DOTNETSDK_INSTALLDIR}") || (! -e "${DOTNETSDK_INSTALLDIR}/.${DOTNETSDK_VERSION}") || (! -e "${DOTNETSDK_INSTALLDIR}/dotnet") ]]; then
+    
+    # Download dotnet SDK to ../_dotnetsdk directory
+    heading "Ensure Dotnet SDK"
+
+    # _dotnetsdk
+    #           \1.0.x
+    #                            \dotnet
+    #                            \.1.0.x
+    echo "Download dotnetsdk into ${DOTNETSDK_INSTALLDIR}"
+    rm -Rf ${DOTNETSDK_DIR}
+
+    # run dotnet-install.ps1 on windows, dotnet-install.sh on linux
+    if [[ ("$PLATFORM" == "windows") ]]; then
+        echo "Convert ${DOTNETSDK_INSTALLDIR} to Windows style path"
+        sdkinstallwindow_path=${DOTNETSDK_INSTALLDIR:1}
+        sdkinstallwindow_path=${sdkinstallwindow_path:0:1}:${sdkinstallwindow_path:1}
+        powershell -NoLogo -Sta -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -Command "& \"./Misc/dotnet-install.ps1\" -Version ${DOTNETSDK_VERSION} -InstallDir \"${sdkinstallwindow_path}\" -NoPath; exit $LastExitCode;" || checkRC dotnet-install.ps1
+    else
+        bash ./Misc/dotnet-install.sh --version ${DOTNETSDK_VERSION} --install-dir ${DOTNETSDK_INSTALLDIR} --no-path || checkRC dotnet-install.sh
+    fi
+
+    echo "${DOTNETSDK_VERSION}" > ${DOTNETSDK_INSTALLDIR}/.${DOTNETSDK_VERSION}
+fi
+
+echo "Prepend ${DOTNETSDK_INSTALLDIR} to %PATH%"
+export PATH=${DOTNETSDK_INSTALLDIR}:$PATH
+
+heading "Dotnet SDK Version"
+dotnet --version
 
 case $DEV_CMD in
    "build") build;;

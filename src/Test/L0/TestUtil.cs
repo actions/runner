@@ -1,6 +1,7 @@
 using Microsoft.VisualStudio.Services.Agent.Util;
 using System.IO;
 using Xunit;
+using System;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests
 {
@@ -21,14 +22,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
 
         public static string GetSrcPath()
         {
-            string srcDir =
-                Path.GetDirectoryName(
-                    Path.GetDirectoryName(
-                        Path.GetDirectoryName(
+            string srcDir = Environment.GetEnvironmentVariable("VSTS_AGENT_SRC_DIR");
+            if (String.IsNullOrEmpty(srcDir))
+            {
+                srcDir = Path.GetDirectoryName(
                             Path.GetDirectoryName(
                                 Path.GetDirectoryName(
                                     Path.GetDirectoryName(
-                                        IOUtil.GetBinPath()))))));
+                                        Path.GetDirectoryName(
+                                            Path.GetDirectoryName(
+                                                IOUtil.GetBinPath()))))));
+            }
             Assert.Equal(Src, Path.GetFileName(srcDir));
             return srcDir;
         }
