@@ -58,6 +58,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                     Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.Build.BuildJobExtension, Agent.Worker");
                     Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.Release.ReleaseJobExtension, Agent.Worker");
                     Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.Release.DeploymentJobExtension, Agent.Worker");
+                    Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.Maintenance.MaintenanceJobExtension, Agent.Worker");
                     break;
                 // Worker command extensions.
                 case "Microsoft.VisualStudio.Services.Agent.Worker.IWorkerCommandExtension":
@@ -104,6 +105,10 @@ namespace Microsoft.VisualStudio.Services.Agent
                 case "Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage.ICodeCoverageSummaryReader":
                     Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage.JaCoCoSummaryReader, Agent.Worker");
                     Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage.CoberturaSummaryReader, Agent.Worker");
+                    break;
+                // Worker maintenance service provider extensions.
+                case "Microsoft.VisualStudio.Services.Agent.Worker.Maintenance.IMaintenanceServiceProvider":
+                    Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.Build.BuildDirectoryManager, Agent.Worker");
                     break;
                 default:
                     // This should never happen.

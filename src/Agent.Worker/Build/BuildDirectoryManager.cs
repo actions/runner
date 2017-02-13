@@ -3,6 +3,7 @@ using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
 using System.IO;
 using Microsoft.TeamFoundation.Build.WebApi;
+using Microsoft.VisualStudio.Services.Agent.Worker.Maintenance;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 {
@@ -20,8 +21,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             bool deleteExisting);
     }
 
-    public sealed class BuildDirectoryManager : AgentService, IBuildDirectoryManager
+    public sealed class BuildDirectoryManager : AgentService, IBuildDirectoryManager, IMaintenanceServiceProvider
     {
+        public string MaintenanceDescription => StringUtil.Loc("DeleteUnusedBuildDir");
+        public Type ExtensionType => typeof(IMaintenanceServiceProvider);
+
         public TrackingConfig PrepareDirectory(
             IExecutionContext executionContext,
             ServiceEndpoint endpoint,
@@ -122,6 +126,30 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 deleteExisting: cleanOption == BuildCleanOption.Source);
 
             return newConfig;
+        }
+
+        public void RunMaintenanceOperation(IExecutionContext executionContext)
+        {
+            Trace.Entering();
+            ArgUtil.NotNull(executionContext, nameof(executionContext));
+            var trackingManager = HostContext.GetService<ITrackingManager>();
+            int staleBuildDirThreshold = executionContext.Variables.GetInt("maintenance.deleteworkingdirectory.daysthreshold") ?? 0;
+            if (staleBuildDirThreshold > 0)
+            {
+                // scan unused build directories
+                executionContext.Output(StringUtil.Loc("DiscoverBuildDir", staleBuildDirThreshold));
+                trackingManager.MarkExpiredForGarbageCollection(executionContext, TimeSpan.FromDays(staleBuildDirThreshold));
+            }
+            else
+            {
+                executionContext.Output(StringUtil.Loc("GCBuildDirNotEnabled"));
+                return;
+            }
+
+            executionContext.Output(StringUtil.Loc("GCBuildDir"));
+
+            // delete unused build directories
+            trackingManager.DisposeCollectedGarbage(executionContext);
         }
 
         private TrackingConfig ConvertToNewFormat(
