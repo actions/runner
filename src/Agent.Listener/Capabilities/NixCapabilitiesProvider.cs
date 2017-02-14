@@ -39,6 +39,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Capabilities
                     Path.Combine(Environment.GetEnvironmentVariable("HOME") ?? string.Empty, "Library/Developer/Xamarin/android-sdk-macosx/tools/android"),
                 });
             builder.Check(name: "ant");
+            builder.Check(name: "AzureGuestAgent", fileName: "waagent");
             builder.Check(name: "bundler", fileName: "bundle");
             builder.Check(name: "clang");
             builder.Check(name: "cmake");
