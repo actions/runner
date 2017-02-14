@@ -97,6 +97,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                     public static readonly string Unattended = "unattended";
                     public static readonly string Version = "version";
                     public static readonly string MachineGroup = "machinegroup";
+                    public static readonly string DeploymentGroup = "deploymentgroup";
                 }
             }
 

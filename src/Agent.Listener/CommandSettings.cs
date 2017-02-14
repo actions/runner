@@ -25,6 +25,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             Constants.Agent.CommandLine.Flags.AcceptTeeEula,
             Constants.Agent.CommandLine.Flags.AddMachineGroupTags,
             Constants.Agent.CommandLine.Flags.Commit,
+            Constants.Agent.CommandLine.Flags.DeploymentGroup,
             Constants.Agent.CommandLine.Flags.Help,
             Constants.Agent.CommandLine.Flags.MachineGroup,
             Constants.Agent.CommandLine.Flags.Replace,
@@ -62,7 +63,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         public bool Help => TestFlag(Constants.Agent.CommandLine.Flags.Help);
         public bool Unattended => TestFlag(Constants.Agent.CommandLine.Flags.Unattended);
         public bool Version => TestFlag(Constants.Agent.CommandLine.Flags.Version);
-        public bool MachineGroup => TestFlag(Constants.Agent.CommandLine.Flags.MachineGroup);
+        public bool MachineGroup => TestFlag(Constants.Agent.CommandLine.Flags.MachineGroup) || TestFlag(Constants.Agent.CommandLine.Flags.DeploymentGroup);
 
         // Constructor.
         public CommandSettings(IHostContext context, string[] args)
