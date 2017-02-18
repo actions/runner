@@ -54,6 +54,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
         // Functions
         WellKnownFunction,
         ExtensionFunction,
+        ExtensionNamedValue,
 
         Unrecognized,
     }

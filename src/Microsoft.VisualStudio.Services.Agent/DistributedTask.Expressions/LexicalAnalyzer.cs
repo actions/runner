@@ -16,7 +16,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
 {
     internal sealed class LexicalAnalyzer
     {
-        public LexicalAnalyzer(String expression, ITraceWriter trace, IEnumerable<String> extensionNames)
+        public LexicalAnalyzer(String expression, ITraceWriter trace, IEnumerable<String> namedValues, IEnumerable<String> functions)
         {
             if (trace == null)
             {
@@ -25,7 +25,8 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
 
             m_expression = expression;
             m_trace = trace;
-            m_extensionNames = new HashSet<String>(extensionNames ?? new String[0], StringComparer.OrdinalIgnoreCase);
+            m_extensionNamedValues = new HashSet<String>(namedValues ?? new String[0], StringComparer.OrdinalIgnoreCase);
+            m_extensionFunctions = new HashSet<String>(functions ?? new String[0], StringComparer.OrdinalIgnoreCase);
         }
 
         public Boolean TryGetNextToken(ref Token token)
@@ -173,8 +174,13 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
                 {
                     return new Token(TokenKind.WellKnownFunction, str, startIndex);
                 }
+                // Extension value
+                else if (m_extensionNamedValues.Contains(str))
+                {
+                    return new Token(TokenKind.ExtensionNamedValue, str, startIndex);
+                }
                 // Extension function
-                else if (m_extensionNames.Contains(str))
+                else if (m_extensionFunctions.Contains(str))
                 {
                     return new Token(TokenKind.ExtensionFunction, str, startIndex);
                 }
@@ -247,7 +253,8 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
         private static readonly Regex s_keywordRegex = new Regex("^[a-zA-Z_][a-zA-Z0-9_]*$", RegexOptions.None);
         private readonly String m_expression; // Raw expression string.
         private readonly ITraceWriter m_trace;
-        private readonly HashSet<String> m_extensionNames;
+        private readonly HashSet<String> m_extensionFunctions;
+        private readonly HashSet<String> m_extensionNamedValues;
         private Int32 m_index; // Index of raw condition string.
         private Token m_lastToken;
     }

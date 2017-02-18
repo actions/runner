@@ -13,9 +13,9 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
 {
     public sealed class Parser
     {
-        public INode CreateTree(String expression, ITraceWriter trace, IEnumerable<IFunctionInfo> extensions)
+        public INode CreateTree(String expression, ITraceWriter trace, IEnumerable<INamedValueInfo> namedValues, IEnumerable<IFunctionInfo> functions)
         {
-            var context = new ParseContext(expression, trace, extensions);
+            var context = new ParseContext(expression, trace, namedValues, functions);
             context.Trace.Verbose($"Parsing [{expression}]");
             while (TryGetNextToken(context))
             {
@@ -49,6 +49,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
                     case TokenKind.Number:
                     case TokenKind.Version:
                     case TokenKind.String:
+                    case TokenKind.ExtensionNamedValue:
                         HandleValue(context);
                         break;
 
@@ -117,6 +118,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
                     // Function or punctuation
                     case TokenKind.WellKnownFunction:
                     case TokenKind.ExtensionFunction:
+                    case TokenKind.ExtensionNamedValue:
                     case TokenKind.StartIndex:
                     case TokenKind.StartParameter:
                     case TokenKind.EndIndex:
@@ -139,7 +141,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
         {
             // Validate follows ")", "]", or a property name.
             if (context.LastToken == null ||
-                (context.LastToken.Kind != TokenKind.EndParameter && context.LastToken.Kind != TokenKind.EndIndex && context.LastToken.Kind != TokenKind.PropertyName))
+                (context.LastToken.Kind != TokenKind.EndParameter && context.LastToken.Kind != TokenKind.EndIndex && context.LastToken.Kind != TokenKind.PropertyName && context.LastToken.Kind != TokenKind.ExtensionNamedValue))
             {
                 throw new ParseException(ParseExceptionKind.UnexpectedSymbol, context.Token, context.Expression);
             }
@@ -170,7 +172,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
         {
             // Validate follows ")", "]", or a property name.
             if (context.LastToken == null ||
-                (context.LastToken.Kind != TokenKind.EndParameter && context.LastToken.Kind != TokenKind.EndIndex && context.LastToken.Kind != TokenKind.PropertyName))
+                (context.LastToken.Kind != TokenKind.EndParameter && context.LastToken.Kind != TokenKind.EndIndex && context.LastToken.Kind != TokenKind.PropertyName && context.LastToken.Kind != TokenKind.ExtensionNamedValue))
             {
                 throw new ParseException(ParseExceptionKind.UnexpectedSymbol, context.Token, context.Expression);
             }
@@ -206,7 +208,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
 
             // Add the property name to the indexer, as a string.
             String propertyName = context.Token.RawValue;
-            indexer.AddParameter(new LeafNode(propertyName));
+            indexer.AddParameter(new LiteralValueNode(propertyName));
         }
 
         private static void HandleEndParameter(ParseContext context)
@@ -247,8 +249,20 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
                 throw new ParseException(ParseExceptionKind.UnexpectedSymbol, context.Token, context.Expression);
             }
 
+            // Create the node.
+            Node node;
+            switch (context.Token.Kind)
+            {
+                case TokenKind.ExtensionNamedValue:
+                    String name = context.Token.RawValue;
+                    node = context.ExtensionNamedValues[name].CreateNode();
+                    break;
+                default:
+                    node = new LiteralValueNode(context.Token.ParsedValue);
+                    break;
+            }
+
             // Update the tree.
-            var node = new LeafNode(context.Token.ParsedValue);
             if (context.Root == null)
             {
                 context.Root = node;
@@ -298,8 +312,6 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
                     // Should never reach here.
                     throw new NotSupportedException($"Unexpected function token name: '{context.Token.Kind}'");
             }
-
-            node.Name = name;
 
             // Update the tree.
             if (context.Root == null)
@@ -359,13 +371,14 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
             public readonly Stack<ContainerInfo> Containers = new Stack<ContainerInfo>();
             public readonly String Expression;
             public readonly Dictionary<String, IFunctionInfo> ExtensionFunctions = new Dictionary<String, IFunctionInfo>(StringComparer.OrdinalIgnoreCase);
+            public readonly Dictionary<String, INamedValueInfo> ExtensionNamedValues = new Dictionary<String, INamedValueInfo>(StringComparer.OrdinalIgnoreCase);
             public readonly LexicalAnalyzer Lexer;
             public readonly ITraceWriter Trace;
             public Token Token;
             public Token LastToken;
             public Node Root;
 
-            public ParseContext(String expression, ITraceWriter trace, IEnumerable<IFunctionInfo> extensions)
+            public ParseContext(String expression, ITraceWriter trace, IEnumerable<INamedValueInfo> namedValues, IEnumerable<IFunctionInfo> functions)
             {
                 if (trace == null)
                 {
@@ -374,13 +387,40 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
 
                 Expression = expression ?? String.Empty;
                 Trace = trace;
-                foreach (IFunctionInfo extension in (extensions ?? new IFunctionInfo[0]))
+                foreach (INamedValueInfo namedValueInfo in (namedValues ?? new INamedValueInfo[0]))
                 {
-                    ExtensionFunctions.Add(extension.Name, extension);
+                    ExtensionNamedValues.Add(namedValueInfo.Name, namedValueInfo);
                 }
 
-                Lexer = new LexicalAnalyzer(Expression, trace, ExtensionFunctions.Keys);
+                foreach (IFunctionInfo functionInfo in (functions ?? new IFunctionInfo[0]))
+                {
+                    ExtensionFunctions.Add(functionInfo.Name, functionInfo);
+                }
+
+                Lexer = new LexicalAnalyzer(Expression, trace, namedValues: ExtensionNamedValues.Keys, functions: ExtensionFunctions.Keys);
             }
+        }
+    }
+
+    public interface INamedValueInfo
+    {
+        String Name { get; }
+        NamedValueNode CreateNode();
+    }
+
+    public class NamedValueInfo<T> : INamedValueInfo
+        where T : NamedValueNode, new()
+    {
+        public NamedValueInfo(String name)
+        {
+            Name = name;
+        }
+
+        public String Name { get; }
+
+        public NamedValueNode CreateNode()
+        {
+            return new T();
         }
     }
 

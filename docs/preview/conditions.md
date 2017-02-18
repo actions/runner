@@ -14,14 +14,12 @@ To improve on the scenario of having a single build definition that builds multi
 The UI can provide for an editor but the expression should be stored in a simple syntax that will be easily compatible with config as code scenarios.  The syntax will simply be a nested set of functions that are evaluated starting with the inner function and working its way out.  All expressions must ultimately result in a boolean. At a later date we could easily add additional evaluators to the expression for string parsing and other operations. 
 
 Example: Run a step only for the master branch
-`eq(variables('Source.BranchName'), 'master')`
+`eq(variables['Source.BranchName'], 'master')`
 
 Example: Run a task for all branches other than master
-`ne(variables('Source.BranchName'), 'master')`
+`ne(variables['Source.BranchName'], 'master')`
 
 `succeeded()`
-
-<!--`capabilities('node')`-->
 
 ## UX notes
 `Runs on` dropdown with following options:
@@ -48,7 +46,7 @@ Example: Run a task for all branches other than master
 `true` or `false` (ordinal case insensitive)
 
 #### Null
-Null is a special type that is returned from a dictionary miss only, e.g. (`variables('noSuch')`). There is no keyword for null.
+Null is a special type that is returned from a dictionary miss only, e.g. (`variables['noSuch']`). There is no keyword for null.
 
 #### Number
 Starts with `-` `.` or `0-9`. Internally parses into .Net `Decimal` type using invariant culture.
@@ -65,36 +63,26 @@ Starts with a number and contains two or three `.`. Internall parses into .Net `
 
 Note, only one `.` is present, then the value would be parsed as a number.
 
-<!--#### Object
-Pre-defined complex objects are available depending on the context.
+#### Object
+Pre-defined complex objects are available depending on the context. On the agent, `variables` is defined as an object that can be indexed into.
 
-##### Within agent context
-A `variables` function is available. The variables function contains String values only. See `variables` function technical reference below.
+### Indexing rules
 
-##### Within server context
-TODO: need more details on this section
-
-A `capabilities` function is available. The capabilities dictionary contains String values only.
-
-Other complex orchestration-state object are available (String=\>Any), which may contain nested objects). Note, `Any` may be one of any supported type: Boolean, Number, Version, String, or Dictionary(String=\>Any)
-
-##### Syntax to access values
-The first level value will always be accessed using function syntax. For example: `variables('Agent.JobStatus')`
-
-Beyond the first level, two syntaxes are supported for accessing further levels.
-* Index syntax - `someComplexObject('firstLevel')['secondLevel']`
-* Property dereference syntax - `someComplexObject('firstLevel').secondLevel`
- - In order to use the property dereference syntax, the property name must adhere to the regex `^[a-zA-Z_][a-zA-Z0-9_]*$`
+#### Syntax to access values
+Two syntaxes are supported for accessing members of an object.
+* Index syntax - `someComplexObject['someKey']`
+* Property dereference syntax - `someComplexObject.someKey`
+ - In order to use the property syntax, the property name must adhere to the regex `^[a-zA-Z_][a-zA-Z0-9_]*$`
 
 Examples for complex objects:
-* Chaining accessors: `someComplexObject('firstLevel')['secondLevel'].thirdLevel`
-* Nested evaluation: `someComplexObject(anotherObject('someProperty'))`
+* Chaining accessors: `someComplexObject['firstLevel'].secondLevel`
+* Nested evaluation: `someComplexObject[anotherObject['someProperty']]`
 
-##### Accessor rules
-* When an accessor is applied against a dictionary and the key does not exist, null is returned.
-* When an accessor is applied against a non-dictionary object (including null), null is returned.
- - This means that `someObject('noSuchKey').alsoNoSuchKey.alsoAlsoNoSuchKey` will simply return null.
--->
+#### Accessor rules
+* For Objects, when the key does not exist, Null is returned.
+* For Objects, if the key is not a String an attempt is made to type-cast the key to a String first. If the type-cast, then Null is returned.
+* For non-indexable values, Null is returned.
+ - This means that `someObject.noSuchKey.noSuchKey2.noSuchKey3` will simply return null.
 
 ### Type Casting
 
@@ -112,7 +100,7 @@ Detailed conversion rules are listed further below.
 |          | **String**  | -           | Yes         | Partial     | Partial     | -           | -           | Partial     |
 |          | **Version** | -           | Yes         | -           | -           | -           | Yes         | -           |
 
-Note, Array and Object not currently exposed via any expressions available on the agent
+Note, Array is not currently exposed via any expressions available on the agent
 
 #### Array to Boolean
 * =\> True
@@ -169,6 +157,11 @@ Note, Array and Object not currently exposed via any expressions available on th
 * Major.Minor
 * or Major.Minor.Build
 * or Major.Minor.Build.Revision
+
+### Named Values
+
+#### variables
+* Alias to reference the variables object. For example: `variables['Build.Reason']`
 
 ### Functions
 
@@ -261,11 +254,6 @@ Note, Array and Object not currently exposed via any expressions available on th
 * Evaluates True if exactly one parameter is True
 * Min parameters: 2. Max parameters: 2
 * Casts parameters to Boolean for evaluation
-
-#### variables
-* Returns a variable or Null if not found. For example: `variables('Build.Reason')`
-* Min parameters: 1. Max parameters: 1
-* Casts parameter to String for evaluation
 
 #### succeeded
 * Evaluates True when `in(variables('Agent.JobStatus'), 'Succeeded', 'PartiallySucceeded')`

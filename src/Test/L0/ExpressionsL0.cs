@@ -70,18 +70,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 trace.Info($"****************************************");
                 trace.Info($"From Objects/Arrays");
                 trace.Info($"****************************************");
-                Assert.Equal(true, EvaluateBoolean(hc, "testData()", new IFunctionInfo[] { new FunctionInfo<TestDataNode>("testData", 0, 0) }, new object()));
-                Assert.Equal(true, EvaluateBoolean(hc, "testData()", new IFunctionInfo[] { new FunctionInfo<TestDataNode>("testData", 0, 0) }, new object[0]));
-                Assert.Equal(true, EvaluateBoolean(hc, "testData()", new IFunctionInfo[] { new FunctionInfo<TestDataNode>("testData", 0, 0) }, new int[0]));
-                Assert.Equal(true, EvaluateBoolean(hc, "testData()", new IFunctionInfo[] { new FunctionInfo<TestDataNode>("testData", 0, 0) }, new Dictionary<string, object>()));
-                Assert.Equal(true, EvaluateBoolean(hc, "testData()", new IFunctionInfo[] { new FunctionInfo<TestDataNode>("testData", 0, 0) }, new JArray()));
-                Assert.Equal(true, EvaluateBoolean(hc, "testData()", new IFunctionInfo[] { new FunctionInfo<TestDataNode>("testData", 0, 0) }, new JObject()));
+                Assert.Equal(true, EvaluateBoolean(hc, "testFunction()", functions: new IFunctionInfo[] { new FunctionInfo<TestFunctionNode>("testFunction", 0, 0) }, state: new object()));
+                Assert.Equal(true, EvaluateBoolean(hc, "testFunction()", functions: new IFunctionInfo[] { new FunctionInfo<TestFunctionNode>("testFunction", 0, 0) }, state: new object[0]));
+                Assert.Equal(true, EvaluateBoolean(hc, "testFunction()", functions: new IFunctionInfo[] { new FunctionInfo<TestFunctionNode>("testFunction", 0, 0) }, state: new int[0]));
+                Assert.Equal(true, EvaluateBoolean(hc, "testFunction()", functions: new IFunctionInfo[] { new FunctionInfo<TestFunctionNode>("testFunction", 0, 0) }, state: new Dictionary<string, object>()));
+                Assert.Equal(true, EvaluateBoolean(hc, "testFunction()", functions: new IFunctionInfo[] { new FunctionInfo<TestFunctionNode>("testFunction", 0, 0) }, state: new JArray()));
+                Assert.Equal(true, EvaluateBoolean(hc, "testFunction()", functions: new IFunctionInfo[] { new FunctionInfo<TestFunctionNode>("testFunction", 0, 0) }, state: new JObject()));
 
                 // Null
                 trace.Info($"****************************************");
                 trace.Info($"From Null");
                 trace.Info($"****************************************");
-                Assert.Equal(false, EvaluateBoolean(hc, "testData()", new IFunctionInfo[] { new FunctionInfo<TestDataNode>("testData", 0, 0) }, null));
+                Assert.Equal(false, EvaluateBoolean(hc, "testFunction()", functions: new IFunctionInfo[] { new FunctionInfo<TestFunctionNode>("testFunction", 0, 0) }, state: null));
             }
         }
 
@@ -121,20 +121,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 trace.Info($"****************************************");
                 trace.Info($"From Objects/Arrays");
                 trace.Info($"****************************************");
-                Assert.Equal(true, EvaluateBoolean(hc, "ne(0, testData())", new IFunctionInfo[] { new FunctionInfo<TestDataNode>("testData", 0, 0) }, new object()));
-                Assert.Equal(true, EvaluateBoolean(hc, "ne(0, testData())", new IFunctionInfo[] { new FunctionInfo<TestDataNode>("testData", 0, 0) }, new object[0]));
-                Assert.Equal(true, EvaluateBoolean(hc, "ne(0, testData())", new IFunctionInfo[] { new FunctionInfo<TestDataNode>("testData", 0, 0) }, new int[0]));
-                Assert.Equal(true, EvaluateBoolean(hc, "ne(0, testData())", new IFunctionInfo[] { new FunctionInfo<TestDataNode>("testData", 0, 0) }, new Dictionary<string, object>()));
-                Assert.Equal(true, EvaluateBoolean(hc, "ne(0, testData())", new IFunctionInfo[] { new FunctionInfo<TestDataNode>("testData", 0, 0) }, new JArray()));
-                Assert.Equal(true, EvaluateBoolean(hc, "ne(0, testData())", new IFunctionInfo[] { new FunctionInfo<TestDataNode>("testData", 0, 0) }, new JObject()));
-                Assert.Equal(true, EvaluateBoolean(hc, "ne(-1, testData())", new IFunctionInfo[] { new FunctionInfo<TestDataNode>("testData", 0, 0) }, new object()));
-                Assert.Equal(true, EvaluateBoolean(hc, "ne(1, testData())", new IFunctionInfo[] { new FunctionInfo<TestDataNode>("testData", 0, 0) }, new object()));
+                Assert.Equal(true, EvaluateBoolean(hc, "ne(0, testFunction())", functions: new IFunctionInfo[] { new FunctionInfo<TestFunctionNode>("testFunction", 0, 0) }, state: new object()));
+                Assert.Equal(true, EvaluateBoolean(hc, "ne(0, testFunction())", functions: new IFunctionInfo[] { new FunctionInfo<TestFunctionNode>("testFunction", 0, 0) }, state: new object[0]));
+                Assert.Equal(true, EvaluateBoolean(hc, "ne(0, testFunction())", functions: new IFunctionInfo[] { new FunctionInfo<TestFunctionNode>("testFunction", 0, 0) }, state: new int[0]));
+                Assert.Equal(true, EvaluateBoolean(hc, "ne(0, testFunction())", functions: new IFunctionInfo[] { new FunctionInfo<TestFunctionNode>("testFunction", 0, 0) }, state: new Dictionary<string, object>()));
+                Assert.Equal(true, EvaluateBoolean(hc, "ne(0, testFunction())", functions: new IFunctionInfo[] { new FunctionInfo<TestFunctionNode>("testFunction", 0, 0) }, state: new JArray()));
+                Assert.Equal(true, EvaluateBoolean(hc, "ne(0, testFunction())", functions: new IFunctionInfo[] { new FunctionInfo<TestFunctionNode>("testFunction", 0, 0) }, state: new JObject()));
+                Assert.Equal(true, EvaluateBoolean(hc, "ne(-1, testFunction())", functions: new IFunctionInfo[] { new FunctionInfo<TestFunctionNode>("testFunction", 0, 0) }, state: new object()));
+                Assert.Equal(true, EvaluateBoolean(hc, "ne(1, testFunction())", functions: new IFunctionInfo[] { new FunctionInfo<TestFunctionNode>("testFunction", 0, 0) }, state: new object()));
 
                 // Null
                 trace.Info($"****************************************");
                 trace.Info($"From Null");
                 trace.Info($"****************************************");
-                Assert.Equal(true, EvaluateBoolean(hc, "eq('', testData())", new IFunctionInfo[] { new FunctionInfo<TestDataNode>("testData", 0, 0) }, null));
+                Assert.Equal(true, EvaluateBoolean(hc, "eq('', testFunction())", functions: new IFunctionInfo[] { new FunctionInfo<TestFunctionNode>("testFunction", 0, 0) }, state: null));
             }
         }
 
@@ -183,18 +183,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 trace.Info($"****************************************");
                 trace.Info($"From Objects/Arrays");
                 trace.Info($"****************************************");
-                Assert.Equal(true, EvaluateBoolean(hc, "ne('', testData())", new IFunctionInfo[] { new FunctionInfo<TestDataNode>("testData", 0, 0) }, new object()));
-                Assert.Equal(true, EvaluateBoolean(hc, "ne('', testData())", new IFunctionInfo[] { new FunctionInfo<TestDataNode>("testData", 0, 0) }, new object[0]));
-                Assert.Equal(true, EvaluateBoolean(hc, "ne('', testData())", new IFunctionInfo[] { new FunctionInfo<TestDataNode>("testData", 0, 0) }, new int[0]));
-                Assert.Equal(true, EvaluateBoolean(hc, "ne('', testData())", new IFunctionInfo[] { new FunctionInfo<TestDataNode>("testData", 0, 0) }, new Dictionary<string, object>()));
-                Assert.Equal(true, EvaluateBoolean(hc, "ne('', testData())", new IFunctionInfo[] { new FunctionInfo<TestDataNode>("testData", 0, 0) }, new JArray()));
-                Assert.Equal(true, EvaluateBoolean(hc, "ne('', testData())", new IFunctionInfo[] { new FunctionInfo<TestDataNode>("testData", 0, 0) }, new JObject()));
+                Assert.Equal(true, EvaluateBoolean(hc, "ne('', testFunction())", functions: new IFunctionInfo[] { new FunctionInfo<TestFunctionNode>("testFunction", 0, 0) }, state: new object()));
+                Assert.Equal(true, EvaluateBoolean(hc, "ne('', testFunction())", functions: new IFunctionInfo[] { new FunctionInfo<TestFunctionNode>("testFunction", 0, 0) }, state: new object[0]));
+                Assert.Equal(true, EvaluateBoolean(hc, "ne('', testFunction())", functions: new IFunctionInfo[] { new FunctionInfo<TestFunctionNode>("testFunction", 0, 0) }, state: new int[0]));
+                Assert.Equal(true, EvaluateBoolean(hc, "ne('', testFunction())", functions: new IFunctionInfo[] { new FunctionInfo<TestFunctionNode>("testFunction", 0, 0) }, state: new Dictionary<string, object>()));
+                Assert.Equal(true, EvaluateBoolean(hc, "ne('', testFunction())", functions: new IFunctionInfo[] { new FunctionInfo<TestFunctionNode>("testFunction", 0, 0) }, state: new JArray()));
+                Assert.Equal(true, EvaluateBoolean(hc, "ne('', testFunction())", functions: new IFunctionInfo[] { new FunctionInfo<TestFunctionNode>("testFunction", 0, 0) }, state: new JObject()));
 
                 // Null
                 trace.Info($"****************************************");
                 trace.Info($"From Null");
                 trace.Info($"****************************************");
-                Assert.Equal(true, EvaluateBoolean(hc, "eq('', testData())", new IFunctionInfo[] { new FunctionInfo<TestDataNode>("testData", 0, 0) }, null));
+                Assert.Equal(true, EvaluateBoolean(hc, "eq('', testFunction())", functions: new IFunctionInfo[] { new FunctionInfo<TestFunctionNode>("testFunction", 0, 0) }, state: null));
             }
         }
 
@@ -215,46 +215,31 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 trace.Info($"****************************************");
                 trace.Info($"From Number");
                 trace.Info($"****************************************");
-                Assert.Equal(true, EvaluateBoolean(hc, "eq(testData(), 1.2)", new IFunctionInfo[] { new FunctionInfo<TestDataNode>("testData", 0, 0) }, new Version(1, 2)));
-                Assert.Equal(false, EvaluateBoolean(hc, "eq(testData(), 1.0)", new IFunctionInfo[] { new FunctionInfo<TestDataNode>("testData", 0, 0) }, new Version(1, 0)));
+                Assert.Equal(true, EvaluateBoolean(hc, "eq(testFunction(), 1.2)", functions: new IFunctionInfo[] { new FunctionInfo<TestFunctionNode>("testFunction", 0, 0) }, state: new Version(1, 2)));
+                Assert.Equal(false, EvaluateBoolean(hc, "eq(testFunction(), 1.0)", functions: new IFunctionInfo[] { new FunctionInfo<TestFunctionNode>("testFunction", 0, 0) }, state: new Version(1, 0)));
 
                 trace.Info($"****************************************");
                 trace.Info($"From String");
                 trace.Info($"****************************************");
                 Assert.Equal(true, EvaluateBoolean(hc, "eq(1.2.3.4, '1.2.3.4')"));
                 Assert.Equal(true, EvaluateBoolean(hc, "eq(1.2.3, '1.2.3')"));
-                Assert.Equal(true, EvaluateBoolean(hc, "eq(testData(), '1.2')", new IFunctionInfo[] { new FunctionInfo<TestDataNode>("testData", 0, 0) }, new Version(1, 2)));
+                Assert.Equal(true, EvaluateBoolean(hc, "eq(testFunction(), '1.2')", functions: new IFunctionInfo[] { new FunctionInfo<TestFunctionNode>("testFunction", 0, 0) }, state: new Version(1, 2)));
 
                 trace.Info($"****************************************");
                 trace.Info($"From Objects/Arrays");
                 trace.Info($"****************************************");
-                Assert.Equal(true, EvaluateBoolean(hc, "ne(1.2.3, testData())", new IFunctionInfo[] { new FunctionInfo<TestDataNode>("testData", 0, 0) }, new object()));
-                Assert.Equal(true, EvaluateBoolean(hc, "ne(1.2.3, testData())", new IFunctionInfo[] { new FunctionInfo<TestDataNode>("testData", 0, 0) }, new object[0]));
-                Assert.Equal(true, EvaluateBoolean(hc, "ne(1.2.3, testData())", new IFunctionInfo[] { new FunctionInfo<TestDataNode>("testData", 0, 0) }, new int[0]));
-                Assert.Equal(true, EvaluateBoolean(hc, "ne(1.2.3, testData())", new IFunctionInfo[] { new FunctionInfo<TestDataNode>("testData", 0, 0) }, new Dictionary<string, object>()));
-                Assert.Equal(true, EvaluateBoolean(hc, "ne(1.2.3, testData())", new IFunctionInfo[] { new FunctionInfo<TestDataNode>("testData", 0, 0) }, new JArray()));
-                Assert.Equal(true, EvaluateBoolean(hc, "ne(1.2.3, testData())", new IFunctionInfo[] { new FunctionInfo<TestDataNode>("testData", 0, 0) }, new JObject()));
+                Assert.Equal(true, EvaluateBoolean(hc, "ne(1.2.3, testFunction())", functions: new IFunctionInfo[] { new FunctionInfo<TestFunctionNode>("testFunction", 0, 0) }, state: new object()));
+                Assert.Equal(true, EvaluateBoolean(hc, "ne(1.2.3, testFunction())", functions: new IFunctionInfo[] { new FunctionInfo<TestFunctionNode>("testFunction", 0, 0) }, state: new object[0]));
+                Assert.Equal(true, EvaluateBoolean(hc, "ne(1.2.3, testFunction())", functions: new IFunctionInfo[] { new FunctionInfo<TestFunctionNode>("testFunction", 0, 0) }, state: new int[0]));
+                Assert.Equal(true, EvaluateBoolean(hc, "ne(1.2.3, testFunction())", functions: new IFunctionInfo[] { new FunctionInfo<TestFunctionNode>("testFunction", 0, 0) }, state: new Dictionary<string, object>()));
+                Assert.Equal(true, EvaluateBoolean(hc, "ne(1.2.3, testFunction())", functions: new IFunctionInfo[] { new FunctionInfo<TestFunctionNode>("testFunction", 0, 0) }, state: new JArray()));
+                Assert.Equal(true, EvaluateBoolean(hc, "ne(1.2.3, testFunction())", functions: new IFunctionInfo[] { new FunctionInfo<TestFunctionNode>("testFunction", 0, 0) }, state: new JObject()));
 
                 // Null
                 trace.Info($"****************************************");
                 trace.Info($"From Null");
                 trace.Info($"****************************************");
-                Assert.Equal(true, EvaluateBoolean(hc, "ne(1.2.3, testData())", new IFunctionInfo[] { new FunctionInfo<TestDataNode>("testData", 0, 0) }, null));
-            }
-        }
-
-        private sealed class TestDataNode : FunctionNode
-        {
-            protected override object EvaluateCore(EvaluationContext context)
-            {
-                if (Parameters.Count == 0)
-                {
-                    return context.State;
-                }
-
-                string key = string.Join(",", Parameters.Select(x => x.EvaluateString(context)));
-                var dictionary = context.State as IDictionary<string, object>;
-                return dictionary[key];
+                Assert.Equal(true, EvaluateBoolean(hc, "ne(1.2.3, testFunction())", functions: new IFunctionInfo[] { new FunctionInfo<TestFunctionNode>("testFunction", 0, 0) }, state: null));
             }
         }
 
@@ -296,12 +281,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                     }
                 };
 
-                Assert.Equal(true, EvaluateBoolean(hc, "eq('property value 1', testData()['prop1'])", new IFunctionInfo[] { new FunctionInfo<TestDataNode>("testData", 0, 0) }, obj));
-                Assert.Equal(true, EvaluateBoolean(hc, "eq('property value 2', testData().prop2)", new IFunctionInfo[] { new FunctionInfo<TestDataNode>("testData", 0, 0) }, obj));
-                Assert.Equal(true, EvaluateBoolean(hc, "eq('nested sub object property value 1', testData()['subObj']['nestedProp1'])", new IFunctionInfo[] { new FunctionInfo<TestDataNode>("testData", 0, 0) }, obj));
-                Assert.Equal(true, EvaluateBoolean(hc, "eq('nested sub object property value 2', testData()['subObj'].nestedProp2)", new IFunctionInfo[] { new FunctionInfo<TestDataNode>("testData", 0, 0) }, obj));
-                Assert.Equal(true, EvaluateBoolean(hc, "eq('nested sub object property value 1', testData().subObj['nestedProp1'])", new IFunctionInfo[] { new FunctionInfo<TestDataNode>("testData", 0, 0) }, obj));
-                Assert.Equal(true, EvaluateBoolean(hc, "eq('nested sub object property value 2', testData().subObj.nestedProp2)", new IFunctionInfo[] { new FunctionInfo<TestDataNode>("testData", 0, 0) }, obj));
+                Assert.Equal(true, EvaluateBoolean(hc, "eq('property value 1', testFunction()['prop1'])", functions: new IFunctionInfo[] { new FunctionInfo<TestFunctionNode>("testFunction", 0, 0) }, state: obj));
+                Assert.Equal(true, EvaluateBoolean(hc, "eq('property value 2', testFunction().prop2)", functions: new IFunctionInfo[] { new FunctionInfo<TestFunctionNode>("testFunction", 0, 0) }, state: obj));
+                Assert.Equal(true, EvaluateBoolean(hc, "eq('nested sub object property value 1', testFunction()['subObj']['nestedProp1'])", functions: new IFunctionInfo[] { new FunctionInfo<TestFunctionNode>("testFunction", 0, 0) }, state: obj));
+                Assert.Equal(true, EvaluateBoolean(hc, "eq('nested sub object property value 2', testFunction()['subObj'].nestedProp2)", functions: new IFunctionInfo[] { new FunctionInfo<TestFunctionNode>("testFunction", 0, 0) }, state: obj));
+                Assert.Equal(true, EvaluateBoolean(hc, "eq('nested sub object property value 1', testFunction().subObj['nestedProp1'])", functions: new IFunctionInfo[] { new FunctionInfo<TestFunctionNode>("testFunction", 0, 0) }, state: obj));
+                Assert.Equal(true, EvaluateBoolean(hc, "eq('nested sub object property value 2', testFunction().subObj.nestedProp2)", functions: new IFunctionInfo[] { new FunctionInfo<TestFunctionNode>("testFunction", 0, 0) }, state: obj));
             }
         }
 
@@ -1110,20 +1095,46 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         }
 
         ////////////////////////////////////////////////////////////////////////////////
-        // Extension functions
+        // Extension functions/values
         ////////////////////////////////////////////////////////////////////////////////
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
-        public void ExtensionReceivesState()
+        public void ExtensionNamedValueReceivesState()
         {
             using (var hc = new TestHostContext(this))
             {
-                EvaluateBoolean(
+                // Property syntax.
+                bool actual = EvaluateBoolean(
                     hc,
-                    "eq('lookup-value', testData('lookup-key'))",
-                    extensions: new[] { new FunctionInfo<TestDataNode>("testData", 1, 1) },
+                    "eq('lookup-value', testNamedValue.lookupKey)",
+                    namedValues: new[] { new NamedValueInfo<TestNamedValueNode>("testNamedValue") },
+                    state: new Dictionary<string, object>() { { "lookupKey", "lookup-value" } });
+                Assert.True(actual);
+
+                // Indexer syntax.
+                actual = EvaluateBoolean(
+                    hc,
+                    "eq('lookup-value', testNamedValue['lookupKey'])",
+                    namedValues: new[] { new NamedValueInfo<TestNamedValueNode>("testNamedValue") },
+                    state: new Dictionary<string, object>() { { "lookupKey", "lookup-value" } });
+                Assert.True(actual);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void ExtensionFunctionReceivesState()
+        {
+            using (var hc = new TestHostContext(this))
+            {
+                bool actual = EvaluateBoolean(
+                    hc,
+                    "eq('lookup-value', testFunction('lookup-key'))",
+                    functions: new[] { new FunctionInfo<TestFunctionNode>("testFunction", 1, 1) },
                     state: new Dictionary<string, object>() { { "lookup-key", "lookup-value" } });
+                Assert.True(actual);
             }
         }
 
@@ -1230,10 +1241,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             }
         }
 
-        private static bool EvaluateBoolean(IHostContext hostContext, string expression, IEnumerable<IFunctionInfo> extensions = null, object state = null)
+        private static bool EvaluateBoolean(
+            IHostContext hostContext,
+            string expression,
+            IEnumerable<INamedValueInfo> namedValues = null,
+            IEnumerable<IFunctionInfo> functions = null,
+            object state = null)
         {
             var parser = new Parser();
-            INode node = parser.CreateTree(expression, new TraceWriter(hostContext), extensions);
+            INode node = parser.CreateTree(expression, new TraceWriter(hostContext), namedValues, functions);
             return node.EvaluateBoolean(new TraceWriter(hostContext), state);
         }
 
@@ -1281,6 +1297,33 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             public void Verbose(string message)
             {
                 _trace.Verbose(message);
+            }
+        }
+
+        private sealed class TestNamedValueNode : NamedValueNode
+        {
+            public override string Name => "testNamedValue";
+
+            protected override object EvaluateCore(EvaluationContext context)
+            {
+                return context.State;
+            }
+        }
+
+        private sealed class TestFunctionNode : FunctionNode
+        {
+            public override string Name => "testFunction";
+
+            protected override object EvaluateCore(EvaluationContext context)
+            {
+                if (Parameters.Count == 0)
+                {
+                    return context.State;
+                }
+
+                string key = string.Join(",", Parameters.Select(x => x.EvaluateString(context)));
+                var dictionary = context.State as IDictionary<string, object>;
+                return dictionary[key];
             }
         }
     }

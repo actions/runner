@@ -10,6 +10,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Reflection;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressions
@@ -21,11 +22,11 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
 
     public abstract class Node : INode
     {
+        public abstract String Name { get; }
+
         internal ContainerNode Container { get; set; }
 
         internal Int32 Level { get; private set; }
-
-        internal virtual String Name { get; set; }
 
         internal abstract String ConvertToExpression();
 
@@ -52,7 +53,9 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
         {
             Level = Container == null ? 0 : Container.Level + 1;
             TraceVerbose(context, Level, $"Evaluating {Name}:");
-            var result = new EvaluationResult(context, Level, EvaluateCore(context));
+            ValueKind kind;
+            Object val = ConvertToCanonicalValue(EvaluateCore(context), out kind);
+            var result = new EvaluationResult(context, Level, val, kind);
             context.Results[this] = result;
             return result;
         }
@@ -77,10 +80,84 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
             return Evaluate(context).ConvertToVersion(context);
         }
 
+        internal static Object ConvertToCanonicalValue(Object val, out ValueKind kind)
+        {
+            if (Object.ReferenceEquals(val, null))
+            {
+                kind = ValueKind.Null;
+                return null;
+            }
+            else if (val is JToken)
+            {
+                var jtoken = val as JToken;
+                switch (jtoken.Type)
+                {
+                    case JTokenType.Array:
+                        kind = ValueKind.Array;
+                        return jtoken;
+                    case JTokenType.Boolean:
+                        kind = ValueKind.Boolean;
+                        return jtoken.ToObject<Boolean>();
+                    case JTokenType.Float:
+                    case JTokenType.Integer:
+                        kind = ValueKind.Number;
+                        // todo: test the extents of the conversion
+                        return jtoken.ToObject<Decimal>();
+                    case JTokenType.Null:
+                        kind = ValueKind.Null;
+                        return null;
+                    case JTokenType.Object:
+                        kind = ValueKind.Object;
+                        return jtoken;
+                    case JTokenType.String:
+                        kind = ValueKind.String;
+                        return jtoken.ToObject<String>();
+                }
+            }
+            else if (val is String)
+            {
+                kind = ValueKind.String;
+                return val;
+            }
+            else if (val is Version)
+            {
+                kind = ValueKind.Version;
+                return val;
+            }
+            else if (!val.GetType().GetTypeInfo().IsClass)
+            {
+                if (val is Boolean)
+                {
+                    kind = ValueKind.Boolean;
+                    return val;
+                }
+                else if (val is Decimal || val is Byte || val is SByte || val is Int16 || val is UInt16 || val is Int32 || val is UInt32 || val is Int64 || val is UInt64 || val is Single || val is Double)
+                {
+                    kind = ValueKind.Number;
+                    // todo: test the extents of the conversion
+                    return (Decimal)val;
+                }
+            }
+
+            kind = ValueKind.Object;
+            return val;
+        }
+
         internal static void TraceVerbose(EvaluationContext context, Int32 level, String message)
         {
             context.Trace.Verbose(String.Empty.PadLeft(level * 2, '.') + (message ?? String.Empty));
         }
+    }
+
+    public enum ValueKind
+    {
+        Array,
+        Boolean,
+        Null,
+        Number,
+        Object,
+        String,
+        Version,
     }
 
     public sealed class EvaluationContext
@@ -104,46 +181,50 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
         internal Dictionary<Node, EvaluationResult> Results { get; }
     }
 
-    public sealed class LeafNode : Node
+    public sealed class LiteralValueNode : Node
     {
-        public LeafNode(Object val)
+        public LiteralValueNode(Object val)
         {
-            // ConvertToExpression() depends on this constraint.
-            if (!(val is Boolean) && !(val is Decimal) && !(val is String) && !(val is Version))
-            {
-                throw new NotSupportedException($"Unexpected leaf node object type: '{val?.GetType().FullName}'");
-            }
-
-            Value = val;
+            ValueKind kind;
+            Value = ConvertToCanonicalValue(val, out kind);
+            Kind = kind;
         }
+
+        public ValueKind Kind { get; }
+
+        public sealed override String Name => Kind.ToString();
 
         public Object Value { get; }
 
-        internal sealed override String Name => "leaf";
-
         internal sealed override String ConvertToExpression()
         {
-            if (Value is Boolean)
+            switch (Kind)
             {
-                return ((Boolean)Value).ToString();
-            }
-            else if (Value is Decimal)
-            {
-                String result = ((Decimal)Value).ToString("G", CultureInfo.InvariantCulture);
-                if (result.Contains("."))
-                {
-                    result = result.TrimEnd('0').TrimEnd('.'); // Omit trailing zeros after the decimal point.
-                }
+                case ValueKind.Boolean:
+                    return ((Boolean)Value).ToString();
 
-                return result;
-            }
-            else if (Value is String)
-            {
-                return String.Format(CultureInfo.InvariantCulture, "'{0}'", (Value as String).Replace("'", "''"));
-            }
-            else
-            {
-                return String.Format(CultureInfo.InvariantCulture, "v{0}", Value);
+                case ValueKind.Number:
+                    String d = ((Decimal)Value).ToString("G", CultureInfo.InvariantCulture);
+                    if (d.Contains("."))
+                    {
+                        d = d.TrimEnd('0').TrimEnd('.'); // Omit trailing zeros after the decimal point.
+                    }
+
+                    return d;
+
+                case ValueKind.String:
+                    return String.Format(CultureInfo.InvariantCulture, "'{0}'", (Value as String).Replace("'", "''"));
+
+                case ValueKind.Version:
+                    return String.Format(CultureInfo.InvariantCulture, "v{0}", Value);
+
+                case ValueKind.Array:
+                case ValueKind.Null:
+                case ValueKind.Object:
+                    return Kind.ToString();
+
+                default:
+                    throw new NotSupportedException($"Unexpected kind '{Kind}' encountered when converting to expression.");
             }
         }
 
@@ -152,6 +233,22 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
         protected sealed override Object EvaluateCore(EvaluationContext context)
         {
             return Value;
+        }
+    }
+
+    public abstract class NamedValueNode : Node
+    {
+        internal sealed override string ConvertToExpression() => Name;
+
+        internal sealed override String ConvertToRealizedExpression(EvaluationContext context)
+        {
+            EvaluationResult evaluationResult;
+            if (context.Results.TryGetValue(this, out evaluationResult))
+            {
+                return evaluationResult.ConvertToRealizedExpression();
+            }
+
+            return Name;
         }
     }
 
@@ -176,7 +273,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
 
     internal sealed class IndexerNode : ContainerNode
     {
-        internal sealed override String Name => "indexer";
+        public sealed override String Name => "indexer";
 
         internal sealed override String ConvertToExpression()
         {
@@ -236,6 +333,19 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
                     result = jobject[s];
                 }
             }
+            else if (item.Kind == ValueKind.Object && item.Value is IReadOnlyDictionary<String, Object>)
+            {
+                var dictionary = item.Value as IReadOnlyDictionary<String, Object>;
+                EvaluationResult index = Parameters[1].Evaluate(context);
+                String s;
+                if (index.TryConvertToString(context, out s))
+                {
+                    if (!dictionary.TryGetValue(s, out result))
+                    {
+                        result = null;
+                    }
+                }
+            }
 
             return result;
         }
@@ -272,6 +382,8 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
 
     internal sealed class AndNode : FunctionNode
     {
+        public sealed override String Name => ExpressionConstants.And;
+
         internal sealed override Boolean TraceFullyRealized => false;
 
         protected sealed override Object EvaluateCore(EvaluationContext context)
@@ -290,6 +402,8 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
 
     internal sealed class ContainsNode : FunctionNode
     {
+        public sealed override String Name => ExpressionConstants.Contains;
+
         internal sealed override Boolean TraceFullyRealized => false;
 
         protected sealed override Object EvaluateCore(EvaluationContext context)
@@ -302,6 +416,8 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
 
     internal sealed class EndsWithNode : FunctionNode
     {
+        public sealed override String Name => ExpressionConstants.EndsWith;
+
         internal sealed override Boolean TraceFullyRealized => false;
 
         protected sealed override Object EvaluateCore(EvaluationContext context)
@@ -314,6 +430,8 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
 
     internal sealed class EqualNode : FunctionNode
     {
+        public sealed override String Name => ExpressionConstants.Eq;
+
         internal sealed override Boolean TraceFullyRealized => false;
 
         protected sealed override Object EvaluateCore(EvaluationContext context)
@@ -324,6 +442,8 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
 
     internal sealed class GreaterThanNode : FunctionNode
     {
+        public sealed override String Name => ExpressionConstants.GT;
+
         internal sealed override Boolean TraceFullyRealized => false;
 
         protected sealed override Object EvaluateCore(EvaluationContext context)
@@ -334,6 +454,8 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
 
     internal sealed class GreaterThanOrEqualNode : FunctionNode
     {
+        public sealed override String Name => ExpressionConstants.GE;
+
         internal sealed override Boolean TraceFullyRealized => false;
 
         protected sealed override Object EvaluateCore(EvaluationContext context)
@@ -344,6 +466,8 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
 
     internal sealed class InNode : FunctionNode
     {
+        public sealed override String Name => ExpressionConstants.In;
+
         internal sealed override Boolean TraceFullyRealized => false;
 
         protected sealed override Object EvaluateCore(EvaluationContext context)
@@ -364,6 +488,8 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
 
     internal sealed class LessThanNode : FunctionNode
     {
+        public sealed override String Name => ExpressionConstants.LT;
+
         internal sealed override Boolean TraceFullyRealized => false;
 
         protected sealed override Object EvaluateCore(EvaluationContext context)
@@ -374,6 +500,8 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
 
     internal sealed class LessThanOrEqualNode : FunctionNode
     {
+        public sealed override String Name => ExpressionConstants.LE;
+
         internal sealed override Boolean TraceFullyRealized => false;
 
         protected sealed override Object EvaluateCore(EvaluationContext context)
@@ -384,6 +512,8 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
 
     internal sealed class NotEqualNode : FunctionNode
     {
+        public sealed override String Name => ExpressionConstants.NE;
+
         internal sealed override Boolean TraceFullyRealized => false;
 
         protected sealed override Object EvaluateCore(EvaluationContext context)
@@ -394,6 +524,8 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
 
     internal sealed class NotNode : FunctionNode
     {
+        public sealed override String Name => ExpressionConstants.Not;
+
         internal sealed override Boolean TraceFullyRealized => false;
 
         protected sealed override Object EvaluateCore(EvaluationContext context)
@@ -404,6 +536,8 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
 
     internal sealed class NotInNode : FunctionNode
     {
+        public sealed override String Name => ExpressionConstants.NotIn;
+
         internal sealed override Boolean TraceFullyRealized => false;
 
         protected sealed override Object EvaluateCore(EvaluationContext context)
@@ -424,6 +558,8 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
 
     internal sealed class OrNode : FunctionNode
     {
+        public sealed override String Name => ExpressionConstants.Or;
+
         internal sealed override Boolean TraceFullyRealized => false;
 
         protected sealed override Object EvaluateCore(EvaluationContext context)
@@ -442,6 +578,8 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
 
     internal sealed class StartsWithNode : FunctionNode
     {
+        public sealed override String Name => ExpressionConstants.StartsWith;
+
         internal sealed override Boolean TraceFullyRealized => false;
 
         protected sealed override Object EvaluateCore(EvaluationContext context)
@@ -454,6 +592,8 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
 
     internal sealed class XorNode : FunctionNode
     {
+        public sealed override String Name => ExpressionConstants.Xor;
+
         internal sealed override Boolean TraceFullyRealized => false;
 
         protected sealed override Object EvaluateCore(EvaluationContext context)

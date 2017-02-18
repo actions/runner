@@ -15,16 +15,16 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
 {
     public sealed class EvaluationResult
     {
-        public EvaluationResult(EvaluationContext context, Int32 level, Object raw)
-        {
-            m_level = level;
-            ValueKind kind;
-            Value = ConvertToCanonicalValue(raw, out kind);
-            Kind = kind;
-            TraceValue(context);
-        }
+        // internal EvaluationResult(EvaluationContext context, Int32 level, Object raw)
+        // {
+        //     m_level = level;
+        //     ValueKind kind;
+        //     Value = ConvertToCanonicalValue(raw, out kind);
+        //     Kind = kind;
+        //     TraceValue(context);
+        // }
 
-        private EvaluationResult(EvaluationContext context, Int32 level, Object val, ValueKind kind)
+        internal EvaluationResult(EvaluationContext context, Int32 level, Object val, ValueKind kind)
         {
             m_level = level;
             Value = val;
@@ -372,12 +372,9 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
         {
             switch (Kind)
             {
-                case ValueKind.Array:
-                    return "<Array>";
                 case ValueKind.Boolean:
                     return ((Boolean)Value).ToString();
-                case ValueKind.Null:
-                    return "<Null>";
+
                 case ValueKind.Number:
                     String str = ((Decimal)Value).ToString("G", CultureInfo.InvariantCulture);
                     if (str.Contains("."))
@@ -386,15 +383,21 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
                     }
 
                     return str;
-                case ValueKind.Object:
-                    return "<Object>";
+
                 case ValueKind.String:
                     return String.Format(
                         CultureInfo.InvariantCulture,
                         "'{0}'",
                         (Value as String ?? String.Empty).Replace("'", "''"));
+
                 case ValueKind.Version:
                     return String.Format(CultureInfo.InvariantCulture, "v{0}", Value);
+
+                case ValueKind.Array:
+                case ValueKind.Null:
+                case ValueKind.Object:
+                    return Kind.ToString();
+
                 default:
                     throw new NotSupportedException($"Unable to convert to realized expression. Unexpected value kind: {Kind}");
             }
@@ -433,69 +436,6 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
             context.Trace.Verbose(String.Empty.PadLeft(m_level * 2, '.') + (message ?? String.Empty));
         }
 
-        private static Object ConvertToCanonicalValue(Object val, out ValueKind kind)
-        {
-            if (Object.ReferenceEquals(val, null))
-            {
-                kind = ValueKind.Null;
-                return null;
-            }
-            else if (val is JToken)
-            {
-                var jtoken = val as JToken;
-                switch (jtoken.Type)
-                {
-                    case JTokenType.Array:
-                        kind = ValueKind.Array;
-                        return jtoken;
-                    case JTokenType.Boolean:
-                        kind = ValueKind.Boolean;
-                        return jtoken.ToObject<Boolean>();
-                    case JTokenType.Float:
-                    case JTokenType.Integer:
-                        kind = ValueKind.Number;
-                        // todo: test the extents of the conversion
-                        return jtoken.ToObject<Decimal>();
-                    case JTokenType.Null:
-                        kind = ValueKind.Null;
-                        return null;
-                    case JTokenType.Object:
-                        kind = ValueKind.Object;
-                        return jtoken;
-                    case JTokenType.String:
-                        kind = ValueKind.String;
-                        return jtoken.ToObject<String>();
-                }
-            }
-            else if (val is String)
-            {
-                kind = ValueKind.String;
-                return val;
-            }
-            else if (val is Version)
-            {
-                kind = ValueKind.Version;
-                return val;
-            }
-            else if (!val.GetType().GetTypeInfo().IsClass)
-            {
-                if (val is Boolean)
-                {
-                    kind = ValueKind.Boolean;
-                    return val;
-                }
-                else if (val is Decimal || val is Byte || val is SByte || val is Int16 || val is UInt16 || val is Int32 || val is UInt32 || val is Int64 || val is UInt64 || val is Single || val is Double)
-                {
-                    kind = ValueKind.Number;
-                    // todo: test the extents of the conversion
-                    return (Decimal)val;
-                }
-            }
-
-            kind = ValueKind.Object;
-            return val;
-        }
-
         private static readonly NumberStyles s_numberStyles =
             NumberStyles.AllowDecimalPoint |
             NumberStyles.AllowLeadingSign |
@@ -503,17 +443,6 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
             NumberStyles.AllowThousands |
             NumberStyles.AllowTrailingWhite;
         private readonly Int32 m_level;
-    }
-
-    public enum ValueKind
-    {
-        Array,
-        Boolean,
-        Null,
-        Number,
-        Object,
-        String,
-        Version,
     }
 
     internal sealed class TypeCastException : InvalidCastException

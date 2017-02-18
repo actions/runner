@@ -55,6 +55,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 typeof(ITraceManager),
                 typeof(IThrottlingReporter),
                 typeof(Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressions.IFunctionInfo),
+                typeof(Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressions.INamedValueInfo),
                 typeof(Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressions.INode),
                 typeof(Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressions.ITraceWriter),
             };
