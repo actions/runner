@@ -1,0 +1,6 @@
+﻿template:
+  name: dot-net-core-template.yaml
+  parameters:
+    buildProjects: "**/*.sln"
+    buildConfiguration: "Debug"
+    testProjects: "test/**/*.csproj"

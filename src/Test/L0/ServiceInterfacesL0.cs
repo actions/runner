@@ -31,7 +31,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             {
                 typeof(ICapabilitiesProvider),
                 typeof(ICredentialProvider),
-                typeof(IConfigurationProvider)
+                typeof(IConfigurationProvider),
+                typeof(Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Pipelines.IPhase),
+                typeof(Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Pipelines.IJob),
+                typeof(Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Pipelines.IVariable),
+                typeof(Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Pipelines.IStep),
+                typeof(Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Pipelines.ISimpleStep),
+                typeof(Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Pipelines.ITraceWriter),
+                typeof(Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Pipelines.IFileProvider),
             };
             Validate(
                 assembly: typeof(IMessageListener).GetTypeInfo().Assembly,

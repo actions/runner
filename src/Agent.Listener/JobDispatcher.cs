@@ -331,29 +331,37 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                             ArgUtil.NotNullOrEmpty(pipeHandleOut, nameof(pipeHandleOut));
                             ArgUtil.NotNullOrEmpty(pipeHandleIn, nameof(pipeHandleIn));
 
-                            // Save STDOUT from worker, worker will use STDOUT report unhandle exception.
-                            processInvoker.OutputDataReceived += delegate (object sender, ProcessDataReceivedEventArgs stdout)
+                            if (HostContext.RunMode == RunMode.Normal)
                             {
-                                if (!string.IsNullOrEmpty(stdout.Data))
+                                // Save STDOUT from worker, worker will use STDOUT report unhandle exception.
+                                processInvoker.OutputDataReceived += delegate (object sender, ProcessDataReceivedEventArgs stdout)
                                 {
-                                    lock (_outputLock)
+                                    if (!string.IsNullOrEmpty(stdout.Data))
                                     {
-                                        workerOutput.Add(stdout.Data);
+                                        lock (_outputLock)
+                                        {
+                                            workerOutput.Add(stdout.Data);
+                                        }
                                     }
-                                }
-                            };
+                                };
 
-                            // Save STDERR from worker, worker will use STDERR on crash.
-                            processInvoker.ErrorDataReceived += delegate (object sender, ProcessDataReceivedEventArgs stderr)
-                            {
-                                if (!string.IsNullOrEmpty(stderr.Data))
+                                // Save STDERR from worker, worker will use STDERR on crash.
+                                processInvoker.ErrorDataReceived += delegate (object sender, ProcessDataReceivedEventArgs stderr)
                                 {
-                                    lock (_outputLock)
+                                    if (!string.IsNullOrEmpty(stderr.Data))
                                     {
-                                        workerOutput.Add(stderr.Data);
+                                        lock (_outputLock)
+                                        {
+                                            workerOutput.Add(stderr.Data);
+                                        }
                                     }
-                                }
-                            };
+                                };
+                            }
+                            else if (HostContext.RunMode == RunMode.Local)
+                            {
+                                processInvoker.OutputDataReceived += (object sender, ProcessDataReceivedEventArgs e) => Console.WriteLine(e.Data);
+                                processInvoker.ErrorDataReceived += (object sender, ProcessDataReceivedEventArgs e) => Console.WriteLine(e.Data);
+                            }
 
                             // Start the child process.
                             var assemblyDirectory = IOUtil.GetBinPath();

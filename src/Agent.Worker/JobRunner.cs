@@ -34,6 +34,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             ArgUtil.NotNull(message.Tasks, nameof(message.Tasks));
             Trace.Info("Job ID {0}", message.JobId);
 
+            // Agent.RunMode
+            RunMode runMode;
+            if (message.Environment.Variables.ContainsKey(Constants.Variables.Agent.RunMode) &&
+                Enum.TryParse(message.Environment.Variables[Constants.Variables.Agent.RunMode], ignoreCase: true, result: out runMode) &&
+                runMode == RunMode.Local)
+            {
+                HostContext.RunMode = runMode;
+            }
+
             // System.AccessToken
             if (message.Environment.Variables.ContainsKey(Constants.Variables.System.EnableAccessToken) &&
                 StringUtil.ConvertToBoolean(message.Environment.Variables[Constants.Variables.System.EnableAccessToken]))

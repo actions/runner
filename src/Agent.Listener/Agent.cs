@@ -102,6 +102,23 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
                 _inConfigStage = false;
 
+                // YAML
+                string yamlFile = command.GetYaml();
+                if (!string.IsNullOrEmpty(yamlFile))
+                {
+                    _term.WriteLine("Local run mode is currently experimental. The interface and behavior will change in a future version.");
+                    if (!command.Unattended)
+                    {
+                        _term.WriteLine("Press Enter to continue.");
+                        _term.ReadLine();
+                    }
+
+                    HostContext.RunMode = RunMode.Local;
+                    command.SetUnattended();
+                    var localRunner = HostContext.GetService<ILocalRunner>();
+                    return await localRunner.RunAsync(command, HostContext.AgentShutdownToken);
+                }
+
                 AgentSettings settings = configManager.LoadSettings();
 
                 var store = HostContext.GetService<IConfigurationStore>();

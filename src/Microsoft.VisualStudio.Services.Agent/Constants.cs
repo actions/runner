@@ -2,6 +2,12 @@ using System;
 
 namespace Microsoft.VisualStudio.Services.Agent
 {
+    public enum RunMode
+    {
+        Normal, // Keep "Normal" first (default value).
+        Local,
+    }
+
     public enum WellKnownDirectory
     {
         Bin,
@@ -70,6 +76,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                     public static readonly string CollectionName = "collectionname";
                     public static readonly string MachineGroupTags = "machinegrouptags";
                     public static readonly string DeploymentGroupTags = "deploymentgrouptags";
+                    public static readonly string Yaml = "yaml";
 
                     // Secret args. Must be added to the "Secrets" getter as well.
                     public static readonly string Password = "password";
@@ -109,6 +116,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                     public static readonly string RunAsService = "runasservice";
                     public static readonly string Unattended = "unattended";
                     public static readonly string Version = "version";
+                    public static readonly string WhatIf = "whatif";
                 }
             }
 
@@ -233,6 +241,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                 public static readonly string ProxyUsername = "agent.proxyusername";
                 public static readonly string ProxyPassword = "agent.proxypassword";
                 public static readonly string RootDirectory = "agent.RootDirectory";
+                public static readonly string RunMode = "agent.runmode";
                 public static readonly string ServerOMDirectory = "agent.ServerOMDirectory";
                 public static readonly string TempDirectory = "agent.TempDirectory";
                 public static readonly string ToolsDirectory = "agent.ToolsDirectory";
