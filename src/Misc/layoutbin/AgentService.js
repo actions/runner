@@ -17,7 +17,7 @@ var stopping = false;
 var listener = null;
 
 var runService = function() {
-    var listenerExePath = path.join(__dirname, 'Agent.Listener');
+    var listenerExePath = path.join(__dirname, '../bin/Agent.Listener');
     console.log('Starting Agent listener');
 
     if(!stopping) {
