@@ -9,6 +9,7 @@ using System.Reflection;
 using System.Runtime.Loader;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Diagnostics;
 
 namespace Microsoft.VisualStudio.Services.Agent
 {
@@ -23,15 +24,18 @@ namespace Microsoft.VisualStudio.Services.Agent
         event EventHandler Unloading;
     }
 
-    public sealed class HostContext : IHostContext, IDisposable
+    public sealed class HostContext : IObserver<DiagnosticListener>, IObserver<KeyValuePair<string, object>>, IHostContext, IDisposable
     {
         private const int _defaultLogPageSize = 8;  //MB
         private static int _defaultLogRetentionDays = 30;
         private readonly ConcurrentDictionary<Type, object> _serviceInstances = new ConcurrentDictionary<Type, object>();
         private readonly ConcurrentDictionary<Type, Type> _serviceTypes = new ConcurrentDictionary<Type, Type>();
         private Tracing _trace;
+        private Tracing _httpTrace;
         private ITraceManager _traceManager;
         private AssemblyLoadContext _loadContext;
+        private IDisposable _httpTraceSubscription;
+        private IDisposable _diagListenerSubscription;
 
         public event EventHandler Unloading;
 
@@ -68,6 +72,21 @@ namespace Microsoft.VisualStudio.Services.Agent
             }
 
             _trace = GetTrace(nameof(HostContext));
+
+            // Enable Http trace
+            bool enableHttpTrace;
+            if (bool.TryParse(Environment.GetEnvironmentVariable("VSTS_AGENT_HTTPTRACE"), out enableHttpTrace) && enableHttpTrace)
+            {
+                _trace.Warning("*****************************************************************************************");
+                _trace.Warning("**                                                                                     **");
+                _trace.Warning("** Http trace is enabled, all your http traffic will be dumped into agent diag log.    **");
+                _trace.Warning("** DO NOT share the log in public place! The trace may contains secrets in plain text. **");
+                _trace.Warning("**                                                                                     **");
+                _trace.Warning("*****************************************************************************************");
+
+                _httpTrace = GetTrace("HttpTrace");
+                _diagListenerSubscription = DiagnosticListener.AllListeners.Subscribe(this);
+            }
         }
 
         public string GetDirectory(WellKnownDirectory directory)
@@ -235,6 +254,8 @@ namespace Microsoft.VisualStudio.Services.Agent
                     _loadContext.Unloading -= LoadContext_Unloading;
                     _loadContext = null;
                 }
+                _httpTraceSubscription?.Dispose();
+                _diagListenerSubscription?.Dispose();
                 _traceManager?.Dispose();
                 _traceManager = null;
             }
@@ -246,6 +267,39 @@ namespace Microsoft.VisualStudio.Services.Agent
             {
                 Unloading(this, null);
             }
+        }
+
+        void IObserver<DiagnosticListener>.OnCompleted()
+        {
+            _httpTrace.Info("DiagListeners finished transmitting data.");
+        }
+
+        void IObserver<DiagnosticListener>.OnError(Exception error)
+        {
+            _httpTrace.Error(error);
+        }
+
+        void IObserver<DiagnosticListener>.OnNext(DiagnosticListener listener)
+        {
+            if (listener.Name == "HttpHandlerDiagnosticListener" && _httpTraceSubscription == null)
+            {
+                _httpTraceSubscription = listener.Subscribe(this);
+            }
+        }
+
+        void IObserver<KeyValuePair<string, object>>.OnCompleted()
+        {
+            _httpTrace.Info("HttpHandlerDiagnosticListener finished transmitting data.");
+        }
+
+        void IObserver<KeyValuePair<string, object>>.OnError(Exception error)
+        {
+            _httpTrace.Error(error);
+        }
+
+        void IObserver<KeyValuePair<string, object>>.OnNext(KeyValuePair<string, object> value)
+        {
+            _httpTrace.Info($"Trace {value.Key} event:{Environment.NewLine}{value.Value.ToString()}");
         }
     }
 }
