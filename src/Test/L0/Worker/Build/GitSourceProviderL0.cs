@@ -49,9 +49,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
                 .Setup(x => x.GitRemoteSetPushUrl(It.IsAny<IExecutionContext>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
                 .Returns(Task.FromResult<int>(0));
             _gitCommandManager
-                .Setup(x => x.GitSubmoduleInit(It.IsAny<IExecutionContext>(), It.IsAny<string>()))
-                .Returns(Task.FromResult<int>(0));
-            _gitCommandManager
                 .Setup(x => x.GitSubmoduleUpdate(It.IsAny<IExecutionContext>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult<int>(0));
             _gitCommandManager

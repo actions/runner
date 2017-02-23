@@ -48,10 +48,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         // git submodule foreach git reset --hard HEAD
         Task<int> GitSubmoduleReset(IExecutionContext context, string repositoryPath);
 
-        // git submodule init
-        Task<int> GitSubmoduleInit(IExecutionContext context, string repositoryPath);
-
-        // git submodule update -f
+        // git submodule update --init --force --recursive
         Task<int> GitSubmoduleUpdate(IExecutionContext context, string repositoryPath, string additionalCommandLine, CancellationToken cancellationToken);
 
         // git config --get remote.origin.url
@@ -253,18 +250,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             return await ExecuteGitCommandAsync(context, repositoryPath, "submodule", "foreach git reset --hard HEAD");
         }
 
-        // git submodule init
-        public async Task<int> GitSubmoduleInit(IExecutionContext context, string repositoryPath)
-        {
-            context.Debug("Initialize the git submodules.");
-            return await ExecuteGitCommandAsync(context, repositoryPath, "submodule", "init");
-        }
-
-        // git submodule update -f
+        // git submodule update --init --force --recursive
         public async Task<int> GitSubmoduleUpdate(IExecutionContext context, string repositoryPath, string additionalCommandLine, CancellationToken cancellationToken)
         {
             context.Debug("Update the registered git submodules.");
-            return await ExecuteGitCommandAsync(context, repositoryPath, "submodule", "update -f", additionalCommandLine, cancellationToken);
+            return await ExecuteGitCommandAsync(context, repositoryPath, "submodule", "update --init --force --recursive", additionalCommandLine, cancellationToken);
         }
 
         // git config --get remote.origin.url

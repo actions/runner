@@ -551,12 +551,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 executionContext.Progress(90, "Updating submodules...");
-                int exitCode_submoduleInit = await _gitCommandManager.GitSubmoduleInit(executionContext, targetPath);
-                if (exitCode_submoduleInit != 0)
-                {
-                    throw new InvalidOperationException($"Git submodule init failed with exit code: {exitCode_submoduleInit}");
-                }
-
                 List<string> additionalSubmoduleUpdateArgs = new List<string>();
                 if (!_selfManageGitCreds)
                 {
