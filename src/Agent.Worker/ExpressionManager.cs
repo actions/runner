@@ -50,7 +50,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
             public void Info(string message)
             {
-                _executionContext.Output(message);
+                _executionContext.Debug(message);
             }
 
             public void Verbose(string message)
