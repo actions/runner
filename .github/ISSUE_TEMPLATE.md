@@ -1,3 +1,6 @@
+## **Have you try trouble shooting doc**
+Link to trouble shooting doc: https://www.visualstudio.com/en-us/docs/build/troubleshooting
+
 ## **Agent version and platform**
 Version of your agent? 2.102.0/2.100.1...
 <br>
