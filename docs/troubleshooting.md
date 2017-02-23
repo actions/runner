@@ -28,7 +28,21 @@ If the agent isn't picking up builds, the agent logs are likely the most relevan
 
 Secrets are masked out of the logs.
 
-## Http Tracing Windows
+## Http Tracing
+
+The agent has built in functionality to trace all http traffic's header into diag log.  
+Enable the tracing via environment variable `VSTS_AGENT_HTTPTRACE`
+
+```bash
+Windows:
+    set VSTS_AGENT_HTTPTRACE=true
+
+OSX/Linux:
+    export VSTS_AGENT_HTTPTRACE=true
+```
+Set the environment variable before you launch the agent.listener
+
+## (Alternate) Http Tracing Windows
 
 Start [Fiddler](http://www.telerik.com/fiddler).  
 It's recommended to only listen to agent traffic.  File > Capture Traffic off (F12)  
@@ -37,7 +51,7 @@ Enable decrypting HTTPS traffic.  Tools > Fiddler Options > HTTPS tab. Decrypt H
 Let the agent know to use the proxy:
 
 ```bash
-set VSTS_HTTP_PROXY=https://127.0.0.1:8888
+set VSTS_HTTP_PROXY=http://127.0.0.1:8888
 ```
 
 Run the agent interactively.  If you're running as a service, you can set as the environment variable in control panel for the account the service is running as.
@@ -46,7 +60,7 @@ Restart the agent.
 
 TODO: video
 
-## Http Tracing OSX / Linux
+## (Alternate) Http Tracing OSX / Linux
 
 It's easy to capture the http trace of the agent using Charles Proxy (similar to Fiddler on windows).  
 
@@ -57,7 +71,7 @@ Charles: Proxy > Proxy Settings > SSL Tab.  Enable.  Add URL
 Charles: Proxy > Mac OSX Proxy.  Recommend disabling to only see agent traffic.
 
 ```bash
-export VSTS_HTTP_PROXY=https://127.0.0.1:8888
+export VSTS_HTTP_PROXY=http://127.0.0.1:8888
 ```
 
 Run the agent interactively.  If it's running as a service, you can set in the .env file.  See [nix service](start/nixsvc.md)

@@ -2,11 +2,7 @@
 
 ## Dev Dependencies
 
-![Win](res/win_sm.png)![*nix](res/linux_sm.png) [Install .NET Core Required for our Build](dev/netcore.md)
-
 ![Win](res/win_sm.png) Git for Windows [Install Here](https://git-scm.com/downloads) _(needed for dev sh script)
-
-![Win](res/win_sm.png) On Windows you need Visual Studio 2015.
 
 ## Build, Test, Clean, Restore 
 
@@ -43,8 +39,8 @@ From src:
 
 ## Editors
 
-[Using Visual Studio 2015](dev/vs.md)  
-[Using Visual Studio Code and Mono Debugger](dev/code.md)  
+[Using Visual Studio 2017](https://www.visualstudio.com/vs/)  
+[Using Visual Studio Code](https://code.visualstudio.com/)
 
 ## Styling
 
