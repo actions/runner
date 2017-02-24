@@ -21,13 +21,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         {
             get
             {
-                if (ExecutionContext.Features.HasFlag(PlanFeatures.TaskCondition) || !string.IsNullOrEmpty(ExecutionContext.Variables.Get("VSTS_TEMP_FEATURE_TASKCONDITION")))
+                string condition = ExecutionContext.Variables.Get($"VSTS_TEMP_CONDITION_{DisplayName}"); //TaskInstance.Condition;
+                if (!string.IsNullOrEmpty(condition))
                 {
-                    return ExecutionContext.Variables.Get($"VSTS_TEMP_CONDITION_{DisplayName}"); //taskInstance.Condition;
+                    return condition;
+                }
+                else if (TaskInstance.AlwaysRun)
+                {
+                    return $"{Constants.Expressions.SucceededOrFailed}()";
                 }
                 else
                 {
-                    return TaskInstance.AlwaysRun ? $"{Constants.Expressions.SucceededOrFailed}()" : $"{Constants.Expressions.Succeeded}()";
+                    return $"{Constants.Expressions.Succeeded}()";
                 }
             }
         }

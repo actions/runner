@@ -111,11 +111,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
                 features |= PlanFeatures.JobCompletedPlanEvent;
             }
 
-            if (plan.Version >= 123456)
-            {
-                features |= PlanFeatures.TaskCondition;
-            }
-
             return features;
         }
     }
@@ -125,6 +120,5 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
     {
         None = 0,
         JobCompletedPlanEvent = 1,
-        TaskCondition = 2,
     }
 }
