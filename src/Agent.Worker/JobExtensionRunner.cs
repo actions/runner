@@ -23,7 +23,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             Finally = @finally;
         }
 
-        public string Condition => Finally ? $"{Constants.Expressions.Always}()" : $"{Constants.Expressions.Succeeded}()";
+        public string Condition => Finally ? $"{Constants.Expressions.SucceededOrFailed}()" : $"{Constants.Expressions.Succeeded}()";
         public bool ContinueOnError { get; private set; }
         public bool Critical { get; private set; }
         public string DisplayName { get; private set; }

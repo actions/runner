@@ -16,7 +16,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
         public INode CreateTree(String expression, ITraceWriter trace, IEnumerable<INamedValueInfo> namedValues, IEnumerable<IFunctionInfo> functions)
         {
             var context = new ParseContext(expression, trace, namedValues, functions);
-            context.Trace.Verbose($"Parsing [{expression}]");
+            context.Trace.Info($"Parsing: <{expression}>");
             while (TryGetNextToken(context))
             {
                 switch (context.Token.Kind)

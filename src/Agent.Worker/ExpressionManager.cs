@@ -28,7 +28,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             };
             var functions = new DT.IFunctionInfo[]
             {
-                new DT.FunctionInfo<AlwaysNode>(name: Constants.Expressions.Always, minParameters: 0, maxParameters: 0),
                 new DT.FunctionInfo<SucceededNode>(name: Constants.Expressions.Succeeded, minParameters: 0, maxParameters: 0),
                 new DT.FunctionInfo<SucceededOrFailedNode>(name: Constants.Expressions.SucceededOrFailed, minParameters: 0, maxParameters: 0),
             };
@@ -56,16 +55,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             public void Verbose(string message)
             {
                 _executionContext.Debug(message);
-            }
-        }
-
-        private sealed class AlwaysNode : DT.FunctionNode
-        {
-            public sealed override string Name => Constants.Expressions.Always;
-
-            protected sealed override object EvaluateCore(DT.EvaluationContext evaluationContext)
-            {
-                return true;
             }
         }
 

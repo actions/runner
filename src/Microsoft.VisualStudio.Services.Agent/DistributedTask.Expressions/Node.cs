@@ -45,7 +45,8 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
             var context = new EvaluationContext(trace, state);
             trace.Info($"Evaluating: {ConvertToExpression()}");
             Boolean result = EvaluateBoolean(context);
-            trace.Info($"{ConvertToRealizedExpression(context)} => {result}");
+            trace.Info($"Expanded: {ConvertToRealizedExpression(context)}");
+            trace.Info($"Result: {result}");
             return result;
         }
 
