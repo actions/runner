@@ -127,17 +127,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                 {
                     new
                     {
-                        Steps = new[] { CreateStep(TaskResult.Succeeded), CreateStep(TaskResult.Succeeded, condition: "always()", isFinally: true) },
+                        Steps = new[] { CreateStep(TaskResult.Succeeded), CreateStep(TaskResult.Succeeded, condition: "succeededOrFailed()", isFinally: true) },
                         Expected = TaskResult.Succeeded,
                     },
                     new
                     {
-                        Steps = new[] { CreateStep(TaskResult.Failed), CreateStep(TaskResult.Succeeded, condition: "always()", isFinally: true) },
+                        Steps = new[] { CreateStep(TaskResult.Failed), CreateStep(TaskResult.Succeeded, condition: "succeededOrFailed()", isFinally: true) },
                         Expected = TaskResult.Failed,
                     },
                     new
                     {
-                        Steps = new[] { CreateStep(TaskResult.Failed, critical: true), CreateStep(TaskResult.Succeeded, condition: "always()", isFinally: true) },
+                        Steps = new[] { CreateStep(TaskResult.Failed, critical: true), CreateStep(TaskResult.Succeeded, condition: "succeededOrFailed()", isFinally: true) },
                         Expected = TaskResult.Failed,
                     },
                 };
@@ -394,12 +394,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                 {
                     new
                     {
-                        Steps = new[] { CreateStep(TaskResult.Succeeded, condition: "nosuch()"), CreateStep(TaskResult.Succeeded, condition: "always()", isFinally: false) },
+                        Steps = new[] { CreateStep(TaskResult.Succeeded, condition: "nosuch()"), CreateStep(TaskResult.Succeeded, condition: "succeededOrFailed()", isFinally: false) },
                         Expected = false,
                     },
                     new
                     {
-                        Steps = new[] { CreateStep(TaskResult.Succeeded, condition: "nosuch()"), CreateStep(TaskResult.Succeeded, condition: "always()", isFinally: true) },
+                        Steps = new[] { CreateStep(TaskResult.Succeeded, condition: "nosuch()"), CreateStep(TaskResult.Succeeded, condition: "succeededOrFailed()", isFinally: true) },
                         Expected = true,
                     },
                 };
