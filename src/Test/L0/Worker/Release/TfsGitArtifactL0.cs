@@ -86,7 +86,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Release
                     x => x.GetSourceAsync(
                         It.IsAny<IExecutionContext>(),
                         It.Is<ServiceEndpoint>(y => y.Url.Equals(new Uri(_expectedUrl)) && y.Authorization.Scheme.Equals(EndpointAuthorizationSchemes.OAuth) && y.Name.Equals(_expectedRepositoryId) && y.Data.ContainsKey(Constants.EndpointData.SourcesDirectory) && y.Data.ContainsKey(Constants.EndpointData.SourceBranch)
-                        && y.Data.ContainsKey(Constants.EndpointData.SourceVersion)),
+                        && y.Data.ContainsKey(Constants.EndpointData.SourceVersion) && y.Data.ContainsKey("fetchDepth") && y.Data.ContainsKey("GitLfsSupport") && y.Data.ContainsKey(WellKnownEndpointData.CheckoutSubmodules)),
                         It.IsAny<CancellationToken>()));
             }
         }
