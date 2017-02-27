@@ -122,8 +122,8 @@ get_current_os_name() {
 
 machine_has() {
     eval $invocation
-    
-    which "$1" > /dev/null 2>&1
+
+    hash "$1" > /dev/null 2>&1
     return $?
 }
 
