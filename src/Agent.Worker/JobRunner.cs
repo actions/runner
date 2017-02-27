@@ -153,9 +153,32 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     .Where(x => string.Equals(x.HostType, hostType, StringComparison.OrdinalIgnoreCase))
                     .ToArray();
 
+                List<IStep> steps = new List<IStep>();
+
+#if OS_WINDOWS
+                // Init script job extention.
+                // This is for internal testing and is not publicly supported. This will be removed from the agent at a later time.
+                var prepareScript = Environment.GetEnvironmentVariable("VSTS_AGENT_INIT_INTERNAL_TEMP_HACK");
+                if (!string.IsNullOrEmpty(prepareScript))
+                {
+                    var prepareStep = new ManagementScriptStep(
+                        scriptPath: prepareScript,
+                        continueOnError: false,
+                        critical: true,
+                        displayName: "Agent Initialization",
+                        enabled: true,
+                        @finally: false);
+
+                    Trace.Verbose($"Adding agent init script step.");
+                    prepareStep.Initialize(HostContext);
+                    prepareStep.ExecutionContext = jobContext.CreateChild(Guid.NewGuid(), prepareStep.DisplayName);
+                    prepareStep.AccessToken = message.Environment.SystemConnection.Authorization.Parameters["AccessToken"];
+                    steps.Add(prepareStep);
+                }
+#endif
+
                 // Add the prepare steps.
                 Trace.Info("Adding job prepare extensions.");
-                List<IStep> steps = new List<IStep>();
                 foreach (IJobExtension extension in extensions)
                 {
                     if (extension.PrepareStep != null)
@@ -188,6 +211,28 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                         steps.Add(extension.FinallyStep);
                     }
                 }
+
+#if OS_WINDOWS
+                // Add script post steps.
+                // This is for internal testing and is not publicly supported. This will be removed from the agent at a later time.
+                var finallyScript = Environment.GetEnvironmentVariable("VSTS_AGENT_CLEANUP_INTERNAL_TEMP_HACK");
+                if (!string.IsNullOrEmpty(finallyScript))
+                {
+                    var finallyStep = new ManagementScriptStep(
+                        scriptPath: finallyScript,
+                        continueOnError: false,
+                        critical: true,
+                        displayName: "Agent Cleanup",
+                        enabled: true,
+                        @finally: true);
+
+                    Trace.Verbose($"Adding agent cleanup script step.");
+                    finallyStep.Initialize(HostContext);
+                    finallyStep.ExecutionContext = jobContext.CreateChild(Guid.NewGuid(), finallyStep.DisplayName);
+                    finallyStep.AccessToken = message.Environment.SystemConnection.Authorization.Parameters["AccessToken"];
+                    steps.Add(finallyStep);
+                }
+#endif
 
                 // Download tasks if not already in the cache
                 Trace.Info("Downloading task definitions.");

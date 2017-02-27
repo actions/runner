@@ -11,6 +11,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
     public interface IPowerShellExeHandler : IHandler
     {
         PowerShellExeHandlerData Data { get; set; }
+
+        string AccessToken { get; set; }
     }
 
     public sealed class PowerShellExeHandler : Handler, IPowerShellExeHandler
@@ -21,6 +23,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
         private volatile int _errorCount;
         private bool _failOnStandardError;
         public PowerShellExeHandlerData Data { get; set; }
+        public string AccessToken { get; set; }
 
         public async Task RunAsync()
         {
@@ -33,6 +36,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
 
             // Update the env dictionary.
             AddVariablesToEnvironment(excludeNames: true, excludeSecrets: true);
+
+            // Add the access token to the environment variables, if the access token is set.
+            if (!string.IsNullOrEmpty(AccessToken))
+            {
+                string formattedKey = Constants.Variables.System.AccessToken.Replace('.', '_').Replace(' ', '_').ToUpperInvariant();
+                AddEnvironmentVariable(formattedKey, AccessToken);
+            }
 
             // Determine whether to fail on STDERR.
             _failOnStandardError = StringUtil.ConvertToBoolean(Data.FailOnStandardError, true); // Default to true.
