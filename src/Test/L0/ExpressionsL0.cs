@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressions;
@@ -291,7 +292,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         }
 
         ////////////////////////////////////////////////////////////////////////////////
-        // Functions
+        // Built-in functions
         ////////////////////////////////////////////////////////////////////////////////
         [Fact]
         [Trait("Level", "L0")]
@@ -1139,6 +1140,43 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         }
 
         ////////////////////////////////////////////////////////////////////////////////
+        // Unknown keywords
+        ////////////////////////////////////////////////////////////////////////////////
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void ValidateSyntax_AllowsUnknownFunction()
+        {
+            using (var hc = new TestHostContext(this))
+            {
+                var parser = new Parser();
+                parser.ValidateSyntax(
+                    "or(eq(1, noSuchFunctionWithZeroParameters()), eq(2, noSuchFunctionWithManyParameters(1,2,3,4,5,6,7,8,9,10)))",
+                    new TraceWriter(hc));
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void ValidateSyntax_AllowsUnknownNamedValues()
+        {
+            using (var hc = new TestHostContext(this))
+            {
+                // Property dereference syntax.
+                var parser = new Parser();
+                parser.ValidateSyntax(
+                    "eq(1, noSuchNamedValue.foo)",
+                    new TraceWriter(hc));
+
+                // Index syntax.
+                parser.ValidateSyntax(
+                    "eq(1, noSuchNamedValue['foo'])",
+                    new TraceWriter(hc));
+            }
+        }
+
+        ////////////////////////////////////////////////////////////////////////////////
         // Parse exceptions
         ////////////////////////////////////////////////////////////////////////////////
         [Fact]
@@ -1157,26 +1195,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 {
                     Assert.Equal("UnrecognizedValue", GetKind(ex));
                     Assert.Equal("3.4a", GetRawToken(ex));
-                }
-            }
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Common")]
-        public void ThrowsWhenInvalidVersion()
-        {
-            using (var hc = new TestHostContext(this))
-            {
-                try
-                {
-                    EvaluateBoolean(hc, "eq(1.2.3, 4.5.6.7a)");
-                    throw new Exception("Should not reach here.");
-                }
-                catch (ParseException ex)
-                {
-                    Assert.Equal("UnrecognizedValue", GetKind(ex));
-                    Assert.Equal("4.5.6.7a", GetRawToken(ex));
                 }
             }
         }
@@ -1204,19 +1222,66 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
-        public void ThrowsWhenUnclosedFunction()
+        public void ThrowsWhenInvalidVersion()
         {
             using (var hc = new TestHostContext(this))
             {
                 try
                 {
-                    EvaluateBoolean(hc, "eq(1,2");
+                    EvaluateBoolean(hc, "eq(1.2.3, 4.5.6.7a)");
                     throw new Exception("Should not reach here.");
                 }
                 catch (ParseException ex)
                 {
-                    Assert.Equal("UnclosedFunction", GetKind(ex));
-                    Assert.Equal("eq", GetRawToken(ex));
+                    Assert.Equal("UnrecognizedValue", GetKind(ex));
+                    Assert.Equal("4.5.6.7a", GetRawToken(ex));
+                }
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void ThrowsWhenExceededMaxDepth()
+        {
+            using (var hc = new TestHostContext(this))
+            {
+                // 50 levels should work.
+                EvaluateBoolean(hc, "not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(true)))))))))))))))))))))))))))))))))))))))))))))))))");
+
+                // 51 levels should not work.
+                try
+                {
+                    EvaluateBoolean(hc, "not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(true))))))))))))))))))))))))))))))))))))))))))))))))))");
+                    throw new Exception("Should not reach here.");
+                }
+                catch (ParseException ex)
+                {
+                    Assert.Equal("ExceededMaxDepth", GetKind(ex));
+                }
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void ThrowsWhenExceededMaxLength()
+        {
+            using (var hc = new TestHostContext(this))
+            {
+                // 2000 length should work.
+                const string Format = "or('{0}', true)";
+                EvaluateBoolean(hc, string.Format(CultureInfo.InvariantCulture, Format, string.Empty.PadRight(2000 - Format.Length + "{0}".Length, 'a')));
+
+                // 2001 length should not work.
+                try
+                {
+                    EvaluateBoolean(hc, string.Format(CultureInfo.InvariantCulture, Format, string.Empty.PadRight(2001 - Format.Length + "{0}".Length, 'a')));
+                    throw new Exception("Should not reach here.");
+                }
+                catch (ParseException ex)
+                {
+                    Assert.Equal("ExceededMaxLength", GetKind(ex));
                 }
             }
         }
@@ -1241,6 +1306,126 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             }
         }
 
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void ThrowsWhenUnclosedFunction()
+        {
+            using (var hc = new TestHostContext(this))
+            {
+                try
+                {
+                    EvaluateBoolean(hc, "eq(1,2");
+                    throw new Exception("Should not reach here.");
+                }
+                catch (ParseException ex)
+                {
+                    Assert.Equal("UnclosedFunction", GetKind(ex));
+                    Assert.Equal("eq", GetRawToken(ex));
+                }
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void ThrowsWhenUnknownFunction()
+        {
+            using (var hc = new TestHostContext(this))
+            {
+                try
+                {
+                    EvaluateBoolean(hc, "eq(1, noSuchFunction())");
+                    throw new Exception("Should not reach here.");
+                }
+                catch (ParseException ex)
+                {
+                    Assert.Equal("UnrecognizedValue", GetKind(ex));
+                    Assert.Equal("noSuchFunction", GetRawToken(ex));
+                }
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void ThrowsWhenUnknownNamedValue()
+        {
+            using (var hc = new TestHostContext(this))
+            {
+                try
+                {
+                    EvaluateBoolean(hc, "eq(1, noSuchNamedValue.foo)");
+                    throw new Exception("Should not reach here.");
+                }
+                catch (ParseException ex)
+                {
+                    Assert.Equal("UnrecognizedValue", GetKind(ex));
+                    Assert.Equal("noSuchNamedValue", GetRawToken(ex));
+                }
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void ValidateSyntax_ThrowsWhenExceededMaxDepth()
+        {
+            using (var hc = new TestHostContext(this))
+            {
+                // 50 levels should work.
+                var parser = new Parser();
+                parser.ValidateSyntax(
+                    "not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(true)))))))))))))))))))))))))))))))))))))))))))))))))",
+                    new TraceWriter(hc));
+
+                // 51 levels should not work.
+                try
+                {
+                    parser.ValidateSyntax(
+                        "not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(not(true))))))))))))))))))))))))))))))))))))))))))))))))))",
+                        new TraceWriter(hc));
+                    throw new Exception("Should not reach here.");
+                }
+                catch (ParseException ex)
+                {
+                    Assert.Equal("ExceededMaxDepth", GetKind(ex));
+                }
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void ValidateSyntax_ThrowsWhenExceededMaxLength()
+        {
+            using (var hc = new TestHostContext(this))
+            {
+                // 2000 length should work.
+                const string Format = "or('{0}', true)";
+                var parser = new Parser();
+                parser.ValidateSyntax(
+                    string.Format(CultureInfo.InvariantCulture, Format, string.Empty.PadRight(2000 - Format.Length + "{0}".Length, 'a')),
+                    new TraceWriter(hc));
+
+                // 2001 length should not work.
+                try
+                {
+                    parser.ValidateSyntax(
+                        string.Format(CultureInfo.InvariantCulture, Format, string.Empty.PadRight(2001 - Format.Length + "{0}".Length, 'a')),
+                        new TraceWriter(hc));
+                    throw new Exception("Should not reach here.");
+                }
+                catch (ParseException ex)
+                {
+                    Assert.Equal("ExceededMaxLength", GetKind(ex));
+                }
+            }
+        }
+
+        ////////////////////////////////////////////////////////////////////////////////
+        // Private
+        ////////////////////////////////////////////////////////////////////////////////
         private static bool EvaluateBoolean(
             IHostContext hostContext,
             string expression,

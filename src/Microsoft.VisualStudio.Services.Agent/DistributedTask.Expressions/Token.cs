@@ -51,10 +51,11 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
         String,
         PropertyName,
 
-        // Functions
+        // Functions and named-values
         WellKnownFunction,
         ExtensionFunction,
         ExtensionNamedValue,
+        UnknownKeyword,
 
         Unrecognized,
     }

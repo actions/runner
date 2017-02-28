@@ -38,6 +38,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
             WellKnownFunctions.Add(name, new FunctionInfo<T>(name, minParameters, maxParameters));
         }
 
+        // Function names.
         internal static readonly String And = "and";
         internal static readonly String Contains = "contains";
         internal static readonly String EndsWith = "endsWith";
@@ -52,7 +53,10 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
         internal static readonly String NotIn = "notIn";
         internal static readonly String Or = "or";
         internal static readonly String StartsWith = "startsWith";
-        internal static readonly Dictionary<String, IFunctionInfo> WellKnownFunctions = new Dictionary<String, IFunctionInfo>(StringComparer.OrdinalIgnoreCase);
         internal static readonly String Xor = "xor";
+
+        internal static readonly Int32 MaxDepth = 50;
+        internal static readonly Int32 MaxLength = 2000;
+        internal static readonly Dictionary<String, IFunctionInfo> WellKnownFunctions = new Dictionary<String, IFunctionInfo>(StringComparer.OrdinalIgnoreCase);
     }
 }

@@ -97,6 +97,22 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
             return true;
         }
 
+        public Boolean TryPeekNextToken(ref Token token)
+        {
+            // Record the state.
+            Int32 index = m_index;
+            Token lastToken = m_lastToken;
+
+            // Get next token.
+            Boolean result = TryGetNextToken(ref token);
+
+            // Restore the state.
+            m_index = index;
+            m_lastToken = lastToken;
+
+            return result;
+        }
+
         private Token ReadNumberOrVersionToken()
         {
             Int32 startIndex = m_index;
@@ -186,8 +202,8 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
                 }
             }
 
-            // Unrecognized
-            return new Token(TokenKind.Unrecognized, str, startIndex);
+            // Unknown keyword
+            return new Token(TokenKind.UnknownKeyword, str, startIndex);
         }
 
         private Token ReadStringToken()

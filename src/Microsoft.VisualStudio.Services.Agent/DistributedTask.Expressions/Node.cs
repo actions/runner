@@ -253,6 +253,24 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
         }
     }
 
+    internal sealed class UnknownNamedValueNode : NamedValueNode
+    {
+        private readonly String m_name;
+
+        public UnknownNamedValueNode(String name)
+        {
+            m_name = name;
+        }
+
+        public sealed override String Name => m_name;
+
+        protected sealed override object EvaluateCore(EvaluationContext evaluationContext)
+        {
+            // Should never reach here.
+            throw new NotSupportedException("Unknown function node is not supported during evaluation.");
+        }
+    }
+
     public abstract class ContainerNode : Node
     {
         public IReadOnlyList<Node> Parameters => m_parameters.AsReadOnly();
@@ -378,6 +396,24 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
                 "{0}({1})",
                 Name,
                 String.Join(", ", Parameters.Select(x => x.ConvertToRealizedExpression(context))));
+        }
+    }
+
+    internal sealed class UnknownFunctionNode : FunctionNode
+    {
+        private readonly String m_name;
+
+        internal UnknownFunctionNode(String name)
+        {
+            m_name = name;
+        }
+
+        public sealed override String Name => m_name;
+
+        protected sealed override Object EvaluateCore(EvaluationContext context)
+        {
+            // Should never reach here.
+            throw new NotSupportedException("Unknown function node is not supported during evaluation.");
         }
     }
 

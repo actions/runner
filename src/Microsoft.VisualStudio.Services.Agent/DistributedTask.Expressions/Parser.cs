@@ -16,7 +16,19 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
         public INode CreateTree(String expression, ITraceWriter trace, IEnumerable<INamedValueInfo> namedValues, IEnumerable<IFunctionInfo> functions)
         {
             var context = new ParseContext(expression, trace, namedValues, functions);
-            context.Trace.Info($"Parsing: <{expression}>");
+            context.Trace.Info($"Parsing expression: <{expression}>");
+            return CreateTree(context);
+        }
+
+        public void ValidateSyntax(String expression, ITraceWriter trace)
+        {
+            var context = new ParseContext(expression, trace, namedValues: null, functions: null, allowUnknownKeywords: true);
+            context.Trace.Info($"Validating expression syntax: <{expression}>");
+            CreateTree(context);
+        }
+
+        private static INode CreateTree(ParseContext context)
+        {
             while (TryGetNextToken(context))
             {
                 switch (context.Token.Kind)
@@ -53,15 +65,26 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
                         HandleValue(context);
                         break;
 
+                    // Unknown keyword
+                    case TokenKind.UnknownKeyword:
+                        HandleUnknownKeyword(context);
+                        break;
+
                     // Malformed
                     case TokenKind.Unrecognized:
                         throw new ParseException(ParseExceptionKind.UnrecognizedValue, context.Token, context.Expression);
 
                     // Unexpected
-                    case TokenKind.PropertyName:    // PropertyName should never reach here.
+                    case TokenKind.PropertyName:    // PropertyName should never reach here (HandleDereference reads next token).
                     case TokenKind.StartParameter:  // StartParameter is only expected by HandleFunction.
                     default:
                         throw new ParseException(ParseExceptionKind.UnexpectedSymbol, context.Token, context.Expression);
+                }
+
+                // Validate depth.
+                if (context.Containers.Count >= ExpressionConstants.MaxDepth)
+                {
+                    throw new ParseException(ParseExceptionKind.ExceededMaxDepth, token: null, expression: context.Expression);
                 }
             }
 
@@ -87,6 +110,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
             context.LastToken = context.Token;
             if (context.Lexer.TryGetNextToken(ref context.Token))
             {
+                // Adjust indent level.
                 int indentLevel = context.Containers.Count;
                 if (indentLevel > 0)
                 {
@@ -119,6 +143,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
                     case TokenKind.WellKnownFunction:
                     case TokenKind.ExtensionFunction:
                     case TokenKind.ExtensionNamedValue:
+                    case TokenKind.UnknownKeyword:
                     case TokenKind.StartIndex:
                     case TokenKind.StartParameter:
                     case TokenKind.EndIndex:
@@ -141,7 +166,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
         {
             // Validate follows ")", "]", or a property name.
             if (context.LastToken == null ||
-                (context.LastToken.Kind != TokenKind.EndParameter && context.LastToken.Kind != TokenKind.EndIndex && context.LastToken.Kind != TokenKind.PropertyName && context.LastToken.Kind != TokenKind.ExtensionNamedValue))
+                (context.LastToken.Kind != TokenKind.EndParameter && context.LastToken.Kind != TokenKind.EndIndex && context.LastToken.Kind != TokenKind.PropertyName && context.LastToken.Kind != TokenKind.ExtensionNamedValue && context.LastToken.Kind != TokenKind.UnknownKeyword))
             {
                 throw new ParseException(ParseExceptionKind.UnexpectedSymbol, context.Token, context.Expression);
             }
@@ -172,7 +197,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
         {
             // Validate follows ")", "]", or a property name.
             if (context.LastToken == null ||
-                (context.LastToken.Kind != TokenKind.EndParameter && context.LastToken.Kind != TokenKind.EndIndex && context.LastToken.Kind != TokenKind.PropertyName && context.LastToken.Kind != TokenKind.ExtensionNamedValue))
+                (context.LastToken.Kind != TokenKind.EndParameter && context.LastToken.Kind != TokenKind.EndIndex && context.LastToken.Kind != TokenKind.PropertyName && context.LastToken.Kind != TokenKind.ExtensionNamedValue && context.LastToken.Kind != TokenKind.UnknownKeyword))
             {
                 throw new ParseException(ParseExceptionKind.UnexpectedSymbol, context.Token, context.Expression);
             }
@@ -238,6 +263,24 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
             context.Containers.Pop();
         }
 
+        private static void HandleUnknownKeyword(ParseContext context)
+        {
+            // Validate.
+            if (!context.AllowUnknownKeywords)
+            {
+                throw new ParseException(ParseExceptionKind.UnrecognizedValue, context.Token, context.Expression);
+            }
+
+            // Try handle function.
+            if (HandleFunction(context, bestEffort: true))
+            {
+                return;
+            }
+
+            // Handle named value.
+            HandleValue(context);
+        }
+
         private static void HandleValue(ParseContext context)
         {
             // Validate either A) is the first token OR B) follows "[" "(" or ",".
@@ -256,6 +299,9 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
                 case TokenKind.ExtensionNamedValue:
                     String name = context.Token.RawValue;
                     node = context.ExtensionNamedValues[name].CreateNode();
+                    break;
+                case TokenKind.UnknownKeyword:
+                    node = new UnknownNamedValueNode(name: context.Token.RawValue);
                     break;
                 default:
                     node = new LiteralValueNode(context.Token.ParsedValue);
@@ -286,7 +332,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
             }
         }
 
-        private static void HandleFunction(ParseContext context)
+        private static Boolean HandleFunction(ParseContext context, Boolean bestEffort = false)
         {
             // Validate either A) is first token OR B) follows "," or "[" or "(".
             if (context.LastToken != null &&
@@ -294,13 +340,34 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
                 context.LastToken.Kind != TokenKind.StartIndex &&
                 context.LastToken.Kind != TokenKind.StartParameter))
             {
+                if (bestEffort)
+                {
+                    return false;
+                }
+
                 throw new ParseException(ParseExceptionKind.UnexpectedSymbol, context.Token, context.Expression);
+            }
+
+            // Validate '(' follows.
+            if (bestEffort)
+            {
+                Token nextToken = null;
+                if (!context.Lexer.TryPeekNextToken(ref nextToken) || nextToken.Kind != TokenKind.StartParameter)
+                {
+                    return false;
+                }
+
+                TryGetNextToken(context);
+            }
+            else if (!TryGetNextToken(context) || context.Token.Kind != TokenKind.StartParameter)
+            {
+                throw new ParseException(ParseExceptionKind.ExpectedStartParameter, context.LastToken, context.Expression);
             }
 
             // Create the node.
             FunctionNode node;
-            String name = context.Token.RawValue;
-            switch (context.Token.Kind)
+            String name = context.LastToken.RawValue;
+            switch (context.LastToken.Kind)
             {
                 case TokenKind.WellKnownFunction:
                     node = ExpressionConstants.WellKnownFunctions[name].CreateNode();
@@ -308,9 +375,12 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
                 case TokenKind.ExtensionFunction:
                     node = context.ExtensionFunctions[name].CreateNode();
                     break;
+                case TokenKind.UnknownKeyword:
+                    node = new UnknownFunctionNode(name);
+                    break;
                 default:
                     // Should never reach here.
-                    throw new NotSupportedException($"Unexpected function token name: '{context.Token.Kind}'");
+                    throw new NotSupportedException($"Unexpected function token name: '{context.LastToken.Kind}'");
             }
 
             // Update the tree.
@@ -324,13 +394,8 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
             }
 
             // Update the container stack.
-            context.Containers.Push(new ContainerInfo() { Node = node, Token = context.Token });
-
-            // Validate '(' follows.
-            if (!TryGetNextToken(context) || context.Token.Kind != TokenKind.StartParameter)
-            {
-                throw new ParseException(ParseExceptionKind.ExpectedStartParameter, context.LastToken, context.Expression);
-            }
+            context.Containers.Push(new ContainerInfo() { Node = node, Token = context.LastToken });
+            return true;
         }
 
         private static int GetMinParamCount(ParseContext context, Token token)
@@ -341,6 +406,8 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
                     return ExpressionConstants.WellKnownFunctions[token.RawValue].MinParameters;
                 case TokenKind.ExtensionFunction:
                     return context.ExtensionFunctions[token.RawValue].MinParameters;
+                case TokenKind.UnknownKeyword:
+                    return 0;
                 default: // Should never reach here.
                     throw new NotSupportedException($"Unexpected token kind '{token.Kind}'. Unable to determine min param count.");
             }
@@ -354,6 +421,8 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
                     return ExpressionConstants.WellKnownFunctions[token.RawValue].MaxParameters;
                 case TokenKind.ExtensionFunction:
                     return context.ExtensionFunctions[token.RawValue].MaxParameters;
+                case TokenKind.UnknownKeyword:
+                    return Int32.MaxValue;
                 default: // Should never reach here.
                     throw new NotSupportedException($"Unexpected token kind '{token.Kind}'. Unable to determine max param count.");
             }
@@ -368,6 +437,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
 
         private sealed class ParseContext
         {
+            public readonly Boolean AllowUnknownKeywords;
             public readonly Stack<ContainerInfo> Containers = new Stack<ContainerInfo>();
             public readonly String Expression;
             public readonly Dictionary<String, IFunctionInfo> ExtensionFunctions = new Dictionary<String, IFunctionInfo>(StringComparer.OrdinalIgnoreCase);
@@ -378,7 +448,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
             public Token LastToken;
             public Node Root;
 
-            public ParseContext(String expression, ITraceWriter trace, IEnumerable<INamedValueInfo> namedValues, IEnumerable<IFunctionInfo> functions)
+            public ParseContext(String expression, ITraceWriter trace, IEnumerable<INamedValueInfo> namedValues, IEnumerable<IFunctionInfo> functions, Boolean allowUnknownKeywords = false)
             {
                 if (trace == null)
                 {
@@ -386,6 +456,11 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
                 }
 
                 Expression = expression ?? String.Empty;
+                if (Expression.Length > 2000)
+                {
+                    throw new ParseException(ParseExceptionKind.ExceededMaxLength, token: null, expression: Expression);
+                }
+
                 Trace = trace;
                 foreach (INamedValueInfo namedValueInfo in (namedValues ?? new INamedValueInfo[0]))
                 {
@@ -397,6 +472,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
                     ExtensionFunctions.Add(functionInfo.Name, functionInfo);
                 }
 
+                AllowUnknownKeywords = allowUnknownKeywords;
                 Lexer = new LexicalAnalyzer(Expression, trace, namedValues: ExtensionNamedValues.Keys, functions: ExtensionFunctions.Keys);
             }
         }
@@ -466,12 +542,17 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
         {
             Expression = expression;
             Kind = kind;
-            RawToken = token.RawValue;
-            TokenIndex = token.Index;
+            RawToken = token?.RawValue;
+            TokenIndex = token?.Index ?? 0;
             String description;
-            // TODO: LOC
             switch (kind)
             {
+                case ParseExceptionKind.ExceededMaxDepth:
+                    description = $"Exceeded max expression depth {ExpressionConstants.MaxDepth}.";
+                    break;
+                case ParseExceptionKind.ExceededMaxLength:
+                    description = $"Exceeded max expression length {ExpressionConstants.MaxLength}.";
+                    break;
                 case ParseExceptionKind.ExpectedPropertyName:
                     description = "Expected property name to follow deference operator";
                     break;
@@ -494,9 +575,15 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
                     throw new Exception($"Unexpected parse exception kind '{kind}'.");
             }
 
-            Int32 position = token.Index + 1;
-            // TODO: loc
-            Message = $"{description}: '{RawToken}'. Located at position {position} within condition expression: {Expression}";
+            if (token == null)
+            {
+                Message = $"{description}. For more help, refer to https://go.microsoft.com/fwlink/?linkid=842996";
+            }
+            else
+            {
+                // TODO: loc
+                Message = $"{description}: '{RawToken}'. Located at position {TokenIndex + 1} within expression: {Expression}. For more help, refer to https://go.microsoft.com/fwlink/?linkid=842996";
+            }
         }
 
         internal String Expression { get; }
@@ -512,6 +599,8 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
 
     internal enum ParseExceptionKind
     {
+        ExceededMaxDepth,
+        ExceededMaxLength,
         ExpectedPropertyName,
         ExpectedStartParameter,
         UnclosedFunction,
