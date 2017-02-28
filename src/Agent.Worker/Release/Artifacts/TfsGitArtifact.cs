@@ -43,7 +43,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
             tfsGitEndpoint.Data.Add(Constants.EndpointData.SourcesDirectory, downloadFolderPath);
             tfsGitEndpoint.Data.Add(Constants.EndpointData.SourceBranch, gitArtifactDetails.Branch);
             tfsGitEndpoint.Data.Add(Constants.EndpointData.SourceVersion, artifactDefinition.Version);
-
+            tfsGitEndpoint.Data.Add(WellKnownEndpointData.CheckoutSubmodules, gitArtifactDetails.CheckoutSubmodules);
+            tfsGitEndpoint.Data.Add("fetchDepth", gitArtifactDetails.FetchDepth);
+            tfsGitEndpoint.Data.Add("GitLfsSupport", gitArtifactDetails.GitLfsSupport);
+			
             try
             {
                 await sourceProvider.GetSourceAsync(executionContext, tfsGitEndpoint, executionContext.CancellationToken);
@@ -65,12 +68,23 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
                 && artifactDetails.TryGetValue("RepositoryId", out repositoryId)
                 && artifactDetails.TryGetValue("Branch", out branch))
             {
+                string checkoutSubmodules;
+                string gitLfsSupport;
+                string fetchDepth;
+
+                artifactDetails.TryGetValue("checkoutSubmodules", out checkoutSubmodules);
+                artifactDetails.TryGetValue("gitLfsSupport", out gitLfsSupport);
+                artifactDetails.TryGetValue("fetchDepth", out fetchDepth);
+
                 return new TfsGitArtifactDetails
                 {
                     RelativePath = "\\",
                     ProjectId = projectId,
                     RepositoryId = repositoryId,
-                    Branch = branch
+                    Branch = branch,
+                    CheckoutSubmodules = checkoutSubmodules,
+                    GitLfsSupport = gitLfsSupport,
+                    FetchDepth = fetchDepth
                 };
             }
             else

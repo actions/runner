@@ -52,6 +52,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
             gitHubEndpoint.Data.Add(Constants.EndpointData.SourcesDirectory, localFolderPath);
             gitHubEndpoint.Data.Add(Constants.EndpointData.SourceBranch, gitHubDetails.Branch);
             gitHubEndpoint.Data.Add(Constants.EndpointData.SourceVersion, artifactDefinition.Version);
+            gitHubEndpoint.Data.Add(WellKnownEndpointData.CheckoutSubmodules, gitHubDetails.CheckoutSubmodules);
+            gitHubEndpoint.Data.Add("fetchDepth", gitHubDetails.FetchDepth);
+            gitHubEndpoint.Data.Add("GitLfsSupport", gitHubDetails.GitLfsSupport);
 
             try
             {
@@ -78,6 +81,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
                 && artifactDetails.TryGetValue(ArtifactDefinitionConstants.RepositoryId, out repositoryName)
                 && artifactDetails.TryGetValue(ArtifactDefinitionConstants.BranchId, out branch))
             {
+                string checkoutSubmodules;
+                string gitLfsSupport;
+                string fetchDepth;
+
+                artifactDetails.TryGetValue("checkoutSubmodules", out checkoutSubmodules);
+                artifactDetails.TryGetValue("gitLfsSupport", out gitLfsSupport);
+                artifactDetails.TryGetValue("fetchDepth", out fetchDepth);
+
                 ServiceEndpoint gitHubEndpoint = context.Endpoints.FirstOrDefault((e => string.Equals(e.Name, connectionName, StringComparison.OrdinalIgnoreCase)));
                 if (gitHubEndpoint == null)
                 {
@@ -93,7 +104,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
                     RelativePath = Path.DirectorySeparatorChar.ToString(),
                     ConnectionName = connectionName,
                     CloneUrl = new Uri(repository.Clone_url),
-                    Branch = branch
+                    Branch = branch,
+                    CheckoutSubmodules = checkoutSubmodules,
+                    GitLfsSupport = gitLfsSupport,
+                    FetchDepth = fetchDepth
                 };
             }
             else
