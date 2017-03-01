@@ -532,6 +532,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 sourcesToBuild = sourceVersion;
             }
 
+            // fetch lfs object upfront, this will avoid fetch lfs object during checkout which cause checkout taking forever
+            // since checkout will fetch lfs object 1 at a time, while git lfs fetch will fetch lfs object in parallel.
+            if (gitLfsSupport)
+            {
+                int exitCode_lfsFetch = await _gitCommandManager.GitLFSFetch(executionContext, targetPath, "origin", sourcesToBuild, string.Join(" ", additionalFetchArgs), cancellationToken);
+                if (exitCode_lfsFetch != 0)
+                {
+                    throw new InvalidOperationException($"Git fetch failed with exit code: {exitCode_lfsFetch}");
+                }
+            }
+
             // Finally, checkout the sourcesToBuild (if we didn't find a valid git object this will throw)
             int exitCode_checkout = await _gitCommandManager.GitCheckout(executionContext, targetPath, sourcesToBuild, cancellationToken);
             if (exitCode_checkout != 0)
