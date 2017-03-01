@@ -32,6 +32,10 @@ namespace Microsoft.VisualStudio.Services.Agent
 
         // agent package
         Task<List<PackageMetadata>> GetPackagesAsync(string packageType, string platform, int top, CancellationToken cancellationToken);
+        Task<PackageMetadata> GetPackageAsync(string packageType, string platform, string version, CancellationToken cancellationToken);
+
+        // agent update
+        Task<TaskAgent> UpdateAgentUpdateStateAsync(int agentPoolId, int agentId, string currentState);
     }
 
     public sealed class AgentServer : AgentService, IAgentServer
@@ -154,6 +158,18 @@ namespace Microsoft.VisualStudio.Services.Agent
         {
             CheckConnection();
             return _taskAgentClient.GetPackagesAsync(packageType, platform, top, cancellationToken);
+        }
+
+        public Task<PackageMetadata> GetPackageAsync(string packageType, string platform, string version, CancellationToken cancellationToken)
+        {
+            CheckConnection();
+            return _taskAgentClient.GetPackageAsync(packageType, platform, version, cancellationToken);
+        }
+
+        public Task<TaskAgent> UpdateAgentUpdateStateAsync(int agentPoolId, int agentId, string currentState)
+        {
+            CheckConnection();
+            return _taskAgentClient.UpdateAgentUpdateStateAsync(agentPoolId, agentId, currentState);
         }
     }
 }

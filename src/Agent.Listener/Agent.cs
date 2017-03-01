@@ -254,8 +254,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                                 if (autoUpdateInProgress == false)
                                 {
                                     autoUpdateInProgress = true;
+                                    var agentUpdateMessage = JsonUtility.FromString<AgentRefreshMessage>(message.Body);
                                     var selfUpdater = HostContext.GetService<ISelfUpdater>();
-                                    selfUpdateTask = selfUpdater.SelfUpdate(jobDispatcher, !runAsService, token);
+                                    selfUpdateTask = selfUpdater.SelfUpdate(agentUpdateMessage, jobDispatcher, !runAsService, token);
                                     Trace.Info("Refresh message received, kick-off selfupdate background process.");
                                 }
                                 else
