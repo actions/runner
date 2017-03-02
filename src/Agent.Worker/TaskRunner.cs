@@ -21,7 +21,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         {
             get
             {
-                string condition = ExecutionContext.Variables.Get($"VSTS_TEMP_CONDITION_{DisplayName}"); //TaskInstance.Condition;
+                string condition = TaskInstance.Condition;
                 if (!string.IsNullOrEmpty(condition))
                 {
                     return condition;
