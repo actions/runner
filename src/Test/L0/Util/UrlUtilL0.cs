@@ -1,5 +1,4 @@
 using System;
-using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using Xunit;
 

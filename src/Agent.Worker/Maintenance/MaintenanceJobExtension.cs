@@ -14,13 +14,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Maintenance
     {
         public Type ExtensionType => typeof(IJobExtension);
         public string HostType => "poolmaintenance";
-        public IStep PrepareStep { get; private set; }
-        public IStep FinallyStep { get; private set; }
+        public IStep PreJobStep { get; private set; }
+        public IStep ExecutionStep { get; private set; }
+        public IStep PostJobStep { get; private set; }
 
         public MaintenanceJobExtension()
         {
-            PrepareStep = new JobExtensionRunner(
-                runAsync: PrepareAsync,
+            ExecutionStep = new JobExtensionRunner(
+                runAsync: MaintainAsync,
                 continueOnError: false,
                 critical: true,
                 displayName: StringUtil.Loc("Maintenance"),
@@ -39,13 +40,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Maintenance
             repoName = string.Empty;
         }
 
-        private Task PrepareAsync()
+        private Task MaintainAsync()
         {
             // Validate args.
             Trace.Entering();
-            ArgUtil.NotNull(PrepareStep, nameof(PrepareStep));
-            ArgUtil.NotNull(PrepareStep.ExecutionContext, nameof(PrepareStep.ExecutionContext));
-            IExecutionContext executionContext = PrepareStep.ExecutionContext;
+            ArgUtil.NotNull(PreJobStep, nameof(PreJobStep));
+            ArgUtil.NotNull(PreJobStep.ExecutionContext, nameof(PreJobStep.ExecutionContext));
+            IExecutionContext executionContext = PreJobStep.ExecutionContext;
             var extensionManager = HostContext.GetService<IExtensionManager>();
             var maintenanceServiceProviders = extensionManager.GetExtensions<IMaintenanceServiceProvider>();
             if (maintenanceServiceProviders != null && maintenanceServiceProviders.Count > 0)

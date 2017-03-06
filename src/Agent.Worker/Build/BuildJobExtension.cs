@@ -13,22 +13,31 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
     {
         public Type ExtensionType => typeof(IJobExtension);
         public string HostType => "build";
-        public IStep PrepareStep { get; private set; }
-        public IStep FinallyStep { get; private set; }
+        public IStep PreJobStep { get; private set; }
+        public IStep ExecutionStep { get; private set; }
+        public IStep PostJobStep { get; private set; }
         private ServiceEndpoint SourceEndpoint { set; get; }
         private ISourceProvider SourceProvider { set; get; }
 
         public BuildJobExtension()
         {
-            PrepareStep = new JobExtensionRunner(
-                runAsync: PrepareAsync,
+            PreJobStep = new JobExtensionRunner(
+                runAsync: PrepareBuildDirectory,
+                continueOnError: false,
+                critical: true,
+                displayName: StringUtil.Loc("PrepareBuildDir"),
+                enabled: true,
+                @finally: false);
+
+            ExecutionStep = new JobExtensionRunner(
+                runAsync: GetSourceAsync,
                 continueOnError: false,
                 critical: true,
                 displayName: StringUtil.Loc("GetSources"),
                 enabled: true,
                 @finally: false);
 
-            FinallyStep = new JobExtensionRunner(
+            PostJobStep = new JobExtensionRunner(
                 runAsync: FinallyAsync,
                 continueOnError: false,
                 critical: false,
@@ -112,13 +121,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             }
         }
 
-        private async Task PrepareAsync()
+        private Task PrepareBuildDirectory()
         {
             // Validate args.
             Trace.Entering();
-            ArgUtil.NotNull(PrepareStep, nameof(PrepareStep));
-            ArgUtil.NotNull(PrepareStep.ExecutionContext, nameof(PrepareStep.ExecutionContext));
-            IExecutionContext executionContext = PrepareStep.ExecutionContext;
+            ArgUtil.NotNull(PreJobStep, nameof(PreJobStep));
+            ArgUtil.NotNull(PreJobStep.ExecutionContext, nameof(PreJobStep.ExecutionContext));
+            IExecutionContext executionContext = PreJobStep.ExecutionContext;
             var directoryManager = HostContext.GetService<IBuildDirectoryManager>();
 
             // This flag can be false for jobs like cleanup artifacts.
@@ -127,7 +136,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             if (!syncSources)
             {
                 Trace.Info($"{Constants.Variables.Build.SyncSources} = false, we will not set source related build variable, not create build folder and not sync source");
-                return;
+                return Task.CompletedTask;
             }
 
             // Get the repo endpoint and source provider.
@@ -192,6 +201,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
             SourceProvider.SetVariablesInEndpoint(executionContext, SourceEndpoint);
 
+            return Task.CompletedTask;
+        }
+
+        private async Task GetSourceAsync()
+        {
+            // Validate args.
+            Trace.Entering();
+            ArgUtil.NotNull(ExecutionStep, nameof(ExecutionStep));
+            ArgUtil.NotNull(ExecutionStep.ExecutionContext, nameof(ExecutionStep.ExecutionContext));
+            ArgUtil.NotNull(SourceEndpoint, nameof(SourceEndpoint));
+            IExecutionContext executionContext = ExecutionStep.ExecutionContext;
+
             // Read skipSyncSource property fron endpoint data
             string skipSyncSourceText;
             bool skipSyncSource = false;
@@ -218,9 +239,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         {
             // Validate args.
             Trace.Entering();
-            ArgUtil.NotNull(FinallyStep, nameof(FinallyStep));
-            ArgUtil.NotNull(FinallyStep.ExecutionContext, nameof(FinallyStep.ExecutionContext));
-            IExecutionContext executionContext = FinallyStep.ExecutionContext;
+            ArgUtil.NotNull(PostJobStep, nameof(PostJobStep));
+            ArgUtil.NotNull(PostJobStep.ExecutionContext, nameof(PostJobStep.ExecutionContext));
+            IExecutionContext executionContext = PostJobStep.ExecutionContext;
 
             // If syncSources = false, we will not reset repository.
             bool syncSources = executionContext.Variables.Build_SyncSources ?? true;

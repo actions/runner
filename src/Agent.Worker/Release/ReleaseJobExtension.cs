@@ -23,13 +23,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
 
         private static readonly Guid DownloadArtifactsTaskId = new Guid("B152FEAA-7E65-43C9-BCC4-07F6883EE793");
 
+        private int ReleaseId { get; set; }
+        private Guid TeamProjectId { get; set; }
+        private string ArtifactsWorkingFolder { get; set; }
+        private bool SkipArtifactsDownload { get; set; }
+
         public Type ExtensionType => typeof(IJobExtension);
 
         public virtual string HostType => "release";
 
-        public IStep PrepareStep { get; private set; }
+        public IStep PreJobStep { get; private set; }
 
-        public IStep FinallyStep { get; private set; }
+        public IStep ExecutionStep { get; private set; }
+
+        public IStep PostJobStep { get; private set; }
 
         public string GetRootedPath(IExecutionContext context, string path)
         {
@@ -90,8 +97,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
 
         public ReleaseJobExtension()
         {
-            PrepareStep = new JobExtensionRunner(
-                runAsync: PrepareAsync,
+            PreJobStep = new JobExtensionRunner(
+                runAsync: InitializeAgent,
+                continueOnError: false,
+                critical: true,
+                displayName: StringUtil.Loc("PrepareReleasesDir"),
+                enabled: true,
+                @finally: false);
+
+            ExecutionStep = new JobExtensionRunner(
+                runAsync: GetArtifactsAsync,
                 continueOnError: false,
                 critical: true,
                 displayName: StringUtil.Loc("DownloadArtifacts"),
@@ -99,31 +114,25 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
                 @finally: false);
         }
 
-        public async Task PrepareAsync()
+        private async Task GetArtifactsAsync()
         {
             Trace.Entering();
 
-            ArgUtil.NotNull(PrepareStep, nameof(PrepareStep));
-            ArgUtil.NotNull(PrepareStep.ExecutionContext, nameof(PrepareStep.ExecutionContext));
+            ArgUtil.NotNull(ExecutionStep, nameof(ExecutionStep));
+            ArgUtil.NotNull(ExecutionStep.ExecutionContext, nameof(ExecutionStep.ExecutionContext));
 
-            int releaseId;
-            Guid teamProjectId;
-            string artifactsWorkingFolder;
-            bool skipArtifactsDownload;
+            if (SkipArtifactsDownload)
+            {
+                return;
+            }
 
-            IExecutionContext executionContext = PrepareStep.ExecutionContext;
-
+            IExecutionContext executionContext = ExecutionStep.ExecutionContext;
             try
             {
-                InitializeAgent(executionContext, out skipArtifactsDownload, out teamProjectId, out artifactsWorkingFolder, out releaseId);
+                // TODO: Create this as new task. Old windows agent does this. First is initialize which does the above and download task will be added based on skipDownloadArtifact option
+                executionContext.Output("Downloading artifact");
 
-                if (!skipArtifactsDownload)
-                {
-                    // TODO: Create this as new task. Old windows agent does this. First is initialize which does the above and download task will be added based on skipDownloadArtifact option
-                    executionContext.Output("Downloading artifact");
-
-                    await DownloadArtifacts(executionContext, teamProjectId, artifactsWorkingFolder, releaseId);
-                }
+                await DownloadArtifacts(executionContext, TeamProjectId, ArtifactsWorkingFolder, ReleaseId);
             }
             catch (Exception ex)
             {
@@ -260,19 +269,24 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
             executionContext.Output(StringUtil.Loc("RMCleanedUpArtifactsDirectory", artifactsWorkingFolder));
         }
 
-        private void InitializeAgent(IExecutionContext executionContext, out bool skipArtifactsDownload, out Guid teamProjectId, out string artifactsWorkingFolder, out int releaseId)
+        private Task InitializeAgent()
         {
             Trace.Entering();
 
+            ArgUtil.NotNull(PreJobStep, nameof(PreJobStep));
+            ArgUtil.NotNull(PreJobStep.ExecutionContext, nameof(PreJobStep.ExecutionContext));
+
+            IExecutionContext executionContext = PreJobStep.ExecutionContext;
+
             var directoryManager = HostContext.GetService<IReleaseDirectoryManager>();
-            releaseId = executionContext.Variables.GetInt(Constants.Variables.Release.ReleaseId) ?? 0;
-            teamProjectId = executionContext.Variables.GetGuid(Constants.Variables.System.TeamProjectId) ?? Guid.Empty;
-            skipArtifactsDownload = executionContext.Variables.GetBoolean(Constants.Variables.Release.SkipArtifactsDownload) ?? false;
+            ReleaseId = executionContext.Variables.GetInt(Constants.Variables.Release.ReleaseId) ?? 0;
+            TeamProjectId = executionContext.Variables.GetGuid(Constants.Variables.System.TeamProjectId) ?? Guid.Empty;
+            SkipArtifactsDownload = executionContext.Variables.GetBoolean(Constants.Variables.Release.SkipArtifactsDownload) ?? false;
             string releaseDefinitionName = executionContext.Variables.Get(Constants.Variables.Release.ReleaseDefinitionName);
 
             // TODO: Should we also write to log in executionContext.Output methods? so that we don't have to repeat writing into logs?
             // Log these values here to debug scenarios where downloading the artifact fails.
-            executionContext.Output($"ReleaseId={releaseId}, TeamProjectId={teamProjectId}, ReleaseDefinitionName={releaseDefinitionName}");
+            executionContext.Output($"ReleaseId={ReleaseId}, TeamProjectId={TeamProjectId}, ReleaseDefinitionName={releaseDefinitionName}");
 
             var releaseDefinition = executionContext.Variables.Get(Constants.Variables.Release.ReleaseDefinitionId);
             if (string.IsNullOrEmpty(releaseDefinition))
@@ -288,28 +302,30 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
                 executionContext.Variables.System_TeamProjectId.ToString(),
                 releaseDefinition);
 
-            artifactsWorkingFolder = Path.Combine(
+            ArtifactsWorkingFolder = Path.Combine(
                 IOUtil.GetWorkPath(HostContext),
                 releaseDefinitionToFolderMap.ReleaseDirectory,
                 Constants.Release.Path.ArtifactsDirectory);
-            executionContext.Output($"Release folder: {artifactsWorkingFolder}");
+            executionContext.Output($"Release folder: {ArtifactsWorkingFolder}");
 
-            SetLocalVariables(executionContext, artifactsWorkingFolder);
+            SetLocalVariables(executionContext, ArtifactsWorkingFolder);
 
             // Log the environment variables available after populating the variable service with our variables
             LogEnvironmentVariables(executionContext);
 
-            if (skipArtifactsDownload)
+            if (SkipArtifactsDownload)
             {
                 // If this is the first time the agent is executing a task, we need to create the artifactsFolder
                 // otherwise Process.StartWithCreateProcess() will fail with the error "The directory name is invalid"
                 // because the working folder doesn't exist
-                CreateWorkingFolderIfRequired(executionContext, artifactsWorkingFolder);
+                CreateWorkingFolderIfRequired(executionContext, ArtifactsWorkingFolder);
 
                 // log the message that the user chose to skip artifact download and move on
                 executionContext.Output(StringUtil.Loc("RMUserChoseToSkipArtifactDownload"));
                 Trace.Info("Skipping artifact download based on the setting specified.");
             }
+
+            return Task.CompletedTask;
         }
 
         private void SetLocalVariables(IExecutionContext executionContext, string artifactsDirectoryPath)

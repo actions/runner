@@ -14,16 +14,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
     [ServiceLocator(Default = typeof(TaskManager))]
     public interface ITaskManager : IAgentService
     {
-        Task DownloadAsync(IExecutionContext executionContext, IEnumerable<TaskInstance> tasks);
+        Task DownloadAsync(IExecutionContext jobExecutionContext, IEnumerable<TaskInstance> tasks);
 
         Definition Load(TaskReference task);
+
+        IList<IStep> GetTasksPreJobSteps(IExecutionContext jobExecutionContext, IEnumerable<TaskInstance> tasks);
+        IList<IStep> GetTasksMainSteps(IExecutionContext jobExecutionContext, IEnumerable<TaskInstance> tasks);
+        IList<IStep> GetTasksPostJobSteps(IExecutionContext jobExecutionContext, IEnumerable<TaskInstance> tasks);
     }
 
     public sealed class TaskManager : AgentService, ITaskManager
     {
-        public async Task DownloadAsync(IExecutionContext executionContext, IEnumerable<TaskInstance> tasks)
+        public async Task DownloadAsync(IExecutionContext jobExecutionContext, IEnumerable<TaskInstance> tasks)
         {
-            ArgUtil.NotNull(executionContext, nameof(executionContext));
+            ArgUtil.NotNull(jobExecutionContext, nameof(jobExecutionContext));
             ArgUtil.NotNull(tasks, nameof(tasks));
 
             //remove duplicate and disabled tasks
@@ -39,7 +43,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 select taskGrouping.First();
             foreach (TaskInstance task in uniqueTasks)
             {
-                await DownloadAsync(executionContext, task);
+                await DownloadAsync(jobExecutionContext, task);
             }
         }
 
@@ -65,6 +69,66 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             }
 
             return definition;
+        }
+
+        public IList<IStep> GetTasksPreJobSteps(IExecutionContext jobExecutionContext, IEnumerable<TaskInstance> tasks)
+        {
+            List<IStep> preJobSteps = new List<IStep>();
+            foreach (var taskInstance in tasks)
+            {
+                Definition taskDefinition = Load(taskInstance);
+                if (taskDefinition.Data?.PreJobExecution != null)
+                {
+                    Trace.Verbose($"Adding Pre-Job {taskInstance.DisplayName}.");
+                    var taskRunner = HostContext.CreateService<ITaskRunner>();
+                    taskRunner.ExecutionContext = jobExecutionContext.CreateChild(Guid.NewGuid(), StringUtil.Loc("PreJob", taskInstance.DisplayName));
+                    taskRunner.TaskInstance = taskInstance;
+                    taskRunner.Stage = TaskRunStage.PreJob;
+                    preJobSteps.Add(taskRunner);
+                }
+            }
+
+            return preJobSteps;
+        }
+
+        public IList<IStep> GetTasksMainSteps(IExecutionContext jobExecutionContext, IEnumerable<TaskInstance> tasks)
+        {
+            List<IStep> mainSteps = new List<IStep>();
+            foreach (var taskInstance in tasks)
+            {
+                Definition taskDefinition = Load(taskInstance);
+                if (taskDefinition.Data?.Execution != null)
+                {
+                    Trace.Verbose($"Adding {taskInstance.DisplayName}.");
+                    var taskRunner = HostContext.CreateService<ITaskRunner>();
+                    taskRunner.ExecutionContext = jobExecutionContext.CreateChild(taskInstance.InstanceId, taskInstance.DisplayName);
+                    taskRunner.TaskInstance = taskInstance;
+                    taskRunner.Stage = TaskRunStage.Main;
+                    mainSteps.Add(taskRunner);
+                }
+            }
+
+            return mainSteps;
+        }
+
+        public IList<IStep> GetTasksPostJobSteps(IExecutionContext jobExecutionContext, IEnumerable<TaskInstance> tasks)
+        {
+            List<IStep> postJobSteps = new List<IStep>();
+            foreach (var taskInstance in tasks.Reverse())
+            {
+                Definition taskDefinition = Load(taskInstance);
+                if (taskDefinition.Data?.PostJobExecution != null)
+                {
+                    Trace.Verbose($"Adding Post-Job {taskInstance.DisplayName}.");
+                    var taskRunner = HostContext.CreateService<ITaskRunner>();
+                    taskRunner.ExecutionContext = jobExecutionContext.CreateChild(Guid.NewGuid(), StringUtil.Loc("PostJob", taskInstance.DisplayName));
+                    taskRunner.TaskInstance = taskInstance;
+                    taskRunner.Stage = TaskRunStage.PostJob;
+                    postJobSteps.Add(taskRunner);
+                }
+            }
+
+            return postJobSteps;
         }
 
         private async Task DownloadAsync(IExecutionContext executionContext, TaskInstance task)
@@ -166,7 +230,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         public string Author { get; set; }
 
         public TaskInputDefinition[] Inputs { get; set; }
+        public ExecutionData PreJobExecution { get; set; }
         public ExecutionData Execution { get; set; }
+        public ExecutionData PostJobExecution { get; set; }
     }
 
     public sealed class ExecutionData

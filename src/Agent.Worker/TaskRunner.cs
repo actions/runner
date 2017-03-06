@@ -9,14 +9,24 @@ using System.Threading.Tasks;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
+    public enum TaskRunStage
+    {
+        PreJob,
+        Main,
+        PostJob,
+    }
+
     [ServiceLocator(Default = typeof(TaskRunner))]
     public interface ITaskRunner : IStep, IAgentService
     {
+        TaskRunStage Stage { get; set; }
         TaskInstance TaskInstance { get; set; }
     }
 
     public sealed class TaskRunner : AgentService, ITaskRunner
     {
+        public TaskRunStage Stage { get; set; }
+
         public string Condition
         {
             get
@@ -39,7 +49,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         public bool ContinueOnError => TaskInstance?.ContinueOnError ?? default(bool);
 
-        public bool Critical => false;
+        public bool Critical => Stage == TaskRunStage.PreJob;
 
         public string DisplayName => TaskInstance?.DisplayName;
 
@@ -47,7 +57,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         public IExecutionContext ExecutionContext { get; set; }
 
-        public bool Finally => false;
+        public bool Finally => Stage == TaskRunStage.PostJob;
 
         public TaskInstance TaskInstance { get; set; }
 
@@ -74,17 +84,31 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             // Print out task metadata
             PrintTaskMetaData(definition);
 
-            if ((definition.Data?.Execution?.All.Any(x => x is PowerShell3HandlerData)).Value &&
-                (definition.Data?.Execution?.All.Any(x => x is PowerShellHandlerData && x.Platforms != null && x.Platforms.Contains("windows", StringComparer.OrdinalIgnoreCase))).Value)
+            ExecutionData currentExecution = null;
+            switch (Stage)
+            {
+                case TaskRunStage.PreJob:
+                    currentExecution = definition.Data?.PreJobExecution;
+                    break;
+                case TaskRunStage.Main:
+                    currentExecution = definition.Data?.Execution;
+                    break;
+                case TaskRunStage.PostJob:
+                    currentExecution = definition.Data?.PostJobExecution;
+                    break;
+            };
+
+            if ((currentExecution?.All.Any(x => x is PowerShell3HandlerData)).Value &&
+                (currentExecution?.All.Any(x => x is PowerShellHandlerData && x.Platforms != null && x.Platforms.Contains("windows", StringComparer.OrdinalIgnoreCase))).Value)
             {
                 // When task contains both PS and PS3 implementations, we will always prefer PS3 over PS regardless of the platform pinning.
                 Trace.Info("Ignore platform pinning for legacy PowerShell execution handler.");
-                var legacyPShandler = definition.Data?.Execution?.All.Where(x => x is PowerShellHandlerData).FirstOrDefault();
+                var legacyPShandler = currentExecution?.All.Where(x => x is PowerShellHandlerData).FirstOrDefault();
                 legacyPShandler.Platforms = null;
             }
 
             HandlerData handlerData =
-                definition.Data?.Execution?.All
+                currentExecution?.All
                 .OrderBy(x => !x.PreferredOnCurrentPlatform()) // Sort true to false.
                 .ThenBy(x => x.Priority)
                 .FirstOrDefault();

@@ -38,7 +38,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Release
         [Trait("Category", "Worker")]
         public void GetRootedPathShouldReturnNullIfPathIsNull()
         {
-            using (TestHostContext tc = Setup(createWorkDirectory:false))
+            using (TestHostContext tc = Setup(createWorkDirectory: false))
             {
                 var result = releaseJobExtension.GetRootedPath(_ec.Object, null);
 
@@ -81,10 +81,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Release
         {
             using (TestHostContext tc = Setup(createWorkDirectory: false))
             {
-                releaseJobExtension.PrepareStep.ExecutionContext = _ec.Object;
+                releaseJobExtension.PreJobStep.ExecutionContext = _ec.Object;
                 _releaseDirectoryManager.Setup(manager => manager.PrepareArtifactsDirectory(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.Is<string>(s => s.Equals(id.ToString())))).Returns(map);
 
-                releaseJobExtension.PrepareAsync().SyncResult();
+                releaseJobExtension.PreJobStep.RunAsync();
 
                 Assert.Equal(Path.Combine(this.stubWorkFolder, "r1", Constants.Release.Path.ArtifactsDirectory), _ec.Object.Variables.Get(Constants.Variables.Release.AgentReleaseDirectory));
                 Assert.Equal(Path.Combine(this.stubWorkFolder, "r1", Constants.Release.Path.ArtifactsDirectory), _ec.Object.Variables.Get(Constants.Variables.Release.ArtifactsDirectory));
@@ -101,10 +101,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Release
         {
             using (TestHostContext tc = Setup(createWorkDirectory: false, useReleaseDefinitionId: false))
             {
-                releaseJobExtension.PrepareStep.ExecutionContext = _ec.Object;
+                releaseJobExtension.PreJobStep.ExecutionContext = _ec.Object;
                 _releaseDirectoryManager.Setup(manager => manager.PrepareArtifactsDirectory(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.Is<string>(s => s.Equals(releaseDefinitionName)))).Returns(map);
 
-                releaseJobExtension.PrepareAsync().SyncResult();
+                releaseJobExtension.PreJobStep.RunAsync();
 
                 Assert.Equal(Path.Combine(this.stubWorkFolder, "r1", Constants.Release.Path.ArtifactsDirectory), _ec.Object.Variables.Get(Constants.Variables.Release.AgentReleaseDirectory));
                 Assert.Equal(Path.Combine(this.stubWorkFolder, "r1", Constants.Release.Path.ArtifactsDirectory), _ec.Object.Variables.Get(Constants.Variables.Release.ArtifactsDirectory));

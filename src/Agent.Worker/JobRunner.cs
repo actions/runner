@@ -142,14 +142,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     VarUtil.ExpandEnvironmentVariables(HostContext, target: endpoint.Data);
                 }
 
-                // Get the job extensions.
-                Trace.Info("Getting job extensions.");
+                // Get the job extension.
+                Trace.Info("Getting job extension.");
                 string hostType = jobContext.Variables.System_HostType;
                 var extensionManager = HostContext.GetService<IExtensionManager>();
-                IJobExtension[] extensions =
+                // We should always have one job extension
+                IJobExtension jobExtension =
                     (extensionManager.GetExtensions<IJobExtension>() ?? new List<IJobExtension>())
                     .Where(x => string.Equals(x.HostType, hostType, StringComparison.OrdinalIgnoreCase))
-                    .ToArray();
+                    .FirstOrDefault();
+                ArgUtil.NotNull(jobExtension, nameof(jobExtension));
 
                 List<IStep> steps = new List<IStep>();
 
@@ -175,39 +177,65 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 }
 #endif
 
-                // Add the prepare steps.
-                Trace.Info("Adding job prepare extensions.");
-                foreach (IJobExtension extension in extensions)
+                // Download tasks if not already in the cache
+                Trace.Info("Downloading task definitions.");
+                var taskManager = HostContext.GetService<ITaskManager>();
+                try
                 {
-                    if (extension.PrepareStep != null)
-                    {
-                        Trace.Verbose($"Adding {extension.GetType().Name}.{nameof(extension.PrepareStep)}.");
-                        extension.PrepareStep.ExecutionContext = jobContext.CreateChild(Guid.NewGuid(), extension.PrepareStep.DisplayName);
-                        steps.Add(extension.PrepareStep);
-                    }
+                    await taskManager.DownloadAsync(jobContext, message.Tasks);
+                }
+                catch (OperationCanceledException ex) when (jobContext.CancellationToken.IsCancellationRequested)
+                {
+                    // set the job to canceled
+                    // don't log error issue to job ExecutionContext, since server owns the job level issue
+                    Trace.Error($"Caught exception: {ex}");
+                    return await CompleteJobAsync(jobServer, jobContext, message, TaskResult.Canceled);
+                }
+                catch (Exception ex)
+                {
+                    // Log the error and fail the job.
+                    Trace.Error($"Caught exception from {nameof(TaskManager)}: {ex}");
+                    jobContext.Error(ex);
+                    return await CompleteJobAsync(jobServer, jobContext, message, TaskResult.Failed);
                 }
 
-                // Add the task steps.
+                // Add pre-job step from Job Extension
+                Trace.Info("Adding pre-job step from extension.");
+                if (jobExtension.PreJobStep != null)
+                {
+                    Trace.Verbose($"Adding {jobExtension.GetType().Name}.{nameof(jobExtension.PreJobStep)}.");
+                    jobExtension.PreJobStep.ExecutionContext = jobContext.CreateChild(Guid.NewGuid(), jobExtension.PreJobStep.DisplayName);
+                    steps.Add(jobExtension.PreJobStep);
+                }
+
+                // Add pre-job steps from Tasks
+                Trace.Info("Adding pre-job steps from tasks.");
+                steps.AddRange(taskManager.GetTasksPreJobSteps(jobContext, message.Tasks));
+
+                // Add execution step from Job Extension
+                Trace.Info("Adding execution step from extension.");
+                if (jobExtension.ExecutionStep != null)
+                {
+                    Trace.Verbose($"Adding {jobExtension.GetType().Name}.{nameof(jobExtension.ExecutionStep)}.");
+                    jobExtension.ExecutionStep.ExecutionContext = jobContext.CreateChild(Guid.NewGuid(), jobExtension.ExecutionStep.DisplayName);
+                    steps.Add(jobExtension.ExecutionStep);
+                }
+
+                // Add execution steps from Tasks
                 Trace.Info("Adding tasks.");
-                foreach (TaskInstance taskInstance in message.Tasks)
-                {
-                    Trace.Verbose($"Adding {taskInstance.DisplayName}.");
-                    var taskRunner = HostContext.CreateService<ITaskRunner>();
-                    taskRunner.ExecutionContext = jobContext.CreateChild(taskInstance.InstanceId, taskInstance.DisplayName);
-                    taskRunner.TaskInstance = taskInstance;
-                    steps.Add(taskRunner);
-                }
+                steps.AddRange(taskManager.GetTasksMainSteps(jobContext, message.Tasks));
 
-                // Add the finally steps.
-                Trace.Info("Adding job finally extensions.");
-                foreach (IJobExtension extension in extensions)
+                // Add post-job steps from Tasks
+                Trace.Info("Adding post-job steps from tasks.");
+                steps.AddRange(taskManager.GetTasksPostJobSteps(jobContext, message.Tasks));
+
+                // Add post-job steps from Job Extension
+                Trace.Info("Adding  post-job step from extension.");
+                if (jobExtension.PostJobStep != null)
                 {
-                    if (extension.FinallyStep != null)
-                    {
-                        Trace.Verbose($"Adding {extension.GetType().Name}.{nameof(extension.FinallyStep)}.");
-                        extension.FinallyStep.ExecutionContext = jobContext.CreateChild(Guid.NewGuid(), extension.FinallyStep.DisplayName);
-                        steps.Add(extension.FinallyStep);
-                    }
+                    Trace.Verbose($"Adding {jobExtension.GetType().Name}.{nameof(jobExtension.PostJobStep)}.");
+                    jobExtension.PostJobStep.ExecutionContext = jobContext.CreateChild(Guid.NewGuid(), jobExtension.PostJobStep.DisplayName);
+                    steps.Add(jobExtension.PostJobStep);
                 }
 
 #if OS_WINDOWS
@@ -231,28 +259,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     steps.Add(finallyStep);
                 }
 #endif
-
-                // Download tasks if not already in the cache
-                Trace.Info("Downloading task definitions.");
-                var taskManager = HostContext.GetService<ITaskManager>();
-                try
-                {
-                    await taskManager.DownloadAsync(jobContext, message.Tasks);
-                }
-                catch (OperationCanceledException ex) when (jobContext.CancellationToken.IsCancellationRequested)
-                {
-                    // set the job to canceled
-                    // don't log error issue to job ExecutionContext, since server owns the job level issue
-                    Trace.Error($"Caught exception: {ex}");
-                    return await CompleteJobAsync(jobServer, jobContext, message, TaskResult.Canceled);
-                }
-                catch (Exception ex)
-                {
-                    // Log the error and fail the job.
-                    Trace.Error($"Caught exception from {nameof(TaskManager)}: {ex}");
-                    jobContext.Error(ex);
-                    return await CompleteJobAsync(jobServer, jobContext, message, TaskResult.Failed);
-                }
 
                 // Run the steps.
                 var stepsRunner = HostContext.GetService<IStepsRunner>();
