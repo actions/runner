@@ -60,7 +60,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             }
 
             WorkerDispatcher newDispatch = new WorkerDispatcher(jobRequestMessage.JobId, jobRequestMessage.RequestId);
-            newDispatch.WorkerDispatch = RunAsync(jobRequestMessage, currentDispatch, newDispatch.WorkerCancellationTokenSource.Token);
+            newDispatch.WorkerDispatch = RunAsync(jobRequestMessage, currentDispatch, newDispatch.WorkerCancellationTokenSource.Token, newDispatch.WorkerCancelTimeoutKillTokenSource.Token);
 
             _jobInfos.TryAdd(newDispatch.JobId, newDispatch);
             _jobDispatchedQueue.Enqueue(newDispatch.JobId);
@@ -68,7 +68,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
         public bool Cancel(JobCancelMessage jobCancelMessage)
         {
-            Trace.Info($"Job cancellation request {jobCancelMessage.JobId} received.");
+            Trace.Info($"Job cancellation request {jobCancelMessage.JobId} received, cancellation timeout {jobCancelMessage.Timeout.TotalMinutes} minutes.");
 
             WorkerDispatcher workerDispatcher;
             if (!_jobInfos.TryGetValue(jobCancelMessage.JobId, out workerDispatcher))
@@ -78,7 +78,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             }
             else
             {
-                if (workerDispatcher.Cancel())
+                if (workerDispatcher.Cancel(jobCancelMessage.Timeout))
                 {
                     Trace.Verbose($"Fired cancellation token for job request {workerDispatcher.JobId}.");
                 }
@@ -106,7 +106,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
             if (currentDispatch != null)
             {
-                using (var registration = token.Register(() => { if (currentDispatch.Cancel()) { Trace.Verbose($"Fired cancellation token for job request {currentDispatch.JobId}."); } }))
+                using (var registration = token.Register(() => { if (currentDispatch.Cancel(TimeSpan.FromSeconds(60))) { Trace.Verbose($"Fired cancellation token for job request {currentDispatch.JobId}."); } }))
                 {
                     try
                     {
@@ -249,7 +249,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             }
         }
 
-        private async Task RunAsync(AgentJobRequestMessage message, WorkerDispatcher previousJobDispatch, CancellationToken jobRequestCancellationToken)
+        private async Task RunAsync(AgentJobRequestMessage message, WorkerDispatcher previousJobDispatch, CancellationToken jobRequestCancellationToken, CancellationToken workerCancelTimeoutKillToken)
         {
             if (previousJobDispatch != null)
             {
@@ -437,16 +437,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                             }
                         }
 
-                        // wait worker to exit within 45 sec, then kill worker.
-                        using (var csKillWorker = new CancellationTokenSource(TimeSpan.FromSeconds(45)))
-                        {
-                            completedTask = await Task.WhenAny(workerProcessTask, Task.Delay(-1, csKillWorker.Token));
-                        }
+                        // wait worker to exit 
+                        // if worker doesn't exit within timeout, then kill worker.
+                        completedTask = await Task.WhenAny(workerProcessTask, Task.Delay(-1, workerCancelTimeoutKillToken));
 
-                        // worker haven't exit within 45 sec.
+                        // worker haven't exit within cancellation timeout.
                         if (completedTask != workerProcessTask)
                         {
-                            Trace.Info($"worker process for job {message.JobId} haven't exit after 45 sec, kill running worker.");
+                            Trace.Info($"worker process for job {message.JobId} haven't exit within cancellation timout, kill running worker.");
                             workerProcessCancelTokenSource.Cancel();
                             try
                             {
@@ -617,24 +615,34 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             public Guid JobId { get; }
             public Task WorkerDispatch { get; set; }
             public CancellationTokenSource WorkerCancellationTokenSource { get; private set; }
+            public CancellationTokenSource WorkerCancelTimeoutKillTokenSource { get; private set; }
             private readonly object _lock = new object();
 
             public WorkerDispatcher(Guid jobId, long requestId)
             {
                 JobId = jobId;
                 RequestId = requestId;
+                WorkerCancelTimeoutKillTokenSource = new CancellationTokenSource();
                 WorkerCancellationTokenSource = new CancellationTokenSource();
             }
 
-            public bool Cancel()
+            public bool Cancel(TimeSpan timeout)
             {
-                if (WorkerCancellationTokenSource != null)
+                if (WorkerCancellationTokenSource != null && WorkerCancelTimeoutKillTokenSource != null)
                 {
                     lock (_lock)
                     {
-                        if (WorkerCancellationTokenSource != null)
+                        if (WorkerCancellationTokenSource != null && WorkerCancelTimeoutKillTokenSource != null)
                         {
                             WorkerCancellationTokenSource.Cancel();
+
+                            // make sure we have at least 60 seconds for cancellation.
+                            if (timeout.TotalSeconds < 60)
+                            {
+                                timeout = TimeSpan.FromSeconds(60);
+                            }
+
+                            WorkerCancelTimeoutKillTokenSource.CancelAfter(timeout.Subtract(TimeSpan.FromSeconds(15)));
                             return true;
                         }
                     }
@@ -653,7 +661,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             {
                 if (disposing)
                 {
-                    if (WorkerCancellationTokenSource != null)
+                    if (WorkerCancellationTokenSource != null || WorkerCancelTimeoutKillTokenSource != null)
                     {
                         lock (_lock)
                         {
@@ -661,6 +669,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                             {
                                 WorkerCancellationTokenSource.Dispose();
                                 WorkerCancellationTokenSource = null;
+                            }
+
+                            if (WorkerCancelTimeoutKillTokenSource != null)
+                            {
+                                WorkerCancelTimeoutKillTokenSource.Dispose();
+                                WorkerCancelTimeoutKillTokenSource = null;
                             }
                         }
                     }
