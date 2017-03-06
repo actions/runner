@@ -10,17 +10,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
     [ServiceLocator(Default = typeof(ExpressionManager))]
     public interface IExpressionManager : IAgentService
     {
-        bool Evaluate(IExecutionContext context, string condition);
+        DT.INode Parse(IExecutionContext context, string condition);
+        bool Evaluate(IExecutionContext jobContext, IExecutionContext stepContext, DT.INode tree, bool hostTracingOnly = false);
     }
 
     public sealed class ExpressionManager : AgentService, IExpressionManager
     {
-        public bool Evaluate(IExecutionContext executionContext, string condition)
+        public DT.INode Parse(IExecutionContext executionContext, string condition)
         {
             ArgUtil.NotNull(executionContext, nameof(executionContext));
-
-            // Parse the condition.
-            var expressionTrace = new TraceWriter(executionContext);
+            var expressionTrace = new TraceWriter(Trace, executionContext);
             var parser = new DT.Parser();
             var namedValues = new DT.INamedValueInfo[]
             {
@@ -28,33 +27,54 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             };
             var functions = new DT.IFunctionInfo[]
             {
+                new DT.FunctionInfo<AlwaysNode>(name: Constants.Expressions.Always, minParameters: 0, maxParameters: 0),
                 new DT.FunctionInfo<SucceededNode>(name: Constants.Expressions.Succeeded, minParameters: 0, maxParameters: 0),
                 new DT.FunctionInfo<SucceededOrFailedNode>(name: Constants.Expressions.SucceededOrFailed, minParameters: 0, maxParameters: 0),
             };
-            DT.INode tree = parser.CreateTree(condition, expressionTrace, namedValues, functions) ?? new SucceededNode();
+            return parser.CreateTree(condition, expressionTrace, namedValues, functions) ?? new SucceededNode();
+        }
 
-            // Evaluate the tree.
-            return tree.EvaluateBoolean(trace: expressionTrace, state: executionContext);
+        public bool Evaluate(IExecutionContext jobContext, IExecutionContext stepContext, DT.INode tree, bool hostTracingOnly = false)
+        {
+            ArgUtil.NotNull(jobContext, nameof(jobContext));
+            ArgUtil.NotNull(stepContext, nameof(stepContext));
+            ArgUtil.NotNull(tree, nameof(tree));
+            var expressionTrace = new TraceWriter(Trace, hostTracingOnly ? null : stepContext);
+            return tree.EvaluateBoolean(trace: expressionTrace, state: jobContext);
         }
 
         private sealed class TraceWriter : DT.ITraceWriter
         {
             private readonly IExecutionContext _executionContext;
+            private readonly Tracing _trace;
 
-            public TraceWriter(IExecutionContext executionContext)
+            public TraceWriter(Tracing trace, IExecutionContext executionContext)
             {
-                ArgUtil.NotNull(executionContext, nameof(executionContext));
+                ArgUtil.NotNull(trace, nameof(trace));
+                _trace = trace;
                 _executionContext = executionContext;
             }
 
             public void Info(string message)
             {
-                _executionContext.Debug(message);
+                _trace.Info(message);
+                _executionContext?.Debug(message);
             }
 
             public void Verbose(string message)
             {
-                _executionContext.Debug(message);
+                _trace.Verbose(message);
+                _executionContext?.Debug(message);
+            }
+        }
+
+        private sealed class AlwaysNode : DT.FunctionNode
+        {
+            public sealed override string Name => Constants.Expressions.Always;
+
+            protected sealed override object EvaluateCore(DT.EvaluationContext evaluationContext)
+            {
+                return true;
             }
         }
 
@@ -64,9 +84,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
             protected sealed override object EvaluateCore(DT.EvaluationContext evaluationContext)
             {
-                var executionContext = evaluationContext.State as IExecutionContext;
-                ArgUtil.NotNull(executionContext, nameof(executionContext));
-                TaskResult jobStatus = executionContext.Variables.Agent_JobStatus ?? TaskResult.Succeeded;
+                var jobContext = evaluationContext.State as IExecutionContext;
+                ArgUtil.NotNull(jobContext, nameof(jobContext));
+                if (jobContext.CancellationToken.IsCancellationRequested)
+                {
+                    return false;
+                }
+
+                TaskResult jobStatus = jobContext.Variables.Agent_JobStatus ?? TaskResult.Succeeded;
                 return jobStatus == TaskResult.Succeeded ||
                     jobStatus == TaskResult.SucceededWithIssues;
             }
@@ -78,9 +103,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
             protected sealed override object EvaluateCore(DT.EvaluationContext evaluationContext)
             {
-                var executionContext = evaluationContext.State as IExecutionContext;
-                ArgUtil.NotNull(executionContext, nameof(executionContext));
-                TaskResult jobStatus = executionContext.Variables.Agent_JobStatus ?? TaskResult.Succeeded;
+                var jobContext = evaluationContext.State as IExecutionContext;
+                ArgUtil.NotNull(jobContext, nameof(jobContext));
+                if (jobContext.CancellationToken.IsCancellationRequested)
+                {
+                    return false;
+                }
+
+                TaskResult jobStatus = jobContext.Variables.Agent_JobStatus ?? TaskResult.Succeeded;
                 return jobStatus == TaskResult.Succeeded ||
                     jobStatus == TaskResult.SucceededWithIssues ||
                     jobStatus == TaskResult.Failed;
@@ -93,9 +123,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
             protected sealed override object EvaluateCore(DT.EvaluationContext evaluationContext)
             {
-                var executionContext = evaluationContext.State as IExecutionContext;
-                ArgUtil.NotNull(executionContext, nameof(executionContext));
-                return new VariablesDictionary(executionContext.Variables);
+                var jobContext = evaluationContext.State as IExecutionContext;
+                ArgUtil.NotNull(jobContext, nameof(jobContext));
+                return new VariablesDictionary(jobContext.Variables);
             }
         }
 

@@ -67,10 +67,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 jobContext.Start();
                 jobContext.Section(StringUtil.Loc("StepStarting", message.JobName));
 
-                // Set agent version into ExecutionContext's variables dictionary.
+                // Set agent version variable.
                 jobContext.Variables.Set(Constants.Variables.Agent.Version, Constants.Agent.Version);
-
-                // Print agent version into log for better diagnostic experience 
                 jobContext.Output(StringUtil.Loc("AgentVersion", Constants.Agent.Version));
 
                 // Print proxy setting information for better diagnostic experience

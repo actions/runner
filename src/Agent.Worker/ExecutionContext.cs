@@ -26,6 +26,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         // Initialize
         void InitializeJob(JobRequestMessage message, CancellationToken token);
+        void CancelToken();
         IExecutionContext CreateChild(Guid recordId, string name);
 
         // logging
@@ -36,7 +37,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         // timeline record update methods
         void Start(string currentOperation = null);
         TaskResult Complete(TaskResult? result = null, string currentOperation = null);
-        void SetTimeout(TimeSpan timeout);
+        void SetTimeout(TimeSpan? timeout);
         void AddIssue(Issue issue);
         void Progress(int percentage, string currentOperation = null);
         void UpdateDetailTimelineRecord(TimelineRecord record);
@@ -104,6 +105,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         public PlanFeatures Features { get; private set; }
 
+        public void CancelToken()
+        {
+            _cancellationTokenSource.Cancel();
+        }
+
         public IExecutionContext CreateChild(Guid recordId, string name)
         {
             Trace.Entering();
@@ -113,7 +119,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             child.Features = Features;
             child.Variables = Variables;
             child.Endpoints = Endpoints;
-            child._cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(CancellationToken);
+            child._cancellationTokenSource = new CancellationTokenSource();
             child.WriteDebug = WriteDebug;
             child._parentExecutionContext = this;
 
@@ -178,9 +184,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             return Result.Value;
         }
 
-        public void SetTimeout(TimeSpan timeout)
+        public void SetTimeout(TimeSpan? timeout)
         {
-            _cancellationTokenSource.CancelAfter(timeout);
+            if (timeout != null)
+            {
+                _cancellationTokenSource.CancelAfter(timeout.Value);
+            }
         }
 
         public void Progress(int percentage, string currentOperation = null)
