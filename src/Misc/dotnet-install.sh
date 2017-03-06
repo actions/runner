@@ -60,7 +60,10 @@ get_current_os_name() {
     eval $invocation
 
     local uname=$(uname)
-    if [ "$uname" = "Darwin" ]; then
+    if [ "$linux_portable" = true ]; then
+        echo "linux"
+        return 0
+    elif [ "$uname" = "Darwin" ]; then
         echo "osx"
         return 0
     else
@@ -584,6 +587,7 @@ azure_feed="https://dotnetcli.azureedge.net/dotnet"
 uncached_feed="https://dotnetcli.blob.core.windows.net/dotnet"
 verbose=false
 shared_runtime=false
+linux_portable=false
 
 while [ $# -ne 0 ]
 do
@@ -624,6 +628,9 @@ do
             shift
             azure_feed="$1"
             ;;
+        --linux-portable|-[Ll]inux[Pp]ortable)
+            linux_portable=true
+            ;;
         -?|--?|-h|--help|-[Hh]elp)
             script_name="$(basename $0)"
             echo ".NET Tools Installer"
@@ -648,6 +655,8 @@ do
             echo "  --no-path, -NoPath             Do not set PATH for the current process."
             echo "  --verbose,-Verbose             Display diagnostics information."
             echo "  --azure-feed,-AzureFeed        Azure feed location. Defaults to $azure_feed"
+            echo "  --linux-portable               Installs the Linux portable .NET Tools instead of a distro-specific version."
+            echo "      -LinuxPortable"
             echo "  -?,--?,-h,--help,-Help         Shows this help message"
             echo ""
             echo "Install Location:"
