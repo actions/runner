@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
@@ -13,7 +14,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
 
             if (variables != null)
             {
-                foreach (var pair in variables)
+                var sortedVariables = variables.OrderBy(x => x.Key, StringComparer.OrdinalIgnoreCase);
+                foreach (var pair in sortedVariables)
                 {
                     string varName = pair.Key.ToUpperInvariant().Replace(".", "_").Replace(" ", "_");
                     builder.AppendFormat(
