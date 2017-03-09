@@ -20,6 +20,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
         private string _codeCoverageTool;
         private string _reportDirectory;
 
+        public HostTypes SupportedHostTypes => HostTypes.Build;
+
         public void ProcessCommand(IExecutionContext context, Command command)
         {
             if (string.Equals(command.Event, WellKnownResultsCommand.PublishCodeCoverage, StringComparison.OrdinalIgnoreCase))
@@ -241,7 +243,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
         {
             var hostType = context.Variables.System_HostType;
 
-            if (hostType != null && String.Equals(hostType.ToString(), "build", StringComparison.OrdinalIgnoreCase))
+            if (hostType.HasFlag(HostTypes.Build))
             {
                 return true;
             }

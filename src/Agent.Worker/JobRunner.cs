@@ -144,12 +144,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
                 // Get the job extension.
                 Trace.Info("Getting job extension.");
-                string hostType = jobContext.Variables.System_HostType;
+                var hostType = jobContext.Variables.System_HostType;
                 var extensionManager = HostContext.GetService<IExtensionManager>();
                 // We should always have one job extension
                 IJobExtension jobExtension =
                     (extensionManager.GetExtensions<IJobExtension>() ?? new List<IJobExtension>())
-                    .Where(x => string.Equals(x.HostType, hostType, StringComparison.OrdinalIgnoreCase))
+                    .Where(x => x.HostType.HasFlag(hostType))
                     .FirstOrDefault();
                 ArgUtil.NotNull(jobExtension, nameof(jobExtension));
 

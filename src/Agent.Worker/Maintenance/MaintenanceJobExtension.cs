@@ -13,7 +13,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Maintenance
     public sealed class MaintenanceJobExtension : AgentService, IJobExtension
     {
         public Type ExtensionType => typeof(IJobExtension);
-        public string HostType => "poolmaintenance";
+        public HostTypes HostType => HostTypes.PoolMaintenance;
         public IStep PreJobStep { get; private set; }
         public IStep ExecutionStep { get; private set; }
         public IStep PostJobStep { get; private set; }

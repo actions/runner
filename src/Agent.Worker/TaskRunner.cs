@@ -211,7 +211,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             var extensionManager = HostContext.GetService<IExtensionManager>();
             IJobExtension[] extensions =
                 (extensionManager.GetExtensions<IJobExtension>() ?? new List<IJobExtension>())
-                .Where(x => string.Equals(x.HostType, ExecutionContext.Variables.System_HostType, StringComparison.OrdinalIgnoreCase))
+                .Where(x => x.HostType.HasFlag(ExecutionContext.Variables.System_HostType))
                 .ToArray();
             foreach (IJobExtension extension in extensions)
             {
@@ -219,7 +219,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 if (!string.IsNullOrEmpty(fullPath))
                 {
                     // Stop on the first path root found.
-                    Trace.Info($"{extension.HostType} JobExtension resolved a rooted path:: {fullPath}");
+                    Trace.Info($"{extension.HostType.ToString()} JobExtension resolved a rooted path:: {fullPath}");
                     return fullPath;
                 }
             }

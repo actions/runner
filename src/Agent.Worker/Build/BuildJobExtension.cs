@@ -12,7 +12,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
     public sealed class BuildJobExtension : AgentService, IJobExtension
     {
         public Type ExtensionType => typeof(IJobExtension);
-        public string HostType => "build";
+        public HostTypes HostType => HostTypes.Build;
         public IStep PreJobStep { get; private set; }
         public IStep ExecutionStep { get; private set; }
         public IStep PostJobStep { get; private set; }

@@ -28,6 +28,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
 
         public string CommandArea => "results";
 
+        public HostTypes SupportedHostTypes => HostTypes.All;
+
         public void ProcessCommand(IExecutionContext context, Command command)
         {
             if (string.Equals(command.Event, WellKnownResultsCommand.PublishTestResults, StringComparison.OrdinalIgnoreCase))

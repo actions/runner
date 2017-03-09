@@ -52,6 +52,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             IWorkerCommandExtension extension;
             if (_commandExtensions.TryGetValue(command.Area, out extension))
             {
+                if (!extension.SupportedHostTypes.HasFlag(context.Variables.System_HostType))
+                {
+                    context.Error(StringUtil.Loc("CommandNotSupported", command.Area, context.Variables.System_HostType));
+                    context.CommandResult = TaskResult.Failed;
+                    return false;
+                }
+
                 // process logging command in serialize oreder.
                 lock (_commandSerializeLock)
                 {
@@ -89,6 +96,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
     {
         string CommandArea { get; }
 
+        HostTypes SupportedHostTypes { get; }
+
         void ProcessCommand(IExecutionContext context, Command command);
+    }
+
+    [Flags]
+    public enum HostTypes
+    {
+        None = 0,
+        Build = 1,
+        Deployment = 2,
+        PoolMaintenance = 4,
+        Release = 8,
+        All = Build | Deployment | PoolMaintenance | Release,
     }
 }

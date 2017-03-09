@@ -2,7 +2,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
     public interface IJobExtension : IExtension
     {
-        string HostType { get; }
+        HostTypes HostType { get; }
         IStep PreJobStep { get; }
         IStep ExecutionStep { get; }
         IStep PostJobStep { get; }

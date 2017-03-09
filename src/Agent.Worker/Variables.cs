@@ -152,7 +152,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         public bool? System_EnableAccessToken => GetBoolean(Constants.Variables.System.EnableAccessToken);
 
-        public string System_HostType => Get(Constants.Variables.System.HostType);
+        public HostTypes System_HostType => GetEnum<HostTypes>(Constants.Variables.System.HostType) ?? HostTypes.None;
 
         public string System_TaskDefinitionsUri => Get(WellKnownDistributedTaskVariables.TaskDefinitionsUrl);
 

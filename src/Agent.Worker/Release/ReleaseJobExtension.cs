@@ -30,7 +30,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
 
         public Type ExtensionType => typeof(IJobExtension);
 
-        public virtual string HostType => "release";
+        public virtual HostTypes HostType => HostTypes.Release;
 
         public IStep PreJobStep { get; private set; }
 

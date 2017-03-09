@@ -17,6 +17,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         public string CommandArea => "task";
 
+        public HostTypes SupportedHostTypes => HostTypes.All;
+
         public void ProcessCommand(IExecutionContext context, Command command)
         {
             // TODO: update tasklib alway product ##vso[task.logissue]
@@ -353,10 +355,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 issue.Category = "Code";
 
                 var extensionManager = HostContext.GetService<IExtensionManager>();
-                string hostType = context.Variables.System_HostType;
+                var hostType = context.Variables.System_HostType;
                 IJobExtension extension =
                     (extensionManager.GetExtensions<IJobExtension>() ?? new List<IJobExtension>())
-                    .Where(x => string.Equals(x.HostType, hostType, StringComparison.OrdinalIgnoreCase))
+                    .Where(x => x.HostType.HasFlag(hostType))
                     .FirstOrDefault();
 
                 if (extension != null)
