@@ -16,13 +16,13 @@ namespace Test.L0.Worker.Release
         {
             List<KeyValuePair<string, string>> variables = new List<KeyValuePair<string, string>>
                                                                       {
-                                                                          new KeyValuePair<string, string>("key.1", "value1"),
-                                                                          new KeyValuePair<string, string>("key 2", "value2"),
-                                                                          new KeyValuePair<string, string>("key3", "value3")
+                                                                          new KeyValuePair<string, string>("key.B", "value1"),
+                                                                          new KeyValuePair<string, string>("key A", "value2"),
+                                                                          new KeyValuePair<string, string>("keyC", "value3")
                                                                       };
             string expectedResult =
-                $"{Environment.NewLine}\t\t\t\t[{FormatVariable(variables[0].Key)}] --> [{variables[0].Value}]"
-                + $"{Environment.NewLine}\t\t\t\t[{FormatVariable(variables[1].Key)}] --> [{variables[1].Value}]"
+                $"{Environment.NewLine}\t\t\t\t[{FormatVariable(variables[1].Key)}] --> [{variables[1].Value}]"
+                + $"{Environment.NewLine}\t\t\t\t[{FormatVariable(variables[0].Key)}] --> [{variables[0].Value}]"
                 + $"{Environment.NewLine}\t\t\t\t[{FormatVariable(variables[2].Key)}] --> [{variables[2].Value}]";
 
             string result = AgentUtilities.GetPrintableEnvironmentVariables(variables);
