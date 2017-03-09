@@ -26,6 +26,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             // Update the env dictionary.
             AddInputsToEnvironment();
             AddEndpointsToEnvironment();
+            AddSecureFilesToEnvironment();
             AddVariablesToEnvironment();
 
             // Resolve the target script.

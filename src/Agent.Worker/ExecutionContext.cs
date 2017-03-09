@@ -20,6 +20,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         TaskResult? CommandResult { get; set; }
         CancellationToken CancellationToken { get; }
         List<ServiceEndpoint> Endpoints { get; }
+        List<SecureFile> SecureFiles { get; }
         PlanFeatures Features { get; }
         Variables Variables { get; }
         List<IAsyncCommandContext> AsyncCommands { get; }
@@ -68,6 +69,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         public CancellationToken CancellationToken => _cancellationTokenSource.Token;
         public List<ServiceEndpoint> Endpoints { get; private set; }
+        public List<SecureFile> SecureFiles { get; private set; }
         public Variables Variables { get; private set; }
         public bool WriteDebug { get; private set; }
 
@@ -119,6 +121,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             child.Features = Features;
             child.Variables = Variables;
             child.Endpoints = Endpoints;
+            child.SecureFiles = SecureFiles;
             child._cancellationTokenSource = new CancellationTokenSource();
             child.WriteDebug = WriteDebug;
             child._parentExecutionContext = this;
@@ -293,6 +296,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             // Endpoints
             Endpoints = message.Environment.Endpoints;
             Endpoints.Add(message.Environment.SystemConnection);
+
+            // SecureFiles
+            SecureFiles = message.Environment.SecureFiles;
 
             // Variables (constructor performs initial recursive expansion)
             List<string> warnings;

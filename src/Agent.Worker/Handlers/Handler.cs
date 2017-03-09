@@ -101,6 +101,31 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             }
         }
 
+        protected void AddSecureFilesToEnvironment() 
+        {
+            Trace.Entering();
+            ArgUtil.NotNull(ExecutionContext, nameof(ExecutionContext));
+            
+            if (ExecutionContext.SecureFiles != null && ExecutionContext.SecureFiles.Count >0) {
+                // Add the secure files to the environment variable dictionary.
+                foreach (SecureFile secureFile in ExecutionContext.SecureFiles)
+                {
+                    if (secureFile != null && secureFile.Id > 0)
+                    {
+                        string partialKey = secureFile.Id.ToString();
+                        AddEnvironmentVariable(
+                            key: $"SECUREFILE_NAME_{partialKey}",
+                            value: secureFile.Name
+                        );
+                        AddEnvironmentVariable(
+                            key: $"SECUREFILE_TICKET_{partialKey}",
+                            value: secureFile.Ticket
+                        );
+                    }
+                }
+            }
+        }
+
         protected void AddInputsToEnvironment()
         {
             // Validate args.
