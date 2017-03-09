@@ -243,7 +243,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                                 Tags = tagsList
                             };
 
-                            await _machineGroupServer.UpdateDeploymentMachineGroupAsync(_projectName, _machineGroupId,
+                            await _machineGroupServer.UpdateDeploymentMachinesAsync(_projectName, _machineGroupId,
                                            new List<DeploymentMachine>() { deploymentMachine });
 
                             _term.WriteLine(StringUtil.Loc("MachineGroupTagsAddedMsg"));
@@ -263,18 +263,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         {
             ArgUtil.NotNull(_machineGroupServer, nameof(_machineGroupServer));
 
-            DeploymentMachineGroup machineGroup = (await _machineGroupServer.GetDeploymentMachineGroupsAsync(projectName, machineGroupName)).FirstOrDefault();
+            var deploymentGroup = (await _machineGroupServer.GetDeploymentGroupsAsync(projectName, machineGroupName)).FirstOrDefault();
 
-            if (machineGroup == null)
+            if (deploymentGroup == null)
             {
                 throw new DeploymentMachineGroupNotFoundException(StringUtil.Loc("MachineGroupNotFound", machineGroupName));
             }
 
-            _machineGroupId = machineGroup.Id;
-            Trace.Info("Found machine group {0} with id {1}", machineGroupName, machineGroup.Id);
-            Trace.Info("Found poolId {0} for machine group {1}", machineGroup.Pool.Id, machineGroupName);
+            _machineGroupId = deploymentGroup.Id;
+            Trace.Info("Found machine group {0} with id {1}", machineGroupName, deploymentGroup.Id);
+            Trace.Info("Found poolId {0} for machine group {1}", deploymentGroup.Pool.Id, machineGroupName);
 
-            return machineGroup.Pool.Id;
+            return deploymentGroup.Pool.Id;
         }
     }
 }

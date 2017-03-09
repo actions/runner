@@ -12,10 +12,10 @@ namespace Microsoft.VisualStudio.Services.Agent
         Task ConnectAsync(VssConnection agentConnection);
 
         // Configuration
-        Task<List<DeploymentMachineGroup>> GetDeploymentMachineGroupsAsync(string projectName, string machineGroupName);
+        Task<List<DeploymentGroup>> GetDeploymentGroupsAsync(string projectName, string machineGroupName);
 
         // Update Machine Group ( Used for adding tags)
-        Task<List<DeploymentMachine>> UpdateDeploymentMachineGroupAsync(string projectName, int machineGroupId, List<DeploymentMachine> deploymentMachines);
+        Task<List<DeploymentMachine>> UpdateDeploymentMachinesAsync(string projectName, int machineGroupId, List<DeploymentMachine> deploymentMachines);
     }
 
     public sealed class MachineGroupServer : AgentService, IMachineGroupServer
@@ -47,16 +47,16 @@ namespace Microsoft.VisualStudio.Services.Agent
         //-----------------------------------------------------------------
         // Configuration
         //-----------------------------------------------------------------
-        public Task<List<DeploymentMachineGroup>> GetDeploymentMachineGroupsAsync(string projectName, string machineGroupName)
+        public Task<List<DeploymentGroup>> GetDeploymentGroupsAsync(string projectName, string machineGroupName)
         {
             CheckConnection();
-            return _taskAgentClient.GetDeploymentMachineGroupsAsync(projectName, machineGroupName);
+            return _taskAgentClient.GetDeploymentGroupsAsync(projectName, machineGroupName);
         }
 
         //-----------------------------------------------------------------
         // Update
         //-----------------------------------------------------------------
-        public Task<List<DeploymentMachine>> UpdateDeploymentMachineGroupAsync(string projectName, int machineGroupId, List<DeploymentMachine> deploymentMachines)
+        public Task<List<DeploymentMachine>> UpdateDeploymentMachinesAsync(string projectName, int machineGroupId, List<DeploymentMachine> deploymentMachines)
         {
             CheckConnection();
             return _taskAgentClient.UpdateDeploymentMachinesAsync(projectName, machineGroupId, deploymentMachines);
