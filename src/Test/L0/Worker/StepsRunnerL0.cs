@@ -514,7 +514,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                 var expressionManager = new Mock<IExpressionManager>();
                 expressionManager.Object.Initialize(hc);
                 hc.SetSingleton<IExpressionManager>(expressionManager.Object);
-                expressionManager.Setup(x => x.Evaluate(It.IsAny<IExecutionContext>(), It.IsAny<IExecutionContext>(), It.IsAny<INode>(), It.IsAny<bool>())).Throws(new Exception());
+                expressionManager.Setup(x => x.Evaluate(It.IsAny<IExecutionContext>(), It.IsAny<INode>(), It.IsAny<bool>())).Throws(new Exception());
 
                 // Arrange.
                 var variableSets = new[]

@@ -3,51 +3,52 @@ using System.Collections;
 using System.Collections.Generic;
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Util;
-using DT = Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressions;
+using Expressions = Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressions;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
     [ServiceLocator(Default = typeof(ExpressionManager))]
     public interface IExpressionManager : IAgentService
     {
-        DT.INode Parse(IExecutionContext context, string condition);
-        bool Evaluate(IExecutionContext jobContext, IExecutionContext stepContext, DT.INode tree, bool hostTracingOnly = false);
+        Expressions.INode Parse(IExecutionContext context, string condition);
+        bool Evaluate(IExecutionContext context, Expressions.INode tree, bool hostTracingOnly = false);
     }
 
     public sealed class ExpressionManager : AgentService, IExpressionManager
     {
-        public static DT.INode Always = new AlwaysNode();
-        public static DT.INode Succeeded = new SucceededNode();
-        public static DT.INode SucceededOrFailed = new SucceededOrFailedNode();
+        public static Expressions.INode Always = new AlwaysNode();
+        public static Expressions.INode Succeeded = new SucceededNode();
+        public static Expressions.INode SucceededOrFailed = new SucceededOrFailedNode();
 
-        public DT.INode Parse(IExecutionContext executionContext, string condition)
+        public Expressions.INode Parse(IExecutionContext executionContext, string condition)
         {
             ArgUtil.NotNull(executionContext, nameof(executionContext));
             var expressionTrace = new TraceWriter(Trace, executionContext);
-            var parser = new DT.Parser();
-            var namedValues = new DT.INamedValueInfo[]
+            var parser = new Expressions.Parser();
+            var namedValues = new Expressions.INamedValueInfo[]
             {
-                new DT.NamedValueInfo<VariablesNode>(name: Constants.Expressions.Variables),
+                new Expressions.NamedValueInfo<VariablesNode>(name: Constants.Expressions.Variables),
             };
-            var functions = new DT.IFunctionInfo[]
+            var functions = new Expressions.IFunctionInfo[]
             {
-                new DT.FunctionInfo<AlwaysNode>(name: Constants.Expressions.Always, minParameters: 0, maxParameters: 0),
-                new DT.FunctionInfo<SucceededNode>(name: Constants.Expressions.Succeeded, minParameters: 0, maxParameters: 0),
-                new DT.FunctionInfo<SucceededOrFailedNode>(name: Constants.Expressions.SucceededOrFailed, minParameters: 0, maxParameters: 0),
+                new Expressions.FunctionInfo<AlwaysNode>(name: Constants.Expressions.Always, minParameters: 0, maxParameters: 0),
+                new Expressions.FunctionInfo<CanceledNode>(name: Constants.Expressions.Canceled, minParameters: 0, maxParameters: 0),
+                new Expressions.FunctionInfo<FailedNode>(name: Constants.Expressions.Failed, minParameters: 0, maxParameters: 0),
+                new Expressions.FunctionInfo<SucceededNode>(name: Constants.Expressions.Succeeded, minParameters: 0, maxParameters: 0),
+                new Expressions.FunctionInfo<SucceededOrFailedNode>(name: Constants.Expressions.SucceededOrFailed, minParameters: 0, maxParameters: 0),
             };
             return parser.CreateTree(condition, expressionTrace, namedValues, functions) ?? new SucceededNode();
         }
 
-        public bool Evaluate(IExecutionContext jobContext, IExecutionContext stepContext, DT.INode tree, bool hostTracingOnly = false)
+        public bool Evaluate(IExecutionContext executionContext, Expressions.INode tree, bool hostTracingOnly = false)
         {
-            ArgUtil.NotNull(jobContext, nameof(jobContext));
-            ArgUtil.NotNull(stepContext, nameof(stepContext));
+            ArgUtil.NotNull(executionContext, nameof(executionContext));
             ArgUtil.NotNull(tree, nameof(tree));
-            var expressionTrace = new TraceWriter(Trace, hostTracingOnly ? null : stepContext);
-            return tree.EvaluateBoolean(trace: expressionTrace, state: jobContext);
+            var expressionTrace = new TraceWriter(Trace, hostTracingOnly ? null : executionContext);
+            return tree.EvaluateBoolean(trace: expressionTrace, state: executionContext);
         }
 
-        private sealed class TraceWriter : DT.ITraceWriter
+        private sealed class TraceWriter : Expressions.ITraceWriter
         {
             private readonly IExecutionContext _executionContext;
             private readonly Tracing _trace;
@@ -72,60 +73,76 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             }
         }
 
-        private sealed class AlwaysNode : DT.FunctionNode
+        private sealed class AlwaysNode : Expressions.FunctionNode
         {
             public sealed override string Name => Constants.Expressions.Always;
 
-            protected sealed override object EvaluateCore(DT.EvaluationContext evaluationContext)
+            protected sealed override object EvaluateCore(Expressions.EvaluationContext evaluationContext)
             {
                 return true;
             }
         }
 
-        private sealed class SucceededNode : DT.FunctionNode
+        private sealed class CanceledNode : Expressions.FunctionNode
+        {
+            public sealed override string Name => Constants.Expressions.Canceled;
+
+            protected sealed override object EvaluateCore(Expressions.EvaluationContext evaluationContext)
+            {
+                var executionContext = evaluationContext.State as IExecutionContext;
+                ArgUtil.NotNull(executionContext, nameof(executionContext));
+                TaskResult jobStatus = executionContext.Variables.Agent_JobStatus ?? TaskResult.Succeeded;
+                return jobStatus == TaskResult.Canceled;
+            }
+        }
+
+        private sealed class FailedNode : Expressions.FunctionNode
+        {
+            public sealed override string Name => Constants.Expressions.Failed;
+
+            protected sealed override object EvaluateCore(Expressions.EvaluationContext evaluationContext)
+            {
+                var executionContext = evaluationContext.State as IExecutionContext;
+                ArgUtil.NotNull(executionContext, nameof(executionContext));
+                TaskResult jobStatus = executionContext.Variables.Agent_JobStatus ?? TaskResult.Succeeded;
+                return jobStatus == TaskResult.Failed;
+            }
+        }
+
+        private sealed class SucceededNode : Expressions.FunctionNode
         {
             public sealed override string Name => Constants.Expressions.Succeeded;
 
-            protected sealed override object EvaluateCore(DT.EvaluationContext evaluationContext)
+            protected sealed override object EvaluateCore(Expressions.EvaluationContext evaluationContext)
             {
-                var jobContext = evaluationContext.State as IExecutionContext;
-                ArgUtil.NotNull(jobContext, nameof(jobContext));
-                if (jobContext.CancellationToken.IsCancellationRequested)
-                {
-                    return false;
-                }
-
-                TaskResult jobStatus = jobContext.Variables.Agent_JobStatus ?? TaskResult.Succeeded;
+                var executionContext = evaluationContext.State as IExecutionContext;
+                ArgUtil.NotNull(executionContext, nameof(executionContext));
+                TaskResult jobStatus = executionContext.Variables.Agent_JobStatus ?? TaskResult.Succeeded;
                 return jobStatus == TaskResult.Succeeded ||
                     jobStatus == TaskResult.SucceededWithIssues;
             }
         }
 
-        private sealed class SucceededOrFailedNode : DT.FunctionNode
+        private sealed class SucceededOrFailedNode : Expressions.FunctionNode
         {
             public sealed override string Name => Constants.Expressions.SucceededOrFailed;
 
-            protected sealed override object EvaluateCore(DT.EvaluationContext evaluationContext)
+            protected sealed override object EvaluateCore(Expressions.EvaluationContext evaluationContext)
             {
-                var jobContext = evaluationContext.State as IExecutionContext;
-                ArgUtil.NotNull(jobContext, nameof(jobContext));
-                if (jobContext.CancellationToken.IsCancellationRequested)
-                {
-                    return false;
-                }
-
-                TaskResult jobStatus = jobContext.Variables.Agent_JobStatus ?? TaskResult.Succeeded;
+                var executionContext = evaluationContext.State as IExecutionContext;
+                ArgUtil.NotNull(executionContext, nameof(executionContext));
+                TaskResult jobStatus = executionContext.Variables.Agent_JobStatus ?? TaskResult.Succeeded;
                 return jobStatus == TaskResult.Succeeded ||
                     jobStatus == TaskResult.SucceededWithIssues ||
                     jobStatus == TaskResult.Failed;
             }
         }
 
-        private sealed class VariablesNode : DT.NamedValueNode
+        private sealed class VariablesNode : Expressions.NamedValueNode
         {
             public sealed override string Name => Constants.Expressions.Variables;
 
-            protected sealed override object EvaluateCore(DT.EvaluationContext evaluationContext)
+            protected sealed override object EvaluateCore(Expressions.EvaluationContext evaluationContext)
             {
                 var jobContext = evaluationContext.State as IExecutionContext;
                 ArgUtil.NotNull(jobContext, nameof(jobContext));

@@ -80,7 +80,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                         jobCancelRegister = jobContext.CancellationToken.Register(() =>
                         {
                             // mark job as cancelled
-                            jobContext.Result = TaskResultUtil.MergeTaskResults(jobContext.Result, TaskResult.Canceled);
+                            jobContext.Result = TaskResult.Canceled;
                             jobContext.Variables.Agent_JobStatus = jobContext.Result;
 
                             step.ExecutionContext.Debug($"Re-evaluate condition on job cancellation for step: '{step.DisplayName}'.");
@@ -94,7 +94,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                             {
                                 try
                                 {
-                                    conditionReTestResult = expressionManager.Evaluate(jobContext, step.ExecutionContext, step.Condition, hostTracingOnly: true);
+                                    conditionReTestResult = expressionManager.Evaluate(step.ExecutionContext, step.Condition, hostTracingOnly: true);
                                 }
                                 catch (Exception ex)
                                 {
@@ -127,7 +127,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     {
                         try
                         {
-                            conditionResult = expressionManager.Evaluate(jobContext, step.ExecutionContext, step.Condition);
+                            conditionResult = expressionManager.Evaluate(step.ExecutionContext, step.Condition);
                         }
                         catch (Exception ex)
                         {
@@ -190,7 +190,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             Trace.Info("Starting the step.");
             step.ExecutionContext.Section(StringUtil.Loc("StepStarting", step.DisplayName));
             step.ExecutionContext.SetTimeout(timeout: step.Timeout);
-
             try
             {
                 await step.RunAsync();
