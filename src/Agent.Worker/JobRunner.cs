@@ -153,135 +153,117 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     .FirstOrDefault();
                 ArgUtil.NotNull(jobExtension, nameof(jobExtension));
 
-                List<IStep> steps = new List<IStep>();
+                List<IStep> preJobSteps = new List<IStep>();
+                List<IStep> jobSteps = new List<IStep>();
+                List<IStep> postJobSteps = new List<IStep>();
 
-#if OS_WINDOWS
-                // Init script job extention.
-                // This is for internal testing and is not publicly supported. This will be removed from the agent at a later time.
-                var prepareScript = Environment.GetEnvironmentVariable("VSTS_AGENT_INIT_INTERNAL_TEMP_HACK");
-                if (!string.IsNullOrEmpty(prepareScript))
-                {
-                    var prepareStep = new ManagementScriptStep(
-                        scriptPath: prepareScript,
-                        continueOnError: false,
-                        critical: true,
-                        displayName: "Agent Initialization",
-                        enabled: true,
-                        @finally: false);
-
-                    Trace.Verbose($"Adding agent init script step.");
-                    prepareStep.Initialize(HostContext);
-                    prepareStep.ExecutionContext = jobContext.CreateChild(Guid.NewGuid(), prepareStep.DisplayName);
-                    prepareStep.AccessToken = message.Environment.SystemConnection.Authorization.Parameters["AccessToken"];
-                    steps.Add(prepareStep);
-                }
-#endif
-
-                // Download tasks if not already in the cache
-                Trace.Info("Downloading task definitions.");
-                var taskManager = HostContext.GetService<ITaskManager>();
                 try
                 {
-                    await taskManager.DownloadAsync(jobContext, message.Tasks);
+                    Trace.Info("Initialize job. Getting all job steps.");
+                    var initalizeResult = await jobExtension.InitializeJob(jobContext, message);
+                    preJobSteps = initalizeResult.PreJobSteps;
+                    jobSteps = initalizeResult.JobSteps;
+                    postJobSteps = initalizeResult.PostJobStep;
                 }
                 catch (OperationCanceledException ex) when (jobContext.CancellationToken.IsCancellationRequested)
                 {
                     // set the job to canceled
                     // don't log error issue to job ExecutionContext, since server owns the job level issue
+                    Trace.Error($"Job is canclled during initialize.");
                     Trace.Error($"Caught exception: {ex}");
                     return await CompleteJobAsync(jobServer, jobContext, message, TaskResult.Canceled);
                 }
                 catch (Exception ex)
                 {
-                    // Log the error and fail the job.
-                    Trace.Error($"Caught exception from {nameof(TaskManager)}: {ex}");
-                    jobContext.Error(ex);
+                    // set the job to failed.
+                    // don't log error issue to job ExecutionContext, since server owns the job level issue
+                    Trace.Error($"Job initialize failed.");
+                    Trace.Error($"Caught exception from {nameof(jobExtension.InitializeJob)}: {ex}");
                     return await CompleteJobAsync(jobServer, jobContext, message, TaskResult.Failed);
                 }
 
-                // Add pre-job step from Job Extension
-                Trace.Info("Adding pre-job step from extension.");
-                if (jobExtension.PreJobStep != null)
-                {
-                    Trace.Verbose($"Adding {jobExtension.GetType().Name}.{nameof(jobExtension.PreJobStep)}.");
-                    jobExtension.PreJobStep.ExecutionContext = jobContext.CreateChild(Guid.NewGuid(), jobExtension.PreJobStep.DisplayName);
-                    steps.Add(jobExtension.PreJobStep);
-                }
+                // trace out all steps
+                Trace.Info($"Total pre-job steps: {preJobSteps.Count}.");
+                Trace.Verbose($"Pre-job steps: '{string.Join(", ", preJobSteps.Select(x => x.DisplayName))}'");
 
-                // Add pre-job steps from Tasks
-                Trace.Info("Adding pre-job steps from tasks.");
-                steps.AddRange(taskManager.GetTasksPreJobSteps(jobContext, message.Tasks));
+                Trace.Info($"Total job steps: {jobSteps.Count}.");
+                Trace.Verbose($"Job steps: '{string.Join(", ", jobSteps.Select(x => x.DisplayName))}'");
 
-                // Add execution step from Job Extension
-                Trace.Info("Adding execution step from extension.");
-                if (jobExtension.ExecutionStep != null)
-                {
-                    Trace.Verbose($"Adding {jobExtension.GetType().Name}.{nameof(jobExtension.ExecutionStep)}.");
-                    jobExtension.ExecutionStep.ExecutionContext = jobContext.CreateChild(Guid.NewGuid(), jobExtension.ExecutionStep.DisplayName);
-                    steps.Add(jobExtension.ExecutionStep);
-                }
+                Trace.Info($"Total post-job steps: {postJobSteps.Count}.");
+                Trace.Verbose($"Post-job steps: '{string.Join(", ", postJobSteps.Select(x => x.DisplayName))}'");
 
-                // Add execution steps from Tasks
-                Trace.Info("Adding tasks.");
-                steps.AddRange(taskManager.GetTasksMainSteps(jobContext, message.Tasks));
-
-                // Add post-job steps from Tasks
-                Trace.Info("Adding post-job steps from tasks.");
-                steps.AddRange(taskManager.GetTasksPostJobSteps(jobContext, message.Tasks));
-
-                // Add post-job steps from Job Extension
-                Trace.Info("Adding  post-job step from extension.");
-                if (jobExtension.PostJobStep != null)
-                {
-                    Trace.Verbose($"Adding {jobExtension.GetType().Name}.{nameof(jobExtension.PostJobStep)}.");
-                    jobExtension.PostJobStep.ExecutionContext = jobContext.CreateChild(Guid.NewGuid(), jobExtension.PostJobStep.DisplayName);
-                    steps.Add(jobExtension.PostJobStep);
-                }
-
-#if OS_WINDOWS
-                // Add script post steps.
-                // This is for internal testing and is not publicly supported. This will be removed from the agent at a later time.
-                var finallyScript = Environment.GetEnvironmentVariable("VSTS_AGENT_CLEANUP_INTERNAL_TEMP_HACK");
-                if (!string.IsNullOrEmpty(finallyScript))
-                {
-                    var finallyStep = new ManagementScriptStep(
-                        scriptPath: finallyScript,
-                        continueOnError: false,
-                        critical: true,
-                        displayName: "Agent Cleanup",
-                        enabled: true,
-                        @finally: true);
-
-                    Trace.Verbose($"Adding agent cleanup script step.");
-                    finallyStep.Initialize(HostContext);
-                    finallyStep.ExecutionContext = jobContext.CreateChild(Guid.NewGuid(), finallyStep.DisplayName);
-                    finallyStep.AccessToken = message.Environment.SystemConnection.Authorization.Parameters["AccessToken"];
-                    steps.Add(finallyStep);
-                }
-#endif
-
-                // Run the steps.
+                // Run all pre job steps
+                // All pre job steps are critical to the job
+                // Stop exection on any step failure or cancelled
+                Trace.Info("Run all pre-job steps.");
                 var stepsRunner = HostContext.GetService<IStepsRunner>();
                 try
                 {
-                    await stepsRunner.RunAsync(jobContext, steps);
-                }
-                catch (OperationCanceledException ex) when (jobContext.CancellationToken.IsCancellationRequested)
-                {
-                    // set the job to canceled
-                    // don't log error issue to job ExecutionContext, since server owns the job level issue
-                    Trace.Error($"Caught exception: {ex}");
-                    return await CompleteJobAsync(jobServer, jobContext, message, TaskResult.Canceled);
+                    await stepsRunner.RunAsync(jobContext, preJobSteps, JobRunStage.PreJob);
                 }
                 catch (Exception ex)
                 {
+                    // StepRunner should never throw exception out.
+                    // End up here mean there is a bug in StepRunner
                     // Log the error and fail the job.
-                    Trace.Error($"Caught exception from {nameof(StepsRunner)}: {ex}");
+                    Trace.Error($"Caught exception from pre-job steps {nameof(StepsRunner)}: {ex}");
                     jobContext.Error(ex);
                     return await CompleteJobAsync(jobServer, jobContext, message, TaskResult.Failed);
                 }
 
-                Trace.Info($"Job result: {jobContext.Result}");
+                Trace.Info($"Job result after all pre-job steps finish: {jobContext.Result}");
+
+                // Base on the Job result after all pre-job steps finish.
+                // Run all job steps only if the job result is still Succeeded or SucceededWithIssues
+                if (jobContext.Result == null ||
+                    jobContext.Result == TaskResult.Succeeded ||
+                    jobContext.Result == TaskResult.SucceededWithIssues)
+                {
+                    Trace.Info("Run all job steps.");
+                    try
+                    {
+                        await stepsRunner.RunAsync(jobContext, jobSteps, JobRunStage.Main);
+                    }
+                    catch (Exception ex)
+                    {
+                        // StepRunner should never throw exception out.
+                        // End up here mean there is a bug in StepRunner
+                        // Log the error and fail the job.
+                        Trace.Error($"Caught exception from job steps {nameof(StepsRunner)}: {ex}");
+                        jobContext.Error(ex);
+                        return await CompleteJobAsync(jobServer, jobContext, message, TaskResult.Failed);
+                    }
+                }
+                else
+                {
+                    Trace.Info("Skip all job steps due to pre-job step failure.");
+                    foreach (var step in jobSteps)
+                    {
+                        step.ExecutionContext.Start();
+                        step.ExecutionContext.Complete(TaskResult.Skipped);
+                    }
+                }
+
+                Trace.Info($"Job result after all job steps finish: {jobContext.Result}");
+
+                // Always run all post job steps
+                // step might not run base on it's own condition.
+                Trace.Info("Run all post-job steps.");
+                try
+                {
+                    await stepsRunner.RunAsync(jobContext, postJobSteps, JobRunStage.PostJob);
+                }
+                catch (Exception ex)
+                {
+                    // StepRunner should never throw exception out.
+                    // End up here mean there is a bug in StepRunner
+                    // Log the error and fail the job.
+                    Trace.Error($"Caught exception from post-job steps {nameof(StepsRunner)}: {ex}");
+                    jobContext.Error(ex);
+                    return await CompleteJobAsync(jobServer, jobContext, message, TaskResult.Failed);
+                }
+
+                Trace.Info($"Job result after all post-job steps finish: {jobContext.Result}");
 
                 // Complete the job.
                 Trace.Info("Completing the job execution context.");

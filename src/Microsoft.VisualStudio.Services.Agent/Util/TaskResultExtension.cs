@@ -28,7 +28,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
         // Merge 2 TaskResults get the worst result.
         // Succeeded -> SucceededWithIssues -> Failed/Canceled/Skipped/Abandoned
         // SucceededWithIssues -> Failed/Canceled/Skipped/Abandoned
-        // Failed -> Failed
+        // Failed -> Failed/Canceled
         // Canceled -> Canceled
         // Skipped -> Skipped
         // Abandoned -> Abandoned
@@ -39,8 +39,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
                 return comingResult;
             }
 
-            // current result is Failed/Canceled/Skip/Abandoned
-            if (currentResult >= TaskResult.Failed)
+            // current result is Canceled/Skip/Abandoned
+            if (currentResult > TaskResult.Failed)
             {
                 return currentResult.Value;
             }

@@ -15,7 +15,7 @@ using Newtonsoft.Json;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
 {
-    public class ReleaseJobExtension : AgentService, IJobExtension
+    public class ReleaseJobExtension : JobExtension
     {
         private const string DownloadArtifactsFailureSystemError = "DownloadArtifactsFailureSystemError";
 
@@ -28,17 +28,24 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
         private string ArtifactsWorkingFolder { get; set; }
         private bool SkipArtifactsDownload { get; set; }
 
-        public Type ExtensionType => typeof(IJobExtension);
+        public override Type ExtensionType => typeof(IJobExtension);
+        public override HostTypes HostType => HostTypes.Release;
 
-        public virtual HostTypes HostType => HostTypes.Release;
+        public override IStep GetExtensionPreJobStep(IExecutionContext jobContext)
+        {
+            return new JobExtensionRunner(
+                context: jobContext.CreateChild(Guid.NewGuid(), StringUtil.Loc("DownloadArtifacts")),
+                runAsync: GetArtifactsAsync,
+                condition: ExpressionManager.Succeeded,
+                displayName: StringUtil.Loc("DownloadArtifacts"));
+        }
 
-        public IStep PreJobStep { get; private set; }
+        public override IStep GetExtensionPostJobStep(IExecutionContext jobContext)
+        {
+            return null;
+        }
 
-        public IStep ExecutionStep { get; private set; }
-
-        public IStep PostJobStep { get; private set; }
-
-        public string GetRootedPath(IExecutionContext context, string path)
+        public override string GetRootedPath(IExecutionContext context, string path)
         {
             string rootedPath = null;
 
@@ -88,45 +95,22 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
             return rootedPath;
         }
 
-        public void ConvertLocalPath(IExecutionContext context, string localPath, out string repoName, out string sourcePath)
+        public override void ConvertLocalPath(IExecutionContext context, string localPath, out string repoName, out string sourcePath)
         {
             Trace.Info($"Received localpath {localPath}");
             repoName = string.Empty;
             sourcePath = string.Empty;
         }
 
-        public ReleaseJobExtension()
-        {
-            PreJobStep = new JobExtensionRunner(
-                runAsync: InitializeAgent,
-                continueOnError: false,
-                critical: true,
-                displayName: StringUtil.Loc("PrepareReleasesDir"),
-                enabled: true,
-                @finally: false);
-
-            ExecutionStep = new JobExtensionRunner(
-                runAsync: GetArtifactsAsync,
-                continueOnError: false,
-                critical: true,
-                displayName: StringUtil.Loc("DownloadArtifacts"),
-                enabled: true,
-                @finally: false);
-        }
-
-        private async Task GetArtifactsAsync()
+        private async Task GetArtifactsAsync(IExecutionContext executionContext)
         {
             Trace.Entering();
-
-            ArgUtil.NotNull(ExecutionStep, nameof(ExecutionStep));
-            ArgUtil.NotNull(ExecutionStep.ExecutionContext, nameof(ExecutionStep.ExecutionContext));
 
             if (SkipArtifactsDownload)
             {
                 return;
             }
 
-            IExecutionContext executionContext = ExecutionStep.ExecutionContext;
             try
             {
                 // TODO: Create this as new task. Old windows agent does this. First is initialize which does the above and download task will be added based on skipDownloadArtifact option
@@ -269,15 +253,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
             executionContext.Output(StringUtil.Loc("RMCleanedUpArtifactsDirectory", artifactsWorkingFolder));
         }
 
-        private Task InitializeAgent()
+        public override void InitializeJobExtension(IExecutionContext executionContext)
         {
             Trace.Entering();
+            ArgUtil.NotNull(executionContext, nameof(executionContext));
 
-            ArgUtil.NotNull(PreJobStep, nameof(PreJobStep));
-            ArgUtil.NotNull(PreJobStep.ExecutionContext, nameof(PreJobStep.ExecutionContext));
-
-            IExecutionContext executionContext = PreJobStep.ExecutionContext;
-
+            executionContext.Output(StringUtil.Loc("PrepareReleasesDir"));
             var directoryManager = HostContext.GetService<IReleaseDirectoryManager>();
             ReleaseId = executionContext.Variables.GetInt(Constants.Variables.Release.ReleaseId) ?? 0;
             TeamProjectId = executionContext.Variables.GetGuid(Constants.Variables.System.TeamProjectId) ?? Guid.Empty;
@@ -325,7 +306,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
                 Trace.Info("Skipping artifact download based on the setting specified.");
             }
 
-            return Task.CompletedTask;
         }
 
         private void SetLocalVariables(IExecutionContext executionContext, string artifactsDirectoryPath)

@@ -9,46 +9,35 @@ using System.Threading.Tasks;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 {
-    public sealed class BuildJobExtension : AgentService, IJobExtension
+    public sealed class BuildJobExtension : JobExtension
     {
-        public Type ExtensionType => typeof(IJobExtension);
-        public HostTypes HostType => HostTypes.Build;
-        public IStep PreJobStep { get; private set; }
-        public IStep ExecutionStep { get; private set; }
-        public IStep PostJobStep { get; private set; }
+        public override Type ExtensionType => typeof(IJobExtension);
+        public override HostTypes HostType => HostTypes.Build;
+
         private ServiceEndpoint SourceEndpoint { set; get; }
         private ISourceProvider SourceProvider { set; get; }
 
-        public BuildJobExtension()
+        public override IStep GetExtensionPreJobStep(IExecutionContext jobContext)
         {
-            PreJobStep = new JobExtensionRunner(
-                runAsync: PrepareBuildDirectory,
-                continueOnError: false,
-                critical: true,
-                displayName: StringUtil.Loc("PrepareBuildDir"),
-                enabled: true,
-                @finally: false);
-
-            ExecutionStep = new JobExtensionRunner(
+            return new JobExtensionRunner(
+                context: jobContext.CreateChild(Guid.NewGuid(), StringUtil.Loc("GetSources")),
                 runAsync: GetSourceAsync,
-                continueOnError: false,
-                critical: true,
-                displayName: StringUtil.Loc("GetSources"),
-                enabled: true,
-                @finally: false);
+                condition: ExpressionManager.Succeeded,
+                displayName: StringUtil.Loc("GetSources"));
+        }
 
-            PostJobStep = new JobExtensionRunner(
-                runAsync: FinallyAsync,
-                continueOnError: false,
-                critical: false,
-                displayName: StringUtil.Loc("Cleanup"),
-                enabled: true,
-                @finally: true);
+        public override IStep GetExtensionPostJobStep(IExecutionContext jobContext)
+        {
+            return new JobExtensionRunner(
+                context: jobContext.CreateChild(Guid.NewGuid(), StringUtil.Loc("Cleanup")),
+                runAsync: PostJobCleanupAsync,
+                condition: ExpressionManager.Always,
+                displayName: StringUtil.Loc("Cleanup"));
         }
 
         // 1. use source provide to solve path, if solved result is rooted, return full path.
         // 2. prefix default path root (build.sourcesDirectory), if result is rooted, return full path.
-        public string GetRootedPath(IExecutionContext context, string path)
+        public override string GetRootedPath(IExecutionContext context, string path)
         {
             string rootedPath = null;
 
@@ -103,7 +92,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             return rootedPath;
         }
 
-        public void ConvertLocalPath(IExecutionContext context, string localPath, out string repoName, out string sourcePath)
+        public override void ConvertLocalPath(IExecutionContext context, string localPath, out string repoName, out string sourcePath)
         {
             repoName = "";
 
@@ -121,14 +110,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             }
         }
 
-        private Task PrepareBuildDirectory()
+        // Prepare build directory
+        // Set all build related variables
+        public override void InitializeJobExtension(IExecutionContext executionContext)
         {
             // Validate args.
             Trace.Entering();
-            ArgUtil.NotNull(PreJobStep, nameof(PreJobStep));
-            ArgUtil.NotNull(PreJobStep.ExecutionContext, nameof(PreJobStep.ExecutionContext));
-            IExecutionContext executionContext = PreJobStep.ExecutionContext;
-            var directoryManager = HostContext.GetService<IBuildDirectoryManager>();
+            ArgUtil.NotNull(executionContext, nameof(executionContext));
 
             // This flag can be false for jobs like cleanup artifacts.
             // If syncSources = false, we will not set source related build variable, not create build folder, not sync source.
@@ -136,7 +124,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             if (!syncSources)
             {
                 Trace.Info($"{Constants.Variables.Build.SyncSources} = false, we will not set source related build variable, not create build folder and not sync source");
-                return Task.CompletedTask;
+                return;
             }
 
             // Get the repo endpoint and source provider.
@@ -180,14 +168,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             }
 
             // Prepare the build directory.
-            executionContext.Debug("Preparing build directory.");
+            executionContext.Output(StringUtil.Loc("PrepareBuildDir"));
+            var directoryManager = HostContext.GetService<IBuildDirectoryManager>();
             TrackingConfig trackingConfig = directoryManager.PrepareDirectory(
                 executionContext,
                 SourceEndpoint,
                 SourceProvider);
 
             // Set the directory variables.
-            executionContext.Debug("Set build variables.");
+            executionContext.Output(StringUtil.Loc("SetBuildVars"));
             string _workDirectory = IOUtil.GetWorkPath(HostContext);
             executionContext.Variables.Set(Constants.Variables.Agent.BuildDirectory, Path.Combine(_workDirectory, trackingConfig.BuildDirectory));
             executionContext.Variables.Set(Constants.Variables.System.ArtifactsDirectory, Path.Combine(_workDirectory, trackingConfig.ArtifactsDirectory));
@@ -200,18 +189,24 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             executionContext.Variables.Set(Constants.Variables.Build.RepoLocalPath, Path.Combine(_workDirectory, trackingConfig.SourcesDirectory));
 
             SourceProvider.SetVariablesInEndpoint(executionContext, SourceEndpoint);
-
-            return Task.CompletedTask;
         }
 
-        private async Task GetSourceAsync()
+        private async Task GetSourceAsync(IExecutionContext executionContext)
         {
             // Validate args.
             Trace.Entering();
-            ArgUtil.NotNull(ExecutionStep, nameof(ExecutionStep));
-            ArgUtil.NotNull(ExecutionStep.ExecutionContext, nameof(ExecutionStep.ExecutionContext));
+
+            // This flag can be false for jobs like cleanup artifacts.
+            // If syncSources = false, we will not set source related build variable, not create build folder, not sync source.
+            bool syncSources = executionContext.Variables.Build_SyncSources ?? true;
+            if (!syncSources)
+            {
+                Trace.Info($"{Constants.Variables.Build.SyncSources} = false, we will not set source related build variable, not create build folder and not sync source");
+                return;
+            }
+
             ArgUtil.NotNull(SourceEndpoint, nameof(SourceEndpoint));
-            IExecutionContext executionContext = ExecutionStep.ExecutionContext;
+            ArgUtil.NotNull(SourceProvider, nameof(SourceProvider));
 
             // Read skipSyncSource property fron endpoint data
             string skipSyncSourceText;
@@ -235,13 +230,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             }
         }
 
-        private async Task FinallyAsync()
+        private async Task PostJobCleanupAsync(IExecutionContext executionContext)
         {
             // Validate args.
             Trace.Entering();
-            ArgUtil.NotNull(PostJobStep, nameof(PostJobStep));
-            ArgUtil.NotNull(PostJobStep.ExecutionContext, nameof(PostJobStep.ExecutionContext));
-            IExecutionContext executionContext = PostJobStep.ExecutionContext;
 
             // If syncSources = false, we will not reset repository.
             bool syncSources = executionContext.Variables.Build_SyncSources ?? true;
@@ -250,6 +242,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 Trace.Verbose($"{Constants.Variables.Build.SyncSources} = false, we will not run post job cleanup for this repository");
                 return;
             }
+
+            ArgUtil.NotNull(SourceEndpoint, nameof(SourceEndpoint));
+            ArgUtil.NotNull(SourceProvider, nameof(SourceProvider));
 
             // Read skipSyncSource property fron endpoint data
             string skipSyncSourceText;

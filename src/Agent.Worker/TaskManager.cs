@@ -8,27 +8,32 @@ using System.IO.Compression;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressions;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
     [ServiceLocator(Default = typeof(TaskManager))]
     public interface ITaskManager : IAgentService
     {
-        Task DownloadAsync(IExecutionContext jobExecutionContext, IEnumerable<TaskInstance> tasks);
+        Task DownloadAsync(IExecutionContext executionContext, IEnumerable<TaskInstance> tasks);
 
         Definition Load(TaskReference task);
 
-        IList<IStep> GetTasksPreJobSteps(IExecutionContext jobExecutionContext, IEnumerable<TaskInstance> tasks);
-        IList<IStep> GetTasksMainSteps(IExecutionContext jobExecutionContext, IEnumerable<TaskInstance> tasks);
-        IList<IStep> GetTasksPostJobSteps(IExecutionContext jobExecutionContext, IEnumerable<TaskInstance> tasks);
+        IList<IStep> GetTasksPreJobSteps(IExecutionContext jobExecutionContext, IEnumerable<TaskInstance> tasks, Dictionary<Guid, INode> taskConditionMap);
+
+        IList<IStep> GetTasksMainSteps(IExecutionContext jobExecutionContext, IEnumerable<TaskInstance> tasks, Dictionary<Guid, INode> taskConditionMap);
+
+        IList<IStep> GetTasksPostJobSteps(IExecutionContext jobExecutionContext, IEnumerable<TaskInstance> tasks, Dictionary<Guid, INode> taskConditionMap);
     }
 
     public sealed class TaskManager : AgentService, ITaskManager
     {
-        public async Task DownloadAsync(IExecutionContext jobExecutionContext, IEnumerable<TaskInstance> tasks)
+        public async Task DownloadAsync(IExecutionContext executionContext, IEnumerable<TaskInstance> tasks)
         {
-            ArgUtil.NotNull(jobExecutionContext, nameof(jobExecutionContext));
+            ArgUtil.NotNull(executionContext, nameof(executionContext));
             ArgUtil.NotNull(tasks, nameof(tasks));
+
+            executionContext.Output(StringUtil.Loc("EnsureTasksExist"));
 
             //remove duplicate and disabled tasks
             IEnumerable<TaskInstance> uniqueTasks =
@@ -41,9 +46,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 }
                 into taskGrouping
                 select taskGrouping.First();
+
+            if (uniqueTasks.Count() == 0)
+            {
+                executionContext.Debug("There is no required tasks need to download.");
+                return;
+            }
+
             foreach (TaskInstance task in uniqueTasks)
             {
-                await DownloadAsync(jobExecutionContext, task);
+                await DownloadAsync(executionContext, task);
             }
         }
 
@@ -71,7 +83,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             return definition;
         }
 
-        public IList<IStep> GetTasksPreJobSteps(IExecutionContext jobExecutionContext, IEnumerable<TaskInstance> tasks)
+        public IList<IStep> GetTasksPreJobSteps(IExecutionContext jobExecutionContext, IEnumerable<TaskInstance> tasks, Dictionary<Guid, INode> taskConditionMap)
         {
             List<IStep> preJobSteps = new List<IStep>();
             foreach (var taskInstance in tasks)
@@ -83,7 +95,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     var taskRunner = HostContext.CreateService<ITaskRunner>();
                     taskRunner.ExecutionContext = jobExecutionContext.CreateChild(Guid.NewGuid(), StringUtil.Loc("PreJob", taskInstance.DisplayName));
                     taskRunner.TaskInstance = taskInstance;
-                    taskRunner.Stage = TaskRunStage.PreJob;
+                    taskRunner.Stage = JobRunStage.PreJob;
+                    taskRunner.Condition = taskConditionMap[taskInstance.InstanceId];
                     preJobSteps.Add(taskRunner);
                 }
             }
@@ -91,7 +104,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             return preJobSteps;
         }
 
-        public IList<IStep> GetTasksMainSteps(IExecutionContext jobExecutionContext, IEnumerable<TaskInstance> tasks)
+        public IList<IStep> GetTasksMainSteps(IExecutionContext jobExecutionContext, IEnumerable<TaskInstance> tasks, Dictionary<Guid, INode> taskConditionMap)
         {
             List<IStep> mainSteps = new List<IStep>();
             foreach (var taskInstance in tasks)
@@ -103,7 +116,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     var taskRunner = HostContext.CreateService<ITaskRunner>();
                     taskRunner.ExecutionContext = jobExecutionContext.CreateChild(taskInstance.InstanceId, taskInstance.DisplayName);
                     taskRunner.TaskInstance = taskInstance;
-                    taskRunner.Stage = TaskRunStage.Main;
+                    taskRunner.Stage = JobRunStage.Main;
+                    taskRunner.Condition = taskConditionMap[taskInstance.InstanceId];
                     mainSteps.Add(taskRunner);
                 }
             }
@@ -111,7 +125,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             return mainSteps;
         }
 
-        public IList<IStep> GetTasksPostJobSteps(IExecutionContext jobExecutionContext, IEnumerable<TaskInstance> tasks)
+        public IList<IStep> GetTasksPostJobSteps(IExecutionContext jobExecutionContext, IEnumerable<TaskInstance> tasks, Dictionary<Guid, INode> taskConditionMap)
         {
             List<IStep> postJobSteps = new List<IStep>();
             foreach (var taskInstance in tasks.Reverse())
@@ -123,7 +137,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     var taskRunner = HostContext.CreateService<ITaskRunner>();
                     taskRunner.ExecutionContext = jobExecutionContext.CreateChild(Guid.NewGuid(), StringUtil.Loc("PostJob", taskInstance.DisplayName));
                     taskRunner.TaskInstance = taskInstance;
-                    taskRunner.Stage = TaskRunStage.PostJob;
+                    taskRunner.Stage = JobRunStage.PostJob;
+                    taskRunner.Condition = taskConditionMap[taskInstance.InstanceId];
                     postJobSteps.Add(taskRunner);
                 }
             }
@@ -144,7 +159,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             Trace.Info($"Ensuring task exists: ID '{task.Id}', version '{task.Version}', name '{task.Name}', directory '{destDirectory}'.");
             if (File.Exists(destDirectory + ".completed"))
             {
-                Trace.Info("Task already downloaded.");
+                executionContext.Debug($"Task '{task.Name}' already downloaded at '{destDirectory}'.");
                 return;
             }
 
@@ -182,6 +197,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 Trace.Verbose("Create watermark file indicate task download succeed.");
                 File.WriteAllText(destDirectory + ".completed", DateTime.UtcNow.ToString());
 
+                executionContext.Debug($"Task '{task.Name}' has been downloaded into '{destDirectory}'.");
                 Trace.Info("Finished getting task.");
             }
             finally

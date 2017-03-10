@@ -10,43 +10,40 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Maintenance
         void RunMaintenanceOperation(IExecutionContext context);
     }
 
-    public sealed class MaintenanceJobExtension : AgentService, IJobExtension
+    public sealed class MaintenanceJobExtension : JobExtension
     {
-        public Type ExtensionType => typeof(IJobExtension);
-        public HostTypes HostType => HostTypes.PoolMaintenance;
-        public IStep PreJobStep { get; private set; }
-        public IStep ExecutionStep { get; private set; }
-        public IStep PostJobStep { get; private set; }
-
-        public MaintenanceJobExtension()
+        public override Type ExtensionType => typeof(IJobExtension);
+        public override HostTypes HostType => HostTypes.PoolMaintenance;
+        public override IStep GetExtensionPreJobStep(IExecutionContext jobContext)
         {
-            ExecutionStep = new JobExtensionRunner(
+            return new JobExtensionRunner(
+                context: jobContext.CreateChild(Guid.NewGuid(), StringUtil.Loc("Maintenance")),
                 runAsync: MaintainAsync,
-                continueOnError: false,
-                critical: true,
-                displayName: StringUtil.Loc("Maintenance"),
-                enabled: true,
-                @finally: false);
+                condition: ExpressionManager.Succeeded,
+                displayName: StringUtil.Loc("Maintenance"));
         }
 
-        public string GetRootedPath(IExecutionContext context, string path)
+        public override IStep GetExtensionPostJobStep(IExecutionContext jobContext)
+        {
+            return null;
+        }
+
+        public override string GetRootedPath(IExecutionContext context, string path)
         {
             return path;
         }
 
-        public void ConvertLocalPath(IExecutionContext context, string localPath, out string repoName, out string sourcePath)
+        public override void ConvertLocalPath(IExecutionContext context, string localPath, out string repoName, out string sourcePath)
         {
             sourcePath = localPath;
             repoName = string.Empty;
         }
 
-        private Task MaintainAsync()
+        private Task MaintainAsync(IExecutionContext executionContext)
         {
             // Validate args.
             Trace.Entering();
-            ArgUtil.NotNull(PreJobStep, nameof(PreJobStep));
-            ArgUtil.NotNull(PreJobStep.ExecutionContext, nameof(PreJobStep.ExecutionContext));
-            IExecutionContext executionContext = PreJobStep.ExecutionContext;
+
             var extensionManager = HostContext.GetService<IExtensionManager>();
             var maintenanceServiceProviders = extensionManager.GetExtensions<IMaintenanceServiceProvider>();
             if (maintenanceServiceProviders != null && maintenanceServiceProviders.Count > 0)
@@ -69,6 +66,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Maintenance
             }
 
             return Task.CompletedTask;
+        }
+
+        public override void InitializeJobExtension(IExecutionContext context)
+        {
+            return;
         }
     }
 }

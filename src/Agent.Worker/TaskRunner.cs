@@ -6,10 +6,11 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressions;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
-    public enum TaskRunStage
+    public enum JobRunStage
     {
         PreJob,
         Main,
@@ -19,45 +20,23 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
     [ServiceLocator(Default = typeof(TaskRunner))]
     public interface ITaskRunner : IStep, IAgentService
     {
-        TaskRunStage Stage { get; set; }
+        JobRunStage Stage { get; set; }
         TaskInstance TaskInstance { get; set; }
     }
 
     public sealed class TaskRunner : AgentService, ITaskRunner
     {
-        public TaskRunStage Stage { get; set; }
+        public JobRunStage Stage { get; set; }
 
-        public string Condition
-        {
-            get
-            {
-                string condition = TaskInstance.Condition;
-                if (!string.IsNullOrEmpty(condition))
-                {
-                    return condition;
-                }
-                else if (TaskInstance.AlwaysRun)
-                {
-                    return $"{Constants.Expressions.SucceededOrFailed}()";
-                }
-                else
-                {
-                    return $"{Constants.Expressions.Succeeded}()";
-                }
-            }
-        }
+        public INode Condition { get; set; }
 
         public bool ContinueOnError => TaskInstance?.ContinueOnError ?? default(bool);
-
-        public bool Critical => Stage == TaskRunStage.PreJob;
 
         public string DisplayName => TaskInstance?.DisplayName;
 
         public bool Enabled => TaskInstance?.Enabled ?? default(bool);
 
         public IExecutionContext ExecutionContext { get; set; }
-
-        public bool Finally => Stage == TaskRunStage.PostJob;
 
         public TaskInstance TaskInstance { get; set; }
 
@@ -87,13 +66,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             ExecutionData currentExecution = null;
             switch (Stage)
             {
-                case TaskRunStage.PreJob:
+                case JobRunStage.PreJob:
                     currentExecution = definition.Data?.PreJobExecution;
                     break;
-                case TaskRunStage.Main:
+                case JobRunStage.Main:
                     currentExecution = definition.Data?.Execution;
                     break;
-                case TaskRunStage.PostJob:
+                case JobRunStage.PostJob:
                     currentExecution = definition.Data?.PostJobExecution;
                     break;
             };

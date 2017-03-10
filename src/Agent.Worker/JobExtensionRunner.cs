@@ -1,40 +1,35 @@
 using System;
 using System.Threading.Tasks;
+using Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressions;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
     public sealed class JobExtensionRunner : IStep
     {
-        private readonly Func<Task> _runAsync;
+        private readonly Func<IExecutionContext, Task> _runAsync;
 
         public JobExtensionRunner(
-            Func<Task> runAsync,
-            bool continueOnError,
-            bool critical,
-            string displayName,
-            bool enabled,
-            bool @finally)
+            IExecutionContext context,
+            Func<IExecutionContext, Task> runAsync,
+            INode condition,
+            string displayName)
         {
+            ExecutionContext = context;
             _runAsync = runAsync;
-            ContinueOnError = continueOnError;
-            Critical = critical;
+            Condition = condition;
             DisplayName = displayName;
-            Enabled = enabled;
-            Finally = @finally;
         }
 
-        public string Condition => Finally ? $"{Constants.Expressions.Always}()" : $"{Constants.Expressions.Succeeded}()";
-        public bool ContinueOnError { get; private set; }
-        public bool Critical { get; private set; }
+        public INode Condition { get; set; }
+        public bool ContinueOnError => false;
         public string DisplayName { get; private set; }
-        public bool Enabled { get; private set; }
+        public bool Enabled => true;
         public IExecutionContext ExecutionContext { get; set; }
-        public bool Finally { get; private set; }
         public TimeSpan? Timeout => null;
 
         public async Task RunAsync()
         {
-            await _runAsync();
+            await _runAsync(ExecutionContext);
         }
     }
 }

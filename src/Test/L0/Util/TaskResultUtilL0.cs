@@ -232,15 +232,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Util
                 // Act.
                 merged = TaskResultUtil.MergeTaskResults(TaskResult.Failed, TaskResult.Abandoned);
                 // Actual
-                Assert.Equal(TaskResult.Failed, merged);
+                Assert.Equal(TaskResult.Abandoned, merged);
                 // Act.
                 merged = TaskResultUtil.MergeTaskResults(TaskResult.Failed, TaskResult.Canceled);
                 // Actual
-                Assert.Equal(TaskResult.Failed, merged);
+                Assert.Equal(TaskResult.Canceled, merged);
                 // Act.
                 merged = TaskResultUtil.MergeTaskResults(TaskResult.Failed, TaskResult.Skipped);
                 // Actual
-                Assert.Equal(TaskResult.Failed, merged);
+                Assert.Equal(TaskResult.Skipped, merged);
                 // Act.
                 merged = TaskResultUtil.MergeTaskResults(TaskResult.Skipped, TaskResult.Abandoned);
                 // Actual

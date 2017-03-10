@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Runtime.Loader;
 using System.Reflection;
+using System.Collections.Generic;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests
 {
@@ -22,7 +23,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         private string _testName;
         private Tracing _trace;
         private AssemblyLoadContext _loadContext;
-
+        private List<string> _tempDirectorys = new List<string>();
         public event EventHandler Unloading;
 
         public TestHostContext(object testClass, [CallerMemberName] string testName = "")
@@ -70,7 +71,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             await Task.Delay(TimeSpan.Zero);
         }
 
-        public T CreateService<T>() where T: class, IAgentService
+        public T CreateService<T>() where T : class, IAgentService
         {
             _trace.Verbose($"Create service: '{typeof(T).Name}'");
 
@@ -136,7 +137,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
 
         public string GetDirectory(WellKnownDirectory directory)
         {
-            throw new Exception("TODO: USE A NEW RANDOM TEMP DIR FOR EACH TEST. TEST-HOST-CONTEXT TEARDOWN CAN CLEANUP THE DIRECTORY");
+            string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            _tempDirectorys.Add(tempDir);
+            return tempDir;
         }
 
         // simple convenience factory so each suite/test gets a different trace file per run
@@ -168,6 +171,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                     _loadContext = null;
                 }
                 _traceManager?.Dispose();
+                foreach (var dir in _tempDirectorys)
+                {
+                    Directory.Delete(dir);
+                }
             }
         }
 

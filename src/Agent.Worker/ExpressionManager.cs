@@ -16,6 +16,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
     public sealed class ExpressionManager : AgentService, IExpressionManager
     {
+        public static DT.INode Always = new AlwaysNode();
+        public static DT.INode Succeeded = new SucceededNode();
+        public static DT.INode SucceededOrFailed = new SucceededOrFailedNode();
+
         public DT.INode Parse(IExecutionContext executionContext, string condition)
         {
             ArgUtil.NotNull(executionContext, nameof(executionContext));
