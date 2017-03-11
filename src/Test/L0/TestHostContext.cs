@@ -173,7 +173,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 _traceManager?.Dispose();
                 foreach (var dir in _tempDirectorys)
                 {
-                    Directory.Delete(dir);
+                    try
+                    {
+                        Directory.Delete(dir);
+                    }
+                    catch (Exception)
+                    {
+                        // eat exception on dispose
+                    }
                 }
             }
         }
