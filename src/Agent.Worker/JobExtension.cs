@@ -116,9 +116,57 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     }
 #endif
 
-                    // Add pre-job steps from Tasks
-                    Trace.Info("Adding pre-job steps from tasks.");
-                    initResult.PreJobSteps.AddRange(taskManager.GetTasksPreJobSteps(jobContext, message.Tasks, taskConditionMap));
+                    // build up 3 lists of steps, pre-job, job, post-job
+                    Stack<IStep> postJobStepsBuilder = new Stack<IStep>();
+                    Dictionary<Guid, Variables> taskVariablesMapping = new Dictionary<Guid, Variables>();
+                    foreach (var taskInstance in message.Tasks)
+                    {
+                        var taskDefinition = taskManager.Load(taskInstance);
+
+                        List<string> warnings;
+                        taskVariablesMapping[taskInstance.InstanceId] = new Variables(HostContext, new Dictionary<string, string>(), message.Environment.MaskHints, out warnings);
+
+                        // Add pre-job steps from Tasks
+                        if (taskDefinition.Data?.PreJobExecution != null)
+                        {
+                            Trace.Info($"Adding Pre-Job {taskInstance.DisplayName}.");
+                            var taskRunner = HostContext.CreateService<ITaskRunner>();
+                            taskRunner.TaskInstance = taskInstance;
+                            taskRunner.Stage = JobRunStage.PreJob;
+                            taskRunner.Condition = taskConditionMap[taskInstance.InstanceId];
+                            initResult.PreJobSteps.Add(taskRunner);
+                        }
+
+                        // Add execution steps from Tasks
+                        if (taskDefinition.Data?.Execution != null)
+                        {
+                            Trace.Verbose($"Adding {taskInstance.DisplayName}.");
+                            var taskRunner = HostContext.CreateService<ITaskRunner>();
+                            taskRunner.TaskInstance = taskInstance;
+                            taskRunner.Stage = JobRunStage.Main;
+                            taskRunner.Condition = taskConditionMap[taskInstance.InstanceId];
+                            initResult.JobSteps.Add(taskRunner);
+                        }
+
+                        // Add post-job steps from Tasks
+                        if (taskDefinition.Data?.PostJobExecution != null)
+                        {
+                            Trace.Verbose($"Adding Post-Job {taskInstance.DisplayName}.");
+                            var taskRunner = HostContext.CreateService<ITaskRunner>();
+                            taskRunner.TaskInstance = taskInstance;
+                            taskRunner.Stage = JobRunStage.PostJob;
+                            taskRunner.Condition = taskConditionMap[taskInstance.InstanceId];
+                            postJobStepsBuilder.Push(taskRunner);
+                        }
+                    }
+
+                    // create task execution context for all pre-job steps from task
+                    foreach (var step in initResult.PreJobSteps)
+                    {
+                        ITaskRunner taskStep = step as ITaskRunner;
+                        ArgUtil.NotNull(taskStep, step.DisplayName);
+                        taskStep.ExecutionContext = jobContext.CreateChild(Guid.NewGuid(), StringUtil.Loc("PreJob", taskStep.DisplayName), taskVariablesMapping[taskStep.TaskInstance.InstanceId]);
+                    }
 
                     // Add pre-job step from Extension
                     Trace.Info("Adding pre-job step from extension.");
@@ -128,13 +176,28 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                         initResult.PreJobSteps.Add(extensionPreJobStep);
                     }
 
-                    // Add execution steps from Tasks
-                    Trace.Info("Adding tasks.");
-                    initResult.JobSteps.AddRange(taskManager.GetTasksMainSteps(jobContext, message.Tasks, taskConditionMap));
+                    // create task execution context for all job steps from task
+                    foreach (var step in initResult.JobSteps)
+                    {
+                        ITaskRunner taskStep = step as ITaskRunner;
+                        ArgUtil.NotNull(taskStep, step.DisplayName);
+                        taskStep.ExecutionContext = jobContext.CreateChild(taskStep.TaskInstance.InstanceId, taskStep.DisplayName, taskVariablesMapping[taskStep.TaskInstance.InstanceId]);
+                    }
 
                     // Add post-job steps from Tasks
                     Trace.Info("Adding post-job steps from tasks.");
-                    initResult.PostJobStep.AddRange(taskManager.GetTasksPostJobSteps(jobContext, message.Tasks, taskConditionMap));
+                    while (postJobStepsBuilder.Count > 0)
+                    {
+                        initResult.PostJobStep.Add(postJobStepsBuilder.Pop());
+                    }
+
+                    // create task execution context for all post-job steps from task
+                    foreach (var step in initResult.PostJobStep)
+                    {
+                        ITaskRunner taskStep = step as ITaskRunner;
+                        ArgUtil.NotNull(taskStep, step.DisplayName);
+                        taskStep.ExecutionContext = jobContext.CreateChild(Guid.NewGuid(), StringUtil.Loc("PostJob", taskStep.DisplayName), taskVariablesMapping[taskStep.TaskInstance.InstanceId]);
+                    }
 
                     // Add post-job step from Extension
                     Trace.Info("Adding post-job step from extension.");

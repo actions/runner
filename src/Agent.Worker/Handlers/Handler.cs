@@ -101,12 +101,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             }
         }
 
-        protected void AddSecureFilesToEnvironment() 
+        protected void AddSecureFilesToEnvironment()
         {
             Trace.Entering();
             ArgUtil.NotNull(ExecutionContext, nameof(ExecutionContext));
-            
-            if (ExecutionContext.SecureFiles != null && ExecutionContext.SecureFiles.Count >0) {
+
+            if (ExecutionContext.SecureFiles != null && ExecutionContext.SecureFiles.Count > 0)
+            {
                 // Add the secure files to the environment variable dictionary.
                 foreach (SecureFile secureFile in ExecutionContext.SecureFiles)
                 {
@@ -200,6 +201,27 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             ArgUtil.NotNullOrEmpty(key, nameof(key));
             Trace.Verbose($"Setting env '{key}' to '{value}'.");
             Environment[key] = value ?? string.Empty;
+        }
+
+        protected void AddIntraTaskStatesToEnvironment()
+        {
+            // Validate args.
+            Trace.Entering();
+            ArgUtil.NotNull(ExecutionContext.TaskVariables, nameof(ExecutionContext.TaskVariables));
+
+            foreach (KeyValuePair<string, string> pair in ExecutionContext.TaskVariables.Public)
+            {
+                // Add the variable using the formatted name.
+                string formattedKey = (pair.Key ?? string.Empty).Replace('.', '_').Replace(' ', '_').ToUpperInvariant();
+                AddEnvironmentVariable($"VSTS_TASKVARIABLE_{formattedKey}", pair.Value);
+            }
+
+            foreach (KeyValuePair<string, string> pair in ExecutionContext.TaskVariables.Private)
+            {
+                // Add the variable using the formatted name.
+                string formattedKey = (pair.Key ?? string.Empty).Replace('.', '_').Replace(' ', '_').ToUpperInvariant();
+                AddEnvironmentVariable($"VSTS_TASKVARIABLE_{formattedKey}", pair.Value);
+            }
         }
     }
 }

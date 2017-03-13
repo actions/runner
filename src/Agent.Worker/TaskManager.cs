@@ -8,7 +8,6 @@ using System.IO.Compression;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressions;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
@@ -18,12 +17,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         Task DownloadAsync(IExecutionContext executionContext, IEnumerable<TaskInstance> tasks);
 
         Definition Load(TaskReference task);
-
-        IList<IStep> GetTasksPreJobSteps(IExecutionContext jobExecutionContext, IEnumerable<TaskInstance> tasks, Dictionary<Guid, INode> taskConditionMap);
-
-        IList<IStep> GetTasksMainSteps(IExecutionContext jobExecutionContext, IEnumerable<TaskInstance> tasks, Dictionary<Guid, INode> taskConditionMap);
-
-        IList<IStep> GetTasksPostJobSteps(IExecutionContext jobExecutionContext, IEnumerable<TaskInstance> tasks, Dictionary<Guid, INode> taskConditionMap);
     }
 
     public sealed class TaskManager : AgentService, ITaskManager
@@ -81,69 +74,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             }
 
             return definition;
-        }
-
-        public IList<IStep> GetTasksPreJobSteps(IExecutionContext jobExecutionContext, IEnumerable<TaskInstance> tasks, Dictionary<Guid, INode> taskConditionMap)
-        {
-            List<IStep> preJobSteps = new List<IStep>();
-            foreach (var taskInstance in tasks)
-            {
-                Definition taskDefinition = Load(taskInstance);
-                if (taskDefinition.Data?.PreJobExecution != null)
-                {
-                    Trace.Verbose($"Adding Pre-Job {taskInstance.DisplayName}.");
-                    var taskRunner = HostContext.CreateService<ITaskRunner>();
-                    taskRunner.ExecutionContext = jobExecutionContext.CreateChild(Guid.NewGuid(), StringUtil.Loc("PreJob", taskInstance.DisplayName));
-                    taskRunner.TaskInstance = taskInstance;
-                    taskRunner.Stage = JobRunStage.PreJob;
-                    taskRunner.Condition = taskConditionMap[taskInstance.InstanceId];
-                    preJobSteps.Add(taskRunner);
-                }
-            }
-
-            return preJobSteps;
-        }
-
-        public IList<IStep> GetTasksMainSteps(IExecutionContext jobExecutionContext, IEnumerable<TaskInstance> tasks, Dictionary<Guid, INode> taskConditionMap)
-        {
-            List<IStep> mainSteps = new List<IStep>();
-            foreach (var taskInstance in tasks)
-            {
-                Definition taskDefinition = Load(taskInstance);
-                if (taskDefinition.Data?.Execution != null)
-                {
-                    Trace.Verbose($"Adding {taskInstance.DisplayName}.");
-                    var taskRunner = HostContext.CreateService<ITaskRunner>();
-                    taskRunner.ExecutionContext = jobExecutionContext.CreateChild(taskInstance.InstanceId, taskInstance.DisplayName);
-                    taskRunner.TaskInstance = taskInstance;
-                    taskRunner.Stage = JobRunStage.Main;
-                    taskRunner.Condition = taskConditionMap[taskInstance.InstanceId];
-                    mainSteps.Add(taskRunner);
-                }
-            }
-
-            return mainSteps;
-        }
-
-        public IList<IStep> GetTasksPostJobSteps(IExecutionContext jobExecutionContext, IEnumerable<TaskInstance> tasks, Dictionary<Guid, INode> taskConditionMap)
-        {
-            List<IStep> postJobSteps = new List<IStep>();
-            foreach (var taskInstance in tasks.Reverse())
-            {
-                Definition taskDefinition = Load(taskInstance);
-                if (taskDefinition.Data?.PostJobExecution != null)
-                {
-                    Trace.Verbose($"Adding Post-Job {taskInstance.DisplayName}.");
-                    var taskRunner = HostContext.CreateService<ITaskRunner>();
-                    taskRunner.ExecutionContext = jobExecutionContext.CreateChild(Guid.NewGuid(), StringUtil.Loc("PostJob", taskInstance.DisplayName));
-                    taskRunner.TaskInstance = taskInstance;
-                    taskRunner.Stage = JobRunStage.PostJob;
-                    taskRunner.Condition = taskConditionMap[taskInstance.InstanceId];
-                    postJobSteps.Add(taskRunner);
-                }
-            }
-
-            return postJobSteps;
         }
 
         private async Task DownloadAsync(IExecutionContext executionContext, TaskInstance task)

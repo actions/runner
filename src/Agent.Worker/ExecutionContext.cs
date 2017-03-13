@@ -23,12 +23,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         List<SecureFile> SecureFiles { get; }
         PlanFeatures Features { get; }
         Variables Variables { get; }
+        Variables TaskVariables { get; }
         List<IAsyncCommandContext> AsyncCommands { get; }
 
         // Initialize
         void InitializeJob(JobRequestMessage message, CancellationToken token);
         void CancelToken();
-        IExecutionContext CreateChild(Guid recordId, string name);
+        IExecutionContext CreateChild(Guid recordId, string name, Variables taskVariables = null);
 
         // logging
         bool WriteDebug { get; }
@@ -71,6 +72,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         public List<ServiceEndpoint> Endpoints { get; private set; }
         public List<SecureFile> SecureFiles { get; private set; }
         public Variables Variables { get; private set; }
+        public Variables TaskVariables { get; private set; }
         public bool WriteDebug { get; private set; }
 
         public List<IAsyncCommandContext> AsyncCommands => _asyncCommands;
@@ -107,12 +109,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         public PlanFeatures Features { get; private set; }
 
+        public override void Initialize(IHostContext hostContext)
+        {
+            base.Initialize(hostContext);
+
+            _jobServerQueue = HostContext.GetService<IJobServerQueue>();
+            _secretMasker = HostContext.GetService<ISecretMasker>();
+        }
+
         public void CancelToken()
         {
             _cancellationTokenSource.Cancel();
         }
 
-        public IExecutionContext CreateChild(Guid recordId, string name)
+        public IExecutionContext CreateChild(Guid recordId, string name, Variables taskVariables = null)
         {
             Trace.Entering();
 
@@ -122,6 +132,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             child.Variables = Variables;
             child.Endpoints = Endpoints;
             child.SecureFiles = SecureFiles;
+            child.TaskVariables = taskVariables;
             child._cancellationTokenSource = new CancellationTokenSource();
             child.WriteDebug = WriteDebug;
             child._parentExecutionContext = this;
@@ -383,14 +394,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             }
 
             _jobServerQueue.QueueFileUpload(_mainTimelineId, _record.Id, type, name, filePath, deleteSource: false);
-        }
-
-        public override void Initialize(IHostContext hostContext)
-        {
-            base.Initialize(hostContext);
-
-            _jobServerQueue = HostContext.GetService<IJobServerQueue>();
-            _secretMasker = HostContext.GetService<ISecretMasker>();
         }
 
         private void InitializeTimelineRecord(Guid timelineId, Guid timelineRecordId, Guid? parentTimelineRecordId, string recordType, string name, int order)

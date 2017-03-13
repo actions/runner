@@ -41,6 +41,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             AddEndpointsToEnvironment();
             AddSecureFilesToEnvironment();
             AddVariablesToEnvironment();
+            AddIntraTaskStatesToEnvironment();
 
             // Resolve the target script.
             string target = Data.Target;
