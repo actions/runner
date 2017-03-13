@@ -22,6 +22,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
     public sealed class JobRunner : AgentService, IJobRunner
     {
         private IJobServerQueue _jobServerQueue;
+        private ITempDirectoryManager _tempDirectoryManager;
 
         public async Task<TaskResult> RunAsync(AgentJobRequestMessage message, CancellationToken jobRequestCancellationToken)
         {
@@ -107,6 +108,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 jobContext.Variables.Set(Constants.Variables.Agent.WorkFolder, IOUtil.GetWorkPath(HostContext));
                 jobContext.Variables.Set(Constants.Variables.System.WorkFolder, IOUtil.GetWorkPath(HostContext));
 
+                if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("AGENT_TOOLCACHE")))
+                {
+                    string toolCache = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), Constants.Path.ToolDirectory);
+                    Directory.CreateDirectory(toolCache);
+                    jobContext.Variables.Set(Constants.Variables.Agent.ToolCache, toolCache);
+                }
+
+                // Setup TEMP directories
+                _tempDirectoryManager = HostContext.GetService<ITempDirectoryManager>();
+                _tempDirectoryManager.InitializeTempDirectory(jobContext);
+
+                // todo: task server can throw. try/catch and fail job gracefully.
                 // prefer task definitions url, then TFS collection url, then TFS account url
                 var taskServer = HostContext.GetService<ITaskServer>();
                 Uri taskServerUri = null;
@@ -277,6 +290,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         private async Task<TaskResult> CompleteJobAsync(IJobServer jobServer, IExecutionContext jobContext, AgentJobRequestMessage message, TaskResult? taskResult = null)
         {
+            // Clean TEMP.
+            _tempDirectoryManager?.CleanupTempDirectory(jobContext);
+
             jobContext.Section(StringUtil.Loc("StepFinishing", message.JobName));
             TaskResult result = jobContext.Complete(taskResult);
 

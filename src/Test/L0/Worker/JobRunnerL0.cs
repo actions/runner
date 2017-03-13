@@ -28,6 +28,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
 
         private Mock<IJobExtension> _jobExtension;
         private Mock<IPagingLogger> _logger;
+        private Mock<ITempDirectoryManager> _temp;
 
         private TestHostContext CreateTestContext([CallerMemberName] String testName = "")
         {
@@ -43,6 +44,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             _taskServer = new Mock<ITaskServer>();
             _stepRunner = new Mock<IStepsRunner>();
             _logger = new Mock<IPagingLogger>();
+            _temp = new Mock<ITempDirectoryManager>();
 
             if (_tokenSource != null)
             {
@@ -111,6 +113,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             hc.SetSingleton(_taskServer.Object);
             hc.SetSingleton(_stepRunner.Object);
             hc.SetSingleton(_extensions.Object);
+            hc.SetSingleton(_temp.Object);
             hc.EnqueueInstance<IExecutionContext>(_jobEc);
             hc.EnqueueInstance<IPagingLogger>(_logger.Object);
             return hc;

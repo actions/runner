@@ -133,6 +133,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
 
         public static void DeleteDirectory(string path, CancellationToken cancellationToken)
         {
+            DeleteDirectory(path, contentsOnly: false, continueOnContentDeleteError: false, cancellationToken: cancellationToken);
+        }
+
+        public static void DeleteDirectory(string path, bool contentsOnly, bool continueOnContentDeleteError, CancellationToken cancellationToken)
+        {
             ArgUtil.NotNullOrEmpty(path, nameof(path));
             DirectoryInfo directory = new DirectoryInfo(path);
             if (!directory.Exists)
@@ -140,21 +145,28 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
                 return;
             }
 
-            // Remove the readonly flag.
-            RemoveReadOnly(directory);
-
-            // Check if the directory is a reparse point.
-            if (directory.Attributes.HasFlag(FileAttributes.ReparsePoint))
+            if (!contentsOnly)
             {
-                // Delete the reparse point directory and short-circuit.
-                directory.Delete();
-                return;
+                // Remove the readonly flag.
+                RemoveReadOnly(directory);
+
+                // Check if the directory is a reparse point.
+                if (directory.Attributes.HasFlag(FileAttributes.ReparsePoint))
+                {
+                    // Delete the reparse point directory and short-circuit.
+                    directory.Delete();
+                    return;
+                }
             }
 
             // Initialize a concurrent stack to store the directories. The directories
             // cannot be deleted until the files are deleted.
             var directories = new ConcurrentStack<DirectoryInfo>();
-            directories.Push(directory);
+
+            if (!contentsOnly)
+            {
+                directories.Push(directory);
+            }
 
             // Create a new token source for the parallel query. The parallel query should be
             // canceled after the first error is encountered. Otherwise the number of exceptions
@@ -211,6 +223,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
                                     }
                                 }
 
+                                success = true;
+                            }
+                            catch (Exception) when (continueOnContentDeleteError)
+                            {
+                                // ignore any exception when continueOnContentDeleteError is true.
                                 success = true;
                             }
                             finally
@@ -344,7 +361,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
                 failsafe = 100;
             }
 
-            for (int i = 0 ; i < failsafe ; i++)
+            for (int i = 0; i < failsafe; i++)
             {
                 try
                 {
