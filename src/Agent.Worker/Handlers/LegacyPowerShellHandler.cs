@@ -202,6 +202,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
 
             // Add the legacy ps host environment variables.
             AddLegacyHostEnvironmentVariables(scriptFile: scriptFile, workingDirectory: workingDirectory);
+            AddPrependPathToEnvironment();
 
             // Invoke the process.
             using (var processInvoker = HostContext.CreateService<IProcessInvoker>())

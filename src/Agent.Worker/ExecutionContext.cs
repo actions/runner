@@ -25,6 +25,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         Variables Variables { get; }
         Variables TaskVariables { get; }
         List<IAsyncCommandContext> AsyncCommands { get; }
+        List<string> PrependPath { get; }
 
         // Initialize
         void InitializeJob(JobRequestMessage message, CancellationToken token);
@@ -74,6 +75,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         public Variables Variables { get; private set; }
         public Variables TaskVariables { get; private set; }
         public bool WriteDebug { get; private set; }
+        public List<string> PrependPath { get; private set; }
 
         public List<IAsyncCommandContext> AsyncCommands => _asyncCommands;
 
@@ -136,6 +138,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             child._cancellationTokenSource = new CancellationTokenSource();
             child.WriteDebug = WriteDebug;
             child._parentExecutionContext = this;
+            child.PrependPath = PrependPath;
 
             // the job timeline record is at order 1.
             child.InitializeTimelineRecord(_mainTimelineId, recordId, _record.Id, ExecutionContextType.Task, name, _childExecutionContextCount + 2);
@@ -314,6 +317,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             // Variables (constructor performs initial recursive expansion)
             List<string> warnings;
             Variables = new Variables(HostContext, message.Environment.Variables, message.Environment.MaskHints, out warnings);
+
+            // Prepend Path
+            PrependPath = new List<string>();
 
             // Proxy variables
             var proxyConfiguration = HostContext.GetService<IProxyConfiguration>();

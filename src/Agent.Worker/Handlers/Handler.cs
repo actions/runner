@@ -4,6 +4,8 @@ using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using System.Linq;
+using System.IO;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
 {
@@ -203,7 +205,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             Environment[key] = value ?? string.Empty;
         }
 
-        protected void AddIntraTaskStatesToEnvironment()
+        protected void AddTaskVariablesToEnvironment()
         {
             // Validate args.
             Trace.Entering();
@@ -222,6 +224,23 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
                 string formattedKey = (pair.Key ?? string.Empty).Replace('.', '_').Replace(' ', '_').ToUpperInvariant();
                 AddEnvironmentVariable($"VSTS_TASKVARIABLE_{formattedKey}", pair.Value);
             }
+        }
+
+        protected void AddPrependPathToEnvironment()
+        {
+            // Validate args.
+            Trace.Entering();
+            ArgUtil.NotNull(ExecutionContext.PrependPath, nameof(ExecutionContext.PrependPath));
+            if (ExecutionContext.PrependPath.Count == 0)
+            {
+                return;
+            }
+
+            // prepend path section            
+            string prepend = string.Join(Path.PathSeparator.ToString(), ExecutionContext.PrependPath.Reverse<string>());
+            string originalPath = ExecutionContext.Variables.Get(Constants.PathVariable) ?? System.Environment.GetEnvironmentVariable(Constants.PathVariable) ?? string.Empty;
+            string newPath = VarUtil.PrependPath(prepend, originalPath);
+            AddEnvironmentVariable(Constants.PathVariable, newPath);
         }
     }
 }

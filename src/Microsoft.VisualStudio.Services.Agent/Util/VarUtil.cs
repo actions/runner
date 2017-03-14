@@ -15,23 +15,27 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
 
     public sealed class VarUtil : AgentService, IVarUtil
     {
+        public static string PrependPath(string path, string currentPath)
+        {
+            ArgUtil.NotNullOrEmpty(path, nameof(path));
+            if (string.IsNullOrEmpty(currentPath))
+            {
+                // Careful not to add a trailing separator if the PATH is empty.
+                // On OSX/Linux, a trailing separator indicates that "current directory"
+                // is added to the PATH, which is considered a security risk.
+                return path;
+            }
+
+            return path + Path.PathSeparator + currentPath;
+        }
+
         public void PrependPath(string directory)
         {
             ArgUtil.Directory(directory, nameof(directory));
 
             // Build the new value.
-            string path = Environment.GetEnvironmentVariable(Constants.PathVariable);
-            if (string.IsNullOrEmpty(path))
-            {
-                // Careful not to add a trailing separator if the PATH is empty.
-                // On OSX/Linux, a trailing separator indicates that "current directory"
-                // is added to the PATH, which is considered a security risk.
-                path = directory;
-            }
-            else
-            {
-                path = directory + Path.PathSeparator + path;
-            }
+            string currentPath = Environment.GetEnvironmentVariable(Constants.PathVariable);
+            string path = PrependPath(directory, currentPath);
 
             // Update the PATH environment variable.
             Environment.SetEnvironmentVariable(Constants.PathVariable, path);

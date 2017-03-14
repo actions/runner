@@ -28,7 +28,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             AddEndpointsToEnvironment();
             AddSecureFilesToEnvironment();
             AddVariablesToEnvironment();
-            AddIntraTaskStatesToEnvironment();
+            AddTaskVariablesToEnvironment();
+            AddPrependPathToEnvironment();
 
             // Resolve the target script.
             ArgUtil.NotNullOrEmpty(Data.Target, nameof(Data.Target));
