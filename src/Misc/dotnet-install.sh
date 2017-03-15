@@ -56,6 +56,59 @@ say_verbose() {
     fi
 }
 
+get_os_download_name_from_platform() {
+    eval $invocation
+
+    platform="$1"
+    case "$platform" in
+        "centos.7")
+            echo "centos"
+            return 0
+            ;;
+        "debian.8")
+            echo "debian"
+            return 0
+            ;;
+        "fedora.23")
+            echo "fedora.23"
+            return 0
+            ;;
+        "fedora.24")
+            echo "fedora.24"
+            return 0
+            ;;
+        "opensuse.13.2")
+            echo "opensuse.13.2"
+            return 0
+            ;;
+        "opensuse.42.1")
+            echo "opensuse.42.1"
+            return 0
+            ;;
+        "rhel.7"*)
+            echo "rhel"
+            return 0
+            ;;
+        "ubuntu.14.04")
+            echo "ubuntu"
+            return 0
+            ;;
+        "ubuntu.16.04")
+            echo "ubuntu.16.04"
+            return 0
+            ;;
+        "ubuntu.16.10")
+            echo "ubuntu.16.10"
+            return 0
+            ;;
+        "alpine.3.4.3")
+            echo "alpine"
+            return 0
+            ;;
+    esac
+    return 1
+}
+
 get_current_os_name() {
     eval $invocation
 
@@ -66,56 +119,17 @@ get_current_os_name() {
     elif [ "$uname" = "Darwin" ]; then
         echo "osx"
         return 0
+    elif [ -n "$runtime_id" ]; then
+        echo $(get_os_download_name_from_platform "${runtime_id%-*}" || echo "${runtime_id%-*}")
+        return 0
     else
         if [ -e /etc/os-release ]; then
             . /etc/os-release
-
-            case "$ID.$VERSION_ID" in
-                "centos.7")
-                    echo "centos"
-                    return 0
-                    ;;
-                "debian.8")
-                    echo "debian"
-                    return 0
-                    ;;
-                "fedora.23")
-                    echo "fedora.23"
-                    return 0
-                    ;;
-                "fedora.24")
-                    echo "fedora.24"
-                    return 0
-                    ;;
-                "opensuse.13.2")
-                    echo "opensuse.13.2"
-                    return 0
-                    ;;
-                "opensuse.42.1")
-                    echo "opensuse.42.1"
-                    return 0
-                    ;;
-                "rhel.7"*)
-                    echo "rhel"
-                    return 0
-                    ;;
-                "ubuntu.14.04")
-                    echo "ubuntu"
-                    return 0
-                    ;;
-                "ubuntu.16.04")
-                    echo "ubuntu.16.04"
-                    return 0
-                    ;;
-                "ubuntu.16.10")
-                    echo "ubuntu.16.10"
-                    return 0
-                    ;;
-                "alpine.3.4.3")
-                    echo "alpine"
-                    return 0
-                    ;;
-            esac
+            os=$(get_os_download_name_from_platform "$ID.$VERSION_ID" || echo "")
+            if [ -n "$os" ]; then
+                echo "$os"
+                return 0
+            fi
         fi
     fi
     
@@ -588,6 +602,7 @@ uncached_feed="https://dotnetcli.blob.core.windows.net/dotnet"
 verbose=false
 shared_runtime=false
 linux_portable=false
+runtime_id=""
 
 while [ $# -ne 0 ]
 do
@@ -631,6 +646,10 @@ do
         --linux-portable|-[Ll]inux[Pp]ortable)
             linux_portable=true
             ;;
+        --runtime-id|-[Rr]untime[Ii]d)
+            shift
+            runtime_id="$1"
+            ;;
         -?|--?|-h|--help|-[Hh]elp)
             script_name="$(basename $0)"
             echo ".NET Tools Installer"
@@ -657,6 +676,8 @@ do
             echo "  --azure-feed,-AzureFeed        Azure feed location. Defaults to $azure_feed"
             echo "  --linux-portable               Installs the Linux portable .NET Tools instead of a distro-specific version."
             echo "      -LinuxPortable"
+            echo "  --runtime-id                   Installs the .NET Tools for the given platform (such as linux-x64)."
+            echo "      -RuntimeId"
             echo "  -?,--?,-h,--help,-Help         Shows this help message"
             echo ""
             echo "Install Location:"
