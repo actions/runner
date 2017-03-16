@@ -24,6 +24,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         {
             Constants.Agent.CommandLine.Flags.AcceptTeeEula,
             Constants.Agent.CommandLine.Flags.AddMachineGroupTags,
+            Constants.Agent.CommandLine.Flags.AddDeploymentGroupTags,
             Constants.Agent.CommandLine.Flags.Commit,
             Constants.Agent.CommandLine.Flags.DeploymentGroup,
             Constants.Agent.CommandLine.Flags.Help,
@@ -39,6 +40,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             Constants.Agent.CommandLine.Args.Agent,
             Constants.Agent.CommandLine.Args.Auth,
             Constants.Agent.CommandLine.Args.CollectionName,
+            Constants.Agent.CommandLine.Args.DeploymentGroupName,
+            Constants.Agent.CommandLine.Args.DeploymentGroupTags,
             Constants.Agent.CommandLine.Args.MachineGroupName,
             Constants.Agent.CommandLine.Args.MachineGroupTags,
             Constants.Agent.CommandLine.Args.NotificationPipeName,
@@ -63,7 +66,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         public bool Help => TestFlag(Constants.Agent.CommandLine.Flags.Help);
         public bool Unattended => TestFlag(Constants.Agent.CommandLine.Flags.Unattended);
         public bool Version => TestFlag(Constants.Agent.CommandLine.Flags.Version);
-        public bool MachineGroup => TestFlag(Constants.Agent.CommandLine.Flags.MachineGroup) || TestFlag(Constants.Agent.CommandLine.Flags.DeploymentGroup);
+        public bool DeploymentGroup => TestFlag(Constants.Agent.CommandLine.Flags.MachineGroup) || TestFlag(Constants.Agent.CommandLine.Flags.DeploymentGroup);
 
         // Constructor.
         public CommandSettings(IHostContext context, string[] args)
@@ -124,12 +127,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 defaultValue: false);
         }
 
-        public bool GetMachineGroupTagsRequired()
+        public bool GetDeploymentGroupTagsRequired()
         {
-            return TestFlagOrPrompt(
-                name: Constants.Agent.CommandLine.Flags.AddMachineGroupTags,
-                description: StringUtil.Loc("AddMachineGroupTagsFlagDescription"),
-                defaultValue: false);
+            return TestFlag(Constants.Agent.CommandLine.Flags.AddMachineGroupTags)
+                   || TestFlagOrPrompt(
+                           name: Constants.Agent.CommandLine.Flags.AddDeploymentGroupTags,
+                           description: StringUtil.Loc("AddDeploymentGroupTagsFlagDescription"),
+                           defaultValue: false);
         }
 
         //
@@ -189,13 +193,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 validator: Validators.ServerUrlValidator);
         }
 
-        public string GetMachineGroupName()
+        public string GetDeploymentGroupName()
         {
-            return GetArgOrPrompt(
-                name: Constants.Agent.CommandLine.Args.MachineGroupName,
-                description: StringUtil.Loc("MachineGroupName"),
-                defaultValue: string.Empty,
-                validator: Validators.NonEmptyValidator);
+            var result = GetArg(Constants.Agent.CommandLine.Args.MachineGroupName);
+            if (string.IsNullOrEmpty(result))
+            {
+                return GetArgOrPrompt(
+                            name: Constants.Agent.CommandLine.Args.DeploymentGroupName,
+                            description: StringUtil.Loc("DeploymentGroupName"),
+                            defaultValue: string.Empty,
+                            validator: Validators.NonEmptyValidator);
+            }
+            return result;
         }
 
         public string GetProjectName(string defaultValue)
@@ -216,13 +225,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 validator: Validators.NonEmptyValidator);
         }
 
-        public string GetMachineGroupTags()
+        public string GetDeploymentGroupTags()
         {
-            return GetArgOrPrompt(
-                name: Constants.Agent.CommandLine.Args.MachineGroupTags,
-                description: StringUtil.Loc("MachineGroupTags"),
-                defaultValue: string.Empty,
-                validator: Validators.NonEmptyValidator);
+            var result = GetArg(Constants.Agent.CommandLine.Args.MachineGroupTags);
+            if (string.IsNullOrEmpty(result))
+            {
+                return GetArgOrPrompt(
+                    name: Constants.Agent.CommandLine.Args.DeploymentGroupTags,
+                    description: StringUtil.Loc("DeploymentGroupTags"),
+                    defaultValue: string.Empty,
+                    validator: Validators.NonEmptyValidator);
+            }
+            return result;
         }
 
         public string GetUserName()

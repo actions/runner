@@ -111,7 +111,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             }
 
             // Create the configuration provider as per agent type.....
-            string agentType = command.MachineGroup
+            string agentType = command.DeploymentGroup
                 ? Constants.Agent.AgentConfigurationProvider.DeploymentAgentConfiguration
                 : Constants.Agent.AgentConfigurationProvider.BuildReleasesAgentConfiguration;
 
@@ -325,7 +325,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 WorkFolder = workFolder
             };
 
-            // This is required in case agent is configured as DeploymentAgent. It will make entry for projectName and MachineGroup
+            // This is required in case agent is configured as DeploymentAgent. It will make entry for projectName and DeploymentGroup
             agentProvider.UpdateAgentSetting(settings);
 
             _store.SaveSettings(settings);
@@ -402,9 +402,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                     await agentSvr.ConnectAsync(conn);
                     Trace.Info("Connect complete.");
 
-                    Trace.Info("Agent configured for machineGroup : {0}", settings.MachineGroup.ToString());
+                    bool isDeploymentGroup = (settings.MachineGroupId > 0) || (settings.DeploymentGroupId > 0);
 
-                    string agentType = settings.MachineGroup
+                    Trace.Info("Agent configured for deploymentGroup : {0}", isDeploymentGroup.ToString());
+
+                    string agentType = isDeploymentGroup
                    ? Constants.Agent.AgentConfigurationProvider.DeploymentAgentConfiguration
                    : Constants.Agent.AgentConfigurationProvider.BuildReleasesAgentConfiguration;
 

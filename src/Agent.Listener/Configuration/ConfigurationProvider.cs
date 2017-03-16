@@ -109,7 +109,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         }
     }
 
-    public sealed class MachineGroupAgentConfigProvider : AgentService, IConfigurationProvider
+    public sealed class DeploymentGroupAgentConfigProvider : AgentService, IConfigurationProvider
     {
         public Type ExtensionType => typeof(IConfigurationProvider);
         private ITerminal _term;
@@ -117,10 +117,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
         private string _projectName = string.Empty;
         private string _collectionName;
-        private int _machineGroupId;
+        private int _deploymentGroupId;
         private string _serverUrl;
         private bool _isHosted = false;
-        private IMachineGroupServer _machineGroupServer = null;
+        private IDeploymentGroupServer _deploymentGroupServer = null;
 
         public string ConfigurationProviderType
             => Constants.Agent.AgentConfigurationProvider.DeploymentAgentConfiguration;
@@ -130,7 +130,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             base.Initialize(hostContext);
             _term = hostContext.GetService<ITerminal>();
             _agentServer = HostContext.GetService<IAgentServer>();
-            _machineGroupServer = HostContext.GetService<IMachineGroupServer>();
+            _deploymentGroupServer = HostContext.GetService<IDeploymentGroupServer>();
         }
 
         public string GetServerUrl(CommandSettings command)
@@ -140,7 +140,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
             _isHosted = UrlUtil.IsHosted(_serverUrl);
 
-            // for onprem tfs, collection is required for machineGroup
+            // for onprem tfs, collection is required for deploymentGroup
             if (! _isHosted)
             {
                 Trace.Info("Provided url is for onprem tfs, need collection name");
@@ -155,15 +155,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             int poolId;
 
             _projectName = command.GetProjectName(_projectName);
-            var machineGroupName = command.GetMachineGroupName();
+            var deploymentGroupName = command.GetDeploymentGroupName();
 
-            poolId =  await GetPoolIdAsync(_projectName, machineGroupName);
-            Trace.Info($"PoolId for machine group '{machineGroupName}' is '{poolId}'.");
+            poolId =  await GetPoolIdAsync(_projectName, deploymentGroupName);
+            Trace.Info($"PoolId for deployment group '{deploymentGroupName}' is '{poolId}'.");
             
             return poolId;
         }
 
-        public string GetFailedToFindPoolErrorString() => StringUtil.Loc("FailedToFindMachineGroup");
+        public string GetFailedToFindPoolErrorString() => StringUtil.Loc("FailedToFindDeploymentGroup");
 
         public async Task<TaskAgent> UpdateAgentAsync(int poolId, TaskAgent agent, CommandSettings command)
         {
@@ -194,8 +194,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             await _agentServer.ConnectAsync(connection);
             Trace.Info("Connect complete for server");
 
-            // Create the connection for machine group 
-            Trace.Info("Test connection with machine group");
+            // Create the connection for deployment group 
+            Trace.Info("Test connection with deployment group");
             if (!_isHosted && !_collectionName.IsNullOrEmpty()) // For on-prm validate the collection by making the connection
             {
                 UriBuilder uriBuilder = new UriBuilder(new Uri(url));
@@ -203,27 +203,27 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 Trace.Info("Tfs Collection level url to connect - {0}", uriBuilder.Uri.AbsoluteUri);
                 url = uriBuilder.Uri.AbsoluteUri;
             }
-            VssConnection machineGroupconnection = ApiUtil.CreateConnection(new Uri(url), creds);
+            VssConnection deploymentGroupconnection = ApiUtil.CreateConnection(new Uri(url), creds);
 
-            await _machineGroupServer.ConnectAsync(machineGroupconnection);
-            Trace.Info("Connect complete for machine group");
+            await _deploymentGroupServer.ConnectAsync(deploymentGroupconnection);
+            Trace.Info("Connect complete for deployment group");
         }
 
         public void UpdateAgentSetting(AgentSettings settings)
         {
-            settings.MachineGroupId = _machineGroupId;
+            settings.DeploymentGroupId = _deploymentGroupId;
             settings.ProjectName = _projectName;
         }
 
         private async Task GetAndAddTags(TaskAgent agent, CommandSettings command)
         {
-            // Get and apply Tags in case agent is configured against Machine Group
-            bool needToAddTags = command.GetMachineGroupTagsRequired();
+            // Get and apply Tags in case agent is configured against Deployment Group
+            bool needToAddTags = command.GetDeploymentGroupTagsRequired();
             while (needToAddTags)
             {
                 try
                 {
-                    string tagString = command.GetMachineGroupTags();
+                    string tagString = command.GetDeploymentGroupTags();
                     Trace.Info("Given tags - {0} will be processed and added", tagString);
 
                     if (!string.IsNullOrWhiteSpace(tagString))
@@ -243,10 +243,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                                 Tags = tagsList
                             };
 
-                            await _machineGroupServer.UpdateDeploymentMachinesAsync(_projectName, _machineGroupId,
+                            await _deploymentGroupServer.UpdateDeploymentMachinesAsync(_projectName, _deploymentGroupId,
                                            new List<DeploymentMachine>() { deploymentMachine });
 
-                            _term.WriteLine(StringUtil.Loc("MachineGroupTagsAddedMsg"));
+                            _term.WriteLine(StringUtil.Loc("DeploymentGroupTagsAddedMsg"));
                         }
                     }
                     break;
@@ -259,20 +259,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             }
         }
 
-        private async Task<int> GetPoolIdAsync(string projectName, string machineGroupName)
+        private async Task<int> GetPoolIdAsync(string projectName, string deploymentGroupName)
         {
-            ArgUtil.NotNull(_machineGroupServer, nameof(_machineGroupServer));
+            ArgUtil.NotNull(_deploymentGroupServer, nameof(_deploymentGroupServer));
 
-            var deploymentGroup = (await _machineGroupServer.GetDeploymentGroupsAsync(projectName, machineGroupName)).FirstOrDefault();
+            var deploymentGroup = (await _deploymentGroupServer.GetDeploymentGroupsAsync(projectName, deploymentGroupName)).FirstOrDefault();
 
             if (deploymentGroup == null)
             {
-                throw new DeploymentMachineGroupNotFoundException(StringUtil.Loc("MachineGroupNotFound", machineGroupName));
+                throw new DeploymentGroupNotFoundException(StringUtil.Loc("DeploymentGroupNotFound", deploymentGroupName));
             }
 
-            _machineGroupId = deploymentGroup.Id;
-            Trace.Info("Found machine group {0} with id {1}", machineGroupName, deploymentGroup.Id);
-            Trace.Info("Found poolId {0} for machine group {1}", deploymentGroup.Pool.Id, machineGroupName);
+            _deploymentGroupId = deploymentGroup.Id;
+            Trace.Info("Found deployment group {0} with id {1}", deploymentGroupName, deploymentGroup.Id);
+            Trace.Info("Found poolId {0} for deployment group {1}", deploymentGroup.Pool.Id, deploymentGroupName);
 
             return deploymentGroup.Pool.Id;
         }

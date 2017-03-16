@@ -51,7 +51,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                 // Listener agent configuration providers
                 case "Microsoft.VisualStudio.Services.Agent.Listener.Configuration.IConfigurationProvider":
                     Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Listener.Configuration.BuildReleasesAgentConfigProvider, Agent.Listener");
-                    Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Listener.Configuration.MachineGroupAgentConfigProvider, Agent.Listener");
+                    Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Listener.Configuration.DeploymentGroupAgentConfigProvider, Agent.Listener");
                     break;
                 // Worker job extensions.
                 case "Microsoft.VisualStudio.Services.Agent.Worker.IJobExtension":

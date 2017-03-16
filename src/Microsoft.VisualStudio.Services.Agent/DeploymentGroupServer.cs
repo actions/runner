@@ -6,8 +6,8 @@ using Microsoft.VisualStudio.Services.WebApi;
 
 namespace Microsoft.VisualStudio.Services.Agent
 {
-    [ServiceLocator(Default = typeof(MachineGroupServer))]
-    public interface IMachineGroupServer : IAgentService
+    [ServiceLocator(Default = typeof(DeploymentGroupServer))]
+    public interface IDeploymentGroupServer : IAgentService
     {
         Task ConnectAsync(VssConnection agentConnection);
 
@@ -18,7 +18,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         Task<List<DeploymentMachine>> UpdateDeploymentMachinesAsync(string projectName, int machineGroupId, List<DeploymentMachine> deploymentMachines);
     }
 
-    public sealed class MachineGroupServer : AgentService, IMachineGroupServer
+    public sealed class DeploymentGroupServer : AgentService, IDeploymentGroupServer
     {
         private bool _hasConnection;
         private VssConnection _connection;
