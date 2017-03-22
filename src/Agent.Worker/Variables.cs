@@ -101,6 +101,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         }
 
         public string Agent_ServerOMDirectory => Get(Constants.Variables.Agent.ServerOMDirectory);
+        
+        public string Agent_TempDirectory => Get(Constants.Variables.Agent.TempDirectory);
 
         public string Agent_ProxyUrl => Get(Constants.Variables.Agent.ProxyUrl);
 

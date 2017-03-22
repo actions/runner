@@ -29,6 +29,23 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         {
             ArgUtil.NotNull(jobContext, nameof(jobContext));
 
+            string tempDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), Constants.Path.TempDirectory);
+            jobContext.Variables.Set(Constants.Variables.Agent.TempDirectory, tempDirectory);
+            jobContext.Debug($"Cleaning agent temp folder: {tempDirectory}");
+            try
+            {
+                IOUtil.DeleteDirectory(tempDirectory, contentsOnly: true, continueOnContentDeleteError: true, cancellationToken: jobContext.CancellationToken);
+            }
+            catch (Exception ex)
+            {
+                Trace.Error(ex);
+            }
+            finally
+            {
+                // make sure folder exists
+                Directory.CreateDirectory(tempDirectory);
+            }
+
             // TEMP and TMP on Windows
             // TMPDIR on Linux
             if (!_overwriteTemp)
@@ -37,22 +54,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             }
             else
             {
-                string tempDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), Constants.Path.TempDirectory);
-                jobContext.Debug($"Cleaning temp folder: {tempDirectory}");
-                try
-                {
-                    IOUtil.DeleteDirectory(tempDirectory, contentsOnly: true, continueOnContentDeleteError: true, cancellationToken: jobContext.CancellationToken);
-                }
-                catch (Exception ex)
-                {
-                    Trace.Error(ex);
-                }
-                finally
-                {
-                    // make sure folder exists
-                    Directory.CreateDirectory(tempDirectory);
-                }
-
 #if OS_WINDOWS
                 jobContext.Debug($"SET TMP={tempDirectory}");
                 jobContext.Debug($"SET TEMP={tempDirectory}");                
@@ -68,35 +69,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         public void CleanupTempDirectory(IExecutionContext jobContext)
         {
             ArgUtil.NotNull(jobContext, nameof(jobContext));
+            ArgUtil.NotNullOrEmpty(jobContext.Variables.Agent_TempDirectory, nameof(jobContext.Variables.Agent_TempDirectory));
 
-            string tempDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), Constants.Path.TempDirectory);
-            if (!_overwriteTemp)
+            string tempDirectory = jobContext.Variables.Agent_TempDirectory;
+            jobContext.Debug($"Cleaning agent temp folder: {tempDirectory}");
+            try
             {
-                jobContext.Debug($"Skipping cleanup temp folder: {tempDirectory}");
+                IOUtil.DeleteDirectory(tempDirectory, contentsOnly: true, continueOnContentDeleteError: true, cancellationToken: jobContext.CancellationToken);
             }
-            else
+            catch (Exception ex)
             {
-                jobContext.Debug($"Cleaning temp folder: {tempDirectory}");
-                try
-                {
-                    IOUtil.DeleteDirectory(tempDirectory, contentsOnly: true, continueOnContentDeleteError: true, cancellationToken: jobContext.CancellationToken);
-                }
-                catch (Exception ex)
-                {
-                    Trace.Error(ex);
-                }
+                Trace.Error(ex);
             }
-        }
-
-        private bool OverwriteTemp()
-        {
-            bool overwriteTemp = true;
-            if (!bool.TryParse(Environment.GetEnvironmentVariable("VSTS_OVERWRITE_TEMP") ?? "true", out overwriteTemp))
-            {
-                overwriteTemp = true;
-            }
-
-            return overwriteTemp;
         }
     }
 }

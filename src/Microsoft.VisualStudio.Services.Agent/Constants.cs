@@ -222,6 +222,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                 public static readonly string ProxyPassword = "agent.proxypassword";
                 public static readonly string RootDirectory = "agent.RootDirectory";
                 public static readonly string ServerOMDirectory = "agent.ServerOMDirectory";
+                public static readonly string TempDirectory = "agent.TempDirectory";
                 public static readonly string ToolCache = "agent.ToolCache";
                 public static readonly string Version = "agent.version";
                 public static readonly string WorkFolder = "agent.workfolder";
