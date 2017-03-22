@@ -192,7 +192,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                     HttpResponseMessage response = null;
                     try
                     {
-                        response = await _fileContainerHttpClient.UploadFileAsync(_containerId, itemPath, fs, _projectId, token, chunkSize: 4 * 1024 * 1024);
+                        response = await _fileContainerHttpClient.UploadFileAsync(_containerId, itemPath, fs, _projectId, cancellationToken: token, chunkSize: 4 * 1024 * 1024);
                     }
                     catch (OperationCanceledException) when (token.IsCancellationRequested)
                     {

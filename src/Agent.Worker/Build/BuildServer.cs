@@ -42,7 +42,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 }
             };
 
-            return await _buildHttpClient.CreateArtifactAsync(artifact, _projectId, buildId, cancellationToken);
+            return await _buildHttpClient.CreateArtifactAsync(artifact, _projectId, buildId, cancellationToken: cancellationToken);
         }
 
         public async Task<Build2.Build> UpdateBuildNumber(
@@ -60,7 +60,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 },
             };
 
-            return await _buildHttpClient.UpdateBuildAsync(build, _projectId, buildId, cancellationToken);
+            return await _buildHttpClient.UpdateBuildAsync(build, _projectId, buildId, cancellationToken: cancellationToken);
         }
 
         public async Task<IEnumerable<string>> AddBuildTag(
