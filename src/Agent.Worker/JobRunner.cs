@@ -108,11 +108,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 jobContext.Variables.Set(Constants.Variables.Agent.WorkFolder, IOUtil.GetWorkPath(HostContext));
                 jobContext.Variables.Set(Constants.Variables.System.WorkFolder, IOUtil.GetWorkPath(HostContext));
 
-                if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("AGENT_TOOLCACHE")))
+                if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("AGENT_TOOLSDIRECTORY")))
                 {
-                    string toolCache = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), Constants.Path.ToolDirectory);
-                    Directory.CreateDirectory(toolCache);
-                    jobContext.Variables.Set(Constants.Variables.Agent.ToolCache, toolCache);
+                    string toolsDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), Constants.Path.ToolDirectory);
+                    Directory.CreateDirectory(toolsDirectory);
+                    jobContext.Variables.Set(Constants.Variables.Agent.ToolsDirectory, toolsDirectory);
                 }
 
                 // Setup TEMP directories
