@@ -113,10 +113,7 @@ get_current_os_name() {
     eval $invocation
 
     local uname=$(uname)
-    if [ "$linux_portable" = true ]; then
-        echo "linux"
-        return 0
-    elif [ "$uname" = "Darwin" ]; then
+    if [ "$uname" = "Darwin" ]; then
         echo "osx"
         return 0
     elif [ -n "$runtime_id" ]; then
@@ -414,7 +411,7 @@ construct_download_link() {
     return 0
 }
 
-get_user_share_path() {
+get_user_install_path() {
     eval $invocation
     
     if [ ! -z "${DOTNET_INSTALL_DIR:-}" ]; then
@@ -432,9 +429,9 @@ resolve_installation_path() {
     
     local install_dir=$1
     if [ "$install_dir" = "<auto>" ]; then
-        local user_share_path=$(get_user_share_path)
-        say_verbose "resolve_installation_path: share_path=$user_share_path"
-        echo "$user_share_path"
+        local user_install_path=$(get_user_install_path)
+        say_verbose "resolve_installation_path: user_install_path=$user_install_path"
+        echo "$user_install_path"
         return 0
     fi
     
@@ -601,7 +598,6 @@ azure_feed="https://dotnetcli.azureedge.net/dotnet"
 uncached_feed="https://dotnetcli.blob.core.windows.net/dotnet"
 verbose=false
 shared_runtime=false
-linux_portable=false
 runtime_id=""
 
 while [ $# -ne 0 ]
@@ -643,9 +639,6 @@ do
             shift
             azure_feed="$1"
             ;;
-        --linux-portable|-[Ll]inux[Pp]ortable)
-            linux_portable=true
-            ;;
         --runtime-id|-[Rr]untime[Ii]d)
             shift
             runtime_id="$1"
@@ -674,9 +667,7 @@ do
             echo "  --no-path, -NoPath             Do not set PATH for the current process."
             echo "  --verbose,-Verbose             Display diagnostics information."
             echo "  --azure-feed,-AzureFeed        Azure feed location. Defaults to $azure_feed"
-            echo "  --linux-portable               Installs the Linux portable .NET Tools instead of a distro-specific version."
-            echo "      -LinuxPortable"
-            echo "  --runtime-id                   Installs the .NET Tools for the given platform (such as linux-x64)."
+            echo "  --runtime-id                   Installs the .NET Tools for the given platform (use linux-x64 for portable linux)."
             echo "      -RuntimeId"
             echo "  -?,--?,-h,--help,-Help         Shows this help message"
             echo ""
@@ -684,7 +675,7 @@ do
             echo "  Location is chosen in following order:"
             echo "    - --install-dir option"
             echo "    - Environmental variable DOTNET_INSTALL_DIR"
-            echo "    - /usr/local/share/dotnet"
+            echo "    - $HOME/.dotnet"
             exit 0
             ;;
         *)
