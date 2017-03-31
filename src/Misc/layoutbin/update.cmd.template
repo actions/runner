@@ -58,7 +58,7 @@ rem if the bin/externals still are real folders, we need to rename the existing 
 rem check bin folder
 rem we do findstr /C:" bin" since in migration mode, we create a junction folder from agent to bin.
 rem as result, dir /AL | findstr "bin" will return the agent folder. output looks like (07/27/2016  05:21 PM    <JUNCTION>     agent [E:\bin])
-dir "%rootfolder%" /AL | findstr /C:" bin" >> "%logfile%" 2>&1
+dir "%rootfolder%" /AL 2>&1 | findstr /C:" bin" >> "%logfile%" 2>&1
 if ERRORLEVEL 1 (
   rem return code 1 means it can't find a bin folder that is a junction folder
   rem so we need to move the current bin folder to bin.2.99.0 folder.
@@ -81,7 +81,7 @@ if ERRORLEVEL 1 (
 )
 
 rem check externals folder
-dir "%rootfolder%" /AL | findstr "externals" >> "%logfile%" 2>&1
+dir "%rootfolder%" /AL 2>&1 | findstr "externals" >> "%logfile%" 2>&1
 if ERRORLEVEL 1 (
   rem return code 1 means it can't find a externals folder that is a junction folder
   rem so we need to move the current externals folder to externals.2.99.0 folder.
