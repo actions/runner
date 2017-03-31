@@ -50,6 +50,7 @@ This agent can be used for the VSTS service and it replaces the node agent for T
 |:-------------:|:-----:|:-----:|:-----:|
 | VSTS      |  Yes  | Yes   |
 | TFS2015 (onprem)   |  Yes  | No    | Windows use agent with 2015 |
+| TFS2017 (onprem)   |  Yes  | Yes    |  |
 | TFS.vNext (onprem)   |  Yes  | Yes    |  |
 
 ## More Documentation
