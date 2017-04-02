@@ -14,6 +14,7 @@ _layout
 _package
 _dotnetsdk
 TestResults
+.DS_Store
 
 #generated
 src/Microsoft.VisualStudio.Services.Agent/BuildConstants.cs

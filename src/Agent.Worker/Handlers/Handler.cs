@@ -113,7 +113,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
                 // Add the secure files to the environment variable dictionary.
                 foreach (SecureFile secureFile in ExecutionContext.SecureFiles)
                 {
-                    if (secureFile != null && secureFile.Id > 0)
+                    if (secureFile != null && secureFile.Id != Guid.Empty)
                     {
                         string partialKey = secureFile.Id.ToString();
                         AddEnvironmentVariable(
