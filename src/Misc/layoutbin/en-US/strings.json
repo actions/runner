@@ -81,7 +81,7 @@
   "DownloadArtifactsFailed": "Downloading artifacts failed: {0}",
   "DownloadingTask0": "Downloading task: {0}",
   "EnsureJobFinished": "Waiting for current job finish running.",
-  "EnsureTasksExist": "Download all requried tasks.",
+  "EnsureTasksExist": "Download all required tasks.",
   "EnterValidValueFor0": "Enter a valid value for {0}.",
   "ErrorDuringBuildGC": "Unable discover garbage based on '{0}'. Try it next time.",
   "ErrorDuringBuildGCDelete": "Unable finish GC based on '{gcFile}'. Try it next time.",
