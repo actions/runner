@@ -168,7 +168,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
             // Test if valid keyword character sequence.
             Int32 length = m_index - startIndex;
             String str = m_expression.Substring(startIndex, length);
-            if (s_keywordRegex.IsMatch(str))
+            if (TestKeyword(str))
             {
                 // Test if follows property dereference operator.
                 if (m_lastToken != null && m_lastToken.Kind == TokenKind.Dereference)
@@ -242,6 +242,42 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
             return new Token(TokenKind.Unrecognized, rawValue, startIndex);
         }
 
+        private static Boolean TestKeyword(String str)
+        {
+            if (String.IsNullOrEmpty(str))
+            {
+                return false;
+            }
+
+            Char first = str[0];
+            if ((first >= 'a' && first <= 'z') ||
+                (first >= 'A' && first <= 'Z') ||
+                first == '_')
+            {
+                for (Int32 i = 1 ; i < str.Length ; i++)
+                {
+                    Char c = str[i];
+                    if ((c >= 'a' && c <= 'z') ||
+                        (c >= 'A' && c <= 'Z') ||
+                        (c >= '0' && c <= '9') ||
+                        c == '_')
+                    {
+                        // OK
+                    }
+                    else
+                    {
+                        return false;
+                    }
+                }
+
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
         private static Boolean TestWhitespaceOrPunctuation(Char c)
         {
             switch (c)
@@ -266,7 +302,6 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
         private const Char Separator = ',';
         private const Char Dereference = '.';
 
-        private static readonly Regex s_keywordRegex = new Regex("^[a-zA-Z_][a-zA-Z0-9_]*$", RegexOptions.None);
         private readonly String m_expression; // Raw expression string.
         private readonly ITraceWriter m_trace;
         private readonly HashSet<String> m_extensionFunctions;
