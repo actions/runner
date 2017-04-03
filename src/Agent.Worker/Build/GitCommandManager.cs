@@ -51,8 +51,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         // git submodule foreach git reset --hard HEAD
         Task<int> GitSubmoduleReset(IExecutionContext context, string repositoryPath);
 
-        // git submodule update --init --force --recursive
-        Task<int> GitSubmoduleUpdate(IExecutionContext context, string repositoryPath, string additionalCommandLine, CancellationToken cancellationToken);
+        // git submodule update --init --force [--recursive]
+        Task<int> GitSubmoduleUpdate(IExecutionContext context, string repositoryPath, string additionalCommandLine, bool recursive, CancellationToken cancellationToken);
 
         // git config --get remote.origin.url
         Task<Uri> GitGetFetchUrl(IExecutionContext context, string repositoryPath);
@@ -263,11 +263,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             return await ExecuteGitCommandAsync(context, repositoryPath, "submodule", "foreach git reset --hard HEAD");
         }
 
-        // git submodule update --init --force --recursive
-        public async Task<int> GitSubmoduleUpdate(IExecutionContext context, string repositoryPath, string additionalCommandLine, CancellationToken cancellationToken)
+        // git submodule update --init --force [--recursive]
+        public async Task<int> GitSubmoduleUpdate(IExecutionContext context, string repositoryPath, string additionalCommandLine, bool recursive, CancellationToken cancellationToken)
         {
             context.Debug("Update the registered git submodules.");
-            return await ExecuteGitCommandAsync(context, repositoryPath, "submodule", "update --init --force --recursive", additionalCommandLine, cancellationToken);
+            string options = "update --init --force";
+            if (recursive)
+            {
+                options = options + " --recursive";
+            }
+
+            return await ExecuteGitCommandAsync(context, repositoryPath, "submodule", options, additionalCommandLine, cancellationToken);
         }
 
         // git config --get remote.origin.url
