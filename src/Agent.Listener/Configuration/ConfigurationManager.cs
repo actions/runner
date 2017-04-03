@@ -110,14 +110,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                     throw new NotSupportedException();
             }
 
-            // Create the configuration provider as per agent type.....
+            // Create the configuration provider as per agent type.
             string agentType = command.DeploymentGroup
                 ? Constants.Agent.AgentConfigurationProvider.DeploymentAgentConfiguration
                 : Constants.Agent.AgentConfigurationProvider.BuildReleasesAgentConfiguration;
-
             var extensionManager = HostContext.GetService<IExtensionManager>();
-            IConfigurationProvider agentProvider = (extensionManager.GetExtensions<IConfigurationProvider>()).FirstOrDefault(x => x.ConfigurationProviderType == agentType);
-
+            IConfigurationProvider agentProvider =
+                (extensionManager.GetExtensions<IConfigurationProvider>())
+                .FirstOrDefault(x => x.ConfigurationProviderType == agentType);
             ArgUtil.NotNull(agentProvider, agentType);
 
             // TODO: Check if its running with elevated permission and stop early if its not
@@ -279,8 +279,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             }
             else
             {
-                // Save the provided admin credential data for compat with existing agent
-                _store.SaveCredential(credProvider.CredentialData);
+                switch (Constants.Agent.Platform)
+                {
+                    case Constants.OSPlatform.OSX:
+                    case Constants.OSPlatform.Linux:
+                        // Save the provided admin cred for compat with previous agent.
+                        _store.SaveCredential(credProvider.CredentialData);
+                        break;
+                    case Constants.OSPlatform.Windows:
+                        // Not supported against TFS 2015.
+                        _term.WriteError(StringUtil.Loc("Tfs2015NotSupported"));
+                        return;
+                    default:
+                        throw new NotSupportedException();
+                }
             }
 
             // Testing agent connection, detect any protential connection issue, like local clock skew that cause OAuth token expired.

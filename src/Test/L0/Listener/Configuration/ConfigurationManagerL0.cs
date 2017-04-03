@@ -109,7 +109,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
             var expectedAgents = new List<TaskAgent>();
             _agentServer.Setup(x => x.GetAgentsAsync(It.IsAny<int>(), It.IsAny<string>())).Returns(Task.FromResult(expectedAgents));
 
-            var expectedAgent = new TaskAgent(_expectedAgentName) { Id = 1 };
+            var expectedAgent = new TaskAgent(_expectedAgentName);
+            expectedAgent.Id = 1;
+            expectedAgent.Authorization = new TaskAgentAuthorization
+            {
+                ClientId = Guid.NewGuid(),
+                AuthorizationUrl = new Uri("http://localhost:8080/tfs"),
+            };
             _agentServer.Setup(x => x.AddAgentAsync(It.IsAny<int>(), It.IsAny<TaskAgent>())).Returns(Task.FromResult(expectedAgent));
             _agentServer.Setup(x => x.UpdateAgentAsync(It.IsAny<int>(), It.IsAny<TaskAgent>())).Returns(Task.FromResult(expectedAgent));
 
@@ -133,9 +139,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
 
 #if OS_WINDOWS
             tc.SetSingleton<IWindowsServiceControlManager>(_serviceControlManager.Object);
-#endif
-
-#if !OS_WINDOWS
+#else
             tc.SetSingleton<ILinuxServiceControlManager>(_serviceControlManager.Object);
 #endif
 
