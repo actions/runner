@@ -159,7 +159,7 @@ function build ()
     rundotnet build failed build_dirs[@]
 
     if [[ "$define_os" == 'OS_WINDOWS' && "$msbuild_location" != "" ]]; then
-        $msbuild_location/msbuild.exe $WINDOWSAGENTSERVICE_PROJFILE
+        $msbuild_location/msbuild.exe $WINDOWSAGENTSERVICE_PROJFILE || failed "msbuild AgentService.csproj"
     fi
 }
 

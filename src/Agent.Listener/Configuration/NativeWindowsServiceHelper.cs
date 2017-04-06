@@ -1,4 +1,4 @@
-#if OS_WINDOWS 
+#if OS_WINDOWS
 using System;
 using System.Collections;
 using System.ComponentModel;
@@ -9,7 +9,7 @@ using System.Security;
 using System.Security.AccessControl;
 using System.Security.Principal;
 using System.ServiceProcess;
-
+using System.Threading;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using Microsoft.Win32;
 
@@ -459,6 +459,26 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
             try
             {
+                //invoke the service with special argument, that tells it to register an event log trace source (need to run as an admin)
+                using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
+                {
+                    processInvoker.OutputDataReceived += delegate (object sender, ProcessDataReceivedEventArgs message)
+                    {
+                        _term.WriteLine(message.Data);
+                    };
+                    processInvoker.ErrorDataReceived += delegate (object sender, ProcessDataReceivedEventArgs message)
+                    {
+                        _term.WriteLine(message.Data);
+                    };
+
+                    processInvoker.ExecuteAsync(workingDirectory: string.Empty,
+                                                fileName: agentServiceExecutable,
+                                                arguments: "init",
+                                                environment:  null,
+                                                requireExitCodeZero: true,
+                                                cancellationToken: CancellationToken.None).GetAwaiter().GetResult();
+                }
+
                 Trace.Verbose(StringUtil.Format("Trying to open SCManager."));
                 scmHndl = OpenSCManager(null, null, ServiceManagerRights.AllAccess);
                 if (scmHndl.ToInt64() <= 0)
@@ -484,13 +504,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 {
                     throw new InvalidOperationException(StringUtil.Loc("OperationFailed", nameof(CreateService), GetLastError()));
                 }
-
-                //invoke the service with special argument, that tells it to register an event log trace source (need to run as an admin)
-                using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
-                {
-                    processInvoker.ExecuteAsync(string.Empty, agentServiceExecutable, "init", null, default(System.Threading.CancellationToken)).GetAwaiter().GetResult();
-                }
-
+                
                 _term.WriteLine(StringUtil.Loc("ServiceInstalled", serviceName));
 
                 //set recovery option to restart on failure.
