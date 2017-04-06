@@ -128,14 +128,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             {
                 foreach (string value in endpoint.Authorization?.Parameters?.Values ?? new string[0])
                 {
-                    secretMasker.AddValue(value);
-
-                    // This is precautionary if the secret is used in an URL. For example, if "allow scripts
-                    // access to OAuth token" is checked, then the repository auth key is injected into the
-                    // URL for a Git repository's remote configuration.
-                    if (!Uri.EscapeDataString(value).Equals(value, StringComparison.OrdinalIgnoreCase))
+                    if (!string.IsNullOrEmpty(value))
                     {
-                        secretMasker.AddValue(Uri.EscapeDataString(value));
+                        secretMasker.AddValue(value);
+
+                        // This is precautionary if the secret is used in an URL. For example, if "allow scripts
+                        // access to OAuth token" is checked, then the repository auth key is injected into the
+                        // URL for a Git repository's remote configuration.
+                        if (!Uri.EscapeDataString(value).Equals(value, StringComparison.OrdinalIgnoreCase))
+                        {
+                            secretMasker.AddValue(Uri.EscapeDataString(value));
+                        }
                     }
                 }
             }
