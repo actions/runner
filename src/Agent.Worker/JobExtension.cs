@@ -163,6 +163,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     // create task execution context for all pre-job steps from task
                     foreach (var step in initResult.PreJobSteps)
                     {
+#if OS_WINDOWS
+                        if (step is ManagementScriptStep)
+                        {
+                            continue;
+                        }
+#endif
                         ITaskRunner taskStep = step as ITaskRunner;
                         ArgUtil.NotNull(taskStep, step.DisplayName);
                         taskStep.ExecutionContext = jobContext.CreateChild(Guid.NewGuid(), StringUtil.Loc("PreJob", taskStep.DisplayName), taskVariablesMapping[taskStep.TaskInstance.InstanceId]);

@@ -317,7 +317,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async Task JobExtensioIntraTaskState()
+        public async Task JobExtensionIntraTaskState()
         {
             using (TestHostContext hc = CreateTestContext())
             {
@@ -347,5 +347,50 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                 Assert.Null(result.JobSteps[3].ExecutionContext.TaskVariables.Get("state1"));
             }
         }
+
+#if OS_WINDOWS
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task JobExtensionManagementScriptStep()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                hc.EnqueueInstance<IPagingLogger>(_logger.Object);
+                hc.EnqueueInstance<IPagingLogger>(_logger.Object);
+
+                Environment.SetEnvironmentVariable("VSTS_AGENT_INIT_INTERNAL_TEMP_HACK", "C:\\init.ps1");
+                Environment.SetEnvironmentVariable("VSTS_AGENT_CLEANUP_INTERNAL_TEMP_HACK", "C:\\clenup.ps1");
+
+                try
+                {
+                    TestJobExtension testExtension = new TestJobExtension();
+                    testExtension.Initialize(hc);
+                    JobInitializeResult result = await testExtension.InitializeJob(_jobEc, _message);
+
+                    var trace = hc.GetTrace();
+
+                    trace.Info(string.Join(", ", result.PreJobSteps.Select(x => x.DisplayName)));
+                    trace.Info(string.Join(", ", result.JobSteps.Select(x => x.DisplayName)));
+                    trace.Info(string.Join(", ", result.PostJobStep.Select(x => x.DisplayName)));
+
+                    Assert.Equal(5, result.PreJobSteps.Count);
+                    Assert.Equal(4, result.JobSteps.Count);
+                    Assert.Equal(5, result.PostJobStep.Count);
+
+                    Assert.True(result.PreJobSteps[0] is ManagementScriptStep);
+                    Assert.True(result.PostJobStep[4] is ManagementScriptStep);
+
+                    Assert.Equal(result.PreJobSteps[0].DisplayName, "Agent Initialization");
+                    Assert.Equal(result.PostJobStep[4].DisplayName, "Agent Cleanup");
+                }
+                finally
+                {
+                    Environment.SetEnvironmentVariable("VSTS_AGENT_INIT_INTERNAL_TEMP_HACK", "");
+                    Environment.SetEnvironmentVariable("VSTS_AGENT_CLEANUP_INTERNAL_TEMP_HACK", "");
+                }
+            }
+        }
+#endif
     }
 }
