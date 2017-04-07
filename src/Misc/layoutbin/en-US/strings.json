@@ -322,7 +322,7 @@
   "RMArtifactContainerDetailsInvaidError": "The artifact does not have valid container details: {0}",
   "RMArtifactContainerDetailsNotFoundError": "The artifact does not contain container details: {0}",
   "RMArtifactDetailsIncomplete": "Cannot find the required information to download the artifact",
-  "RMArtifactDirectoryNotFoundError": "The artifact directory does not exist: {0}",
+  "RMArtifactDirectoryNotFoundError": "The artifact directory does not exist: {0}. It can happen if the password of the account {1} is changed recently and is not updated for the agent. If this is the case, please consider re-configuring the agent.",
   "RMArtifactDownloadBegin": "Downloading linked artifact {0} of type {1}...",
   "RMArtifactDownloadFinished": "Downloaded linked artifact {0}",
   "RMArtifactDownloadRequestCreationFailed": "Failed to create request to download artifact from URL: {0}",

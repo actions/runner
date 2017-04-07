@@ -4,6 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Security.Principal;
 
 using Microsoft.TeamFoundation.Build.WebApi;
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
@@ -178,7 +179,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
                 if (!Directory.Exists(fileShare))
                 {
                     // download path does not exist, raise exception
-                    throw new ArtifactDownloadException(StringUtil.Loc("RMArtifactDirectoryNotFoundError", fileShare));
+                    throw new ArtifactDownloadException(StringUtil.Loc("RMArtifactDirectoryNotFoundError", fileShare, WindowsIdentity.GetCurrent().Name));
                 }
 
                 executionContext.Output(StringUtil.Loc("RMDownloadingArtifactFromFileShare", fileShare));
