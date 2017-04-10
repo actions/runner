@@ -331,12 +331,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
             catch (Exception ex)
             {
                 Exception exToReport = ex.InnerException == null ? ex : ex.InnerException;
-                executionContext.Warning(StringUtil.Loc(
-                    "RenameIndexFileCoberturaFailed",
-                    CodeCoverageConstants.DefaultNonFrameFileCobertura,
-                    CodeCoverageConstants.DefaultIndexFile,
-                    _codeCoverageTool,
-                    exToReport.ToString()));
+                executionContext.Warning(StringUtil.Loc("RenameIndexFileCoberturaFailed", CodeCoverageConstants.DefaultNonFrameFileCobertura, CodeCoverageConstants.DefaultIndexFile, _codeCoverageTool, exToReport.ToString()));
             }
         }   
 
