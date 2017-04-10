@@ -136,8 +136,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
             context.AsyncCommands.Add(commandContext);
         }
 
-        private async Task PublishCodeCoverageAsync(IExecutionContext executionContext, IAsyncCommandContext commandContext, ICodeCoveragePublisher codeCoveragePublisher, IEnumerable<CodeCoverageStatistics> coverageData,
-                                                    string project, Guid projectId, long containerId, CancellationToken cancellationToken)
+        private async Task PublishCodeCoverageAsync(
+            IExecutionContext executionContext,
+            IAsyncCommandContext commandContext,
+            ICodeCoveragePublisher codeCoveragePublisher,
+            IEnumerable<CodeCoverageStatistics> coverageData,
+            string project,
+            Guid projectId,
+            long containerId,
+            CancellationToken cancellationToken)
         {
             //step 2: publish code coverage summary to TFS
             if (coverageData != null && coverageData.Count() > 0)
@@ -282,7 +289,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
             var defaultIndexFile = Path.Combine(reportDirectory, CodeCoverageConstants.DefaultIndexFile);
             var htmIndexFile = Path.Combine(reportDirectory, CodeCoverageConstants.HtmIndexFile);
 
-            // if index.html doesnot exist and index.htm exists, copy the .html file from .htm file. Dont delete the .htm file as it might be referenced by other htm/html files.
+            // If index.html does not exist and index.htm exists, copy the .html file from .htm file.
+            // Don't delete the .htm file as it might be referenced by other .htm/.html files.
             if (!File.Exists(defaultIndexFile) && File.Exists(htmIndexFile))
             {
                 try
@@ -291,7 +299,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
                 }
                 catch (Exception ex)
                 {
-                    executionContext.Warning(StringUtil.Loc("RenameIndexFileCoberturaFailed", htmIndexFile, defaultIndexFile, _codeCoverageTool, ex.InnerException.ToString()));
+                    // In the warning text, prefer using ex.InnerException when available, for more-specific details
+                    executionContext.Warning(StringUtil.Loc("RenameIndexFileCoberturaFailed", htmIndexFile, defaultIndexFile, _codeCoverageTool, (ex.InnerException ?? ex).ToString()));
                 }
             }
         }
@@ -305,16 +314,24 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
         {
             try
             {
-                if (_codeCoverageTool.Equals("cobertura", StringComparison.OrdinalIgnoreCase) && File.Exists(Path.Combine(reportDirectory, CodeCoverageConstants.DefaultIndexFile)) && File.Exists(Path.Combine(reportDirectory, CodeCoverageConstants.DefaultNonFrameFileCobertura)))
+                string newIndexHtml = Path.Combine(reportDirectory, CodeCoverageConstants.NewIndexFile);
+                string indexHtml = Path.Combine(reportDirectory, CodeCoverageConstants.DefaultIndexFile);
+                string nonFrameHtml = Path.Combine(reportDirectory, CodeCoverageConstants.DefaultNonFrameFileCobertura);
+
+                if (_codeCoverageTool.Equals("cobertura", StringComparison.OrdinalIgnoreCase) &&
+                    File.Exists(indexHtml) &&
+                    File.Exists(nonFrameHtml))
                 {
                     // duplicating frame-summary.html to index.html and renaming index.html to newindex.html
-                    File.Move(sourceFileName: Path.Combine(reportDirectory, CodeCoverageConstants.DefaultIndexFile), destFileName: Path.Combine(reportDirectory, CodeCoverageConstants.NewIndexFile));
-                    File.Copy(sourceFileName: Path.Combine(reportDirectory, CodeCoverageConstants.DefaultNonFrameFileCobertura), destFileName: Path.Combine(reportDirectory, CodeCoverageConstants.DefaultIndexFile), overwrite: true);                                       
+                    File.Delete(newIndexHtml);
+                    File.Move(indexHtml, newIndexHtml);
+                    File.Copy(nonFrameHtml, indexHtml, overwrite: true);                                       
                 }
             }
             catch (Exception ex)
             {
-                executionContext.Warning(StringUtil.Loc("RenameIndexFileCoberturaFailed", CodeCoverageConstants.DefaultNonFrameFileCobertura, CodeCoverageConstants.DefaultIndexFile, _codeCoverageTool, ex.InnerException.ToString()));               
+                // In the warning text, prefer using ex.InnerException when available, for more-specific details
+                executionContext.Warning(StringUtil.Loc("RenameIndexFileCoberturaFailed", CodeCoverageConstants.DefaultNonFrameFileCobertura, CodeCoverageConstants.DefaultIndexFile, _codeCoverageTool, (ex.InnerException ?? ex).ToString()));
             }
         }   
 
