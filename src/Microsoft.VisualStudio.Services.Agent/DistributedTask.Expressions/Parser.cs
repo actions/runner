@@ -456,7 +456,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
                 }
 
                 Expression = expression ?? String.Empty;
-                if (Expression.Length > 2000)
+                if (Expression.Length > ExpressionConstants.MaxLength)
                 {
                     throw new ParseException(ParseExceptionKind.ExceededMaxLength, token: null, expression: Expression);
                 }
