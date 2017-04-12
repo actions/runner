@@ -542,7 +542,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                     var taskLog = await _jobServer.CreateLogAsync(_scopeIdentifier, _hubName, _planId, new TaskLog(String.Format(@"logs\{0:D}", file.TimelineRecordId)), default(CancellationToken));
 
                     // Upload the contents
-                    using (FileStream fs = File.OpenRead(file.Path))
+                    using (FileStream fs = File.Open(file.Path, FileMode.Open, FileAccess.Read, FileShare.Read))
                     {
                         var logUploaded = await _jobServer.AppendLogContentAsync(_scopeIdentifier, _hubName, _planId, taskLog.Id, fs, default(CancellationToken));
                     }
@@ -554,7 +554,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                 else
                 {
                     // Create attachment
-                    using (FileStream fs = File.OpenRead(file.Path))
+                    using (FileStream fs = File.Open(file.Path, FileMode.Open, FileAccess.Read, FileShare.Read))
                     {
                         var result = await _jobServer.CreateAttachmentAsync(_scopeIdentifier, _hubName, _planId, file.TimelineId, file.TimelineRecordId, file.Type, file.Name, fs, default(CancellationToken));
                     }

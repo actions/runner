@@ -49,6 +49,9 @@
     This parameter should not be usually changed by user. It allows to change URL for the Azure feed used by this installer.
 .PARAMETER ProxyAddress
     If set, the installer will use the proxy when making web requests
+.PARAMETER ProxyUseDefaultCredentials
+    Default: false
+    Use default credentials, when using proxy address.
 #>
 [cmdletbinding()]
 param(
@@ -62,7 +65,8 @@ param(
    [switch]$NoPath,
    [string]$AzureFeed="https://dotnetcli.azureedge.net/dotnet",
    [string]$UncachedFeed="https://dotnetcli.blob.core.windows.net/dotnet",
-   [string]$ProxyAddress
+   [string]$ProxyAddress,
+   [switch]$ProxyUseDefaultCredentials
 )
 
 Set-StrictMode -Version Latest
@@ -138,7 +142,7 @@ function GetHTTPResponse([Uri] $Uri)
         Load-Assembly -Assembly System.Net.Http
         if($ProxyAddress){
             $HttpClientHandler = New-Object System.Net.Http.HttpClientHandler
-            $HttpClientHandler.Proxy =  New-Object System.Net.WebProxy -Property @{Address=$ProxyAddress}
+            $HttpClientHandler.Proxy =  New-Object System.Net.WebProxy -Property @{Address=$ProxyAddress;UseDefaultCredentials=$ProxyUseDefaultCredentials}
             $HttpClient = New-Object System.Net.Http.HttpClient -ArgumentList $HttpClientHandler
         } 
         else {
