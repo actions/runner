@@ -44,7 +44,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 }
                 catch (Exception ex)
                 {
-                    trace.Error(ex);
+                    // Populate any exception that cause worker failure back to agent.
+                    Console.WriteLine(ex.ToString());
+                    try
+                    {
+                        trace.Error(ex);
+                    }
+                    catch (Exception e)
+                    {
+                        // make sure we don't crash the app on trace error.
+                        // since IOException will throw when we run out of disk space.
+                        Console.WriteLine(e.ToString());
+                    }
                 }
                 finally
                 {

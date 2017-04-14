@@ -304,6 +304,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 }
 
                 Task<int> workerProcessTask = null;
+                object _outputLock = new object();
+                List<string> workerOutput = new List<string>();
                 using (var processChannel = HostContext.CreateService<IProcessChannel>())
                 using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
                 {
@@ -317,6 +319,30 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                             // Validate args.
                             ArgUtil.NotNullOrEmpty(pipeHandleOut, nameof(pipeHandleOut));
                             ArgUtil.NotNullOrEmpty(pipeHandleIn, nameof(pipeHandleIn));
+
+                            // Save STDOUT from worker, worker will use STDOUT report unhandle exception.
+                            processInvoker.OutputDataReceived += delegate (object sender, ProcessDataReceivedEventArgs stdout)
+                            {
+                                if (!string.IsNullOrEmpty(stdout.Data))
+                                {
+                                    lock (_outputLock)
+                                    {
+                                        workerOutput.Add(stdout.Data);
+                                    }
+                                }
+                            };
+
+                            // Save STDERR from worker, worker will use STDERR on crash.
+                            processInvoker.ErrorDataReceived += delegate (object sender, ProcessDataReceivedEventArgs stderr)
+                            {
+                                if (!string.IsNullOrEmpty(stderr.Data))
+                                {
+                                    lock (_outputLock)
+                                    {
+                                        workerOutput.Add(stderr.Data);
+                                    }
+                                }
+                            };
 
                             // Start the child process.
                             var assemblyDirectory = IOUtil.GetBinPath();
@@ -382,9 +408,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                         var completedTask = await Task.WhenAny(renewJobRequest, workerProcessTask, Task.Delay(-1, jobRequestCancellationToken));
                         if (completedTask == workerProcessTask)
                         {
-                            // worker finished successfully, complete job request with result, stop renew lock, job has finished.
+                            // worker finished successfully, complete job request with result, attach unhandled exception reported by worker, stop renew lock, job has finished.
                             int returnCode = await workerProcessTask;
                             Trace.Info($"Worker finished for job {message.JobId}. Code: " + returnCode);
+
+                            string detailInfo = null;
+                            if (!TaskResultUtil.IsValidReturnCode(returnCode))
+                            {
+                                detailInfo = string.Join(Environment.NewLine, workerOutput);
+                                Trace.Info($"Return code {returnCode} indicate worker encounter an unhandle exception or app crash, attach worker stdout/stderr to JobRequest result.");
+                            }
 
                             TaskResult result = TaskResultUtil.TranslateFromReturnCode(returnCode);
                             Trace.Info($"finish job request for job {message.JobId} with result: {result}");
@@ -397,7 +430,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                             await renewJobRequest;
 
                             // complete job request
-                            await CompleteJobRequestAsync(_poolId, message, lockToken, result);
+                            await CompleteJobRequestAsync(_poolId, message, lockToken, result, detailInfo);
+
+                            // print out unhandle exception happened in worker after we complete job request.
+                            // when we run out of disk space, report back to server has higher prority.
+                            if (!string.IsNullOrEmpty(detailInfo))
+                            {
+                                Trace.Error("Unhandle exception happened in worker:");
+                                Trace.Error(detailInfo);
+                            }
+
                             return;
                         }
                         else if (completedTask == renewJobRequest)
@@ -565,7 +607,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             }
         }
 
-        private async Task CompleteJobRequestAsync(int poolId, AgentJobRequestMessage message, Guid lockToken, TaskResult result)
+        // TODO: We need send detailInfo back to DT in order to add an issue for the job
+        private async Task CompleteJobRequestAsync(int poolId, AgentJobRequestMessage message, Guid lockToken, TaskResult result, string detailInfo = null)
         {
             Trace.Entering();
             if (ApiUtil.GetFeatures(message.Plan).HasFlag(PlanFeatures.JobCompletedPlanEvent))

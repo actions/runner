@@ -7,6 +7,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
     {
         private static readonly int _returnCodeOffset = 100;
 
+        public static bool IsValidReturnCode(int returnCode)
+        {
+            int resultInt = returnCode - _returnCodeOffset;
+            return Enum.IsDefined(typeof(TaskResult), resultInt);
+        }
+
         public static int TranslateToReturnCode(TaskResult result)
         {
             return _returnCodeOffset + (int)result;

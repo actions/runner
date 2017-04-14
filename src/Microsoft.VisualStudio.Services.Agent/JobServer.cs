@@ -32,10 +32,21 @@ namespace Microsoft.VisualStudio.Services.Agent
         public async Task ConnectAsync(VssConnection jobConnection)
         {
             _connection = jobConnection;
-
-            if (!_connection.HasAuthenticated)
+            int attemptCount = 5;
+            while (!_connection.HasAuthenticated && attemptCount-- > 0)
             {
-                await _connection.ConnectAsync();
+                try
+                {
+                    await _connection.ConnectAsync();
+                    break;
+                }
+                catch (Exception ex) when (attemptCount > 0)
+                {
+                    Trace.Info($"Catch exception during connect. {attemptCount} attemp left.");
+                    Trace.Error(ex);
+                }
+
+                await Task.Delay(100);
             }
 
             _taskClient = _connection.GetClient<TaskHttpClient>();

@@ -157,8 +157,13 @@ namespace Microsoft.VisualStudio.Services.Agent
             if (disposing)
             {
                 _outClient?.Dispose();
-                _socket.Send(Encoding.UTF8.GetBytes("<EOF>"));
-                _socket.Shutdown(SocketShutdown.Both);
+
+                if (_socket != null)
+                {
+                    _socket.Send(Encoding.UTF8.GetBytes("<EOF>"));
+                    _socket.Shutdown(SocketShutdown.Both);
+                    _socket = null;
+                }
             }
         }
     }
