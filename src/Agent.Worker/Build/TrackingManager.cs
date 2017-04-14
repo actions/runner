@@ -16,7 +16,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             IExecutionContext executionContext,
             ServiceEndpoint endpoint,
             string hashKey,
-            string file);
+            string file,
+            bool overrideBuildDirectory);
 
         TrackingConfigBase LoadIfExists(IExecutionContext executionContext, string file);
 
@@ -35,7 +36,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             IExecutionContext executionContext,
             ServiceEndpoint endpoint,
             string hashKey,
-            string file)
+            string file,
+            bool overrideBuildDirectory)
         {
             Trace.Entering();
 
@@ -56,9 +58,31 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                     value: File.ReadAllText(topLevelFile));
             }
 
+            // Determine the build directory.
+            if (overrideBuildDirectory)
+            {
+                // This should only occur during hosted builds. This was added due to TFVC.
+                // TFVC does not allow a local path for a single machine to be mapped in multiple
+                // workspaces. The machine name for a hosted images is not unique.
+                //
+                // So if a customer is running two hosted builds at the same time, they could run
+                // into the local mapping conflict.
+                //
+                // The workaround is to force the build directory to be different across all concurrent
+                // hosted builds (for TFVC). The agent ID will be unique across all concurrent hosted
+                // builds so that can safely be used as the build directory.
+                ArgUtil.Equal(default(int), topLevelConfig.LastBuildDirectoryNumber, nameof(topLevelConfig.LastBuildDirectoryNumber));
+                var configurationStore = HostContext.GetService<IConfigurationStore>();
+                AgentSettings settings = configurationStore.GetSettings();
+                topLevelConfig.LastBuildDirectoryNumber = settings.AgentId;
+            }
+            else
+            {
+                topLevelConfig.LastBuildDirectoryNumber++;
+            }
+
             // Update the top-level tracking config.
             topLevelConfig.LastBuildDirectoryCreatedOn = DateTimeOffset.Now;
-            topLevelConfig.LastBuildDirectoryNumber++;
             WriteToFile(topLevelFile, topLevelConfig);
 
             // Create the new tracking config.

@@ -20,6 +20,9 @@ namespace Microsoft.VisualStudio.Services.Agent
         [DataMember(EmitDefaultValue = false)]
         public string AgentName { get; set; }
 
+        [IgnoreDataMember]
+        public bool IsHosted => !string.IsNullOrEmpty(NotificationPipeName) || !string.IsNullOrEmpty(NotificationSocketAddress);
+
         [DataMember(EmitDefaultValue = false)]
         public string NotificationPipeName { get; set; }
 

@@ -78,7 +78,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
                 DateTimeOffset testStartOn = DateTimeOffset.Now;
 
                 // Act.
-                _trackingManager.Create(_ec.Object, _endpoint, "some hash key", trackingFile);
+                _trackingManager.Create(_ec.Object, _endpoint, "some hash key", trackingFile, false);
 
                 // Assert.
                 string topLevelFile = Path.Combine(
@@ -108,7 +108,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
                 DateTimeOffset testStartOn = DateTimeOffset.Now;
 
                 // Act.
-                _trackingManager.Create(_ec.Object, _endpoint, HashKey, trackingFile);
+                _trackingManager.Create(_ec.Object, _endpoint, HashKey, trackingFile, false);
 
                 // Assert.
                 TrackingConfig config = _trackingManager.LoadIfExists(_ec.Object, trackingFile) as TrackingConfig;
@@ -473,11 +473,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
             {
                 // Arrange.
                 string trackingFile = Path.Combine(_workFolder, "trackingconfig.json");
-                _trackingManager.Create(_ec.Object, _endpoint, "some hash key", trackingFile);
+                _trackingManager.Create(_ec.Object, _endpoint, "some hash key", trackingFile, false);
                 DateTimeOffset testStartOn = DateTimeOffset.Now;
 
                 // Act.
-                _trackingManager.Create(_ec.Object, _endpoint, "some hash key", trackingFile);
+                _trackingManager.Create(_ec.Object, _endpoint, "some hash key", trackingFile, false);
 
                 // Assert.
                 string topLevelFile = Path.Combine(

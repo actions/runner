@@ -503,6 +503,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             endpoint.Data.Add(Constants.EndpointData.GatedRunCI, executionContext.Variables.Get(Constants.Variables.Build.GatedRunCI));
         }
 
+        public sealed override bool TestOverrideBuildDirectory()
+        {
+            var configurationStore = HostContext.GetService<IConfigurationStore>();
+            AgentSettings settings = configurationStore.GetSettings();
+            return settings.IsHosted;
+        }
+
         private async Task RemoveConflictingWorkspacesAsync(ITfsVCCommandManager tf, ITfsVCWorkspace[] tfWorkspaces, string name, string directory)
         {
             // Validate the args.

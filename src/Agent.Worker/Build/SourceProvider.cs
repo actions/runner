@@ -22,6 +22,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         string GetLocalPath(IExecutionContext executionContext, ServiceEndpoint endpoint, string path);
 
         void SetVariablesInEndpoint(IExecutionContext executionContext, ServiceEndpoint endpoint);
+
+        bool TestOverrideBuildDirectory();
     }
 
     public abstract class SourceProvider : AgentService
@@ -83,6 +85,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
             trace.Info($"Get '{name}' (not found)");
             return null;
+        }
+
+        public virtual bool TestOverrideBuildDirectory()
+        {
+            return false;
         }
     }
 }

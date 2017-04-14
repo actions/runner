@@ -73,7 +73,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             if (existingConfig == null)
             {
                 Trace.Verbose("Creating a new tracking config file.");
-                newConfig = trackingManager.Create(executionContext, endpoint, hashKey, trackingFile);
+                newConfig = trackingManager.Create(
+                    executionContext,
+                    endpoint,
+                    hashKey,
+                    trackingFile,
+                    sourceProvider.TestOverrideBuildDirectory());
                 ArgUtil.NotNull(newConfig, nameof(newConfig));
             }
             else
