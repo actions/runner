@@ -119,7 +119,7 @@
   "FileUploadRetryInSecond": "Retry file upload after {0} seconds.",
   "FileUploadRetrySucceed": "File upload succeed after retry.",
   "FileUploadSucceed": "File upload succeed.",
-  "FinishMaintenance": "Maintenance finsihed: {0}",
+  "FinishMaintenance": "Maintenance finished: {0}",
   "GCBuildDir": "Delete orphan and stale build directory.",
   "GCBuildDirNotEnabled": "Delete orphan and stale build directory option is not enabled.",
   "GCDirIsEmpty": "No build directory need to be GC. '{0}' doesn't have any tracking file.",

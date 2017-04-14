@@ -232,6 +232,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         public void DisposeCollectedGarbage(IExecutionContext executionContext)
         {
             Trace.Entering();
+            PrintOutDiskUsage(executionContext);
 
             string gcDirectory = Path.Combine(
                 HostContext.GetDirectory(WellKnownDirectory.Work),
@@ -252,25 +253,56 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             }
 
             Trace.Info($"Find {gcTrackingFiles.Count()} GC tracking files.");
-            foreach (string gcFile in gcTrackingFiles)
+
+            if (gcTrackingFiles.Count() > 0)
             {
-                try
+                foreach (string gcFile in gcTrackingFiles)
                 {
-                    var gcConfig = LoadIfExists(executionContext, gcFile) as TrackingConfig;
-                    ArgUtil.NotNull(gcConfig, nameof(TrackingConfig));
+                    try
+                    {
+                        var gcConfig = LoadIfExists(executionContext, gcFile) as TrackingConfig;
+                        ArgUtil.NotNull(gcConfig, nameof(TrackingConfig));
 
-                    string fullPath = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), gcConfig.BuildDirectory);
-                    executionContext.Output(StringUtil.Loc("Deleting", fullPath));
-                    IOUtil.DeleteDirectory(fullPath, CancellationToken.None);
+                        string fullPath = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), gcConfig.BuildDirectory);
+                        executionContext.Output(StringUtil.Loc("Deleting", fullPath));
+                        IOUtil.DeleteDirectory(fullPath, executionContext.CancellationToken);
 
-                    executionContext.Output(StringUtil.Loc("DeleteGCTrackingFile", fullPath));
-                    IOUtil.DeleteFile(gcFile);
+                        executionContext.Output(StringUtil.Loc("DeleteGCTrackingFile", fullPath));
+                        IOUtil.DeleteFile(gcFile);
+                    }
+                    catch (Exception ex)
+                    {
+                        executionContext.Error(StringUtil.Loc("ErrorDuringBuildGCDelete", gcFile));
+                        executionContext.Error(ex);
+                    }
                 }
-                catch (Exception ex)
-                {
-                    executionContext.Error(StringUtil.Loc("ErrorDuringBuildGCDelete", gcFile));
-                    executionContext.Error(ex);
-                }
+
+                PrintOutDiskUsage(executionContext);
+            }
+        }
+
+        private void PrintOutDiskUsage(IExecutionContext context)
+        {
+            // Print disk usage should be best effort, since DriveInfo can't detect usage of UNC share.
+            try
+            {
+                context.Output($"Disk usage for working directory: {HostContext.GetDirectory(WellKnownDirectory.Work)}");
+                var workDirectoryDrive = new DriveInfo(HostContext.GetDirectory(WellKnownDirectory.Work));
+                long freeSpace = workDirectoryDrive.AvailableFreeSpace;
+                long totalSpace = workDirectoryDrive.TotalSize;
+#if OS_WINDOWS
+                context.Output($"Working directory belongs to drive: '{workDirectoryDrive.Name}'");
+#else
+                context.Output($"Information about file system on which working directory resides.");
+#endif
+                context.Output($"Total size: '{totalSpace / 1024.0 / 1024.0} MB'");
+                context.Output($"Available space: '{freeSpace / 1024.0 / 1024.0} MB'");
+            }
+            catch (Exception ex)
+            {
+                context.Warning($"Unable inspect disk usage for working directory {HostContext.GetDirectory(WellKnownDirectory.Work)}.");
+                Trace.Error(ex);
+                context.Debug(ex.ToString());
             }
         }
 
