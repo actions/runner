@@ -396,6 +396,9 @@ namespace Microsoft.VisualStudio.Services.Agent
                     }
                 }
 
+                // we need track whether we have new sub-timeline been created on the last run.
+                // if so, we need continue update timeline record even we on the last run.
+                bool pendingSubtimelineUpdate = false;
                 if (pendingUpdates.Count > 0)
                 {
                     foreach (var update in pendingUpdates)
@@ -416,6 +419,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                                 {
                                     Timeline newTimeline = await _jobServer.CreateTimelineAsync(_scopeIdentifier, _hubName, _planId, detailTimeline.Details.Id, default(CancellationToken));
                                     _allTimelines.Add(newTimeline.Id);
+                                    pendingSubtimelineUpdate = true;
                                 }
                                 catch (TimelineExistsException)
                                 {
@@ -448,7 +452,17 @@ namespace Microsoft.VisualStudio.Services.Agent
 
                 if (runOnce)
                 {
-                    break;
+                    // continue process timeline records update, 
+                    // we might have more records need update, 
+                    // since we just create a new sub-timeline
+                    if (pendingSubtimelineUpdate)
+                    {
+                        continue;
+                    }
+                    else
+                    {
+                        break;
+                    }
                 }
                 else
                 {

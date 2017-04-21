@@ -139,7 +139,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             Version recommendGitVersion = new Version(2, 9);
             if (!EnsureGitVersion(recommendGitVersion, throwOnNotMatch: false))
             {
-                context.Warning(StringUtil.Loc("UpgradeToLatestGit", recommendGitVersion, _version));
+                context.Output(StringUtil.Loc("UpgradeToLatestGit", recommendGitVersion, _version));
             }
 
             // Set the user agent.
