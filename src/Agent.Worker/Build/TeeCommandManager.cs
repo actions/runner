@@ -89,7 +89,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         public async Task<ITfsVCShelveset> ShelvesetsAsync(string shelveset)
         {
             ArgUtil.NotNullOrEmpty(shelveset, nameof(shelveset));
-            string xml = await RunPorcelainCommandAsync("shelvesets", "-format:xml", $"-workspace:{WorkspaceName}", shelveset);
+            string output = await RunPorcelainCommandAsync("shelvesets", "-format:xml", $"-workspace:{WorkspaceName}", shelveset);
+            string xml = ExtractXml(output);
 
             // Deserialize the XML.
             // The command returns a non-zero exit code if the shelveset is not found.
@@ -109,7 +110,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         public async Task<ITfsVCStatus> StatusAsync(string localPath)
         {
             ArgUtil.NotNullOrEmpty(localPath, nameof(localPath));
-            string xml = await RunPorcelainCommandAsync(FormatFlags.OmitCollectionUrl, "status", "-recursive", "-nodetect", "-format:xml", localPath);
+            string output = await RunPorcelainCommandAsync(FormatFlags.OmitCollectionUrl, "status", "-recursive", "-nodetect", "-format:xml", localPath);
+            string xml = ExtractXml(output);
             var serializer = new XmlSerializer(typeof(TeeStatus));
             using (var reader = new StringReader(xml ?? string.Empty))
             {
@@ -249,13 +251,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             }
 
             // Note, string.join gracefully handles a null element within the IEnumerable<string>.
-            string xml = string.Join(Environment.NewLine, result.Output ?? new List<string>()) ?? string.Empty;
-
-            // The command returns a non-XML message preceeding the XML if there are no workspaces.
-            if (!xml.StartsWith("<?xml"))
-            {
-                return null;
-            }
+            string output = string.Join(Environment.NewLine, result.Output ?? new List<string>()) ?? string.Empty;
+            string xml = ExtractXml(output);
 
             // Deserialize the XML.
             var serializer = new XmlSerializer(typeof(TeeWorkspaces));
@@ -272,6 +269,23 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         {
             ArgUtil.NotNull(workspace, nameof(workspace));
             await RunCommandAsync("workspace", $"-remove:{workspace.Name};{workspace.Owner}");
+        }
+
+        private static string ExtractXml(string output)
+        {
+            // tf commands that output XML, may contain information messages preceeding the XML content.
+            //
+            // For example, the workspaces subcommand returns a non-XML message preceeding the XML when there are no workspaces.
+            //
+            // Also for example, when JAVA_TOOL_OPTIONS is set, a message like "Picked up JAVA_TOOL_OPTIONS: -Dfile.encoding=UTF8"
+            // may preceed the XML content.
+            output = output ?? string.Empty;
+            int xmlIndex = output.IndexOf("<?xml");
+            if (xmlIndex > 0) {
+                return output.Substring(xmlIndex);
+            }
+
+            return output;
         }
 
         ////////////////////////////////////////////////////////////////////////////////
