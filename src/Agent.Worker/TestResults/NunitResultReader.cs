@@ -170,7 +170,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                     {
                         double duration = 0;
                         double.TryParse(testCaseNode.Attributes["time"].Value, NumberStyles.Any, NumberFormatInfo.InvariantInfo, out duration);
-                        testCaseDuration = TimeSpan.FromSeconds(duration);
+                        // Duration of a test case cannot be less than zero
+                        testCaseDuration = ( duration < 0 ) ? testCaseDuration : TimeSpan.FromSeconds(duration);
                     }
                     resultCreateModel.DurationInMs = testCaseDuration.TotalMilliseconds;
 
@@ -285,6 +286,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
             testCaseResultData.AutomatedTestName = testCaseResultNode.Attributes["fullname"]?.Value;
             double duration = 0;
             double.TryParse(testCaseResultNode.Attributes["duration"]?.Value, NumberStyles.Any, NumberFormatInfo.InvariantInfo, out duration);
+            // Ensure Duration cannot be negative
+            duration = (duration <0) ? 0 : duration;
             testCaseResultData.DurationInMs = TimeSpan.FromSeconds(duration).TotalMilliseconds;
             var testExecutionStartedOn = DateTime.MinValue;
             DateTime.TryParse(testCaseResultNode.Attributes["start-time"]?.Value, DateTimeFormatInfo.InvariantInfo, DateTimeStyles.None, out testExecutionStartedOn);
