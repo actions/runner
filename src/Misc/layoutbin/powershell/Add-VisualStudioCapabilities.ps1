@@ -53,10 +53,10 @@ if ((Add-CapabilityFromRegistry -Name 'VisualStudio_14.0' -Hive 'LocalMachine' -
 }
 
 $vs15 = Get-VisualStudio_15_0
-if ($vs15 -and $vs15.Path) {
+if ($vs15 -and $vs15.installationPath) {
     # Add VisualStudio_15.0.
     # End with "\" for consistency with old ShellFolder values.
-    $shellFolder15 = $vs15.Path.TrimEnd('\'[0]) + "\"
+    $shellFolder15 = $vs15.installationPath.TrimEnd('\'[0]) + "\"
     Write-Capability -Name 'VisualStudio_15.0' -Value $shellFolder15
     $latestVS = $shellFolder15
 
