@@ -84,7 +84,7 @@
   "EnsureTasksExist": "Download all required tasks.",
   "EnterValidValueFor0": "Enter a valid value for {0}.",
   "ErrorDuringBuildGC": "Unable discover garbage based on '{0}'. Try it next time.",
-  "ErrorDuringBuildGCDelete": "Unable finish GC based on '{gcFile}'. Try it next time.",
+  "ErrorDuringBuildGCDelete": "Unable finish GC based on '{0}'. Try it next time.",
   "ErrorOccurred": "An error occurred: {0}",
   "ErrorOccurredWhilePublishingCCFiles": "Error occurred while publishing code coverage files. Error: {0}",
   "EulasSectionHeader": "End User License Agreements",
