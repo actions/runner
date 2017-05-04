@@ -62,6 +62,39 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         }
     }
 
+    public sealed class BitbucketSourceProvider : GitSourceProvider
+    {
+        // TODO: Replace this with correct type lookup WellKnownRepositoryTypes.Bitbucket
+        public override string RepositoryType => "Bitbucket";
+
+        public override bool UseAuthHeaderCmdlineArg
+        {
+            get
+            {
+                // v2.9 git exist use auth header for Bitbucket repository.
+                ArgUtil.NotNull(_gitCommandManager, nameof(_gitCommandManager));
+                return _gitCommandManager.EnsureGitVersion(_minGitVersionSupportAuthHeader, throwOnNotMatch: false);
+            }
+        }
+
+        public override void RequirementCheck(IExecutionContext executionContext, ServiceEndpoint endpoint)
+        {
+            // no-opt for Bitbucket repo, there is no additional requirements.
+        }
+
+        public override string GenerateAuthHeader(string username, string password)
+        {
+            // Bitbucket use basic auth header with username:password in base64encoding. 
+            string authHeader = $"{username?? string.Empty}:{password ?? string.Empty}";
+            string base64encodedAuthHeader = Convert.ToBase64String(Encoding.UTF8.GetBytes(authHeader));
+
+            // add base64 encoding auth header into secretMasker.
+            var secretMasker = HostContext.GetService<ISecretMasker>();
+            secretMasker.AddValue(base64encodedAuthHeader);
+            return $"basic {base64encodedAuthHeader}";
+        }
+    }
+
     public sealed class TfsGitSourceProvider : GitSourceProvider
     {
         public override string RepositoryType => WellKnownRepositoryTypes.TfsGit;
