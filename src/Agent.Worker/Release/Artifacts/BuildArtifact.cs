@@ -18,6 +18,8 @@ using Microsoft.VisualStudio.Services.ReleaseManagement.WebApi.Contracts;
 
 using Newtonsoft.Json;
 
+using Issue = Microsoft.TeamFoundation.DistributedTask.WebApi.Issue;
+using IssueType = Microsoft.TeamFoundation.DistributedTask.WebApi.IssueType;
 using ServerBuildArtifact = Microsoft.TeamFoundation.Build.WebApi.BuildArtifact;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
@@ -65,10 +67,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
                 buildArtifacts = await xamlBuildClient.GetArtifactsAsync(buildArtifactDetails.Project, buildId);
             }
 
-            // No artifacts found in the build => Fail it. 
+            // No artifacts found in the build, add warning. 
             if (buildArtifacts == null || !buildArtifacts.Any())
             {
-                throw new ArtifactDownloadException(StringUtil.Loc("RMNoBuildArtifactsFound", buildId));
+                executionContext.Warning(StringUtil.Loc("RMNoBuildArtifactsFound", buildId));
+                return;
             }
 
             // DownloadFromStream each of the artifact sequentially. 

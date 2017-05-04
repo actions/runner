@@ -37,7 +37,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
                 artifactDetails.ToList().ForEach(x => artifactDownloadDetailList.Add(JToken.Parse(x).ToObject<CustomArtifactDownloadDetails>()));
                 if (artifactDownloadDetailList.Count <= 0)
                 {
-                    throw new ArtifactDownloadException(StringUtil.Loc("NoArtifactsFound", artifactDefinition.Version));
+                    executionContext.Warning(StringUtil.Loc("NoArtifactsFound", artifactDefinition.Version));
+                    return;
                 }
 
                 foreach (CustomArtifactDownloadDetails artifactDownloadDetails in artifactDownloadDetailList)
