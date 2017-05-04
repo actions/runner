@@ -465,6 +465,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             }
 
             List<string> additionalFetchArgs = new List<string>();
+            List<string> additionalLfsFetchArgs = new List<string>();
             if (!_selfManageGitCreds)
             {
                 // v2.9 git support provide auth header as cmdline arg. 
@@ -503,6 +504,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                     executionContext.Debug($"Config proxy server '{executionContext.Variables.Agent_ProxyUrl}' for git fetch.");
                     ArgUtil.NotNullOrEmpty(_proxyUrlWithCredString, nameof(_proxyUrlWithCredString));
                     additionalFetchArgs.Add($"-c http.proxy=\"{_proxyUrlWithCredString}\"");
+                    additionalLfsFetchArgs.Add($"-c http.proxy=\"{_proxyUrlWithCredString}\"");
                 }
 
                 // Prepare gitlfs url for fetch and checkout
@@ -576,7 +578,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             // since checkout will fetch lfs object 1 at a time, while git lfs fetch will fetch lfs object in parallel.
             if (gitLfsSupport)
             {
-                int exitCode_lfsFetch = await _gitCommandManager.GitLFSFetch(executionContext, targetPath, "origin", sourcesToBuild, string.Join(" ", additionalFetchArgs), cancellationToken);
+                int exitCode_lfsFetch = await _gitCommandManager.GitLFSFetch(executionContext, targetPath, "origin", sourcesToBuild, string.Join(" ", additionalLfsFetchArgs), cancellationToken);
                 if (exitCode_lfsFetch != 0)
                 {
                     throw new InvalidOperationException($"Git fetch failed with exit code: {exitCode_lfsFetch}");
