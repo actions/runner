@@ -72,7 +72,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
                     }
                     else if (response.StatusCode == HttpStatusCode.NotFound)
                     {
-                        throw new ArtifactDownloadException(StringUtil.Loc("RMNoArtifactsFound", jenkinsDetails.RelativePath));
+                        executionContext.Warning(StringUtil.Loc("RMJenkinsNoArtifactsFound", jenkinsDetails.BuildId));
+                        return;
                     }
                     else
                     {
