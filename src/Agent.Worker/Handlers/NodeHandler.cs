@@ -1,4 +1,5 @@
 ﻿using Microsoft.VisualStudio.Services.Agent.Util;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Threading.Tasks;
@@ -71,17 +72,31 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             {
                 processInvoker.OutputDataReceived += OnDataReceived;
                 processInvoker.ErrorDataReceived += OnDataReceived;
+                bool useNode5 = ExecutionContext.Variables.Agent_UseNode5 ?? false;
                 string node = Path.Combine(
                     IOUtil.GetExternalsPath(),
-                    "node",
+                    useNode5 ? "node-5.10.1" : "node",
                     "bin",
                     $"node{IOUtil.ExeExtension}");
 
-                // Format the arguments passed to node.
-                // 1) Wrap the script file path in double quotes.
-                // 2) Escape double quotes within the script file path. Double-quote is a valid
+                var arguments = new List<string>();
+                if (!useNode5)
+                {
+                    // Set --no-warnings to help preserve back compat. The handler previously used node version v5.10.1.
+                    // When the handler was changed to use node v6.10.3, node can emit certain warnings over stderr.
+                    // Passing the --no-warnings flag disables the warnings.
+                    //
+                    // Note, passing the flag --no-warnings will not disable the warnings for downstream node processes.
+                    // If customers run into issues with this problem, then they can set the env var NODE_NO_WARNINGS=1.
+                    // The agent should not set this env var, since it is unknown whether the task author desires warning
+                    // suppression for downstream processes. For example, if the custom task uses the node installer task
+                    // to run ad hoc customer scripts, then it should not set the env var.
+                    arguments.Add("--no-warnings");
+                }
+
+                // Wrap the script file in double quotes and escape double quotes. Note, double-quote is a valid
                 // file name character on Linux.
-                string arguments = StringUtil.Format(@"""{0}""", target.Replace(@"""", @"\"""));
+                arguments.Add(StringUtil.Format(@"""{0}""", target.Replace(@"""", @"\""")));
 
 #if OS_WINDOWS
                 // It appears that node.exe outputs UTF8 when not in TTY mode.
@@ -97,7 +112,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
                 await processInvoker.ExecuteAsync(
                     workingDirectory: workingDirectory,
                     fileName: node,
-                    arguments: arguments,
+                    arguments: string.Join(" ", arguments),
                     environment: Environment,
                     requireExitCodeZero: true,
                     outputEncoding: outputEncoding,
