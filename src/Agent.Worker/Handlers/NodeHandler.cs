@@ -79,24 +79,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
                     "bin",
                     $"node{IOUtil.ExeExtension}");
 
-                var arguments = new List<string>();
-                if (!useNode5)
-                {
-                    // Set --no-warnings to help preserve back compat. The handler previously used node version v5.10.1.
-                    // When the handler was changed to use node v6.10.3, node can emit certain warnings over stderr.
-                    // Passing the --no-warnings flag disables the warnings.
-                    //
-                    // Note, passing the flag --no-warnings will not disable the warnings for downstream node processes.
-                    // If customers run into issues with this problem, then they can set the env var NODE_NO_WARNINGS=1.
-                    // The agent should not set this env var, since it is unknown whether the task author desires warning
-                    // suppression for downstream processes. For example, if the custom task uses the node installer task
-                    // to run ad hoc customer scripts, then it should not set the env var.
-                    arguments.Add("--no-warnings");
-                }
-
-                // Wrap the script file in double quotes and escape double quotes. Note, double-quote is a valid
-                // file name character on Linux.
-                arguments.Add(StringUtil.Format(@"""{0}""", target.Replace(@"""", @"\""")));
+                string arguments = StringUtil.Format(@"""{0}""", target.Replace(@"""", @"\"""));
 
 #if OS_WINDOWS
                 // It appears that node.exe outputs UTF8 when not in TTY mode.
