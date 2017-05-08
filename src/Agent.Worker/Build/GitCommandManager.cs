@@ -403,21 +403,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 context.Output(message.Data);
             };
 
-            Dictionary<string, string> _gitEnv = new Dictionary<string, string>()
-            {
-                { "GIT_TERMINAL_PROMPT", "0" },
-            };
-
-            if (!string.IsNullOrEmpty(_gitHttpUserAgentEnv))
-            {
-                _gitEnv["GIT_HTTP_USER_AGENT"] = _gitHttpUserAgentEnv;
-            }
-
             return await processInvoker.ExecuteAsync(
                 workingDirectory: repoRoot,
                 fileName: _gitPath,
                 arguments: arg,
-                environment: _gitEnv,
+                environment: GetGitEnvironmentVariables(context),
                 requireExitCodeZero: false,
                 outputEncoding: s_encoding,
                 cancellationToken: cancellationToken);
@@ -451,21 +441,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 }
             };
 
-            Dictionary<string, string> _gitEnv = new Dictionary<string, string>()
-            {
-                { "GIT_TERMINAL_PROMPT", "0" },
-            };
-
-            if (!string.IsNullOrEmpty(_gitHttpUserAgentEnv))
-            {
-                _gitEnv["GIT_HTTP_USER_AGENT"] = _gitHttpUserAgentEnv;
-            }
-
             return await processInvoker.ExecuteAsync(
                 workingDirectory: repoRoot,
                 fileName: _gitPath,
                 arguments: arg,
-                environment: _gitEnv,
+                environment: GetGitEnvironmentVariables(context),
                 requireExitCodeZero: false,
                 outputEncoding: s_encoding,
                 cancellationToken: default(CancellationToken));
@@ -487,24 +467,37 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 context.Output(message.Data);
             };
 
-            Dictionary<string, string> _gitEnv = new Dictionary<string, string>()
+            return await processInvoker.ExecuteAsync(
+                workingDirectory: repoRoot,
+                fileName: _gitPath,
+                arguments: arg,
+                environment: GetGitEnvironmentVariables(context),
+                requireExitCodeZero: false,
+                outputEncoding: s_encoding,
+                cancellationToken: cancellationToken);
+        }
+
+        private IDictionary<string, string> GetGitEnvironmentVariables(IExecutionContext context)
+        {
+            Dictionary<string, string> gitEnv = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
                 { "GIT_TERMINAL_PROMPT", "0" },
             };
 
             if (!string.IsNullOrEmpty(_gitHttpUserAgentEnv))
             {
-                _gitEnv["GIT_HTTP_USER_AGENT"] = _gitHttpUserAgentEnv;
+                gitEnv["GIT_HTTP_USER_AGENT"] = _gitHttpUserAgentEnv;
             }
 
-            return await processInvoker.ExecuteAsync(
-                workingDirectory: repoRoot,
-                fileName: _gitPath,
-                arguments: arg,
-                environment: _gitEnv,
-                requireExitCodeZero: false,
-                outputEncoding: s_encoding,
-                cancellationToken: cancellationToken);
+            // Add the public variables.
+            foreach (KeyValuePair<string, string> pair in context.Variables.Public)
+            {
+                // Add the variable using the formatted name.
+                string formattedKey = (pair.Key ?? string.Empty).Replace('.', '_').Replace(' ', '_').ToUpperInvariant();
+                gitEnv[formattedKey] = pair.Value ?? string.Empty;
+            }
+
+            return gitEnv;
         }
     }
 }
