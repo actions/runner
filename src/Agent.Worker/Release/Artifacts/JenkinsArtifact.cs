@@ -53,6 +53,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
                 using (HttpClient client = new HttpClient(handler))
                 {
                     SetupHttpClient(client, jenkinsDetails.AccountName, jenkinsDetails.AccountPassword);
+
+                    if (!IsValidBuild(client, jenkinsDetails))
+                    {
+                        throw new ArtifactDownloadException(StringUtil.Loc("RMJenkinsInvalidBuild", jenkinsDetails.BuildId));
+                    }
+
                     var downloadArtifactsUrl =
                         new Uri(
                             string.Format(
@@ -135,6 +141,21 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
             {
                 throw new InvalidOperationException(StringUtil.Loc("RMArtifactDetailsIncomplete"));
             }
+        }
+
+        private bool IsValidBuild(HttpClient client, JenkinsArtifactDetails jenkinsDetails)
+        {
+            var buildUrl =
+                new Uri(
+                    string.Format(
+                        CultureInfo.InvariantCulture,
+                        "{0}/job/{1}/{2}",
+                        jenkinsDetails.Url,
+                        jenkinsDetails.JobName,
+                        jenkinsDetails.BuildId));
+
+            HttpResponseMessage response = client.GetAsync(buildUrl).Result;
+            return response.IsSuccessStatusCode;
         }
 
         private static void SetupHttpClient(HttpClient httpClient, string userName, string password)

@@ -362,6 +362,7 @@
   "RMGotJenkinsArtifactDetails": "Received Jenkins Artifact Details",
   "RMJenkinsBuildId": "BuildId: {0}",
   "RMJenkinsEndpointNotFound": "Cannot find required information in the job to download the Jenkins artifact: {0}",
+  "RMJenkinsInvalidBuild": "Jenkins build {0} is invalid.",
   "RMJenkinsJobName": "Job Name: {0}",
   "RMJenkinsNoArtifactsFound": "No artifacts are available in the Jenkins build {0}.",
   "RMNoBuildArtifactsFound": "No artifacts are available in the build {0}.",
