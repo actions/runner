@@ -18,7 +18,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         public HashSet<string> Flags { get; }
         public Dictionary<string, string> Args { get; }
         public HashSet<string> SecretArgNames { get; }
-        public bool HasArgs { get; private set; }
+        private bool HasArgs { get; set; }
 
         public CommandLineParser(IHostContext hostContext, string[] secretArgNames)
         {
@@ -33,13 +33,8 @@ namespace Microsoft.VisualStudio.Services.Agent
 
         public bool IsCommand(string name)
         {
-            return IsCommand(0, name);
-        }
-
-        public bool IsCommand(int index, string name) 
-        {
             bool result = false;
-
+            int index = 0;
             if (Commands.Count > index)
             {
                 result = String.Equals(name, Commands[index], StringComparison.CurrentCultureIgnoreCase);

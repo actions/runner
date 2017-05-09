@@ -1,16 +1,19 @@
 ﻿using Microsoft.VisualStudio.Services.Agent.Listener.Configuration;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
-using System.Linq;
+using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener
 {
     public sealed class CommandSettings
     {
         private readonly IHostContext _context;
+        private readonly Dictionary<string, string> _envArgs = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         private readonly CommandLineParser _parser;
         private readonly IPromptManager _promptManager;
+        private ISecretMasker _secretMasker;
         private readonly Tracing _trace;
 
         private readonly string[] validCommands =
@@ -74,6 +77,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             ArgUtil.NotNull(context, nameof(context));
             _context = context;
             _promptManager = context.GetService<IPromptManager>();
+            _secretMasker = context.GetService<ISecretMasker>();
             _trace = context.GetTrace(nameof(CommandSettings));
 
             // Parse the command line args.
@@ -81,6 +85,38 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 hostContext: context,
                 secretArgNames: Constants.Agent.CommandLine.Args.Secrets);
             _parser.Parse(args);
+
+            // Store and remove any args passed via environment variables.
+            IDictionary environment = Environment.GetEnvironmentVariables();
+            string envPrefix = "VSTS_AGENT_INPUT_";
+            foreach (DictionaryEntry entry in environment)
+            {
+                // Test if starts with VSTS_AGENT_INPUT_.
+                string fullKey = entry.Key as string ?? string.Empty;
+                if (fullKey.StartsWith(envPrefix, StringComparison.OrdinalIgnoreCase))
+                {
+                    string val = (entry.Value as string ?? string.Empty).Trim();
+                    if (!string.IsNullOrEmpty(val))
+                    {
+                        // Extract the name.
+                        string name = fullKey.Substring(envPrefix.Length);
+
+                        // Mask secrets.
+                        bool secret = Constants.Agent.CommandLine.Args.Secrets.Any(x => string.Equals(x, name, StringComparison.OrdinalIgnoreCase));
+                        if (secret)
+                        {
+                            _secretMasker.AddValue(val);
+                        }
+
+                        // Store the value.
+                        _envArgs[name] = val;
+                    }
+
+                    // Remove from the environment block.
+                    _trace.Info($"Removing env var: '{fullKey}'");
+                    Environment.SetEnvironmentVariable(fullKey, null);
+                }
+            }
         }
 
         // Validate commandline parser result
@@ -293,18 +329,22 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             string result;
             if (!_parser.Args.TryGetValue(name, out result))
             {
-                result = null;
+                result = GetEnvArg(name);
             }
 
             return result;
         }
-
 
         private void RemoveArg(string name)
         {
             if (_parser.Args.ContainsKey(name))
             {
                 _parser.Args.Remove(name);
+            }
+
+            if (_envArgs.ContainsKey(name))
+            {
+                _envArgs.Remove(name);
             }
         }
 
@@ -346,6 +386,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 unattended: Unattended);
         }
 
+        private string GetEnvArg(string name)
+        {
+            string val;
+            if (_envArgs.TryGetValue(name, out val) && !string.IsNullOrEmpty(val))
+            {
+                _trace.Info($"Env arg '{name}': '{val}'");
+                return val;
+            }
+
+            return string.Empty;
+        }
+
         private bool TestCommand(string name)
         {
             bool result = _parser.IsCommand(name);
@@ -356,6 +408,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         private bool TestFlag(string name)
         {
             bool result = _parser.Flags.Contains(name);
+            if (!result)
+            {
+                string envStr = GetEnvArg(name);
+                if (!bool.TryParse(envStr, out result))
+                {
+                    result = false;
+                }
+            }
+
             _trace.Info($"Flag '{name}': '{result}'");
             return result;
         }
