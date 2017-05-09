@@ -33,7 +33,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
             return repository;
         }
 
-        private static T QueryItem<T>(string accessToken, string url, out string errorMessage)
+        private T QueryItem<T>(string accessToken, string url, out string errorMessage)
         {
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, url);
 
@@ -41,7 +41,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
             request.Headers.Add("Authorization", "Token " + accessToken);
             request.Headers.Add("User-Agent", "VSTS-Agent/" + Constants.Agent.Version);
 
-            using (var httpClientHandler = new HttpClientHandler())
+            using (var httpClientHandler = HostContext.CreateHttpClientHandler())
             using (var httpClient = new HttpClient(httpClientHandler) { Timeout = new TimeSpan(0, 0, 30) })
             {
                 errorMessage = string.Empty;
@@ -70,5 +70,5 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
 
         [DataMember(EmitDefaultValue = false)]
         public string Clone_url { get; set; }
-   }
+    }
 }

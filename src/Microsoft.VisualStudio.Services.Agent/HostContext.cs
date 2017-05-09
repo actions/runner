@@ -10,6 +10,7 @@ using System.Runtime.Loader;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Diagnostics;
+using System.Net.Http;
 
 namespace Microsoft.VisualStudio.Services.Agent
 {
@@ -300,6 +301,17 @@ namespace Microsoft.VisualStudio.Services.Agent
         void IObserver<KeyValuePair<string, object>>.OnNext(KeyValuePair<string, object> value)
         {
             _httpTrace.Info($"Trace {value.Key} event:{Environment.NewLine}{value.Value.ToString()}");
+        }
+    }
+
+    public static class HostContextExtension
+    {
+        public static HttpClientHandler CreateHttpClientHandler(this IHostContext context)
+        {
+            HttpClientHandler clientHandler = new HttpClientHandler();
+            var agentWebProxy = context.GetService<IVstsAgentWebProxy>();
+            clientHandler.Proxy = agentWebProxy;
+            return clientHandler;
         }
     }
 }

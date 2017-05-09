@@ -4,6 +4,7 @@ using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.VisualStudio.Services.Common;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener
 {
@@ -33,8 +34,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         {
             try
             {
-                var proxyConfig = HostContext.GetService<IProxyConfiguration>();
-                proxyConfig.ApplyProxySettings();
+                var agentWebProxy = HostContext.GetService<IVstsAgentWebProxy>();
+                VssHttpMessageHandler.DefaultWebProxy = agentWebProxy;
 
                 _inConfigStage = true;
                 _completedCommand.Reset();

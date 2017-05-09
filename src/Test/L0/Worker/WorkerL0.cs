@@ -13,13 +13,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
     {
         private Mock<IProcessChannel> _processChannel;
         private Mock<IJobRunner> _jobRunner;
-        private Mock<IProxyConfiguration> _proxy;
+        private Mock<IVstsAgentWebProxy> _proxy;
 
         public WorkerL0()
         {
             _processChannel = new Mock<IProcessChannel>();
             _jobRunner = new Mock<IJobRunner>();
-            _proxy = new Mock<IProxyConfiguration>();
+            _proxy = new Mock<IVstsAgentWebProxy>();
         }
 
         private JobRequestMessage CreateJobRequestMessage(string jobName)
@@ -55,7 +55,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                 var worker = new Microsoft.VisualStudio.Services.Agent.Worker.Worker();
                 hc.EnqueueInstance<IProcessChannel>(_processChannel.Object);
                 hc.EnqueueInstance<IJobRunner>(_jobRunner.Object);
-                hc.SetSingleton<IProxyConfiguration>(_proxy.Object);
+                hc.SetSingleton<IVstsAgentWebProxy>(_proxy.Object);
                 worker.Initialize(hc);
                 var jobMessage = CreateJobRequestMessage("job1");
                 var arWorkerMessages = new WorkerMessage[]
@@ -107,7 +107,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                 var worker = new Microsoft.VisualStudio.Services.Agent.Worker.Worker();
                 hc.EnqueueInstance<IProcessChannel>(_processChannel.Object);
                 hc.EnqueueInstance<IJobRunner>(_jobRunner.Object);
-                hc.SetSingleton<IProxyConfiguration>(_proxy.Object);
+                hc.SetSingleton<IVstsAgentWebProxy>(_proxy.Object);
                 worker.Initialize(hc);
                 var jobMessage = CreateJobRequestMessage("job1");
                 var cancelMessage = CreateJobCancelMessage(jobMessage.JobId);

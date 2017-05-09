@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.VisualStudio.Services.Common;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
@@ -23,8 +24,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             // Validate args.
             ArgUtil.NotNullOrEmpty(pipeIn, nameof(pipeIn));
             ArgUtil.NotNullOrEmpty(pipeOut, nameof(pipeOut));
-            var proxyConfig = HostContext.GetService<IProxyConfiguration>();
-            proxyConfig.ApplyProxySettings();
+            var agentWebProxy = HostContext.GetService<IVstsAgentWebProxy>();
+            VssHttpMessageHandler.DefaultWebProxy = agentWebProxy;
 
             var jobRunner = HostContext.CreateService<IJobRunner>();
 

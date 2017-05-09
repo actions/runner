@@ -322,21 +322,21 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             PrependPath = new List<string>();
 
             // Proxy variables
-            var proxyConfiguration = HostContext.GetService<IProxyConfiguration>();
-            if (!string.IsNullOrEmpty(proxyConfiguration.ProxyUrl))
+            var agentWebProxy = HostContext.GetService<IVstsAgentWebProxy>();
+            if (!string.IsNullOrEmpty(agentWebProxy.ProxyAddress))
             {
-                Variables.Set(Constants.Variables.Agent.ProxyUrl, proxyConfiguration.ProxyUrl);
+                Variables.Set(Constants.Variables.Agent.ProxyUrl, agentWebProxy.ProxyAddress);
                 Environment.SetEnvironmentVariable("VSTS_HTTP_PROXY", string.Empty);
 
-                if (!string.IsNullOrEmpty(proxyConfiguration.ProxyUsername))
+                if (!string.IsNullOrEmpty(agentWebProxy.ProxyUsername))
                 {
-                    Variables.Set(Constants.Variables.Agent.ProxyUsername, proxyConfiguration.ProxyUsername);
+                    Variables.Set(Constants.Variables.Agent.ProxyUsername, agentWebProxy.ProxyUsername);
                     Environment.SetEnvironmentVariable("VSTS_HTTP_PROXY_USERNAME", string.Empty);
                 }
 
-                if (!string.IsNullOrEmpty(proxyConfiguration.ProxyPassword))
+                if (!string.IsNullOrEmpty(agentWebProxy.ProxyPassword))
                 {
-                    Variables.Set(Constants.Variables.Agent.ProxyPassword, proxyConfiguration.ProxyPassword, true);
+                    Variables.Set(Constants.Variables.Agent.ProxyPassword, agentWebProxy.ProxyPassword, true);
                     Environment.SetEnvironmentVariable("VSTS_HTTP_PROXY_PASSWORD", string.Empty);
                 }
             }

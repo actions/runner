@@ -53,7 +53,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
 
         private Mock<IJobServerQueue> _jobServerQueue;
         private Mock<ISecretMasker> _secretMasker;
-        private Mock<IProxyConfiguration> _proxyConfig;
+        private Mock<IVstsAgentWebProxy> _proxy;
         private Mock<IConfigurationStore> _config;
         private Mock<IPagingLogger> _logger;
         private Mock<IExpressionManager> _express;
@@ -67,7 +67,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             _secretMasker = new Mock<ISecretMasker>();
             _config = new Mock<IConfigurationStore>();
             _logger = new Mock<IPagingLogger>();
-            _proxyConfig = new Mock<IProxyConfiguration>();
+            _proxy = new Mock<IVstsAgentWebProxy>();
             _express = new Mock<IExpressionManager>();
 
             TaskRunner step1 = new TaskRunner();
@@ -95,7 +95,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             _config.Setup(x => x.GetSettings())
                 .Returns(settings);
 
-            _proxyConfig.Setup(x => x.ProxyUrl)
+            _proxy.Setup(x => x.ProxyAddress)
                             .Returns(string.Empty);
 
             if (_tokenSource != null)
@@ -243,7 +243,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             hc.SetSingleton(_config.Object);
             hc.SetSingleton(_secretMasker.Object);
             hc.SetSingleton(_jobServerQueue.Object);
-            hc.SetSingleton(_proxyConfig.Object);
+            hc.SetSingleton(_proxy.Object);
             hc.SetSingleton(_express.Object);
             hc.EnqueueInstance<IPagingLogger>(_logger.Object); // jobcontext logger
             hc.EnqueueInstance<IPagingLogger>(_logger.Object); // init step logger

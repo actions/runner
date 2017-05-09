@@ -20,7 +20,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
         private CancellationTokenSource _tokenSource;
         private Mock<IJobServer> _jobServer;
         private Mock<IJobServerQueue> _jobServerQueue;
-        private Mock<IProxyConfiguration> _proxyConfig;
+        private Mock<IVstsAgentWebProxy> _proxyConfig;
         private Mock<IConfigurationStore> _config;
         private Mock<ITaskServer> _taskServer;
         private Mock<IExtensionManager> _extensions;
@@ -40,7 +40,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             _jobExtension = new Mock<IJobExtension>();
             _jobServer = new Mock<IJobServer>();
             _jobServerQueue = new Mock<IJobServerQueue>();
-            _proxyConfig = new Mock<IProxyConfiguration>();
+            _proxyConfig = new Mock<IVstsAgentWebProxy>();
             _taskServer = new Mock<ITaskServer>();
             _stepRunner = new Mock<IStepsRunner>();
             _logger = new Mock<IPagingLogger>();
@@ -90,7 +90,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             _jobExtension.Setup(x => x.HostType)
                 .Returns<string>(null);
 
-            _proxyConfig.Setup(x => x.ProxyUrl)
+            _proxyConfig.Setup(x => x.ProxyAddress)
                 .Returns(string.Empty);
 
             var settings = new AgentSettings

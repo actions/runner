@@ -60,7 +60,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             hc.SetSingleton(secretMasker.Object);
 
             // Arrange: Setup the proxy configation.
-            var proxy = new Mock<IProxyConfiguration>();
+            var proxy = new Mock<IVstsAgentWebProxy>();
             hc.SetSingleton(proxy.Object);
 
             // Arrange: Create the execution context.

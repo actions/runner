@@ -19,7 +19,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
         private Mock<IJobDispatcher> _jobDispatcher;
         private Mock<IAgentServer> _agentServer;
         private Mock<ITerminal> _term;
-        private Mock<IProxyConfiguration> _proxy;
+        private Mock<IVstsAgentWebProxy> _proxy;
 
         public AgentL0()
         {
@@ -30,7 +30,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
             _jobDispatcher = new Mock<IJobDispatcher>();
             _agentServer = new Mock<IAgentServer>();
             _term = new Mock<ITerminal>();
-            _proxy = new Mock<IProxyConfiguration>();
+            _proxy = new Mock<IVstsAgentWebProxy>();
         }
 
         private AgentJobRequestMessage CreateJobRequestMessage(string jobName)
@@ -67,7 +67,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                 hc.SetSingleton<IMessageListener>(_messageListener.Object);
                 hc.SetSingleton<IPromptManager>(_promptManager.Object);
                 hc.SetSingleton<IAgentServer>(_agentServer.Object);
-                hc.SetSingleton<IProxyConfiguration>(_proxy.Object);
+                hc.SetSingleton<IVstsAgentWebProxy>(_proxy.Object);
                 agent.Initialize(hc);
                 var settings = new AgentSettings
                 {
@@ -175,7 +175,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                 hc.SetSingleton<IConfigurationManager>(_configurationManager.Object);
                 hc.SetSingleton<IPromptManager>(_promptManager.Object);
                 hc.SetSingleton<IMessageListener>(_messageListener.Object);
-                hc.SetSingleton<IProxyConfiguration>(_proxy.Object);
+                hc.SetSingleton<IVstsAgentWebProxy>(_proxy.Object);
 
                 var command = new CommandSettings(hc, args);
 
@@ -206,7 +206,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                 hc.SetSingleton<IConfigurationManager>(_configurationManager.Object);
                 hc.SetSingleton<IPromptManager>(_promptManager.Object);
                 hc.SetSingleton<IMessageListener>(_messageListener.Object);
-                hc.SetSingleton<IProxyConfiguration>(_proxy.Object);
+                hc.SetSingleton<IVstsAgentWebProxy>(_proxy.Object);
 
                 var command = new CommandSettings(hc, new[] { "run" });
 
@@ -239,7 +239,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                 hc.SetSingleton<IConfigurationManager>(_configurationManager.Object);
                 hc.SetSingleton<IPromptManager>(_promptManager.Object);
                 hc.SetSingleton<IMessageListener>(_messageListener.Object);
-                hc.SetSingleton<IProxyConfiguration>(_proxy.Object);
+                hc.SetSingleton<IVstsAgentWebProxy>(_proxy.Object);
 
                 var command = new CommandSettings(hc, new string[] { });
 

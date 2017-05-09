@@ -155,8 +155,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             Trace.Info($"Save latest agent into {archiveFile}.");
             try
             {
-                var proxyConfig = HostContext.GetService<IProxyConfiguration>();
-                using (var httpClient = new HttpClient(proxyConfig.HttpClientHandlerWithProxySetting))
+                using (var httpClient = new HttpClient(HostContext.CreateHttpClientHandler()))
                 {
                     //open zip stream in async mode
                     using (FileStream fs = new FileStream(archiveFile, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 4096, useAsync: true))

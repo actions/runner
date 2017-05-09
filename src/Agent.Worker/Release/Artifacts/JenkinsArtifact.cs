@@ -43,7 +43,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
             executionContext.Output(StringUtil.Loc("RMJenkinsBuildId", jenkinsDetails.BuildId));
 
             Stream downloadedStream = null;
-            using (HttpClientHandler handler = new HttpClientHandler())
+            using (HttpClientHandler handler = HostContext.CreateHttpClientHandler())
             {
                 handler.ServerCertificateCustomValidationCallback = (message, certificate, chain, sslPolicyErrors) =>
                 {
@@ -90,7 +90,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
 
             var parentFolder = GetParentFolderName(jenkinsDetails.RelativePath);
             Trace.Info($"Found parentFolder {parentFolder} for relative path {jenkinsDetails.RelativePath}");
-            
+
             executionContext.Output(StringUtil.Loc("RMDownloadingJenkinsArtifacts"));
             var zipStreamDownloader = HostContext.GetService<IZipStreamDownloader>();
             await zipStreamDownloader.DownloadFromStream(
@@ -120,7 +120,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
             var allFieldsPresents = artifactDetails.TryGetValue("RelativePath", out relativePath)
                                     && artifactDetails.TryGetValue("JobName", out jobName);
 
-            bool acceptUntrusted = jenkinsEndpoint.Data != null && 
+            bool acceptUntrusted = jenkinsEndpoint.Data != null &&
                                    jenkinsEndpoint.Data.ContainsKey("acceptUntrustedCerts") &&
                                    StringUtil.ConvertToBoolean(jenkinsEndpoint.Data["acceptUntrustedCerts"]);
 
