@@ -69,7 +69,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         // git config gc.auto 0
         Task<int> GitDisableAutoGC(IExecutionContext context, string repositoryPath);
 
-        // git lfs install
+        // git lfs version
+        Task<int> GitLFSVersion(IExecutionContext context, string repositoryPath);
+
+        // git lfs install --local
         Task<int> GitLFSInstall(IExecutionContext context, string repositoryPath);
 
         // git version
@@ -349,11 +352,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             return await ExecuteGitCommandAsync(context, repositoryPath, "config", "gc.auto 0");
         }
 
-        // git lfs install
+        // git lfs version
+        public async Task<int> GitLFSVersion(IExecutionContext context, string repositoryPath)
+        {
+            context.Debug("Get git-lfs version.");
+            return await ExecuteGitCommandAsync(context, repositoryPath, "lfs", "version");
+        }
+
+        // git lfs install --local
         public async Task<int> GitLFSInstall(IExecutionContext context, string repositoryPath)
         {
             context.Debug("Ensure git-lfs installed.");
-            return await ExecuteGitCommandAsync(context, repositoryPath, "lfs", "install");
+            return await ExecuteGitCommandAsync(context, repositoryPath, "lfs", "install --local");
         }
 
         // git version
@@ -363,7 +373,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             Version version = null;
             List<string> outputStrings = new List<string>();
             int exitCode = await ExecuteGitCommandAsync(context, IOUtil.GetWorkPath(HostContext), "version", null, outputStrings);
-            context.Debug($"git version output: {string.Join(Environment.NewLine, outputStrings)}");
+            context.Output($"{string.Join(Environment.NewLine, outputStrings)}");
             if (exitCode == 0)
             {
                 // remove any empty line.
