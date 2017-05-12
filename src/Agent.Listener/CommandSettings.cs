@@ -395,7 +395,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 return val;
             }
 
-            return string.Empty;
+            return null;
         }
 
         private bool TestCommand(string name)

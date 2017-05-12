@@ -75,6 +75,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         // git lfs install --local
         Task<int> GitLFSInstall(IExecutionContext context, string repositoryPath);
 
+        // git lfs logs last
+        Task<int> GitLFSLogs(IExecutionContext context, string repositoryPath);
+
         // git version
         Task<Version> GitVersion(IExecutionContext context);
     }
@@ -364,6 +367,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         {
             context.Debug("Ensure git-lfs installed.");
             return await ExecuteGitCommandAsync(context, repositoryPath, "lfs", "install --local");
+        }
+
+        // git lfs logs last
+        public async Task<int> GitLFSLogs(IExecutionContext context, string repositoryPath)
+        {
+            context.Debug("Get git-lfs logs.");
+            return await ExecuteGitCommandAsync(context, repositoryPath, "lfs", "logs last");
         }
 
         // git version

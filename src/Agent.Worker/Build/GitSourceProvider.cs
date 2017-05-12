@@ -589,7 +589,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 int exitCode_lfsFetch = await _gitCommandManager.GitLFSFetch(executionContext, targetPath, "origin", sourcesToBuild, string.Join(" ", additionalLfsFetchArgs), cancellationToken);
                 if (exitCode_lfsFetch != 0)
                 {
-                    throw new InvalidOperationException($"Git fetch failed with exit code: {exitCode_lfsFetch}");
+                    // git lfs fetch failed, get lfs log, the log is critical for debug.
+                    int exitCode_lfsLogs = await _gitCommandManager.GitLFSLogs(executionContext, targetPath);
+                    throw new InvalidOperationException($"Git lfs fetch failed with exit code: {exitCode_lfsFetch}. Git lfs logs returned with exit code: {exitCode_lfsLogs}.");
                 }
             }
 
