@@ -9,18 +9,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
     {
         public static int Main(string[] args)
         {
-            return MainAsync(args).GetAwaiter().GetResult();
+            using (HostContext context = new HostContext("Worker"))
+            {
+                return MainAsync(context, args).GetAwaiter().GetResult();
+            }
         }
 
-        public static async Task<int> MainAsync(
-            string[] args)
+        public static async Task<int> MainAsync(IHostContext context, string[] args)
         {
             //ITerminal registers a CTRL-C handler, which keeps the Agent.Worker process running
             //and lets the Agent.Listener handle gracefully the exit.
-            using (var hc = new HostContext("Worker"))
-            using (var term = hc.GetService<ITerminal>())
+            using (var term = context.GetService<ITerminal>())
             {
-                Tracing trace = hc.GetTrace(nameof(Program));
+                Tracing trace = context.GetTrace(nameof(Program));
                 try
                 {
                     trace.Info($"Version: {Constants.Agent.Version}");
@@ -35,7 +36,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     ArgUtil.Equal("spawnclient", args[0].ToLowerInvariant(), $"{nameof(args)}[0]");
                     ArgUtil.NotNullOrEmpty(args[1], $"{nameof(args)}[1]");
                     ArgUtil.NotNullOrEmpty(args[2], $"{nameof(args)}[2]");
-                    var worker = hc.GetService<IWorker>();
+                    var worker = context.GetService<IWorker>();
 
                     // Run the worker.
                     return await worker.RunAsync(
@@ -56,10 +57,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                         // since IOException will throw when we run out of disk space.
                         Console.WriteLine(e.ToString());
                     }
-                }
-                finally
-                {
-                    hc.Dispose();
                 }
 
                 return 1;

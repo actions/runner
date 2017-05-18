@@ -140,6 +140,17 @@ function GetHTTPResponse([Uri] $Uri)
     try {
         # HttpClient is used vs Invoke-WebRequest in order to support Nano Server which doesn't support the Invoke-WebRequest cmdlet.
         Load-Assembly -Assembly System.Net.Http
+ 
+        if(-not $ProxyAddress)
+        {
+            # Despite no proxy being explicitly specified, we may still be behind a default proxy
+            $DefaultProxy = [System.Net.WebRequest]::DefaultWebProxy;
+            if($DefaultProxy -and (-not $DefaultProxy.IsBypassed($Uri))){
+                $ProxyAddress =  $DefaultProxy.GetProxy($Uri).OriginalString
+                $ProxyUseDefaultCredentials = $true
+            }
+        }
+
         if($ProxyAddress){
             $HttpClientHandler = New-Object System.Net.Http.HttpClientHandler
             $HttpClientHandler.Proxy =  New-Object System.Net.WebProxy -Property @{Address=$ProxyAddress;UseDefaultCredentials=$ProxyUseDefaultCredentials}
