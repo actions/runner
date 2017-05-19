@@ -158,7 +158,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
             if ((buildArtifact.Resource.Type == null && buildArtifact.Id == 0) // bug on build API Bug 378900
                 || string.Equals(buildArtifact.Resource.Type, WellKnownArtifactResourceTypes.FilePath, StringComparison.OrdinalIgnoreCase))
             {
-                executionContext.Output("Artifact Type: FileShare");
+                executionContext.Output(StringUtil.Loc("RMArtifactTypeFileShare"));
 #if !OS_WINDOWS
                 throw new NotSupportedException(StringUtil.Loc("RMFileShareArtifactErrorOnNonWindowsAgent"));
 #else
@@ -185,7 +185,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
                     throw new ArtifactDownloadException(StringUtil.Loc("RMArtifactDirectoryNotFoundError", fileShare, WindowsIdentity.GetCurrent().Name));
                 }
 
-                executionContext.Output(StringUtil.Loc("RMDownloadingArtifactFromFileShare", fileShare));
+                executionContext.Output(StringUtil.Loc("RMDownloadingArtifactFromFileShare", fileShare, downloadFolderPath));
 
                 var fileShareArtifact = new FileShareArtifact();
                 await fileShareArtifact.DownloadArtifactAsync(executionContext, HostContext, artifactDefinition, fileShare, downloadFolderPath);
@@ -194,9 +194,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
             else if (buildArtifactDetails != null
                      && string.Equals(buildArtifact.Resource.Type, WellKnownArtifactResourceTypes.Container, StringComparison.OrdinalIgnoreCase))
             {
-                executionContext.Output("Artifact Type: ServerDrop");
+                executionContext.Output(StringUtil.Loc("RMArtifactTypeServerDrop"));
+
                 // Get containerId and rootLocation for the artifact #/922702/drop
-                string[] parts = buildArtifact.Resource.Data.Split(new[] { '/' }, 3);
+                string containerUrl = buildArtifact.Resource.Data;
+                string[] parts = containerUrl.Split(new[] { '/' }, 3);
 
                 if (parts.Length < 3)
                 {
@@ -210,15 +212,21 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
                     throw new ArtifactDownloadException(StringUtil.Loc("RMArtifactContainerDetailsInvaidError", buildArtifact.Name));
                 }
 
+                string rootDestinationDir = Path.Combine(localFolderPath, rootLocation);
+                executionContext.Output(StringUtil.Loc("RMDownloadingArtifactFromFileContainer", containerUrl, rootDestinationDir));
+
+                var containerFetchEngineOptions = new ContainerFetchEngineOptions
+                {
+                    ParallelDownloadLimit = executionContext.Variables.Release_Parallel_Download_Limit ?? ContainerFetchEngineDefaultOptions.ParallelDownloadLimit,
+                    DownloadBufferSize = executionContext.Variables.Release_Download_BufferSize ?? ContainerFetchEngineDefaultOptions.DownloadBufferSize
+                };
+
+                executionContext.Output(StringUtil.Loc("RMParallelDownloadLimit", containerFetchEngineOptions.ParallelDownloadLimit));
+                executionContext.Output(StringUtil.Loc("RMDownloadBufferSize", containerFetchEngineOptions.DownloadBufferSize));
+
                 IContainerProvider containerProvider =
                     new ContainerProviderFactory(buildArtifactDetails, rootLocation, containerId, executionContext).GetContainerProvider(
                         WellKnownArtifactResourceTypes.Container);
-
-                string rootDestinationDir = Path.Combine(localFolderPath, rootLocation);
-                var containerFetchEngineOptions = new ContainerFetchEngineOptions
-                {
-                    ParallelDownloadLimit = 4,
-                };
 
                 using (var engine = new ContainerFetchEngine.ContainerFetchEngine(containerProvider, rootLocation, rootDestinationDir))
                 {

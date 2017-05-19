@@ -34,6 +34,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
 
             if (filePaths.Any())
             {
+                int bufferSize = executionContext.Variables.Release_Download_BufferSize ?? DefaultBufferSize;
+
                 foreach (var filePath in filePaths)
                 {
                     string fullPath = Path.GetFullPath(filePath);
@@ -46,6 +48,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
                                 fileSystemManager.WriteStreamToFile(
                                     fileReader.BaseStream,
                                     Path.Combine(localFolderPath, filePathRelativeToDrop),
+                                    bufferSize,
                                     executionContext.CancellationToken);
                         }
                     }
@@ -60,5 +63,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
                 executionContext.Warning(StringUtil.Loc("RMArtifactEmpty"));
             }
         }
+
+        private const int DefaultBufferSize = 8192;
     }
 }

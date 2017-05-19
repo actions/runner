@@ -290,6 +290,8 @@ namespace Microsoft.VisualStudio.Services.Agent
                 public static readonly string ReleaseName = "release.releaseName";
                 public static readonly string ReleaseRequestedForId = "release.requestedForId";
                 public static readonly string ReleaseUri = "release.releaseUri";
+                public static readonly string ReleaseDownloadBufferSize = "release.artifact.download.buffersize";
+                public static readonly string ReleaseParallelDownloadLimit = "release.artifact.download.parallellimit";
                 public static readonly string ReleaseWebUrl = "release.releaseWebUrl";
                 public static readonly string RequestorId = "release.requestedFor";
                 public static readonly string SkipArtifactsDownload = "release.skipartifactsDownload";

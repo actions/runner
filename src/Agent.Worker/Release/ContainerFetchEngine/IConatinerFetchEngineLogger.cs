@@ -6,6 +6,6 @@
     {
         void Warning(string message);
         void Output(string message);
-        void Info(string message);
+        void Debug(string message);
     }
 }

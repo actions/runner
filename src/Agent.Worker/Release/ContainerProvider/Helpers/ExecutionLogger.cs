@@ -21,7 +21,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.ContainerProvider
             this._executionContext.Output(message);
         }
 
-        public void Info(string message)
+        public void Debug(string message)
         {
             this._executionContext.Debug(message);
         }

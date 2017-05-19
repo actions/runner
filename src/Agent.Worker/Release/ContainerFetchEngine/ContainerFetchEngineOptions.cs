@@ -9,13 +9,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.ContainerFetchEng
         public TimeSpan RetryInterval { get; set; }
         public TimeSpan GetFileAsyncTimeout { get; set; }
         public int ParallelDownloadLimit { get; set; }
+        public int DownloadBufferSize { get; set; }
 
         public ContainerFetchEngineOptions()
         {
-            RetryLimit = ContainerFetchEngineDefaultOptions.DefaultRetryLimit;
-            ParallelDownloadLimit = ContainerFetchEngineDefaultOptions.DefaultParallelDownloadLimit;
-            RetryInterval = ContainerFetchEngineDefaultOptions.DefaultRetryInterval;
+            RetryLimit = ContainerFetchEngineDefaultOptions.RetryLimit;
+            ParallelDownloadLimit = ContainerFetchEngineDefaultOptions.ParallelDownloadLimit;
+            RetryInterval = ContainerFetchEngineDefaultOptions.RetryInterval;
             GetFileAsyncTimeout = ContainerFetchEngineDefaultOptions.GetFileAsyncTimeout;
+            DownloadBufferSize = ContainerFetchEngineDefaultOptions.DownloadBufferSize;
         }
     }
 }

@@ -11,7 +11,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
     {
         StreamReader GetFileReader(string filePath);
 
-        Task WriteStreamToFile(Stream stream, string filePath, CancellationToken cancellationToken);
+        Task WriteStreamToFile(Stream stream, string filePath, int bufferSize, CancellationToken cancellationToken);
 
         void CleanupDirectory(string directoryPath, CancellationToken cancellationToken);
 
@@ -32,8 +32,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
 
     public class ReleaseFileSystemManager : AgentService, IReleaseFileSystemManager
     {
-        private const int StreamBufferSize = 1024;
-
         public void CleanupDirectory(string directoryPath, CancellationToken cancellationToken)
         {
             var path = ValidatePath(directoryPath);
@@ -53,7 +51,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
                 throw new FileNotFoundException(StringUtil.Loc("FileNotFound", path));
             }
 
-            return new StreamReader(new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, StreamBufferSize, true));
+            return new StreamReader(new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, DefaultStreamBufferSize, true));
         }
 
         private static string ValidatePath(string path)
@@ -107,16 +105,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
             return Path.Combine(rootDirectory, relativePath);
         }
 
-        public async Task WriteStreamToFile(Stream stream, string filePath, CancellationToken cancellationToken)
+        public async Task WriteStreamToFile(Stream stream, string filePath, int bufferSize, CancellationToken cancellationToken)
         {
             ArgUtil.NotNull(stream, nameof(stream));
             ArgUtil.NotNullOrEmpty(filePath, nameof(filePath));
 
             EnsureDirectoryExists(Path.GetDirectoryName(filePath));
-            using (var targetStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None, StreamBufferSize, true))
+            using (var targetStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize, true))
             {
-                await stream.CopyToAsync(targetStream, StreamBufferSize, cancellationToken);
+                await stream.CopyToAsync(targetStream, bufferSize, cancellationToken);
             }
         }
+
+        private const int DefaultStreamBufferSize = 8192;
     }
 }

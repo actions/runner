@@ -146,6 +146,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         public string Release_ReleaseUri => Get(Constants.Variables.Release.ReleaseUri);
 
+        public int? Release_Download_BufferSize => GetInt(Constants.Variables.Release.ReleaseDownloadBufferSize);
+
+        public int? Release_Parallel_Download_Limit => GetInt(Constants.Variables.Release.ReleaseParallelDownloadLimit);
+
         public string System_CollectionId => Get(Constants.Variables.System.CollectionId);
 
         public bool? System_Debug => GetBoolean(Constants.Variables.System.Debug);
