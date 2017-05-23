@@ -129,6 +129,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                     {
                         IdentityRef ownerIdRef = new IdentityRef();
                         ownerIdRef.DisplayName = ownerNode.Attributes["name"].Value;
+                        ownerIdRef.DirectoryAlias = ownerNode.Attributes["name"].Value;
                         owner = ownerIdRef;
                     }
 

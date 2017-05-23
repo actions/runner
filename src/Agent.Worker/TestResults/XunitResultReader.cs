@@ -214,6 +214,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                     {
                         IdentityRef ownerIdRef = new IdentityRef();
                         ownerIdRef.DisplayName = ownerNode.Attributes["value"].Value;
+                        ownerIdRef.DirectoryAlias = ownerNode.Attributes["value"].Value;
                         resultCreateModel.Owner = ownerIdRef;
                     }
 
