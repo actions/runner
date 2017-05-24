@@ -240,10 +240,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.ContainerFetchEng
         {
             try
             {
-                lock (_lock)
-                {
-                    ExecutionLogger.Debug(StringUtil.Format("Acquiring semaphore to download file {0}", downloadPath));
-                }
+                ExecutionLogger.Debug(StringUtil.Format("Acquiring semaphore to download file {0}", downloadPath));
 
                 await downloadThrottle.WaitAsync().ConfigureAwait(false);
 
@@ -259,10 +256,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.ContainerFetchEng
                 FileSystemManager.EnsureParentDirectory(tmpDownloadPath);
                 FileSystemManager.DeleteFile(downloadPath);
 
-                lock (_lock)
-                {
-                    ExecutionLogger.Output(StringUtil.Loc("RMDownloadStartDownloadOfFile", downloadPath));
-                }
+                ExecutionLogger.Output(StringUtil.Loc("RMDownloadStartDownloadOfFile", downloadPath));
 
                 await GetFileAsync(ticketedItem, tmpDownloadPath, cancellationToken).ConfigureAwait(false);
 
@@ -299,10 +293,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.ContainerFetchEng
                     Task<Stream> getFileTask = Provider.GetFileTask(ticketedItem, cancellationToken);
                     Task timeoutTask = Task.Delay(ContainerFetchEngineOptions.GetFileAsyncTimeout, cancellationToken);
 
-                    lock (_lock)
-                    {
-                        ExecutionLogger.Debug(StringUtil.Format("Fetching contents of file {0}", tmpDownloadPath));
-                    }
+                    ExecutionLogger.Debug(StringUtil.Format("Fetching contents of file {0}", tmpDownloadPath));
 
                     // Wait for GetFileAsync or the timeout to elapse.
                     await Task.WhenAny(getFileTask, timeoutTask).ConfigureAwait(false);
@@ -317,20 +308,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.ContainerFetchEng
                         throw new TimeoutException(StringUtil.Loc("RMGetFileAsyncTimedOut", GetFileAsyncTimeoutMinutes));
                     }
 
-                    lock (_lock)
-                    {
-                        ExecutionLogger.Debug(StringUtil.Format("Writing contents of file {0} to disk", tmpDownloadPath));
-                    }
+                    ExecutionLogger.Debug(StringUtil.Format("Writing contents of file {0} to disk", tmpDownloadPath));
 
                     using (Stream stream = await getFileTask.ConfigureAwait(false))
                     {
                         await FileSystemManager.WriteStreamToFile(stream, tmpDownloadPath, ContainerFetchEngineOptions.DownloadBufferSize, cancellationToken);
                     }
 
-                    lock (_lock)
-                    {
-                        ExecutionLogger.Debug(StringUtil.Format("Finished writing contents of file {0} to disk", tmpDownloadPath));
-                    }
+                    ExecutionLogger.Debug(StringUtil.Format("Finished writing contents of file {0} to disk", tmpDownloadPath));
 
                     break;
                 }

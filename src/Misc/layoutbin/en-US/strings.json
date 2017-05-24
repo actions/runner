@@ -358,7 +358,7 @@
   "RMDownloadComplete": "Download complete.",
   "RMDownloadingArtifactFromFileContainer": "Downloading artifact from file container: {0} to target: {1}",
   "RMDownloadingArtifactFromFileShare": "Downloading artifact from file share: {0} to target: {1}",
-  "RMDownloadingArtifactUsingRobocopy": "Downloading artifact using robocopy. File share: {0} Download location: {1}",
+  "RMDownloadingArtifactUsingRobocopy": "Downloading artifact using robocopy.",
   "RMDownloadingJenkinsArtifacts": "Downloading the artifacts from Jenkins server",
   "RMDownloadProgress": "{0} placed file(s): {1} downloaded, {2} empty",
   "RMDownloadProgressDetails": "{0} MB downloaded at {1} KB/sec. Download time: {2}.",

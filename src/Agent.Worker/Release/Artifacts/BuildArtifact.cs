@@ -189,17 +189,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
                 executionContext.Output(StringUtil.Loc("RMDownloadingArtifactFromFileShare", fileShare, downloadFolderPath));
 
                 var fileShareArtifact = new FileShareArtifact();
-
-                bool disableRobocopy = executionContext.Variables.GetBoolean(Constants.Variables.Release.DisableRobocopy) ?? false;
-
-                if (disableRobocopy == false)
-                {
-                    await DownloadArtifactUsingRobocopy(executionContext, HostContext, artifactDefinition, fileShare, downloadFolderPath);
-                }
-                else
-                {
-                    await fileShareArtifact.DownloadArtifactAsync(executionContext, HostContext, artifactDefinition, fileShare, downloadFolderPath);
-                }
+                await fileShareArtifact.DownloadArtifactAsync(executionContext, HostContext, artifactDefinition, fileShare, downloadFolderPath);
 #endif
             }
             else if (buildArtifactDetails != null
@@ -249,86 +239,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
             else
             {
                 executionContext.Warning(StringUtil.Loc("RMArtifactTypeNotSupported", buildArtifact.Resource.Type));
-            }
-        }
-
-        private async Task DownloadArtifactUsingRobocopy(IExecutionContext executionContext, IHostContext hostContext, ArtifactDefinition artifactDefinition, string dropLocation, string downloadFolderPath)
-        {
-            object outputLock = new object();
-            int? robocopyMT = executionContext.Variables.GetInt(Constants.Variables.Release.RobocopyMT);
-            bool verbose = executionContext.Variables.GetBoolean(Constants.Variables.System.Debug) ?? false;
-
-            if (robocopyMT != null)
-            {
-                if (robocopyMT < 1)
-                {
-                    robocopyMT = 1;
-                }
-                else if (robocopyMT > 128)
-                {
-                    robocopyMT = 128;
-                }
-            }
-
-            executionContext.Output(StringUtil.Loc("RMDownloadingArtifactUsingRobocopy", dropLocation, downloadFolderPath));
-            using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
-            {
-                // Save STDOUT from worker, worker will use STDOUT report unhandle exception.
-                processInvoker.OutputDataReceived += delegate (object sender, ProcessDataReceivedEventArgs stdout)
-                {
-                    if (!string.IsNullOrEmpty(stdout.Data))
-                    {
-                        lock (outputLock)
-                        {
-                            executionContext.Output(stdout.Data);
-                        }
-                    }
-                };
-
-                // Save STDERR from worker, worker will use STDERR on crash.
-                processInvoker.ErrorDataReceived += delegate (object sender, ProcessDataReceivedEventArgs stderr)
-                {
-                    if (!string.IsNullOrEmpty(stderr.Data))
-                    {
-                        lock (outputLock)
-                        {
-                            executionContext.Error(stderr.Data);
-                        }
-                    }
-                };
-
-                var trimChars = new[] { '\\', '/' };
-                var relativePath = artifactDefinition.Details.RelativePath;
-
-                dropLocation = Path.Combine(dropLocation.TrimEnd(trimChars), relativePath.Trim(trimChars));
-
-                String robocopyArguments = dropLocation + " " + downloadFolderPath + " /E /Z";
-                if (verbose != true)
-                {
-                    robocopyArguments = robocopyArguments + " /NDL /NFL /NP";
-                }
-
-                if (robocopyMT != null)
-                {
-                    robocopyArguments = robocopyArguments + " /MT:" + robocopyMT;
-                }
-
-                int exitCode = await processInvoker.ExecuteAsync(
-                        workingDirectory: "",
-                        fileName: "robocopy",
-                        arguments: robocopyArguments,
-                        environment: null,
-                        requireExitCodeZero: false,
-                        outputEncoding: null,
-                        killProcessOnCancel: true,
-                        cancellationToken: executionContext.CancellationToken);
-
-                executionContext.Output(StringUtil.Loc("RMRobocopyBasedArtifactDownloadExitCode", exitCode));
-
-                if (exitCode >= 8)
-                {
-                    throw new ArtifactDownloadException(StringUtil.Loc("RMRobocopyBasedArtifactDownloadFailed", exitCode));
-                }
             }
         }
     }
