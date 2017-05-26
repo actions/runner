@@ -18,7 +18,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
         public string CommandArea => "artifact";
 
-        public HostTypes SupportedHostTypes => HostTypes.Build;
+        public HostTypes SupportedHostTypes => HostTypes.Build | HostTypes.Release;
 
         public void ProcessCommand(IExecutionContext context, Command command)
         {
@@ -76,6 +76,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             if (string.IsNullOrEmpty(artifactType))
             {
                 throw new Exception(StringUtil.Loc("ArtifactTypeRequired"));
+            }
+
+            if (!IsUncSharePath(context, artifactLocation) && (context.Variables.System_HostType != HostTypes.Build))
+            {
+                throw new Exception(StringUtil.Loc("AssociateArtifactCommandNotSupported", context.Variables.System_HostType));
             }
 
             var propertyDictionary = ExtractArtifactProperties(eventProperties);
@@ -147,6 +152,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             if (string.IsNullOrEmpty(localPath))
             {
                 throw new Exception(StringUtil.Loc("ArtifactLocationRequired"));
+            }
+
+            if (!IsUncSharePath(context, localPath) && (context.Variables.System_HostType != HostTypes.Build))
+            {
+                throw new Exception(StringUtil.Loc("UploadArtifactCommandNotSupported", context.Variables.System_HostType));
             }
 
             string fullPath = Path.GetFullPath(localPath);
