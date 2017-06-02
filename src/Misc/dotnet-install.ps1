@@ -80,7 +80,7 @@ $VersionRegEx="/\d+\.\d+[^/]+/"
 $OverrideNonVersionedFiles=$true
 
 function Say($str) {
-    Write-Host "dotnet-install: $str"
+    Write-Output "dotnet-install: $str"
 }
 
 function Say-Verbose($str) {
@@ -91,6 +91,25 @@ function Say-Invocation($Invocation) {
     $command = $Invocation.MyCommand;
     $args = (($Invocation.BoundParameters.Keys | foreach { "-$_ `"$($Invocation.BoundParameters[$_])`"" }) -join " ")
     Say-Verbose "$command $args"
+}
+
+function Invoke-With-Retry([ScriptBlock]$ScriptBlock, [int]$MaxAttempts = 3, [int]$SecondsBetweenAttempts = 1) {
+    $Attempts = 0
+
+    while ($true) {
+        try {
+            return $ScriptBlock.Invoke()
+        }
+        catch {
+            $Attempts++
+            if ($Attempts -lt $MaxAttempts) {
+                Start-Sleep $SecondsBetweenAttempts
+            }
+            else {
+                throw
+            }
+        }
+    }
 }
 
 function Get-Machine-Architecture() {
@@ -135,52 +154,56 @@ function Load-Assembly([string] $Assembly) {
 
 function GetHTTPResponse([Uri] $Uri)
 {
-    $HttpClient = $null
+    Invoke-With-Retry(
+    {
 
-    try {
-        # HttpClient is used vs Invoke-WebRequest in order to support Nano Server which doesn't support the Invoke-WebRequest cmdlet.
-        Load-Assembly -Assembly System.Net.Http
- 
-        if(-not $ProxyAddress)
-        {
-            # Despite no proxy being explicitly specified, we may still be behind a default proxy
-            $DefaultProxy = [System.Net.WebRequest]::DefaultWebProxy;
-            if($DefaultProxy -and (-not $DefaultProxy.IsBypassed($Uri))){
-                $ProxyAddress =  $DefaultProxy.GetProxy($Uri).OriginalString
-                $ProxyUseDefaultCredentials = $true
-            }
-        }
+        $HttpClient = $null
 
-        if($ProxyAddress){
-            $HttpClientHandler = New-Object System.Net.Http.HttpClientHandler
-            $HttpClientHandler.Proxy =  New-Object System.Net.WebProxy -Property @{Address=$ProxyAddress;UseDefaultCredentials=$ProxyUseDefaultCredentials}
-            $HttpClient = New-Object System.Net.Http.HttpClient -ArgumentList $HttpClientHandler
-        } 
-        else {
-            $HttpClient = New-Object System.Net.Http.HttpClient
-        }
-        # Default timeout for HttpClient is 100s.  For a 50 MB download this assumes 500 KB/s average, any less will time out
-        # 10 minutes allows it to work over much slower connections.
-        $HttpClient.Timeout = New-TimeSpan -Minutes 10
-        $Response = $HttpClient.GetAsync($Uri).Result
-        if (($Response -eq $null) -or (-not ($Response.IsSuccessStatusCode)))
-        {
-            $ErrorMsg = "Failed to download $Uri."
-            if ($Response -ne $null)
+        try {
+            # HttpClient is used vs Invoke-WebRequest in order to support Nano Server which doesn't support the Invoke-WebRequest cmdlet.
+            Load-Assembly -Assembly System.Net.Http
+
+            if(-not $ProxyAddress)
             {
-                $ErrorMsg += "  $Response"
+                # Despite no proxy being explicitly specified, we may still be behind a default proxy
+                $DefaultProxy = [System.Net.WebRequest]::DefaultWebProxy;
+                if($DefaultProxy -and (-not $DefaultProxy.IsBypassed($Uri))){
+                    $ProxyAddress =  $DefaultProxy.GetProxy($Uri).OriginalString
+                    $ProxyUseDefaultCredentials = $true
+                }
             }
 
-            throw $ErrorMsg
-        }
+            if($ProxyAddress){
+                $HttpClientHandler = New-Object System.Net.Http.HttpClientHandler
+                $HttpClientHandler.Proxy =  New-Object System.Net.WebProxy -Property @{Address=$ProxyAddress;UseDefaultCredentials=$ProxyUseDefaultCredentials}
+                $HttpClient = New-Object System.Net.Http.HttpClient -ArgumentList $HttpClientHandler
+            } 
+            else {
+                $HttpClient = New-Object System.Net.Http.HttpClient
+            }
+            # Default timeout for HttpClient is 100s.  For a 50 MB download this assumes 500 KB/s average, any less will time out
+            # 10 minutes allows it to work over much slower connections.
+            $HttpClient.Timeout = New-TimeSpan -Minutes 10
+            $Response = $HttpClient.GetAsync($Uri).Result
+            if (($Response -eq $null) -or (-not ($Response.IsSuccessStatusCode)))
+            {
+                $ErrorMsg = "Failed to download $Uri."
+                if ($Response -ne $null)
+                {
+                    $ErrorMsg += "  $Response"
+                }
 
-        return $Response
-    }
-    finally {
-        if ($HttpClient -ne $null) {
-            $HttpClient.Dispose()
+                throw $ErrorMsg
+            }
+
+             return $Response
         }
-    }
+        finally {
+             if ($HttpClient -ne $null) {
+                $HttpClient.Dispose()
+            }
+        }
+    })  
 }
 
 
@@ -223,10 +246,23 @@ function Get-Specific-Version-From-Version([string]$AzureFeed, [string]$Channel,
     }
 }
 
-function Get-Download-Links([string]$AzureFeed, [string]$Channel, [string]$SpecificVersion, [string]$CLIArchitecture) {
+function Get-Download-Link([string]$AzureFeed, [string]$Channel, [string]$SpecificVersion, [string]$CLIArchitecture) {
     Say-Invocation $MyInvocation
     
-    $ret = @()
+    if ($SharedRuntime) {
+        $PayloadURL = "$AzureFeed/Runtime/$SpecificVersion/dotnet-runtime-$SpecificVersion-win-$CLIArchitecture.zip"
+    }
+    else {
+        $PayloadURL = "$AzureFeed/Sdk/$SpecificVersion/dotnet-dev-$SpecificVersion-win-$CLIArchitecture.zip"
+    }
+
+    Say-Verbose "Constructed primary payload URL: $PayloadURL"
+
+    return $PayloadURL
+}
+
+function Get-AltDownload-Link([string]$AzureFeed, [string]$Channel, [string]$SpecificVersion, [string]$CLIArchitecture) {
+    Say-Invocation $MyInvocation
     
     if ($SharedRuntime) {
         $PayloadURL = "$AzureFeed/Runtime/$SpecificVersion/dotnet-win-$CLIArchitecture.$SpecificVersion.zip"
@@ -235,10 +271,9 @@ function Get-Download-Links([string]$AzureFeed, [string]$Channel, [string]$Speci
         $PayloadURL = "$AzureFeed/Sdk/$SpecificVersion/dotnet-dev-win-$CLIArchitecture.$SpecificVersion.zip"
     }
 
-    Say-Verbose "Constructed payload URL: $PayloadURL"
-    $ret += $PayloadURL
+    Say-Verbose "Constructed alternate payload URL: $PayloadURL"
 
-    return $ret
+    return $PayloadURL
 }
 
 function Get-User-Share-Path() {
@@ -396,13 +431,13 @@ function Prepend-Sdk-InstallRoot-To-Path([string]$InstallRoot, [string]$BinFolde
 
 $CLIArchitecture = Get-CLIArchitecture-From-Architecture $Architecture
 $SpecificVersion = Get-Specific-Version-From-Version -AzureFeed $AzureFeed -Channel $Channel -Version $Version
-$DownloadLinks = Get-Download-Links -AzureFeed $AzureFeed -Channel $Channel -SpecificVersion $SpecificVersion -CLIArchitecture $CLIArchitecture
+$DownloadLink = Get-Download-Link -AzureFeed $AzureFeed -Channel $Channel -SpecificVersion $SpecificVersion -CLIArchitecture $CLIArchitecture
+$AltDownloadLink = Get-AltDownload-Link -AzureFeed $AzureFeed -Channel $Channel -SpecificVersion $SpecificVersion -CLIArchitecture $CLIArchitecture
 
 if ($DryRun) {
     Say "Payload URLs:"
-    foreach ($DownloadLink in $DownloadLinks) {
-        Say "- $DownloadLink"
-    }
+    Say "Primary - $DownloadLink"
+    Say "Alternate - $AltDownloadLink"
     Say "Repeatable invocation: .\$($MyInvocation.MyCommand) -Version $SpecificVersion -Channel $Channel -Architecture $CLIArchitecture -InstallDir $InstallDir"
     exit 0
 }
@@ -420,22 +455,30 @@ if ($IsSdkInstalled) {
 
 New-Item -ItemType Directory -Force -Path $InstallRoot | Out-Null
 
-$free = Get-CimInstance -Class win32_logicaldisk | where Deviceid -eq "$((Get-Item $InstallRoot).PSDrive.Name):"
-if ($free.Freespace / 1MB -le 250 ) {
-    Say "there is not enough disk space on drive c:"
+$installDrive = $((Get-Item $InstallRoot).PSDrive.Name);
+Write-Output "${installDrive}:";
+$free = Get-CimInstance -Class win32_logicaldisk | where Deviceid -eq "${installDrive}:"
+if ($free.Freespace / 1MB -le 100 ) {
+    Say "There is not enough disk space on drive ${installDrive}:"
     exit 0
 }
 
-foreach ($DownloadLink in $DownloadLinks) {
+$ZipPath = [System.IO.Path]::GetTempFileName()
+Say "Downloading $DownloadLink"
+try {
+    DownloadFile -Uri $DownloadLink -OutPath $ZipPath
+}
+catch {
+    $DownloadLink = $AltDownloadLink
     $ZipPath = [System.IO.Path]::GetTempFileName()
     Say "Downloading $DownloadLink"
     DownloadFile -Uri $DownloadLink -OutPath $ZipPath
-
-    Say "Extracting zip from $DownloadLink"
-    Extract-Dotnet-Package -ZipPath $ZipPath -OutPath $InstallRoot
-
-    Remove-Item $ZipPath
 }
+
+Say "Extracting zip from $DownloadLink"
+Extract-Dotnet-Package -ZipPath $ZipPath -OutPath $InstallRoot
+
+Remove-Item $ZipPath
 
 Prepend-Sdk-InstallRoot-To-Path -InstallRoot $InstallRoot -BinFolderRelativePath $BinFolderRelativePath
 

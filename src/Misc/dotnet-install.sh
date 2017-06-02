@@ -398,9 +398,9 @@ construct_download_link() {
 
     local download_link=null
     if [ "$shared_runtime" = true ]; then
-        download_link="$azure_feed/Runtime/$specific_version/dotnet-$osname-$normalized_architecture.$specific_version.tar.gz"
+        download_link="$azure_feed/Runtime/$specific_version/dotnet-runtime-$specific_version-$osname-$normalized_architecture.tar.gz"
     else
-        download_link="$azure_feed/Sdk/$specific_version/dotnet-dev-$osname-$normalized_architecture.$specific_version.tar.gz"
+        download_link="$azure_feed/Sdk/$specific_version/dotnet-dev-$specific_version-$osname-$normalized_architecture.tar.gz"
     fi
     
     echo "$download_link"
@@ -419,7 +419,7 @@ construct_alt_download_link() {
     local channel=$2
     local normalized_architecture=$3
     local specific_version=${4//[$'\t\r\n']}
-    
+
     local distro_specific_osname
     distro_specific_osname=$(get_distro_specific_os_name) || return 1
 
@@ -429,7 +429,7 @@ construct_alt_download_link() {
     else
         alt_download_link="$azure_feed/Sdk/$specific_version/dotnet-dev-$distro_specific_osname-$normalized_architecture.$specific_version.tar.gz"
     fi
-    
+
     echo "$alt_download_link"
     return 0
 }
@@ -615,10 +615,8 @@ calculate_vars() {
     download_link=$(construct_download_link $azure_feed $channel $normalized_architecture $specific_version)
     say_verbose "download_link=$download_link"
 
-    if [ "$(uname)" = "Linux" ]; then
-        alt_download_link=$(construct_alt_download_link $azure_feed $channel $normalized_architecture $specific_version)
-        say_verbose "alt_download_link=$alt_download_link"
-    fi
+    alt_download_link=$(construct_alt_download_link $azure_feed $channel $normalized_architecture $specific_version)
+    say_verbose "alt_download_link=$alt_download_link"
 
     install_root=$(resolve_installation_path $install_dir)
     say_verbose "install_root=$install_root"
@@ -640,8 +638,8 @@ install_dotnet() {
     say "Downloading link: $download_link"
     download "$download_link" $zip_path || download_failed=true
 
-    #  if the download fails, download the alt_download_link [Linux only]
-    if [ "$(uname)" = "Linux" ] && [ "$download_failed" = true ]; then
+    #  if the download fails, download the alt_download_link
+    if [ "$download_failed" = true ]; then
         say "Cannot download: $download_link"
         zip_path=$(mktemp $temporary_file_template)
         say_verbose "Alternate zip path: $zip_path"
@@ -768,9 +766,7 @@ check_min_reqs
 calculate_vars
 if [ "$dry_run" = true ]; then
     say "Payload URL: $download_link"
-    if [ "$(uname)" = "Linux" ]; then
-        say "Alternate payload URL: $alt_download_link"
-    fi
+    say "Alternate payload URL: $alt_download_link"
     say "Repeatable invocation: ./$(basename $0) --version $specific_version --channel $channel --install-dir $install_dir"
     exit 0
 fi

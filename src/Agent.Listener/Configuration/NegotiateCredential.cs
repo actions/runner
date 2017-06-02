@@ -61,7 +61,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                     break;
             }
 
-            VssCredentials creds = new VssClientCredentials(new WindowsCredential(credentialCache));
+            VssCredentials creds = new VssCredentials(new WindowsCredential(credentialCache), CredentialPromptType.DoNotPrompt);
             trace.Verbose("cred created");
             return creds;
         }
