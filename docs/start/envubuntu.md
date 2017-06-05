@@ -1,6 +1,6 @@
 
 
-# ![Ubuntu](../res/ubuntu_med.png) Ubuntu System Pre-requisites
+# ![Ubuntu](../res/ubuntu_med.png) Ubuntu System Prerequisites
 
 ## Versions
 

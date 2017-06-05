@@ -1,4 +1,4 @@
-# ![win](../res/win_med.png) Windows System Pre-requisites
+# ![win](../res/win_med.png) Windows System Prerequisites
 
 ## Windows 10 and Beyond (64-bit)
 

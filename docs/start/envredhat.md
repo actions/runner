@@ -1,6 +1,6 @@
 
 
-# ![redhat](../res/redhat_med.png) Redhat/CentOS System Pre-requisites
+# ![redhat](../res/redhat_med.png) Redhat/CentOS System Prerequisites
 
 ## Versions
 

@@ -1,6 +1,6 @@
 
 
-# ![osx](../res/apple_med.png) OSX System Pre-requisites
+# ![osx](../res/apple_med.png) OSX System Prerequisites
 
 ## OSX Version
 
