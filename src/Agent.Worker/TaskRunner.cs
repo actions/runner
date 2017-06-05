@@ -1,12 +1,12 @@
-using Microsoft.TeamFoundation.DistributedTask.WebApi;
-using Microsoft.VisualStudio.Services.Agent.Util;
-using Microsoft.VisualStudio.Services.Agent.Worker.Handlers;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressions;
+using Microsoft.TeamFoundation.DistributedTask.WebApi;
+using Microsoft.VisualStudio.Services.Agent.Util;
+using Microsoft.VisualStudio.Services.Agent.Worker.Handlers;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
@@ -140,9 +140,52 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             VarUtil.ExpandValues(HostContext, source: inputs, target: handlerData.Inputs);
             ExecutionContext.Variables.ExpandValues(target: handlerData.Inputs);
 
+            // Get each endpoint ID referenced by the task.
+            var endpointIds = new List<Guid>();
+            foreach (var input in definition.Data?.Inputs ?? new TaskInputDefinition[0])
+            {
+                if ((input.InputType ?? string.Empty).StartsWith("connectedService:", StringComparison.OrdinalIgnoreCase))
+                {
+                    string inputKey = input?.Name?.Trim() ?? string.Empty;
+                    string inputValue;
+                    if (!string.IsNullOrEmpty(inputKey) &&
+                        inputs.TryGetValue(inputKey, out inputValue) &&
+                        !string.IsNullOrEmpty(inputValue))
+                    {
+                        foreach (string rawId in inputValue.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries))
+                        {
+                            Guid parsedId;
+                            if (Guid.TryParse(rawId.Trim(), out parsedId) && parsedId != Guid.Empty)
+                            {
+                                endpointIds.Add(parsedId);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Get the endpoints referenced by the task.
+            var endpoints = (ExecutionContext.Endpoints ?? new List<ServiceEndpoint>(0))
+                .Join(inner: endpointIds,
+                    outerKeySelector: (ServiceEndpoint endpoint) => endpoint.Id,
+                    innerKeySelector: (Guid endpointId) => endpointId,
+                    resultSelector: (ServiceEndpoint endpoint, Guid endpointId) => endpoint)
+                .ToList();
+
+            // Add the system endpoint.
+            foreach (ServiceEndpoint endpoint in (ExecutionContext.Endpoints ?? new List<ServiceEndpoint>(0)))
+            {
+                if (string.Equals(endpoint.Name, ServiceEndpoints.SystemVssConnection, StringComparison.OrdinalIgnoreCase))
+                {
+                    endpoints.Add(endpoint);
+                    break;
+                }
+            }
+
             // Create the handler.
             IHandler handler = handlerFactory.Create(
                 ExecutionContext,
+                endpoints,
                 handlerData,
                 inputs,
                 taskDirectory: definition.Directory,

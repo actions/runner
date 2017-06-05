@@ -52,6 +52,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             var handlerFactory = HostContext.GetService<IHandlerFactory>();
             var handler = (PowerShellExeHandler)handlerFactory.Create(
                 ExecutionContext,
+                ExecutionContext.Endpoints,
                 handlerData,
                 new Dictionary<string, string>(),
                 taskDirectory: scriptDirectory,

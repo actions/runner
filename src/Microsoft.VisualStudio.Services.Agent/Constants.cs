@@ -208,6 +208,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                 //
                 // Keep alphabetical
                 //
+                public static readonly string AllowAllEndpoints = "agent.allowAllEndpoints"; // remove after sprint 120 or so.
                 public static readonly string BuildDirectory = "agent.builddirectory";
                 public static readonly string HomeDirectory = "agent.homedirectory";
                 public static readonly string Id = "agent.id";

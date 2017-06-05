@@ -1,6 +1,7 @@
-using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
 using System.Collections.Generic;
+using Microsoft.TeamFoundation.DistributedTask.WebApi;
+using Microsoft.VisualStudio.Services.Agent.Util;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
 {
@@ -9,6 +10,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
     {
         IHandler Create(
             IExecutionContext executionContext,
+            List<ServiceEndpoint> endpoints,
             HandlerData data,
             Dictionary<string, string> inputs,
             string taskDirectory,
@@ -19,6 +21,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
     {
         public IHandler Create(
             IExecutionContext executionContext,
+            List<ServiceEndpoint> endpoints,
             HandlerData data,
             Dictionary<string, string> inputs,
             string taskDirectory,
@@ -27,6 +30,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             // Validate args.
             Trace.Entering();
             ArgUtil.NotNull(executionContext, nameof(executionContext));
+            ArgUtil.NotNull(endpoints, nameof(endpoints));
             ArgUtil.NotNull(data, nameof(data));
             ArgUtil.NotNull(inputs, nameof(inputs));
             ArgUtil.NotNull(taskDirectory, nameof(taskDirectory));
@@ -75,6 +79,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
                 throw new NotSupportedException();
             }
 
+            handler.Endpoints = endpoints;
             handler.ExecutionContext = executionContext;
             handler.FilePathInputRootDirectory = filePathInputRootDirectory;
             handler.Inputs = inputs;

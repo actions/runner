@@ -11,6 +11,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
 {
     public interface IHandler : IAgentService
     {
+        List<ServiceEndpoint> Endpoints { get; set; }
         IExecutionContext ExecutionContext { get; set; }
         string FilePathInputRootDirectory { get; set; }
         Dictionary<string, string> Inputs { get; set; }
@@ -24,6 +25,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
         protected IWorkerCommandManager CommandManager { get; private set; }
         protected Dictionary<string, string> Environment { get; private set; }
 
+        public List<ServiceEndpoint> Endpoints { get; set; }
         public IExecutionContext ExecutionContext { get; set; }
         public string FilePathInputRootDirectory { get; set; }
         public Dictionary<string, string> Inputs { get; set; }
@@ -39,11 +41,23 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
         protected void AddEndpointsToEnvironment()
         {
             Trace.Entering();
+            ArgUtil.NotNull(Endpoints, nameof(Endpoints));
             ArgUtil.NotNull(ExecutionContext, nameof(ExecutionContext));
             ArgUtil.NotNull(ExecutionContext.Endpoints, nameof(ExecutionContext.Endpoints));
 
+            List<ServiceEndpoint> endpoints;
+            if ((ExecutionContext.Variables.GetBoolean(Constants.Variables.Agent.AllowAllEndpoints) ?? false) ||
+                string.Equals(System.Environment.GetEnvironmentVariable("AGENT_ALLOWALLENDPOINTS") ?? string.Empty, bool.TrueString, StringComparison.OrdinalIgnoreCase))
+            {
+                endpoints = ExecutionContext.Endpoints; // todo: remove after sprint 120 or so
+            }
+            else
+            {
+                endpoints = Endpoints;
+            }
+
             // Add the endpoints to the environment variable dictionary.
-            foreach (ServiceEndpoint endpoint in ExecutionContext.Endpoints)
+            foreach (ServiceEndpoint endpoint in endpoints)
             {
                 ArgUtil.NotNull(endpoint, nameof(endpoint));
 
