@@ -23,5 +23,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts.Definit
         public int BuildId { get; set; }
 
         public bool AcceptUntrustedCertificates { get; set; }
+
+        public string StartCommitArtifactVersion { get; set; }
+
+        public string EndCommitArtifactVersion  { get; set; }
+
+        public string Alias { get; set; }
     }
 }
