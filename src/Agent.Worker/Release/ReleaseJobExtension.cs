@@ -25,6 +25,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
 
         private int ReleaseId { get; set; }
         private Guid TeamProjectId { get; set; }
+        private string ReleaseWorkingFolder { get; set; }
         private string ArtifactsWorkingFolder { get; set; }
         private bool SkipArtifactsDownload { get; set; }
 
@@ -106,17 +107,28 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
         {
             Trace.Entering();
 
-            if (SkipArtifactsDownload)
-            {
-                return;
-            }
-
             try
             {
-                // TODO: Create this as new task. Old windows agent does this. First is initialize which does the above and download task will be added based on skipDownloadArtifact option
-                executionContext.Output("Downloading artifact");
+                ServiceEndpoint vssEndpoint = executionContext.Endpoints.FirstOrDefault(e => string.Equals(e.Name, ServiceEndpoints.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
+                ArgUtil.NotNull(vssEndpoint, nameof(vssEndpoint));
+                ArgUtil.NotNull(vssEndpoint.Url, nameof(vssEndpoint.Url));
 
-                await DownloadArtifacts(executionContext, TeamProjectId, ArtifactsWorkingFolder, ReleaseId);
+                Trace.Info($"Connecting to {vssEndpoint.Url}/{TeamProjectId}");
+                var releaseServer = new ReleaseServer(vssEndpoint.Url, ApiUtil.GetVssCredential(vssEndpoint), TeamProjectId);
+
+                IList<AgentArtifactDefinition> releaseArtifacts = releaseServer.GetReleaseArtifactsFromService(ReleaseId).ToList();
+                IList<AgentArtifactDefinition> filteredReleaseArtifacts = FilterArtifactDefintions(releaseArtifacts);
+                filteredReleaseArtifacts.ToList().ForEach(x => Trace.Info($"Found Artifact = {x.Alias} of type {x.ArtifactType}"));
+
+                if (!SkipArtifactsDownload)
+                {
+                    // TODO: Create this as new task. Old windows agent does this. First is initialize which does the above and download task will be added based on skipDownloadArtifact option
+                    executionContext.Output(StringUtil.Loc("RMDownloadingArtifact"));
+                    await DownloadArtifacts(executionContext, filteredReleaseArtifacts, ArtifactsWorkingFolder);
+                }
+
+                executionContext.Output(StringUtil.Loc("RMDownloadingCommits"));
+                await DownloadCommits(executionContext, TeamProjectId, releaseArtifacts);
             }
             catch (Exception ex)
             {
@@ -125,34 +137,48 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
             }
         }
 
-        private async Task DownloadArtifacts(
+        private async Task DownloadCommits(
             IExecutionContext executionContext,
             Guid teamProjectId,
-            string artifactsWorkingFolder,
-            int releaseId)
+            IList<AgentArtifactDefinition> agentArtifactDefinitions)
         {
             Trace.Entering();
 
-            ServiceEndpoint vssEndpoint = executionContext.Endpoints.FirstOrDefault(e => string.Equals(e.Name, ServiceEndpoints.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
-            ArgUtil.NotNull(vssEndpoint, nameof(vssEndpoint));
-            ArgUtil.NotNull(vssEndpoint.Url, nameof(vssEndpoint.Url));
+            Trace.Info("Creating commit work folder");
+            string commitsWorkFolder = GetCommitsWorkFolder(executionContext);
 
-            Trace.Info($"Connecting to {vssEndpoint.Url}/{teamProjectId}");
-            var releaseServer = new ReleaseServer(vssEndpoint.Url, ApiUtil.GetVssCredential(vssEndpoint), teamProjectId);
+            // Note: We are having an explicit type here. For other artifact types we are planning to go with tasks
+            // Only for jenkins we are making the agent to download
+            var extensionManager = HostContext.GetService<IExtensionManager>();
+            JenkinsArtifact jenkinsExtension = (extensionManager.GetExtensions<IArtifactExtension>()).FirstOrDefault(x => x.ArtifactType == AgentArtifactType.Jenkins) as JenkinsArtifact;
 
-            // TODO: send correct cancellation token
-            List<AgentArtifactDefinition> releaseArtifacts = releaseServer.GetReleaseArtifactsFromService(releaseId).ToList();
-            var filteredReleaseArtifacts = FilterArtifactDefintions(releaseArtifacts);
-            filteredReleaseArtifacts.ToList().ForEach(x => Trace.Info($"Found Artifact = {x.Alias} of type {x.ArtifactType}"));
+            foreach (AgentArtifactDefinition agentArtifactDefinition in agentArtifactDefinitions)
+            {
+                if (agentArtifactDefinition.ArtifactType == AgentArtifactType.Jenkins)
+                {
+                    Trace.Info($"Found supported artifact {agentArtifactDefinition.Alias} for downloading commits");
+                    ArtifactDefinition artifactDefinition = ConvertToArtifactDefinition(agentArtifactDefinition, executionContext, jenkinsExtension);
+                    await jenkinsExtension.DownloadCommitsAsync(executionContext, artifactDefinition, commitsWorkFolder);
+                }
+            }
+        }
 
-            CleanUpArtifactsFolder(executionContext, artifactsWorkingFolder);
-            await DownloadArtifacts(executionContext, filteredReleaseArtifacts, artifactsWorkingFolder);
+        private string GetCommitsWorkFolder(IExecutionContext context) 
+        {
+            string commitsRootDirectory = Path.Combine(ReleaseWorkingFolder, Constants.Release.Path.ReleaseTempDirectoryPrefix, Constants.Release.Path.CommitsDirectory);
+
+            Trace.Info($"Ensuring commit work folder {commitsRootDirectory} exists");
+            var releaseFileSystemManager = HostContext.GetService<IReleaseFileSystemManager>();
+            releaseFileSystemManager.EnsureDirectoryExists(commitsRootDirectory);
+
+            return commitsRootDirectory;
         }
 
         private async Task DownloadArtifacts(IExecutionContext executionContext, IList<AgentArtifactDefinition> agentArtifactDefinitions, string artifactsWorkingFolder)
         {
             Trace.Entering();
 
+            CleanUpArtifactsFolder(executionContext, artifactsWorkingFolder);
             foreach (AgentArtifactDefinition agentArtifactDefinition in agentArtifactDefinitions)
             {
                 // We don't need to check if its old style artifact anymore. All the build data has been fixed and all the build artifact has Alias now.
@@ -283,6 +309,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
                 executionContext.Variables.System_TeamProjectId.ToString(),
                 releaseDefinition);
 
+            ReleaseWorkingFolder = releaseDefinitionToFolderMap.ReleaseDirectory;
             ArtifactsWorkingFolder = Path.Combine(
                 IOUtil.GetWorkPath(HostContext),
                 releaseDefinitionToFolderMap.ReleaseDirectory,

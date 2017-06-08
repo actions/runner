@@ -43,6 +43,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
 
                 foreach (CustomArtifactDownloadDetails artifactDownloadDetails in artifactDownloadDetailList)
                 {
+                    executionContext.Output(StringUtil.Loc("StartingArtifactDownload", artifactDownloadDetails.DownloadUrl));
                     await DownloadArtifact(executionContext, HostContext, downloadFolderPath, customArtifactDetails, artifactDownloadDetails);
                 }
             }
