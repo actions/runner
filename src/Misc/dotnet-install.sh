@@ -400,7 +400,7 @@ construct_download_link() {
     if [ "$shared_runtime" = true ]; then
         download_link="$azure_feed/Runtime/$specific_version/dotnet-runtime-$specific_version-$osname-$normalized_architecture.tar.gz"
     else
-        download_link="$azure_feed/Sdk/$specific_version/dotnet-dev-$specific_version-$osname-$normalized_architecture.tar.gz"
+        download_link="$azure_feed/Sdk/$specific_version/dotnet-sdk-$specific_version-$osname-$normalized_architecture.tar.gz"
     fi
     
     echo "$download_link"
