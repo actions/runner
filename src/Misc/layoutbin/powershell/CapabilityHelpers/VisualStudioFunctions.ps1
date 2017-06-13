@@ -27,7 +27,7 @@ function Get-VisualStudio_15_0 {
             if (!$instance) {
                 Write-Host "Getting latest BuildTools 15 setup instance."
                 $output = New-Object System.Text.StringBuilder
-                Write-Host "& $PSScriptRoot\..\..\..\externals\vswhere\vswhere.exe -version [15.0,16.0) -products Microsoft.VisualStudio.Product.BuildTools -latest -format json"
+                Write-Host "& $PSScriptRoot\..\..\..\externals\vswhere\vswhere.exe -version '[15.0,16.0)' -products Microsoft.VisualStudio.Product.BuildTools -latest -format json"
                 & $PSScriptRoot\..\..\..\externals\vswhere\vswhere.exe -version '[15.0,16.0)' -products Microsoft.VisualStudio.Product.BuildTools -latest -format json 2>&1 |
                     ForEach-Object {
                         if ($_ -is [System.Management.Automation.ErrorRecord]) {
