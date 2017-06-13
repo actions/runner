@@ -159,7 +159,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             };
 
             Guid JobId = Guid.NewGuid();
-            _message = new AgentJobRequestMessage(plan, timeline, JobId, testName, environment, tasks);
+            _message = new AgentJobRequestMessage(plan, timeline, JobId, testName, testName, environment, tasks);
 
             _initResult.PreJobSteps.Clear();
             _initResult.JobSteps.Clear();

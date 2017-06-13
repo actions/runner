@@ -34,7 +34,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             environment.Variables[Constants.Variables.System.Culture] = "en-US";
             List<TaskInstance> tasks = new List<TaskInstance>();
             Guid JobId = Guid.NewGuid();
-            var jobRequest = new AgentJobRequestMessage(plan, timeline, JobId, jobName, environment, tasks);
+            var jobRequest = new AgentJobRequestMessage(plan, timeline, JobId, jobName, jobName, environment, tasks);
             return jobRequest;
         }
 
