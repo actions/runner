@@ -464,6 +464,8 @@
     "A copy of the Team Explorer Everywhere license agreement can be found at:",
     "  {0}"
   ],
+  "Telemetry": "Telemetry",
+  "TelemetryCommandNotFound": "##vso[telemetry.{0}] is not a recognized command for Task command extension.",
   "TestAgentConnection": "Testing agent connection.",
   "TestResultsRemaining": "Test results remaining: {0}. Test run id: {1}",
   "Tfs2015NotSupported": "This agent is not supported on Windows against TFS 2015. The TFS 2015 Windows agent can be downloaded from the agent pools administration page.",
