@@ -108,6 +108,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         public string Agent_TempDirectory => Get(Constants.Variables.Agent.TempDirectory);
 
+        public string Agent_ToolsDirectory => Get(Constants.Variables.Agent.ToolsDirectory);
+
         public bool? Agent_UseNode5 => GetBoolean(Constants.Variables.Agent.UseNode5);
 
         public string Agent_WorkFolder => Get(Constants.Variables.Agent.WorkFolder);

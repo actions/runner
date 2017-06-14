@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressions;
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Util;
+using Microsoft.VisualStudio.Services.Agent.Worker.Container;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
@@ -174,6 +175,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                         taskStep.ExecutionContext = jobContext.CreateChild(Guid.NewGuid(), StringUtil.Loc("PreJob", taskStep.DisplayName), taskVariablesMapping[taskStep.TaskInstance.InstanceId]);
                     }
 
+#if !OS_WINDOWS
+                    var containerProvider = HostContext.GetService<IContainerOperationProvider>();
+                    if (!string.IsNullOrEmpty(jobContext.Container.ContainerImage))
+                    {
+                        initResult.PreJobSteps.Insert(0, containerProvider.GetContainerStartStep(jobContext));
+                    }
+#endif
                     // Add pre-job step from Extension
                     Trace.Info("Adding pre-job step from extension.");
                     var extensionPreJobStep = GetExtensionPreJobStep(jobContext);
@@ -212,6 +220,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     {
                         initResult.PostJobStep.Add(extensionPostJobStep);
                     }
+
+#if !OS_WINDOWS
+                    if (!string.IsNullOrEmpty(jobContext.Container.ContainerImage))
+                    {
+                        initResult.PostJobStep.Add(containerProvider.GetContainerStopStep(jobContext));
+                    }
+#endif
 
 #if OS_WINDOWS
                     // Add script post steps.

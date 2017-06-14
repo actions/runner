@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using System;
 using Newtonsoft.Json.Linq;
 using System.Text.RegularExpressions;
+using Microsoft.VisualStudio.Services.Agent.Worker.Container;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
 {
@@ -111,13 +112,25 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             {
                 processInvoker.OutputDataReceived += OnDataReceived;
                 processInvoker.ErrorDataReceived += OnDataReceived;
-                string node = Path.Combine(
-                    IOUtil.GetExternalsPath(),
-                    useNode5 ? "node-5.10.1" : "node",
-                    "bin",
-                    $"node{IOUtil.ExeExtension}");
 
-                string arguments = StringUtil.Format(@"""{0}""", target.Replace(@"""", @"\"""));
+                string file;
+                string arguments;
+                file = Path.Combine(IOUtil.GetExternalsPath(),
+                                        useNode5 ? "node-5.10.1" : "node",
+                                        "bin",
+                                        $"node{IOUtil.ExeExtension}");
+                // Format the arguments passed to node.
+                // 1) Wrap the script file path in double quotes.
+                // 2) Escape double quotes within the script file path. Double-quote is a valid
+                // file name character on Linux.
+                arguments = StringUtil.Format(@"""{0}""", target.Replace(@"""", @"\"""));
+
+                if (!string.IsNullOrEmpty(ExecutionContext.Container.ContainerId))
+                {
+                    var containerProvider = HostContext.GetService<IContainerOperationProvider>();
+                    containerProvider.GetHandlerContainerExecutionCommandline(ExecutionContext, file, arguments, workingDirectory, Environment, out file, out arguments);
+                    Environment.Clear();
+                }
 
 #if OS_WINDOWS
                 // It appears that node.exe outputs UTF8 when not in TTY mode.
@@ -132,8 +145,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
                 // Task failure should be communicated over STDOUT using ## commands.
                 await processInvoker.ExecuteAsync(
                     workingDirectory: workingDirectory,
-                    fileName: node,
-                    arguments: string.Join(" ", arguments),
+                    fileName: file,
+                    arguments: arguments,
                     environment: Environment,
                     requireExitCodeZero: true,
                     outputEncoding: outputEncoding,
