@@ -176,9 +176,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     }
 
 #if !OS_WINDOWS
-                    var containerProvider = HostContext.GetService<IContainerOperationProvider>();
                     if (!string.IsNullOrEmpty(jobContext.Container.ContainerImage))
                     {
+                        var containerProvider = HostContext.GetService<IContainerOperationProvider>();
                         initResult.PreJobSteps.Insert(0, containerProvider.GetContainerStartStep(jobContext));
                     }
 #endif
@@ -224,6 +224,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 #if !OS_WINDOWS
                     if (!string.IsNullOrEmpty(jobContext.Container.ContainerImage))
                     {
+                        var containerProvider = HostContext.GetService<IContainerOperationProvider>();
                         initResult.PostJobStep.Add(containerProvider.GetContainerStopStep(jobContext));
                     }
 #endif
