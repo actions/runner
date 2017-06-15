@@ -182,6 +182,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 }
             }
 
+            // TODO: Add secure file only referenced by the task.
+
+            // Set output variables.
+            foreach (var outputVar in definition.Data?.OutputVariables ?? new OutputVariable[0])
+            {
+                if (outputVar != null && !string.IsNullOrEmpty(outputVar.Name))
+                {
+                    ExecutionContext.OutputVariables.Add(outputVar.Name);
+                }
+            }
+
             // Create the handler.
             IHandler handler = handlerFactory.Create(
                 ExecutionContext,

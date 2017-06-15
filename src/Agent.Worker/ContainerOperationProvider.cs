@@ -31,7 +31,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         public IStep GetContainerStartStep(IExecutionContext jobContext)
         {
-            return new JobExtensionRunner(context: jobContext.CreateChild(Guid.NewGuid(), StringUtil.Loc("InitializeContainer")),
+            return new JobExtensionRunner(context: jobContext.CreateChild(Guid.NewGuid(), StringUtil.Loc("InitializeContainer"), nameof(LinuxContainerOperationProvider)),
                                           runAsync: StartContainerAsync,
                                           condition: ExpressionManager.Succeeded,
                                           displayName: StringUtil.Loc("InitializeContainer"));
@@ -39,7 +39,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         public IStep GetContainerStopStep(IExecutionContext jobContext)
         {
-            return new JobExtensionRunner(context: jobContext.CreateChild(Guid.NewGuid(), StringUtil.Loc("StopContainer")),
+            return new JobExtensionRunner(context: jobContext.CreateChild(Guid.NewGuid(), StringUtil.Loc("StopContainer"), nameof(LinuxContainerOperationProvider)),
                                           runAsync: StopContainerAsync,
                                           condition: ExpressionManager.Always,
                                           displayName: StringUtil.Loc("StopContainer"));

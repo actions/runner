@@ -20,7 +20,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         public override IStep GetExtensionPreJobStep(IExecutionContext jobContext)
         {
             return new JobExtensionRunner(
-                context: jobContext.CreateChild(Guid.NewGuid(), StringUtil.Loc("GetSources")),
+                context: jobContext.CreateChild(Guid.NewGuid(), StringUtil.Loc("GetSources"), nameof(BuildJobExtension)),
                 runAsync: GetSourceAsync,
                 condition: ExpressionManager.Succeeded,
                 displayName: StringUtil.Loc("GetSources"));
@@ -29,7 +29,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         public override IStep GetExtensionPostJobStep(IExecutionContext jobContext)
         {
             return new JobExtensionRunner(
-                context: jobContext.CreateChild(Guid.NewGuid(), StringUtil.Loc("Cleanup")),
+                context: jobContext.CreateChild(Guid.NewGuid(), StringUtil.Loc("Cleanup"), nameof(BuildJobExtension)),
                 runAsync: PostJobCleanupAsync,
                 condition: ExpressionManager.Always,
                 displayName: StringUtil.Loc("Cleanup"));

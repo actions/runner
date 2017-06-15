@@ -83,7 +83,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                 const int MaxDepth = 50;
                 var copy = new Dictionary<string, string>();
                 copy[$"variable{MaxDepth + 1}"] = "Final value"; // Variable 51.
-                for (int i = 1 ; i <= MaxDepth ; i++)
+                for (int i = 1; i <= MaxDepth; i++)
                 {
                     copy[$"variable{i}"] = $"$(variable{i + 1})"; // Variables 1-50.
                 }
@@ -560,7 +560,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                 bool? actual = variables.GetBoolean("no such");
 
                 // Assert.
-                Assert.Null(actual); 
+                Assert.Null(actual);
             }
         }
 
@@ -579,7 +579,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                 System.IO.FileShare? actual = variables.GetEnum<System.IO.FileShare>("no such");
 
                 // Assert.
-                Assert.Null(actual); 
+                Assert.Null(actual);
             }
         }
 
@@ -763,68 +763,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
 
                 // Assert.
                 Assert.Equal("bar", variables.Get("foo"));
-            }
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Worker")]
-        public void Set_DoesNotStoreAsOutputValueByDefault()
-        {
-            using (TestHostContext hc = new TestHostContext(this))
-            {
-                // Arrange.
-                List<string> warnings;
-                var variables = new Variables(hc, new Dictionary<string, string>(), new List<MaskHint>(), out warnings);
-
-                // Act.
-                variables.Set("foo", "bar");
-
-                // Assert.
-                Assert.Equal(0, variables.GetOutputVariables().Count());
-            }
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Worker")]
-        public void SetOutputVariable_StoresOutputValue()
-        {
-            using (TestHostContext hc = new TestHostContext(this))
-            {
-                // Arrange.
-                List<string> warnings;
-                var variables = new Variables(hc, new Dictionary<string, string>(), new List<MaskHint>(), out warnings);
-
-                // Act.
-                variables.Set("foo", "bar", output: true);
-
-                // Assert.
-                Assert.Equal("bar", variables.Get("foo"));
-                Assert.Equal(1, variables.GetOutputVariables().Count());
-            }
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Worker")]
-        public void GetOutputVariables_ReturnOutputVariablesOnly()
-        {
-            using (TestHostContext hc = new TestHostContext(this))
-            {
-                // Arrange.
-                List<string> warnings;
-                var variables = new Variables(hc, new Dictionary<string, string>(), new List<MaskHint>(), out warnings);
-
-                // Act.
-                variables.Set("foo", "bar");
-                variables.Set("var1", "op1", output: true);
-                variables.Set("var2", "op2", secret:true, output: true);
-
-                // Assert.
-                Assert.Equal(2, variables.GetOutputVariables().Count());
-                Assert.Equal(true, variables.GetOutputVariables().First(v => v.Secret).Name.Equals("var2"));
-                Assert.Equal(false, variables.GetOutputVariables().Any(v => v.Name.Equals("foo")));
             }
         }
     }

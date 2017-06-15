@@ -35,7 +35,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
         public override IStep GetExtensionPreJobStep(IExecutionContext jobContext)
         {
             return new JobExtensionRunner(
-                context: jobContext.CreateChild(Guid.NewGuid(), StringUtil.Loc("DownloadArtifacts")),
+                context: jobContext.CreateChild(Guid.NewGuid(), StringUtil.Loc("DownloadArtifacts"), nameof(ReleaseJobExtension)),
                 runAsync: GetArtifactsAsync,
                 condition: ExpressionManager.Succeeded,
                 displayName: StringUtil.Loc("DownloadArtifacts"));
