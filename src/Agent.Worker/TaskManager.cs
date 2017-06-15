@@ -174,11 +174,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         public string Description { get; set; }
         public string HelpMarkDown { get; set; }
         public string Author { get; set; }
-
+        public OutputVariable[] OutputVariables { get; set; }
         public TaskInputDefinition[] Inputs { get; set; }
         public ExecutionData PreJobExecution { get; set; }
         public ExecutionData Execution { get; set; }
         public ExecutionData PostJobExecution { get; set; }
+    }
+
+    public sealed class OutputVariable
+    {
+        public string Name { get; set; }
+        public string Description { get; set; }
     }
 
     public sealed class ExecutionData

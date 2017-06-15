@@ -187,7 +187,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             // Add the public variable names.
             if (!excludeNames)
             {
-                AddEnvironmentVariable("VSTS_PUBLIC_VARIABLES", StringUtil.ConvertToJson(names));
+                AddEnvironmentVariable("VSTS_PUBLIC_VARIABLES", JsonUtility.ToString(names));
             }
 
             if (!excludeSecrets)
@@ -207,7 +207,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
                 // Add the secret variable names.
                 if (!excludeNames)
                 {
-                    AddEnvironmentVariable("VSTS_SECRET_VARIABLES", StringUtil.ConvertToJson(secretNames));
+                    AddEnvironmentVariable("VSTS_SECRET_VARIABLES", JsonUtility.ToString(secretNames));
                 }
             }
         }

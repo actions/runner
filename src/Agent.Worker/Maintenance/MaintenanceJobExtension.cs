@@ -17,7 +17,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Maintenance
         public override IStep GetExtensionPreJobStep(IExecutionContext jobContext)
         {
             return new JobExtensionRunner(
-                context: jobContext.CreateChild(Guid.NewGuid(), StringUtil.Loc("Maintenance")),
+                context: jobContext.CreateChild(Guid.NewGuid(), StringUtil.Loc("Maintenance"), nameof(MaintenanceJobExtension)),
                 runAsync: MaintainAsync,
                 condition: ExpressionManager.Succeeded,
                 displayName: StringUtil.Loc("Maintenance"));

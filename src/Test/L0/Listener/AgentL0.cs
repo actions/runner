@@ -40,7 +40,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
             JobEnvironment environment = new JobEnvironment();
             List<TaskInstance> tasks = new List<TaskInstance>();
             Guid JobId = Guid.NewGuid();
-            var jobRequest = new AgentJobRequestMessage(plan, timeline, JobId, jobName, environment, tasks);
+            var jobRequest = new AgentJobRequestMessage(plan, timeline, JobId, jobName, jobName, environment, tasks);
             return jobRequest as AgentJobRequestMessage;
         }
 

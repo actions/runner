@@ -57,6 +57,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
         private Mock<IConfigurationStore> _config;
         private Mock<IPagingLogger> _logger;
         private Mock<IExpressionManager> _express;
+        private Mock<IContainerOperationProvider> _containerProvider;
         private CancellationTokenSource _tokenSource;
         private TestHostContext CreateTestContext([CallerMemberName] String testName = "")
         {
@@ -69,6 +70,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             _logger = new Mock<IPagingLogger>();
             _proxy = new Mock<IVstsAgentWebProxy>();
             _express = new Mock<IExpressionManager>();
+            _containerProvider = new Mock<IContainerOperationProvider>();
 
             TaskRunner step1 = new TaskRunner();
             TaskRunner step2 = new TaskRunner();
@@ -159,7 +161,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             };
 
             Guid JobId = Guid.NewGuid();
-            _message = new AgentJobRequestMessage(plan, timeline, JobId, testName, environment, tasks);
+            _message = new AgentJobRequestMessage(plan, timeline, JobId, testName, testName, environment, tasks);
 
             _initResult.PreJobSteps.Clear();
             _initResult.JobSteps.Clear();
@@ -245,6 +247,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             hc.SetSingleton(_jobServerQueue.Object);
             hc.SetSingleton(_proxy.Object);
             hc.SetSingleton(_express.Object);
+            hc.SetSingleton(_containerProvider.Object);
             hc.EnqueueInstance<IPagingLogger>(_logger.Object); // jobcontext logger
             hc.EnqueueInstance<IPagingLogger>(_logger.Object); // init step logger
             hc.EnqueueInstance<IPagingLogger>(_logger.Object); // step 1

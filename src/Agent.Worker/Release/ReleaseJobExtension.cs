@@ -35,7 +35,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
         public override IStep GetExtensionPreJobStep(IExecutionContext jobContext)
         {
             return new JobExtensionRunner(
-                context: jobContext.CreateChild(Guid.NewGuid(), StringUtil.Loc("DownloadArtifacts")),
+                context: jobContext.CreateChild(Guid.NewGuid(), StringUtil.Loc("DownloadArtifacts"), nameof(ReleaseJobExtension)),
                 runAsync: GetArtifactsAsync,
                 condition: ExpressionManager.Succeeded,
                 displayName: StringUtil.Loc("DownloadArtifacts"));
@@ -163,7 +163,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
             }
         }
 
-        private string GetCommitsWorkFolder(IExecutionContext context) 
+        private string GetCommitsWorkFolder(IExecutionContext context)
         {
             string commitsRootDirectory = Path.Combine(ReleaseWorkingFolder, Constants.Release.Path.ReleaseTempDirectoryPrefix, Constants.Release.Path.CommitsDirectory);
 
@@ -315,6 +315,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
                 releaseDefinitionToFolderMap.ReleaseDirectory,
                 Constants.Release.Path.ArtifactsDirectory);
             executionContext.Output($"Release folder: {ArtifactsWorkingFolder}");
+
+            // Ensure directory exist
+            if (!Directory.Exists(ArtifactsWorkingFolder))
+            {
+                Trace.Info($"Creating {ArtifactsWorkingFolder}.");
+                Directory.CreateDirectory(ArtifactsWorkingFolder);
+            }
 
             SetLocalVariables(executionContext, ArtifactsWorkingFolder);
 

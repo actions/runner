@@ -106,6 +106,8 @@ namespace Microsoft.VisualStudio.Services.Agent
             _queueInProcess = true;
         }
 
+        // WebConsoleLine queue and FileUpload queue are always best effort
+        // TimelineUpdate queue error will become critical when timeline records contain output variabls.
         public async Task ShutdownAsync()
         {
             if (!_queueInProcess)
@@ -120,52 +122,24 @@ namespace Microsoft.VisualStudio.Services.Agent
             _queueInProcess = false;
             Trace.Info("All queue process task stopped.");
 
-            //Drain the queue
-            List<Exception> queueShutdownExceptions = new List<Exception>();
-            try
-            {
-                Trace.Verbose("Draining web console line queue.");
-                await ProcessWebConsoleLinesQueueAsync(runOnce: true);
-                Trace.Info("Web console line queue drained.");
-            }
-            catch (Exception ex)
-            {
-                Trace.Error("Drain web console line queue fail with: {0}", ex.Message);
-                queueShutdownExceptions.Add(ex);
-            }
+            // Drain the queue
+            // ProcessWebConsoleLinesQueueAsync() will never throw exception, live console update is always best effort.
+            Trace.Verbose("Draining web console line queue.");
+            await ProcessWebConsoleLinesQueueAsync(runOnce: true);
+            Trace.Info("Web console line queue drained.");
 
-            try
-            {
-                Trace.Verbose("Draining file upload queue.");
-                await ProcessFilesUploadQueueAsync(runOnce: true);
-                Trace.Info("File upload queue drained.");
-            }
-            catch (Exception ex)
-            {
-                Trace.Error("Drain file upload queue fail with: {0}", ex.Message);
-                queueShutdownExceptions.Add(ex);
-            }
+            // ProcessFilesUploadQueueAsync() will never throw exception, log file upload is always best effort.
+            Trace.Verbose("Draining file upload queue.");
+            await ProcessFilesUploadQueueAsync(runOnce: true);
+            Trace.Info("File upload queue drained.");
 
-            try
-            {
-                Trace.Verbose("Draining timeline update queue.");
-                await ProcessTimelinesUpdateQueueAsync(runOnce: true);
-                Trace.Info("Timeline update queue drained.");
-            }
-            catch (Exception ex)
-            {
-                Trace.Error("Drain timeline update queue fail with: {0}", ex.Message);
-                queueShutdownExceptions.Add(ex);
-            }
+            // ProcessTimelinesUpdateQueueAsync() will throw exception during shutdown
+            // if there is any timeline records that failed to update contains output variabls.
+            Trace.Verbose("Draining timeline update queue.");
+            await ProcessTimelinesUpdateQueueAsync(runOnce: true);
+            Trace.Info("Timeline update queue drained.");
 
-            if (queueShutdownExceptions.Count > 0)
-            {
-                throw new AggregateException("Catch exceptions during queue shutdown.", queueShutdownExceptions);
-            }
-            else
-            {
-                Trace.Info("All queue process tasks have been stopped, and all queues are drained.");
-            }
+            Trace.Info("All queue process tasks have been stopped, and all queues are drained.");
         }
 
         public void QueueWebConsoleLine(string line)
@@ -254,7 +228,7 @@ namespace Microsoft.VisualStudio.Services.Agent
 
                 if (batchedLines.Count > 0)
                 {
-                    List<Exception> webConsoleLinePostExceptions = new List<Exception>();
+                    int errorCount = 0;
                     foreach (var batch in batchedLines)
                     {
                         try
@@ -264,27 +238,13 @@ namespace Microsoft.VisualStudio.Services.Agent
                         }
                         catch (Exception ex)
                         {
-                            Trace.Info("Catch exception during append web console line, keep going since the process is best effort. Due with exception when all batches finish.");
-                            webConsoleLinePostExceptions.Add(ex);
-                        }
-                    }
-
-                    Trace.Info("Try to append {0} batches web console lines, success rate: {1}/{0}.", batchedLines.Count, batchedLines.Count - webConsoleLinePostExceptions.Count);
-
-                    if (webConsoleLinePostExceptions.Count > 0)
-                    {
-                        AggregateException ex = new AggregateException("Catch exception during append web console line.", webConsoleLinePostExceptions);
-                        if (!runOnce)
-                        {
-                            Trace.Verbose("Catch exception during process web console line queue, keep going since the process is best effort.");
+                            Trace.Info("Catch exception during append web console line, keep going since the process is best effort.");
                             Trace.Error(ex);
-                        }
-                        else
-                        {
-                            Trace.Error("Catch exception during drain web console line queue. throw aggregate exception to caller.");
-                            throw ex;
+                            errorCount++;
                         }
                     }
+
+                    Trace.Info("Try to append {0} batches web console lines, success rate: {1}/{0}.", batchedLines.Count, batchedLines.Count - errorCount);
                 }
 
                 if (runOnce)
@@ -317,7 +277,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                 if (filesToUpload.Count > 0)
                 {
                     // TODO: upload all file in parallel
-                    List<Exception> fileUploadExceptions = new List<Exception>();
+                    int errorCount = 0;
                     foreach (var file in filesToUpload)
                     {
                         try
@@ -326,8 +286,9 @@ namespace Microsoft.VisualStudio.Services.Agent
                         }
                         catch (Exception ex)
                         {
-                            Trace.Info("Catch exception during log or attachment file upload, keep going since the process is best effort. Due with exception when all files upload.");
-                            fileUploadExceptions.Add(ex);
+                            Trace.Info("Catch exception during log or attachment file upload, keep going since the process is best effort.");
+                            Trace.Error(ex);
+                            errorCount++;
 
                             // put the failed upload file back to queue.
                             // TODO: figure out how should we retry paging log upload.
@@ -338,22 +299,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                         }
                     }
 
-                    Trace.Info("Try to upload {0} log files or attachments, success rate: {1}/{0}.", filesToUpload.Count, filesToUpload.Count - fileUploadExceptions.Count);
-
-                    if (fileUploadExceptions.Count > 0)
-                    {
-                        AggregateException ex = new AggregateException("Catch exception during upload log file or attachment.", fileUploadExceptions);
-                        if (!runOnce)
-                        {
-                            Trace.Verbose("Catch exception during process file upload queue, keep going since the process is best effort.");
-                            Trace.Error(ex);
-                        }
-                        else
-                        {
-                            Trace.Error("Catch exception during drain file upload queue queue. throw aggregate exception to caller.");
-                            throw ex;
-                        }
-                    }
+                    Trace.Info("Try to upload {0} log files or attachments, success rate: {1}/{0}.", filesToUpload.Count, filesToUpload.Count - errorCount);
                 }
 
                 if (runOnce)
@@ -399,6 +345,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                 // we need track whether we have new sub-timeline been created on the last run.
                 // if so, we need continue update timeline record even we on the last run.
                 bool pendingSubtimelineUpdate = false;
+                List<Exception> mainTimelineRecordsUpdateErrors = new List<Exception>();
                 if (pendingUpdates.Count > 0)
                 {
                     foreach (var update in pendingUpdates)
@@ -446,6 +393,10 @@ namespace Microsoft.VisualStudio.Services.Agent
                             Trace.Info("Catch exception during update timeline records, try to update these timeline records next time.");
                             Trace.Error(ex);
                             _bufferedRetryRecords[update.TimelineId] = update.PendingRecords.ToList();
+                            if (update.TimelineId == _jobTimelineId)
+                            {
+                                mainTimelineRecordsUpdateErrors.Add(ex);
+                            }
                         }
                     }
                 }
@@ -461,7 +412,18 @@ namespace Microsoft.VisualStudio.Services.Agent
                     }
                     else
                     {
-                        break;
+                        if (mainTimelineRecordsUpdateErrors.Count > 0 &&
+                            _bufferedRetryRecords.ContainsKey(_jobTimelineId) &&
+                            _bufferedRetryRecords[_jobTimelineId] != null &&
+                            _bufferedRetryRecords[_jobTimelineId].Any(r => r.Variables.Count > 0))
+                        {
+                            Trace.Info("Fail to update timeline records with output variables. Throw exception to fail the job since output variables are critical to downstream jobs.");
+                            throw new AggregateException(StringUtil.Loc("OutputVariablePublishFailed"), mainTimelineRecordsUpdateErrors);
+                        }
+                        else
+                        {
+                            break;
+                        }
                     }
                 }
                 else
@@ -495,6 +457,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                     timelineRecord.FinishTime = rec.FinishTime ?? timelineRecord.FinishTime;
                     timelineRecord.Log = rec.Log ?? timelineRecord.Log;
                     timelineRecord.Name = rec.Name ?? timelineRecord.Name;
+                    timelineRecord.RefName = rec.RefName ?? timelineRecord.RefName;
                     timelineRecord.PercentComplete = rec.PercentComplete ?? timelineRecord.PercentComplete;
                     timelineRecord.RecordType = rec.RecordType ?? timelineRecord.RecordType;
                     timelineRecord.Result = rec.Result ?? timelineRecord.Result;
@@ -518,6 +481,14 @@ namespace Microsoft.VisualStudio.Services.Agent
                         timelineRecord.Issues.Clear();
                         timelineRecord.Issues.AddRange(rec.Issues.Select(i => i.Clone()));
                     }
+
+                    if (rec.Variables.Count > 0)
+                    {
+                        foreach (var variable in rec.Variables)
+                        {
+                            timelineRecord.Variables[variable.Key] = variable.Value.Clone();
+                        }
+                    }
                 }
                 else
                 {
@@ -538,6 +509,14 @@ namespace Microsoft.VisualStudio.Services.Agent
                         String source;
                         issue.Data.TryGetValue("sourcepath", out source);
                         Trace.Verbose($"        Issue: c={issue.Category}, t={issue.Type}, s={source ?? string.Empty}, m={issue.Message}");
+                    }
+                }
+
+                if (record.Variables != null && record.Variables.Count > 0)
+                {
+                    foreach (var variable in record.Variables)
+                    {
+                        Trace.Verbose($"        Variable: n={variable.Key}, secret={variable.Value.IsSecret}");
                     }
                 }
             }

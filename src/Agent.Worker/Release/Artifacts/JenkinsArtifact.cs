@@ -34,6 +34,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
         public static string AuthorKey = "author";
         public static string FullNameKey = "fullName";
         public static string CommitMessageKey = "msg";
+        public static string RepoKindKey = "kind";
+        public static string RemoteUrlsKey = "remoteUrls";
+        public static string GitRepoName = "git";
 
         public async Task DownloadAsync(
             IExecutionContext executionContext,
@@ -189,7 +192,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
             }
         }
 
-        private Change ConvertCommitToChange(IExecutionContext context, JToken token)
+        private Change ConvertCommitToChange(IExecutionContext context, JToken token, bool isGitRepo, string rootUrl)
         {
             Trace.Entering();
 
@@ -220,6 +223,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
                 {
                     change.Timestamp = value;
                 }
+            }
+
+            if (isGitRepo && !string.IsNullOrEmpty(rootUrl))
+            {
+                change.DisplayUri = new Uri(StringUtil.Format("{0}/commit/{1}", rootUrl, change.Id));
             }
 
             context.Debug(StringUtil.Format("Found commit {0}", change.Id));
@@ -271,7 +279,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
             context.Output(StringUtil.Format("Getting changeSet associated with build {0} ", jobId));
             string commitsUrl = StringUtil.Format("{0}/job/{1}/{2}/api/json?tree=number,result,changeSet[items[commitId,date,msg,author[fullName]]]", artifactDetails.Url, artifactDetails.JobName, jobId);
             var commitsResult = await DownloadCommitsJsonContent(context, commitsUrl, artifactDetails, "$.changeSet.items[*]");
-            return commitsResult.Select(x => ConvertCommitToChange(context, x));
+
+            string rootUrl;
+            bool isGitRepo = IsGitRepo(context, artifactDetails, jobId, out rootUrl);
+            return commitsResult.Select(x => ConvertCommitToChange(context, x, isGitRepo, rootUrl));
         }
 
         private async Task<IEnumerable<Change>> DownloadCommits(IExecutionContext context, JenkinsArtifactDetails artifactDetails, int startJobId, int endJobId)
@@ -293,24 +304,84 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
             string buildParameter = (startIndex >= 100 || endIndex >= 100) ? "allBuilds" : "builds"; // jenkins by default will return only 100 top builds. Have to use "allBuilds" if we are dealing with build which are older than 100 builds
             string commitsUrl = StringUtil.Format("{0}/job/{1}/api/json?tree={2}[number,result,changeSet[items[commitId,date,msg,author[fullName]]]]{{{3},{4}}}", artifactDetails.Url, artifactDetails.JobName, buildParameter, endIndex, startIndex);
             var changeSetResult = await DownloadCommitsJsonContent(context, commitsUrl, artifactDetails, StringUtil.Format("$.{0}[*].changeSet.items[*]", buildParameter));
-            return changeSetResult.Select(x => ConvertCommitToChange(context, x));
+            
+            string rootUrl;
+            bool isGitRepo = IsGitRepo(context, artifactDetails, endJobId, out rootUrl);
+            return changeSetResult.Select(x => ConvertCommitToChange(context, x, isGitRepo, rootUrl));
+        }
+
+        private async Task<string> DownloadCommitsJsonContent(IExecutionContext executionContext, string url, JenkinsArtifactDetails artifactDetails) 
+        {
+            Trace.Entering();
+
+            executionContext.Debug($"Querying Jenkins server with the api {url}");
+            string result = await HostContext.GetService<IGenericHttpClient>()
+                                            .GetStringAsync(url, artifactDetails.AccountName, artifactDetails.AccountPassword, artifactDetails.AcceptUntrustedCertificates);
+            if (!string.IsNullOrEmpty(result))
+            {
+                executionContext.Debug($"Found result from Jenkins server: {result}");
+            }
+
+            return result;
         }
 
         private async Task<IEnumerable<JToken>> DownloadCommitsJsonContent(IExecutionContext executionContext, string url, JenkinsArtifactDetails artifactDetails, string jsonPath) 
         {
             Trace.Entering();
 
-            executionContext.Debug($"Querying Jenkins server with the api {url} and the results will be filtered with {jsonPath}");
-            string result = await HostContext.GetService<IGenericHttpClient>()
-                                            .GetStringAsync(url, artifactDetails.AccountName, artifactDetails.AccountPassword, artifactDetails.AcceptUntrustedCertificates);
+            string result = await DownloadCommitsJsonContent(executionContext, url, artifactDetails);
             if (!string.IsNullOrEmpty(result))
             {
-                executionContext.Debug($"Found result from Jenkins server: {result}");
-                JObject parsedJson = JObject.Parse(result);
-                return parsedJson.SelectTokens(jsonPath);
+                executionContext.Debug($"result will be filtered with {jsonPath}");
+                return ParseToken(result, jsonPath);
             }
 
             return new List<JToken>();
+        }
+
+        private bool IsGitRepo(IExecutionContext executionContext, JenkinsArtifactDetails artifactDetails, int jobId, out string rootUrl)
+        {
+            bool isGitRepo = false;
+            rootUrl = string.Empty;
+
+            executionContext.Debug("Checking if Jenkins job uses git scm");
+            string repoUrl = StringUtil.Format("{0}/job/{1}/{2}/api/json?tree=actions[remoteUrls],changeSet[kind]", artifactDetails.Url, artifactDetails.JobName, jobId);
+            var repoResult = DownloadCommitsJsonContent(executionContext, repoUrl, artifactDetails).Result;
+
+            if (repoResult != null)
+            {
+                executionContext.Debug($"repo query result from Jenkins api {repoResult.ToString()}");
+                
+                var repoKindResult = ParseToken(repoResult.ToString(), "$.changeSet.kind");
+                if (repoKindResult != null && repoKindResult.Any()) {
+                    string repoKind = repoKindResult.First().ToString();
+                    executionContext.Debug($"Parsed repo result {repoKind}");
+
+                    if (!string.IsNullOrEmpty(repoKind) && repoKind.Equals(GitRepoName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        executionContext.Debug("Its a git repo, checking if it has root url");
+                        var rootUrlResult = ParseToken(repoResult.ToString(), "$.actions[?(@.remoteUrls)]");
+                        if (rootUrlResult != null && rootUrlResult.Any())
+                        {
+                            var resultDictionary = JsonConvert.DeserializeObject<Dictionary<string, JToken>>(rootUrlResult.First().ToString());
+                            if (resultDictionary.ContainsKey(RemoteUrlsKey) && resultDictionary[RemoteUrlsKey].Any())
+                            {
+                                rootUrl = resultDictionary[RemoteUrlsKey].First().ToString();
+                                isGitRepo = true;
+                                executionContext.Debug($"Found the git repo root url {rootUrl}");
+                            }
+                        }
+                    }
+                }
+            }
+
+            return isGitRepo;
+        }
+
+        private IEnumerable<JToken> ParseToken(string jsonResult, string jsonPath)
+        {
+            JObject parsedJson = JObject.Parse(jsonResult);
+            return parsedJson.SelectTokens(jsonPath);
         }
 
         public IArtifactDetails GetArtifactDetails(IExecutionContext context, AgentArtifactDefinition agentArtifactDefinition)

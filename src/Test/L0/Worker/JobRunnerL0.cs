@@ -76,7 +76,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
 
             List<TaskInstance> tasks = new List<TaskInstance>();
             Guid JobId = Guid.NewGuid();
-            _message = new AgentJobRequestMessage(plan, timeline, JobId, testName, environment, tasks);
+            _message = new AgentJobRequestMessage(plan, timeline, JobId, testName, testName, environment, tasks);
 
             _extensions.Setup(x => x.GetExtensions<IJobExtension>()).
                 Returns(new[] { _jobExtension.Object }.ToList());

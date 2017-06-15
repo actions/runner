@@ -27,7 +27,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                 List<TaskInstance> tasks = new List<TaskInstance>();
                 Guid JobId = Guid.NewGuid();
                 string jobName = "some job name";
-                var jobRequest = new AgentJobRequestMessage(plan, timeline, JobId, jobName, environment, tasks);
+                var jobRequest = new AgentJobRequestMessage(plan, timeline, JobId, jobName, jobName, environment, tasks);
 
                 // Arrange: Setup the paging logger.
                 var pagingLogger = new Mock<IPagingLogger>();
@@ -78,7 +78,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             List<TaskInstance> tasks = new List<TaskInstance>();
             Guid JobId = Guid.NewGuid();
             string jobName = "some job name";
-            return new AgentJobRequestMessage(plan, timeline, JobId, jobName, environment, tasks);
+            return new AgentJobRequestMessage(plan, timeline, JobId, jobName, jobName, environment, tasks);
         }
     }
 }
