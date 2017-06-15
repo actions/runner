@@ -14,15 +14,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Telemetry
 {
     public class TelemetryCommandExtension : AgentService, IWorkerCommandExtension
     {
-        private long _totalThrottlingDelayInMilliseconds = 0;
-        private bool _throttlingReported = false;
         private string _area;
         private string _feature;
         public HostTypes SupportedHostTypes => HostTypes.Build;
 
         public void ProcessCommand(IExecutionContext context, Command command)
         {
-            if (string.Equals(command.Event, WellKnownEventTrackCommand.TrackEvent, StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(command.Event, WellKnownEventTrackCommand.Publish, StringComparison.OrdinalIgnoreCase))
             {
                 ProcessPublishTelemetryCommand(context, command.Properties, command.Data);
             }
@@ -54,21 +52,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Telemetry
 
             LoadTelemetryInputs(eventProperties);
 
-            var ciService = HostContext.GetService<ICustomerIntelligenceService>();
-            var vssConnection = WorkerUtilies.GetVssConnection(context, new DelegatingHandler[] { new ThrottlingReportHandler(ciService) });
+            var ciService = HostContext.GetService<ICustomerIntelligenceServer>();
+            var vssConnection = WorkerUtilies.GetVssConnection(context);
             ciService.Initialize(vssConnection);
 
             var commandContext = HostContext.CreateService<IAsyncCommandContext>();
             commandContext.InitializeCommandContext(context, StringUtil.Loc("Telemetry"));
             commandContext.Task = ciService.PublishEventsAsync(new CustomerIntelligenceEvent[] { PopulateCustomerIntelligenceData(context, data) });
             context.AsyncCommands.Add(commandContext);
-
-            // Hook up Throttling event, we will log warning on server tarpit.
-            ciService.CustomerIntelligenceQueueThrottling += ServiceThrottling_EventReceived;
-            if (_throttlingReported)
-            {
-                context.Warning(StringUtil.Loc("ServerTarpit"));
-            }
         }
 
         private void LoadTelemetryInputs(Dictionary<string, string> eventProperties)
@@ -118,15 +109,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Telemetry
             };
         }
 
-        private void ServiceThrottling_EventReceived(object sender, ThrottlingEventArgs data)
-        {
-            Interlocked.Add(ref _totalThrottlingDelayInMilliseconds, Convert.ToInt64(data.Delay.TotalMilliseconds));
-            if (!_throttlingReported)
-            {
-                _throttlingReported = true;
-            }
-        }
-
         /* Split string functionality with escape functionality
             Ex: abc;de\;fg;xyz  split by ";" escape by "\" => abc de;fg xyz
         */
@@ -158,7 +140,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Telemetry
 
         internal static class WellKnownEventTrackCommand
         {
-            internal static readonly string TrackEvent = "trackevent";
+            internal static readonly string Publish = "publish";
         }
 
         internal static class WellKnownEventTrackProperties

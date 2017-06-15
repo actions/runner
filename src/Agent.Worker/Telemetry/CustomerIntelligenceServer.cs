@@ -11,20 +11,17 @@ using System.Threading.Tasks;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Telemetry
 {
-    [ServiceLocator(Default = typeof(CustomerIntelligenceService))]
-    public interface ICustomerIntelligenceService : IAgentService, IThrottlingReporter
+    [ServiceLocator(Default = typeof(CustomerIntelligenceServer))]
+    public interface ICustomerIntelligenceServer : IAgentService
     {
         void Initialize(VssConnection connection);
-        event EventHandler<ThrottlingEventArgs> CustomerIntelligenceQueueThrottling;
         Task PublishEventsAsync(CustomerIntelligenceEvent[] ciEvents);
     }
 
     // This service is used for tracking task events which are applicable for VSTS internal tasks
-    public class CustomerIntelligenceService : AgentService, ICustomerIntelligenceService
+    public class CustomerIntelligenceServer : AgentService, ICustomerIntelligenceServer
     {
         private CustomerIntelligenceHttpClient _ciClient;
-
-        public event EventHandler<ThrottlingEventArgs> CustomerIntelligenceQueueThrottling;
 
         public void Initialize(VssConnection connection)
         {
@@ -34,16 +31,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Telemetry
         public Task PublishEventsAsync(CustomerIntelligenceEvent[] ciEvents)
         {
             return _ciClient.PublishEventsAsync(events: ciEvents);
-        }
-
-        public void ReportThrottling(TimeSpan delay, DateTime expiration)
-        {
-            Trace.Info($"Receive server throttling report, expect delay {delay} milliseconds till {expiration}");
-            var throttlingEvent = CustomerIntelligenceQueueThrottling;
-            if (throttlingEvent != null)
-            {
-                throttlingEvent(this, new ThrottlingEventArgs(delay, expiration));
-            }
         }
     }
 }

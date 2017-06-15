@@ -19,7 +19,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Telemetry
         private Mock<IExecutionContext> _ec;
         private List<string> _warnings = new List<string>();
         private List<string> _errors = new List<string>();
-        private Mock<ICustomerIntelligenceService> _mockCiService;
+        private Mock<ICustomerIntelligenceServer> _mockCiService;
         private Mock<IAsyncCommandContext> _mockCommandContext;
         private TestHostContext _hc;
 
@@ -32,7 +32,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Telemetry
             var publishTelemetryCmd = new TelemetryCommandExtension();
             publishTelemetryCmd.Initialize(_hc);
 
-            var cmd = new Command("telemetry", "trackevent");
+            var cmd = new Command("telemetry", "publish");
             cmd.Data = "key1=value1;key2=value2";
             cmd.Properties.Add("area", "Test");
             cmd.Properties.Add("feature", "Task");
@@ -51,7 +51,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Telemetry
             var publishTelemetryCmd = new TelemetryCommandExtension();
             publishTelemetryCmd.Initialize(_hc);
 
-            var cmd = new Command("telemetry", "trackevent");
+            var cmd = new Command("telemetry", "publish");
             cmd.Data = "key1=value1;key2=value2";
             cmd.Properties.Add("feature", "Task");
 
@@ -67,7 +67,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Telemetry
             var publishTelemetryCmd = new TelemetryCommandExtension();
             publishTelemetryCmd.Initialize(_hc);
 
-            var cmd = new Command("telemetry", "trackevent");
+            var cmd = new Command("telemetry", "publish");
             cmd.Data = "key1=value1;key2=value2";
             cmd.Properties.Add("area", "Test");
 
@@ -83,7 +83,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Telemetry
             var publishTelemetryCmd = new TelemetryCommandExtension();
             publishTelemetryCmd.Initialize(_hc);
 
-            var cmd = new Command("telemetry", "trackevent");
+            var cmd = new Command("telemetry", "publish");
             cmd.Properties.Add("area", "Test");
             cmd.Properties.Add("feature", "Task");
 
@@ -115,7 +115,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Telemetry
             var publishTelemetryCmd = new TelemetryCommandExtension();
             publishTelemetryCmd.Initialize(_hc);
 
-            var cmd = new Command("telemetry", "trackevent");
+            var cmd = new Command("telemetry", "publish");
             cmd.Properties.Add("area", "Test");
             cmd.Properties.Add("feature", "Task");
             cmd.Data = "key1=value1=value2";
@@ -133,7 +133,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Telemetry
             var publishTelemetryCmd = new TelemetryCommandExtension();
             publishTelemetryCmd.Initialize(_hc);
 
-            var cmd = new Command("telemetry", "trackevent");
+            var cmd = new Command("telemetry", "publish");
             cmd.Properties.Add("area", "Test");
             cmd.Properties.Add("feature", "Task");
             cmd.Data = @"col\;key=value1";
@@ -146,7 +146,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Telemetry
         {
             _hc = new TestHostContext(this, name);
 
-            _mockCiService = new Mock<ICustomerIntelligenceService>();
+            _mockCiService = new Mock<ICustomerIntelligenceServer>();
             _hc.SetSingleton(_mockCiService.Object);
 
             _mockCommandContext = new Mock<IAsyncCommandContext>();
