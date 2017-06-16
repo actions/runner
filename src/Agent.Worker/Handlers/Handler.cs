@@ -12,6 +12,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
     public interface IHandler : IAgentService
     {
         List<ServiceEndpoint> Endpoints { get; set; }
+        Dictionary<string, string> Environment { get; set; }
         IExecutionContext ExecutionContext { get; set; }
         string FilePathInputRootDirectory { get; set; }
         Dictionary<string, string> Inputs { get; set; }
@@ -24,9 +25,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
     public abstract class Handler : AgentService
     {
         protected IWorkerCommandManager CommandManager { get; private set; }
-        protected Dictionary<string, string> Environment { get; private set; }
 
         public List<ServiceEndpoint> Endpoints { get; set; }
+        public Dictionary<string, string> Environment { get; set; }
         public IExecutionContext ExecutionContext { get; set; }
         public string FilePathInputRootDirectory { get; set; }
         public Dictionary<string, string> Inputs { get; set; }
@@ -37,7 +38,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
         {
             base.Initialize(hostContext);
             CommandManager = hostContext.GetService<IWorkerCommandManager>();
-            Environment = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         }
 
         protected void AddEndpointsToEnvironment()
@@ -259,9 +259,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
                 return;
             }
 
-            // prepend path section            
+            // Prepend path.
             string prepend = string.Join(Path.PathSeparator.ToString(), ExecutionContext.PrependPath.Reverse<string>());
-            string originalPath = ExecutionContext.Variables.Get(Constants.PathVariable) ?? System.Environment.GetEnvironmentVariable(Constants.PathVariable) ?? string.Empty;
+            string originalPath = ExecutionContext.Variables.Get(Constants.PathVariable) ?? // Prefer a job variable.
+                Environment[Constants.PathVariable] ?? // Then a task-environment variable.
+                System.Environment.GetEnvironmentVariable(Constants.PathVariable) ?? // Then an environment variable.
+                string.Empty;
             string newPath = VarUtil.PrependPath(prepend, originalPath);
             AddEnvironmentVariable(Constants.PathVariable, newPath);
         }

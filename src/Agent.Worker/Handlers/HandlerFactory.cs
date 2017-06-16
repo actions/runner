@@ -14,6 +14,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             List<SecureFile> secureFiles,
             HandlerData data,
             Dictionary<string, string> inputs,
+            Dictionary<string, string> environment,
             string taskDirectory,
             string filePathInputRootDirectory);
     }
@@ -26,6 +27,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             List<SecureFile> secureFiles,
             HandlerData data,
             Dictionary<string, string> inputs,
+            Dictionary<string, string> environment,
             string taskDirectory,
             string filePathInputRootDirectory)
         {
@@ -36,6 +38,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             ArgUtil.NotNull(secureFiles, nameof(secureFiles));
             ArgUtil.NotNull(data, nameof(data));
             ArgUtil.NotNull(inputs, nameof(inputs));
+            ArgUtil.NotNull(environment, nameof(environment));
             ArgUtil.NotNull(taskDirectory, nameof(taskDirectory));
 
             // Create the handler.
@@ -83,6 +86,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             }
 
             handler.Endpoints = endpoints;
+            handler.Environment = environment;
             handler.ExecutionContext = executionContext;
             handler.FilePathInputRootDirectory = filePathInputRootDirectory;
             handler.Inputs = inputs;

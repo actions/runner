@@ -56,7 +56,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 ExecutionContext.Endpoints,
                 new List<SecureFile>(0),
                 handlerData,
-                new Dictionary<string, string>(),
+                inputs: new Dictionary<string, string>(),
+                environment: new Dictionary<string, string>(VarUtil.EnvironmentVariableKeyComparer),
                 taskDirectory: scriptDirectory,
                 filePathInputRootDirectory: string.Empty);
 

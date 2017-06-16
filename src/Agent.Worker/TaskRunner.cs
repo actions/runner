@@ -135,6 +135,23 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 }
             }
 
+            // Load the task environment.
+            Trace.Verbose("Loading task environment.");
+            var environment = new Dictionary<string, string>(VarUtil.EnvironmentVariableKeyComparer);
+            foreach (var env in (TaskInstance.Environment ?? new Dictionary<string, string>(0)))
+            {
+                string key = env.Key?.Trim() ?? string.Empty;
+                if (!string.IsNullOrEmpty(key))
+                {
+                    environment[key] = env.Value?.Trim() ?? string.Empty;
+                }
+            }
+
+            // Expand the inputs.
+            Trace.Verbose("Expanding task environment.");
+            ExecutionContext.Variables.ExpandValues(target: environment);
+            VarUtil.ExpandEnvironmentVariables(HostContext, target: environment);
+
             // Expand the handler inputs.
             Trace.Verbose("Expanding handler inputs.");
             VarUtil.ExpandValues(HostContext, source: inputs, target: handlerData.Inputs);
@@ -230,6 +247,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 secureFiles,
                 handlerData,
                 inputs,
+                environment,
                 taskDirectory: definition.Directory,
                 filePathInputRootDirectory: TranslateFilePathInput(string.Empty));
 
