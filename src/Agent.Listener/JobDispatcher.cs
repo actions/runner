@@ -53,6 +53,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
             // _channelTimeout should in range [30,  300] seconds
             _channelTimeout = TimeSpan.FromSeconds(Math.Min(Math.Max(channelTimeoutSeconds, 30), 300));
+            Trace.Info($"Set agent/worker IPC timeout to {_channelTimeout.TotalSeconds} seconds.");
         }
 
         public void Run(AgentJobRequestMessage jobRequestMessage)
