@@ -11,7 +11,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
     public class WorkerUtilies
     {
-        public static VssConnection GetVssConnection(IExecutionContext context, IEnumerable<DelegatingHandler> additionalDelegatingHandler = null)
+        public static VssConnection GetVssConnection(IExecutionContext context)
         {
             ArgUtil.NotNull(context, nameof(context));
             ArgUtil.NotNull(context.Endpoints, nameof(context.Endpoints));
@@ -22,7 +22,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
             VssCredentials credentials = ApiUtil.GetVssCredential(systemConnection);
             ArgUtil.NotNull(credentials, nameof(credentials));
-            VssConnection connection = ApiUtil.CreateConnection(systemConnection.Url, credentials, additionalDelegatingHandler);
+            VssConnection connection = ApiUtil.CreateConnection(systemConnection.Url, credentials);
             return connection;
         }
     }
