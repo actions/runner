@@ -472,6 +472,7 @@
     "  {0}"
   ],
   "Telemetry": "Telemetry",
+  "TelemetryCommandDataError": "Unable to parse telemetry data {0}. Error: {1}",
   "TelemetryCommandNotFound": "##vso[telemetry.{0}] is not a recognized command for Task command extension.",
   "TestAgentConnection": "Testing agent connection.",
   "TestResultsRemaining": "Test results remaining: {0}. Test run id: {1}",

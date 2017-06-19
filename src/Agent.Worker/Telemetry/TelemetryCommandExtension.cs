@@ -2,6 +2,7 @@ using Microsoft.TeamFoundation.TestManagement.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using Microsoft.VisualStudio.Services.WebApi;
 using Microsoft.VisualStudio.Services.WebPlatform;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -16,7 +17,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Telemetry
     {
         private string _area;
         private string _feature;
-        public HostTypes SupportedHostTypes => HostTypes.Build;
+        public HostTypes SupportedHostTypes => HostTypes.All;
 
         public void ProcessCommand(IExecutionContext context, Command command)
         {
@@ -84,58 +85,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Telemetry
                 throw new ArgumentException(StringUtil.Loc("ArgumentNeeded", "EventTrackerData"));
             }
 
-            // Expected format is key1=Value1;key2=Value2;Key3=Value3
-            // TODO escape ; if value contains something like this ke\;y2
-            var ciProperties = new Dictionary<string, object>();
-            foreach (var ciProp in Split(data, ";", '\\'))
+            try
             {
-                var keyValuePair = ciProp.Split(new char[] { '=' }, count: 2);
-                object value;
-                if (keyValuePair.Length == 2 && !ciProperties.TryGetValue(keyValuePair[0], out value))
+                var ciProperties = JsonConvert.DeserializeObject<Dictionary<string, object>>(data);
+                return new CustomerIntelligenceEvent
                 {
-                    ciProperties.Add(keyValuePair[0], keyValuePair[1]);
-                }
-                else
-                {
-                    context.Debug("Ignoring the data as the key is duplicated: " + keyValuePair);
-                }
+                    Area = _area,
+                    Feature = _feature,
+                    Properties = ciProperties
+                };
             }
-
-            return new CustomerIntelligenceEvent
+            catch (Exception ex)
             {
-                Area = _area,
-                Feature = _feature,
-                Properties = ciProperties
-            };
-        }
-
-        /* Split string functionality with escape functionality
-            Ex: abc;de\;fg;xyz  split by ";" escape by "\" => abc de;fg xyz
-        */
-        private static IEnumerable<string> Split(string input, string separator, char escapeCharacter)
-        {
-            var op = new List<string>();
-            var startOfSegment = 0;
-            var index = 0;
-            while (index < input.Length)
-            {
-                index = input.IndexOf(separator, index, StringComparison.Ordinal);
-                if (index > 0 && input[index - 1] == escapeCharacter)
-                {
-                    index += separator.Length;
-                    continue;
-                }
-                if (index == -1)
-                {
-                    break;
-                }
-                op.Add(input.Substring(startOfSegment, index - startOfSegment).Replace(escapeCharacter + separator, separator));
-                index += separator.Length;
-                startOfSegment = index;
+                throw new ArgumentException(StringUtil.Loc("TelemetryCommandDataError", data, ex.Message));
             }
-            op.Add(input.Substring(startOfSegment).Replace(escapeCharacter + separator, separator));
-
-            return op;
         }
 
         internal static class WellKnownEventTrackCommand
