@@ -11,13 +11,21 @@
     it will update it only if the requested version differs from the one already installed.
 .PARAMETER Channel
     Default: LTS
-    Download from the Channel specified
+    Download from the Channel specified. Possible values:
+    - Current - most current release
+    - LTS - most current supported release
+    - 2-part version in a format A.B - represents a specific release
+          examples: 2.0; 1.0
+    - Branch name
+          examples: release/2.0.0; Master
 .PARAMETER Version
     Default: latest
     Represents a build version on specific channel. Possible values:
     - latest - most latest build on specific channel
+    - coherent - most latest coherent build on specific channel
+          coherent applies only to SDK downloads
     - 3-part version in a format A.B.C - represents specific version of build
-      examples: 2.0.0-preview2-006120; 1.1.0
+          examples: 2.0.0-preview2-006120; 1.1.0
 .PARAMETER InstallDir
     Default: %LocalAppData%\Microsoft\dotnet
     Path to where to install dotnet. Note that binaries will be placed directly in a given directory.
@@ -28,8 +36,6 @@
 .PARAMETER SharedRuntime
     Default: false
     Installs just the shared runtime bits, not the entire SDK
-.PARAMETER DebugSymbols
-    If set the installer will include symbols in the installation.
 .PARAMETER DryRun
     If set it will not perform installation but instead display what command line to use to consistently install
     currently requested version of dotnet cli. In example if you specify version 'latest' it will display a link
@@ -60,7 +66,6 @@ param(
    [string]$InstallDir="<auto>",
    [string]$Architecture="<auto>",
    [switch]$SharedRuntime,
-   [switch]$DebugSymbols, # TODO: Switch does not work yet. Symbols zip is not being uploaded yet.
    [switch]$DryRun,
    [switch]$NoPath,
    [string]$AzureFeed="https://dotnetcli.azureedge.net/dotnet",
@@ -207,7 +212,7 @@ function GetHTTPResponse([Uri] $Uri)
 }
 
 
-function Get-Latest-Version-Info([string]$AzureFeed, [string]$Channel) {
+function Get-Latest-Version-Info([string]$AzureFeed, [string]$Channel, [bool]$Coherent) {
     Say-Invocation $MyInvocation
 
     $VersionFileUrl = $null
@@ -215,7 +220,12 @@ function Get-Latest-Version-Info([string]$AzureFeed, [string]$Channel) {
         $VersionFileUrl = "$UncachedFeed/Runtime/$Channel/latest.version"
     }
     else {
-        $VersionFileUrl = "$UncachedFeed/Sdk/$Channel/latest.version"
+        if ($Coherent) {
+            $VersionFileUrl = "$UncachedFeed/Sdk/$Channel/latest.coherent.version"
+        }
+        else {
+            $VersionFileUrl = "$UncachedFeed/Sdk/$Channel/latest.version"
+        }
     }
     
     $Response = GetHTTPResponse -Uri $VersionFileUrl
@@ -239,7 +249,11 @@ function Get-Specific-Version-From-Version([string]$AzureFeed, [string]$Channel,
 
     switch ($Version.ToLower()) {
         { $_ -eq "latest" } {
-            $LatestVersionInfo = Get-Latest-Version-Info -AzureFeed $AzureFeed -Channel $Channel
+            $LatestVersionInfo = Get-Latest-Version-Info -AzureFeed $AzureFeed -Channel $Channel -Coherent $False
+            return $LatestVersionInfo.Version
+        }
+        { $_ -eq "coherent" } {
+            $LatestVersionInfo = Get-Latest-Version-Info -AzureFeed $AzureFeed -Channel $Channel -Coherent $True
             return $LatestVersionInfo.Version
         }
         default { return $Version }
@@ -464,14 +478,17 @@ if ($free.Freespace / 1MB -le 100 ) {
 }
 
 $ZipPath = [System.IO.Path]::GetTempFileName()
-Say "Downloading $DownloadLink"
+Say-Verbose "Zip path: $ZipPath"
+Say "Downloading link: $DownloadLink"
 try {
     DownloadFile -Uri $DownloadLink -OutPath $ZipPath
 }
 catch {
+    Say "Cannot download: $DownloadLink"
     $DownloadLink = $LegacyDownloadLink
     $ZipPath = [System.IO.Path]::GetTempFileName()
-    Say "Downloading $DownloadLink"
+    Say-Verbose "Legacy zip path: $ZipPath"
+    Say "Downloading legacy link: $DownloadLink"
     DownloadFile -Uri $DownloadLink -OutPath $ZipPath
 }
 

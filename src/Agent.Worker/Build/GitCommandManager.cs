@@ -514,6 +514,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             {
                 // Add the variable using the formatted name.
                 string formattedKey = (pair.Key ?? string.Empty).Replace('.', '_').Replace(' ', '_').ToUpperInvariant();
+
+                // Skip any GIT_TRACE variable since GIT_TRACE will affect ouput from every git command.
+                // This will fail the parse logic for detect git version, remote url, etc.
+                // Ex. 
+                //      SET GIT_TRACE=true
+                //      git version 
+                //      11:39:58.295959 git.c:371               trace: built-in: git 'version'
+                //      git version 2.11.1.windows.1
+                if (formattedKey == "GIT_TRACE" || formattedKey.StartsWith("GIT_TRACE_"))
+                {
+                    continue;
+                }
+
                 gitEnv[formattedKey] = pair.Value ?? string.Empty;
             }
 
