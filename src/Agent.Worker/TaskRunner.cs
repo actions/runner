@@ -182,7 +182,37 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 }
             }
 
-            // TODO: Add secure file only referenced by the task.
+            // Get each secure file ID referenced by the task.
+            var secureFileIds = new List<Guid>();
+            foreach (var input in definition.Data?.Inputs ?? new TaskInputDefinition[0])
+            {
+                if (string.Equals(input.InputType ?? string.Empty, "secureFile", StringComparison.OrdinalIgnoreCase))
+                {
+                    string inputKey = input?.Name?.Trim() ?? string.Empty;
+                    string inputValue;
+                    if (!string.IsNullOrEmpty(inputKey) &&
+                        inputs.TryGetValue(inputKey, out inputValue) &&
+                        !string.IsNullOrEmpty(inputValue))
+                    {
+                        foreach (string rawId in inputValue.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries))
+                        {
+                            Guid parsedId;
+                            if (Guid.TryParse(rawId.Trim(), out parsedId) && parsedId != Guid.Empty)
+                            {
+                                secureFileIds.Add(parsedId);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Get the endpoints referenced by the task.
+            var secureFiles = (ExecutionContext.SecureFiles ?? new List<SecureFile>(0))
+                .Join(inner: secureFileIds,
+                    outerKeySelector: (SecureFile secureFile) => secureFile.Id,
+                    innerKeySelector: (Guid secureFileId) => secureFileId,
+                    resultSelector: (SecureFile secureFile, Guid secureFileId) => secureFile)
+                .ToList();
 
             // Set output variables.
             foreach (var outputVar in definition.Data?.OutputVariables ?? new OutputVariable[0])
@@ -197,6 +227,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             IHandler handler = handlerFactory.Create(
                 ExecutionContext,
                 endpoints,
+                secureFiles,
                 handlerData,
                 inputs,
                 taskDirectory: definition.Directory,

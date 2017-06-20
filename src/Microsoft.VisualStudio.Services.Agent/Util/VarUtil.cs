@@ -15,6 +15,23 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
 
     public sealed class VarUtil : AgentService, IVarUtil
     {
+        public static StringComparer EnvironmentVariableKeyComparer
+        {
+            get
+            {
+                switch (Constants.Agent.Platform)
+                {
+                    case Constants.OSPlatform.Linux:
+                    case Constants.OSPlatform.OSX:
+                        return StringComparer.Ordinal;
+                    case Constants.OSPlatform.Windows:
+                        return StringComparer.OrdinalIgnoreCase;
+                    default:
+                        throw new NotSupportedException(); // Should never reach here.
+                }
+            }
+        }
+
         public static string PrependPath(string path, string currentPath)
         {
             ArgUtil.NotNullOrEmpty(path, nameof(path));
@@ -53,23 +70,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             Tracing trace = context.GetTrace(nameof(VarUtil));
             trace.Entering();
 
-            // Determine which string comparer to use for the environment variable dictionary.
-            StringComparer comparer;
-            switch (Constants.Agent.Platform)
-            {
-                case Constants.OSPlatform.Linux:
-                case Constants.OSPlatform.OSX:
-                    comparer = StringComparer.CurrentCulture;
-                    break;
-                case Constants.OSPlatform.Windows:
-                    comparer = StringComparer.CurrentCultureIgnoreCase;
-                    break;
-                default:
-                    throw new NotSupportedException();
-            }
-
             // Copy the environment variables into a dictionary that uses the correct comparer.
-            var source = new Dictionary<string, string>(comparer);
+            var source = new Dictionary<string, string>(EnvironmentVariableKeyComparer);
             IDictionary environment = Environment.GetEnvironmentVariables();
             foreach (DictionaryEntry entry in environment)
             {

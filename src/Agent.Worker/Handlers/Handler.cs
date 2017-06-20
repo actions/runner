@@ -15,6 +15,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
         IExecutionContext ExecutionContext { get; set; }
         string FilePathInputRootDirectory { get; set; }
         Dictionary<string, string> Inputs { get; set; }
+        List<SecureFile> SecureFiles { get; set; }
         string TaskDirectory { get; set; }
 
         Task RunAsync();
@@ -29,6 +30,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
         public IExecutionContext ExecutionContext { get; set; }
         public string FilePathInputRootDirectory { get; set; }
         public Dictionary<string, string> Inputs { get; set; }
+        public List<SecureFile> SecureFiles { get; set; }
         public string TaskDirectory { get; set; }
 
         public override void Initialize(IHostContext hostContext)
@@ -121,24 +123,31 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
         {
             Trace.Entering();
             ArgUtil.NotNull(ExecutionContext, nameof(ExecutionContext));
+            ArgUtil.NotNull(SecureFiles, nameof(SecureFiles));
 
-            if (ExecutionContext.SecureFiles != null && ExecutionContext.SecureFiles.Count > 0)
+            List<SecureFile> secureFiles;
+            if ((ExecutionContext.Variables.GetBoolean(Constants.Variables.Agent.AllowAllSecureFiles) ?? false) ||
+                string.Equals(System.Environment.GetEnvironmentVariable("AGENT_ALLOWALLSECUREFILES") ?? string.Empty, bool.TrueString, StringComparison.OrdinalIgnoreCase))
             {
-                // Add the secure files to the environment variable dictionary.
-                foreach (SecureFile secureFile in ExecutionContext.SecureFiles)
+                secureFiles = ExecutionContext.SecureFiles ?? new List<SecureFile>(0); // todo: remove after sprint 121 or so
+            }
+            else
+            {
+                secureFiles = SecureFiles;
+            }
+
+            // Add the secure files to the environment variable dictionary.
+            foreach (SecureFile secureFile in SecureFiles)
+            {
+                if (secureFile != null && secureFile.Id != Guid.Empty)
                 {
-                    if (secureFile != null && secureFile.Id != Guid.Empty)
-                    {
-                        string partialKey = secureFile.Id.ToString();
-                        AddEnvironmentVariable(
-                            key: $"SECUREFILE_NAME_{partialKey}",
-                            value: secureFile.Name
-                        );
-                        AddEnvironmentVariable(
-                            key: $"SECUREFILE_TICKET_{partialKey}",
-                            value: secureFile.Ticket
-                        );
-                    }
+                    string partialKey = secureFile.Id.ToString();
+                    AddEnvironmentVariable(
+                        key: $"SECUREFILE_NAME_{partialKey}",
+                        value: secureFile.Name);
+                    AddEnvironmentVariable(
+                        key: $"SECUREFILE_TICKET_{partialKey}",
+                        value: secureFile.Ticket);
                 }
             }
         }
