@@ -137,7 +137,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             }
 
             // Add the secure files to the environment variable dictionary.
-            foreach (SecureFile secureFile in SecureFiles)
+            foreach (SecureFile secureFile in secureFiles)
             {
                 if (secureFile != null && secureFile.Id != Guid.Empty)
                 {
