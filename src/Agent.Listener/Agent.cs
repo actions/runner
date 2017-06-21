@@ -11,14 +11,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
     [ServiceLocator(Default = typeof(Agent))]
     public interface IAgent : IAgentService
     {
-        CancellationTokenSource TokenSource { get; set; }
         Task<int> ExecuteCommand(CommandSettings command);
     }
 
     public sealed class Agent : AgentService, IAgent
     {
-        public CancellationTokenSource TokenSource { get; set; }
-
         private IMessageListener _listener;
         private ITerminal _term;
         private bool _inConfigStage;
@@ -122,25 +119,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
                 // Run the agent interactively or as service
                 Trace.Verbose($"Run as service: '{runAsService}'");
-                return await RunAsync(TokenSource.Token, settings, runAsService);
+                return await RunAsync(settings, runAsService);
 
                 //}
-
-                // #if OS_WINDOWS
-                //                 // this code is for migrated .net windows agent that running as windows service.
-                //                 // leave the code as is untill we have a real plan for auto-migration.
-                //                 if (runAsService && configManager.IsConfigured() && File.Exists(Path.Combine(IOUtil.GetBinPath(), "VsoAgentService.exe")))
-                //                 {
-                //                     // The old .net windows servicehost doesn't pass correct args while invoke Agent.Listener.exe
-                //                     // When we detect the agent is a migrated .net windows agent, we will just run the agent.listener.exe even the servicehost doesn't pass correct args.
-                //                     Trace.Verbose($"Run the agent for compat reason.");
-                //                     return await RunAsync(TokenSource.Token, settings, runAsService);
-                //                 }
-                // #endif
-
-                //                 Trace.Info("Doesn't match any existing command option, print usage.");
-                //                 PrintUsage();
-                //                 return Constants.Agent.ReturnCode.TerminatedError;
             }
             finally
             {
@@ -152,9 +133,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
         private void Agent_Unloading(object sender, EventArgs e)
         {
-            if ((!_inConfigStage) && (!TokenSource.IsCancellationRequested))
+            if ((!_inConfigStage) && (!HostContext.AgentShutdownToken.IsCancellationRequested))
             {
-                TokenSource.Cancel();
+                HostContext.ShutdownAgent(ShutdownReason.UserCancelled);
                 _completedCommand.WaitOne(Constants.Agent.ExitOnUnloadTimeout);
             }
         }
@@ -169,16 +150,36 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             }
             else
             {
-                TokenSource.Cancel();
+                ConsoleCancelEventArgs cancelEvent = e as ConsoleCancelEventArgs;
+                if (cancelEvent != null && HostContext.GetService<IConfigurationStore>().IsServiceConfigured())
+                {
+                    ShutdownReason reason;
+                    if (cancelEvent.SpecialKey == ConsoleSpecialKey.ControlBreak)
+                    {
+                        Trace.Info("Received Ctrl-Break signal from agent service host, this indicate the operating system is shutting down.");
+                        reason = ShutdownReason.OperatingSystemShutdown;
+                    }
+                    else
+                    {
+                        Trace.Info("Received Ctrl-C signal, stop agent.listener and agent.worker.");
+                        reason = ShutdownReason.UserCancelled;
+                    }
+
+                    HostContext.ShutdownAgent(reason);
+                }
+                else
+                {
+                    HostContext.ShutdownAgent(ShutdownReason.UserCancelled);
+                }
             }
         }
 
         //create worker manager, create message listener and start listening to the queue
-        private async Task<int> RunAsync(CancellationToken token, AgentSettings settings, bool runAsService)
+        private async Task<int> RunAsync(AgentSettings settings, bool runAsService)
         {
             Trace.Info(nameof(RunAsync));
             _listener = HostContext.GetService<IMessageListener>();
-            if (!await _listener.CreateSessionAsync(token))
+            if (!await _listener.CreateSessionAsync(HostContext.AgentShutdownToken))
             {
                 return Constants.Agent.ReturnCode.TerminatedError;
             }
@@ -186,7 +187,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             _term.WriteLine(StringUtil.Loc("ListenForJobs", DateTime.UtcNow));
 
             IJobDispatcher jobDispatcher = null;
-            CancellationTokenSource messageQueueLoopTokenSource = CancellationTokenSource.CreateLinkedTokenSource(token);
+            CancellationTokenSource messageQueueLoopTokenSource = CancellationTokenSource.CreateLinkedTokenSource(HostContext.AgentShutdownToken);
             try
             {
                 var notification = HostContext.GetService<IJobNotification>();
@@ -196,7 +197,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 }
                 else
                 {
-                    notification.StartClient(settings.NotificationPipeName, token);
+                    notification.StartClient(settings.NotificationPipeName, HostContext.AgentShutdownToken);
                 }
                 // this is not a reliable way to disable auto update.
                 // we need server side work to really enable the feature
@@ -206,7 +207,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 Task<bool> selfUpdateTask = null;
                 jobDispatcher = HostContext.CreateService<IJobDispatcher>();
 
-                while (!token.IsCancellationRequested)
+                while (!HostContext.AgentShutdownToken.IsCancellationRequested)
                 {
                     TaskAgentMessage message = null;
                     bool skipMessageDeletion = false;
@@ -257,7 +258,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                                     autoUpdateInProgress = true;
                                     var agentUpdateMessage = JsonUtility.FromString<AgentRefreshMessage>(message.Body);
                                     var selfUpdater = HostContext.GetService<ISelfUpdater>();
-                                    selfUpdateTask = selfUpdater.SelfUpdate(agentUpdateMessage, jobDispatcher, !runAsService, token);
+                                    selfUpdateTask = selfUpdater.SelfUpdate(agentUpdateMessage, jobDispatcher, !runAsService, HostContext.AgentShutdownToken);
                                     Trace.Info("Refresh message received, kick-off selfupdate background process.");
                                 }
                                 else

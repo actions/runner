@@ -59,6 +59,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             _jobServerQueue.Start(message);
 
             IExecutionContext jobContext = null;
+            CancellationTokenRegistration? agentShutdownRegistration = null;
             try
             {
                 // Create the job execution context.
@@ -67,6 +68,25 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 Trace.Info("Starting the job execution context.");
                 jobContext.Start();
                 jobContext.Section(StringUtil.Loc("StepStarting", message.JobName));
+
+                agentShutdownRegistration = HostContext.AgentShutdownToken.Register(() =>
+                {
+                    // log an issue, then agent get shutdown by Ctrl-C or Ctrl-Break.
+                    // the server will use Ctrl-Break to tells the agent that operating system is shutting down.
+                    string errorMessage;
+                    switch (HostContext.AgentShutdownReason)
+                    {
+                        case ShutdownReason.UserCancelled:
+                            errorMessage = StringUtil.Loc("UserShutdownAgent");
+                            break;
+                        case ShutdownReason.OperatingSystemShutdown:
+                            errorMessage = StringUtil.Loc("OperatingSystemShutdown", Environment.MachineName);
+                            break;
+                        default:
+                            throw new ArgumentException(HostContext.AgentShutdownReason.ToString(), nameof(HostContext.AgentShutdownReason));
+                    }
+                    jobContext.AddIssue(new Issue() { Type = IssueType.Error, Message = errorMessage });
+                });
 
                 // Set agent version variable.
                 jobContext.Variables.Set(Constants.Variables.Agent.Version, Constants.Agent.Version);
@@ -284,6 +304,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             }
             finally
             {
+                if (agentShutdownRegistration != null)
+                {
+                    agentShutdownRegistration.Value.Dispose();
+                    agentShutdownRegistration = null;
+                }
+
                 await ShutdownQueue(throwOnFailure: false);
             }
         }

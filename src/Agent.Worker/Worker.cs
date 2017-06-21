@@ -30,7 +30,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             var jobRunner = HostContext.CreateService<IJobRunner>();
 
             using (var channel = HostContext.CreateService<IProcessChannel>())
-            using (var jobRequestCancellationToken = new CancellationTokenSource())
+            using (var jobRequestCancellationToken = CancellationTokenSource.CreateLinkedTokenSource(HostContext.AgentShutdownToken))
             using (var channelTokenSource = new CancellationTokenSource())
             {
                 // Start the channel.
@@ -76,10 +76,23 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 }
 
                 // Otherwise a cancel message was received from the channel.
-                Trace.Info("Cancellation message received.");
+                Trace.Info("Cancellation/Shutdown message received.");
                 channelMessage = await channelTask;
-                ArgUtil.Equal(MessageType.CancelRequest, channelMessage.MessageType, nameof(channelMessage.MessageType));
-                jobRequestCancellationToken.Cancel();   // Expire the host cancellation token.
+                switch (channelMessage.MessageType)
+                {
+                    case MessageType.CancelRequest:
+                        jobRequestCancellationToken.Cancel();   // Expire the host cancellation token.
+                        break;
+                    case MessageType.AgentShutdown:
+                        HostContext.ShutdownAgent(ShutdownReason.UserCancelled);
+                        break;
+                    case MessageType.OperatingSystemShutdown:
+                        HostContext.ShutdownAgent(ShutdownReason.OperatingSystemShutdown);
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(channelMessage.MessageType), channelMessage.MessageType, nameof(channelMessage.MessageType));
+                }
+
                 // Await the job.
                 return TaskResultUtil.TranslateToReturnCode(await jobRunnerTask);
             }

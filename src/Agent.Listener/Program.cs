@@ -115,24 +115,22 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
                 // Defer to the Agent class to execute the command.
                 IAgent agent = context.GetService<IAgent>();
-                using (agent.TokenSource = new CancellationTokenSource())
+                try
                 {
-                    try
-                    {
-                        return await agent.ExecuteCommand(command);
-                    }
-                    catch (OperationCanceledException) when (agent.TokenSource.IsCancellationRequested)
-                    {
-                        trace.Info("Agent execution been cancelled.");
-                        return Constants.Agent.ReturnCode.Success;
-                    }
-                    catch (NonRetryableException e)
-                    {
-                        terminal.WriteError(StringUtil.Loc("ErrorOccurred", e.Message));
-                        trace.Error(e);
-                        return Constants.Agent.ReturnCode.TerminatedError;
-                    }
+                    return await agent.ExecuteCommand(command);
                 }
+                catch (OperationCanceledException) when (context.AgentShutdownToken.IsCancellationRequested)
+                {
+                    trace.Info("Agent execution been cancelled.");
+                    return Constants.Agent.ReturnCode.Success;
+                }
+                catch (NonRetryableException e)
+                {
+                    terminal.WriteError(StringUtil.Loc("ErrorOccurred", e.Message));
+                    trace.Error(e);
+                    return Constants.Agent.ReturnCode.TerminatedError;
+                }
+
             }
             catch (Exception e)
             {

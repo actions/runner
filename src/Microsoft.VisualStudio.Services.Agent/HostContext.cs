@@ -24,6 +24,9 @@ namespace Microsoft.VisualStudio.Services.Agent
         T GetService<T>() where T : class, IAgentService;
         void SetDefaultCulture(string name);
         event EventHandler Unloading;
+        CancellationToken AgentShutdownToken { get; }
+        ShutdownReason AgentShutdownReason { get; }
+        void ShutdownAgent(ShutdownReason reason);
     }
 
     public sealed class HostContext : EventListener, IObserver<DiagnosticListener>, IObserver<KeyValuePair<string, object>>, IHostContext, IDisposable
@@ -34,6 +37,8 @@ namespace Microsoft.VisualStudio.Services.Agent
         private static int[] _vssHttpCredentialEventIds = new int[] { 11, 13, 14, 15, 16, 17, 18, 20, 21, 22, 27, 29 };
         private readonly ConcurrentDictionary<Type, object> _serviceInstances = new ConcurrentDictionary<Type, object>();
         private readonly ConcurrentDictionary<Type, Type> _serviceTypes = new ConcurrentDictionary<Type, Type>();
+        private CancellationTokenSource _agentShutdownTokenSource = new CancellationTokenSource();
+
         private Tracing _trace;
         private Tracing _vssTrace;
         private Tracing _httpTrace;
@@ -43,7 +48,8 @@ namespace Microsoft.VisualStudio.Services.Agent
         private IDisposable _diagListenerSubscription;
 
         public event EventHandler Unloading;
-
+        public CancellationToken AgentShutdownToken => _agentShutdownTokenSource.Token;
+        public ShutdownReason AgentShutdownReason { get; private set; }
         public HostContext(string hostType, string logFile = null)
         {
             // Validate args.
@@ -244,6 +250,15 @@ namespace Microsoft.VisualStudio.Services.Agent
             CultureInfo.DefaultThreadCurrentUICulture = new CultureInfo(name);
         }
 
+
+        public void ShutdownAgent(ShutdownReason reason)
+        {
+            ArgUtil.NotNull(reason, nameof(reason));
+            _trace.Info($"Agent will be shutdown for {reason.ToString()}");
+            AgentShutdownReason = reason;
+            _agentShutdownTokenSource.Cancel();
+        }
+
         public override void Dispose()
         {
             Dispose(true);
@@ -264,6 +279,9 @@ namespace Microsoft.VisualStudio.Services.Agent
                 _diagListenerSubscription?.Dispose();
                 _traceManager?.Dispose();
                 _traceManager = null;
+
+                _agentShutdownTokenSource?.Dispose();
+                _agentShutdownTokenSource = null;
 
                 base.Dispose();
             }
@@ -396,5 +414,11 @@ namespace Microsoft.VisualStudio.Services.Agent
             clientHandler.Proxy = agentWebProxy;
             return clientHandler;
         }
+    }
+
+    public enum ShutdownReason
+    {
+        UserCancelled = 0,
+        OperatingSystemShutdown = 1,
     }
 }

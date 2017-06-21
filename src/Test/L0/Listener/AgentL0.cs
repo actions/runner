@@ -57,11 +57,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
         public async void TestRunAsync()
         {
             using (var hc = new TestHostContext(this))
-            using (var tokenSource = new CancellationTokenSource())
             {
                 //Arrange
                 var agent = new Agent.Listener.Agent();
-                agent.TokenSource = tokenSource;
                 hc.SetSingleton<IConfigurationManager>(_configurationManager.Object);
                 hc.SetSingleton<IJobNotification>(_jobNotification.Object);
                 hc.SetSingleton<IMessageListener>(_messageListener.Object);
@@ -96,7 +94,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                             if (0 == messages.Count)
                             {
                                 signalWorkerComplete.Release();
-                                await Task.Delay(2000, tokenSource.Token);
+                                await Task.Delay(2000, hc.AgentShutdownToken);
                             }
 
                             return messages.Dequeue();
@@ -118,7 +116,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                 _jobNotification.Setup(x => x.StartClient(It.IsAny<String>()))
                     .Callback(() =>
                     {
-                    
+
                     });
 
                 hc.EnqueueInstance<IJobDispatcher>(_jobDispatcher.Object);
@@ -136,7 +134,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                 else
                 {
                     //Act
-                    tokenSource.Cancel(); //stop Agent
+                    hc.ShutdownAgent(ShutdownReason.UserCancelled); //stop Agent
 
                     //Assert
                     Task[] taskToWait2 = { agentTask, Task.Delay(2000) };
@@ -188,7 +186,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
 
                 var agent = new Agent.Listener.Agent();
                 agent.Initialize(hc);
-                agent.TokenSource = new CancellationTokenSource();
                 await agent.ExecuteCommand(command);
 
                 _messageListener.Verify(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()), expectedTimes);
@@ -221,7 +218,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
 
                 var agent = new Agent.Listener.Agent();
                 agent.Initialize(hc);
-                agent.TokenSource = new CancellationTokenSource();
                 await agent.ExecuteCommand(command);
 
                 _messageListener.Verify(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()), Times.Once());
@@ -254,7 +250,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
 
                 var agent = new Agent.Listener.Agent();
                 agent.Initialize(hc);
-                agent.TokenSource = new CancellationTokenSource();
                 await agent.ExecuteCommand(command);
 
                 _messageListener.Verify(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()), Times.Once());

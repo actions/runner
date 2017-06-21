@@ -19,48 +19,46 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         {
             //ITerminal registers a CTRL-C handler, which keeps the Agent.Worker process running
             //and lets the Agent.Listener handle gracefully the exit.
-            using (var term = context.GetService<ITerminal>())
+            var term = context.GetService<ITerminal>();
+            Tracing trace = context.GetTrace(nameof(Program));
+            try
             {
-                Tracing trace = context.GetTrace(nameof(Program));
+                trace.Info($"Version: {Constants.Agent.Version}");
+                trace.Info($"Commit: {BuildConstants.Source.CommitHash}");
+                trace.Info($"Culture: {CultureInfo.CurrentCulture.Name}");
+                trace.Info($"UI Culture: {CultureInfo.CurrentUICulture.Name}");
+
+                // Validate args.
+                ArgUtil.NotNull(args, nameof(args));
+                ArgUtil.Equal(3, args.Length, nameof(args.Length));
+                ArgUtil.NotNullOrEmpty(args[0], $"{nameof(args)}[0]");
+                ArgUtil.Equal("spawnclient", args[0].ToLowerInvariant(), $"{nameof(args)}[0]");
+                ArgUtil.NotNullOrEmpty(args[1], $"{nameof(args)}[1]");
+                ArgUtil.NotNullOrEmpty(args[2], $"{nameof(args)}[2]");
+                var worker = context.GetService<IWorker>();
+
+                // Run the worker.
+                return await worker.RunAsync(
+                    pipeIn: args[1],
+                    pipeOut: args[2]);
+            }
+            catch (Exception ex)
+            {
+                // Populate any exception that cause worker failure back to agent.
+                Console.WriteLine(ex.ToString());
                 try
                 {
-                    trace.Info($"Version: {Constants.Agent.Version}");
-                    trace.Info($"Commit: {BuildConstants.Source.CommitHash}");
-                    trace.Info($"Culture: {CultureInfo.CurrentCulture.Name}");
-                    trace.Info($"UI Culture: {CultureInfo.CurrentUICulture.Name}");
-
-                    // Validate args.
-                    ArgUtil.NotNull(args, nameof(args));
-                    ArgUtil.Equal(3, args.Length, nameof(args.Length));
-                    ArgUtil.NotNullOrEmpty(args[0], $"{nameof(args)}[0]");
-                    ArgUtil.Equal("spawnclient", args[0].ToLowerInvariant(), $"{nameof(args)}[0]");
-                    ArgUtil.NotNullOrEmpty(args[1], $"{nameof(args)}[1]");
-                    ArgUtil.NotNullOrEmpty(args[2], $"{nameof(args)}[2]");
-                    var worker = context.GetService<IWorker>();
-
-                    // Run the worker.
-                    return await worker.RunAsync(
-                        pipeIn: args[1],
-                        pipeOut: args[2]);
+                    trace.Error(ex);
                 }
-                catch (Exception ex)
+                catch (Exception e)
                 {
-                    // Populate any exception that cause worker failure back to agent.
-                    Console.WriteLine(ex.ToString());
-                    try
-                    {
-                        trace.Error(ex);
-                    }
-                    catch (Exception e)
-                    {
-                        // make sure we don't crash the app on trace error.
-                        // since IOException will throw when we run out of disk space.
-                        Console.WriteLine(e.ToString());
-                    }
+                    // make sure we don't crash the app on trace error.
+                    // since IOException will throw when we run out of disk space.
+                    Console.WriteLine(e.ToString());
                 }
-
-                return 1;
             }
+
+            return 1;
         }
     }
 }

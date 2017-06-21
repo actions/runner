@@ -463,14 +463,28 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                         }
 
                         // renew job request completed or job request cancellation token been fired for RunAsync(jobrequestmessage)
-                        // cancel worker gracefully first, then kill it after 45 sec
+                        // cancel worker gracefully first, then kill it after worker cancel timeout
                         try
                         {
                             Trace.Info($"Send job cancellation message to worker for job {message.JobId}.");
                             using (var csSendCancel = new CancellationTokenSource(_channelTimeout))
                             {
+                                var messageType = MessageType.CancelRequest;
+                                if (HostContext.AgentShutdownToken.IsCancellationRequested)
+                                {
+                                    switch (HostContext.AgentShutdownReason)
+                                    {
+                                        case ShutdownReason.UserCancelled:
+                                            messageType = MessageType.AgentShutdown;
+                                            break;
+                                        case ShutdownReason.OperatingSystemShutdown:
+                                            messageType = MessageType.OperatingSystemShutdown;
+                                            break;
+                                    }
+                                }
+
                                 await processChannel.SendAsync(
-                                    messageType: MessageType.CancelRequest,
+                                    messageType: messageType,
                                     body: string.Empty,
                                     cancellationToken: csSendCancel.Token);
                             }

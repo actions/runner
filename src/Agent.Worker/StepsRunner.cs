@@ -85,23 +85,31 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
                             step.ExecutionContext.Debug($"Re-evaluate condition on job cancellation for step: '{step.DisplayName}'.");
                             bool conditionReTestResult;
-                            if (stage == JobRunStage.PostJob)
+                            if (HostContext.AgentShutdownToken.IsCancellationRequested)
                             {
-                                step.ExecutionContext.Debug($"Continue run post-job step: '{step.DisplayName}'");
-                                conditionReTestResult = true;
+                                step.ExecutionContext.Debug($"Skip Re-evaluate condition on agent shutdown.");
+                                conditionReTestResult = false;
                             }
                             else
                             {
-                                try
+                                if (stage == JobRunStage.PostJob)
                                 {
-                                    conditionReTestResult = expressionManager.Evaluate(step.ExecutionContext, step.Condition, hostTracingOnly: true);
+                                    step.ExecutionContext.Debug($"Continue run post-job step: '{step.DisplayName}'");
+                                    conditionReTestResult = true;
                                 }
-                                catch (Exception ex)
+                                else
                                 {
-                                    // Cancel the step since we get exception while re-evaluate step condition.
-                                    Trace.Info("Caught exception from expression when re-test condition on job cancellation.");
-                                    step.ExecutionContext.Error(ex);
-                                    conditionReTestResult = false;
+                                    try
+                                    {
+                                        conditionReTestResult = expressionManager.Evaluate(step.ExecutionContext, step.Condition, hostTracingOnly: true);
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        // Cancel the step since we get exception while re-evaluate step condition.
+                                        Trace.Info("Caught exception from expression when re-test condition on job cancellation.");
+                                        step.ExecutionContext.Error(ex);
+                                        conditionReTestResult = false;
+                                    }
                                 }
                             }
 
@@ -117,23 +125,32 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     // Evaluate condition.
                     step.ExecutionContext.Debug($"Evaluating condition for step: '{step.DisplayName}'");
                     Exception conditionEvaluateError = null;
-                    bool conditionResult = false;
-                    if (stage == JobRunStage.PostJob)
+                    bool conditionResult;
+                    if (HostContext.AgentShutdownToken.IsCancellationRequested)
                     {
-                        step.ExecutionContext.Debug($"Always run post-job step: '{step.DisplayName}'");
-                        conditionResult = true;
+                        step.ExecutionContext.Debug($"Skip evaluate condition on agent shutdown.");
+                        conditionResult = false;
                     }
                     else
                     {
-                        try
+                        if (stage == JobRunStage.PostJob)
                         {
-                            conditionResult = expressionManager.Evaluate(step.ExecutionContext, step.Condition);
+                            step.ExecutionContext.Debug($"Always run post-job step: '{step.DisplayName}'");
+                            conditionResult = true;
                         }
-                        catch (Exception ex)
+                        else
                         {
-                            Trace.Info("Caught exception from expression.");
-                            Trace.Error(ex);
-                            conditionEvaluateError = ex;
+                            try
+                            {
+                                conditionResult = expressionManager.Evaluate(step.ExecutionContext, step.Condition);
+                            }
+                            catch (Exception ex)
+                            {
+                                Trace.Info("Caught exception from expression.");
+                                Trace.Error(ex);
+                                conditionResult = false;
+                                conditionEvaluateError = ex;
+                            }
                         }
                     }
 

@@ -19,13 +19,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         private readonly ITraceManager _traceManager;
         private readonly Terminal _term;
         private readonly SecretMasker _secretMasker;
+        private CancellationTokenSource _agentShutdownTokenSource = new CancellationTokenSource();
         private string _suiteName;
         private string _testName;
         private Tracing _trace;
         private AssemblyLoadContext _loadContext;
         private List<string> _tempDirectorys = new List<string>();
         public event EventHandler Unloading;
-
+        public CancellationToken AgentShutdownToken => _agentShutdownTokenSource.Token;
+        public ShutdownReason AgentShutdownReason { get; private set; }
         public TestHostContext(object testClass, [CallerMemberName] string testName = "")
         {
             ArgUtil.NotNull(testClass, nameof(testClass));
@@ -153,6 +155,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         public Tracing GetTrace(string name)
         {
             return _traceManager[name];
+        }
+
+        public void ShutdownAgent(ShutdownReason reason)
+        {
+            ArgUtil.NotNull(reason, nameof(reason));
+            AgentShutdownReason = reason;
+            _agentShutdownTokenSource.Cancel();
         }
 
         public void Dispose()
