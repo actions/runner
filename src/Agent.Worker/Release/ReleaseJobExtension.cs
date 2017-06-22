@@ -178,7 +178,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
         {
             Trace.Entering();
 
-            CleanUpArtifactsFolder(executionContext, artifactsWorkingFolder);
+            CreateArtifactsFolder(executionContext, artifactsWorkingFolder);
             foreach (AgentArtifactDefinition agentArtifactDefinition in agentArtifactDefinitions)
             {
                 // We don't need to check if its old style artifact anymore. All the build data has been fixed and all the build artifact has Alias now.
@@ -225,14 +225,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
                         {
                             var releaseFileSystemManager = HostContext.GetService<IReleaseFileSystemManager>();
                             executionContext.Output(StringUtil.Loc("RMEnsureArtifactFolderExistsAndIsClean", downloadFolderPath));
-                            try
-                            {
-                                releaseFileSystemManager.CleanupDirectory(downloadFolderPath, executionContext.CancellationToken);
-                            }
-                            catch (Exception ex) when (ex is DirectoryNotFoundException || ex is UnauthorizedAccessException)
-                            {
-                                throw new ArtifactCleanupFailedException(StringUtil.Loc("FailedCleaningupRMArtifactDirectory", downloadFolderPath), ex);
-                            }
+                            releaseFileSystemManager.EnsureEmptyDirectory(downloadFolderPath, executionContext.CancellationToken);
 
                             await extension.DownloadAsync(executionContext, artifactDefinition, downloadFolderPath);
                         });
@@ -243,14 +236,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
             executionContext.Output(StringUtil.Loc("RMArtifactsDownloadFinished"));
         }
 
-        private void CleanUpArtifactsFolder(IExecutionContext executionContext, string artifactsWorkingFolder)
+        private void CreateArtifactsFolder(IExecutionContext executionContext, string artifactsWorkingFolder)
         {
             Trace.Entering();
 
             RetryExecutor retryExecutor = new RetryExecutor();
             retryExecutor.ShouldRetryAction = (ex) =>
             {
-                executionContext.Output(StringUtil.Loc("RetryingRMArtifactCleanUp", artifactsWorkingFolder, ex));
+                executionContext.Output(StringUtil.Loc("RMRetryingCreatingArtifactsDirectory", artifactsWorkingFolder, ex));
                 Trace.Error(ex);
 
                 return true;
@@ -259,24 +252,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
             retryExecutor.Execute(
                 () =>
                 {
-                    executionContext.Output(StringUtil.Loc("RMCleaningArtifactsDirectory", artifactsWorkingFolder));
+                    executionContext.Output(StringUtil.Loc("RMCreatingArtifactsDirectory", artifactsWorkingFolder));
 
-                    try
-                    {
-                        if (Directory.Exists(artifactsWorkingFolder))
-                        {
-                            IOUtil.DeleteDirectory(artifactsWorkingFolder, executionContext.CancellationToken);
-                        }
-
-                        Directory.CreateDirectory(artifactsWorkingFolder);
-                    }
-                    catch (Exception ex) when (ex is DirectoryNotFoundException || ex is UnauthorizedAccessException)
-                    {
-                        throw new ArtifactCleanupFailedException(StringUtil.Loc("FailedCleaningupRMArtifactDirectory", artifactsWorkingFolder), ex);
-                    }
+                    var releaseFileSystemManager = HostContext.GetService<IReleaseFileSystemManager>();
+                    releaseFileSystemManager.EnsureEmptyDirectory(artifactsWorkingFolder, executionContext.CancellationToken);
                 });
 
-            executionContext.Output(StringUtil.Loc("RMCleanedUpArtifactsDirectory", artifactsWorkingFolder));
+            executionContext.Output(StringUtil.Loc("RMCreatedArtifactsDirectory", artifactsWorkingFolder));
         }
 
         public override void InitializeJobExtension(IExecutionContext executionContext)
@@ -393,7 +375,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
 
         private void LogDownloadFailureTelemetry(IExecutionContext executionContext, Exception ex)
         {
-            var code = (ex is Artifacts.ArtifactDownloadException || ex is ArtifactCleanupFailedException) ? DownloadArtifactsFailureUserError : DownloadArtifactsFailureSystemError;
+            var code = (ex is ArtifactDownloadException || 
+                        ex is ArtifactDirectoryCreationFailedException || 
+                        ex is IOException ||
+                        ex is UnauthorizedAccessException) ? DownloadArtifactsFailureUserError : DownloadArtifactsFailureSystemError;
             var issue = new Issue
             {
                 Type = IssueType.Error,

@@ -1,8 +1,10 @@
+using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.VisualStudio.Services.Agent.Util;
+using Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
 {
@@ -13,7 +15,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
 
         Task WriteStreamToFile(Stream stream, string filePath, int bufferSize, CancellationToken cancellationToken);
 
-        void CleanupDirectory(string directoryPath, CancellationToken cancellationToken);
+        void EnsureEmptyDirectory(string directoryPath, CancellationToken cancellationToken);
 
         void EnsureDirectoryExists(string directoryPath);
 
@@ -32,15 +34,39 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
 
     public class ReleaseFileSystemManager : AgentService, IReleaseFileSystemManager
     {
-        public void CleanupDirectory(string directoryPath, CancellationToken cancellationToken)
+        public void EnsureEmptyDirectory(string directoryPath, CancellationToken cancellationToken)
         {
-            var path = ValidatePath(directoryPath);
-            if (Directory.Exists(path))
+            try
             {
-                IOUtil.DeleteDirectory(path, cancellationToken);
-            }
+                var path = ValidatePath(directoryPath);
+                if (Directory.Exists(path))
+                {
+                    IOUtil.DeleteDirectory(path, cancellationToken);
+                }
 
-            EnsureDirectoryExists(path);
+                EnsureDirectoryExists(path);
+            }
+            catch (Exception ex)
+            {
+                var exception = ex;
+                
+                if (ex is AggregateException)
+                {
+                    exception = ((AggregateException)ex).Flatten().InnerException;
+                }
+
+                if (exception is DirectoryNotFoundException ||
+                    exception is UnauthorizedAccessException ||
+                    exception is IOException ||
+                    exception is OperationCanceledException)
+                {
+                    throw new ArtifactDirectoryCreationFailedException(StringUtil.Loc("RMFailedCreatingArtifactDirectory", directoryPath), exception);
+                }
+                else
+                {
+                    throw;
+                }
+            }
         }
 
         public StreamReader GetFileReader(string filePath)
