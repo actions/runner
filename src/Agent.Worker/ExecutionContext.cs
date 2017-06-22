@@ -18,6 +18,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
     [ServiceLocator(Default = typeof(ExecutionContext))]
     public interface IExecutionContext : IAgentService
     {
+        string ResultCode { get; set; }
         TaskResult? Result { get; set; }
         TaskResult? CommandResult { get; set; }
         CancellationToken CancellationToken { get; }
@@ -103,8 +104,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         private string ContextType => _record.RecordType;
 
-        // might remove this.
-        // TODO: figure out how do we actually use the result code.
         public string ResultCode
         {
             get
@@ -351,7 +350,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             // Prepend Path
             PrependPath = new List<string>();
 
-            // Docker 
+            // Docker
             Container = new ContainerInfo()
             {
                 ContainerImage = Variables.Get("_PREVIEW_VSTS_DOCKER_IMAGE"),
