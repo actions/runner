@@ -101,7 +101,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             }
 
             // Mount folder into container
-            executionContext.Container.MountVolumes.Add(new MountVolume(executionContext.Variables.System_DefaultWorkingDirectory));
+            executionContext.Container.MountVolumes.Add(new MountVolume(Path.GetDirectoryName(executionContext.Variables.System_DefaultWorkingDirectory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar))));
             executionContext.Container.MountVolumes.Add(new MountVolume(executionContext.Variables.Agent_TempDirectory));
             executionContext.Container.MountVolumes.Add(new MountVolume(executionContext.Variables.Agent_ToolsDirectory));
             executionContext.Container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Externals), true));
