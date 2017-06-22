@@ -46,11 +46,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             _trace = _hostContext.GetTrace(nameof(Variables));
             ArgUtil.NotNull(hostContext, nameof(hostContext));
 
-            // Validate the dictionary.
+            // Validate the dictionary, rmeove any variable with empty variable name.
             ArgUtil.NotNull(copy, nameof(copy));
-            foreach (string variableName in copy.Keys)
+            if (copy.Keys.Any(k => string.IsNullOrWhiteSpace(k)))
             {
-                ArgUtil.NotNullOrEmpty(variableName, nameof(variableName));
+                _trace.Info($"Remove {copy.Keys.Count(k => string.IsNullOrWhiteSpace(k))} variables with empty variable name.");
             }
 
             // Filter/validate the mask hints.
@@ -65,6 +65,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             // Initialize the variable dictionary.
             IEnumerable<Variable> variables =
                 from string name in copy.Keys
+                where !string.IsNullOrWhiteSpace(name)
                 join MaskHint maskHint in variableMaskHints // Join the variable names with the variable mask hints.
                 on name.ToUpperInvariant() equals maskHint.Value.ToUpperInvariant()
                 into maskHintGrouping

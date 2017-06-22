@@ -415,6 +415,35 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
+        public void Constructor_SkipVariableWithEmptyName()
+        {
+            using (TestHostContext hc = new TestHostContext(this))
+            {
+                // Arrange.
+                var copy = new Dictionary<string, string>
+                {
+                    { "", "" },
+                    { "   ", "" },
+                    { "MyPublicVariable", "My public value" },
+                };
+                var maskHints = new List<MaskHint>();
+                List<string> warnings;
+                var variables = new Variables(hc, copy, maskHints, out warnings);
+
+                // Act.
+                KeyValuePair<string, string>[] publicVariables = variables.Public.ToArray();
+
+                // Assert.
+                Assert.Equal(0, warnings.Count);
+                Assert.Equal(1, publicVariables.Length);
+                Assert.Equal("MyPublicVariable", publicVariables[0].Key);
+                Assert.Equal("My public value", publicVariables[0].Value);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
         public void ExpandValues_DoesNotRecurse()
         {
             using (TestHostContext hc = new TestHostContext(this))
