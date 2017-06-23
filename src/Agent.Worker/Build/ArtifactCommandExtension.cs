@@ -107,7 +107,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             var commandContext = HostContext.CreateService<IAsyncCommandContext>();
             commandContext.InitializeCommandContext(context, StringUtil.Loc("AssociateArtifact"));
             commandContext.Task = AssociateArtifactAsync(commandContext,
-                                                         WorkerUtilies.GetVssConnection(context),
+                                                         WorkerUtilities.GetVssConnection(context),
                                                          projectId,
                                                          buildId.Value,
                                                          artifactName,
@@ -177,7 +177,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             var commandContext = HostContext.CreateService<IAsyncCommandContext>();
             commandContext.InitializeCommandContext(context, StringUtil.Loc("UploadArtifact"));
             commandContext.Task = UploadArtifactAsync(commandContext,
-                                                      WorkerUtilies.GetVssConnection(context),
+                                                      WorkerUtilities.GetVssConnection(context),
                                                       projectId,
                                                       containerId.Value,
                                                       containerFolder,

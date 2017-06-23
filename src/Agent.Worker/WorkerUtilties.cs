@@ -7,7 +7,7 @@ using System.Linq;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
-    public class WorkerUtilies
+    public class WorkerUtilities
     {
         public static VssConnection GetVssConnection(IExecutionContext context)
         {

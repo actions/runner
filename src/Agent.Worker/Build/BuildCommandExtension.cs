@@ -90,7 +90,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 var commandContext = HostContext.CreateService<IAsyncCommandContext>();
                 commandContext.InitializeCommandContext(context, StringUtil.Loc("UpdateBuildNumber"));
                 commandContext.Task = UpdateBuildNumberAsync(commandContext,
-                                                             WorkerUtilies.GetVssConnection(context),
+                                                             WorkerUtilities.GetVssConnection(context),
                                                              projectId,
                                                              buildId.Value,
                                                              data,
@@ -135,7 +135,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 var commandContext = HostContext.CreateService<IAsyncCommandContext>();
                 commandContext.InitializeCommandContext(context, StringUtil.Loc("AddBuildTag"));
                 commandContext.Task = AddBuildTagAsync(commandContext,
-                                                       WorkerUtilies.GetVssConnection(context),
+                                                       WorkerUtilities.GetVssConnection(context),
                                                        projectId,
                                                        buildId.Value,
                                                        data,
