@@ -83,7 +83,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
 
                     var startDate = DateTime.Now;
                     var startTime = TimeSpan.Zero;
-                    if (DateTime.TryParse(runDate, DateTimeFormatInfo.InvariantInfo, DateTimeStyles.None, out startDate) && 
+                    if (DateTime.TryParse(runDate, DateTimeFormatInfo.InvariantInfo, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out startDate) && 
                         TimeSpan.TryParse(runTime, CultureInfo.InvariantCulture, out startTime))
                     {
                         dateTimeParseError = false;

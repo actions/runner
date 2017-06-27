@@ -195,7 +195,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
             XmlAttribute timestampNode = rootNode.Attributes["timestamp"];
             if (timestampNode != null && timestampNode.Value != null)
             {
-                if (DateTime.TryParse(timestampNode.Value, DateTimeFormatInfo.InvariantInfo, DateTimeStyles.None, out timestampFromXml))
+                if (DateTime.TryParse(timestampNode.Value, DateTimeFormatInfo.InvariantInfo, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out timestampFromXml))
                 {
                     testSuiteSummary.TimeStamp = timestampFromXml;
                 }
@@ -352,7 +352,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
             {
                 Name = name;
                 Host = string.Empty;
-                TimeStamp = DateTime.Now;
+                TimeStamp = DateTime.UtcNow;
                 TestSuiteDuration = TimeSpan.Zero;
                 SuiteTimeDataAvailable = true;
                 SuiteTimeStampAvailable = true;
