@@ -18,7 +18,6 @@
   "ArgumentNeeded": "'{0}' has to be specified.",
   "ArtifactCommandNotFound": "##vso[artifact.{0}] is not a recognized command for Artifact command extension. Please reference documentaion (http://go.microsoft.com/fwlink/?LinkId=817296)",
   "ArtifactDownloadFailed": "Failed to download the artifact from {0}.",
-  "ArtifactLocationNotSupport": "Unsupport artifact location: {0}",
   "ArtifactLocationRequired": "Artifact location is required.",
   "ArtifactNameRequired": "Artifact Name is required.",
   "ArtifactTypeRequired": "Artifact Type is required.",
