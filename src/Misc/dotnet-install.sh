@@ -346,7 +346,7 @@ get_latest_version_info() {
         version_file_url="$uncached_feed/Runtime/$channel/latest.version"
     else
         if [ "$coherent" = true ]; then
-            version_file_url="$uncached_feed/Runtime/$channel/latest.coherent.version"
+            version_file_url="$uncached_feed/Sdk/$channel/latest.coherent.version"
         else
             version_file_url="$uncached_feed/Sdk/$channel/latest.version"
         fi
