@@ -251,7 +251,7 @@ namespace AgentService
             }
             else
             {
-                String latestLogFile = null;
+                FileInfo latestLogFile = null;
                 DateTime latestLogTimestamp = DateTime.MinValue;
                 foreach (var logFile in updateLogs)
                 {
@@ -262,25 +262,26 @@ namespace AgentService
                     if (DateTime.TryParseExact(timestamp, "yyyyMMdd-HHmmss", null, DateTimeStyles.None, out updateTime) &&
                         updateTime > latestLogTimestamp)
                     {
-                        latestLogFile = logFile.Name;
+                        latestLogFile = logFile;
                         latestLogTimestamp = updateTime;
                     }
                 }
 
-                if (string.IsNullOrEmpty(latestLogFile) || latestLogTimestamp == DateTime.MinValue)
+                if (latestLogFile == null || latestLogTimestamp == DateTime.MinValue)
                 {
                     // we can't find update log with expected naming convention.
                     return AgentUpdateResult.Failed;
                 }
 
-                if (DateTime.UtcNow - latestLogTimestamp > TimeSpan.FromSeconds(15))
+                latestLogFile.Refresh();
+                if (DateTime.UtcNow - latestLogFile.LastWriteTimeUtc > TimeSpan.FromSeconds(15))
                 {
                     // the latest update log we find is more than 15 sec old, the update process is busted.
                     return AgentUpdateResult.Failed;
                 }
                 else
                 {
-                    string resultString = Path.GetExtension(latestLogFile).TrimStart('.');
+                    string resultString = Path.GetExtension(latestLogFile.Name).TrimStart('.');
                     AgentUpdateResult result;
                     if (Enum.TryParse<AgentUpdateResult>(resultString, true, out result))
                     {
