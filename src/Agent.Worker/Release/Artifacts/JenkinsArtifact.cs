@@ -117,11 +117,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
                         }
                         else if (startJobId > endJobId)
                         {
-                            context.Output(StringUtil.Loc("JenkinsRollbackDeployment"));
-
-                            // we do not support fetching the commits for the rollback deployment fully yet.
-                            // until then we will return from here.
-                            return;
+                            context.Output(StringUtil.Loc("JenkinsRollbackDeployment", startJobId, endJobId));
+                            // swap the job IDs to fetch the roll back commits
+                            int swap = startJobId;
+                            startJobId = endJobId;
+                            endJobId = swap;
                         }
                         else if (startJobId == endJobId)
                         {

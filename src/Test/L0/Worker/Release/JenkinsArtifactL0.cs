@@ -111,7 +111,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Release
         [Fact]
         [TraitAttribute("Level", "L0")]
         [TraitAttribute("Category", "Worker")]
-        public async void JenkinsRollbackCommitsNotSupported()
+        public async void JenkinsRollbackCommitsShouldBeFetched()
         {
             using (TestHostContext tc = Setup())
             {
@@ -126,7 +126,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Release
                 string expectedUrl = $"{details.Url}/job/{details.JobName}/api/json?tree=builds[number,result,changeSet[items[commitId,date,msg,author[fullName]]]]{{0,1}}";
 
                 await artifact.DownloadCommitsAsync(_ec.Object, _artifactDefinition, tc.GetDirectory(WellKnownDirectory.Root));
-                _httpClient.Verify(x => x.GetStringAsync(It.Is<string>(y => y.StartsWith(expectedUrl)), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()), Times.Never);
+                _httpClient.Verify(x => x.GetStringAsync(It.Is<string>(y => y.StartsWith(expectedUrl)), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()), Times.Once);
             }
         }
         [Fact]

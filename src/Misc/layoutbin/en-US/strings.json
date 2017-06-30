@@ -154,7 +154,7 @@
   "JenkinsCommitsInvalidEndJobId": "EndJobId {0} associated with the jenkins artifact {1} is invalid. Commits will not be downloaded.",
   "JenkinsDownloadingChangeFromCurrentBuild": "Cannot find endJobId, will be fetching the current build's changeset",
   "JenkinsNoCommitsToFetch": "Deploying same build. Nothing to fetch",
-  "JenkinsRollbackDeployment": "This is a Rollback deployment",
+  "JenkinsRollbackDeployment": "Downloading commits for Rollback Deployment between job {0} to {1}",
   "JobCompleted": "{0:u}: Job {1} completed with result: {2}",
   "ListenerHelp": [
     "Visual Studio Team Services Agent",
