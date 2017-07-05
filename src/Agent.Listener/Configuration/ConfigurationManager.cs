@@ -2,16 +2,17 @@ using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Listener.Capabilities;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using Microsoft.VisualStudio.Services.Common;
+using Microsoft.VisualStudio.Services.OAuth;
+using Microsoft.VisualStudio.Services.WebApi;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Security.Principal;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Security.Cryptography;
-using Microsoft.VisualStudio.Services.WebApi;
-using Microsoft.VisualStudio.Services.OAuth;
-using System.Security.Principal;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 {
@@ -19,7 +20,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
     public interface IConfigurationManager : IAgentService
     {
         bool IsConfigured();
-        bool IsServiceConfigured();
         Task ConfigureAsync(CommandSettings command);
         Task UnconfigureAsync(CommandSettings command);
         AgentSettings LoadSettings();
@@ -38,13 +38,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             _store = hostContext.GetService<IConfigurationStore>();
             Trace.Verbose("store created");
             _term = hostContext.GetService<ITerminal>();
-        }
-
-        public bool IsServiceConfigured()
-        {
-            bool result = _store.IsServiceConfigured();
-            Trace.Info($"Is service configured: {result}");
-            return result;
         }
 
         public bool IsConfigured()
@@ -329,16 +322,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             bool runAsService = command.GetRunAsService();
             if (runAsService)
             {
-                if (!new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator))
-                {
-                    Trace.Error("Needs Administrator privileges for configure agent as windows service.");
-                    throw new SecurityException(StringUtil.Loc("NeedAdminForConfigAgentWinService"));
-                }
-
                 Trace.Info("Configuring to run the agent as service");
                 var serviceControlManager = HostContext.GetService<IWindowsServiceControlManager>();
                 serviceControlManager.ConfigureService(agentSettings, command);
             }
+            //This will be enabled with AutoLogon code changes are tested
+            else if (command.GetEnableAutoLogon())
+            {                
+                Trace.Info("Agent is going to run as process setting up the 'AutoLogon' capability for the agent.");
+                var autoLogonConfigManager = HostContext.GetService<IAutoLogonManager>();
+                await autoLogonConfigManager.ConfigureAsync(command);
+                //Important: The machine may restart if the autologon user is not same as the current user
+                //if you are adding code after this, keep that in mind
+            }
+
 #elif OS_LINUX || OS_OSX
             // generate service config script for OSX and Linux, GenerateScripts() will no-opt on windows.
             var serviceControlManager = HostContext.GetService<ILinuxServiceControlManager>();
@@ -356,12 +353,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 if (_store.IsServiceConfigured())
                 {
 #if OS_WINDOWS
-                    if (!new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator))
-                    {
-                        Trace.Error("Needs Administrator privileges for unconfigure windows service agent.");
-                        throw new SecurityException(StringUtil.Loc("NeedAdminForUnconfigWinServiceAgent"));
-                    }
-
                     var serviceControlManager = HostContext.GetService<IWindowsServiceControlManager>();
                     serviceControlManager.UnconfigureService();
                     _term.WriteLine(StringUtil.Loc("Success") + currentAction);
@@ -373,7 +364,22 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                     throw new Exception(StringUtil.Loc("UnconfigureOSXService"));
 #endif
                 }
-
+                else
+                {
+#if OS_WINDOWS
+                    //running as process, unconfigure autologon if it was configured                    
+                    if (_store.IsAutoLogonConfigured())
+                    {
+                        var autoLogonConfigManager = HostContext.GetService<IAutoLogonManager>();
+                        autoLogonConfigManager.Unconfigure();                        
+                    }
+                    else
+                    {
+                        Trace.Info("AutoLogon was not configured on the agent.");
+                    }
+#endif
+                }
+                
                 //delete agent from the server
                 currentAction = StringUtil.Loc("UnregisteringAgent");
                 _term.WriteLine(currentAction);

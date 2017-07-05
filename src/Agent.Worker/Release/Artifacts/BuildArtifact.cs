@@ -103,7 +103,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
             var tfsUrl = context.Variables.Get(WellKnownDistributedTaskVariables.TFCollectionUrl);
 
             Guid projectId = context.Variables.System_TeamProjectId ?? Guid.Empty;
-            if(artifactDetails.ContainsKey("Project"))
+            if (artifactDetails.ContainsKey("Project"))
             {
                 Guid.TryParse(artifactDetails["Project"], out projectId);
             }

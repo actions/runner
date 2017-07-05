@@ -197,7 +197,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             var machines = await GetDeploymentMachinesAsync(agentSettings);
             Trace.Verbose("Returns {0} machines with name {1}", machines.Count, agentSettings.AgentName);
             var machine = machines.FirstOrDefault();
-            if(machine != null)
+            if (machine != null)
             {
                 if (!string.IsNullOrWhiteSpace(agentSettings.ProjectId))
                 {

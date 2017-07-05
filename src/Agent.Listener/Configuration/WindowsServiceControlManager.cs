@@ -29,12 +29,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         public void ConfigureService(AgentSettings settings, CommandSettings command)
         {
             Trace.Entering();
+
+            if (!_windowsServiceHelper.IsRunningInElevatedMode())
+            {
+                Trace.Error("Needs Administrator privileges for configure agent as windows service.");
+                throw new SecurityException(StringUtil.Loc("NeedAdminForConfigAgentWinService"));
+            }
+
             // TODO: Fix bug that exists in the legacy Windows agent where configuration using mirrored credentials causes an error, but the agent is still functional (after restarting). Mirrored credentials is a supported scenario and shouldn't manifest any errors.
 
             // We use NetworkService as default account for build and release agent
             // We use Local System as default account for deployment agent
             NTAccount defaultServiceAccount = command.DeploymentGroup ? _windowsServiceHelper.GetDefaultAdminServiceAccount() : _windowsServiceHelper.GetDefaultServiceAccount();
-            string logonAccount = command.GetWindowsLogonAccount(defaultValue: defaultServiceAccount.ToString());
+            string logonAccount = command.GetWindowsLogonAccount(defaultValue: defaultServiceAccount.ToString(), descriptionMsg: StringUtil.Loc("WindowsLogonAccountNameDescription"));
 
             string domainName;
             string userName;
@@ -167,6 +174,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
         public void UnconfigureService()
         {
+            if (!_windowsServiceHelper.IsRunningInElevatedMode())
+            {
+                Trace.Error("Needs Administrator privileges for unconfigure windows service agent.");
+                throw new SecurityException(StringUtil.Loc("NeedAdminForUnconfigWinServiceAgent"));
+            }
+
             string serviceConfigPath = IOUtil.GetServiceConfigFilePath();
             string serviceName = File.ReadAllText(serviceConfigPath);
             if (_windowsServiceHelper.IsServiceExists(serviceName))

@@ -633,7 +633,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                     .Returns("some windows logon account");
 
                 // Act.
-                string actual = command.GetWindowsLogonAccount("some default account");
+                string actual = command.GetWindowsLogonAccount("some default account", StringUtil.Loc("WindowsLogonAccountNameDescription"));
 
                 // Assert.
                 Assert.Equal("some windows logon account", actual);

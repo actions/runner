@@ -103,7 +103,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 _inConfigStage = false;
 
                 AgentSettings settings = configManager.LoadSettings();
-                bool runAsService = configManager.IsServiceConfigured();
+
+                var store = HostContext.GetService<IConfigurationStore>();
+                bool configuredAsService = store.IsServiceConfigured();
 
                 // Run agent
                 //if (command.Run) // this line is current break machine provisioner.
@@ -117,11 +119,40 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     return Constants.Agent.ReturnCode.TerminatedError;
                 }
 
-                // Run the agent interactively or as service
-                Trace.Verbose($"Run as service: '{runAsService}'");
-                return await RunAsync(settings, runAsService);
+                Trace.Verbose($"Configured as service: '{configuredAsService}'");
 
-                //}
+                //Get the startup type of the agent i.e., autostartup, service, manualinteractive
+                var startupTypeAsString = command.GetStartupType();
+                if(!Enum.TryParse(startupTypeAsString, true, out StartupType startType))
+                {                    
+                    Trace.Info($"Could not parse the argument value '{startupTypeAsString}' for StartupType. Defaulting to {StartupType.ManualInteractive}");
+                    startType = StartupType.ManualInteractive;
+                }
+                else
+                {   
+                    Trace.Info($"Startup type of the agent - {startType}");
+                }
+
+                Trace.Info($"Setting the startup type in HostContext.StartupType");
+                HostContext.StartupType = startType;
+
+#if OS_WINDOWS
+                if (store.IsAutoLogonConfigured())
+                {
+                    if(HostContext.StartupType != StartupType.Service)
+                    {
+                        Trace.Info($"Autologon is configured on the machine, dumping all the autologon related registry settings");
+                        var autoLogonRegManager = HostContext.GetService<IAutoLogonRegistryManager>();
+                        autoLogonRegManager.DumpAutoLogonRegistrySettings();
+                    }
+                    else
+                    {
+                        Trace.Info($"Autologon is configured on the machine but current Agent.Listner.exe is launched from the windows service");
+                    }
+                }
+#endif
+                // Run the agent interactively or as service
+                return await RunAsync(settings, HostContext.StartupType == StartupType.Service);
             }
             finally
             {

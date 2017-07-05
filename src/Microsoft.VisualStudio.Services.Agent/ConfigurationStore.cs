@@ -1,7 +1,7 @@
+using Microsoft.VisualStudio.Services.Agent.Util;
 using System.IO;
 using System.Runtime.Serialization;
 using System.Threading;
-using Microsoft.VisualStudio.Services.Agent.Util;
 
 namespace Microsoft.VisualStudio.Services.Agent
 {
@@ -59,12 +59,23 @@ namespace Microsoft.VisualStudio.Services.Agent
         public string CollectionName { get; set; }
     }
 
+    [DataContract]
+    public sealed class AutoLogonSettings
+    {
+        [DataMember(EmitDefaultValue = false)]
+        public string UserDomainName { get; set; }
+
+        [DataMember(EmitDefaultValue = false)]
+        public string UserName { get; set; }
+    }
+
     [ServiceLocator(Default = typeof(ConfigurationStore))]
     public interface IConfigurationStore : IAgentService
     {
         string RootFolder { get; }
         bool IsConfigured();
         bool IsServiceConfigured();
+        bool IsAutoLogonConfigured();
         bool HasCredentials();
         CredentialData GetCredentials();
         AgentSettings GetSettings();
@@ -72,6 +83,9 @@ namespace Microsoft.VisualStudio.Services.Agent
         void SaveSettings(AgentSettings settings);
         void DeleteCredential();
         void DeleteSettings();
+        void DeleteAutoLogonSettings();
+        void SaveAutoLogonSettings(AutoLogonSettings settings);
+        AutoLogonSettings GetAutoLogonSettings();
     }
 
     public sealed class ConfigurationStore : AgentService, IConfigurationStore
@@ -80,8 +94,10 @@ namespace Microsoft.VisualStudio.Services.Agent
         private string _configFilePath;
         private string _credFilePath;
         private string _serviceConfigFilePath;
+        private string _autoLogonSettingsFilePath;
         private CredentialData _creds;
         private AgentSettings _settings;
+        private AutoLogonSettings _autoLogonSettings;
 
         public override void Initialize(IHostContext hostContext)
         {
@@ -104,6 +120,9 @@ namespace Microsoft.VisualStudio.Services.Agent
 
             _serviceConfigFilePath = IOUtil.GetServiceConfigFilePath();
             Trace.Info("ServiceConfigFilePath: {0}", _serviceConfigFilePath);
+
+            _autoLogonSettingsFilePath = IOUtil.GetAutoLogonSettingsFilePath();
+            Trace.Info("AutoLogonSettingsFilePath: {0}", _autoLogonSettingsFilePath);
         }
 
         public string RootFolder { get; private set; }
@@ -132,6 +151,14 @@ namespace Microsoft.VisualStudio.Services.Agent
             return serviceConfigured;
         }
 
+        public bool IsAutoLogonConfigured()
+        {
+            Trace.Entering();
+            bool autoLogonConfigured = (new FileInfo(_autoLogonSettingsFilePath)).Exists;
+            Trace.Info($"IsAutoLogonConfigured: {autoLogonConfigured}");
+            return autoLogonConfigured;
+        }
+
         public CredentialData GetCredentials()
         {
             if (_creds == null)
@@ -151,6 +178,15 @@ namespace Microsoft.VisualStudio.Services.Agent
 
             return _settings;
         }
+
+        public AutoLogonSettings GetAutoLogonSettings()
+        {
+            if (_autoLogonSettings == null)
+            {
+                _autoLogonSettings = IOUtil.LoadObject<AutoLogonSettings>(_autoLogonSettingsFilePath);
+            }
+            return _autoLogonSettings;
+        }        
 
         public void SaveCredential(CredentialData credential)
         {
@@ -182,6 +218,21 @@ namespace Microsoft.VisualStudio.Services.Agent
             File.SetAttributes(_configFilePath, File.GetAttributes(_configFilePath) | FileAttributes.Hidden);
         }
 
+        public void SaveAutoLogonSettings(AutoLogonSettings autoLogonSettings)
+        {
+            Trace.Info("Saving autologon settings.");
+            if (File.Exists(_autoLogonSettingsFilePath))
+            {
+                // Delete existing autologon settings file first, since the file is hidden and not able to overwrite.
+                Trace.Info("Delete existing autologon settings file.");
+                IOUtil.DeleteFile(_autoLogonSettingsFilePath);
+            }
+
+            IOUtil.SaveObject(autoLogonSettings, _autoLogonSettingsFilePath);
+            Trace.Info("AutoLogon settings Saved.");
+            File.SetAttributes(_autoLogonSettingsFilePath, File.GetAttributes(_autoLogonSettingsFilePath) | FileAttributes.Hidden);
+        }
+
         public void DeleteCredential()
         {
             IOUtil.Delete(_credFilePath, default(CancellationToken));
@@ -190,6 +241,11 @@ namespace Microsoft.VisualStudio.Services.Agent
         public void DeleteSettings()
         {
             IOUtil.Delete(_configFilePath, default(CancellationToken));
+        }
+
+        public void DeleteAutoLogonSettings()
+        {
+            IOUtil.Delete(_autoLogonSettingsFilePath, default(CancellationToken));
         }
     }
 }

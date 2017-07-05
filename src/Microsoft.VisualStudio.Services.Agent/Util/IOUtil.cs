@@ -102,6 +102,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             return Path.Combine(GetRootPath(), ".proxy");
         }
 
+        public static string GetAutoLogonSettingsFilePath()
+        {
+            return Path.Combine(GetRootPath(), ".autologon");
+        }
+
         public static string GetWorkPath(IHostContext hostContext)
         {
             var configurationStore = hostContext.GetService<IConfigurationStore>();

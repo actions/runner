@@ -24,9 +24,17 @@ namespace Microsoft.VisualStudio.Services.Agent
         T GetService<T>() where T : class, IAgentService;
         void SetDefaultCulture(string name);
         event EventHandler Unloading;
+        StartupType StartupType {get; set;}
         CancellationToken AgentShutdownToken { get; }
         ShutdownReason AgentShutdownReason { get; }
         void ShutdownAgent(ShutdownReason reason);
+    }
+
+    public enum StartupType
+    {
+        ManualInteractive,
+        Service,
+        AutoStartup
     }
 
     public sealed class HostContext : EventListener, IObserver<DiagnosticListener>, IObserver<KeyValuePair<string, object>>, IHostContext, IDisposable
@@ -46,6 +54,8 @@ namespace Microsoft.VisualStudio.Services.Agent
         private AssemblyLoadContext _loadContext;
         private IDisposable _httpTraceSubscription;
         private IDisposable _diagListenerSubscription;
+
+        private StartupType _startupType;
 
         public event EventHandler Unloading;
         public CancellationToken AgentShutdownToken => _agentShutdownTokenSource.Token;
@@ -263,6 +273,18 @@ namespace Microsoft.VisualStudio.Services.Agent
         {
             Dispose(true);
             GC.SuppressFinalize(this);
+        }
+
+        public StartupType StartupType
+        {
+            get
+            {
+                return _startupType;
+            }
+            set
+            {
+                _startupType = value;
+            }
         }
 
         private void Dispose(bool disposing)

@@ -51,6 +51,8 @@ namespace Microsoft.VisualStudio.Services.Agent
 
             public static class CommandLine
             {
+                //if you are adding a new arg, please make sure you update the
+                //validArgs array as well present in the CommandSettings.cs
                 public static class Args
                 {
                     public static readonly string Agent = "agent";
@@ -73,6 +75,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                     public static readonly string Password = "password";
                     public static readonly string Token = "token";
                     public static readonly string WindowsLogonPassword = "windowslogonpassword";
+                    public static readonly string StartupType = "startuptype";
                     public static string[] Secrets => new[]
                     {
                         Password,
@@ -88,19 +91,24 @@ namespace Microsoft.VisualStudio.Services.Agent
                     public static readonly string Unconfigure = "remove";
                 }
 
+                //if you are adding a new flag, please make sure you update the
+                //validFlags array as well present in the CommandSettings.cs
                 public static class Flags
                 {
                     public static readonly string AcceptTeeEula = "acceptteeeula";
                     public static readonly string AddDeploymentGroupTags = "adddeploymentgrouptags";
                     public static readonly string AddMachineGroupTags = "addmachinegrouptags";
                     public static readonly string Commit = "commit";
+                    public static readonly string DeploymentGroup = "deploymentgroup";
+                    public static readonly string DisableScreenSaver = "disablescreensaver";
+                    public static readonly string EnableAutoLogon = "enableautologon";
                     public static readonly string Help = "help";
+                    public static readonly string MachineGroup = "machinegroup";
                     public static readonly string Replace = "replace";
+                    public static readonly string RestartNow = "restartnow";
                     public static readonly string RunAsService = "runasservice";
                     public static readonly string Unattended = "unattended";
                     public static readonly string Version = "version";
-                    public static readonly string MachineGroup = "machinegroup";
-                    public static readonly string DeploymentGroup = "deploymentgroup";
                 }
             }
 
