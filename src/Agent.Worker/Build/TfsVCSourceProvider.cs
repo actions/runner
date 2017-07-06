@@ -30,12 +30,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
 #if OS_WINDOWS
             // Validate .NET Framework 4.6 or higher is installed.
-            //
-            // Note, system.NoVerifyNet46 is a temporary variable to bypass .NET 4.6 validation.
-            // Remove this variable after we have more confidence in this validation check.
             var netFrameworkUtil = HostContext.GetService<INetFrameworkUtil>();
-            if (!(executionContext.Variables.GetBoolean("system.noVerifyNet46") ?? false) &&
-                !netFrameworkUtil.Test(new Version(4, 6)))
+            if (!netFrameworkUtil.Test(new Version(4, 6)))
             {
                 throw new Exception(StringUtil.Loc("MinimumNetFramework46"));
             }
@@ -61,6 +57,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             executionContext.Output(StringUtil.Loc("Prepending0WithDirectoryContaining1", Constants.PathVariable, Path.GetFileName(tfPath)));
             varUtil.PrependPath(Path.GetDirectoryName(tfPath));
             executionContext.Debug($"{Constants.PathVariable}: '{Environment.GetEnvironmentVariable(Constants.PathVariable)}'");
+
+#if OS_WINDOWS
+            // Set TFVC_BUILDAGENT_POLICYPATH
+            string policyDllPath = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.ServerOM), "Microsoft.TeamFoundation.VersionControl.Controls.dll");
+            ArgUtil.File(policyDllPath, nameof(policyDllPath));
+            const string policyPathEnvKey = "TFVC_BUILDAGENT_POLICYPATH";
+            executionContext.Output(StringUtil.Loc("SetEnvVar", policyPathEnvKey));
+            Environment.SetEnvironmentVariable(policyPathEnvKey, policyDllPath);
+#endif
 
             // Check if the administrator accepted the license terms of the TEE EULA when configuring the agent.
             AgentSettings settings = HostContext.GetService<IConfigurationStore>().GetSettings();
