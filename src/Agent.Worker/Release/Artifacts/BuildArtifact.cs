@@ -53,7 +53,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
             // Get the list of available artifacts from build. 
             executionContext.Output(StringUtil.Loc("RMPreparingToGetBuildArtifactList"));
 
-            var vssConnection = new VssConnection(buildArtifactDetails.TfsUrl, buildArtifactDetails.Credentials);
+            var vssConnection = ApiUtil.CreateConnection(buildArtifactDetails.TfsUrl, buildArtifactDetails.Credentials);
             var buildClient = vssConnection.GetClient<BuildHttpClient>();
             var xamlBuildClient = vssConnection.GetClient<XamlBuildHttpClient>();
             List<ServerBuildArtifact> buildArtifacts = null;
@@ -210,7 +210,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
                 string rootLocation = parts[2];
                 if (!int.TryParse(parts[1], out containerId))
                 {
-                    throw new ArtifactDownloadException(StringUtil.Loc("RMArtifactContainerDetailsInvaidError", buildArtifact.Name));
+                    throw new ArtifactDownloadException(StringUtil.Loc("RMArtifactContainerDetailsInvalidError", buildArtifact.Name));
                 }
 
                 string rootDestinationDir = Path.Combine(localFolderPath, rootLocation);

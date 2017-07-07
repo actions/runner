@@ -171,7 +171,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         {
             return TestFlagOrPrompt(
                 name: Constants.Agent.CommandLine.Flags.EnableAutoLogon,
-                description: StringUtil.Loc("EnableAutoLogon"),
+                description: StringUtil.Loc("EnableAutoLogonDescription"),
                 defaultValue: false);
         }
 
@@ -349,7 +349,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             return GetArg(Constants.Agent.CommandLine.Args.NotificationSocketAddress);
         }
 
-        ///This is used to find out the source from where the agent.listner.exe was launched at the time of run
+        ///This is used to find out the source from where the agent.listener.exe was launched at the time of run
         public string GetStartupType()
         {
             return GetArg(Constants.Agent.CommandLine.Args.StartupType);
@@ -398,7 +398,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             {
                 // After read the arg from input commandline args, remove it from Arg dictionary,
                 // This will help if bad arg value passed through CommandLine arg, when ConfigurationManager ask CommandSetting the second time, 
-                // It will prompt for input intead of continue use the bad input.
+                // It will prompt for input instead of continue use the bad input.
                 _trace.Info($"Remove {name} from Arg dictionary.");
                 RemoveArg(name);
 

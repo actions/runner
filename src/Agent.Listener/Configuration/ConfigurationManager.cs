@@ -345,13 +345,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
         public async Task UnconfigureAsync(CommandSettings command)
         {
-            string currentAction = StringUtil.Loc("UninstallingService");
+            string currentAction = string.Empty;
             try
             {
                 //stop, uninstall service and remove service config file
-                _term.WriteLine(currentAction);
                 if (_store.IsServiceConfigured())
                 {
+                    currentAction = StringUtil.Loc("UninstallingService");
+                    _term.WriteLine(currentAction);
 #if OS_WINDOWS
                     var serviceControlManager = HostContext.GetService<IWindowsServiceControlManager>();
                     serviceControlManager.UnconfigureService();
@@ -370,8 +371,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                     //running as process, unconfigure autologon if it was configured                    
                     if (_store.IsAutoLogonConfigured())
                     {
+                        currentAction = StringUtil.Loc("UnconfigAutologon");
+                        _term.WriteLine(currentAction);
                         var autoLogonConfigManager = HostContext.GetService<IAutoLogonManager>();
-                        autoLogonConfigManager.Unconfigure();                        
+                        autoLogonConfigManager.Unconfigure();         
+                        _term.WriteLine(StringUtil.Loc("Success") + currentAction);               
                     }
                     else
                     {
@@ -379,7 +383,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                     }
 #endif
                 }
-                
+
                 //delete agent from the server
                 currentAction = StringUtil.Loc("UnregisteringAgent");
                 _term.WriteLine(currentAction);

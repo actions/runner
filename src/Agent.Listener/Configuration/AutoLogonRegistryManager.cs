@@ -325,7 +325,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
             //extra " are to handle the spaces in the file path (if any)
             var startupCommand = $@"{cmdExePath} /D /S /C start ""Agent with AutoLogon"" ""{filePath}"" --startuptype autostartup";            
-            Trace.Info($"Setting startup command as '{startupCommand}'");
+            Trace.Info($"Agent auto logon startup command: '{startupCommand}'");
 
             return startupCommand;
         }

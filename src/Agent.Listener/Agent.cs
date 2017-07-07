@@ -122,18 +122,27 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 Trace.Verbose($"Configured as service: '{configuredAsService}'");
 
                 //Get the startup type of the agent i.e., autostartup, service, manualinteractive
+                StartupType startType;
                 var startupTypeAsString = command.GetStartupType();
-                if(!Enum.TryParse(startupTypeAsString, true, out StartupType startType))
-                {                    
-                    Trace.Info($"Could not parse the argument value '{startupTypeAsString}' for StartupType. Defaulting to {StartupType.ManualInteractive}");
-                    startType = StartupType.ManualInteractive;
+                if (string.IsNullOrEmpty(startupTypeAsString) && configuredAsService)
+                {
+                    // We need try our best to make the startup type accurate 
+                    // The problem is coming from agent autoupgrade, which result an old version service host binary but a newer version agent binary
+                    // At that time the servicehost won't pass --startuptype to agent.listener while the agent is actually running as service.
+                    // We will guess the startup type only when the agent is configured as service and the guess will based on whether STDOUT/STDERR/STDIN been redirect or not
+                    Trace.Info($"Try determine agent startup type base on console redirects.");
+                    startType = (Console.IsErrorRedirected && Console.IsInputRedirected && Console.IsOutputRedirected) ? StartupType.Service : StartupType.ManualInteractive;
                 }
                 else
-                {   
-                    Trace.Info($"Startup type of the agent - {startType}");
+                {
+                    if (!Enum.TryParse(startupTypeAsString, true, out startType))
+                    {
+                        Trace.Info($"Could not parse the argument value '{startupTypeAsString}' for StartupType. Defaulting to {StartupType.ManualInteractive}");
+                        startType = StartupType.ManualInteractive;
+                    }
                 }
 
-                Trace.Info($"Setting the startup type in HostContext.StartupType");
+                Trace.Info($"Set agent startup type - {startType}");
                 HostContext.StartupType = startType;
 
 #if OS_WINDOWS
@@ -152,7 +161,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 }
 #endif
                 // Run the agent interactively or as service
-                return await RunAsync(settings, HostContext.StartupType == StartupType.Service);
+                return await RunAsync(settings);
             }
             finally
             {
@@ -206,7 +215,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         }
 
         //create worker manager, create message listener and start listening to the queue
-        private async Task<int> RunAsync(AgentSettings settings, bool runAsService)
+        private async Task<int> RunAsync(AgentSettings settings)
         {
             Trace.Info(nameof(RunAsync));
             _listener = HostContext.GetService<IMessageListener>();
@@ -289,7 +298,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                                     autoUpdateInProgress = true;
                                     var agentUpdateMessage = JsonUtility.FromString<AgentRefreshMessage>(message.Body);
                                     var selfUpdater = HostContext.GetService<ISelfUpdater>();
-                                    selfUpdateTask = selfUpdater.SelfUpdate(agentUpdateMessage, jobDispatcher, !runAsService, HostContext.AgentShutdownToken);
+                                    selfUpdateTask = selfUpdater.SelfUpdate(agentUpdateMessage, jobDispatcher, HostContext.StartupType != StartupType.Service, HostContext.AgentShutdownToken);
                                     Trace.Info("Refresh message received, kick-off selfupdate background process.");
                                 }
                                 else
