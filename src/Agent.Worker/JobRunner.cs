@@ -400,11 +400,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             }
         }
 
-        // the hostname (how the agent knows the server) is external to our server
+        // the scheme://hostname:port (how the agent knows the server) is external to our server
         // in other words, an agent may have it's own way (DNS, hostname) of refering
-        // to the server.  it owns that.  That's the hostname we will use.
+        // to the server.  it owns that.  That's the scheme://hostname:port we will use.
         // Example: Server's notification url is http://tfsserver:8080/tfs 
-        //          Agent config url is http://tfsserver.mycompany.com:8080/tfs 
+        //          Agent config url is https://tfsserver.mycompany.com:9090/tfs 
         private Uri ReplaceWithConfigUriBase(Uri messageUri)
         {
             AgentSettings settings = HostContext.GetService<IConfigurationStore>().GetSettings();
@@ -416,22 +416,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     return messageUri;
                 }
 
-                var configUri = new Uri(settings.ServerUrl);
                 Uri result = null;
-                Uri configBaseUri = null;
-                string scheme = messageUri.GetComponents(UriComponents.Scheme, UriFormat.Unescaped);
-                string host = configUri.GetComponents(UriComponents.Host, UriFormat.Unescaped);
-
-                int portValue = 0;
-                string port = messageUri.GetComponents(UriComponents.Port, UriFormat.Unescaped);
-                if (!string.IsNullOrEmpty(port))
-                {
-                    int.TryParse(port, out portValue);
-                }
-
-                configBaseUri = portValue > 0 ? new UriBuilder(scheme, host, portValue).Uri : new UriBuilder(scheme, host).Uri;
-
-                if (Uri.TryCreate(configBaseUri, messageUri.PathAndQuery, out result))
+                Uri configUri = new Uri(settings.ServerUrl);
+                if (Uri.TryCreate(new Uri(configUri.GetComponents(UriComponents.SchemeAndServer, UriFormat.Unescaped)), messageUri.PathAndQuery, out result))
                 {
                     //replace the schema and host portion of messageUri with the host from the
                     //server URI (which was set at config time)
@@ -454,11 +441,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         private void ReplaceConfigUriBaseInJobRequestMessage(AgentJobRequestMessage message)
         {
-            string systemConnectionHostName = message.Environment.SystemConnection.Url.GetComponents(UriComponents.Host, UriFormat.Unescaped);
-            // fixup any endpoint Url that match SystemConnect host.
+            // fixup any endpoint Url that match SystemConnect server.
             foreach (var endpoint in message.Environment.Endpoints)
             {
-                if (endpoint.Url.GetComponents(UriComponents.Host, UriFormat.Unescaped).Equals(systemConnectionHostName, StringComparison.OrdinalIgnoreCase))
+                if (Uri.Compare(endpoint.Url, message.Environment.SystemConnection.Url, UriComponents.SchemeAndServer, UriFormat.Unescaped, StringComparison.OrdinalIgnoreCase) == 0)
                 {
                     endpoint.Url = ReplaceWithConfigUriBase(endpoint.Url);
                     Trace.Info($"Ensure endpoint url match config url base. {endpoint.Url}");

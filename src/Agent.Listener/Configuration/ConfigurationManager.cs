@@ -235,13 +235,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             {
                 Trace.Info($"Agent server url resolve by server: '{agentServerUrl}'.");
 
-                // we need make sure the Host component of the url remain the same.
+                // we need make sure the Schema/Host/Port component of the url remain the same.
                 UriBuilder inputServerUrl = new UriBuilder(agentSettings.ServerUrl);
                 UriBuilder serverReturnedServerUrl = new UriBuilder(agentServerUrl);
-                if (Uri.Compare(inputServerUrl.Uri, serverReturnedServerUrl.Uri, UriComponents.Host, UriFormat.Unescaped, StringComparison.OrdinalIgnoreCase) != 0)
+                if (Uri.Compare(inputServerUrl.Uri, serverReturnedServerUrl.Uri, UriComponents.SchemeAndServer, UriFormat.Unescaped, StringComparison.OrdinalIgnoreCase) != 0)
                 {
                     inputServerUrl.Path = serverReturnedServerUrl.Path;
-                    Trace.Info($"Replace server returned url's host component with user input server url's host: '{inputServerUrl.Uri.AbsoluteUri}'.");
+                    Trace.Info($"Replace server returned url's scheme://host:port component with user input server url's scheme://host:port: '{inputServerUrl.Uri.AbsoluteUri}'.");
                     agentSettings.ServerUrl = inputServerUrl.Uri.AbsoluteUri;
                 }
                 else
