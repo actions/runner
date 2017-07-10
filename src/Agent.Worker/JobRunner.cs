@@ -130,6 +130,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 jobContext.Variables.Set(Constants.Variables.Agent.JobName, message.JobName);
                 jobContext.Variables.Set(Constants.Variables.Agent.MachineName, Environment.MachineName);
                 jobContext.Variables.Set(Constants.Variables.Agent.Name, settings.AgentName);
+                jobContext.Variables.Set(Constants.Variables.Agent.OS, VarUtil.OS);
                 jobContext.Variables.Set(Constants.Variables.Agent.RootDirectory, IOUtil.GetWorkPath(HostContext));
 #if OS_WINDOWS
                 jobContext.Variables.Set(Constants.Variables.Agent.ServerOMDirectory, Path.Combine(IOUtil.GetExternalsPath(), Constants.Path.ServerOMDirectory));

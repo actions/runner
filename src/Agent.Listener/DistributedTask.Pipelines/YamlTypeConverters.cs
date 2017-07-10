@@ -1140,6 +1140,12 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Pipeline
                     emitter.Emit(new Scalar(PipelineConstants.Inputs));
                     WriteMapping(emitter, task.Inputs);
                 }
+
+                if (task.Environment != null)
+                {
+                    emitter.Emit(new Scalar(PipelineConstants.Environment));
+                    WriteMapping(emitter, task.Environment);
+                }
             }
 
             if (!noBootstrap)

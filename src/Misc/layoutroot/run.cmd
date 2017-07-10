@@ -3,7 +3,7 @@
 rem ********************************************************************************
 rem Ensure configured.
 rem ********************************************************************************
-if not exist "%~dp0.agent" (
+if not exist "%~dp0.agent" and "%~dp1" neq "--yaml" (
     echo "Must configure first. Run config.cmd"
     exit /B 1
 )

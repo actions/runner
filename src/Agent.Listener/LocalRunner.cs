@@ -161,7 +161,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                         builder.Append($@"
     {{
       ""instanceId"": ""{Guid.NewGuid()}"",
-      ""displayName"": {JsonConvert.ToString(definition.InstanceNameFormat)},
+      ""displayName"": {JsonConvert.ToString(!string.IsNullOrEmpty(task.Name) ? task.Name : definition.InstanceNameFormat)},
       ""enabled"": true,
       ""continueOnError"": {task.ContinueOnError.ToString().ToLowerInvariant()},
       ""condition"": {JsonConvert.ToString(task.Condition)},
@@ -184,6 +184,21 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         {JsonConvert.ToString(input.Key)}: {JsonConvert.ToString(input.Value)}");
                         }
 
+                        builder.Append($@"
+      }},
+      ""environment"": {{");
+                        bool firstEnv = true;
+                        foreach (KeyValuePair<string, string> env in task.Environment ?? new Dictionary<string, string>(0))
+                        {
+                            if (!firstEnv)
+                            {
+                                builder.Append(",");
+                            }
+
+                            firstEnv = false;
+                            builder.Append($@"
+        {JsonConvert.ToString(env.Key)}: {JsonConvert.ToString(env.Value)}");
+                        }
                         builder.Append($@"
       }}
     }}");

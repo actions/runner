@@ -7,7 +7,7 @@ if [ $user_id -eq 0 ]; then
     exit 1
 fi
 
-if [ ! -f .agent ]; then
+if [ ! -f .agent ] && [[ "$1" != "--yaml" ]] ; then
     echo "Must configure first. Run ./config.sh"
     exit 1
 fi

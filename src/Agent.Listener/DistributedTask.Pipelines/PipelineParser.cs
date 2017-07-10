@@ -62,7 +62,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Pipeline
             }
             else if (process.Steps != null)
             {
-                var newJob = new Job { Steps = process.Steps, Name = process.Name };
+                var newJob = new Job { Steps = process.Steps, Name = process.Name, Variables = process.Variables };
                 var newPhase = new Phase { Jobs = new List<IJob>() };
                 newPhase.Jobs.Add(newJob);
                 process.Phases = new List<IPhase>();
