@@ -1,9 +1,0 @@
-﻿steps:
-  - task: cmdline@1.*
-    inputs:
-      filename: echo
-      arguments: hello world
-  - task: cmdline@1.*
-    inputs:
-      filename: echo
-      arguments: hello world!!!!!!!

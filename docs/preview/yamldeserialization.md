@@ -310,7 +310,7 @@ steps: [ import | export | task | stepsPhase | stepsTemplateReference ]
 
 ```yaml
 job: string # name
-timeout: string # e.g. "0.01:30:00" (1 hour and 30 minutes)
+timeoutInMinutes: number
 variables: [ variable | variablesTemplateReference ]
 steps: [ import | export | task | stepsPhase | stepsTemplateReference ]
 ```
@@ -359,30 +359,61 @@ variables: [ variable ]
 
 ### Step structures
 
-#### import
+#### script
 
 ```yaml
-import: string # name
-TODO
+script: string
+name: string # display name
+workingDirectory: string
+failOnStderr: true | false
+condition: string
+continueOnError: true | false
+enabled: true | false
+timeoutInMinutes: number
+env: { string: string }
 ```
 
-#### export
+#### powershell
 
 ```yaml
-export: string # name
-TODO
+script: string
+name: string # display name
+errorActionPreference: stop | continue | silentlyContinue
+failOnStderr: true | false
+ignoreLASTEXITCODE: true | false
+workingDirectory: string
+condition: string
+continueOnError: true | false
+enabled: true | false
+timeoutInMinutes: number
+env: { string: string }
+```
+
+#### bash
+
+```yaml
+script: string
+name: string # display name
+workingDirectory: string
+failOnStderr: true | false
+condition: string
+continueOnError: true | false
+enabled: true | false
+timeoutInMinutes: number
+env: { string: string }
 ```
 
 #### task
 
 ```yaml
-task: string # task reference, e.g. "VSBuild@1.*"
+task: string # task reference, e.g. "VSBuild@1"
+name: string  # display name
 condition: string
 continueOnError: true | false
 enabled: true | false
-name: string  # TODO: what is this? display name?
-inputs: { string: string }
 timeoutInMinutes: number
+inputs: { string: string }
+env: { string: string }
 ```
 
 #### stepsPhase
@@ -403,5 +434,5 @@ steps: { string: [ import | export | task ] } # step overrides
 #### stepsTemplate
 
 ```yaml
-steps: [ import | export | task | stepsPhase ]
+steps: [ script | powershell | bash | task | stepsPhase ]
 ```

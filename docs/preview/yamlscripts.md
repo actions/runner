@@ -13,7 +13,6 @@ The goal of this document is to define a simplified syntax for running scripts a
 ```yaml
 - script: inline script goes here
   workingDirectory: $(system.defaultWorkingDirectory)
-  ignoreExitCode: false
   failOnStderr: false
   env:
     name1: value1
@@ -23,8 +22,6 @@ The goal of this document is to define a simplified syntax for running scripts a
 `script` inline script content. Uses cmd.exe on Windows, and sh on Linux.
 
 `workingDirectory` defaults to `$(system.defaultWorkingDirectory)`.
-
-`ignoreExitCode` defaults to `false`.
 
 `failOnStderr` defaults to `false`.
 
@@ -67,7 +64,7 @@ problems.
 
 Furthermore, one additional limitation follows. Since the syntax for referencing environment variables
 is different across Windows and Linux, script re-usability across platforms becomes somewhat more narrow.
-In practice this may not present a significant problem. - although likely not significant.
+In practice this may not present a significant problem.
 
 Lastly, one additional concern remains. Since the command-line-interpreter versus script-interpreter
 difference is subtle, we may run into customer confusion - "works on the command line". An alternative
@@ -132,13 +129,13 @@ TODO
 - Do we need a way to influence how the agent interprets stdout encoding?
 - Will "script" commonly mislead customers to think they can specify a powershell script file path followed by
   args? Alternative would be something like "command" verbiage.
+- Due to tools commonly writing to stderr, generate a .cmd script on Windows instead of .ps1. From the parent process, we can't distinguish write-error from a downstream process writing non-error text to stderr (downstream processes inherit streams by default). Therefore, if we generated a .ps1 instead, customers would expect write-error to fail by default which we can't do, due to the stderr problem. Alternative would be to set the error action preference to stop, but that doesn't make sense for the "script" task since it runs bash on Linux.
 
 ## `bash`
 
 ```yaml
 - bash: inline script
   workingDirectory: $(system.defaultWorkingDirectory)
-  ignoreExitCode: false
   failOnStderr: false
 ```
 
@@ -163,10 +160,9 @@ Does +x need to be set? Will this "just work" for scripts in the repo?
 ## `powershell`
 
 ```yaml
-- ps: inline script
+- powershell: inline script
   workingDirectory: $(system.defaultWorkingDirectory)
   errorActionPreference: stop
-  ignoreExitCode: false
   failOnStderr: false
 ```
 
@@ -175,8 +171,6 @@ Does +x need to be set? Will this "just work" for scripts in the repo?
 `workingDirectory` defaults to `$(system.defaultWorkingDirectory)`.
 
 `errorActionPreference` defaults to `stop`.
-
-`ignoreExitCode` defaults to `false`.
 
 `ignoreLASTEXITCODE` defaults to `false`.
 
