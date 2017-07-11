@@ -44,7 +44,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             tf.ExecutionContext = executionContext;
 
             // Setup proxy.
-            if (!string.IsNullOrEmpty(executionContext.Variables.Agent_ProxyUrl))
+            var agentProxy = HostContext.GetService<IVstsAgentWebProxy>();
+            if (!string.IsNullOrEmpty(executionContext.Variables.Agent_ProxyUrl) && !agentProxy.IsBypassed(endpoint.Url))
             {
                 executionContext.Debug($"Configure '{tf.FilePath}' to work through proxy server '{executionContext.Variables.Agent_ProxyUrl}'.");
                 tf.SetupProxy(executionContext.Variables.Agent_ProxyUrl, executionContext.Variables.Agent_ProxyUsername, executionContext.Variables.Agent_ProxyPassword);
@@ -299,7 +300,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                         string firstLocalDirectory =
                             (definitionMappings ?? new DefinitionWorkspaceMapping[0])
                             .Where(x => x.MappingType == DefinitionMappingType.Map)
-                            .Select( x=> x.GetRootedLocalPath(sourcesDirectory))
+                            .Select(x => x.GetRootedLocalPath(sourcesDirectory))
                             .FirstOrDefault(x => Directory.Exists(x));
                         if (firstLocalDirectory == null)
                         {
@@ -387,7 +388,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             }
 
             // Cleanup proxy settings.
-            if (!string.IsNullOrEmpty(executionContext.Variables.Agent_ProxyUrl))
+            if (!string.IsNullOrEmpty(executionContext.Variables.Agent_ProxyUrl) && !agentProxy.IsBypassed(endpoint.Url))
             {
                 executionContext.Debug($"Remove proxy setting for '{tf.FilePath}' to work through proxy server '{executionContext.Variables.Agent_ProxyUrl}'.");
                 tf.CleanupProxySetting();

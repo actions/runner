@@ -375,6 +375,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     Variables.Set(Constants.Variables.Agent.ProxyPassword, agentWebProxy.ProxyPassword, true);
                     Environment.SetEnvironmentVariable("VSTS_HTTP_PROXY_PASSWORD", string.Empty);
                 }
+
+                if (agentWebProxy.ProxyBypassList.Count > 0)
+                {
+                    Variables.Set(Constants.Variables.Agent.ProxyBypassList, JsonUtility.ToString(agentWebProxy.ProxyBypassList));
+                }
             }
 
             // Job timeline record.

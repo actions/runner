@@ -174,6 +174,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         {
             // should this be named "RunAsAutoLogon" to match Win svc config?
             return false;
+
+            // return TestFlagOrPrompt(
+            //        name: Constants.Agent.CommandLine.Flags.EnableAutoLogon,
+            //        description: StringUtil.Loc("EnableAutoLogonDescription"),
+            //        defaultValue: false);
         }
 
         public bool GetDisableScreenSaver()

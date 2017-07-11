@@ -131,6 +131,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
                 var _gitCommandManager = GetDefaultGitCommandMock();
                 tc.SetSingleton<IGitCommandManager>(_gitCommandManager.Object);
                 tc.SetSingleton<IWhichUtil>(new WhichUtil());
+                tc.SetSingleton<IVstsAgentWebProxy>(new VstsAgentWebProxy());
 
                 GitSourceProvider gitSourceProvider = new ExternalGitSourceProvider();
                 gitSourceProvider.Initialize(tc);
@@ -172,6 +173,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
                     var _gitCommandManager = GetDefaultGitCommandMock();
                     tc.SetSingleton<IGitCommandManager>(_gitCommandManager.Object);
                     tc.SetSingleton<IWhichUtil>(new WhichUtil());
+                    tc.SetSingleton<IVstsAgentWebProxy>(new VstsAgentWebProxy());
 
                     GitSourceProvider gitSourceProvider = new ExternalGitSourceProvider();
                     gitSourceProvider.Initialize(tc);
@@ -212,6 +214,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
                 var _gitCommandManager = GetDefaultGitCommandMock();
                 tc.SetSingleton<IGitCommandManager>(_gitCommandManager.Object);
                 tc.SetSingleton<IWhichUtil>(new WhichUtil());
+                tc.SetSingleton<IVstsAgentWebProxy>(new VstsAgentWebProxy());
 
                 GitSourceProvider gitSourceProvider = new ExternalGitSourceProvider();
                 gitSourceProvider.Initialize(tc);
@@ -254,6 +257,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
                     var _gitCommandManager = GetDefaultGitCommandMock();
                     tc.SetSingleton<IGitCommandManager>(_gitCommandManager.Object);
                     tc.SetSingleton<IWhichUtil>(new WhichUtil());
+                    tc.SetSingleton<IVstsAgentWebProxy>(new VstsAgentWebProxy());
 
                     GitSourceProvider gitSourceProvider = new ExternalGitSourceProvider();
                     gitSourceProvider.Initialize(tc);
@@ -306,6 +310,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
 
                     tc.SetSingleton<IGitCommandManager>(_gitCommandManager.Object);
                     tc.SetSingleton<IWhichUtil>(new WhichUtil());
+                    tc.SetSingleton<IVstsAgentWebProxy>(new VstsAgentWebProxy());
 
                     GitSourceProvider gitSourceProvider = new ExternalGitSourceProvider();
                     gitSourceProvider.Initialize(tc);
@@ -350,6 +355,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
                     var _gitCommandManager = GetDefaultGitCommandMock();
                     tc.SetSingleton<IGitCommandManager>(_gitCommandManager.Object);
                     tc.SetSingleton<IWhichUtil>(new WhichUtil());
+                    tc.SetSingleton<IVstsAgentWebProxy>(new VstsAgentWebProxy());
 
                     GitSourceProvider gitSourceProvider = new ExternalGitSourceProvider();
                     gitSourceProvider.Initialize(tc);
@@ -395,6 +401,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
                     var _gitCommandManager = GetDefaultGitCommandMock();
                     tc.SetSingleton<IGitCommandManager>(_gitCommandManager.Object);
                     tc.SetSingleton<IWhichUtil>(new WhichUtil());
+                    tc.SetSingleton<IVstsAgentWebProxy>(new VstsAgentWebProxy());
 
                     GitSourceProvider gitSourceProvider = new ExternalGitSourceProvider();
                     gitSourceProvider.Initialize(tc);
@@ -435,6 +442,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
                     var _gitCommandManager = GetDefaultGitCommandMock();
                     tc.SetSingleton<IGitCommandManager>(_gitCommandManager.Object);
                     tc.SetSingleton<IWhichUtil>(new WhichUtil());
+                    tc.SetSingleton<IVstsAgentWebProxy>(new VstsAgentWebProxy());
 
                     GitSourceProvider gitSourceProvider = new ExternalGitSourceProvider();
                     gitSourceProvider.Initialize(tc);
@@ -482,6 +490,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
                     var _gitCommandManager = GetDefaultGitCommandMock();
                     tc.SetSingleton<IGitCommandManager>(_gitCommandManager.Object);
                     tc.SetSingleton<IWhichUtil>(new WhichUtil());
+                    tc.SetSingleton<IVstsAgentWebProxy>(new VstsAgentWebProxy());
 
                     GitSourceProvider gitSourceProvider = new ExternalGitSourceProvider();
                     gitSourceProvider.Initialize(tc);
