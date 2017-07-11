@@ -8,9 +8,15 @@
 # Samples
 
 [Run scripts](yamlgettingstarted-scripts.md)
+
 [Run powershell scripts](yaml/powershell.yml)
+
 [Run bash scripts](yaml/bash.yml)
+
 [Run tasks](yaml/tasks.yml)
+
 TODO: Multiple jobs
+
 [Mustache text templating](yaml/mustache-text-templating.yml)
+
 TODO: Process templates
