@@ -9,14 +9,14 @@
 
 [Run scripts](yamlgettingstarted-scripts.md)
 
-[Run powershell scripts](yaml/powershell.yml)
+[Run powershell scripts](yamlgettingstarted-powershell.md)
 
-[Run bash scripts](yaml/bash.yml)
+[Run bash scripts](yamlgettingstarted-bash.md)
 
-[Run tasks](yaml/tasks.yml)
+[Run tasks](yamlgettingstarted-tasks.md)
 
 TODO: Multiple jobs
 
-[Mustache text templating](yaml/mustache-text-templating.yml)
+[Mustache text templating](yamlgettingstarted-mustache.md)
 
 TODO: Process templates
