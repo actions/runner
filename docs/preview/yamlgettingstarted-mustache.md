@@ -59,11 +59,12 @@ matrix:
 jobs:
   {{#each matrix}}
   - name: build-{{buildConfiguration}}-{{buildPlatform}}}
-    - task: VSBuild@1.*
-      inputs:
-        solution: "**/*.sln"
-        configuration: "{{buildConfiguration}}"
-        platform: "{{buildPlatform}}"
+    steps:
+      - task: VSBuild@1
+        inputs:
+          solution: "**/*.sln"
+          configuration: "{{buildConfiguration}}"
+          platform: "{{buildPlatform}}"
   {{/each}}
 ```
 
@@ -124,24 +125,6 @@ steps:
 
 Block expressions start with `#` and must be paired with a closing expression. Closing expressions
 start with `/` and must be followed by either the helper name or the full expression.
-
-### Inverted block expressions
-
-Alternatively, block expressions can start with `^` which inverts the condition.
-
-Example:
-
-```yaml
-steps:
-  # Only publish artifacts when not a pull request build
-  {{^equals ./'build.reason' 'pullrequest' true}}
-  - task: PublishBuildArtifacts@1
-    inputs:
-      pathToPublish: $(build.binariesDirectory)
-      artifactName: binaries
-      artifactType: container
-  {{/equals}}
-```
 
 ### equals function
 
