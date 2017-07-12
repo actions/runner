@@ -2,8 +2,7 @@
 
 # Create a definition
 - Set feature flag Build2.Yaml
-- Create a definition, save a variable `_yaml_preview` that points to the relative path of your YAML file. E.g. path/to/my/build.yml
-  - UI coming soon.
+- Opt in to YAML definition editor preview feature
 
 # Samples
 
@@ -19,4 +18,8 @@ TODO: Multiple jobs
 
 [Mustache text templating](yamlgettingstarted-mustache.md)
 
-TODO: Process templates
+[YAML schema](yamlgettingstarted-schema.md)
+
+[Process templates](yamlgettingstarted-templates.md)
+
+[Run local](yamlgettingstarted-runlocal.md)
