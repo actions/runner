@@ -769,16 +769,22 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Pipeline
             var scalar = parser.Expect<Scalar>();
             if (String.Equals(scalar.Value, PipelineConstants.Task, StringComparison.Ordinal))
             {
-                var refString = ReadNonEmptyString(parser);
-                String[] refComponents = refString.Split('@');
-                var task = new TaskStep
+                var task = new TaskStep { Enabled = true };
+                scalar = parser.Expect<Scalar>();
+                String[] refComponents = (scalar.Value ?? String.Empty).Split('@');
+                Int32 version;
+                if (refComponents.Length != 2 ||
+                    String.IsNullOrEmpty(refComponents[0]) ||
+                    String.IsNullOrEmpty(refComponents[1]) ||
+                    !Int32.TryParse(refComponents[1], NumberStyles.None, CultureInfo.InvariantCulture, out version))
                 {
-                    Enabled = true,
-                    Reference = new TaskReference
-                    {
-                        Name = refComponents[0],
-                        Version = refComponents.Length == 2 ? refComponents[1] : String.Empty,
-                    },
+                    throw new SyntaxErrorException(scalar.Start, scalar.End, $"Task reference must be in the format <NAME>@<VERSION>. For example MyTask@2. The following task reference format is invalid: '{scalar.Value}'");
+                }
+
+                task.Reference = new TaskReference
+                {
+                    Name = refComponents[0],
+                    Version = refComponents[1],
                 };
                 while (parser.Allow<MappingEnd>() == null)
                 {
