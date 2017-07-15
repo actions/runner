@@ -848,6 +848,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Pipeline
                     Inputs = new Dictionary<String, String>(StringComparer.OrdinalIgnoreCase),
                 };
 
+                task.Inputs["targetType"] = "inline";
                 task.Inputs["script"] = parser.Expect<Scalar>().Value ?? String.Empty;
                 while (parser.Allow<MappingEnd>() == null)
                 {
@@ -881,6 +882,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Pipeline
                     Inputs = new Dictionary<String, String>(StringComparer.OrdinalIgnoreCase),
                 };
 
+                task.Inputs["targetType"] = "inline";
                 task.Inputs["script"] = parser.Expect<Scalar>().Value ?? String.Empty;
                 while (parser.Allow<MappingEnd>() == null)
                 {

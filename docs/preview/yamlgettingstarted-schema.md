@@ -65,7 +65,7 @@ target: phaseTarget
 jobs: [ job | jobsTemplateReference ]
 
 # job properties - not allowed when higher level template, phases, or jobs is defined
-timeout: string # e.g. "0.01:30:00" (1 hour and 30 minutes)
+timeoutInMinutes: number
 variables: { string: string }
 steps: [ import | export | task | stepsPhase | stepsTemplateReference ]
 ```
@@ -124,7 +124,7 @@ target: phaseTarget
 jobs: [ job | jobsTemplateReference ]
 
 # job properties
-timeout: string # e.g. "0.01:30:00" (1 hour and 30 minutes)
+timeoutInMinutes: number
 variables: { string: string }
 steps: [ import | export | task | stepsPhase | stepsTemplateReference ]
 ```
