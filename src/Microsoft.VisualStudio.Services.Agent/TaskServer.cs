@@ -16,7 +16,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         // task download
         Task<Stream> GetTaskContentZipAsync(Guid taskId, TaskVersion taskVersion, CancellationToken token);
 
-        Task<bool> TaskDefinitionEndpointExist(CancellationToken token);
+        Task<bool> TaskDefinitionEndpointExist();
     }
 
     public sealed class TaskServer : AgentService, ITaskServer
@@ -45,7 +45,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                 }
                 catch (Exception ex) when (attemptCount > 0)
                 {
-                    Trace.Info($"Catch exception during connect. {attemptCount} attemp left.");
+                    Trace.Info($"Catch exception during connect. {attemptCount} attempt left.");
                     Trace.Error(ex);
                 }
 
@@ -74,7 +74,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             return _taskAgentClient.GetTaskContentZipAsync(taskId, taskVersion, cancellationToken: token);
         }
 
-        public async Task<bool> TaskDefinitionEndpointExist(CancellationToken token)
+        public async Task<bool> TaskDefinitionEndpointExist()
         {
             if (HostContext.RunMode == RunMode.Local)
             {
@@ -84,7 +84,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             CheckConnection();
             try
             {
-                var definitions = await _taskAgentClient.GetTaskDefinitionsAsync(cancellationToken: token);
+                var definitions = await _taskAgentClient.GetTaskDefinitionsAsync();
             }
             catch (VssResourceNotFoundException)
             {

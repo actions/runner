@@ -169,7 +169,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     await taskServer.ConnectAsync(ApiUtil.CreateConnection(taskServerUri, taskServerCredential));
                 }
 
-                if (taskServerUri == null || !await taskServer.TaskDefinitionEndpointExist(jobRequestCancellationToken))
+                if (taskServerUri == null || !await taskServer.TaskDefinitionEndpointExist())
                 {
                     Trace.Info($"Can't determine task download url from JobMessage or the endpoint doesn't exist.");
                     var configStore = HostContext.GetService<IConfigurationStore>();
@@ -203,16 +203,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 try
                 {
                     Trace.Info("Initialize job. Getting all job steps.");
-                    var initalizeResult = await jobExtension.InitializeJob(jobContext, message);
-                    preJobSteps = initalizeResult.PreJobSteps;
-                    jobSteps = initalizeResult.JobSteps;
-                    postJobSteps = initalizeResult.PostJobStep;
+                    var initializeResult = await jobExtension.InitializeJob(jobContext, message);
+                    preJobSteps = initializeResult.PreJobSteps;
+                    jobSteps = initializeResult.JobSteps;
+                    postJobSteps = initializeResult.PostJobStep;
                 }
                 catch (OperationCanceledException ex) when (jobContext.CancellationToken.IsCancellationRequested)
                 {
                     // set the job to canceled
                     // don't log error issue to job ExecutionContext, since server owns the job level issue
-                    Trace.Error($"Job is canclled during initialize.");
+                    Trace.Error($"Job is canceled during initialize.");
                     Trace.Error($"Caught exception: {ex}");
                     return await CompleteJobAsync(jobServer, jobContext, message, TaskResult.Canceled);
                 }
@@ -237,7 +237,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
                 // Run all pre job steps
                 // All pre job steps are critical to the job
-                // Stop exection on any step failure or cancelled
+                // Stop execution on any step failure or cancelled
                 Trace.Info("Run all pre-job steps.");
                 var stepsRunner = HostContext.GetService<IStepsRunner>();
                 try
