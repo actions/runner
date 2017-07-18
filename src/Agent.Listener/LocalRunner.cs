@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -27,6 +28,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
     {
         private readonly Dictionary<string, TaskDefinition> _queryCache = new Dictionary<string, TaskDefinition>(StringComparer.OrdinalIgnoreCase);
         private Dictionary<string, List<TaskDefinition>> _availableTasks;
+        private string _gitPath;
         private TaskAgentHttpClient _httpClient;
         private ITerminal _term;
 
@@ -111,6 +113,22 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
         private async Task<List<JobInfo>> ConvertToJobMessagesAsync(Pipelines.Process process, CancellationToken token)
         {
+            // Verify the current directory is the root of a git repo.
+            string repoDirectory = Directory.GetCurrentDirectory();
+            if (!Directory.Exists(Path.Combine(repoDirectory, ".git")))
+            {
+                throw new Exception("Unable to run the build locally. The command must be executed from the root directory of a local git repository.");
+            }
+
+            // Collect info about the repo.
+            string repoName = Path.GetFileName(repoDirectory);
+            string userName = await GitAsync("config --get user.name", token);
+            string userEmail = await GitAsync("config --get user.email", token);
+            string branch = await GitAsync("symbolic-ref HEAD", token);
+            string commit = await GitAsync("rev-parse HEAD", token);
+            string commitAuthorName = await GitAsync("show --format=%an --no-patch HEAD", token);
+            string commitSubject = await GitAsync("show --format=%s --no-patch HEAD", token);
+
             var jobs = new List<JobInfo>();
             int requestId = 1;
             foreach (Phase phase in process.Phases ?? new List<IPhase>(0))
@@ -230,18 +248,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
       {{
         ""data"": {{
           ""repositoryId"": ""00000000-0000-0000-0000-000000000000"",
-          ""rootFolder"": null,
+          ""localDirectory"": {JsonConvert.ToString(repoDirectory)},
           ""clean"": ""false"",
           ""checkoutSubmodules"": ""False"",
           ""onpremtfsgit"": ""False"",
           ""fetchDepth"": ""0"",
           ""gitLfsSupport"": ""false"",
-          ""skipSyncSource"": ""true"",
+          ""skipSyncSource"": ""false"",
           ""cleanOptions"": ""0""
         }},
-        ""name"": ""gitTest"",
-        ""type"": ""TfsGit"",
-        ""url"": ""https://127.0.0.1/vsts-agent-local-runner/_git/gitTest"",
+        ""name"": {JsonConvert.ToString(repoName)},
+        ""type"": ""LocalRun"",
+        ""url"": ""https://127.0.0.1/vsts-agent-local-runner?directory={Uri.EscapeDataString(repoDirectory)}"",
         ""authorization"": {{
           ""parameters"": {{
             ""AccessToken"": ""dummy-access-token""
@@ -261,36 +279,36 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     builder.Append($@"
       ""system"": ""build"",
       ""system.collectionId"": ""00000000-0000-0000-0000-000000000000"",
-      ""system.teamProject"": ""gitTest"",
-      ""system.teamProjectId"": ""00000000-0000-0000-0000-000000000000"",
-      ""system.definitionId"": ""55"",
-      ""build.definitionName"": ""My Build Definition Name"",
-      ""build.definitionVersion"": ""1"",
-      ""build.queuedBy"": ""John Doe"",
-      ""build.queuedById"": ""00000000-0000-0000-0000-000000000000"",
-      ""build.requestedFor"": ""John Doe"",
-      ""build.requestedForId"": ""00000000-0000-0000-0000-000000000000"",
-      ""build.requestedForEmail"": ""john.doe@contoso.com"",
-      ""build.sourceVersion"": ""55ba1763b74d42a758514b466b7ea931aedbc941"",
-      ""build.sourceBranch"": ""refs/heads/master"",
-      ""build.sourceBranchName"": ""master"",
       ""system.culture"": ""en-US"",
-      ""build.clean"": """",
-      ""build.buildId"": ""1863"",
-      ""build.buildUri"": ""vstfs:///Build/Build/1863"",
-      ""build.buildNumber"": ""1863"",
+      ""system.definitionId"": ""55"",
       ""system.isScheduled"": ""False"",
       ""system.hosttype"": ""build"",
-      ""system.teamFoundationCollectionUri"": ""https://127.0.0.1/vsts-agent-local-runner"",
-      ""system.taskDefinitionsUri"": ""https://127.0.0.1/vsts-agent-local-runner"",
-      ""AZURE_HTTP_USER_AGENT"": ""VSTS_00000000-0000-0000-0000-000000000000_build_55_1863"",
-      ""MSDEPLOY_HTTP_USER_AGENT"": ""VSTS_00000000-0000-0000-0000-000000000000_build_55_1863"",
-      ""system.planId"": ""00000000-0000-0000-0000-000000000000"",
       ""system.jobId"": ""00000000-0000-0000-0000-000000000000"",
+      ""system.planId"": ""00000000-0000-0000-0000-000000000000"",
       ""system.timelineId"": ""00000000-0000-0000-0000-000000000000"",
-      ""build.repository.uri"": ""https://127.0.0.1/vsts-agent-local-runner/_git/gitTest"",
-      ""build.sourceVersionAuthor"": ""John Doe"",
-      ""build.sourceVersionMessage"": ""Updated Program.cs""");
+      ""system.taskDefinitionsUri"": ""https://127.0.0.1/vsts-agent-local-runner"",
+      ""system.teamFoundationCollectionUri"": ""https://127.0.0.1/vsts-agent-local-runner"",
+      ""system.teamProject"": {JsonConvert.ToString(repoName)},
+      ""system.teamProjectId"": ""00000000-0000-0000-0000-000000000000"",
+      ""build.buildId"": ""1863"",
+      ""build.buildNumber"": ""1863"",
+      ""build.buildUri"": ""vstfs:///Build/Build/1863"",
+      ""build.clean"": """",
+      ""build.definitionName"": ""My Build Definition Name"",
+      ""build.definitionVersion"": ""1"",
+      ""build.queuedBy"": {JsonConvert.ToString(userName)},
+      ""build.queuedById"": ""00000000-0000-0000-0000-000000000000"",
+      ""build.requestedFor"": {JsonConvert.ToString(userName)},
+      ""build.requestedForEmail"": {JsonConvert.ToString(userEmail)},
+      ""build.requestedForId"": ""00000000-0000-0000-0000-000000000000"",
+      ""build.repository.uri"": ""https://127.0.0.1/vsts-agent-local-runner/_git/{Uri.EscapeDataString(repoName)}"",
+      ""build.sourceBranch"": {JsonConvert.ToString(branch)},
+      ""build.sourceBranchName"": {JsonConvert.ToString(branch.Split('/').Last())},
+      ""build.sourceVersion"": {JsonConvert.ToString(commit)},
+      ""build.sourceVersionAuthor"": {JsonConvert.ToString(commitAuthorName)},
+      ""build.sourceVersionMessage"": {JsonConvert.ToString(commitSubject)},
+      ""AZURE_HTTP_USER_AGENT"": ""VSTS_00000000-0000-0000-0000-000000000000_build_55_1863"",
+      ""MSDEPLOY_HTTP_USER_AGENT"": ""VSTS_00000000-0000-0000-0000-000000000000_build_55_1863""");
                     foreach (Variable variable in job.Variables ?? new List<IVariable>(0))
                     {
                         builder.Append($@",
@@ -504,6 +522,75 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             ArgUtil.NotNull(definition.Name, nameof(definition.Name));
             ArgUtil.NotNullOrEmpty(definition.Version, nameof(definition.Version));
             return Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Tasks), $"{definition.Name}_{definition.Id}", definition.Version);
+        }
+
+        private async Task<string> GitAsync(string arguments, CancellationToken token)
+        {
+            // Resolve the location of git.
+            if (_gitPath == null)
+            {
+#if OS_WINDOWS
+                _gitPath = Path.Combine(IOUtil.GetExternalsPath(), "git", "cmd", $"git{IOUtil.ExeExtension}");
+                ArgUtil.File(_gitPath, nameof(_gitPath));
+#else
+                var whichUtil = HostContext.GetService<IWhichUtil>();
+                _gitPath = whichUtil.Which("git", require: true);
+#endif
+            }
+
+            // Prepare the environment variables to overlay.
+            var overlayEnvironment = new Dictionary<string, string>(StringComparer.Ordinal);
+            overlayEnvironment["GIT_TERMINAL_PROMPT"] = "0";
+            // Skip any GIT_TRACE variable since GIT_TRACE will affect ouput from every git command.
+            // This will fail the parse logic for detect git version, remote url, etc.
+            // Ex. 
+            //      SET GIT_TRACE=true
+            //      git version 
+            //      11:39:58.295959 git.c:371               trace: built-in: git 'version'
+            //      git version 2.11.1.windows.1
+            IDictionary currentEnvironment = Environment.GetEnvironmentVariables();
+            foreach (DictionaryEntry entry in currentEnvironment)
+            {
+                string key = entry.Key as string ?? string.Empty;
+                if (string.Equals(key, "GIT_TRACE", StringComparison.OrdinalIgnoreCase) ||
+                    key.StartsWith("GIT_TRACE_", StringComparison.OrdinalIgnoreCase))
+                {
+                    overlayEnvironment[key] = string.Empty;
+                }
+            }
+
+            // Run git and return the output from the streams.
+            var output = new StringBuilder();
+            var processInvoker = HostContext.CreateService<IProcessInvoker>();
+            Console.WriteLine();
+            Console.WriteLine($"git {arguments}");
+            processInvoker.OutputDataReceived += delegate (object sender, ProcessDataReceivedEventArgs message)
+            {
+                output.AppendLine(message.Data);
+                Console.WriteLine(message.Data);
+            };
+            processInvoker.ErrorDataReceived += delegate (object sender, ProcessDataReceivedEventArgs message)
+            {
+                output.AppendLine(message.Data);
+                Console.WriteLine(message.Data);
+            };
+#if OS_WINDOWS
+            Encoding encoding = Encoding.UTF8;
+#else
+            Encoding encoding = null;
+#endif
+            await processInvoker.ExecuteAsync(
+                workingDirectory: Directory.GetCurrentDirectory(),
+                fileName: _gitPath,
+                arguments: arguments,
+                environment: overlayEnvironment,
+                requireExitCodeZero: true,
+                outputEncoding: encoding,
+                cancellationToken: token);
+
+            string result = output.ToString().Trim();
+            ArgUtil.NotNullOrEmpty(result, nameof(result));
+            return result;
         }
 
         private static Version GetVersion(TaskDefinition definition)

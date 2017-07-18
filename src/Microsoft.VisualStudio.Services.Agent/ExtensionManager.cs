@@ -77,6 +77,10 @@ namespace Microsoft.VisualStudio.Services.Agent
                     Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.Build.SvnSourceProvider, Agent.Worker");
                     Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.Build.TfsGitSourceProvider, Agent.Worker");
                     Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.Build.TfsVCSourceProvider, Agent.Worker");
+                    if (HostContext.RunMode == RunMode.Local)
+                    {
+                        Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.Build.LocalRunSourceProvider, Agent.Worker");
+                    }
                     break;
                 // Worker release artifact extensions.
                 case "Microsoft.VisualStudio.Services.Agent.Worker.Release.IArtifactExtension":
