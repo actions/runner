@@ -195,6 +195,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Release
             using (TestHostContext tc = Setup())
             {
                 string commitRootDirectory = tc.GetDirectory(WellKnownDirectory.Root);
+                Directory.CreateDirectory(commitRootDirectory);
 
                 try
                 {
@@ -217,7 +218,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Release
                                 .Returns(Task.FromResult(repoResult));
 
                     string commitFilePath = Path.Combine(commitRootDirectory, $"commits_{details.Alias}_1.json");
-                    Directory.CreateDirectory(commitRootDirectory);
 
                     string expectedCommitUrl = "https://github.com/TestUser/TestRepo/commit/2869c7ccd0b1b649ba6765e89ee5ff36ef6d4805";
                     await artifact.DownloadCommitsAsync(_ec.Object, _artifactDefinition, commitRootDirectory);

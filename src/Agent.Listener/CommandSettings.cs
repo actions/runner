@@ -36,7 +36,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             Constants.Agent.CommandLine.Flags.NoRestart,
             Constants.Agent.CommandLine.Flags.OverwriteAutoLogonSettings,
             Constants.Agent.CommandLine.Flags.Replace,
-            Constants.Agent.CommandLine.Flags.RunAsService,            
+            Constants.Agent.CommandLine.Flags.RunAsService,
             Constants.Agent.CommandLine.Flags.Unattended,
             Constants.Agent.CommandLine.Flags.Version,
             Constants.Agent.CommandLine.Flags.WhatIf
@@ -172,13 +172,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
         public bool GetEnableAutoLogon()
         {
-            // should this be named "RunAsAutoLogon" to match Win svc config?
-            return false;
-
-            // return TestFlagOrPrompt(
-            //        name: Constants.Agent.CommandLine.Flags.EnableAutoLogon,
-            //        description: StringUtil.Loc("EnableAutoLogonDescription"),
-            //        defaultValue: false);
+            return TestFlagOrPrompt(
+                name: Constants.Agent.CommandLine.Flags.EnableAutoLogon,
+                description: StringUtil.Loc("EnableAutoLogonDescription"),
+                defaultValue: false);
         }
 
         public bool GetOverwriteAutoLogonSettings(string logonAccount)
