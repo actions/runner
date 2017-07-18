@@ -11,7 +11,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 {
     [ServiceLocator(Default = typeof(AutoLogonRegistryManager))]
     public interface IAutoLogonRegistryManager : IAgentService
-    {        
+    {
+        void GetAutoLogonUserDetails(out string domainName, out string userName); 
         void UpdateRegistrySettings(CommandSettings command, string domainName, string userName, string logonPassword);
         void RevertRegistrySettings(string domainName, string userName);
         //used to log all the autologon related registry settings when agent is running
@@ -30,6 +31,26 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             _registryManager = hostContext.GetService<IWindowsRegistryManager>();
             _windowsServiceHelper = hostContext.GetService<INativeWindowsServiceHelper>();
             _terminal = HostContext.GetService<ITerminal>();
+        }
+
+        public void GetAutoLogonUserDetails(out string domainName, out string userName)
+        {
+            userName = null;
+            domainName = null;
+
+            var regValue = _registryManager.GetValue(RegistryHive.LocalMachine, 
+                                                        RegistryConstants.MachineSettings.SubKeys.AutoLogon, 
+                                                        RegistryConstants.MachineSettings.ValueNames.AutoLogon);
+            if (int.TryParse(regValue, out int autoLogonEnabled)
+                    && autoLogonEnabled == 1)
+            {
+                userName = _registryManager.GetValue(RegistryHive.LocalMachine,
+                                                        RegistryConstants.MachineSettings.SubKeys.AutoLogon,
+                                                        RegistryConstants.MachineSettings.ValueNames.AutoLogonUserName);
+                domainName = _registryManager.GetValue(RegistryHive.LocalMachine, 
+                                                        RegistryConstants.MachineSettings.SubKeys.AutoLogon,
+                                                        RegistryConstants.MachineSettings.ValueNames.AutoLogonDomainName);
+            }
         }
 
         public void UpdateRegistrySettings(CommandSettings command, string domainName, string userName, string logonPassword)
@@ -58,8 +79,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 {
                     throw new InvalidOperationException(StringUtil.Loc("ProfileLoadFailure", domainName, userName));
                 }
-
-                ShowAutoLogonWarningIfAlreadyEnabled(domainName, userName);
 
                 //machine specific settings, i.e., autologon
                 UpdateMachineSpecificRegistrySettings(domainName, userName);
@@ -286,11 +305,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
         private void UpdateScreenSaverSettings(CommandSettings command, string securityId)
         {
-            if(!command.GetDisableScreenSaver())
-            {
-                return;
-            }
-
             Trace.Info("Checking for policies that may prevent screensaver from being disabled.");
             _terminal.WriteLine(StringUtil.Loc("ScreenSaverPoliciesInspection"));
 
@@ -401,41 +415,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         private string GetBackupValueName(string valueName)
         {
             return string.Concat(RegistryConstants.BackupKeyPrefix, valueName);
-        }
-
-        private void ShowAutoLogonWarningIfAlreadyEnabled(string domainName, string userName)
-        {
-            //we cant use store here as store is specific to the agent root and if there is some other on the agent, we dont have access to it
-            //we need to rely on the registry only
-            GetAutoLogonUserDetails(out string autoLogonUserName, out string autoLogonUserDomainName);
-            
-            if (autoLogonUserName != null
-                    && autoLogonUserDomainName != null
-                    && !domainName.Equals(autoLogonUserDomainName, StringComparison.CurrentCultureIgnoreCase)
-                    && !userName.Equals(autoLogonUserName, StringComparison.CurrentCultureIgnoreCase))
-            {
-                _terminal.WriteLine(StringUtil.Loc("AutoLogonAlreadyEnabledWarning", userName));
-            }
-        }
-
-        private void GetAutoLogonUserDetails(out string userName, out string domainName)
-        {
-            userName = null;
-            domainName = null;
-
-            var regValue = _registryManager.GetValue(RegistryHive.LocalMachine, 
-                                                        RegistryConstants.MachineSettings.SubKeys.AutoLogon, 
-                                                        RegistryConstants.MachineSettings.ValueNames.AutoLogon);
-            if (int.TryParse(regValue, out int autoLogonEnabled)
-                    && autoLogonEnabled == 1)
-            {
-                userName = _registryManager.GetValue(RegistryHive.LocalMachine,
-                                                        RegistryConstants.MachineSettings.SubKeys.AutoLogon,
-                                                        RegistryConstants.MachineSettings.ValueNames.AutoLogonUserName);
-                domainName = _registryManager.GetValue(RegistryHive.LocalMachine, 
-                                                        RegistryConstants.MachineSettings.SubKeys.AutoLogon,
-                                                        RegistryConstants.MachineSettings.ValueNames.AutoLogonDomainName);
-            }
         }
     }
 

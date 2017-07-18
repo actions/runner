@@ -245,7 +245,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                 {
                     "--windowslogonaccount", "wont be honored",
                     "--windowslogonpassword", "sssh",
-                    "--DisableScreenSaver"
+                    "--norestart"
                 });
             
             _store = new Mock<IConfigurationStore>();

@@ -75,6 +75,27 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 _terminal.WriteError(StringUtil.Loc("InvalidAutoLogonCredential"));
             }
 
+            _autoLogonRegManager.GetAutoLogonUserDetails(out string currentAutoLogonUserDomainName, out string currentAutoLogonUserName);
+
+            if (currentAutoLogonUserName != null
+                    && !userName.Equals(currentAutoLogonUserName, StringComparison.CurrentCultureIgnoreCase)
+                    && !domainName.Equals(currentAutoLogonUserDomainName, StringComparison.CurrentCultureIgnoreCase))
+            {
+                string currentAutoLogonAccount = String.Format("{0}\\{1}", currentAutoLogonUserDomainName, currentAutoLogonUserName);
+                if (string.IsNullOrEmpty(currentAutoLogonUserDomainName) || currentAutoLogonUserDomainName.Equals(".", StringComparison.CurrentCultureIgnoreCase))
+                {
+                    currentAutoLogonAccount = String.Format("{0}\\{1}", Environment.MachineName, currentAutoLogonUserName);
+                }
+
+                Trace.Warning($"AutoLogon already enabled for {currentAutoLogonAccount}.");    
+                if(!command.GetOverwriteAutoLogonSettings(currentAutoLogonAccount))
+                {
+                    Trace.Error("Marking the agent configuration as failed due to the denial of autologon setting overwriting by the user.");
+                    throw new Exception(StringUtil.Loc("AutoLogonOverwriteDeniedError", currentAutoLogonAccount));
+                }
+                Trace.Info($"Continuing with the autologon configuration.");                
+            }
+
             _autoLogonRegManager.UpdateRegistrySettings(command, domainName, userName, logonPassword);
             _windowsServiceHelper.SetAutoLogonPassword(logonPassword);
 
@@ -159,8 +180,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             Trace.Info("Asking the user to restart the machine to launch agent and for autologon settings to take effect.");
             _terminal.WriteLine(StringUtil.Loc("RestartMessage"));
 
-            var shallRestart = command.GetRestartNow();
-            if (shallRestart)
+            var noRestart = command.GetNoRestart();
+            if (!noRestart)
             {
                 var whichUtil = HostContext.GetService<IWhichUtil>();
                 var shutdownExePath = whichUtil.Which("shutdown.exe");
