@@ -67,7 +67,7 @@ jobs: [ job | jobsTemplateReference ]
 # job properties - not allowed when higher level template, phases, or jobs is defined
 timeoutInMinutes: number
 variables: { string: string }
-steps: [ import | export | task | stepsPhase | stepsTemplateReference ]
+steps: [ script | powershell | bash | task | stepsPhase | stepsTemplateReference ]
 ```
 
 #### resource
@@ -89,19 +89,19 @@ phases: [ # phase specific step overrides
     jobs: [ # phase and job specific step overrides
       {
         name: string
-        steps: { string: [ import | export | task ] }
+        steps: { string: [ script | powershell | bash | task ] }
       }
     ]
-    steps: { string: [ import | export | task ] }
+    steps: { string: [ script | powershell | bash | task ] }
   }
 ]
 jobs: [ # job specific step overrides
   {
     name: string
-    steps: { string: [ import | export | task ] }
+    steps: { string: [ script | powershell | bash | task ] }
   }
 ]
-steps: { string: [ import | export | task ] } # step overrides
+steps: { string: [ script | powershell | bash | task ] } # step overrides
 ```
 
 #### processTemplate
@@ -110,7 +110,7 @@ steps: { string: [ import | export | task ] } # step overrides
 resources: [ resource ]
 phases: [ phase | phasesTemplateReference ]
 jobs: [ job | jobsTemplateReference ]
-steps: [ import | export | task | stepsPhase | stepsTemplateReference ]
+steps: [ script | powershell | bash | task | stepsPhase | stepsTemplateReference ]
 ```
 
 ### Phase structures
@@ -126,7 +126,7 @@ jobs: [ job | jobsTemplateReference ]
 # job properties
 timeoutInMinutes: number
 variables: { string: string }
-steps: [ import | export | task | stepsPhase | stepsTemplateReference ]
+steps: [ script | powershell | bash | task | stepsPhase | stepsTemplateReference ]
 ```
 
 #### phasesTemplateReference
@@ -140,19 +140,19 @@ phases: [ # phase specific step overrides
     jobs: [ # phase and job specific step overrides
       {
         name: string
-        steps: { string: [ import | export | task ] }
+        steps: { string: [ script | powershell | bash | task ] }
       }
     ]
-    steps: { string: [ import | export | task ] }
+    steps: { string: [ script | powershell | bash | task ] }
   }
 ]
 jobs: [ # job specific step overrides
   {
     name: string
-    steps: { string: [ import | export | task ] }
+    steps: { string: [ script | powershell | bash | task ] }
   }
 ]
-steps: { string: [ import | export | task ] } # step overrides
+steps: { string: [ script | powershell | bash | task ] } # step overrides
 ```
 
 #### phasesTemplate
@@ -160,7 +160,7 @@ steps: { string: [ import | export | task ] } # step overrides
 ```yaml
 phases: [ phase ]
 jobs: [ job | jobsTemplateReference ]
-steps: [ import | export | task | stepsPhase | stepsTemplateReference ]
+steps: [ script | powershell | bash | task | stepsPhase | stepsTemplateReference ]
 ```
 
 ### Job structures
@@ -171,7 +171,7 @@ steps: [ import | export | task | stepsPhase | stepsTemplateReference ]
 job: string # name
 timeoutInMinutes: number
 variables: [ variable | variablesTemplateReference ]
-steps: [ import | export | task | stepsPhase | stepsTemplateReference ]
+steps: [ script | powershell | bash | task | stepsPhase | stepsTemplateReference ]
 ```
 
 #### jobsTemplateReference
@@ -182,17 +182,17 @@ parameters: { string: any }
 jobs: [ # job specific step overrides
   {
     name: string
-    steps: { string: [ import | export | task ] }
+    steps: { string: [ script | powershell | bash | task ] }
   }
 ]
-steps: { string: [ import | export | task ] } # step overrides
+steps: { string: [ script | powershell | bash | task ] } # step overrides
 ```
 
 #### jobsTemplate
 
 ```yaml
 jobs: [ job ]
-steps: [ import | export | task | stepsPhase | stepsTemplateReference ]
+steps: [ script | powershell | bash | task | stepsPhase | stepsTemplateReference ]
 ```
 
 #### variable
@@ -279,7 +279,7 @@ env: { string: string }
 
 ```yaml
 phase: string # name
-steps: [ import | export | task ]
+steps: [ script | powershell | bash | task ]
 ```
 
 #### stepsTemplateReference
@@ -287,7 +287,7 @@ steps: [ import | export | task ]
 ```yaml
 template: string # relative path
 parameters: { string: any }
-steps: { string: [ import | export | task ] } # step overrides
+steps: { string: [ script | powershell | bash | task ] } # step overrides
 ```
 
 #### stepsTemplate
