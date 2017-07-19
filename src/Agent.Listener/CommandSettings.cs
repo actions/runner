@@ -30,12 +30,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             Constants.Agent.CommandLine.Flags.AddDeploymentGroupTags,
             Constants.Agent.CommandLine.Flags.Commit,
             Constants.Agent.CommandLine.Flags.DeploymentGroup,
-            Constants.Agent.CommandLine.Flags.EnableAutoLogon,
             Constants.Agent.CommandLine.Flags.Help,
             Constants.Agent.CommandLine.Flags.MachineGroup,
             Constants.Agent.CommandLine.Flags.NoRestart,
-            Constants.Agent.CommandLine.Flags.OverwriteAutoLogonSettings,
+            Constants.Agent.CommandLine.Flags.OverwriteAutoLogon,
             Constants.Agent.CommandLine.Flags.Replace,
+            Constants.Agent.CommandLine.Flags.RunAsAutoLogon,
             Constants.Agent.CommandLine.Flags.RunAsService,
             Constants.Agent.CommandLine.Flags.Unattended,
             Constants.Agent.CommandLine.Flags.Version,
@@ -170,19 +170,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 defaultValue: false);
         }
 
-        public bool GetEnableAutoLogon()
+        public bool GetRunAsAutoLogon()
         {
             return TestFlagOrPrompt(
-                name: Constants.Agent.CommandLine.Flags.EnableAutoLogon,
-                description: StringUtil.Loc("EnableAutoLogonDescription"),
+                name: Constants.Agent.CommandLine.Flags.RunAsAutoLogon,
+                description: StringUtil.Loc("RunAsAutoLogonDescription"),
                 defaultValue: false);
         }
 
-        public bool GetOverwriteAutoLogonSettings(string logonAccount)
+        public bool GetOverwriteAutoLogon(string logonAccount)
         {
             return TestFlagOrPrompt(
-                name: Constants.Agent.CommandLine.Flags.OverwriteAutoLogonSettings,
-                description: StringUtil.Loc("OverwriteAutoLogonSettings", logonAccount),
+                name: Constants.Agent.CommandLine.Flags.OverwriteAutoLogon,
+                description: StringUtil.Loc("OverwriteAutoLogon", logonAccount),
                 defaultValue: false);
         }
 

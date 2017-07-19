@@ -319,7 +319,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             _term.WriteLine(StringUtil.Loc("SavedSettings", DateTime.UtcNow));
 
 #if OS_WINDOWS
-            // config windows service as part of configuration
+            // config windows service
             bool runAsService = command.GetRunAsService();
             if (runAsService)
             {
@@ -327,8 +327,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 var serviceControlManager = HostContext.GetService<IWindowsServiceControlManager>();
                 serviceControlManager.ConfigureService(agentSettings, command);
             }
-            //This will be enabled with AutoLogon code changes are tested
-            else if (command.GetEnableAutoLogon())
+            // config auto logon
+            else if (command.GetRunAsAutoLogon())
             {                
                 Trace.Info("Agent is going to run as process setting up the 'AutoLogon' capability for the agent.");
                 var autoLogonConfigManager = HostContext.GetService<IAutoLogonManager>();
