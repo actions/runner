@@ -427,8 +427,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         {
             string resultText;
             TaskResult result;
-            string resultCode;
-
             if (!eventProperties.TryGetValue(TaskCompleteEventProperties.Result, out resultText) ||
                 String.IsNullOrEmpty(resultText) ||
                 !Enum.TryParse<TaskResult>(resultText, out result))
@@ -437,10 +435,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             }
 
             context.Result = TaskResultUtil.MergeTaskResults(context.Result, result);
-            if (eventProperties.TryGetValue(TaskCompleteEventProperties.Code, out resultCode))
-            {
-                context.ResultCode = resultCode;
-            }
             context.Progress(100, data);
         }
 
@@ -579,7 +573,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
     internal static class TaskCompleteEventProperties
     {
         public static readonly String Result = "result";
-        public static readonly String Code = "code";
     }
 
     internal static class TaskIssueEventProperties
