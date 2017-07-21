@@ -343,7 +343,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             }
             else
             {
-                // delete the index.lock file left by previous canceled build or any operation casue git.exe crash last time.
+                // delete the index.lock file left by previous canceled build or any operation cause git.exe crash last time.
                 string lockFile = Path.Combine(targetPath, ".git\\index.lock");
                 if (File.Exists(lockFile))
                 {
@@ -448,7 +448,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             int exitCode_disableGC = await _gitCommandManager.GitDisableAutoGC(executionContext, targetPath);
             if (exitCode_disableGC != 0)
             {
-                executionContext.Warning("Unable turn off git auto garbage collection, git fetch operation may trigger auto garbage collection which will affect the performence of fetching.");
+                executionContext.Warning("Unable turn off git auto garbage collection, git fetch operation may trigger auto garbage collection which will affect the performance of fetching.");
             }
 
             // always remove any possible left extraheader setting from git config.
@@ -569,7 +569,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             // Checkout
             // sourceToBuild is used for checkout
             // if sourceBranch is a PR branch or sourceVersion is null, make sure branch name is a remote branch. we need checkout to detached head. 
-            // (change refs/heads to refs/remotes/origin, refs/pull to refs/remotes/pull, or leava it as it when the branch name doesn't contain refs/...)
+            // (change refs/heads to refs/remotes/origin, refs/pull to refs/remotes/pull, or leave it as it when the branch name doesn't contain refs/...)
             // if sourceVersion provide, just use that for checkout, since when you checkout a commit, it will end up in detached head.
             cancellationToken.ThrowIfCancellationRequested();
             executionContext.Progress(80, "Starting checkout...");
@@ -615,6 +615,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 executionContext.Progress(90, "Updating submodules...");
+
+                int exitCode_submoduleSync = await _gitCommandManager.GitSubmoduleSync(executionContext, targetPath, checkoutNestedSubmodules, cancellationToken);
+                if (exitCode_submoduleSync != 0)
+                {
+                    throw new InvalidOperationException($"Git submodule sync failed with exit code: {exitCode_submoduleSync}");
+                }
+
                 List<string> additionalSubmoduleUpdateArgs = new List<string>();
                 if (!_selfManageGitCreds)
                 {

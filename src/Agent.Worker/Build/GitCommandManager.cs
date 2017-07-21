@@ -54,6 +54,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         // git submodule update --init --force [--recursive]
         Task<int> GitSubmoduleUpdate(IExecutionContext context, string repositoryPath, string additionalCommandLine, bool recursive, CancellationToken cancellationToken);
 
+        // git submodule sync [--recursive]
+        Task<int> GitSubmoduleSync(IExecutionContext context, string repositoryPath, bool recursive, CancellationToken cancellationToken);
+
         // git config --get remote.origin.url
         Task<Uri> GitGetFetchUrl(IExecutionContext context, string repositoryPath);
 
@@ -280,6 +283,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             }
 
             return await ExecuteGitCommandAsync(context, repositoryPath, "submodule", options, additionalCommandLine, cancellationToken);
+        }
+
+        // git submodule sync [--recursive]
+        public async Task<int> GitSubmoduleSync(IExecutionContext context, string repositoryPath, bool recursive, CancellationToken cancellationToken)
+        {
+            context.Debug("Synchronizes submodules' remote URL configuration setting.");
+            string options = "sync";
+            if (recursive)
+            {
+                options = options + " --recursive";
+            }
+
+            return await ExecuteGitCommandAsync(context, repositoryPath, "submodule", options, cancellationToken);
         }
 
         // git config --get remote.origin.url

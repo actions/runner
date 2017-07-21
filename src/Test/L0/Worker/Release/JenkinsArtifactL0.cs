@@ -157,7 +157,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Release
         {
             using (TestHostContext tc = Setup())
             {
-                string commitRootDirectory = tc.GetDirectory(WellKnownDirectory.Root);
+                string commitRootDirectory = Path.Combine(tc.GetDirectory(WellKnownDirectory.Work), Guid.NewGuid().ToString("D"));
+                Directory.CreateDirectory(commitRootDirectory);
 
                 try
                 {
@@ -175,7 +176,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Release
                                 .Returns(Task.FromResult(commitResult));
 
                     string commitFilePath = Path.Combine(commitRootDirectory, $"commits_{details.Alias}_1.json");
-                    Directory.CreateDirectory(commitRootDirectory);
 
                     await artifact.DownloadCommitsAsync(_ec.Object, _artifactDefinition, commitRootDirectory);
                     _ec.Verify(x => x.QueueAttachFile(It.Is<string>(y => y.Equals(CoreAttachmentType.FileAttachment)), It.IsAny<string>(), It.IsAny<string>()), Times.Once);
@@ -194,7 +194,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Release
         {
             using (TestHostContext tc = Setup())
             {
-                string commitRootDirectory = tc.GetDirectory(WellKnownDirectory.Root);
+                string commitRootDirectory = Path.Combine(tc.GetDirectory(WellKnownDirectory.Work), Guid.NewGuid().ToString("D"));
                 Directory.CreateDirectory(commitRootDirectory);
 
                 try
