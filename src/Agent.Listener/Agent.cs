@@ -138,7 +138,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
                 Trace.Verbose($"Configured as service: '{configuredAsService}'");
 
-                //Get the startup type of the agent i.e., autostartup, service, manualinteractive
+                //Get the startup type of the agent i.e., autostartup, service, manual
                 StartupType startType;
                 var startupTypeAsString = command.GetStartupType();
                 if (string.IsNullOrEmpty(startupTypeAsString) && configuredAsService)
@@ -148,14 +148,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     // At that time the servicehost won't pass --startuptype to agent.listener while the agent is actually running as service.
                     // We will guess the startup type only when the agent is configured as service and the guess will based on whether STDOUT/STDERR/STDIN been redirect or not
                     Trace.Info($"Try determine agent startup type base on console redirects.");
-                    startType = (Console.IsErrorRedirected && Console.IsInputRedirected && Console.IsOutputRedirected) ? StartupType.Service : StartupType.ManualInteractive;
+                    startType = (Console.IsErrorRedirected && Console.IsInputRedirected && Console.IsOutputRedirected) ? StartupType.Service : StartupType.Manual;
                 }
                 else
                 {
                     if (!Enum.TryParse(startupTypeAsString, true, out startType))
                     {
-                        Trace.Info($"Could not parse the argument value '{startupTypeAsString}' for StartupType. Defaulting to {StartupType.ManualInteractive}");
-                        startType = StartupType.ManualInteractive;
+                        Trace.Info($"Could not parse the argument value '{startupTypeAsString}' for StartupType. Defaulting to {StartupType.Manual}");
+                        startType = StartupType.Manual;
                     }
                 }
 

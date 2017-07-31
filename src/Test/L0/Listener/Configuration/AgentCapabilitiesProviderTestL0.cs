@@ -53,7 +53,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                 hc.StartupType = StartupType.Service;
                 await VerifyInteractiveSessionCapability(hc, tokenSource.Token, false);
 
-                hc.StartupType = StartupType.ManualInteractive;
+                hc.StartupType = StartupType.Manual;
                 await VerifyInteractiveSessionCapability(hc, tokenSource.Token, true);
             }
         }
