@@ -55,7 +55,7 @@ function Get-MaxInfoFromSqlServerDtaf {
                 }
             } |
             Sort-Object -Descending
-        foreach ($version in $versions) {
+       foreach ($version in $versions) {
             # Get the install directory.
             $installDir = Get-RegistryValue -Hive 'LocalMachine' -View $view -KeyName "$dtafKeyName\$version" -Value 'InstallDir'
             if (!$installDir) {
@@ -73,6 +73,25 @@ function Get-MaxInfoFromSqlServerDtaf {
                 File = $file
                 Version = $version
             }
+        }
+    }
+}
+
+function Get-MaxInfoFromVisualStudio_15_0 {
+    [CmdletBinding()]
+    param()
+
+    $vs15 = Get-VisualStudio_15_0
+    if ($vs15 -and $vs15.installationPath) {
+        # End with "\" for consistency with old ShellFolder values.
+        $shellFolder15 = $vs15.installationPath.TrimEnd('\'[0]) + "\"
+
+        # Test for the DAC directory.
+        $dacDirectory = [System.IO.Path]::Combine($shellFolder15, 'Common7', 'IDE', 'Extensions', 'Microsoft', 'SQLDB', 'DAC')
+        $sqlPacakgeInfo = Get-SqlPacakgeFromDacDirectory -dacDirectory $dacDirectory
+
+        if($sqlPacakgeInfo -and $sqlPacakgeInfo.File) {
+            return $sqlPacakgeInfo
         }
     }
 }
@@ -102,35 +121,48 @@ function Get-MaxInfoFromVisualStudio {
 
             # Test for the DAC directory.
             $dacDirectory = [System.IO.Path]::Combine($installDir, 'Extensions', 'Microsoft', 'SQLDB', 'DAC')
-            if (!(Test-Container -LiteralPath $dacDirectory)) {
-                continue
-            }
+            $sqlPacakgeInfo = Get-SqlPacakgeFromDacDirectory -dacDirectory $dacDirectory
 
-            # Get the DAC version folders.
-            $dacVersions =
-                Get-ChildItem -LiteralPath $dacDirectory |
-                Where-Object { $_ -is [System.IO.DirectoryInfo] }
-                # Filter to include integer key names only.
-                ForEach-Object {
-                    $i = 0
-                    if (([int]::TryParse($_.Name, [ref]$i))) {
-                        $i
-                    }
-                } |
-                Sort-Object -Descending
-            foreach ($dacVersion in $dacVersions) {
-                # Test for SqlPackage.exe.
-                $file = [System.IO.Path]::Combine($dacDirectory, $dacVersion, 'SqlPackage.exe')
-                if (!(Test-Leaf -LiteralPath $file)) {
-                    continue
-                }
-
-                # Return the info as an object with properties (for sorting).
-                return New-Object psobject -Property @{
-                    File = $file
-                    Version = $dacVersion
-                }
+            if($sqlPacakgeInfo -and $sqlPacakgeInfo.File)
+           {
+                return $sqlPacakgeInfo
             }
+        }
+    }
+}
+
+function Get-SqlPacakgeFromDacDirectory {
+    [CmdletBinding()]
+    param([string] $dacDirectory)
+
+
+    if (!(Test-Container -LiteralPath $dacDirectory)) {
+        continue
+    }
+
+    # Get the DAC version folders.
+    $dacVersions =
+        Get-ChildItem -LiteralPath $dacDirectory |
+        Where-Object { $_ -is [System.IO.DirectoryInfo] }
+        # Filter to include integer key names only.
+        ForEach-Object {
+            $i = 0
+            if (([int]::TryParse($_.Name, [ref]$i))) {
+                $i
+            }
+        } |
+        Sort-Object -Descending
+    foreach ($dacVersion in $dacVersions) {
+        # Test for SqlPackage.exe.
+        $file = [System.IO.Path]::Combine($dacDirectory, $dacVersion, 'SqlPackage.exe')
+        if (!(Test-Leaf -LiteralPath $file)) {
+            continue
+        }
+
+        # Return the info as an object with properties (for sorting).
+        return New-Object psobject -Property @{
+            File = $file
+            Version = $dacVersion
         }
     }
 }
@@ -139,6 +171,7 @@ $sqlPackageInfo = @( )
 $sqlPackageInfo += (Get-MaxInfoFromSqlServer)
 $sqlPackageInfo += (Get-MaxInfoFromSqlServerDtaf)
 $sqlPackageInfo += (Get-MaxInfoFromVisualStudio)
+$sqlPackageInfo += (Get-MaxInfoFromVisualStudio_15_0)
 $sqlPackageInfo |
     Sort-Object -Property Version -Descending |
     Select -First 1 |
