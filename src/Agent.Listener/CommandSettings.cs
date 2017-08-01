@@ -52,8 +52,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             Constants.Agent.CommandLine.Args.DeploymentGroupTags,
             Constants.Agent.CommandLine.Args.MachineGroupName,
             Constants.Agent.CommandLine.Args.MachineGroupTags,
+            Constants.Agent.CommandLine.Args.Matrix,
             Constants.Agent.CommandLine.Args.NotificationPipeName,
             Constants.Agent.CommandLine.Args.Password,
+            Constants.Agent.CommandLine.Args.Phase,
             Constants.Agent.CommandLine.Args.Pool,
             Constants.Agent.CommandLine.Args.ProjectName,
             Constants.Agent.CommandLine.Args.ProxyPassword,
@@ -229,6 +231,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 validator: Validators.AuthSchemeValidator);
         }
 
+        public string GetMatrix()
+        {
+            return GetArg(Constants.Agent.CommandLine.Args.Matrix);
+        }
+
         public string GetPassword()
         {
             return GetArgOrPrompt(
@@ -236,6 +243,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 description: StringUtil.Loc("Password"),
                 defaultValue: string.Empty,
                 validator: Validators.NonEmptyValidator);
+        }
+
+        public string GetPhase()
+        {
+            return GetArg(Constants.Agent.CommandLine.Args.Phase);
         }
 
         public string GetPool()

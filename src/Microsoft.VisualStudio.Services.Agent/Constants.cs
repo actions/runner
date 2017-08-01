@@ -68,8 +68,10 @@ namespace Microsoft.VisualStudio.Services.Agent
                     public static readonly string DeploymentGroupTags = "deploymentgrouptags";
                     public static readonly string MachineGroupName = "machinegroupname";
                     public static readonly string MachineGroupTags = "machinegrouptags";
+                    public static readonly string Matrix = "matrix";
                     public static readonly string NotificationPipeName = "notificationpipename";
                     public static readonly string NotificationSocketAddress = "notificationsocketaddress";
+                    public static readonly string Phase = "phase";
                     public static readonly string Pool = "pool";
                     public static readonly string ProjectName = "projectname";
                     public static readonly string ProxyUrl = "proxyurl";

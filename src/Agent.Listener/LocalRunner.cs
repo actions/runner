@@ -9,12 +9,14 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Pipelines;
+using Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Pipelines.Yaml;
+using Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Pipelines.Yaml.Contracts;
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Listener.Configuration;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using Newtonsoft.Json;
-using Pipelines = Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Pipelines;
+using Yaml = Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Pipelines.Yaml;
+using YamlContracts = Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Pipelines.Yaml.Contracts;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener
 {
@@ -64,7 +66,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     .ToArray();
                 if (ymlFiles.Length > 1)
                 {
-                    throw new Exception($"More than one .yml file exists in the current directory. Specify which file to use via the '{Constants.Agent.CommandLine.Args.Yml}' command line argument.");
+                    throw new Exception($"More than one .yml file exists in the current directory. Specify which file to use via the --'{Constants.Agent.CommandLine.Args.Yml}' command line argument.");
                 }
 
                 ymlFile = ymlFiles.FirstOrDefault();
@@ -72,7 +74,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
             if (string.IsNullOrEmpty(ymlFile))
             {
-                throw new Exception($"Unable to find a .yml file in the current directory. Specify which file to use via the '{Constants.Agent.CommandLine.Args.Yml}' command line argument.");
+                throw new Exception($"Unable to find a .yml file in the current directory. Specify which file to use via the --'{Constants.Agent.CommandLine.Args.Yml}' command line argument.");
             }
 
             // Load the YAML file.
@@ -84,22 +86,81 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 MustacheMaxDepth = 5,
             };
             var pipelineParser = new PipelineParser(new PipelineTraceWriter(), new PipelineFileProvider(), parseOptions);
-            Pipelines.Process process = pipelineParser.Load(
+            if (command.WhatIf)
+            {
+                pipelineParser.DeserializeAndSerialize(
+                    defaultRoot: Directory.GetCurrentDirectory(),
+                    path: ymlFile,
+                    mustacheContext: null,
+                    cancellationToken: HostContext.AgentShutdownToken);
+                return Constants.Agent.ReturnCode.Success;
+            }
+
+            YamlContracts.Process process = pipelineParser.LoadInternal(
                 defaultRoot: Directory.GetCurrentDirectory(),
                 path: ymlFile,
                 mustacheContext: null,
                 cancellationToken: HostContext.AgentShutdownToken);
             ArgUtil.NotNull(process, nameof(process));
-            if (command.WhatIf)
-            {
-                return Constants.Agent.ReturnCode.Success;
-            }
 
             // Verify the current directory is the root of a git repo.
             string repoDirectory = Directory.GetCurrentDirectory();
             if (!Directory.Exists(Path.Combine(repoDirectory, ".git")))
             {
                 throw new Exception("Unable to run the build locally. The command must be executed from the root directory of a local git repository.");
+            }
+
+            // Verify at least one phase was found.
+            if (process.Phases == null || process.Phases.Count == 0)
+            {
+                throw new Exception($"No phases or steps were discovered from the file: '{ymlFile}'");
+            }
+
+            // Verify a phase was specified if more than one phase was found.
+            string phaseName = command.GetPhase();
+            if (process.Phases.Count > 1 && string.IsNullOrEmpty(phaseName))
+            {
+                throw new Exception($"More than one phase was discovered. Use the --{Constants.Agent.CommandLine.Args.Phase} argument to specify a phase.");
+            }
+
+            // Filter the phases.
+            if (!string.IsNullOrEmpty(phaseName))
+            {
+                process.Phases = process.Phases
+                    .Cast<YamlContracts.Phase>()
+                    .Where(x => string.Equals(x.Name, phaseName, StringComparison.OrdinalIgnoreCase))
+                    .Cast<YamlContracts.IPhase>()
+                    .ToList();
+                if (process.Phases.Count == 0)
+                {
+                    throw new Exception($"Phase '{phaseName}' not found.");
+                }
+            }
+
+            // Verify a matrix was specified if more than one matrix was found.
+            var phase = process.Phases[0] as YamlContracts.Phase;
+            string matrixName = command.GetMatrix();
+            if (phase.Execution?.Matrix != null &&
+                phase.Execution.Matrix.Count > 1 &&
+                string.IsNullOrEmpty(matrixName))
+            {
+                throw new Exception($"More than one job configuration matrix was discovered. Use the --{Constants.Agent.CommandLine.Args.Matrix} argument to specify a matrix.");
+            }
+
+            // Filter to a specific matrix.
+            if (!string.IsNullOrEmpty(matrixName))
+            {
+                if (phase.Execution?.Matrix != null)
+                {
+                    phase.Execution.Matrix = phase.Execution.Matrix.Keys
+                        .Where(x => string.Equals(x, matrixName, StringComparison.OrdinalIgnoreCase))
+                        .ToDictionary(keySelector: x => x, elementSelector: x => phase.Execution.Matrix[x]);
+                }
+
+                if (phase.Execution.Matrix.Count == 0)
+                {
+                    throw new Exception($"Job configuration matrix '{matrixName}' not found.");
+                }
             }
 
             // Get the URL - required if missing tasks.
@@ -162,7 +223,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             return Constants.Agent.ReturnCode.Success;
         }
 
-        private async Task<List<JobInfo>> ConvertToJobMessagesAsync(Pipelines.Process process, string repoDirectory, CancellationToken token)
+        private async Task<List<JobInfo>> ConvertToJobMessagesAsync(YamlContracts.Process process, string repoDirectory, CancellationToken token)
         {
             // Collect info about the repo.
             string repoName = Path.GetFileName(repoDirectory);
@@ -177,13 +238,26 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             int requestId = 1;
             foreach (Phase phase in process.Phases ?? new List<IPhase>(0))
             {
-                foreach (Job job in phase.Jobs ?? new List<IJob>(0))
+                IDictionary<string, IDictionary<string, string>> matrix;
+                if (phase.Execution?.Matrix != null && phase.Execution.Matrix.Count > 0)
+                {
+                    // Get the matrix.
+                    matrix = phase.Execution.Matrix;
+                }
+                else
+                {
+                    // Create the default matrix.
+                    matrix = new Dictionary<string, IDictionary<string, string>>(1);
+                    matrix[string.Empty] = new Dictionary<string, string>(0);
+                }
+
+                foreach (string jobName in matrix.Keys)
                 {
                     var builder = new StringBuilder();
                     builder.Append($@"{{
   ""tasks"": [");
                     var steps = new List<ISimpleStep>();
-                    foreach (IStep step in job.Steps ?? new List<IStep>(0))
+                    foreach (IStep step in phase.Steps ?? new List<IStep>(0))
                     {
                         if (step is ISimpleStep)
                         {
@@ -191,8 +265,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                         }
                         else
                         {
-                            var stepsPhase = step as StepsPhase;
-                            foreach (ISimpleStep nestedStep in stepsPhase.Steps ?? new List<ISimpleStep>(0))
+                            var stepGroup = step as StepGroup;
+                            foreach (ISimpleStep nestedStep in stepGroup.Steps ?? new List<ISimpleStep>(0))
                             {
                                 steps.Add(nestedStep);
                             }
@@ -297,7 +371,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
     ""location"": null
   }},
   ""jobId"": ""{Guid.NewGuid()}"",
-  ""jobName"": {JsonConvert.ToString(!string.IsNullOrEmpty(job.Name) ? job.Name : "Build")},
+  ""jobName"": {JsonConvert.ToString(!string.IsNullOrEmpty(phase.Name) ? phase.Name : "Build")},
   ""environment"": {{
     ""endpoints"": [
       {{
@@ -331,7 +405,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
       }}
     ],
     ""variables"": {{");
-                    builder.Append($@"
+                        builder.Append($@"
       ""system"": ""build"",
       ""system.collectionId"": ""00000000-0000-0000-0000-000000000000"",
       ""system.culture"": ""en-US"",
@@ -364,10 +438,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
       ""build.sourceVersionMessage"": {JsonConvert.ToString(commitSubject)},
       ""AZURE_HTTP_USER_AGENT"": ""VSTS_00000000-0000-0000-0000-000000000000_build_55_1863"",
       ""MSDEPLOY_HTTP_USER_AGENT"": ""VSTS_00000000-0000-0000-0000-000000000000_build_55_1863""");
-                    foreach (Variable variable in job.Variables ?? new List<IVariable>(0))
+                    foreach (Variable variable in phase.Variables ?? new List<IVariable>(0))
                     {
                         builder.Append($@",
       {JsonConvert.ToString(variable.Name ?? string.Empty)}: {JsonConvert.ToString(variable.Value ?? string.Empty)}");
+                    }
+
+                    foreach (KeyValuePair<string, string> variable in matrix[jobName])
+                    {
+                        builder.Append($@",
+      {JsonConvert.ToString(variable.Key ?? string.Empty)}: {JsonConvert.ToString(variable.Value ?? string.Empty)}");
                     }
 
                     builder.Append($@"
@@ -392,7 +472,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     string message = builder.ToString();
                     try
                     {
-                        jobs.Add(new JobInfo(job, message));
+                        jobs.Add(new JobInfo(phase, jobName, message));
                     }
                     catch
                     {
@@ -478,49 +558,49 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         {
             foreach (Phase phase in process.Phases ?? new List<IPhase>(0))
             {
-                foreach (Job job in phase.Jobs ?? new List<IJob>(0))
+                var steps = new List<ISimpleStep>();
+                foreach (IStep step in phase.Steps ?? new List<IStep>(0))
                 {
-                    var steps = new List<ISimpleStep>();
-                    foreach (IStep step in job.Steps ?? new List<IStep>(0))
+                    if (step is ISimpleStep)
                     {
-                        if (step is ISimpleStep)
+                        if (!(step is CheckoutStep))
                         {
                             steps.Add(step as ISimpleStep);
                         }
-                        else
+                    }
+                    else
+                    {
+                        var stepGroup = step as StepGroup;
+                        foreach (ISimpleStep nestedStep in stepGroup.Steps ?? new List<ISimpleStep>(0))
                         {
-                            var stepsPhase = step as StepsPhase;
-                            foreach (ISimpleStep nestedStep in stepsPhase.Steps ?? new List<ISimpleStep>(0))
-                            {
-                                steps.Add(nestedStep);
-                            }
+                            steps.Add(nestedStep);
                         }
                     }
+                }
 
-                    foreach (ISimpleStep step in steps)
+                foreach (ISimpleStep step in steps)
+                {
+                    if (!(step is TaskStep))
                     {
-                        if (!(step is TaskStep))
-                        {
-                            throw new Exception("Unexpected step type: " + step.GetType().FullName);
-                        }
+                        throw new Exception("Unexpected step type: " + step.GetType().FullName);
+                    }
 
-                        var task = step as TaskStep;
-                        if (!task.Enabled)
-                        {
-                            continue;
-                        }
+                    var task = step as TaskStep;
+                    if (!task.Enabled)
+                    {
+                        continue;
+                    }
 
-                        // Sanity check - the pipeline parser should have already validated version is an int.
-                        int taskVersion;
-                        if (!int.TryParse(task.Reference.Version, NumberStyles.None, CultureInfo.InvariantCulture, out taskVersion))
-                        {
-                            throw new Exception($"Unexpected task version format. Expected an unsigned integer with no formmatting. Actual: '{task.Reference.Version}'");
-                        }
+                    // Sanity check - the pipeline parser should have already validated version is an int.
+                    int taskVersion;
+                    if (!int.TryParse(task.Reference.Version, NumberStyles.None, CultureInfo.InvariantCulture, out taskVersion))
+                    {
+                        throw new Exception($"Unexpected task version format. Expected an unsigned integer with no formmatting. Actual: '{task.Reference.Version}'");
+                    }
 
-                        if (!_taskStore.TestCached(name: task.Reference.Name, version: taskVersion, token: token))
-                        {
-                            return false;
-                        }
+                    if (!_taskStore.TestCached(name: task.Reference.Name, version: taskVersion, token: token))
+                    {
+                        return false;
                     }
                 }
             }
@@ -779,20 +859,26 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
         private sealed class JobInfo
         {
-            public JobInfo(Job job, string requestMessage)
+            public JobInfo(Phase phase, string jobName, string requestMessage)
             {
+                JobName = jobName ?? string.Empty;
+                PhaseName = phase.Name ?? string.Empty;
                 RequestMessage = JsonUtility.FromString<AgentJobRequestMessage>(requestMessage);
-                Timeout = TimeSpan.FromMinutes(job.TimeoutInMinutes ?? 60);
+                Timeout = TimeSpan.FromMinutes(int.Parse(phase.Execution?.TimeoutInMinutes ?? "60", NumberStyles.None));
             }
 
             public JobCancelMessage CancelMessage => new JobCancelMessage(RequestMessage.JobId, TimeSpan.FromSeconds(60));
+
+            public string JobName { get; }
+
+            public string PhaseName { get; }
 
             public AgentJobRequestMessage RequestMessage { get; }
 
             public TimeSpan Timeout { get; }
         }
 
-        private sealed class PipelineTraceWriter : Pipelines.ITraceWriter
+        private sealed class PipelineTraceWriter : Yaml.ITraceWriter
         {
             public void Info(String format, params Object[] args)
             {
@@ -805,7 +891,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             }
         }
 
-        private sealed class PipelineFileProvider : Pipelines.IFileProvider
+        private sealed class PipelineFileProvider : Yaml.IFileProvider
         {
             public FileData GetFile(String path)
             {

@@ -36,7 +36,8 @@ $null = $stringBuilder.AppendLine('}')
 
 # Copy over the .cs files
 if (!$SkipCopy) {
-    robocopy $VsoSrcPath\DistributedTask\Sdk\Server\Pipelines $PSScriptRoot *.cs /mir
+    mkdir $PSScriptRoot\Yaml -ErrorAction Ignore
+    robocopy $VsoSrcPath\DistributedTask\Sdk\Server\Pipelines $PSScriptRoot\Yaml *.cs /mir
 }
 
 # Write TaskResources.cs.
