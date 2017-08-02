@@ -367,6 +367,7 @@ case $DEV_CMD in
    "b") build;;
    "test") runtest;;
    "t") runtest;;
+   "buildtest") buildtest;;
    "bt") buildtest;;   
    "clean") clean;;
    "c") clean;;
