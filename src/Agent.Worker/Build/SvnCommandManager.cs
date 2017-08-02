@@ -547,6 +547,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 formattedArgs.Add(QuotedArgument(_password));
             }
 
+            formattedArgs.Add("--no-auth-cache"); // Do not cache credentials
             formattedArgs.Add("--non-interactive");
 
             // Add proxy setting parameters
