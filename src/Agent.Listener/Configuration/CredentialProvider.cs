@@ -70,7 +70,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         public override VssCredentials GetVssCredentials(IHostContext context)
         {
             ArgUtil.NotNull(context, nameof(context));
-            Tracing trace = context.GetTrace(nameof(PersonalAccessToken));
+            Tracing trace = context.GetTrace(nameof(ServiceIdentityCredential));
             trace.Info(nameof(GetVssCredentials));
             ArgUtil.NotNull(CredentialData, nameof(CredentialData));
             string token;
@@ -102,7 +102,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         public override void EnsureCredential(IHostContext context, CommandSettings command, string serverUrl)
         {
             ArgUtil.NotNull(context, nameof(context));
-            Tracing trace = context.GetTrace(nameof(PersonalAccessToken));
+            Tracing trace = context.GetTrace(nameof(ServiceIdentityCredential));
             trace.Info(nameof(EnsureCredential));
             ArgUtil.NotNull(command, nameof(command));
             CredentialData.Data[Constants.Agent.CommandLine.Args.Token] = command.GetToken();
