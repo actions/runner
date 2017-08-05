@@ -26,6 +26,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
         private Mock<IExtensionManager> _extnMgr;
         private Mock<IDeploymentGroupServer> _machineGroupServer;
         private Mock<INetFrameworkUtil> _netFrameworkUtil;
+        private Mock<IVstsAgentWebProxy> _vstsAgentWebProxy;
 
 #if OS_WINDOWS
         private Mock<IWindowsServiceControlManager> _serviceControlManager;
@@ -64,6 +65,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
             _rsaKeyManager = new Mock<IRSAKeyManager>();
             _machineGroupServer = new Mock<IDeploymentGroupServer>();
             _netFrameworkUtil = new Mock<INetFrameworkUtil>();
+            _vstsAgentWebProxy = new Mock<IVstsAgentWebProxy>();
 
 #if OS_WINDOWS
             _serviceControlManager = new Mock<IWindowsServiceControlManager>();
@@ -95,7 +97,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
             _machineGroupServer.Setup(x => x.UpdateDeploymentMachinesAsync(It.IsAny<Guid>(), It.IsAny<int>(), It.IsAny<List<DeploymentMachine>>()));
             _machineGroupServer.Setup(x => x.AddDeploymentMachineAsync(It.IsAny<Guid>(), It.IsAny<int>(), It.IsAny<DeploymentMachine>())).Returns(Task.FromResult(expectedDeploymentMachine));
             _machineGroupServer.Setup(x => x.ReplaceDeploymentMachineAsync(It.IsAny<Guid>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<DeploymentMachine>())).Returns(Task.FromResult(expectedDeploymentMachine));
-            _machineGroupServer.Setup(x => x.GetDeploymentMachinesAsync(It.IsAny<Guid>(), It.IsAny<int>(), It.IsAny<string>())).Returns(Task.FromResult(new List<DeploymentMachine>(){}));
+            _machineGroupServer.Setup(x => x.GetDeploymentMachinesAsync(It.IsAny<Guid>(), It.IsAny<int>(), It.IsAny<string>())).Returns(Task.FromResult(new List<DeploymentMachine>() { }));
             _machineGroupServer.Setup(x => x.DeleteDeploymentMachineAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>())).Returns(Task.FromResult<object>(null));
             _netFrameworkUtil.Setup(x => x.Test(It.IsAny<Version>())).Returns(true);
 
@@ -141,6 +143,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
             tc.SetSingleton<IDeploymentGroupServer>(_machineGroupServer.Object);
             tc.SetSingleton<INetFrameworkUtil>(_netFrameworkUtil.Object);
             tc.SetSingleton<ICapabilitiesManager>(_capabilitiesManager);
+            tc.SetSingleton<IVstsAgentWebProxy>(_vstsAgentWebProxy.Object);
 
 #if OS_WINDOWS
             tc.SetSingleton<IWindowsServiceControlManager>(_serviceControlManager.Object);
@@ -195,25 +198,25 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
 
                 _store.Setup(x => x.IsConfigured()).Returns(true);
 
-               trace.Info("Configured, verifying all the parameter value");
-               var s = configManager.LoadSettings();
-               Assert.NotNull(s);
-               Assert.True(s.ServerUrl.Equals(_expectedServerUrl));
-               Assert.True(s.AgentName.Equals(_expectedAgentName));
-               Assert.True(s.PoolId.Equals(_expectedPoolId));
-               Assert.True(s.WorkFolder.Equals(_expectedWorkFolder));
+                trace.Info("Configured, verifying all the parameter value");
+                var s = configManager.LoadSettings();
+                Assert.NotNull(s);
+                Assert.True(s.ServerUrl.Equals(_expectedServerUrl));
+                Assert.True(s.AgentName.Equals(_expectedAgentName));
+                Assert.True(s.PoolId.Equals(_expectedPoolId));
+                Assert.True(s.WorkFolder.Equals(_expectedWorkFolder));
 
-               // For build and release agent, tags logic should not get trigger
-               _machineGroupServer.Verify(x =>
-                    x.UpdateDeploymentMachinesAsync(It.IsAny<Guid>(), It.IsAny<int>(), It.IsAny<List<DeploymentMachine>>()), Times.Never);
-           }
-       }
+                // For build and release agent, tags logic should not get trigger
+                _machineGroupServer.Verify(x =>
+                     x.UpdateDeploymentMachinesAsync(It.IsAny<Guid>(), It.IsAny<int>(), It.IsAny<List<DeploymentMachine>>()), Times.Never);
+            }
+        }
 
 
-       /*
-        * Agent configuartion as deployment agent against VSTS account
-        * Collectioion name is not required
-        */
+        /*
+         * Agent configuartion as deployment agent against VSTS account
+         * Collectioion name is not required
+         */
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "ConfigurationManagement")]
@@ -251,8 +254,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
                 _configMgrAgentSettings = null;
 
                 _extnMgr.Setup(x => x.GetExtensions<IConfigurationProvider>()).Returns(GetConfigurationProviderList(tc));
-                _machineGroupServer.Setup(x => x.GetDeploymentGroupsAsync(It.IsAny<string>(),It.IsAny<string>())).Returns(Task.FromResult(GetDeploymentGroups(18,27)));
-                
+                _machineGroupServer.Setup(x => x.GetDeploymentGroupsAsync(It.IsAny<string>(), It.IsAny<string>())).Returns(Task.FromResult(GetDeploymentGroups(18, 27)));
+
                 trace.Info("Ensuring all the required parameters are available in the command line parameter");
                 await configManager.ConfigureAsync(command);
 
@@ -261,7 +264,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
                 trace.Info("Configured, verifying all the parameter value");
                 var s = configManager.LoadSettings();
                 Assert.NotNull(s);
-                Assert.True(s.ServerUrl.Equals(_expectedVSTSServerUrl,StringComparison.CurrentCultureIgnoreCase));
+                Assert.True(s.ServerUrl.Equals(_expectedVSTSServerUrl, StringComparison.CurrentCultureIgnoreCase));
                 Assert.True(s.AgentName.Equals(_expectedAgentName));
                 Assert.True(s.PoolId.Equals(27));
                 Assert.True(s.WorkFolder.Equals(_expectedWorkFolder));
@@ -320,7 +323,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
                 _configMgrAgentSettings = null;
 
                 _extnMgr.Setup(x => x.GetExtensions<IConfigurationProvider>()).Returns(GetConfigurationProviderList(tc));
-               
+
                 _machineGroupServer.Setup(x => x.GetDeploymentGroupsAsync(It.IsAny<string>(), It.IsAny<string>())).Returns(Task.FromResult(GetDeploymentGroups(3, 7)));
 
                 trace.Info("Ensuring all the required parameters are available in the command line parameter");
@@ -368,7 +371,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
                     It.IsAny<List<DeploymentMachine>>())).Callback((Guid project, int deploymentGroupId, List<DeploymentMachine> deploymentMachine) =>
                     {
                         receivedProjectId = project;
-                        expectedProcessedTags = string.Join(",",deploymentMachine.FirstOrDefault().Tags.ToArray());
+                        expectedProcessedTags = string.Join(",", deploymentMachine.FirstOrDefault().Tags.ToArray());
                         receivedMachineId = deploymentMachine.FirstOrDefault().Id;
                         receivedDeploymentGroupId = deploymentGroupId;
                     }
@@ -409,7 +412,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
 
                 _extnMgr.Setup(x => x.GetExtensions<IConfigurationProvider>()).Returns(GetConfigurationProviderList(tc));
 
-                
+
                 _machineGroupServer.Setup(x => x.GetDeploymentGroupsAsync(It.IsAny<string>(), It.IsAny<string>())).Returns(Task.FromResult(GetDeploymentGroups(expectedDeploymentGroupId, 3)));
 
                 trace.Info("Ensuring all the required parameters are available in the command line parameter");
@@ -430,7 +433,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
                 Assert.True(s.ProjectId.Equals(_expectedProjectId));
 
                 Assert.True(receivedProjectId.Equals(new Guid(_expectedProjectId)), "UpdateDeploymentMachinesGroupAsync should get call with correct project name");
-                Assert.True(expectedTags.Equals(expectedProcessedTags),"Before applying the tags, should get processed ( Trim, Remove duplicate)");
+                Assert.True(expectedTags.Equals(expectedProcessedTags), "Before applying the tags, should get processed ( Trim, Remove duplicate)");
                 Assert.True(receivedMachineId.Equals(_expectedDeploymentMachineId), "UpdateDeploymentMachinesGroupAsync should get call with correct machine id");
                 Assert.True(receivedDeploymentGroupId.Equals(expectedDeploymentGroupId), "UpdateDeploymentMachinesGroupAsync should get call with correct deployment group id");
                 // Tags logic should get trigger

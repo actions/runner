@@ -63,29 +63,33 @@ namespace Microsoft.VisualStudio.Services.Agent
                 {
                     public static readonly string Agent = "agent";
                     public static readonly string Auth = "auth";
+                    public static readonly string CollectionName = "collectionname";
+                    public static readonly string DeploymentGroupName = "deploymentgroupname";
+                    public static readonly string DeploymentGroupTags = "deploymentgrouptags";
+                    public static readonly string MachineGroupName = "machinegroupname";
+                    public static readonly string MachineGroupTags = "machinegrouptags";
                     public static readonly string NotificationPipeName = "notificationpipename";
                     public static readonly string NotificationSocketAddress = "notificationsocketaddress";
                     public static readonly string Pool = "pool";
+                    public static readonly string ProjectName = "projectname";
+                    public static readonly string ProxyUrl = "proxyurl";
+                    public static readonly string ProxyUserName = "proxyusername";
+                    public static readonly string StartupType = "startuptype";
                     public static readonly string Url = "url";
                     public static readonly string UserName = "username";
                     public static readonly string WindowsLogonAccount = "windowslogonaccount";
                     public static readonly string Work = "work";
-                    public static readonly string MachineGroupName = "machinegroupname";
-                    public static readonly string DeploymentGroupName = "deploymentgroupname";
-                    public static readonly string ProjectName = "projectname";
-                    public static readonly string CollectionName = "collectionname";
-                    public static readonly string MachineGroupTags = "machinegrouptags";
-                    public static readonly string DeploymentGroupTags = "deploymentgrouptags";
                     public static readonly string Yaml = "yaml";
 
                     // Secret args. Must be added to the "Secrets" getter as well.
                     public static readonly string Password = "password";
+                    public static readonly string ProxyPassword = "proxypassword";
                     public static readonly string Token = "token";
                     public static readonly string WindowsLogonPassword = "windowslogonpassword";
-                    public static readonly string StartupType = "startuptype";
                     public static string[] Secrets => new[]
                     {
                         Password,
+                        ProxyPassword,
                         Token,
                         WindowsLogonPassword,
                     };

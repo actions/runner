@@ -52,6 +52,78 @@ namespace Microsoft.VisualStudio.Services.Agent
             return string.IsNullOrEmpty(ProxyAddress) || uri.IsLoopback || IsMatchInBypassList(uri);
         }
 
+        // This should only be called from config
+        public void SetupProxy(string proxyAddress, string proxyUsername, string proxyPassword)
+        {
+            ArgUtil.NotNullOrEmpty(proxyAddress, nameof(proxyAddress));
+            Trace.Info($"Update proxy setting from '{ProxyAddress ?? string.Empty}' to'{proxyAddress}'");
+            ProxyAddress = proxyAddress;
+            ProxyUsername = proxyUsername;
+            ProxyPassword = proxyPassword;
+
+            if (string.IsNullOrEmpty(ProxyUsername) || string.IsNullOrEmpty(ProxyPassword))
+            {
+                Credentials = CredentialCache.DefaultNetworkCredentials;
+            }
+            else
+            {
+                Credentials = new NetworkCredential(ProxyUsername, ProxyPassword);
+            }
+        }
+
+        // This should only be called from config
+        public void SaveProxySetting()
+        {
+            if (!string.IsNullOrEmpty(ProxyAddress))
+            {
+                string proxyConfigFile = IOUtil.GetProxyConfigFilePath();
+                IOUtil.DeleteFile(proxyConfigFile);
+                Trace.Info($"Store proxy configuration to '{proxyConfigFile}' for proxy '{ProxyAddress}'");
+                File.WriteAllText(proxyConfigFile, ProxyAddress);
+                File.SetAttributes(proxyConfigFile, File.GetAttributes(proxyConfigFile) | FileAttributes.Hidden);
+
+                string proxyCredFile = IOUtil.GetProxyCredentialsFilePath();
+                IOUtil.DeleteFile(proxyCredFile);
+                if (!string.IsNullOrEmpty(ProxyUsername) && !string.IsNullOrEmpty(ProxyPassword))
+                {
+                    string lookupKey = Guid.NewGuid().ToString("D").ToUpperInvariant();
+                    Trace.Info($"Store proxy credential lookup key '{lookupKey}' to '{proxyCredFile}'");
+                    File.WriteAllText(proxyCredFile, lookupKey);
+                    File.SetAttributes(proxyCredFile, File.GetAttributes(proxyCredFile) | FileAttributes.Hidden);
+
+                    var credStore = HostContext.GetService<IAgentCredentialStore>();
+                    credStore.Write($"VSTS_AGENT_PROXY_{lookupKey}", ProxyUsername, ProxyPassword);
+                }
+            }
+            else
+            {
+                Trace.Info("No proxy configuration exist.");
+            }
+        }
+
+        // This should only be called from unconfig
+        public void DeleteProxySetting()
+        {
+            string proxyCredFile = IOUtil.GetProxyCredentialsFilePath();
+            if (File.Exists(proxyCredFile))
+            {
+                Trace.Info("Delete proxy credential from credential store.");
+                string lookupKey = File.ReadAllLines(proxyCredFile).FirstOrDefault();
+                if (!string.IsNullOrEmpty(lookupKey))
+                {
+                    var credStore = HostContext.GetService<IAgentCredentialStore>();
+                    credStore.Delete($"VSTS_AGENT_PROXY_{lookupKey}");
+                }
+
+                Trace.Info($"Delete .proxycredentials file: {proxyCredFile}");
+                IOUtil.DeleteFile(proxyCredFile);
+            }
+
+            string proxyConfigFile = IOUtil.GetProxyConfigFilePath();
+            Trace.Info($"Delete .proxy file: {proxyConfigFile}");
+            IOUtil.DeleteFile(proxyConfigFile);
+        }
+
         private void LoadProxySetting()
         {
             string proxyConfigFile = IOUtil.GetProxyConfigFilePath();
@@ -82,8 +154,28 @@ namespace Microsoft.VisualStudio.Services.Agent
             {
                 Trace.Info($"Config proxy at: {ProxyAddress}.");
 
-                ProxyUsername = Environment.GetEnvironmentVariable("VSTS_HTTP_PROXY_USERNAME");
-                ProxyPassword = Environment.GetEnvironmentVariable("VSTS_HTTP_PROXY_PASSWORD");
+                string proxyCredFile = IOUtil.GetProxyCredentialsFilePath();
+                if (File.Exists(proxyCredFile))
+                {
+                    string lookupKey = File.ReadAllLines(proxyCredFile).FirstOrDefault();
+                    if (!string.IsNullOrEmpty(lookupKey))
+                    {
+                        var credStore = HostContext.GetService<IAgentCredentialStore>();
+                        var proxyCred = credStore.Read($"VSTS_AGENT_PROXY_{lookupKey}");
+                        ProxyUsername = proxyCred.UserName;
+                        ProxyPassword = proxyCred.Password;
+                    }
+                }
+
+                if (string.IsNullOrEmpty(ProxyUsername))
+                {
+                    ProxyUsername = Environment.GetEnvironmentVariable("VSTS_HTTP_PROXY_USERNAME");
+                }
+
+                if (string.IsNullOrEmpty(ProxyPassword))
+                {
+                    ProxyPassword = Environment.GetEnvironmentVariable("VSTS_HTTP_PROXY_PASSWORD");
+                }
 
                 if (!string.IsNullOrEmpty(ProxyPassword))
                 {
