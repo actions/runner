@@ -136,7 +136,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 var command = new CommandSettings(hc, args: new string[] { "remove" });
 
                 // Act.
-                bool actual = command.Unconfigure;
+                bool actual = command.Remove;
 
                 // Assert.
                 Assert.True(actual);

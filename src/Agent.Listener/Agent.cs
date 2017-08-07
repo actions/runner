@@ -45,13 +45,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 Trace.Info(nameof(ExecuteCommand));
                 var configManager = HostContext.GetService<IConfigurationManager>();
 
-                // command is not required, if no command it just starts and/or configures if not configured
+                // command is not required, if no command it just starts if configured
 
                 // TODO: Invalid config prints usage
 
                 if (command.Help)
                 {
-                    PrintUsage();
+                    PrintUsage(command);
                     return Constants.Agent.ReturnCode.Success;
                 }
 
@@ -84,8 +84,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     }
                 }
 
-                // Unconfigure, remove config files, service and exit
-                if (command.Unconfigure)
+                // remove config files, remove service, and exit
+                if (command.Remove)
                 {
                     try
                     {
@@ -102,21 +102,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
                 _inConfigStage = false;
 
-                // YAML
-                string yamlFile = command.GetYaml();
-                if (!string.IsNullOrEmpty(yamlFile))
+                // Local run
+                if (command.LocalRun)
                 {
-                    _term.WriteLine("Local run mode is currently experimental. The interface and behavior will change in a future version.");
-                    if (!command.Unattended)
-                    {
-                        _term.WriteLine("Press Enter to continue.");
-                        _term.ReadLine();
-                    }
-
-                    HostContext.RunMode = RunMode.Local;
-                    command.SetUnattended();
-                    var localRunner = HostContext.GetService<ILocalRunner>();
-                    return await localRunner.RunAsync(command, HostContext.AgentShutdownToken);
+                    var localManager = HostContext.GetService<ILocalRunner>();
+                    return await localManager.LocalRunAsync(command, HostContext.AgentShutdownToken);
                 }
 
                 AgentSettings settings = configManager.LoadSettings();
@@ -132,7 +122,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 if (!configManager.IsConfigured())
                 {
                     _term.WriteError(StringUtil.Loc("AgentIsNotConfigured"));
-                    PrintUsage();
+                    PrintUsage(command);
                     return Constants.Agent.ReturnCode.TerminatedError;
                 }
 
@@ -384,9 +374,36 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             return Constants.Agent.ReturnCode.Success;
         }
 
-        private void PrintUsage()
+        private void PrintUsage(CommandSettings command)
         {
-            _term.WriteLine(StringUtil.Loc("ListenerHelp"));
+            string separator;
+            string ext;
+#if OS_WINDOWS
+            separator = "\\";
+            ext = "cmd";
+#else
+            separator = "/";
+            ext = "sh";
+#endif
+
+            string commonHelp = StringUtil.Loc("CommandLineHelp_Common");
+            string envHelp = StringUtil.Loc("CommandLineHelp_Env");
+            if (command.Configure)
+            {
+                _term.WriteLine(StringUtil.Loc("CommandLineHelp_Configure", separator, ext, commonHelp, envHelp));
+            }
+            else if (command.LocalRun)
+            {
+                _term.WriteLine(StringUtil.Loc("CommandLineHelp_LocalRun", separator, ext, commonHelp, envHelp));
+            }
+            else if (command.Remove)
+            {
+                _term.WriteLine(StringUtil.Loc("CommandLineHelp_Remove", separator, ext, commonHelp, envHelp));
+            }
+            else
+            {
+                _term.WriteLine(StringUtil.Loc("CommandLineHelp", separator, ext));
+            }
         }
     }
 }

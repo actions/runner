@@ -19,8 +19,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         private readonly string[] validCommands =
         {
             Constants.Agent.CommandLine.Commands.Configure,
+            Constants.Agent.CommandLine.Commands.LocalRun,
+            Constants.Agent.CommandLine.Commands.Remove,
             Constants.Agent.CommandLine.Commands.Run,
-            Constants.Agent.CommandLine.Commands.Unconfigure
         };
 
         private readonly string[] validFlags =
@@ -65,13 +66,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             Constants.Agent.CommandLine.Args.WindowsLogonAccount,
             Constants.Agent.CommandLine.Args.WindowsLogonPassword,
             Constants.Agent.CommandLine.Args.Work,
-            Constants.Agent.CommandLine.Args.Yaml
+            Constants.Agent.CommandLine.Args.Yml
         };
 
         // Commands.
         public bool Configure => TestCommand(Constants.Agent.CommandLine.Commands.Configure);
+        public bool LocalRun => TestCommand(Constants.Agent.CommandLine.Commands.LocalRun);
+        public bool Remove => TestCommand(Constants.Agent.CommandLine.Commands.Remove);
         public bool Run => TestCommand(Constants.Agent.CommandLine.Commands.Run);
-        public bool Unconfigure => TestCommand(Constants.Agent.CommandLine.Commands.Unconfigure);
 
         // Flags.
         public bool Commit => TestFlag(Constants.Agent.CommandLine.Flags.Commit);
@@ -135,13 +137,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             List<string> unknowns = new List<string>();
 
             // detect unknown commands
-            unknowns.AddRange(_parser.Commands.Where(x => !validCommands.Contains(x)));
+            unknowns.AddRange(_parser.Commands.Where(x => !validCommands.Contains(x, StringComparer.OrdinalIgnoreCase)));
 
             // detect unknown flags
-            unknowns.AddRange(_parser.Flags.Where(x => !validFlags.Contains(x)));
+            unknowns.AddRange(_parser.Flags.Where(x => !validFlags.Contains(x, StringComparer.OrdinalIgnoreCase)));
 
             // detect unknown args
-            unknowns.AddRange(_parser.Args.Keys.Where(x => !validArgs.Contains(x)));
+            unknowns.AddRange(_parser.Args.Keys.Where(x => !validArgs.Contains(x, StringComparer.OrdinalIgnoreCase)));
 
             return unknowns;
         }
@@ -254,13 +256,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 validator: Validators.NonEmptyValidator);
         }
 
-        // TODO: REMOVE defaultValue parameter after fix in master and rebase on master
-        public string GetUrl(string defaultValue = null)
+        public string GetUrl(bool suppressPromptIfEmpty = false)
         {
+            // Note, GetArg does not consume the arg (like GetArgOrPrompt does).
+            if (suppressPromptIfEmpty &&
+                string.IsNullOrEmpty(GetArg(Constants.Agent.CommandLine.Args.Url)))
+            {
+                return string.Empty;
+            }
+
             return GetArgOrPrompt(
                 name: Constants.Agent.CommandLine.Args.Url,
                 description: StringUtil.Loc("ServerUrl"),
-                defaultValue: defaultValue ?? string.Empty,
+                defaultValue: string.Empty,
                 validator: Validators.ServerUrlValidator);
         }
 
@@ -356,15 +364,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             return GetArg(Constants.Agent.CommandLine.Args.NotificationSocketAddress);
         }
 
-        ///This is used to find out the source from where the agent.listener.exe was launched at the time of run
+        // This is used to find out the source from where the agent.listener.exe was launched at the time of run
         public string GetStartupType()
         {
             return GetArg(Constants.Agent.CommandLine.Args.StartupType);
         }
 
-        public string GetYaml()
+        public string GetYml()
         {
-            return GetArg(Constants.Agent.CommandLine.Args.Yaml);
+            return GetArg(Constants.Agent.CommandLine.Args.Yml);
         }
 
         public string GetProxyUrl()

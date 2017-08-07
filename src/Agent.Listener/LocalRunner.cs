@@ -21,45 +21,61 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
     [ServiceLocator(Default = typeof(LocalRunner))]
     public interface ILocalRunner : IAgentService
     {
-        Task<int> RunAsync(CommandSettings command, CancellationToken token);
+        Task<int> LocalRunAsync(CommandSettings command, CancellationToken token);
     }
 
     public sealed class LocalRunner : AgentService, ILocalRunner
     {
-        private readonly Dictionary<string, TaskDefinition> _queryCache = new Dictionary<string, TaskDefinition>(StringComparer.OrdinalIgnoreCase);
-        private Dictionary<string, List<TaskDefinition>> _availableTasks;
         private string _gitPath;
-        private TaskAgentHttpClient _httpClient;
+        private ITaskStore _taskStore;
         private ITerminal _term;
 
         public sealed override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
+            _taskStore = HostContext.GetService<ITaskStore>();
             _term = hostContext.GetService<ITerminal>();
         }
 
-        public async Task<int> RunAsync(CommandSettings command, CancellationToken token)
+        public async Task<int> LocalRunAsync(CommandSettings command, CancellationToken token)
         {
-            Trace.Info(nameof(RunAsync));
-            var configStore = HostContext.GetService<IConfigurationStore>();
-            AgentSettings settings = configStore.GetSettings();
+            Trace.Info(nameof(LocalRunAsync));
 
-            // Store the HTTP client.
-            // todo: fix in master to allow URL to be empty and then rebase on master.
-            const string DefaultUrl = "http://127.0.0.1/local-runner-default-url";
-            string url = command.GetUrl(DefaultUrl);
-            if (!string.Equals(url, DefaultUrl, StringComparison.Ordinal))
+            // Warn preview.
+            _term.WriteLine("This command is currently in preview. The interface and behavior will change in a future version.");
+            if (!command.Unattended)
             {
-                var credentialManager = HostContext.GetService<ICredentialManager>();
-                string authType = command.GetAuth(defaultValue: Constants.Configuration.Integrated);
-                ICredentialProvider provider = credentialManager.GetCredentialProvider(authType);
-                provider.EnsureCredential(HostContext, command, url);
-                _httpClient = new TaskAgentHttpClient(new Uri(url), provider.GetVssCredentials(HostContext));
+                _term.WriteLine("Press Enter to continue.");
+                _term.ReadLine();
+            }
+
+            HostContext.RunMode = RunMode.Local;
+
+            // Resolve the YAML file path.
+            string ymlFile = command.GetYml();
+            if (string.IsNullOrEmpty(ymlFile))
+            {
+                string[] ymlFiles =
+                    Directory.GetFiles(Directory.GetCurrentDirectory())
+                    .Where((string filePath) =>
+                    {
+                        return filePath.EndsWith(".yml", IOUtil.FilePathStringComparison);
+                    })
+                    .ToArray();
+                if (ymlFiles.Length > 1)
+                {
+                    throw new Exception($"More than one .yml file exists in the current directory. Specify which file to use via the '{Constants.Agent.CommandLine.Args.Yml}' command line argument.");
+                }
+
+                ymlFile = ymlFiles.FirstOrDefault();
+            }
+
+            if (string.IsNullOrEmpty(ymlFile))
+            {
+                throw new Exception($"Unable to find a .yml file in the current directory. Specify which file to use via the '{Constants.Agent.CommandLine.Args.Yml}' command line argument.");
             }
 
             // Load the YAML file.
-            string yamlFile = command.GetYaml();
-            ArgUtil.File(yamlFile, nameof(yamlFile));
             var parseOptions = new ParseOptions
             {
                 MaxFiles = 10,
@@ -70,7 +86,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             var pipelineParser = new PipelineParser(new PipelineTraceWriter(), new PipelineFileProvider(), parseOptions);
             Pipelines.Process process = pipelineParser.Load(
                 defaultRoot: Directory.GetCurrentDirectory(),
-                path: yamlFile,
+                path: ymlFile,
                 mustacheContext: null,
                 cancellationToken: HostContext.AgentShutdownToken);
             ArgUtil.NotNull(process, nameof(process));
@@ -79,12 +95,47 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 return Constants.Agent.ReturnCode.Success;
             }
 
+            // Verify the current directory is the root of a git repo.
+            string repoDirectory = Directory.GetCurrentDirectory();
+            if (!Directory.Exists(Path.Combine(repoDirectory, ".git")))
+            {
+                throw new Exception("Unable to run the build locally. The command must be executed from the root directory of a local git repository.");
+            }
+
+            // Get the URL - required if missing tasks.
+            string url = command.GetUrl(suppressPromptIfEmpty: true);
+            if (string.IsNullOrEmpty(url))
+            {
+                if (!TestAllTasksCached(process, token))
+                {
+                    url = command.GetUrl(suppressPromptIfEmpty: false);
+                }
+            }
+
+            if (!string.IsNullOrEmpty(url))
+            {
+                // Initialize and store the HTTP client.
+                var credentialManager = HostContext.GetService<ICredentialManager>();
+
+                // Get the auth type. On premise defaults to negotiate (Kerberos with fallback to NTLM).
+                // Hosted defaults to PAT authentication.
+                string defaultAuthType = UrlUtil.IsHosted(url) ? Constants.Configuration.PAT :
+                    (Constants.Agent.Platform == Constants.OSPlatform.Windows ? Constants.Configuration.Integrated : Constants.Configuration.Negotiate);
+                string authType = command.GetAuth(defaultValue: defaultAuthType);
+                ICredentialProvider provider = credentialManager.GetCredentialProvider(authType);
+                provider.EnsureCredential(HostContext, command, url);
+                _taskStore.HttpClient = new TaskAgentHttpClient(new Uri(url), provider.GetVssCredentials(HostContext));
+            }
+
+            var configStore = HostContext.GetService<IConfigurationStore>();
+            AgentSettings settings = configStore.GetSettings();
+
             // Create job message.
             IJobDispatcher jobDispatcher = null;
             try
             {
                 jobDispatcher = HostContext.CreateService<IJobDispatcher>();
-                foreach (JobInfo job in await ConvertToJobMessagesAsync(process, token))
+                foreach (JobInfo job in await ConvertToJobMessagesAsync(process, repoDirectory, token))
                 {
                     job.RequestMessage.Environment.Variables[Constants.Variables.Agent.RunMode] = RunMode.Local.ToString();
                     jobDispatcher.Run(job.RequestMessage);
@@ -111,15 +162,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             return Constants.Agent.ReturnCode.Success;
         }
 
-        private async Task<List<JobInfo>> ConvertToJobMessagesAsync(Pipelines.Process process, CancellationToken token)
+        private async Task<List<JobInfo>> ConvertToJobMessagesAsync(Pipelines.Process process, string repoDirectory, CancellationToken token)
         {
-            // Verify the current directory is the root of a git repo.
-            string repoDirectory = Directory.GetCurrentDirectory();
-            if (!Directory.Exists(Path.Combine(repoDirectory, ".git")))
-            {
-                throw new Exception("Unable to run the build locally. The command must be executed from the root directory of a local git repository.");
-            }
-
             // Collect info about the repo.
             string repoName = Path.GetFileName(repoDirectory);
             string userName = await GitAsync("config --get user.name", token);
@@ -169,7 +213,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                             continue;
                         }
 
-                        TaskDefinition definition = await GetDefinitionAsync(task, token);
+                        // Sanity check - the pipeline parser should have already validated version is an int.
+                        int taskVersion;
+                        if (!int.TryParse(task.Reference.Version, NumberStyles.None, CultureInfo.InvariantCulture, out taskVersion))
+                        {
+                            throw new Exception($"Unexpected task version format. Expected an unsigned integer with no formatting. Actual: '{taskVersion}'");
+                        }
+
+                        TaskDefinition definition = await _taskStore.GetTaskAsync(
+                            name: task.Reference.Name,
+                            version: taskVersion,
+                            token: token);
+                        await _taskStore.EnsureCachedAsync(definition, token);
                         if (!firstStep)
                         {
                             builder.Append(",");
@@ -187,7 +242,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
       ""timeoutInMinutes"": {task.TimeoutInMinutes.ToString(CultureInfo.InvariantCulture)},
       ""id"": ""{definition.Id}"",
       ""name"": {JsonConvert.ToString(definition.Name)},
-      ""version"": {JsonConvert.ToString(GetVersion(definition).ToString())},
+      ""version"": {JsonConvert.ToString(definition.Version.ToString())},
       ""inputs"": {{");
                         bool firstInput = true;
                         foreach (KeyValuePair<string, string> input in task.Inputs ?? new Dictionary<string, string>(0))
@@ -350,180 +405,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             return jobs;
         }
 
-        private async Task<TaskDefinition> GetDefinitionAsync(TaskStep task, CancellationToken token)
-        {
-            var available = await GetAvailableTasksAsync(token);
-            ArgUtil.NotNull(task.Reference, nameof(task.Reference));
-            ArgUtil.NotNullOrEmpty(task.Reference.Name, nameof(task.Reference.Name));
-            List<TaskDefinition> definitions;
-            if (!available.TryGetValue(task.Reference.Name, out definitions))
-            {
-                throw new Exception($"Unable to resolve task {task.Reference.Name}");
-            }
-
-            // Attempt to find an exact match.
-            TaskDefinition match = definitions.FirstOrDefault(definition => string.Equals(GetVersion(definition).ToString(), task.Reference.Version ?? string.Empty, StringComparison.Ordinal));
-
-            // Attempt to find the best match from the "available" cache.
-            if (match == null)
-            {
-                ArgUtil.NotNullOrEmpty(task.Reference.Version, nameof(task.Reference.Version));
-                var versionPattern = "^" + Regex.Escape(task.Reference.Version) + @"(\.[0-9]+){0,2}$";
-                var versionRegex = new Regex(versionPattern);
-                match = definitions.OrderByDescending(definition => GetVersion(definition))
-                    .FirstOrDefault(definition => versionRegex.IsMatch(GetVersion(definition).ToString()));
-            }
-
-            if (match == null)
-            {
-                throw new Exception($"Unable to resolve task {task.Reference.Name}@{task.Reference.Version}");
-            }
-
-            await DownloadTaskAsync(match, token);
-            return match;
-        }
-
-        private async Task<Dictionary<string, List<TaskDefinition>>> GetAvailableTasksAsync(CancellationToken token)
-        {
-            if (_availableTasks != null)
-            {
-                return _availableTasks;
-            }
-
-            // Get available tasks from the local cache.
-            var allDefinitions = new List<TaskDefinition>();
-            string tasksDirectory = HostContext.GetDirectory(WellKnownDirectory.Tasks);
-            if (Directory.Exists(tasksDirectory))
-            {
-                _term.WriteLine("Getting available task versions from cache.");
-                foreach (string taskDirectory in Directory.GetDirectories(tasksDirectory))
-                {
-                    foreach (string taskSubDirectory in Directory.GetDirectories(taskDirectory))
-                    {
-                        string taskJsonPath = Path.Combine(taskSubDirectory, "task.json");
-                        if (File.Exists(taskJsonPath) && File.Exists(taskSubDirectory + ".completed"))
-                        {
-                            Trace.Info($"Loading: '{taskJsonPath}'");
-                            TaskDefinition definition = IOUtil.LoadObject<TaskDefinition>(taskJsonPath);
-                            if (definition == null ||
-                                string.IsNullOrEmpty(definition.Name) ||
-                                definition.Version == null ||
-                                !string.Equals(taskSubDirectory, GetDirectory(definition), StringComparison.OrdinalIgnoreCase))
-                            {
-                                Trace.Info("Task definition is invalid or does not match folder structure.");
-                                continue;
-                            }
-
-                            allDefinitions.Add(definition);
-                        }
-                    }
-                }
-            }
-
-            // Get available tasks from the server.
-            if (_httpClient != null)
-            {
-                _term.WriteLine("Getting available task versions from server.");
-                allDefinitions.AddRange(await _httpClient.GetTaskDefinitionsAsync(cancellationToken: token));
-                _term.WriteLine("Successfully retrieved task versions from server.");
-            }
-
-            // Categorize the task definitions by name.
-            _availableTasks = new Dictionary<string, List<TaskDefinition>>(StringComparer.OrdinalIgnoreCase);
-            foreach (TaskDefinition definition in allDefinitions)
-            {
-                List<TaskDefinition> definitions;
-                if (!_availableTasks.TryGetValue(definition.Name, out definitions))
-                {
-                    definitions = new List<TaskDefinition>();
-                    _availableTasks.Add(definition.Name, definitions);
-                }
-
-                definitions.Add(definition);
-            }
-
-            return _availableTasks;
-        }
-
-        private async Task DownloadTaskAsync(TaskDefinition task, CancellationToken token)
-        {
-            Trace.Entering();
-            ArgUtil.NotNull(task, nameof(task));
-            ArgUtil.NotNullOrEmpty(task.Version, nameof(task.Version));
-
-            // first check to see if we already have the task
-            string destDirectory = GetDirectory(task);
-            Trace.Info($"Ensuring task exists: ID '{task.Id}', version '{task.Version}', name '{task.Name}', directory '{destDirectory}'.");
-            if (File.Exists(destDirectory + ".completed"))
-            {
-                Trace.Info("Task already downloaded.");
-                return;
-            }
-
-            // delete existing task folder.
-            Trace.Verbose("Deleting task destination folder: {0}", destDirectory);
-            IOUtil.DeleteDirectory(destDirectory, CancellationToken.None);
-
-            // Inform the user that a download is taking place. The download could take a while if
-            // the task zip is large. It would be nice to print the localized name, but it is not
-            // available from the reference included in the job message.
-            _term.WriteLine(StringUtil.Loc("DownloadingTask0", task.Name));
-            string zipFile;
-            var version = new TaskVersion(task.Version);
-
-            //download and extract task in a temp folder and rename it on success
-            string tempDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Tasks), "_temp_" + Guid.NewGuid());
-            try
-            {
-                Directory.CreateDirectory(tempDirectory);
-                zipFile = Path.Combine(tempDirectory, string.Format("{0}.zip", Guid.NewGuid()));
-                //open zip stream in async mode
-                using (FileStream fs = new FileStream(zipFile, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 4096, useAsync: true))
-                {
-                    using (Stream result = await _httpClient.GetTaskContentZipAsync(task.Id, version, token))
-                    {
-                        //81920 is the default used by System.IO.Stream.CopyTo and is under the large object heap threshold (85k). 
-                        await result.CopyToAsync(fs, 81920, token);
-                        await fs.FlushAsync(token);
-                    }
-                }
-
-                Directory.CreateDirectory(destDirectory);
-                ZipFile.ExtractToDirectory(zipFile, destDirectory);
-
-                Trace.Verbose("Create watermark file indicate task download succeed.");
-                File.WriteAllText(destDirectory + ".completed", DateTime.UtcNow.ToString());
-
-                Trace.Info("Finished getting task.");
-            }
-            finally
-            {
-                try
-                {
-                    //if the temp folder wasn't moved -> wipe it
-                    if (Directory.Exists(tempDirectory))
-                    {
-                        Trace.Verbose("Deleting task temp folder: {0}", tempDirectory);
-                        IOUtil.DeleteDirectory(tempDirectory, CancellationToken.None); // Don't cancel this cleanup and should be pretty fast.
-                    }
-                }
-                catch (Exception ex)
-                {
-                    //it is not critical if we fail to delete the temp folder
-                    Trace.Warning("Failed to delete temp folder '{0}'. Exception: {1}", tempDirectory, ex);
-                    Trace.Warning(StringUtil.Loc("FailedDeletingTempDirectory0Message1", tempDirectory, ex.Message));
-                }
-            }
-        }
-
-        private string GetDirectory(TaskDefinition definition)
-        {
-            ArgUtil.NotEmpty(definition.Id, nameof(definition.Id));
-            ArgUtil.NotNull(definition.Name, nameof(definition.Name));
-            ArgUtil.NotNullOrEmpty(definition.Version, nameof(definition.Version));
-            return Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Tasks), $"{definition.Name}_{definition.Id}", definition.Version);
-        }
-
         private async Task<string> GitAsync(string arguments, CancellationToken token)
         {
             // Resolve the location of git.
@@ -593,9 +474,58 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             return result;
         }
 
-        private static Version GetVersion(TaskDefinition definition)
+        private bool TestAllTasksCached(Process process, CancellationToken token)
         {
-            return new Version(definition.Version.Major, definition.Version.Minor, definition.Version.Patch);
+            foreach (Phase phase in process.Phases ?? new List<IPhase>(0))
+            {
+                foreach (Job job in phase.Jobs ?? new List<IJob>(0))
+                {
+                    var steps = new List<ISimpleStep>();
+                    foreach (IStep step in job.Steps ?? new List<IStep>(0))
+                    {
+                        if (step is ISimpleStep)
+                        {
+                            steps.Add(step as ISimpleStep);
+                        }
+                        else
+                        {
+                            var stepsPhase = step as StepsPhase;
+                            foreach (ISimpleStep nestedStep in stepsPhase.Steps ?? new List<ISimpleStep>(0))
+                            {
+                                steps.Add(nestedStep);
+                            }
+                        }
+                    }
+
+                    foreach (ISimpleStep step in steps)
+                    {
+                        if (!(step is TaskStep))
+                        {
+                            throw new Exception("Unexpected step type: " + step.GetType().FullName);
+                        }
+
+                        var task = step as TaskStep;
+                        if (!task.Enabled)
+                        {
+                            continue;
+                        }
+
+                        // Sanity check - the pipeline parser should have already validated version is an int.
+                        int taskVersion;
+                        if (!int.TryParse(task.Reference.Version, NumberStyles.None, CultureInfo.InvariantCulture, out taskVersion))
+                        {
+                            throw new Exception($"Unexpected task version format. Expected an unsigned integer with no formmatting. Actual: '{task.Reference.Version}'");
+                        }
+
+                        if (!_taskStore.TestCached(name: task.Reference.Name, version: taskVersion, token: token))
+                        {
+                            return false;
+                        }
+                    }
+                }
+            }
+
+            return true;
         }
 
         private static void Dump(string header, string value)
@@ -615,6 +545,235 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     line = reader.ReadLine();
                     lineNumber++;
                 }
+            }
+        }
+
+        [ServiceLocator(Default = typeof(TaskStore))]
+        private interface ITaskStore : IAgentService
+        {
+            TaskAgentHttpClient HttpClient { get; set; }
+
+            Task EnsureCachedAsync(TaskDefinition task, CancellationToken token);
+            Task<TaskDefinition> GetTaskAsync(string name, int version, CancellationToken token);
+            bool TestCached(string name, int version, CancellationToken token);
+        }
+
+        private sealed class TaskStore : AgentService, ITaskStore
+        {
+            private List<TaskDefinition> _localTasks;
+            private List<TaskDefinition> _serverTasks;
+            private ITerminal _term;
+
+            public TaskAgentHttpClient HttpClient { get; set; }
+
+            public sealed override void Initialize(IHostContext hostContext)
+            {
+                base.Initialize(hostContext);
+                _term = hostContext.GetService<ITerminal>();
+            }
+
+            public async Task EnsureCachedAsync(TaskDefinition task, CancellationToken token)
+            {
+                Trace.Entering();
+                ArgUtil.NotNull(task, nameof(task));
+                ArgUtil.NotNullOrEmpty(task.Version, nameof(task.Version));
+
+                // first check to see if we already have the task
+                string destDirectory = GetTaskDirectory(task);
+                Trace.Info($"Ensuring task exists: ID '{task.Id}', version '{task.Version}', name '{task.Name}', directory '{destDirectory}'.");
+                if (File.Exists(destDirectory + ".completed"))
+                {
+                    Trace.Info("Task already downloaded.");
+                    return;
+                }
+
+                // Invalidate the local cache.
+                _localTasks = null;
+
+                // delete existing task folder.
+                Trace.Verbose("Deleting task destination folder: {0}", destDirectory);
+                IOUtil.DeleteDirectory(destDirectory, CancellationToken.None);
+
+                // Inform the user that a download is taking place. The download could take a while if
+                // the task zip is large. It would be nice to print the localized name, but it is not
+                // available from the reference included in the job message.
+                _term.WriteLine(StringUtil.Loc("DownloadingTask0", task.Name));
+                string zipFile;
+                var version = new TaskVersion(task.Version);
+
+                //download and extract task in a temp folder and rename it on success
+                string tempDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Tasks), "_temp_" + Guid.NewGuid());
+                try
+                {
+                    Directory.CreateDirectory(tempDirectory);
+                    zipFile = Path.Combine(tempDirectory, string.Format("{0}.zip", Guid.NewGuid()));
+                    //open zip stream in async mode
+                    using (FileStream fs = new FileStream(zipFile, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 4096, useAsync: true))
+                    {
+                        using (Stream result = await HttpClient.GetTaskContentZipAsync(task.Id, version, token))
+                        {
+                            //81920 is the default used by System.IO.Stream.CopyTo and is under the large object heap threshold (85k). 
+                            await result.CopyToAsync(fs, 81920, token);
+                            await fs.FlushAsync(token);
+                        }
+                    }
+
+                    Directory.CreateDirectory(destDirectory);
+                    ZipFile.ExtractToDirectory(zipFile, destDirectory);
+
+                    Trace.Verbose("Create watermark file indicate task download succeed.");
+                    File.WriteAllText(destDirectory + ".completed", DateTime.UtcNow.ToString());
+
+                    Trace.Info("Finished getting task.");
+                }
+                finally
+                {
+                    try
+                    {
+                        //if the temp folder wasn't moved -> wipe it
+                        if (Directory.Exists(tempDirectory))
+                        {
+                            Trace.Verbose("Deleting task temp folder: {0}", tempDirectory);
+                            IOUtil.DeleteDirectory(tempDirectory, CancellationToken.None); // Don't cancel this cleanup and should be pretty fast.
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        //it is not critical if we fail to delete the temp folder
+                        Trace.Warning("Failed to delete temp folder '{0}'. Exception: {1}", tempDirectory, ex);
+                        Trace.Warning(StringUtil.Loc("FailedDeletingTempDirectory0Message1", tempDirectory, ex.Message));
+                    }
+                }
+            }
+
+            public async Task<TaskDefinition> GetTaskAsync(string name, int version, CancellationToken token)
+            {
+                if (HttpClient != null)
+                {
+                    return (await GetServerTaskAsync(name, version, token));
+                }
+
+                return GetLocalTask(name, version, require: true, token: token);
+            }
+
+            public bool TestCached(string name, int version, CancellationToken token)
+            {
+                TaskDefinition localTask = GetLocalTask(name, version, require: false, token: token);
+                return localTask != null;
+            }
+
+            private TaskDefinition GetLocalTask(string name, int version, bool require, CancellationToken token)
+            {
+                if (_localTasks == null)
+                {
+                    // Get tasks from the local cache.
+                    var tasks = new List<TaskDefinition>();
+                    string tasksDirectory = HostContext.GetDirectory(WellKnownDirectory.Tasks);
+                    if (Directory.Exists(tasksDirectory))
+                    {
+                        _term.WriteLine("Getting available tasks from the cache.");
+                        foreach (string taskDirectory in Directory.GetDirectories(tasksDirectory))
+                        {
+                            foreach (string taskSubDirectory in Directory.GetDirectories(taskDirectory))
+                            {
+                                string taskJsonPath = Path.Combine(taskSubDirectory, "task.json");
+                                if (File.Exists(taskJsonPath) && File.Exists(taskSubDirectory + ".completed"))
+                                {
+                                    token.ThrowIfCancellationRequested();
+                                    Trace.Info($"Loading: '{taskJsonPath}'");
+                                    TaskDefinition definition = IOUtil.LoadObject<TaskDefinition>(taskJsonPath);
+                                    if (definition == null ||
+                                        string.IsNullOrEmpty(definition.Name) ||
+                                        definition.Version == null)
+                                    {
+                                        _term.WriteLine($"Task definition is invalid. The name property must not be empty and the version property must not be null. Task definition: {taskJsonPath}");
+                                        continue;
+                                    }
+                                    else if (!string.Equals(taskSubDirectory, GetTaskDirectory(definition), IOUtil.FilePathStringComparison))
+                                    {
+                                        _term.WriteLine($"Task definition does not match the expected folder structure. Expected: '{GetTaskDirectory(definition)}'; actual: '{taskJsonPath}'");
+                                        continue;
+                                    }
+
+                                    tasks.Add(definition);
+                                }
+                            }
+                        }
+                    }
+
+                    _localTasks = FilterWithinMajorVersion(tasks);
+                }
+
+                return FilterByReference(_localTasks, name, version, require);
+            }
+
+            private async Task<TaskDefinition> GetServerTaskAsync(string name, int version, CancellationToken token)
+            {
+                ArgUtil.NotNull(HttpClient, nameof(HttpClient));
+                if (_serverTasks == null)
+                {
+                    _term.WriteLine("Getting available task versions from server.");
+                    var tasks = await HttpClient.GetTaskDefinitionsAsync(cancellationToken: token);
+                    _term.WriteLine("Successfully retrieved task versions from server.");
+                    _serverTasks = FilterWithinMajorVersion(tasks);
+                }
+
+                return FilterByReference(_serverTasks, name, version, require: true);
+            }
+
+            private TaskDefinition FilterByReference(List<TaskDefinition> tasks, string name, int version, bool require)
+            {
+                // Filter by name.
+                Guid id = default(Guid);
+                if (Guid.TryParseExact(name, format: "D", result: out id)) // D = 32 digits separated by hyphens
+                {
+                    // Filter by GUID.
+                    tasks = tasks.Where(x => x.Id == id).ToList();
+                }
+                else
+                {
+                    // Filter by name.
+                    tasks = tasks.Where(x => string.Equals(x.Name, name, StringComparison.OrdinalIgnoreCase)).ToList();
+                }
+
+                // Validate name is not ambiguous.
+                if (tasks.GroupBy(x => x.Id).Count() > 1)
+                {
+                    throw new Exception($"Unable to resolve a task for the name '{name}'. The name is ambiguous.");
+                }
+
+                // Filter by version.
+                tasks = tasks.Where(x => x.Version.Major == version).ToList();
+
+                // Validate a task was found.
+                if (tasks.Count == 0)
+                {
+                    if (require)
+                    {
+                        throw new Exception($"No tasks found matching: '{name}@{version}'");
+                    }
+
+                    return null;
+                }
+
+                ArgUtil.Equal(1, tasks.Count, nameof(tasks.Count));
+                return tasks[0];
+            }
+
+            private List<TaskDefinition> FilterWithinMajorVersion(List<TaskDefinition> tasks)
+            {
+                return tasks
+                    .GroupBy(x => new { Id = x.Id, MajorVersion = x.Version }) // Group by ID and major-version
+                    .Select(x => x.OrderByDescending(y => y.Version).First()) // Select the max version
+                    .ToList();
+            }
+
+            private string GetTaskDirectory(TaskDefinition definition)
+            {
+                ArgUtil.NotEmpty(definition.Id, nameof(definition.Id));
+                ArgUtil.NotNull(definition.Name, nameof(definition.Name));
+                ArgUtil.NotNullOrEmpty(definition.Version, nameof(definition.Version));
+                return Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Tasks), $"{definition.Name}_{definition.Id}", definition.Version);
             }
         }
 

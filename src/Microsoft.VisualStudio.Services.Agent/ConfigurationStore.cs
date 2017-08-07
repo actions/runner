@@ -174,23 +174,32 @@ namespace Microsoft.VisualStudio.Services.Agent
 
         public AgentSettings GetSettings()
         {
-            if (HostContext.RunMode == RunMode.Local)
-            {
-                return new AgentSettings()
-                {
-                    AcceptTeeEula = false,
-                    AgentId = 1,
-                    AgentName = "local-runner-agent",
-                    PoolId = 1,
-                    PoolName = "local-runner-pool",
-                    ServerUrl = "http://127.0.0.1/vsts-agent-local-runner",
-                    WorkFolder = Constants.Path.WorkDirectory
-                };
-            }
-
             if (_settings == null)
             {
-                _settings = IOUtil.LoadObject<AgentSettings>(_configFilePath);
+                AgentSettings configuredSettings = null;
+                if (File.Exists(_configFilePath))
+                {
+                    configuredSettings = IOUtil.LoadObject<AgentSettings>(_configFilePath);
+                }
+
+                if (HostContext.RunMode == RunMode.Local)
+                {
+                    _settings = new AgentSettings()
+                    {
+                        AcceptTeeEula = configuredSettings?.AcceptTeeEula ?? false,
+                        AgentId = 1,
+                        AgentName = "local-runner-agent",
+                        PoolId = 1,
+                        PoolName = "local-runner-pool",
+                        ServerUrl = "http://127.0.0.1/vsts-agent-local-runner",
+                        WorkFolder = configuredSettings?.WorkFolder ?? Constants.Path.WorkDirectory
+                    };
+                }
+                else
+                {
+                    ArgUtil.NotNull(configuredSettings, nameof(configuredSettings));
+                    _settings = configuredSettings;
+                }
             }
 
             return _settings;
@@ -202,6 +211,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             {
                 _autoLogonSettings = IOUtil.LoadObject<AutoLogonSettings>(_autoLogonSettingsFilePath);
             }
+
             return _autoLogonSettings;
         }        
 

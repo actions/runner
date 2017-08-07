@@ -1,16 +1,6 @@
 @echo off
 
 rem ********************************************************************************
-rem Ensure configured.
-rem ********************************************************************************
-if not exist "%~dp0.agent" (
-  if "%~1" neq "--yaml" (
-    echo "Must configure first. Run config.cmd"
-    exit /B 1
-  )
-)
-
-rem ********************************************************************************
 rem Unblock specific files.
 rem ********************************************************************************
 setlocal
@@ -35,7 +25,14 @@ rem a difference. The error reproduced even with the execution policy set to Byp
 rem a policy setting.
 powershell.exe -NoLogo -Sta -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -Command "$VerbosePreference = %VERBOSE_ARG% ; Get-ChildItem -LiteralPath '%~dp0' | ForEach-Object { Write-Verbose ('Unblock: {0}' -f $_.FullName) ; $_ } | Unblock-File | Out-Null ; Get-ChildItem -Recurse -LiteralPath '%~dp0bin', '%~dp0externals' | Where-Object { $_ -match '\.(ps1|psd1|psm1)$' } | ForEach-Object { Write-Verbose ('Unblock: {0}' -f $_.FullName) ; $_ } | Unblock-File | Out-Null ; Get-ChildItem -LiteralPath '%~dp0externals\vstsom', '%~dp0externals\vstshost' | Where-Object { $_ -match '\.(dll|exe)$' } | ForEach-Object { Write-Verbose ('Unblock: {0}' -f $_.FullName) ; $_ } | Unblock-File | Out-Null"
 
-rem ********************************************************************************
-rem Run the listener process.
-rem ********************************************************************************
-"%~dp0bin\Agent.Listener.exe" run %*
+if /i "%~1" equ "localRun" (
+    rem ********************************************************************************
+    rem Local run.
+    rem ********************************************************************************
+    "%~dp0bin\Agent.Listener.exe" %*
+) else (
+  rem ********************************************************************************
+  rem Run.
+  rem ********************************************************************************
+  "%~dp0bin\Agent.Listener.exe" run %*
+)

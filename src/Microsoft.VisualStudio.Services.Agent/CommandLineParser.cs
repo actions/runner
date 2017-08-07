@@ -34,10 +34,9 @@ namespace Microsoft.VisualStudio.Services.Agent
         public bool IsCommand(string name)
         {
             bool result = false;
-            int index = 0;
-            if (Commands.Count > index)
+            if (Commands.Count > 0)
             {
-                result = String.Equals(name, Commands[index], StringComparison.CurrentCultureIgnoreCase);
+                result = String.Equals(name, Commands[0], StringComparison.CurrentCultureIgnoreCase);
             }
 
             return result;
@@ -57,7 +56,11 @@ namespace Microsoft.VisualStudio.Services.Agent
                 HasArgs = HasArgs || arg.StartsWith("--");
                 _trace.Info("HasArgs: {0}", HasArgs);
 
-                if (!HasArgs)
+                if (string.Equals(arg, "/?", StringComparison.Ordinal))
+                {
+                    Flags.Add("help");
+                }
+                else if (!HasArgs)
                 {
                     _trace.Info("Adding Command: {0}", arg);
                     Commands.Add(arg.Trim());
