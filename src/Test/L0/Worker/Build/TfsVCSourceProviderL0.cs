@@ -64,10 +64,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
                 };
 
                 // Act.
-                string actual = mapping.GetRootedLocalPath(IOUtil.GetBinPath());
+                string actual = mapping.GetRootedLocalPath(tc.GetDirectory(WellKnownDirectory.Bin));
 
                 // Assert.
-                string expected = Path.Combine(IOUtil.GetBinPath(), "myProj", "myDir", "mySubDir");
+                string expected = Path.Combine(tc.GetDirectory(WellKnownDirectory.Bin), "myProj", "myDir", "mySubDir");
                 Assert.Equal(expected, actual);
             }
         }

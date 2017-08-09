@@ -20,12 +20,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
 
         private void CleanLogFolder()
         {
-            
-            //clean test data if any old test forgot
-            string pagesFolder = Path.Combine(IOUtil.GetDiagPath(), PagingLogger.PagingFolder);
-            if (Directory.Exists(pagesFolder))
+            using (TestHostContext hc = new TestHostContext(this))
             {
-                Directory.Delete(pagesFolder, true);
+                //clean test data if any old test forgot
+                string pagesFolder = Path.Combine(hc.GetDirectory(WellKnownDirectory.Diag), PagingLogger.PagingFolder);
+                if (Directory.Exists(pagesFolder))
+                {
+                    Directory.Delete(pagesFolder, true);
+                }
             }
         }
 

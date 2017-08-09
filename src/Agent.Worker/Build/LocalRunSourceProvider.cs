@@ -32,7 +32,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             if (!preferGitFromPath)
             {
                 // Add git to the PATH.
-                string gitPath = Path.Combine(IOUtil.GetExternalsPath(), "git", "cmd", $"git{IOUtil.ExeExtension}");
+                string gitPath = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), "git", "cmd", $"git{IOUtil.ExeExtension}");
                 ArgUtil.File(gitPath, nameof(gitPath));
                 executionContext.Output(StringUtil.Loc("Prepending0WithDirectoryContaining1", Constants.PathVariable, Path.GetFileName(gitPath)));
                 var varUtil = HostContext.GetService<IVarUtil>();

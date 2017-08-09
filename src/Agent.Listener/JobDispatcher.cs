@@ -364,7 +364,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                             }
 
                             // Start the child process.
-                            var assemblyDirectory = IOUtil.GetBinPath();
+                            var assemblyDirectory = HostContext.GetDirectory(WellKnownDirectory.Bin);
                             string workerFileName = Path.Combine(assemblyDirectory, _workerProcessName);
                             workerProcessTask = processInvoker.ExecuteAsync(
                                 workingDirectory: assemblyDirectory,

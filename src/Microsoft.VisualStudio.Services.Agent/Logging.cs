@@ -36,7 +36,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         {
             base.Initialize(hostContext);
             _pageId = Guid.NewGuid().ToString();
-            _pagesFolder = Path.Combine(IOUtil.GetDiagPath(), PagingFolder);
+            _pagesFolder = Path.Combine(hostContext.GetDirectory(WellKnownDirectory.Diag), PagingFolder);
             _jobServerQueue = HostContext.GetService<IJobServerQueue>();
             Directory.CreateDirectory(_pagesFolder);
         }

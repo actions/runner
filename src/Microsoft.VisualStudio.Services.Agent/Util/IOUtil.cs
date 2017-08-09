@@ -75,6 +75,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             }
         }
 
+        // TODO: Get rid of this too, use host context. Last reference to this is HostTraceContext, not sure how to remove there.
         public static string GetDiagPath()
         {
             return Path.Combine(
@@ -82,6 +83,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
                 Constants.Path.DiagDirectory);
         }
 
+        // TODO: Get rid of this too, use host context.
         public static string GetExternalsPath()
         {
             return Path.Combine(

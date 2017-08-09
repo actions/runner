@@ -43,8 +43,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             _suiteName = _suiteName.Replace(".", "_");
 
             // Setup the trace manager.
-            TraceFileName = Path.Combine(
-                IOUtil.GetBinPath(),
+            TraceFileName = Path.Combine( 
+                Path.Combine(TestUtil.GetSrcPath(), "Test", "TestLogs"), 
                 $"trace_{_suiteName}_{_testName}.log");
             if (File.Exists(TraceFileName))
             {
@@ -154,6 +154,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
 
         public string GetDirectory(WellKnownDirectory directory)
         {
+            // TODO: Not sure if we should always return GetTempPath here.
             string tempDir = Path.Combine(Path.GetTempPath(), directory.ToString());
             _tempDirectorys.Add(tempDir);
             return tempDir;

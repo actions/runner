@@ -546,12 +546,21 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
 
         private void Setup([CallerMemberName] string name = "")
         {
-            // Random work folder.
-            _workFolder = Path.Combine(IOUtil.GetBinPath(), $"_work_{Path.GetRandomFileName()}");
-
             // Mocks.
             _jobServer = new Mock<IJobServer>();
             _taskServer = new Mock<ITaskServer>();
+            _ec = new Mock<IExecutionContext>();
+            _ec.Setup(x => x.CancellationToken).Returns(_ecTokenSource.Token);
+
+            // Test host context.
+            _hc = new TestHostContext(this, name);
+
+            // Random work folder.
+            _workFolder = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Bin), $"_work_{Path.GetRandomFileName()}");
+
+            _hc.SetSingleton<IJobServer>(_jobServer.Object);
+            _hc.SetSingleton<ITaskServer>(_taskServer.Object);
+
             _configurationStore = new Mock<IConfigurationStore>();
             _configurationStore
                 .Setup(x => x.GetSettings())
@@ -560,13 +569,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                     {
                         WorkFolder = _workFolder
                     });
-            _ec = new Mock<IExecutionContext>();
-            _ec.Setup(x => x.CancellationToken).Returns(_ecTokenSource.Token);
-
-            // Test host context.
-            _hc = new TestHostContext(this, name);
-            _hc.SetSingleton<IJobServer>(_jobServer.Object);
-            _hc.SetSingleton<ITaskServer>(_taskServer.Object);
             _hc.SetSingleton<IConfigurationStore>(_configurationStore.Object);
 
             // Instance to test.
