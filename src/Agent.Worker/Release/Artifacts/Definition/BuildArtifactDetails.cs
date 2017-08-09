@@ -24,5 +24,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts.Definit
         public string Project { get; set; }
 
         public string AccessToken { get; set; }
+
+        public int DefintionId { get; set; }
+
+        public string DefinitionName { get; set; }
     }
 }

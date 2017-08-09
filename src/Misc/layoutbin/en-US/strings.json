@@ -421,6 +421,7 @@
   "RMArtifactTypeNotSupported": "Release management does not support download of artifact type {0} in the current version",
   "RMArtifactTypeServerDrop": "Artifact Type: ServerDrop",
   "RMArtifactVersionNotBelongToArtifactSource": "The artifact version with ID {0} does not belong to the linked artifact source with ID {1}.",
+  "RMBuildNotFromLinkedDefinition": "The build {0} does not belong to the linked build definition {1}",
   "RMCachingAllItems": "Caching all items in the file container...",
   "RMCachingComplete": "Caching complete. ({0} ms)",
   "RMCachingContainerItems": "Caching items under '{0}' in the file container...",
