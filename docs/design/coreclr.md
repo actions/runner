@@ -8,6 +8,12 @@
   - Allow task authors to create core-CLR tasks and package core clr assets: Right now we only [support typescript (via node) and powershell](https://github.com/Microsoft/vsts-task-lib/blob/master/README.md). 
   - Rationalize all of this with emerging [Docker initiative](https://youtu.be/OOV5bXcJHpc)
 
+## Phases
+
+We must first move the agent to 2.0 core CLR and figure out the linux-x64 single target before we can implement core CLR tasks which can run in a container of any other linux distro and version.
+
+For that reason, we have separated the work into two clear phases.  Move the agent to core CLR with one linux-x64 target and then support writing tasks in core CLR.
+
 ## Phase One: Core CLR 2.0 Agent
 
 ### Officially Supported and Tested
@@ -66,20 +72,24 @@ We will change the build to only produce.
 
 We will change download urls to an azure blob url (firewall considerations) but we will continue to offer [release metadata](https://github.com/Microsoft/vsts-agent/releases) along with the source.  
 
-We will change the version from 2.0 to 2.1.  Agents will still update along major version lines if we choose to register the appropriate paths.
+The agent major version will remain 2.x.  Agents will still update along major version lines if we choose to register the appropriate paths.
 
 The UI will only show **Windows, Mac OS and Linux** tabs (drop distro specific tabs).
 
 The REST APIs (what drives updates) and the backend will continue to point our old platform names to the new drop names so it just works for them.
 
+There will be a sprint cutoff where (1) stop incrementing a osx 10.11 drop and (2) start redirecting old platform names to linux-x86.
+
+So, if sprint # is {SSS}, then at that sprint cutoff:
+
 **Platform --> Drop**    
-win7-x64  --> win7-x64 (2.1+)  
-osx.10.11-x64 --> osx.10.11-x64 (2.0).  Deadend.  
-osx.10.12-x64 --> osx.10.12-x64 (2.1+).  New Installs and forward  
-linux-x64 --> linux-x64 (2.1+).  New Installs and forward  
-rhel.7.2-x64 --> linux-x64 (2.1+).  Redirection for old agents  
-ubuntu.14.04-x64 --> linux-x64 (2.1+).  Redirection for old agents  
-ubuntu.16.04-x64 --> linux-x64 (2.1+).  Redirection for old agents  
+win7-x64  --> win7-x64-{SSS}.zip  
+osx.10.11-x64 --> osx.10.11-x64-{SSS-1}.zip  Deadend.  
+osx.10.12-x64 --> osx.10.12-x64-{SSS}.zip.  New Installs and forward  
+linux-x64 --> linux-x64-{SSS}.zip.  New Installs and forward  
+rhel.7.2-x64 --> linux-x64-{SSS}.zip.  Redirection for old agents  
+ubuntu.14.04-x64 --> linux-x64-{SSS}.zip.  Redirection for old agents  
+ubuntu.16.04-x64 --> linux-x64-{SSS}.zip.  Redirection for old agents  
 
 Unfortunately every release will still have to write the redirection rows for our old dist story but that can easily be automated.
 
@@ -88,7 +98,7 @@ Unfortunately every release will still have to write the redirection rows for ou
 
 We considered moving the version to 3.0 which requires an explicit 'migration' from customers due to the OS constraints but that will cause too much friction as new tasks and features demand 3.0.  On premise upgrades will upgrade only to find their builds are failing.  This can still happen for OSX 10.10 and 10.11 but we shouldn't push the pain to all our platforms (especially windows) due to this.
 
-
+This will also require mac OS users to manually migrate after that sprint which is better than requiring all platforms (windows being the majority) to migrate manually.  We have also discussed whether there's a way to detect server side if OS version is 10.12 and redirect them to osx.10.12-x64 agent download and platform.
 
 ### Timeline
 
