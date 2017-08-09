@@ -242,7 +242,8 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
             if (container == null ||                                                        // 1) Container is not null
                 !(container.Node is FunctionNode) ||                                        // 2) Container is a function
                 container.Node.Parameters.Count < GetMinParamCount(context, container.Token) || // 3) Not below min param threshold
-                context.LastToken.Kind == TokenKind.Separator)                              // 4) Last token is not a separator
+                container.Node.Parameters.Count > GetMaxParamCount(context, container.Token) || // 4) Not above max param threshold
+                context.LastToken.Kind == TokenKind.Separator)                              // 5) Last token is not a separator
             {
                 throw new ParseException(ParseExceptionKind.UnexpectedSymbol, context.Token, context.Expression);
             }
