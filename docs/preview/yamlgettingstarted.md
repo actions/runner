@@ -14,12 +14,20 @@
 
 [Run tasks](yamlgettingstarted-tasks.md)
 
-TODO: Multiple jobs
+[Checkout options](yamlgettingstarted-checkout.md)
 
+[Phase options](yamlgettingstarted-phase.md)
+
+[Multiple phases](yamlgettingstarted-phases.md)
+
+<!--
 [Mustache text templating](yamlgettingstarted-mustache.md)
+-->
 
-[YAML schema](yamlgettingstarted-schema.md)
+[Schema reference](yamlgettingstarted-schema.md)
 
+<!--
 [Process templates](yamlgettingstarted-templates.md)
+-->
 
-[Run local](yamlgettingstarted-runlocal.md)
+[Local run](yamlgettingstarted-localrun.md)

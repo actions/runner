@@ -6,8 +6,8 @@ Run a Bash script on macOS, Linux, and Windows. `bash` must be in your PATH.
 
 ```yaml
 steps:
-  - bash: echo hello world
-    name: Simple script
+- bash: echo hello world
+  name: Simple script
 ```
 
 The script contents are embedded in a temporary .sh file and cleaned up after your script runs.
@@ -18,10 +18,10 @@ Because the contents you specify are embedded in a script, you can write multipl
 
 ```yaml
 steps:
-  - bash: |
-      echo hello from a...
-      echo ...multi-line script
-    name: Multi-line script
+- bash: |
+    echo hello from a...
+    echo ...multi-line script
+  name: Multi-line script
 ```
 
 ## Working directory
@@ -30,9 +30,9 @@ You can specify a different working directory where your script is invoked. Othe
 
 ```yaml
 steps:
-  - bash: echo agent.homeDirectory is $PWD
-    name: Working directory
-    workingDirectory: $(agent.homeDirectory)
+- bash: echo agent.homeDirectory is $PWD
+  name: Working directory
+  workingDirectory: $(agent.homeDirectory)
 ```
 
 ## Fail on STDERR
@@ -43,9 +43,9 @@ text is written to stderr.
 
 ```yaml
 steps:
-  - bash: echo hello from stderr 1>&2
-    name: Fail on stderr
-    failOnStderr: true
+- bash: echo hello from stderr 1>&2
+  name: Fail on stderr
+  failOnStderr: true
 ```
 
 ## Environment variables
@@ -55,16 +55,16 @@ secret variables are not propagated to the environment for ad hoc scripts.
 
 ```yaml
 steps:
-  # First, create a secret variable. Normally these would be persisted securely by the definition.
-  - bash: "echo \"##vso[task.setvariable variable=MySecret;isSecret=true]My secret value\""
-    name: Create secret variable
+# First, create a secret variable. Normally these would be persisted securely by the definition.
+- bash: "echo \"##vso[task.setvariable variable=MySecret;isSecret=true]My secret value\""
+  name: Create secret variable
 
-  # Next, map the secret into an environment variable and print it. Note, secrets are masked in the log
-  # and appear as '********'.
-  - bash: echo The password is $MyPassword
-    name: Print secret variable
-    env:
-      MyPassword: $(MySecret)
+# Next, map the secret into an environment variable and print it. Note, secrets are masked in the log
+# and appear as '********'.
+- bash: echo The password is $MyPassword
+  name: Print secret variable
+  env:
+    MyPassword: $(MySecret)
 ```
 
 ## Control inputs

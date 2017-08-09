@@ -11,13 +11,11 @@ At a high level, the structure of a process is:
 └───phases
     ├───phase
     │   ├───target # e.g. agent queue
-    │   └───jobs
-    │       ├───job # e.g. a build
-    │       │   ├───variables
-    │       │   └───steps
-    │       │       ├───step # e.g. run msbuild
-    │       │       └───[...]
-    │       └───[...]
+    │   │   ├───variables
+    │   │   └───steps
+    │   │       ├───step # e.g. run msbuild
+    │   │       └───[...]
+    │   └───[...]
     └───[...]
 ```
 
@@ -29,19 +27,15 @@ For example, a very simple process may only define steps (one job implied, one p
 
 ```yaml
 steps:
-  - task: VSBuild@1.*
-    inputs:
-      solution: "**/*.sln"
-      configuration: "Debug"
-      platform: "Any CPU"
+- script: echo hello world from script 1
+- script: echo hello world from script 2
 ```
 
-In short, the rules are:
-- Where a process is defined, properties for a single phase can be specified without defining `phases -> phase`.
-- Where a process is defined, properties for a single job can be specified without defining `phases -> phase -> jobs -> job`.
-- Where a phase is defined, properties for a single job can be specified without defining `jobs -> job`.
+In short, where a process is defined, properties for a single phase can be specified without defining `phases -> phase`.
 
+<!-- Commenting-out template schema for now
 The inference rules apply to templates as well. For details, see the schema reference section below.
+-->
 
 ## Schema reference
 
@@ -56,28 +50,30 @@ All YAML definitions start with an entry \"process\" file.
 name: string
 
 # process properties
-resources: [ resource ]
-template:  processTemplateReference
-phases: [ phase | phasesTemplateReference ]
+resources: [ repoResource ]
+phases: [ phase ]
 
-# phase properties - not allowed when higher level template or phases is defined
+# phase properties - not allowed when "phases" is defined
+dependsOn: string | [ string ]
+condition: string
+continueOnError: true | false
+enableAccessToken: true | false
 target: phaseTarget
-jobs: [ job | jobsTemplateReference ]
-
-# job properties - not allowed when higher level template, phases, or jobs is defined
-timeoutInMinutes: number
+execution: phaseExecution
 variables: { string: string }
-steps: [ script | powershell | bash | task | stepsPhase | stepsTemplateReference ]
+steps: [ script | powershell | bash | task | checkout ]
 ```
 
-#### resource
+#### repoResource
 
 ```yaml
-name: string
-type: string
-data: { string: any }
+repo: string # e.g. repo: self
+clean: true | false
+fetchDepth: number
+lfs: true | false
 ```
 
+<!-- Commenting-out template schema for now
 #### processTemplateReference
 
 ```yaml
@@ -112,23 +108,48 @@ phases: [ phase | phasesTemplateReference ]
 jobs: [ job | jobsTemplateReference ]
 steps: [ script | powershell | bash | task | stepsPhase | stepsTemplateReference ]
 ```
+-->
 
 ### Phase structures
 
 #### phase
 
 ```yaml
-# phase properties
-phase: string # name
-target: phaseTarget
-jobs: [ job | jobsTemplateReference ]
-
-# job properties
-timeoutInMinutes: number
+name: string
+dependsOn: string | [ string ]
+condition: string
+continueOnError: true | false
+enableAccessToken: true | false
+target: string | phaseTarget
+execution: phaseExecution
 variables: { string: string }
-steps: [ script | powershell | bash | task | stepsPhase | stepsTemplateReference ]
+steps: [ script | powershell | bash | task | checkout ]
 ```
 
+#### phaseTarget
+
+```yaml
+# queue properties
+queue: string
+demands: string | [ string ]
+
+# deploymentGroup properties
+deploymentGroup: string
+healthOption: string
+percentage: string
+tags: string | [ string ]
+```
+
+#### phaseExecution
+
+```yaml
+continueOnError: true | false
+maxConcurrency: number
+timeoutInMinutes: number
+matrix: { string: { string: string } }
+```
+
+<!-- Commenting-out template schema for now
 #### phasesTemplateReference
 
 ```yaml
@@ -162,39 +183,9 @@ phases: [ phase ]
 jobs: [ job | jobsTemplateReference ]
 steps: [ script | powershell | bash | task | stepsPhase | stepsTemplateReference ]
 ```
+-->
 
-### Job structures
-
-#### job
-
-```yaml
-job: string # name
-timeoutInMinutes: number
-variables: [ variable | variablesTemplateReference ]
-steps: [ script | powershell | bash | task | stepsPhase | stepsTemplateReference ]
-```
-
-#### jobsTemplateReference
-
-```yaml
-template: string # relative path
-parameters: { string: any }
-jobs: [ # job specific step overrides
-  {
-    name: string
-    steps: { string: [ script | powershell | bash | task ] }
-  }
-]
-steps: { string: [ script | powershell | bash | task ] } # step overrides
-```
-
-#### jobsTemplate
-
-```yaml
-jobs: [ job ]
-steps: [ script | powershell | bash | task | stepsPhase | stepsTemplateReference ]
-```
-
+<!-- Commenting-out variable object syntax for now
 #### variable
 
 ```yaml
@@ -202,7 +193,9 @@ name: string
 value: string
 verbatim: bool # instructs agent not to uppercase/etc when setting env var
 ```
+-->
 
+<!-- Commenting-out template schema for now
 #### variablesTemplateReference
 
 ```yaml
@@ -215,6 +208,7 @@ parameters: { string: any }
 ```yaml
 variables: [ variable ]
 ```
+-->
 
 ### Step structures
 
@@ -235,7 +229,7 @@ env: { string: string }
 #### powershell
 
 ```yaml
-script: string
+powershell: string
 name: string # display name
 errorActionPreference: stop | continue | silentlyContinue
 failOnStderr: true | false
@@ -251,7 +245,7 @@ env: { string: string }
 #### bash
 
 ```yaml
-script: string
+bash: string
 name: string # display name
 workingDirectory: string
 failOnStderr: true | false
@@ -275,13 +269,31 @@ inputs: { string: string }
 env: { string: string }
 ```
 
-#### stepsPhase
+#### checkout
+
+```yaml
+checkout: self # self represents the repo associated with the entry .yml file
+clean: true | false
+fetchDepth: number
+lfs: true | false
+```
+
+OR
+
+```yaml
+checkout: none # skips checkout
+```
+
+<!-- Commenting-out step group for now
+#### stepGroup
 
 ```yaml
 phase: string # name
 steps: [ script | powershell | bash | task ]
 ```
+-->
 
+<!-- Commenting-out template schema for now since it's main value comes with templates and docker
 #### stepsTemplateReference
 
 ```yaml
@@ -295,3 +307,4 @@ steps: { string: [ script | powershell | bash | task ] } # step overrides
 ```yaml
 steps: [ script | powershell | bash | task | stepsPhase ]
 ```
+-->
