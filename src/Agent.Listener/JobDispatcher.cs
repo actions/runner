@@ -15,6 +15,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         void Run(AgentJobRequestMessage message);
         bool Cancel(JobCancelMessage message);
         Task WaitAsync(CancellationToken token);
+        TaskResult GetLocalRunJobResult(AgentJobRequestMessage message);
         Task ShutdownAsync();
     }
 
@@ -25,6 +26,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
     // and server will not send another job while this one is still running.
     public sealed class JobDispatcher : AgentService, IJobDispatcher
     {
+        private readonly Lazy<Dictionary<long, TaskResult>> _localRunJobResult = new Lazy<Dictionary<long, TaskResult>>();
         private int _poolId;
         private static readonly string _workerProcessName = $"Agent.Worker{IOUtil.ExeExtension}";
 
@@ -141,6 +143,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     }
                 }
             }
+        }
+
+        public TaskResult GetLocalRunJobResult(AgentJobRequestMessage message)
+        {
+            return _localRunJobResult.Value[message.RequestId];
         }
 
         public async Task ShutdownAsync()
@@ -644,6 +651,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         private async Task CompleteJobRequestAsync(int poolId, AgentJobRequestMessage message, Guid lockToken, TaskResult result, string detailInfo = null)
         {
             Trace.Entering();
+            if (HostContext.RunMode == RunMode.Local)
+            {
+                _localRunJobResult.Value[message.RequestId] = result;
+                return;
+            }
+
             if (ApiUtil.GetFeatures(message.Plan).HasFlag(PlanFeatures.JobCompletedPlanEvent))
             {
                 Trace.Verbose($"Skip FinishAgentRequest call from Listener because Plan version is {message.Plan.Version}");

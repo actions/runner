@@ -193,24 +193,33 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             AgentSettings settings = configStore.GetSettings();
 
             // Create job message.
+            JobInfo job = (await ConvertToJobMessagesAsync(process, repoDirectory, token)).Single();
             IJobDispatcher jobDispatcher = null;
             try
             {
                 jobDispatcher = HostContext.CreateService<IJobDispatcher>();
-                foreach (JobInfo job in await ConvertToJobMessagesAsync(process, repoDirectory, token))
+                job.RequestMessage.Environment.Variables[Constants.Variables.Agent.RunMode] = RunMode.Local.ToString();
+                jobDispatcher.Run(job.RequestMessage);
+                Task jobDispatch = jobDispatcher.WaitAsync(token);
+                if (!Task.WaitAll(new[] { jobDispatch }, job.Timeout))
                 {
-                    job.RequestMessage.Environment.Variables[Constants.Variables.Agent.RunMode] = RunMode.Local.ToString();
-                    jobDispatcher.Run(job.RequestMessage);
-                    Task jobDispatch = jobDispatcher.WaitAsync(token);
-                    if (!Task.WaitAll(new[] { jobDispatch }, job.Timeout))
-                    {
-                        jobDispatcher.Cancel(job.CancelMessage);
+                    jobDispatcher.Cancel(job.CancelMessage);
 
-                        // Finish waiting on the same job dispatch task. The first call to WaitAsync dequeues
-                        // the dispatch task and then proceeds to wait on it. So we need to continue awaiting
-                        // the task instance (queue is now empty).
-                        await jobDispatch;
-                    }
+                    // Finish waiting on the job dispatch task. The call to jobDispatcher.WaitAsync dequeues
+                    // the job dispatch task. In the cancel flow, we need to continue awaiting the task instance
+                    // (queue is now empty).
+                    await jobDispatch;
+                }
+
+                // Translate the job result to an agent return code.
+                TaskResult jobResult = jobDispatcher.GetLocalRunJobResult(job.RequestMessage);
+                switch (jobResult)
+                {
+                    case TaskResult.Succeeded:
+                    case TaskResult.SucceededWithIssues:
+                        return Constants.Agent.ReturnCode.Success;
+                    default:
+                        return Constants.Agent.ReturnCode.TerminatedError;
                 }
             }
             finally
@@ -220,8 +229,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     await jobDispatcher.ShutdownAsync();
                 }
             }
-
-            return Constants.Agent.ReturnCode.Success;
         }
 
         private async Task<List<JobInfo>> ConvertToJobMessagesAsync(YamlContracts.Process process, string repoDirectory, CancellationToken token)
