@@ -81,7 +81,6 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Pipeline
                     ContinueOnError = process.ContinueOnError,
                     DependsOn = process.DependsOn,
                     EnableAccessToken = process.EnableAccessToken,
-                    Execution = process.Execution,
                     Steps = process.Steps,
                     Target = process.Target,
                     Variables = process.Variables,
@@ -92,7 +91,6 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Pipeline
                 process.ContinueOnError = null;
                 process.DependsOn = null;
                 process.EnableAccessToken = null;
-                process.Execution = null;
                 process.Steps = null;
                 process.Target = null;
                 process.Variables = null;

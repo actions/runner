@@ -257,10 +257,7 @@ phases:
   condition: always()
   continueOnError: $(continueOnErrorVariable)
   enableAccessToken: $(enableAccessTokenVariable)
-  target:
-    queue: myQueue
-  execution:
-    continueOnError: $(executionContinueOnErrorVariable)
+  queue: myQueue
   variables:
     var1: val1
   steps:
@@ -269,6 +266,8 @@ phases:
   dependsOn:
   - phase1
   - phase2
+  queue:
+    demands: a -eq b
   steps:
   - script: echo hello
 ";
@@ -289,63 +288,42 @@ phases:
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Agent")]
-        public void PhaseTarget()
+        public void PhaseDeploymentTarget()
         {
             using (CreateTestContext())
             {
                 // Arrange.
                 String expected = @"
 phases:
-- name: buildPhase1
-  target:
-    queue: myQueue
-  steps:
-  - script: echo hello
-- name: buildPhase2
-  target:
-    demands: myDemand
-  steps:
-  - script: echo hello
-- name: buildPhase3
-  target:
-    queue: myQueue
-    demands:
-    - myDemand1
-    - myDemand2
-  steps:
-  - script: echo hello
 - name: deployPhase1
-  target:
-    deploymentGroup: myDeploymentGroup
+  deployment: myDeploymentGroup
   steps:
   - script: echo hello
 - name: deployPhase2
-  target:
-    deploymentGroup: myDeploymentGroup
+  deployment:
+    group: myDeploymentGroup
     tags: myTag
   steps:
   - script: echo hello
 - name: deployPhase3
-  target:
-    deploymentGroup: myDeploymentGroup
+  deployment:
+    group: myDeploymentGroup
+    continueOnError: $(continueOnErrorVariable)
     healthOption: percentage
     percentage: 50
+    timeoutInMinutes: $(timeoutInMinutesVariable)
     tags:
     - myTag1
     - myTag2
   steps:
   - script: echo hello
-- name: serverPhase
-  target: server
-  steps:
-  - task: myServerTask@1
 ";
-                m_fileProvider.FileContent[Path.Combine(c_defaultRoot, "phaseTarget.yml")] = expected;
+                m_fileProvider.FileContent[Path.Combine(c_defaultRoot, "phaseDeploymentTarget.yml")] = expected;
 
                 // Act.
                 String actual = m_pipelineParser.DeserializeAndSerialize(
                     c_defaultRoot,
-                    "phaseTarget.yml",
+                    "phaseDeploymentTarget.yml",
                     mustacheContext: null,
                     cancellationToken: CancellationToken.None);
 
@@ -357,45 +335,98 @@ phases:
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Agent")]
-        public void PhaseExecution()
+        public void PhaseQueueTarget()
         {
             using (CreateTestContext())
             {
                 // Arrange.
                 String expected = @"
 phases:
-- name: phase1
-  continueOnError: $(phaseContinueOnErrorVariable)
-  execution:
-    continueOnError: $(executionContinueOnErrorVariable)
+- name: buildPhase1
   steps:
   - script: echo hello
-- name: phase2
-  execution:
-    maxConcurrency: $(maxConcurrencyVariable)
+- name: buildPhase2
+  queue: myQueue
   steps:
   - script: echo hello
-- name: phase3
-  execution:
-    continueOnError: true
-    maxConcurrency: $(maxConcurrencyVariable)
+- name: buildPhase3
+  queue:
+    demands: a -eq b
+  steps:
+  - script: echo hello
+- name: buildPhase4
+  queue:
+    name: myQueue
+    continueOnError: $(continueOnErrorVariable)
+    parallel: $(parallelVariable)
     timeoutInMinutes: $(timeoutInMinutesVariable)
+    demands:
+    - a -eq b
+    - c -eq d
     matrix:
-      x86_debug:
-        arch: x86
-        config: debug
       x64_release:
         arch: x64
         config: release
+      x86_debug:
+        arch: x86
+        config: debug
   steps:
   - script: echo hello
 ";
-                m_fileProvider.FileContent[Path.Combine(c_defaultRoot, "phaseExecution.yml")] = expected;
+                m_fileProvider.FileContent[Path.Combine(c_defaultRoot, "phaseQueueTarget.yml")] = expected;
 
                 // Act.
                 String actual = m_pipelineParser.DeserializeAndSerialize(
                     c_defaultRoot,
-                    "phaseExecution.yml",
+                    "phaseQueueTarget.yml",
+                    mustacheContext: null,
+                    cancellationToken: CancellationToken.None);
+
+                // Assert.
+                Assert.Equal(expected.Trim(), actual.Trim());
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Agent")]
+        public void PhaseServerTarget()
+        {
+            using (CreateTestContext())
+            {
+                // Arrange.
+                String expected = @"
+phases:
+- name: serverPhase1
+  server: true
+  steps:
+  - task: myServerTask@1
+- name: serverPhase2
+  server:
+    timeoutInMinutes: $(timeoutInMinutesVariable)
+  steps:
+  - task: myServerTask@1
+- name: serverPhase3
+  server:
+    continueOnError: $(continueOnErrorVariable)
+    parallel: $(parallelVariable)
+    timeoutInMinutes: $(timeoutInMinutesVariable)
+    matrix:
+      x64_release:
+        arch: x64
+        config: release
+      x86_debug:
+        arch: x86
+        config: debug
+  steps:
+  - task: myServerTask@1
+";
+                m_fileProvider.FileContent[Path.Combine(c_defaultRoot, "phaseServerTarget.yml")] = expected;
+
+                // Act.
+                String actual = m_pipelineParser.DeserializeAndSerialize(
+                    c_defaultRoot,
+                    "phaseServerTarget.yml",
                     mustacheContext: null,
                     cancellationToken: CancellationToken.None);
 

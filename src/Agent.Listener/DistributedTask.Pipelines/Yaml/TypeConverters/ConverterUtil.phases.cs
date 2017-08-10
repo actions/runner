@@ -67,12 +67,37 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Pipeline
                             phase.EnableAccessToken = ReadNonEmptyString(parser);
                             break;
 
-                        case YamlConstants.Target:
-                            phase.Target = ReadPhaseTarget(parser);
+                        case YamlConstants.Deployment:
+                            if (phase.Target != null)
+                            {
+                                ValidateNull(phase.Target as QueueTarget, YamlConstants.Queue, YamlConstants.Deployment, scalar);
+                                ValidateNull(phase.Target as ServerTarget, YamlConstants.Server, YamlConstants.Deployment, scalar);
+                                throw new NotSupportedException("Unexpected previous target type"); // Should not reach here
+                            }
+
+                            phase.Target = ReadDeploymentTarget(parser);
                             break;
 
-                        case YamlConstants.Execution:
-                            phase.Execution = ReadPhaseExecution(parser);
+                        case YamlConstants.Queue:
+                            if (phase.Target != null)
+                            {
+                                ValidateNull(phase.Target as DeploymentTarget, YamlConstants.Deployment, YamlConstants.Queue, scalar);
+                                ValidateNull(phase.Target as ServerTarget, YamlConstants.Server, YamlConstants.Queue, scalar);
+                                throw new NotSupportedException("Unexpected previous target type"); // Should not reach here
+                            }
+
+                            phase.Target = ReadQueueTarget(parser);
+                            break;
+
+                        case YamlConstants.Server:
+                            if (phase.Target != null)
+                            {
+                                ValidateNull(phase.Target as DeploymentTarget, YamlConstants.Deployment, YamlConstants.Server, scalar);
+                                ValidateNull(phase.Target as QueueTarget, YamlConstants.Queue, YamlConstants.Server, scalar);
+                                throw new NotSupportedException("Unexpected previous target type"); // Should not reach here
+                            }
+
+                            phase.Target = ReadServerTarget(parser);
                             break;
 
                         case YamlConstants.Variables:
@@ -114,90 +139,152 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Pipeline
             return result;
         }
 
-        internal static PhaseTarget ReadPhaseTarget(IParser parser)
+        internal static DeploymentTarget ReadDeploymentTarget(IParser parser)
         {
-            var result = new PhaseTarget();
+            // Handle the simple case "deployment: group"
             if (parser.Accept<Scalar>())
             {
-                ReadExactString(parser, YamlConstants.Server);
-                result.Type = YamlConstants.Server;
+                return new DeploymentTarget() { Group = ReadNonEmptyString(parser) };
             }
-            else
+
+            var result = new DeploymentTarget();
+            parser.Expect<MappingStart>();
+            while (parser.Allow<MappingEnd>() == null)
             {
-                parser.Expect<MappingStart>();
-                while (parser.Allow<MappingEnd>() == null)
+                Scalar scalar = parser.Expect<Scalar>();
+                switch (scalar.Value ?? String.Empty)
                 {
-                    Scalar scalar = parser.Expect<Scalar>();
-                    switch (scalar.Value ?? String.Empty)
-                    {
-                        case YamlConstants.DeploymentGroup:
-                            result.Type = YamlConstants.DeploymentGroup;
-                            result.Name = ReadNonEmptyString(parser);
-                            break;
+                    case YamlConstants.ContinueOnError:
+                        result.ContinueOnError = ReadNonEmptyString(parser);
+                        break;
 
-                        case YamlConstants.Demands:
-                            if (parser.Accept<Scalar>())
+                    case YamlConstants.Group:
+                        result.Group = ReadNonEmptyString(parser);
+                        break;
+
+                    case YamlConstants.HealthOption:
+                        result.HealthOption = ReadNonEmptyString(parser);
+                        break;
+
+                    case YamlConstants.Percentage:
+                        result.Percentage = ReadNonEmptyString(parser);
+                        break;
+
+                    case YamlConstants.Tags:
+                        if (parser.Accept<Scalar>())
+                        {
+                            scalar = parser.Expect<Scalar>();
+                            if (!String.IsNullOrEmpty(scalar.Value))
                             {
-                                scalar = parser.Expect<Scalar>();
-                                if (!String.IsNullOrEmpty(scalar.Value))
-                                {
-                                    result.Demands = new List<String>();
-                                    result.Demands.Add(scalar.Value);
-                                }
+                                result.Tags = new List<String>();
+                                result.Tags.Add(scalar.Value);
                             }
-                            else
-                            {
-                                result.Demands = ReadSequenceOfString(parser);
-                            }
+                        }
+                        else
+                        {
+                            result.Tags = ReadSequenceOfString(parser);
+                        }
 
-                            break;
+                        break;
 
-                        case YamlConstants.HealthOption:
-                            result.HealthOption = ReadNonEmptyString(parser);
-                            break;
+                    case YamlConstants.TimeoutInMinutes:
+                        result.TimeoutInMinutes = ReadNonEmptyString(parser);
+                        break;
 
-                        case YamlConstants.Percentage:
-                            result.Percentage = ReadNonEmptyString(parser);
-                            break;
-
-                        case YamlConstants.Queue:
-                            result.Type = YamlConstants.Queue;
-                            result.Name = ReadNonEmptyString(parser);
-                            break;
-
-                        case YamlConstants.Tags:
-                            if (parser.Accept<Scalar>())
-                            {
-                                scalar = parser.Expect<Scalar>();
-                                if (!String.IsNullOrEmpty(scalar.Value))
-                                {
-                                    result.Tags = new List<String>();
-                                    result.Tags.Add(scalar.Value);
-                                }
-                            }
-                            else
-                            {
-                                result.Tags = ReadSequenceOfString(parser);
-                            }
-
-                            break;
-
-                        default:
-                            throw new SyntaxErrorException(scalar.Start, scalar.End, $"Unexpected property: '{scalar.Value}'");
-                    }
+                    default:
+                        throw new SyntaxErrorException(scalar.Start, scalar.End, $"Unexpected property: '{scalar.Value}'");
                 }
             }
 
             return result;
         }
 
-        internal static PhaseExecution ReadPhaseExecution(IParser parser)
+        internal static QueueTarget ReadQueueTarget(IParser parser)
         {
-            var result = new PhaseExecution();
+            // Handle the simple case "queue: name"
+            if (parser.Accept<Scalar>())
+            {
+                return new QueueTarget() { Name = ReadNonEmptyString(parser) };
+            }
+
+            var result = new QueueTarget();
             parser.Expect<MappingStart>();
             while (parser.Allow<MappingEnd>() == null)
             {
                 Scalar scalar = parser.Expect<Scalar>();
+                switch (scalar.Value ?? String.Empty)
+                {
+                    case YamlConstants.ContinueOnError:
+                        result.ContinueOnError = ReadNonEmptyString(parser);
+                        break;
+
+                    case YamlConstants.Demands:
+                        if (parser.Accept<Scalar>())
+                        {
+                            scalar = parser.Expect<Scalar>();
+                            if (!String.IsNullOrEmpty(scalar.Value))
+                            {
+                                result.Demands = new List<String>();
+                                result.Demands.Add(scalar.Value);
+                            }
+                        }
+                        else
+                        {
+                            result.Demands = ReadSequenceOfString(parser);
+                        }
+
+                        break;
+
+                    case YamlConstants.Matrix:
+                        parser.Expect<MappingStart>();
+                        result.Matrix = new Dictionary<String, IDictionary<String, String>>(StringComparer.OrdinalIgnoreCase);
+                        while (parser.Allow<MappingEnd>() == null)
+                        {
+                            String key = ReadNonEmptyString(parser);
+                            result.Matrix[key] = ReadMappingOfStringString(parser, StringComparer.OrdinalIgnoreCase);
+                        }
+
+                        break;
+
+                    case YamlConstants.Name:
+                        result.Name = ReadNonEmptyString(parser);
+                        break;
+
+                    case YamlConstants.Parallel:
+                        result.Parallel = ReadNonEmptyString(parser);
+                        break;
+
+                    case YamlConstants.TimeoutInMinutes:
+                        result.TimeoutInMinutes = ReadNonEmptyString(parser);
+                        break;
+
+                    default:
+                        throw new SyntaxErrorException(scalar.Start, scalar.End, $"Unexpected property: '{scalar.Value}'");
+                }
+            }
+
+            return result;
+        }
+
+        internal static ServerTarget ReadServerTarget(IParser parser)
+        {
+            // Handle the simple case "server: true"
+            Scalar scalar = parser.Peek<Scalar>();
+            if (scalar != null)
+            {
+                if (ReadBoolean(parser))
+                {
+                    return new ServerTarget();
+                }
+
+                return null;
+            }
+
+            var result = new ServerTarget();
+            parser.Expect<MappingStart>();
+            while (parser.Allow<MappingEnd>() == null)
+            {
+                scalar = parser.Expect<Scalar>();
                 switch (scalar.Value ?? String.Empty)
                 {
                     case YamlConstants.ContinueOnError:
@@ -215,8 +302,8 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Pipeline
 
                         break;
 
-                    case YamlConstants.MaxConcurrency:
-                        result.MaxConcurrency = ReadNonEmptyString(parser);
+                    case YamlConstants.Parallel:
+                        result.Parallel = ReadNonEmptyString(parser);
                         break;
 
                     case YamlConstants.TimeoutInMinutes:
@@ -371,105 +458,195 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Pipeline
 
                 if (p.Target != null)
                 {
-                    emitter.Emit(new Scalar(YamlConstants.Target));
-                    switch (p.Target.Type ?? String.Empty)
+                    QueueTarget queueTarget = null;
+                    DeploymentTarget deploymentTarget = null;
+                    ServerTarget serverTarget = null;
+                    if ((queueTarget = p.Target as QueueTarget) != null)
                     {
-                        case "":
-                        case YamlConstants.Queue:
-                        case YamlConstants.DeploymentGroup:
+                        emitter.Emit(new Scalar(YamlConstants.Queue));
+
+                        // Test for the simple case "queue: name".
+                        if (!String.IsNullOrEmpty(queueTarget.Name) &&
+                            String.IsNullOrEmpty(queueTarget.ContinueOnError) &&
+                            String.IsNullOrEmpty(queueTarget.Parallel) &&
+                            String.IsNullOrEmpty(queueTarget.TimeoutInMinutes) &&
+                            (queueTarget.Demands == null || queueTarget.Demands.Count == 0) &&
+                            (queueTarget.Matrix == null || queueTarget.Matrix.Count == 0))
+                        {
+                            emitter.Emit(new Scalar(queueTarget.Name));
+                        }
+                        else // Otherwise write the mapping.
+                        {
                             emitter.Emit(new MappingStart());
-                            if (!String.IsNullOrEmpty(p.Target.Type))
+                            if (!String.IsNullOrEmpty(queueTarget.Name))
                             {
-                                emitter.Emit(new Scalar(p.Target.Type));
-                                emitter.Emit(new Scalar(p.Target.Name));
+                                emitter.Emit(new Scalar(YamlConstants.Name));
+                                emitter.Emit(new Scalar(queueTarget.Name));
                             }
 
-                            if (p.Target.Demands != null && p.Target.Demands.Count > 0)
+                            if (!String.IsNullOrEmpty(queueTarget.ContinueOnError))
+                            {
+                                emitter.Emit(new Scalar(YamlConstants.ContinueOnError));
+                                emitter.Emit(new Scalar(queueTarget.ContinueOnError));
+                            }
+
+                            if (!String.IsNullOrEmpty(queueTarget.Parallel))
+                            {
+                                emitter.Emit(new Scalar(YamlConstants.Parallel));
+                                emitter.Emit(new Scalar(queueTarget.Parallel));
+                            }
+
+                            if (!String.IsNullOrEmpty(queueTarget.TimeoutInMinutes))
+                            {
+                                emitter.Emit(new Scalar(YamlConstants.TimeoutInMinutes));
+                                emitter.Emit(new Scalar(queueTarget.TimeoutInMinutes));
+                            }
+
+                            if (queueTarget.Demands != null && queueTarget.Demands.Count > 0)
                             {
                                 emitter.Emit(new Scalar(YamlConstants.Demands));
-                                if (p.Target.Demands.Count == 1)
+                                if (queueTarget.Demands.Count == 1)
                                 {
-                                    emitter.Emit(new Scalar(p.Target.Demands[0]));
+                                    emitter.Emit(new Scalar(queueTarget.Demands[0]));
                                 }
                                 else
                                 {
-                                    WriteSequence(emitter, p.Target.Demands);
+                                    WriteSequence(emitter, queueTarget.Demands);
                                 }
                             }
 
-                            if (!String.IsNullOrEmpty(p.Target.HealthOption))
+                            if (queueTarget.Matrix != null && queueTarget.Matrix.Count > 0)
+                            {
+                                emitter.Emit(new Scalar(YamlConstants.Matrix));
+                                emitter.Emit(new MappingStart());
+                                foreach (KeyValuePair<String, IDictionary<String, String>> pair in queueTarget.Matrix.OrderBy(x => x.Key, StringComparer.OrdinalIgnoreCase))
+                                {
+                                    emitter.Emit(new Scalar(pair.Key));
+                                    WriteMapping(emitter, pair.Value);
+                                }
+
+                                emitter.Emit(new MappingEnd());
+                            }
+
+                            emitter.Emit(new MappingEnd());
+                        }
+                    }
+                    else if ((deploymentTarget = p.Target as DeploymentTarget) != null)
+                    {
+                        emitter.Emit(new Scalar(YamlConstants.Deployment));
+
+                        // Test for the simple case "deployment: group".
+                        if (!String.IsNullOrEmpty(deploymentTarget.Group) &&
+                            String.IsNullOrEmpty(deploymentTarget.ContinueOnError) &&
+                            String.IsNullOrEmpty(deploymentTarget.HealthOption) &&
+                            String.IsNullOrEmpty(deploymentTarget.Percentage) &&
+                            String.IsNullOrEmpty(deploymentTarget.TimeoutInMinutes) &&
+                            (deploymentTarget.Tags == null || deploymentTarget.Tags.Count == 0))
+                        {
+                            emitter.Emit(new Scalar(deploymentTarget.Group));
+                        }
+                        else // Otherwise write the mapping.
+                        {
+                            emitter.Emit(new MappingStart());
+                            if (!String.IsNullOrEmpty(deploymentTarget.Group))
+                            {
+                                emitter.Emit(new Scalar(YamlConstants.Group));
+                                emitter.Emit(new Scalar(deploymentTarget.Group));
+                            }
+
+                            if (!String.IsNullOrEmpty(deploymentTarget.ContinueOnError))
+                            {
+                                emitter.Emit(new Scalar(YamlConstants.ContinueOnError));
+                                emitter.Emit(new Scalar(deploymentTarget.ContinueOnError));
+                            }
+
+                            if (!String.IsNullOrEmpty(deploymentTarget.HealthOption))
                             {
                                 emitter.Emit(new Scalar(YamlConstants.HealthOption));
-                                emitter.Emit(new Scalar(p.Target.HealthOption));
+                                emitter.Emit(new Scalar(deploymentTarget.HealthOption));
                             }
 
-                            if (!String.IsNullOrEmpty(p.Target.Percentage))
+                            if (!String.IsNullOrEmpty(deploymentTarget.Percentage))
                             {
                                 emitter.Emit(new Scalar(YamlConstants.Percentage));
-                                emitter.Emit(new Scalar(p.Target.Percentage));
+                                emitter.Emit(new Scalar(deploymentTarget.Percentage));
                             }
 
-                            if (p.Target.Tags != null && p.Target.Tags.Count > 0)
+                            if (!String.IsNullOrEmpty(deploymentTarget.TimeoutInMinutes))
+                            {
+                                emitter.Emit(new Scalar(YamlConstants.TimeoutInMinutes));
+                                emitter.Emit(new Scalar(deploymentTarget.TimeoutInMinutes));
+                            }
+
+                            if (deploymentTarget.Tags != null && deploymentTarget.Tags.Count > 0)
                             {
                                 emitter.Emit(new Scalar(YamlConstants.Tags));
-                                if (p.Target.Tags.Count == 1)
+                                if (deploymentTarget.Tags.Count == 1)
                                 {
-                                    emitter.Emit(new Scalar(p.Target.Tags[0]));
+                                    emitter.Emit(new Scalar(deploymentTarget.Tags[0]));
                                 }
                                 else
                                 {
-                                    WriteSequence(emitter, p.Target.Tags);
+                                    WriteSequence(emitter, deploymentTarget.Tags);
                                 }
                             }
 
                             emitter.Emit(new MappingEnd());
-                            break;
-
-                        case YamlConstants.Server:
-                            emitter.Emit(new Scalar(YamlConstants.Server));
-                            break;
-
-                        default:
-                            throw new NotSupportedException($"Unexpected phase target type: '{p.Target.Type}'");
-                    }
-                }
-
-                if (p.Execution != null)
-                {
-                    emitter.Emit(new Scalar(YamlConstants.Execution));
-                    emitter.Emit(new MappingStart());
-                    if (!String.IsNullOrEmpty(p.Execution.ContinueOnError))
-                    {
-                        emitter.Emit(new Scalar(YamlConstants.ContinueOnError));
-                        emitter.Emit(new Scalar(p.Execution.ContinueOnError));
-                    }
-
-                    if (!String.IsNullOrEmpty(p.Execution.MaxConcurrency))
-                    {
-                        emitter.Emit(new Scalar(YamlConstants.MaxConcurrency));
-                        emitter.Emit(new Scalar(p.Execution.MaxConcurrency));
-                    }
-
-                    if (!String.IsNullOrEmpty(p.Execution.TimeoutInMinutes))
-                    {
-                        emitter.Emit(new Scalar(YamlConstants.TimeoutInMinutes));
-                        emitter.Emit(new Scalar(p.Execution.TimeoutInMinutes));
-                    }
-
-                    if (p.Execution.Matrix != null && p.Execution.Matrix.Count > 0)
-                    {
-                        emitter.Emit(new Scalar(YamlConstants.Matrix));
-                        emitter.Emit(new MappingStart());
-                        foreach (KeyValuePair<String, IDictionary<String, String>> pair in p.Execution.Matrix)
-                        {
-                            emitter.Emit(new Scalar(pair.Key));
-                            WriteMapping(emitter, pair.Value);
                         }
-
-                        emitter.Emit(new MappingEnd());
                     }
+                    else if ((serverTarget = p.Target as ServerTarget) != null)
+                    {
+                        emitter.Emit(new Scalar(YamlConstants.Server));
 
-                    emitter.Emit(new MappingEnd());
+                        // Test for the simple case "server: true".
+                        if (String.IsNullOrEmpty(serverTarget.ContinueOnError) &&
+                            String.IsNullOrEmpty(serverTarget.Parallel) &&
+                            String.IsNullOrEmpty(serverTarget.TimeoutInMinutes) &&
+                            (serverTarget.Matrix == null || serverTarget.Matrix.Count == 0))
+                        {
+                            emitter.Emit(new Scalar("true"));
+                        }
+                        else // Otherwise write the mapping.
+                        {
+                            emitter.Emit(new MappingStart());
+                            if (!String.IsNullOrEmpty(serverTarget.ContinueOnError))
+                            {
+                                emitter.Emit(new Scalar(YamlConstants.ContinueOnError));
+                                emitter.Emit(new Scalar(serverTarget.ContinueOnError));
+                            }
+
+                            if (!String.IsNullOrEmpty(serverTarget.Parallel))
+                            {
+                                emitter.Emit(new Scalar(YamlConstants.Parallel));
+                                emitter.Emit(new Scalar(serverTarget.Parallel));
+                            }
+
+                            if (!String.IsNullOrEmpty(serverTarget.TimeoutInMinutes))
+                            {
+                                emitter.Emit(new Scalar(YamlConstants.TimeoutInMinutes));
+                                emitter.Emit(new Scalar(serverTarget.TimeoutInMinutes));
+                            }
+
+                            if (serverTarget.Matrix != null && serverTarget.Matrix.Count > 0)
+                            {
+                                emitter.Emit(new Scalar(YamlConstants.Matrix));
+                                emitter.Emit(new MappingStart());
+                                foreach (KeyValuePair<String, IDictionary<String, String>> pair in serverTarget.Matrix.OrderBy(x => x.Key, StringComparer.OrdinalIgnoreCase))
+                                {
+                                    emitter.Emit(new Scalar(pair.Key));
+                                    WriteMapping(emitter, pair.Value);
+                                }
+
+                                emitter.Emit(new MappingEnd());
+                            }
+
+                            emitter.Emit(new MappingEnd());
+                        }
+                    }
+                    else
+                    {
+                        throw new NotSupportedException($"Unexpected target type: '{p.Target.GetType().FullName}'");
+                    }
                 }
 
                 if (p.Variables != null && p.Variables.Count > 0)

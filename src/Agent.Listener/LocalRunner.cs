@@ -116,14 +116,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 throw new Exception($"No phases or steps were discovered from the file: '{ymlFile}'");
             }
 
-            // Verify a phase was specified if more than one phase was found.
-            string phaseName = command.GetPhase();
-            if (process.Phases.Count > 1 && string.IsNullOrEmpty(phaseName))
-            {
-                throw new Exception($"More than one phase was discovered. Use the --{Constants.Agent.CommandLine.Args.Phase} argument to specify a phase.");
-            }
-
             // Filter the phases.
+            string phaseName = command.GetPhase();
             if (!string.IsNullOrEmpty(phaseName))
             {
                 process.Phases = process.Phases
@@ -137,30 +131,37 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 }
             }
 
-            // Verify a matrix was specified if more than one matrix was found.
-            var phase = process.Phases[0] as YamlContracts.Phase;
-            string matrixName = command.GetMatrix();
-            if (phase.Execution?.Matrix != null &&
-                phase.Execution.Matrix.Count > 1 &&
-                string.IsNullOrEmpty(matrixName))
+            // Verify a phase was specified if more than one phase was found.
+            if (process.Phases.Count > 1)
             {
-                throw new Exception($"More than one job configuration matrix was discovered. Use the --{Constants.Agent.CommandLine.Args.Matrix} argument to specify a matrix.");
+                throw new Exception($"More than one phase was discovered. Use the --{Constants.Agent.CommandLine.Args.Phase} argument to specify a phase.");
             }
 
+            // Get the matrix.
+            var phase = process.Phases[0] as YamlContracts.Phase;
+            var queueTarget = phase.Target as QueueTarget;
+
             // Filter to a specific matrix.
+            string matrixName = command.GetMatrix();
             if (!string.IsNullOrEmpty(matrixName))
             {
-                if (phase.Execution?.Matrix != null)
+                if (queueTarget?.Matrix != null)
                 {
-                    phase.Execution.Matrix = phase.Execution.Matrix.Keys
+                    queueTarget.Matrix = queueTarget.Matrix.Keys
                         .Where(x => string.Equals(x, matrixName, StringComparison.OrdinalIgnoreCase))
-                        .ToDictionary(keySelector: x => x, elementSelector: x => phase.Execution.Matrix[x]);
+                        .ToDictionary(keySelector: x => x, elementSelector: x => queueTarget.Matrix[x]);
                 }
 
-                if (phase.Execution.Matrix.Count == 0)
+                if (queueTarget?.Matrix == null || queueTarget.Matrix.Count == 0)
                 {
                     throw new Exception($"Job configuration matrix '{matrixName}' not found.");
                 }
+            }
+
+            // Verify a matrix was specified if more than one matrix was found.
+            if (queueTarget?.Matrix != null && queueTarget.Matrix.Count > 1)
+            {
+                throw new Exception($"More than one job configuration matrix was discovered. Use the --{Constants.Agent.CommandLine.Args.Matrix} argument to specify a matrix.");
             }
 
             // Get the URL - required if missing tasks.
@@ -239,10 +240,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             foreach (Phase phase in process.Phases ?? new List<IPhase>(0))
             {
                 IDictionary<string, IDictionary<string, string>> matrix;
-                if (phase.Execution?.Matrix != null && phase.Execution.Matrix.Count > 0)
+                var queueTarget = phase.Target as QueueTarget;
+                if (queueTarget?.Matrix != null && queueTarget.Matrix.Count > 0)
                 {
                     // Get the matrix.
-                    matrix = phase.Execution.Matrix;
+                    matrix = queueTarget.Matrix;
                 }
                 else
                 {
@@ -864,7 +866,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 JobName = jobName ?? string.Empty;
                 PhaseName = phase.Name ?? string.Empty;
                 RequestMessage = JsonUtility.FromString<AgentJobRequestMessage>(requestMessage);
-                Timeout = TimeSpan.FromMinutes(int.Parse(phase.Execution?.TimeoutInMinutes ?? "60", NumberStyles.None));
+                string timeoutInMinutesString = (phase.Target as QueueTarget)?.TimeoutInMinutes ??
+                    (phase.Target as DeploymentTarget)?.TimeoutInMinutes ??
+                    "60";
+                Timeout = TimeSpan.FromMinutes(int.Parse(timeoutInMinutesString, NumberStyles.None));
             }
 
             public JobCancelMessage CancelMessage => new JobCancelMessage(RequestMessage.JobId, TimeSpan.FromSeconds(60));

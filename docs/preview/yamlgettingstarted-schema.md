@@ -10,12 +10,12 @@ At a high level, the structure of a process is:
 ├───resources (endpoints, etc)
 └───phases
     ├───phase
-    │   ├───target # e.g. agent queue
-    │   │   ├───variables
-    │   │   └───steps
-    │   │       ├───step # e.g. run msbuild
-    │   │       └───[...]
-    │   └───[...]
+    │   ├───queue|deployment|server
+    │   ├───variables
+    │   └───steps
+    │       ├───step # e.g. run msbuild
+    │       └───[...]
+    │
     └───[...]
 ```
 
@@ -58,8 +58,9 @@ dependsOn: string | [ string ]
 condition: string
 continueOnError: true | false
 enableAccessToken: true | false
-target: phaseTarget
-execution: phaseExecution
+queue: string | queueTarget
+deployment: string | deploymentTarget
+server: true | serverTarget
 variables: { string: string }
 steps: [ script | powershell | bash | task | checkout ]
 ```
@@ -120,31 +121,40 @@ dependsOn: string | [ string ]
 condition: string
 continueOnError: true | false
 enableAccessToken: true | false
-target: string | phaseTarget
-execution: phaseExecution
+queue: string | queueTarget
+deployment: string | deploymentTarget
+server: true | serverTarget
 variables: { string: string }
 steps: [ script | powershell | bash | task | checkout ]
 ```
 
-#### phaseTarget
+#### queueTarget
 
 ```yaml
-# queue properties
-queue: string
+name: string
+continueOnError: true | false
+parallel: number
+timeoutInMinutes: number
 demands: string | [ string ]
+matrix: { string: { string: string } }
+```
 
-# deploymentGroup properties
-deploymentGroup: string
+#### deploymentTarget
+
+```yaml
+group: string
+continueOnError: true | false
 healthOption: string
 percentage: string
+timeoutInMinutes: number
 tags: string | [ string ]
 ```
 
-#### phaseExecution
+#### serverTarget
 
 ```yaml
 continueOnError: true | false
-maxConcurrency: number
+parallel: number
 timeoutInMinutes: number
 matrix: { string: { string: string } }
 ```

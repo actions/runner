@@ -38,8 +38,14 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Pipeline
                     case YamlConstants.Template:
                         ConverterUtil.ValidateNull(result.Phases, YamlConstants.Phases, YamlConstants.Template, scalar);
                         ConverterUtil.ValidateNull(result.ContinueOnError, YamlConstants.ContinueOnError, YamlConstants.Template, scalar);
-                        ConverterUtil.ValidateNull(result.Target, YamlConstants.Target, YamlConstants.Template, scalar);
-                        ConverterUtil.ValidateNull(result.Execution, YamlConstants.Execution, YamlConstants.Template, scalar);
+                        if (result.Target != null)
+                        {
+                            ConverterUtil.ValidateNull(result.Target as DeploymentTarget, YamlConstants.Deployment, YamlConstants.Template, scalar);
+                            ConverterUtil.ValidateNull(result.Target as QueueTarget, YamlConstants.Queue, YamlConstants.Template, scalar);
+                            ConverterUtil.ValidateNull(result.Target as ServerTarget, YamlConstants.Server, YamlConstants.Template, scalar);
+                            throw new NotSupportedException("Unexpected previous target type"); // Should not reach here
+                        }
+
                         ConverterUtil.ValidateNull(result.Variables, YamlConstants.Variables, YamlConstants.Template, scalar);
                         ConverterUtil.ValidateNull(result.Steps, YamlConstants.Steps, YamlConstants.Template, scalar);
                         result.Template = ConverterUtil.ReadProcessTemplateReference(parser);
@@ -48,8 +54,14 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Pipeline
                     case YamlConstants.Phases:
                         ConverterUtil.ValidateNull(result.Template, YamlConstants.Template, YamlConstants.Phases, scalar);
                         ConverterUtil.ValidateNull(result.ContinueOnError, YamlConstants.ContinueOnError, YamlConstants.Phases, scalar);
-                        ConverterUtil.ValidateNull(result.Target, YamlConstants.Target, YamlConstants.Phases, scalar);
-                        ConverterUtil.ValidateNull(result.Execution, YamlConstants.Execution, YamlConstants.Phases, scalar);
+                        if (result.Target != null)
+                        {
+                            ConverterUtil.ValidateNull(result.Target as DeploymentTarget, YamlConstants.Deployment, YamlConstants.Phases, scalar);
+                            ConverterUtil.ValidateNull(result.Target as QueueTarget, YamlConstants.Queue, YamlConstants.Phases, scalar);
+                            ConverterUtil.ValidateNull(result.Target as ServerTarget, YamlConstants.Server, YamlConstants.Phases, scalar);
+                            throw new NotSupportedException("Unexpected previous target type"); // Should not reach here
+                        }
+
                         ConverterUtil.ValidateNull(result.Variables, YamlConstants.Variables, YamlConstants.Phases, scalar);
                         ConverterUtil.ValidateNull(result.Steps, YamlConstants.Steps, YamlConstants.Phases, scalar);
                         result.Phases = ConverterUtil.ReadPhases(parser, simpleOnly: false);
@@ -65,16 +77,43 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Pipeline
                         result.ContinueOnError = ConverterUtil.ReadNonEmptyString(parser);
                         break;
 
-                    case YamlConstants.Target:
-                        ConverterUtil.ValidateNull(result.Template, YamlConstants.Template, YamlConstants.Target, scalar);
-                        ConverterUtil.ValidateNull(result.Phases, YamlConstants.Phases, YamlConstants.Target, scalar);
-                        result.Target = ConverterUtil.ReadPhaseTarget(parser);
+                    case YamlConstants.Deployment:
+                        ConverterUtil.ValidateNull(result.Template, YamlConstants.Template, YamlConstants.Deployment, scalar);
+                        ConverterUtil.ValidateNull(result.Phases, YamlConstants.Phases, YamlConstants.Deployment, scalar);
+                        if (result.Target != null)
+                        {
+                            ConverterUtil.ValidateNull(result.Target as QueueTarget, YamlConstants.Queue, YamlConstants.Deployment, scalar);
+                            ConverterUtil.ValidateNull(result.Target as ServerTarget, YamlConstants.Server, YamlConstants.Deployment, scalar);
+                            throw new NotSupportedException("Unexpected previous target type"); // Should not reach here
+                        }
+
+                        result.Target = ConverterUtil.ReadDeploymentTarget(parser);
                         break;
 
-                    case YamlConstants.Execution:
-                        ConverterUtil.ValidateNull(result.Template, YamlConstants.Template, YamlConstants.Execution, scalar);
-                        ConverterUtil.ValidateNull(result.Phases, YamlConstants.Phases, YamlConstants.Execution, scalar);
-                        result.Execution = ConverterUtil.ReadPhaseExecution(parser);
+                    case YamlConstants.Queue:
+                        ConverterUtil.ValidateNull(result.Template, YamlConstants.Template, YamlConstants.Queue, scalar);
+                        ConverterUtil.ValidateNull(result.Phases, YamlConstants.Phases, YamlConstants.Queue, scalar);
+                        if (result.Target != null)
+                        {
+                            ConverterUtil.ValidateNull(result.Target as DeploymentTarget, YamlConstants.Deployment, YamlConstants.Queue, scalar);
+                            ConverterUtil.ValidateNull(result.Target as ServerTarget, YamlConstants.Server, YamlConstants.Queue, scalar);
+                            throw new NotSupportedException("Unexpected previous target type"); // Should not reach here
+                        }
+
+                        result.Target = ConverterUtil.ReadQueueTarget(parser);
+                        break;
+
+                    case YamlConstants.Server:
+                        ConverterUtil.ValidateNull(result.Template, YamlConstants.Template, YamlConstants.Server, scalar);
+                        ConverterUtil.ValidateNull(result.Phases, YamlConstants.Phases, YamlConstants.Server, scalar);
+                        if (result.Target != null)
+                        {
+                            ConverterUtil.ValidateNull(result.Target as DeploymentTarget, YamlConstants.Deployment, YamlConstants.Server, scalar);
+                            ConverterUtil.ValidateNull(result.Target as QueueTarget, YamlConstants.Queue, YamlConstants.Server, scalar);
+                            throw new NotSupportedException("Unexpected previous target type"); // Should not reach here
+                        }
+
+                        result.Target = ConverterUtil.ReadServerTarget(parser);
                         break;
 
                     case YamlConstants.Variables:

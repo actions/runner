@@ -13,13 +13,11 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Pipeline
 
         internal String EnableAccessToken { get; set; }
 
-        internal PhaseExecution Execution { get; set; }
-
         internal String Name { get; set; }
 
         internal IList<IStep> Steps { get; set; }
 
-        internal PhaseTarget Target { get; set; }
+        internal IPhaseTarget Target { get; set; }
 
         internal IList<IVariable> Variables { get; set; }
     }

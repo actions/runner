@@ -177,7 +177,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Pipeline
         {
             emitter.Emit(new MappingStart());
             var dictionary = value as IDictionary<String, Object>;
-            foreach (KeyValuePair<String, Object> pair in dictionary)
+            foreach (KeyValuePair<String, Object> pair in dictionary.OrderBy(x => x.Key, StringComparer.OrdinalIgnoreCase))
             {
                 emitter.Emit(new Scalar(pair.Key));
                 if (pair.Value is IDictionary<String, Object>)
@@ -205,7 +205,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Pipeline
         {
             emitter.Emit(new MappingStart());
             var dictionary = value as IDictionary<String, String>;
-            foreach (KeyValuePair<String, String> pair in dictionary)
+            foreach (KeyValuePair<String, String> pair in dictionary.OrderBy(x => x.Key, StringComparer.OrdinalIgnoreCase))
             {
                 emitter.Emit(new Scalar(pair.Key));
                 emitter.Emit(new Scalar(pair.Value));

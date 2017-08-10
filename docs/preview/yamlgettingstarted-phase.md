@@ -10,17 +10,74 @@ When `enableAccessToken` is set to true, script tasks (script, powershell, bash)
 
 ## Phase target
 
-The phase `target` defines where the phase runs (an agent queue, a deployment group, or server side).
+When a phase is started, it is dispatched as one or more jobs to it's target (agent `queue`, `deployment` group, or `server`). Each target section has settings that are either specific to the target type, or specific to the individual jobs that are dispatched.
 
-### Queue
+When not defined, the target defaults to `queue`.
 
-The default phase target is a queue (the queue associated with the web definition).
+### Queue target
 
-Agent routing demands can also be specified on the target. For example:
+When only the queue name is specified, the simplified syntax can be used:
 
 ```yaml
-target:
-  queue: myQueue
+queue: string
+```
+
+Otherwise the full syntax is:
+
+```yaml
+queue:
+  name: string
+  continueOnError: true | false
+  parallel: number
+  timeoutInMinutes: number
+  demands: string | [ string ]
+  matrix: { string: { string: string } }
+```
+
+### Deployment target
+
+Likewise the simplified deployment syntax is:
+
+```yaml
+deployment: string # group name
+```
+
+Full syntax:
+
+```yaml
+deployment:
+  group: string
+  continueOnError: true | false
+  healthOption: string
+  percentage: string
+  timeoutInMinutes: number
+```
+
+### Server target
+
+Simplified server syntax:
+
+```yaml
+server: true
+```
+
+Full syntax:
+
+```yaml
+server:
+  continueOnError: true | false
+  parallel: number
+  timeoutInMinutes: number
+  matrix: { string: { string: string } }
+```
+
+### Demands (applies to: queue)
+
+Agent routing demands can be specified, which match against agent capabilities. For example:
+
+```yaml
+queue:
+  name: myQueue
   demands: agent.os -eq Windows_NT
 steps:
 - script: echo hello world
@@ -29,8 +86,8 @@ steps:
 Or multiple demands:
 
 ```yaml
-target:
-  queue: myQueue
+queue:
+  name: myQueue
   demands:
   - agent.os -eq Darwin
   - anotherCapability -eq somethingElse
@@ -38,55 +95,19 @@ steps:
 - script: echo hello world
 ```
 
-### Deployment group
-
-```yaml
-target:
-  deploymentGroup: myDeploymentGroup
-  healthOption: percentage
-  percentage: 50
-  tags: WebRole
-steps:
-- script: echo hello world
-```
-
-Or multiple tags:
-
-```yaml
-target:
-  deploymentGroup: myDeploymentGroup
-  tags:
-  - WebRole
-  - WorkerRole
-steps:
-- script: echo hello world
-```
-
-### Server
-
-```yaml
-target: server
-steps:
-- task: MyServerSideTask@1
-```
-
-## Phase execution
-
-When a phase is started, it is dispatched as one or more jobs to it's target (agent queue, deployment group, or server). The phase `execution` section exposes settings specific to the individual jobs.
-
-### Job timeout
+### Job timeout (applies to: queue, deployment, server)
 
 The `timeoutInMinutes` allows a limit to be set for the job execution time. When not specified, the default is 60 minutes.
 
-### Matrix
+#### Matrix (applies to: queue, server)
 
-The `matrix` setting enables a phase to be queued multiple times, with different variable sets.
+The `matrix` setting enables a phase to be dispatched multiple times, with different variable sets.
 
 For example, a common scenario is to run the same build steps for varying permutations of architecture (x86/x64) and configuration (debug/release).
 
 ```yaml
-execution:
-  maxConcurrency: 2 # Don't consume more than 2 agents at a time. The default is 1.
+queue:
+  parallel: 2 # Consume up to two agents at a time. The default is 1.
   matrix:
     x64_debug:
       buildArch: x64
@@ -99,17 +120,17 @@ execution:
       buildConfig: release
 ```
 
-### Slicing
+### Slicing (applies to: queue, server)
 
-TODO
+When `parallel` is specified and `matrix` is not defined, the setting indicates how many jobs to dispatch. Variables `System.SliceNumber` and `System.SliceCount` are added to each job. The variables can then be used within your scripts to divide work among the jobs.
 
-### Continue on error
+### Continue on error (applies to: queue, deployment, server)
 
-When `continueOnError` is set to true and the job fails, the result will be \"Succeeded with issues\" instead of "Failed\".
+When `continueOnError` is `true` and the job fails, the result will be \"Succeeded with issues\" instead of "Failed\".
 
 ## Variables
 
-Variables can be specified on the phase. The variables can be passed to task inputs using the macro syntax `$(variableName)`, or can be accessed within a script using the environment variable.
+Variables can be specified on the phase. The variables can be passed to task inputs using the macro syntax `$(variableName)`, or accessed within a script using the environment variable.
 
 ```yaml
 variables:
