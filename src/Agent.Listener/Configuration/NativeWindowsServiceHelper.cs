@@ -445,7 +445,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         {
             Trace.Entering();
 
-            string agentServiceExecutable = Path.Combine(IOUtil.GetBinPath(), WindowsServiceControlManager.WindowsServiceControllerName);
+            string agentServiceExecutable = "\"" + Path.Combine(IOUtil.GetBinPath(), WindowsServiceControlManager.WindowsServiceControllerName) + "\"";
             IntPtr scmHndl = IntPtr.Zero;
             IntPtr svcHndl = IntPtr.Zero;
             IntPtr tmpBuf = IntPtr.Zero;
