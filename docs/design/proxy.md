@@ -10,6 +10,26 @@
 
 Documentation for configuring agent to follow web proxy can be found [here](https://www.visualstudio.com/en-us/docs/build/actions/agents/v2-windows#how-do-i-configure-the-agent-to-work-through-a-web-proxy-and-connect-to-team-services).  
 In short:  
+Agent version 2.121.0 or above  
+  - Pass `--proxyurl`, `--proxyusername` and `--proxypassword` during agent configuration.   
+    Ex:
+    ```
+    ./config.cmd --proxyurl http://127.0.0.1:8888 --proxyusername "1" --proxypassword "1"
+    ```
+    We store your proxy credential securely on each platform.  
+    Ex:
+    ```
+      Windows: Windows Credential Store
+      OSX: OSX Keychain
+      Linux: Encrypted with symmetric key based on machine id
+    ```
+  - Create a `.proxybypass` file under agent root to specify proxy bypass Url's Regex (ECMAScript syntax).  
+    Ex:
+    ```
+    github\.com
+    bitbucket\.com
+    ```
+Before 2.121.0
   - Create a `.proxy` file under agent root to specify proxy url.  
     Ex:
     ```
