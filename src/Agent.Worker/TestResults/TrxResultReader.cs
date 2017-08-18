@@ -104,7 +104,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
             //Parse the Deployment node for the runDeploymentRoot - this is the attachment root. 
             XmlNode deploymentNode = doc.SelectSingleNode("/TestRun/TestSettings/Deployment");
             var _attachmentRoot = string.Empty;
-            if (node != null && deploymentNode.Attributes["runDeploymentRoot"] != null )
+            if (deploymentNode != null && deploymentNode.Attributes["runDeploymentRoot"] != null )
             {
                 _attachmentRoot = deploymentNode.Attributes["runDeploymentRoot"].Value;
             }
