@@ -7,7 +7,7 @@ Run a PowerShell script on Windows, macOS, and Linux. `powershell` must be in yo
 ```yaml
 steps:
 - powershell: Write-Host "Hello from PowerShell v$($PSVersionTable.PSVersion.Major)"
-  name: Simple script
+  displayName: Simple script
 ```
 
 The script contents are embedded in a temporary .ps1 file and cleaned up after your script runs.
@@ -21,7 +21,7 @@ steps:
 - powershell: |
     Write-Host "Hello from a..."
     Write-Host "...multi-line PowerShell script"
-  name: Multi-line script
+  displayName: Multi-line script
 ```
 
 ## Error action preference
@@ -39,7 +39,7 @@ steps:
 - powershell: |
     Write-Error 'Uh oh, an error occurred'
     Write-Host 'Trying again...'
-  name: Error action preference
+  displayName: Error action preference
   errorActionPreference: continue
 ```
 
@@ -52,7 +52,7 @@ determine failure.
 ```yaml
 steps:
 - powershell: Write-Error 'Uh oh, an error occurred'
-  name: Fail on stderr
+  displayName: Fail on stderr
   errorActionPreference: Continue
   failOnStderr: true
 ```
@@ -66,7 +66,7 @@ to be propagated as the exit code of powershell. Otherwise the line is not appen
 ```yaml
 steps:
 - powershell: git nosuchcommand
-  name: Ignore last exit code
+  displayName: Ignore last exit code
   ignoreLASTEXITCODE: true
 ```
 
@@ -79,7 +79,7 @@ steps:
 - powershell: |
     Write-Host "agent.homeDirectory is:"
     Get-Location
-  name: Working directory
+  displayName: Working directory
   workingDirectory: $(agent.homeDirectory)
 ```
 
@@ -92,12 +92,12 @@ secret variables are not propagated to the environment for ad hoc scripts.
 steps:
 # First, create a secret variable. Normally these would be persisted securely by the definition.
 - powershell: "Write-Host '##vso[task.setvariable variable=MySecret;isSecret=true]My secret value'"
-  name: Create secret variable
+  displayName: Create secret variable
 
 # Next, map the secret into an environment variable and print it. Note, secrets are masked in the log
 # and appear as '********'.
 - powershell: Write-Host "The password is $env:MyPassword"
-  name: Print secret variable
+  displayName: Print secret variable
   env:
     MyPassword: $(MySecret)
 ```

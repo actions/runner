@@ -12,10 +12,10 @@ Example phases that build sequentially.
 
 ```yaml
 phases:
-- name: Debug
+- phase: Debug
   steps:
   - script: echo hello from the Debug build
-- name: Release
+- phase: Release
   dependsOn: Debug
   steps:
   - script: echo hello from the Release build
@@ -27,17 +27,17 @@ Example phases that build in parallel (no dependencies).
 
 ```yaml
 phases:
-- name: Windows
+- phase: Windows
   target:
     demands: agent.os -eq Windows_NT
   steps:
   - script: echo hello from Windows
-- name: macOS
+- phase: macOS
   target:
     demands: agent.os -eq Darwin
   steps:
   - script: echo hello from macOS
-- name: Linux
+- phase: Linux
   target:
     demands: agent.os -eq Linux
   steps:
@@ -50,14 +50,14 @@ Example fan out
 
 ```yaml
 phases:
-- name: InitialPhase
+- phase: InitialPhase
   steps:
   - script: echo hello from initial phase
-- name: SubsequentA
+- phase: SubsequentA
   dependsOn: InitialPhase
   steps:
   - script: echo hello from subsequent A
-- name: SubsequentB
+- phase: SubsequentB
   dependsOn: InitialPhase
   steps:
   - script: echo hello from subsequent B
@@ -67,13 +67,13 @@ phases:
 
 ```yaml
 phases:
-- name: InitialA
+- phase: InitialA
   steps:
   - script: echo hello from initial A
-- name: InitialB
+- phase: InitialB
   steps:
   - script: echo hello from initial B
-- name: Subsequent
+- phase: Subsequent
   dependsOn:
   - InitialA
   - InitialB

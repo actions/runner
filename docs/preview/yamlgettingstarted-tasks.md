@@ -6,9 +6,9 @@ The syntax to reference a task is:
 steps:
 - task: string@number # For example: Npm@1. The version must indicate the major-version component only.
 
-  name: string # Display name
+  displayName: string
 
-  refName: string # TODO
+  name: string
 
   inputs: { string: string } # Map of task inputs. Refer to the task.json. TODO export to YAML.
 
@@ -28,11 +28,11 @@ A simple build definition may look like this:
 ```yaml
 steps:
 - task: Npm@1
-  name: npm install
+  displayName: npm install
   inputs:
     command: install
 - task: Npm@1
-  name: npm test
+  displayName: npm test
   inputs:
     command: test
 ```

@@ -46,18 +46,16 @@ All YAML definitions start with an entry \"process\" file.
 #### process
 
 ```yaml
-# general properties
-name: string
-
 # process properties
 resources: [ repoResource ]
 phases: [ phase ]
 
 # phase properties - not allowed when "phases" is defined
+displayName: string
+name: string
 dependsOn: string | [ string ]
 condition: string
 continueOnError: true | false
-enableAccessToken: true | false
 queue: string | queueTarget
 deployment: string | deploymentTarget
 server: true | serverTarget
@@ -116,11 +114,11 @@ steps: [ script | powershell | bash | task | stepsPhase | stepsTemplateReference
 #### phase
 
 ```yaml
+displayName: string
 name: string
 dependsOn: string | [ string ]
 condition: string
 continueOnError: true | false
-enableAccessToken: true | false
 queue: string | queueTarget
 deployment: string | deploymentTarget
 server: true | serverTarget
@@ -135,6 +133,7 @@ name: string
 continueOnError: true | false
 parallel: number
 timeoutInMinutes: number
+cancelTimeoutInMinutes: number
 demands: string | [ string ]
 matrix: { string: { string: string } }
 ```
@@ -147,6 +146,7 @@ continueOnError: true | false
 healthOption: string
 percentage: string
 timeoutInMinutes: number
+cancelTimeoutInMinutes: number
 tags: string | [ string ]
 ```
 
@@ -156,6 +156,7 @@ tags: string | [ string ]
 continueOnError: true | false
 parallel: number
 timeoutInMinutes: number
+cancelTimeoutInMinutes: number
 matrix: { string: { string: string } }
 ```
 
@@ -226,7 +227,8 @@ variables: [ variable ]
 
 ```yaml
 script: string
-name: string # display name
+displayName: string
+name: string
 workingDirectory: string
 failOnStderr: true | false
 condition: string
@@ -240,7 +242,8 @@ env: { string: string }
 
 ```yaml
 powershell: string
-name: string # display name
+displayName: string
+name: string
 errorActionPreference: stop | continue | silentlyContinue
 failOnStderr: true | false
 ignoreLASTEXITCODE: true | false
@@ -256,7 +259,8 @@ env: { string: string }
 
 ```yaml
 bash: string
-name: string # display name
+displayName: string
+name: string
 workingDirectory: string
 failOnStderr: true | false
 condition: string
@@ -270,7 +274,8 @@ env: { string: string }
 
 ```yaml
 task: string # task reference, e.g. "VSBuild@1"
-name: string  # display name
+displayName: string
+name: string
 condition: string
 continueOnError: true | false
 enabled: true | false

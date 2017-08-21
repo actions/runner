@@ -35,15 +35,15 @@ resources:
   clean: true
   lfs: true
 phases:
-- name: A
+- phase: A
   steps:
   # implicit checkout step; inherits checkout options from the resources section
   - script: echo hello world from phase A
-- name: B
+- phase: B
   steps:
   - checkout: self # explicit checkout step, inherits options from the resources section
   - script: echo hello world from phase B
-- name: C
+- phase: C
   steps:
   - checkout: self # explicit checkout step
     clean: false # overrides clean, inherits other options from the resources section

@@ -4,9 +4,11 @@
 
 When `continueOnError` is set to true and the phase fails, the result will be \"Succeeded with issues\" instead of "Failed\".
 
+<!--
 ## Enable access token
 
 When `enableAccessToken` is set to true, script tasks (script, powershell, bash) will have access to the job OAuth token. The token can be passed to inputs using the macro `$(System.AccessToken)`, or accessed within a script via the environment variable `SYSTEM_ACCESSTOKEN`.
+-->
 
 ## Phase target
 
@@ -30,6 +32,7 @@ queue:
   continueOnError: true | false
   parallel: number
   timeoutInMinutes: number
+  cancelTimeoutInMinutes: number
   demands: string | [ string ]
   matrix: { string: { string: string } }
 ```
@@ -51,6 +54,7 @@ deployment:
   healthOption: string
   percentage: string
   timeoutInMinutes: number
+  cancelTimeoutInMinutes: number
 ```
 
 ### Server target
@@ -68,6 +72,7 @@ server:
   continueOnError: true | false
   parallel: number
   timeoutInMinutes: number
+  cancelTimeoutInMinutes: number
   matrix: { string: { string: string } }
 ```
 
@@ -98,6 +103,8 @@ steps:
 ### Job timeout (applies to: queue, deployment, server)
 
 The `timeoutInMinutes` allows a limit to be set for the job execution time. When not specified, the default is 60 minutes.
+
+The `cancelTimeoutInMinutes` allows a limit to be set for the job cancel time. When not specified, the default is 5 minutes.
 
 #### Matrix (applies to: queue, server)
 
