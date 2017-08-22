@@ -114,7 +114,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             }
             
             var autoLogonSettings = _store.GetAutoLogonSettings();
-            _autoLogonRegManager.RevertRegistrySettings(autoLogonSettings.UserDomainName, autoLogonSettings.UserName);
+            _autoLogonRegManager.ResetRegistrySettings(autoLogonSettings.UserDomainName, autoLogonSettings.UserName);
             _windowsServiceHelper.ResetAutoLogonPassword();
 
             Trace.Info("Deleting the autologon settings now.");
