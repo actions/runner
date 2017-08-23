@@ -326,9 +326,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         private async Task<TaskResult> CompleteJobAsync(IJobServer jobServer, IExecutionContext jobContext, AgentJobRequestMessage message, TaskResult? taskResult = null)
         {
-            // Clean TEMP.
-            _tempDirectoryManager?.CleanupTempDirectory(jobContext);
-
             jobContext.Section(StringUtil.Loc("StepFinishing", message.JobName));
             TaskResult result = jobContext.Complete(taskResult);
 
@@ -343,6 +340,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 Trace.Error(ex);
                 result = TaskResultUtil.MergeTaskResults(result, TaskResult.Failed);
             }
+
+            // Clean TEMP after finish process jobserverqueue, since there might be a pending fileupload still use the TEMP dir.
+            _tempDirectoryManager?.CleanupTempDirectory();
 
             if (!jobContext.Features.HasFlag(PlanFeatures.JobCompletedPlanEvent))
             {
