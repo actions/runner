@@ -272,13 +272,26 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 agent.Authorization.ClientId != Guid.Empty &&
                 agent.Authorization.AuthorizationUrl != null)
             {
+                // For TFS, we need make sure the Schema/Host/Port component of the authorization url also match configuration url.
+                // We can't do this for VSTS, since its SPS/TFS urls are different.
+                UriBuilder configServerUrl = new UriBuilder(agentSettings.ServerUrl);
+                UriBuilder authorizationUrl = new UriBuilder(agent.Authorization.AuthorizationUrl);
+                if (!UrlUtil.IsHosted(configServerUrl.Uri.AbsoluteUri) &&
+                    Uri.Compare(configServerUrl.Uri, authorizationUrl.Uri, UriComponents.SchemeAndServer, UriFormat.Unescaped, StringComparison.OrdinalIgnoreCase) != 0)
+                {
+                    authorizationUrl.Scheme = configServerUrl.Scheme;
+                    authorizationUrl.Host = configServerUrl.Host;
+                    authorizationUrl.Port = configServerUrl.Port;
+                    Trace.Info($"Replace authorization url's scheme://host:port component with agent configure url's scheme://host:port: '{authorizationUrl.Uri.AbsoluteUri}'.");
+                }
+
                 var credentialData = new CredentialData
                 {
                     Scheme = Constants.Configuration.OAuth,
                     Data =
                     {
                         { "clientId", agent.Authorization.ClientId.ToString("D") },
-                        { "authorizationUrl", agent.Authorization.AuthorizationUrl.AbsoluteUri },
+                        { "authorizationUrl", authorizationUrl.Uri.AbsoluteUri },
                     },
                 };
 
