@@ -50,6 +50,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             if ((string.IsNullOrEmpty(domainName) || domainName.Equals(".", StringComparison.CurrentCultureIgnoreCase)) && !logonAccount.Contains('@'))
             {
                 logonAccount = String.Format("{0}\\{1}", Environment.MachineName, userName);
+                domainName = Environment.MachineName;
             }
 
             Trace.Info("LogonAccount after transforming: {0}, user: {1}, domain: {2}", logonAccount, userName, domainName);
