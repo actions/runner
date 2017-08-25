@@ -300,6 +300,7 @@
   "GCUnusedTrackingFile": "Mark tracking file '{0}' for GC, since it hasn't been used for {1} days.",
   "GenerateAndRunUpdateScript": "Generate and execute update script.",
   "GetSources": "Get Sources",
+  "GrantingFilePermissions": "Granting file permissions to '{0}'.",
   "GroupDoesNotExists": "Group: {0} does not Exist",
   "InitializeContainer": "Initialize Container",
   "InitializeJob": "Initialize Job",
