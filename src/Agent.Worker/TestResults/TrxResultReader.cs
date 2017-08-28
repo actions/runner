@@ -101,7 +101,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                 releaseEnvironmentUri: runContext.ReleaseEnvironmentUri
                 );
 
-            //Parse the Deployment node for the runDeploymentRoot - this is the attachment root. 
+            //Parse the Deployment node for the runDeploymentRoot - this is the attachment root. Required for .NET Core
             XmlNode deploymentNode = doc.SelectSingleNode("/TestRun/TestSettings/Deployment");
             var _attachmentRoot = string.Empty;
             if (deploymentNode != null && deploymentNode.Attributes["runDeploymentRoot"] != null )
@@ -110,7 +110,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
             }
             else
             {
-                _attachmentRoot = Path.GetFileNameWithoutExtension(filePath);
+                _attachmentRoot = Path.GetFileNameWithoutExtension(filePath); // This for platform v1
             }
             _attachmentLocation = Path.Combine(Path.GetDirectoryName(filePath), _attachmentRoot, "In");
             _executionContext.Debug(string.Format(CultureInfo.InvariantCulture, "Attachment location: {0}", _attachmentLocation));
