@@ -535,6 +535,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "PublishTestResults")]
+        public void VerifyCoverageSourceFilesAndPdbsAreAddedAsRunLevelAttachmentsWithDeployment()
+        {
+            SetupMocks();
+            var runData = GetTestRunDataWithAttachments(13);
+            Assert.Equal(3, runData.Attachments.Length);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void VerifyDataCollectorFilesAndPdbsAreAddedAsRunLevelAttachments()
         {
             SetupMocks();
@@ -678,6 +688,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
                       "</DataCollectors>" +
                     "</AgentRule>" +
                   "</Execution>" +
+                   "{3}" +
                 "</TestSettings>" +
 
                 "{0}" +
@@ -718,19 +729,25 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
                     "<ResultFile path=\"vstest_console.static.data.coverage\" /></ResultFiles>" +
                     "<ResultFile path=\"DIGANR-DEV4\\mstest.static.data.coverage\" />";
 
+            var part3 = "<Deployment runDeploymentRoot=\"results\"></Deployment>";
+                      
+
             switch (val)
             {
                 case 0:
-                    trxContents = string.Format(trxContents, part0, string.Empty, string.Empty);
+                    trxContents = string.Format(trxContents, part0, string.Empty, string.Empty, string.Empty);
                     break;
                 case 1:
-                    trxContents = string.Format(trxContents, string.Empty, part1, string.Empty);
+                    trxContents = string.Format(trxContents, string.Empty, part1, string.Empty, string.Empty);
                     break;
                 case 2:
-                    trxContents = string.Format(trxContents, string.Empty, string.Empty, part2);
+                    trxContents = string.Format(trxContents, string.Empty, string.Empty, part2, string.Empty);
                     break;
                 case 3:
-                    trxContents = string.Format(trxContents, string.Empty, string.Empty, string.Empty);
+                    trxContents = string.Format(trxContents, string.Empty, string.Empty, string.Empty, string.Empty);
+                    break;
+                case 13:
+                    trxContents = string.Format(trxContents, string.Empty, part1, string.Empty, part3);
                     break;
                 default:
                     trxContents = string.Format(trxContents, part0, part1, part2);
