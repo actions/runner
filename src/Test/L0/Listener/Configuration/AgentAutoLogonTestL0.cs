@@ -128,13 +128,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
         private void RegistryVerificationForUnConfigure(string securityId)
         {
             //screen saver (user specific)
-            ValidateRegistryValue(RegistryHive.Users, $"{securityId}\\{RegistryConstants.UserSettings.SubKeys.ScreenSaver}", RegistryConstants.UserSettings.ValueNames.ScreenSaver, "0");
-
-            //HKLM setting
-            ValidateRegistryValue(RegistryHive.LocalMachine, RegistryConstants.MachineSettings.SubKeys.AutoLogon, RegistryConstants.MachineSettings.ValueNames.AutoLogon, "0");
-
-            //autologon password (delete key)
-            ValidateRegistryValue(RegistryHive.LocalMachine, RegistryConstants.MachineSettings.SubKeys.AutoLogon, RegistryConstants.MachineSettings.ValueNames.AutoLogonPassword, null);
+            ValidateRegistryValue(RegistryHive.Users, $"{securityId}\\{RegistryConstants.UserSettings.SubKeys.ScreenSaver}", RegistryConstants.UserSettings.ValueNames.ScreenSaver, "1");
 
             //when done with reverting back the original settings we need to make sure we dont leave behind any extra setting            
             //user specific
@@ -145,13 +139,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
         }
 
         private void SetupRegistrySettings(string securityId)
-        {
-            //HKLM setting
-            _mockRegManager.SetValue(RegistryHive.LocalMachine, RegistryConstants.MachineSettings.SubKeys.AutoLogon, RegistryConstants.MachineSettings.ValueNames.AutoLogon, "0");
-
-            //setting that we delete
-            _mockRegManager.SetValue(RegistryHive.LocalMachine, RegistryConstants.MachineSettings.SubKeys.AutoLogon, RegistryConstants.MachineSettings.ValueNames.AutoLogonPassword, "xyz");
-            
+        {   
             //screen saver (user specific)
             _mockRegManager.SetValue(RegistryHive.Users, $"{securityId}\\{RegistryConstants.UserSettings.SubKeys.ScreenSaver}", RegistryConstants.UserSettings.ValueNames.ScreenSaver, "1");
         }

@@ -108,7 +108,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             ResetAutoLogon(domainName, userName);
 
             //user specific
-            RemoveStartupCommand(RegistryHive.Users, securityId);
+            ResetUserSpecificSettings(securityId);
         }
 
         public void DumpAutoLogonRegistrySettings()
@@ -305,7 +305,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             }
 
             string screenSaverSubKeyName = $"{securityId}\\{RegistryConstants.UserSettings.SubKeys.ScreenSaver}";
-            _registryManager.SetValue(RegistryHive.Users, screenSaverSubKeyName, RegistryConstants.UserSettings.ValueNames.ScreenSaver, "0");
+            string screenSaverValueName = RegistryConstants.UserSettings.ValueNames.ScreenSaver;
+
+            //take backup if it exists
+            string origValue = _registryManager.GetValue(RegistryHive.Users, screenSaverSubKeyName, screenSaverValueName);
+            if (!string.IsNullOrEmpty(origValue))
+            {
+                var nameForTheBackupValue = GetBackupValueName(screenSaverValueName);
+                _registryManager.SetValue(RegistryHive.Users, screenSaverSubKeyName, nameForTheBackupValue, origValue);
+            }
+            
+            _registryManager.SetValue(RegistryHive.Users, screenSaverSubKeyName, screenSaverValueName, "0");
         }
 
         private string GetStartupCommand()
@@ -328,7 +338,27 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             return startupCommand;
         }
 
-        private void RemoveStartupCommand(RegistryHive targetHive, string securityId)
+        private void ResetUserSpecificSettings(string securityId)
+        {
+            var targetHive = RegistryHive.Users;
+
+            DeleteStartupCommand(targetHive, securityId);
+            
+            var screenSaverSubKey = $"{securityId}\\{RegistryConstants.UserSettings.SubKeys.ScreenSaver}";
+            var currentValue = _registryManager.GetValue(targetHive, screenSaverSubKey, RegistryConstants.UserSettings.ValueNames.ScreenSaver);
+
+            if(string.Equals(currentValue, "0", StringComparison.CurrentCultureIgnoreCase))
+            {
+                //we only take the backup of screensaver setting at present, reverting it back if it exists
+                RevertOriginalValue(targetHive, screenSaverSubKey, RegistryConstants.UserSettings.ValueNames.ScreenSaver);
+            }
+            else
+            {
+                Trace.Info($"Screensaver setting value was not same as expected after autologon configuration. Actual - {currentValue}, Expected - 0. Skipping the revert of it.");
+            }
+        }
+
+        private void DeleteStartupCommand(RegistryHive targetHive, string securityId)
         {
             var startupProcessSubKeyName = $"{securityId}\\{RegistryConstants.UserSettings.SubKeys.StartupProcess}";
             var expectedStartupCmd = GetStartupCommand();
@@ -344,10 +374,41 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 Trace.Info($"Actual - {actualStartupCmd}, Expected - {expectedStartupCmd}.");
             }
         }
+
+        private void RevertOriginalValue(RegistryHive targetHive, string subKeyName, string name)
+        {
+            var nameofTheBackupValue = GetBackupValueName(name);
+            var originalValue = _registryManager.GetValue(targetHive, subKeyName, nameofTheBackupValue);
+            
+            Trace.Info($"Reverting the registry setting. Hive - {targetHive}, subKeyName - {subKeyName}, name - {name}");
+            if (string.IsNullOrEmpty(originalValue))
+            {
+                Trace.Info($"No backup value was found. Deleting the value.");
+                //there was no backup value present, just delete the current one
+                _registryManager.DeleteValue(targetHive, subKeyName, name);
+            }
+            else
+            {
+                Trace.Info($"Backup value was found. Revert it to the original value.");
+                //revert to the original value
+                _registryManager.SetValue(targetHive, subKeyName, name, originalValue);
+            }
+
+            Trace.Info($"Deleting the backup key now.");
+            //delete the value that we created for backup purpose
+            _registryManager.DeleteValue(targetHive, subKeyName, nameofTheBackupValue);
+        }
+
+        private string GetBackupValueName(string valueName)
+        {
+            return string.Concat(RegistryConstants.BackupKeyPrefix, valueName);
+        }
     }
 
     public class RegistryConstants
     {
+        public const string BackupKeyPrefix = "VSTSAgentBackup_";
+
         public class MachineSettings
         {
             public class SubKeys
