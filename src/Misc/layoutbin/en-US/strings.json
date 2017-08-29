@@ -343,6 +343,7 @@
   ],
   "MinRequiredDockerClientVersion": "Min required docker client version is '{0}', your docker ('{1}') client version is '{2}'",
   "MinRequiredDockerServerVersion": "Min required docker server version is '{0}', your docker ('{1}') server version is '{2}'",
+  "MinRequiredGitLfsVersion": "Min required git-lfs version is '{0}', your git-lfs ('{1}') version is '{2}'",
   "MinRequiredGitVersion": "Min required git version is '{0}', your git ('{1}') version is '{2}'",
   "MissingAgent": "The agent no longer exists on the server. Please reconfigure the agent.",
   "MissingAttachmentFile": "Cannot upload task attachment file, attachment file location is not specified or attachment file not exist on disk",
