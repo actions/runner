@@ -19,7 +19,7 @@
     <PackageReference Include="System.Buffers" Version="4.3.0" />
     <PackageReference Include="System.Reflection.TypeExtensions" Version="4.3.0" />
     <PackageReference Include="System.Threading.ThreadPool" Version="4.3.0" />
-    <PackageReference Include="vss-api-netcore" Version="0.5.45-private" />
+    <PackageReference Include="vss-api-netcore" Version="0.5.46-private" />
     <PackageReference Include="Moq" Version="4.6.36-alpha" />
   </ItemGroup>
 

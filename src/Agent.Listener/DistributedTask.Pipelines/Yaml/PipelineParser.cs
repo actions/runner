@@ -232,12 +232,12 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Pipeline
 
                 // Prepare the mustache options.
                 mustacheCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                var mustacheOptions = new MustacheEvaluationOptions
-                {
-                    CancellationToken = mustacheCancellationTokenSource.Token,
-                    EncodeMethod = MustacheEncodeMethods.JsonEncode,
-                    MaxResultLength = m_options.MustacheEvaluationMaxResultLength,
-                };
+                // var mustacheOptions = new MustacheEvaluationOptions
+                // {
+                //     CancellationToken = mustacheCancellationTokenSource.Token,
+                //     EncodeMethod = MustacheEncodeMethods.JsonEncode,
+                //     MaxResultLength = m_options.MustacheEvaluationMaxResultLength,
+                // };
 
                 // Parse the mustache template.
                 cancellationToken.ThrowIfCancellationRequested();
@@ -257,8 +257,9 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Pipeline
                         replacementObject: frontMatter,
                         additionalEvaluationData: null,
                         parentContext: null,
-                        partialExpressions: null,
-                        options: mustacheOptions);
+                        partialExpressions: null
+                        //options: mustacheOptions
+                        );
                 }
                 catch (System.OperationCanceledException ex) when (mustacheCancellationTokenSource.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
                 {

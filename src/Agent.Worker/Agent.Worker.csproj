@@ -12,7 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="vss-api-netcore" Version="0.5.45-private" />
+    <PackageReference Include="vss-api-netcore" Version="0.5.46-private" />
     <PackageReference Include="System.Collections.NonGeneric" Version="4.3.0" />
     <PackageReference Include="System.Diagnostics.TraceSource" Version="4.3.0" />
     <PackageReference Include="System.Linq" Version="4.3.0" />

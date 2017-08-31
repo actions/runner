@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="vss-api-netcore" Version="0.5.45-private" />
+    <PackageReference Include="vss-api-netcore" Version="0.5.46-private" />
     <PackageReference Include="Microsoft.Win32.Registry" Version="4.3.0" />
     <PackageReference Include="Newtonsoft.Json" Version="9.0.1" />
     <PackageReference Include="System.Diagnostics.TraceSource" Version="4.3.0" />
