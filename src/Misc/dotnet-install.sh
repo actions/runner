@@ -194,6 +194,7 @@ check_pre_reqs() {
         [ -z "$($LDCONFIG_COMMAND -p | grep libunwind)" ] && say_err "Unable to locate libunwind. Install libunwind to continue" && failing=true
         [ -z "$($LDCONFIG_COMMAND -p | grep libssl)" ] && say_err "Unable to locate libssl. Install libssl to continue" && failing=true
         [ -z "$($LDCONFIG_COMMAND -p | grep libicu)" ] && say_err "Unable to locate libicu. Install libicu to continue" && failing=true
+        [ -z "$($LDCONFIG_COMMAND -p | grep -F libcurl.so)" ] && say_err "Unable to locate libcurl. Install libcurl to continue" && failing=true
     fi
 
     if [ "$failing" = true ]; then
