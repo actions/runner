@@ -14,7 +14,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
     {
         void GetAutoLogonUserDetails(out string domainName, out string userName); 
         void UpdateRegistrySettings(CommandSettings command, string domainName, string userName, string logonPassword);
-        void RevertRegistrySettings(string domainName, string userName);
+        void ResetRegistrySettings(string domainName, string userName);
         //used to log all the autologon related registry settings when agent is running
         void DumpAutoLogonRegistrySettings();
     }
@@ -95,7 +95,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             }
         }
 
-        public void RevertRegistrySettings(string domainName, string userName)
+        public void ResetRegistrySettings(string domainName, string userName)
         {
             string securityId = _windowsServiceHelper.GetSecurityId(domainName, userName);
             if(string.IsNullOrEmpty(securityId))
@@ -105,10 +105,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             }
             
             //machine specific            
-            RevertAutoLogonSpecificSettings(domainName, userName);
+            ResetAutoLogon(domainName, userName);
 
             //user specific
-            RevertUserSpecificSettings(RegistryHive.Users, securityId);
+            ResetUserSpecificSettings(securityId);
         }
 
         public void DumpAutoLogonRegistrySettings()
@@ -187,7 +187,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             Trace.Info("");
         }
 
-        private void RevertAutoLogonSpecificSettings(string domainName, string userName)
+        private void ResetAutoLogon(string domainName, string userName)
         {
             var actualDomainNameForAutoLogon = _registryManager.GetValue(RegistryHive.LocalMachine, 
                                                                             RegistryConstants.MachineSettings.SubKeys.AutoLogon,
@@ -197,24 +197,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                                                                             RegistryConstants.MachineSettings.SubKeys.AutoLogon, 
                                                                             RegistryConstants.MachineSettings.ValueNames.AutoLogonUserName);
 
-            if(string.Equals(actualDomainNameForAutoLogon, domainName, StringComparison.CurrentCultureIgnoreCase)
-                ||string.Equals(actualUserNameForAutoLogon, userName, StringComparison.CurrentCultureIgnoreCase))
+            if (string.Equals(actualDomainNameForAutoLogon, domainName, StringComparison.CurrentCultureIgnoreCase)
+                && string.Equals(actualUserNameForAutoLogon, userName, StringComparison.CurrentCultureIgnoreCase))
             {
-                RevertOriginalValue(RegistryHive.LocalMachine, 
-                                        RegistryConstants.MachineSettings.SubKeys.AutoLogon, 
-                                        RegistryConstants.MachineSettings.ValueNames.AutoLogon);
-                RevertOriginalValue(RegistryHive.LocalMachine,
-                                        RegistryConstants.MachineSettings.SubKeys.AutoLogon,
-                                        RegistryConstants.MachineSettings.ValueNames.AutoLogonUserName);
-                RevertOriginalValue(RegistryHive.LocalMachine,
-                                        RegistryConstants.MachineSettings.SubKeys.AutoLogon,
-                                        RegistryConstants.MachineSettings.ValueNames.AutoLogonDomainName);
-                RevertOriginalValue(RegistryHive.LocalMachine,
-                                        RegistryConstants.MachineSettings.SubKeys.AutoLogon,
-                                        RegistryConstants.MachineSettings.ValueNames.AutoLogonPassword);
-                RevertOriginalValue(RegistryHive.LocalMachine, 
-                                        RegistryConstants.MachineSettings.SubKeys.AutoLogon,
-                                        RegistryConstants.MachineSettings.ValueNames.AutoLogonCount);
+                _registryManager.SetValue(RegistryHive.LocalMachine, RegistryConstants.MachineSettings.SubKeys.AutoLogon, RegistryConstants.MachineSettings.ValueNames.AutoLogonUserName, "");
+                _registryManager.SetValue(RegistryHive.LocalMachine, RegistryConstants.MachineSettings.SubKeys.AutoLogon, RegistryConstants.MachineSettings.ValueNames.AutoLogonDomainName, "");
+                _registryManager.SetValue(RegistryHive.LocalMachine, RegistryConstants.MachineSettings.SubKeys.AutoLogon, RegistryConstants.MachineSettings.ValueNames.AutoLogon, "0");
             }
             else
             {
@@ -231,17 +219,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             //before enabling autologon, inspect the policies that may affect it and log the warning
             InspectAutoLogonRelatedPolicies();
 
-            TakeBackupAndSetValue(hive, RegistryConstants.MachineSettings.SubKeys.AutoLogon, RegistryConstants.MachineSettings.ValueNames.AutoLogonUserName, userName);
-            TakeBackupAndSetValue(hive, RegistryConstants.MachineSettings.SubKeys.AutoLogon, RegistryConstants.MachineSettings.ValueNames.AutoLogonDomainName, domainName);
+            _registryManager.SetValue(hive, RegistryConstants.MachineSettings.SubKeys.AutoLogon, RegistryConstants.MachineSettings.ValueNames.AutoLogonUserName, userName);
+            _registryManager.SetValue(hive, RegistryConstants.MachineSettings.SubKeys.AutoLogon, RegistryConstants.MachineSettings.ValueNames.AutoLogonDomainName, domainName);
 
-            //this call is to take the backup of the password key if already exists as we delete the key in the next step
-            TakeBackupAndSetValue(hive, RegistryConstants.MachineSettings.SubKeys.AutoLogon, RegistryConstants.MachineSettings.ValueNames.AutoLogonPassword, "");
             _registryManager.DeleteValue(hive, RegistryConstants.MachineSettings.SubKeys.AutoLogon, RegistryConstants.MachineSettings.ValueNames.AutoLogonPassword);
-            
-            TakeBackupAndSetValue(hive, RegistryConstants.MachineSettings.SubKeys.AutoLogon, RegistryConstants.MachineSettings.ValueNames.AutoLogonCount, "");
             _registryManager.DeleteValue(hive, RegistryConstants.MachineSettings.SubKeys.AutoLogon, RegistryConstants.MachineSettings.ValueNames.AutoLogonCount);
 
-            TakeBackupAndSetValue(hive, RegistryConstants.MachineSettings.SubKeys.AutoLogon, RegistryConstants.MachineSettings.ValueNames.AutoLogon, "1");
+            _registryManager.SetValue(hive, RegistryConstants.MachineSettings.SubKeys.AutoLogon, RegistryConstants.MachineSettings.ValueNames.AutoLogon, "1");
         }
 
         private void InspectAutoLogonRelatedPolicies()
@@ -300,7 +284,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             
             //User specific
             string subKeyName = $"{securityId}\\{RegistryConstants.UserSettings.SubKeys.StartupProcess}";
-            TakeBackupAndSetValue(RegistryHive.Users, subKeyName, RegistryConstants.UserSettings.ValueNames.StartupProcess, GetStartupCommand());
+            _registryManager.SetValue(RegistryHive.Users, subKeyName, RegistryConstants.UserSettings.ValueNames.StartupProcess, GetStartupCommand());
         }
 
         private void UpdateScreenSaverSettings(CommandSettings command, string securityId)
@@ -321,7 +305,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             }
 
             string screenSaverSubKeyName = $"{securityId}\\{RegistryConstants.UserSettings.SubKeys.ScreenSaver}";
-            TakeBackupAndSetValue(RegistryHive.Users, screenSaverSubKeyName, RegistryConstants.UserSettings.ValueNames.ScreenSaver, "0");
+            string screenSaverValueName = RegistryConstants.UserSettings.ValueNames.ScreenSaver;
+
+            //take backup if it exists
+            string origValue = _registryManager.GetValue(RegistryHive.Users, screenSaverSubKeyName, screenSaverValueName);
+            if (!string.IsNullOrEmpty(origValue))
+            {
+                var nameForTheBackupValue = GetBackupValueName(screenSaverValueName);
+                _registryManager.SetValue(RegistryHive.Users, screenSaverSubKeyName, nameForTheBackupValue, origValue);
+            }
+            
+            _registryManager.SetValue(RegistryHive.Users, screenSaverSubKeyName, screenSaverValueName, "0");
         }
 
         private string GetStartupCommand()
@@ -344,42 +338,35 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             return startupCommand;
         }
 
-        private void TakeBackupAndSetValue(RegistryHive targetHive, string subKeyName, string name, string value)
+        private void ResetUserSpecificSettings(string securityId)
         {
-            //take backup if it exists
-            string origValue = _registryManager.GetValue(targetHive, subKeyName, name);
-            if (!string.IsNullOrEmpty(origValue))
-            {
-                var nameForTheBackupValue = GetBackupValueName(name);
-                _registryManager.SetValue(targetHive, subKeyName, nameForTheBackupValue, origValue);
-            }
+            var targetHive = RegistryHive.Users;
 
-            _registryManager.SetValue(targetHive, subKeyName, name, value);
-        }
-        
-        private void RevertUserSpecificSettings(RegistryHive targetHive, string securityId)
-        {
+            DeleteStartupCommand(targetHive, securityId);
+            
             var screenSaverSubKey = $"{securityId}\\{RegistryConstants.UserSettings.SubKeys.ScreenSaver}";
             var currentValue = _registryManager.GetValue(targetHive, screenSaverSubKey, RegistryConstants.UserSettings.ValueNames.ScreenSaver);
 
             if(string.Equals(currentValue, "0", StringComparison.CurrentCultureIgnoreCase))
             {
+                //we only take the backup of screensaver setting at present, reverting it back if it exists
                 RevertOriginalValue(targetHive, screenSaverSubKey, RegistryConstants.UserSettings.ValueNames.ScreenSaver);
             }
             else
             {
                 Trace.Info($"Screensaver setting value was not same as expected after autologon configuration. Actual - {currentValue}, Expected - 0. Skipping the revert of it.");
             }
-            
+        }
+
+        private void DeleteStartupCommand(RegistryHive targetHive, string securityId)
+        {
             var startupProcessSubKeyName = $"{securityId}\\{RegistryConstants.UserSettings.SubKeys.StartupProcess}";
             var expectedStartupCmd = GetStartupCommand();
             var actualStartupCmd = _registryManager.GetValue(targetHive, startupProcessSubKeyName, RegistryConstants.UserSettings.ValueNames.StartupProcess);
 
             if(string.Equals(actualStartupCmd, expectedStartupCmd, StringComparison.CurrentCultureIgnoreCase))
             {
-                RevertOriginalValue(targetHive, 
-                                        $"{securityId}\\{RegistryConstants.UserSettings.SubKeys.StartupProcess}",
-                                        RegistryConstants.UserSettings.ValueNames.StartupProcess);
+                _registryManager.DeleteValue(RegistryHive.Users, startupProcessSubKeyName, RegistryConstants.UserSettings.ValueNames.StartupProcess);
             }
             else
             {

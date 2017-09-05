@@ -77,10 +77,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
             //strategy-
             //1. fill some existing values in the registry
             //2. run configure
-            //3. make sure the old values are there in the backup
-            //4. unconfigure
-            //5. make sure original values are reverted back
-
+            //3. unconfigure
+            //4. make sure the autologon settings are reset
             using (var hc = new TestHostContext(this))
             {
                 SetupTestEnv(hc, _sid);
@@ -89,9 +87,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                 var iConfigManager = new AutoLogonManager();
                 iConfigManager.Initialize(hc);
                 await iConfigManager.ConfigureAsync(_command);
-
-                //make sure the backup was taken for the keys
-                RegistryVerificationForBackup(_sid);
 
                 // Debugger.Launch();
                 iConfigManager.Unconfigure();
@@ -122,9 +117,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                 var iConfigManager = new AutoLogonManager();
                 iConfigManager.Initialize(hc);
                 await iConfigManager.ConfigureAsync(_command);
-
-                //make sure the backup was taken for the keys
-                RegistryVerificationForBackup(_sidForDifferentUser);
                 
                 iConfigManager.Unconfigure();
 
@@ -133,42 +125,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
             }
         }
 
-        private void RegistryVerificationForBackup(string securityId)
-        {
-            //screen saver (user specific)            
-            ValidateRegistryValue(RegistryHive.Users, 
-                                    $"{securityId}\\{RegistryConstants.UserSettings.SubKeys.ScreenSaver}", 
-                                    GetBackupValueName(RegistryConstants.UserSettings.ValueNames.ScreenSaver),
-                                    "1");
-            
-            //HKLM setting
-            ValidateRegistryValue(RegistryHive.LocalMachine, 
-                                    RegistryConstants.MachineSettings.SubKeys.AutoLogon, 
-                                    GetBackupValueName(RegistryConstants.MachineSettings.ValueNames.AutoLogon),
-                                    "0");
-
-            //autologon password (delete key)
-            ValidateRegistryValue(RegistryHive.LocalMachine, 
-                                    RegistryConstants.MachineSettings.SubKeys.AutoLogon,
-                                    GetBackupValueName(RegistryConstants.MachineSettings.ValueNames.AutoLogonPassword),
-                                    "xyz");
-        }
-
-        private string GetBackupValueName(string valueName)
-        {
-            return string.Concat(RegistryConstants.BackupKeyPrefix, valueName);
-        }
-
         private void RegistryVerificationForUnConfigure(string securityId)
         {
             //screen saver (user specific)
             ValidateRegistryValue(RegistryHive.Users, $"{securityId}\\{RegistryConstants.UserSettings.SubKeys.ScreenSaver}", RegistryConstants.UserSettings.ValueNames.ScreenSaver, "1");
-
-            //HKLM setting
-            ValidateRegistryValue(RegistryHive.LocalMachine, RegistryConstants.MachineSettings.SubKeys.AutoLogon, RegistryConstants.MachineSettings.ValueNames.AutoLogon, "0");
-
-            //autologon password (delete key)
-            ValidateRegistryValue(RegistryHive.LocalMachine, RegistryConstants.MachineSettings.SubKeys.AutoLogon, RegistryConstants.MachineSettings.ValueNames.AutoLogonPassword, "xyz");
 
             //when done with reverting back the original settings we need to make sure we dont leave behind any extra setting            
             //user specific
@@ -179,13 +139,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
         }
 
         private void SetupRegistrySettings(string securityId)
-        {
-            //HKLM setting
-            _mockRegManager.SetValue(RegistryHive.LocalMachine, RegistryConstants.MachineSettings.SubKeys.AutoLogon, RegistryConstants.MachineSettings.ValueNames.AutoLogon, "0");
-
-            //setting that we delete
-            _mockRegManager.SetValue(RegistryHive.LocalMachine, RegistryConstants.MachineSettings.SubKeys.AutoLogon, RegistryConstants.MachineSettings.ValueNames.AutoLogonPassword, "xyz");
-            
+        {   
             //screen saver (user specific)
             _mockRegManager.SetValue(RegistryHive.Users, $"{securityId}\\{RegistryConstants.UserSettings.SubKeys.ScreenSaver}", RegistryConstants.UserSettings.ValueNames.ScreenSaver, "1");
         }
