@@ -384,7 +384,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
 
                 if (resultCreateModel.Outcome.Equals("Failed"))
                 {
-                    XmlNode errorMessage, errorStackTrace, consoleLog;
+                    XmlNode errorMessage, errorStackTrace, consoleLog, standardError;
 
                     if ((errorMessage = resultNode.SelectSingleNode("./Output/ErrorInfo/Message")) != null && !string.IsNullOrWhiteSpace(errorMessage.InnerText))
                     {
@@ -401,6 +401,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                     if ((consoleLog = resultNode.SelectSingleNode("./Output/StdOut")) != null && !string.IsNullOrWhiteSpace(consoleLog.InnerText))
                     {
                         resultCreateModel.ConsoleLog = consoleLog.InnerText;
+                    }
+
+                    // standard error
+                    if ((standardError = resultNode.SelectSingleNode("./Output/StdErr")) != null && !string.IsNullOrWhiteSpace(standardError.InnerText))
+                    {
+                        resultCreateModel.StandardError = standardError.InnerText;
                     }
                 }
 
