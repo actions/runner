@@ -50,13 +50,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Capabilities
             builder.Check(name: "JDK", fileName: "javac");
             builder.Check(name: "make");
             builder.Check(name: "maven", fileName: "mvn");
-            builder.Check(
-                name: "MSBuild",
-                fileName: "msbuild",
-                filePaths: new string[] { 
-                    "/Library/Frameworks/Mono.framework/Commands/msbuild",
-                    "/Library/Frameworks/Mono.framework/Commands/xbuild"
-                });
+            builder.Check(name: "MSBuild", fileName: "xbuild");
             builder.Check(name: "node.js", fileName: "node");
             builder.Check(name: "node.js", fileName: "nodejs");
             builder.Check(name: "npm");
