@@ -264,7 +264,7 @@ function Get-Specific-Version-From-Version([string]$AzureFeed, [string]$Channel,
     }
 }
 
-function Get-Download-Link([string]$AzureFeed, [string]$Channel, [string]$SpecificVersion, [string]$CLIArchitecture) {
+function Get-Download-Link([string]$AzureFeed, [string]$SpecificVersion, [string]$CLIArchitecture) {
     Say-Invocation $MyInvocation
 
     if ($SharedRuntime) {
@@ -279,7 +279,7 @@ function Get-Download-Link([string]$AzureFeed, [string]$Channel, [string]$Specif
     return $PayloadURL
 }
 
-function Get-LegacyDownload-Link([string]$AzureFeed, [string]$Channel, [string]$SpecificVersion, [string]$CLIArchitecture) {
+function Get-LegacyDownload-Link([string]$AzureFeed, [string]$SpecificVersion, [string]$CLIArchitecture) {
     Say-Invocation $MyInvocation
 
     if ($SharedRuntime) {
@@ -449,14 +449,14 @@ function Prepend-Sdk-InstallRoot-To-Path([string]$InstallRoot, [string]$BinFolde
 
 $CLIArchitecture = Get-CLIArchitecture-From-Architecture $Architecture
 $SpecificVersion = Get-Specific-Version-From-Version -AzureFeed $AzureFeed -Channel $Channel -Version $Version
-$DownloadLink = Get-Download-Link -AzureFeed $AzureFeed -Channel $Channel -SpecificVersion $SpecificVersion -CLIArchitecture $CLIArchitecture
-$LegacyDownloadLink = Get-LegacyDownload-Link -AzureFeed $AzureFeed -Channel $Channel -SpecificVersion $SpecificVersion -CLIArchitecture $CLIArchitecture
+$DownloadLink = Get-Download-Link -AzureFeed $AzureFeed -SpecificVersion $SpecificVersion -CLIArchitecture $CLIArchitecture
+$LegacyDownloadLink = Get-LegacyDownload-Link -AzureFeed $AzureFeed -SpecificVersion $SpecificVersion -CLIArchitecture $CLIArchitecture
 
 if ($DryRun) {
     Say "Payload URLs:"
     Say "Primary - $DownloadLink"
     Say "Legacy - $LegacyDownloadLink"
-    Say "Repeatable invocation: .\$($MyInvocation.MyCommand) -Version $SpecificVersion -Channel $Channel -Architecture $CLIArchitecture -InstallDir $InstallDir"
+    Say "Repeatable invocation: .\$($MyInvocation.Line)"
     exit 0
 }
 
@@ -480,7 +480,7 @@ if ($free.Freespace / 1MB -le 100 ) {
     exit 0
 }
 
-$ZipPath = [System.IO.Path]::GetTempFileName()
+$ZipPath = [System.IO.Path]::combine([System.IO.Path]::GetTempPath(), [System.IO.Path]::GetRandomFileName())
 Say-Verbose "Zip path: $ZipPath"
 Say "Downloading link: $DownloadLink"
 try {
@@ -489,7 +489,7 @@ try {
 catch {
     Say "Cannot download: $DownloadLink"
     $DownloadLink = $LegacyDownloadLink
-    $ZipPath = [System.IO.Path]::GetTempFileName()
+    $ZipPath = [System.IO.Path]::combine([System.IO.Path]::GetTempPath(), [System.IO.Path]::GetRandomFileName())
     Say-Verbose "Legacy zip path: $ZipPath"
     Say "Downloading legacy link: $DownloadLink"
     DownloadFile -Uri $DownloadLink -OutPath $ZipPath

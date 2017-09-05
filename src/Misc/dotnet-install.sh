@@ -334,6 +334,7 @@ is_dotnet_package_installed() {
 # azure_feed - $1
 # channel - $2
 # normalized_architecture - $3
+# coherent - $4
 get_latest_version_info() {
     eval $invocation
     
@@ -601,7 +602,7 @@ downloadwget() {
 
     local failed=false
     if [ -z "$out_path" ]; then
-        wget -q --tries 10 $remote_path || failed=true
+        wget -q --tries 10 -O - $remote_path || failed=true
     else
         wget -v --tries 10 -O $out_path $remote_path || failed=true
     fi
