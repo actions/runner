@@ -327,9 +327,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
         private TestAttachmentRequestModel GetStandardErrorAttachmentRequestModel(string stdErr)
         {
             Trace.Entering();
-            if (!string.IsNullOrWhiteSpace(stdErr))
+            if (string.IsNullOrWhiteSpace(stdErr) == false)
             {
-                string stdErrFileName = "Standard Error Output.log";
+                const string stdErrFileName = "Standard_Error_0Output.log";
 
                 if (stdErr.Length <= TCM_MAX_FILESIZE)
                 {
