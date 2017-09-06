@@ -159,7 +159,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             BuildServer buildServer = new BuildServer(connection, projectId);
             var tags = await buildServer.AddBuildTag(buildId, buildTag, cancellationToken);
 
-            if (tags == null || !tags.Contains(buildTag))
+            if (tags == null || !tags.Any(t => t.Equals(buildTag, StringComparison.OrdinalIgnoreCase)))
             {
                 throw new Exception(StringUtil.Loc("BuildTagAddFailed", buildTag));
             }
