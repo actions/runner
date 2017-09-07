@@ -291,21 +291,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.ContainerFetchEng
                 try
                 {
                     Task<Stream> getFileTask = Provider.GetFileTask(ticketedItem, cancellationToken);
-                    Task timeoutTask = Task.Delay(ContainerFetchEngineOptions.GetFileAsyncTimeout, cancellationToken);
 
                     ExecutionLogger.Debug(StringUtil.Format("Fetching contents of file {0}", tmpDownloadPath));
 
-                    // Wait for GetFileAsync or the timeout to elapse.
-                    await Task.WhenAny(getFileTask, timeoutTask).ConfigureAwait(false);
+                    await getFileTask.ConfigureAwait(false);
 
                     if (cancellationToken.IsCancellationRequested)
                     {
                         return;
-                    }
-
-                    if (!getFileTask.IsCompleted)
-                    {
-                        throw new TimeoutException(StringUtil.Loc("RMGetFileAsyncTimedOut", GetFileAsyncTimeoutMinutes));
                     }
 
                     ExecutionLogger.Debug(StringUtil.Format("Writing contents of file {0} to disk", tmpDownloadPath));
@@ -393,7 +386,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.ContainerFetchEng
         private static readonly TimeSpan ProgressInterval = TimeSpan.FromSeconds(5);
         private static readonly TimeSpan TaskDiagThreshold = TimeSpan.FromMinutes(1);
 
-        private const int GetFileAsyncTimeoutMinutes = 5;
         public ContainerFetchEngineOptions ContainerFetchEngineOptions { get; set; }
     }
 }

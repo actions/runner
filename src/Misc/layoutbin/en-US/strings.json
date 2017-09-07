@@ -462,7 +462,6 @@
   "RMErrorDuringArtifactDownload": "An error occurred during download: {0}",
   "RMFailedCreatingArtifactDirectory": "Failed to create Release artifact directory '{0}'.",
   "RMFileShareArtifactErrorOnNonWindowsAgent": "Cannot download artifacts from a file share using OSX or Linux agent. You can download artifact from server or use a Windows agent.",
-  "RMGetFileAsyncTimedOut": "FetchEngine.GetFileAsync task timed out after {0} minute(s).",
   "RMGitEndpointNotFound": "Cannot find required information in the job to download the Team Foundation Git artifact.",
   "RMGitHubEndpointNotFound": "Cannot find required information in the job to download the GitHub artifact: {0}",
   "RMGotJenkinsArtifactDetails": "Received Jenkins Artifact Details",
