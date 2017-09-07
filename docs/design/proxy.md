@@ -10,8 +10,8 @@
 
 Documentation for configuring agent to follow web proxy can be found [here](https://www.visualstudio.com/en-us/docs/build/actions/agents/v2-windows#how-do-i-configure-the-agent-to-work-through-a-web-proxy-and-connect-to-team-services).  
 In short:  
-Agent version 2.121.0 or above  
-  - Pass `--proxyurl`, `--proxyusername` and `--proxypassword` during agent configuration.   
+Agent version 2.122.0 or above  
+  - Pass `--proxyurl`, `--proxyusername` and `--proxypassword` during agent configuration.  
     Ex:
     ```
     ./config.cmd --proxyurl http://127.0.0.1:8888 --proxyusername "1" --proxypassword "1"
@@ -23,13 +23,17 @@ Agent version 2.121.0 or above
       OSX: OSX Keychain
       Linux: Encrypted with symmetric key based on machine id
     ```
+    **NOTE: The Windows Crednetial Store will cause a limitation for configuring agent as Windows service**  
+    Since we store your proxy credential into `Windows Credential Store` and the `Windows Credential Store` is per user, when you configure the agent as Windows service, you need run the configuration as the same user as the service is going to run as.  
+    Ex, in order to configure the agent service run as `mydomain\buildadmin`, you need either login the box as `mydomain\buildadmin` and run `config.cmd` or login the box as someone else but use `Run as different user` option when you run `config.cmd` to run as `mydomain\buildadmin`  
+    
   - Create a `.proxybypass` file under agent root to specify proxy bypass Url's Regex (ECMAScript syntax).  
     Ex:
     ```
     github\.com
     bitbucket\.com
     ```
-Before 2.121.0
+Before 2.122.0
   - Create a `.proxy` file under agent root to specify proxy url.  
     Ex:
     ```
