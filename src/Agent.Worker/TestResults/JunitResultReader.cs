@@ -336,11 +336,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
         {
             XmlNode stdout, stderr;
 
-            if ((stdout = testCaseNode.SelectSingleNode("./system-out")) != null && string.IsNullOrWhiteSpace(stdout.InnerText) == false)
+            // Standard output logs
+            stdout = testCaseNode.SelectSingleNode("./system-out");
+            if (stdout != null && string.IsNullOrWhiteSpace(stdout.InnerText) == false)
             {
                 resultCreateModel.ConsoleLog = stdout.InnerText;
             }
-            if ((stderr = testCaseNode.SelectSingleNode("./system-err")) != null && string.IsNullOrWhiteSpace(stderr.InnerText) == false)
+
+            // Standard error logs
+            stderr = testCaseNode.SelectSingleNode("./system-err");
+            if (stderr != null && string.IsNullOrWhiteSpace(stderr.InnerText) == false)
             {
                 resultCreateModel.StandardError = stderr.InnerText;
             }
