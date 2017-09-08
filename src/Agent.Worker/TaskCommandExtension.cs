@@ -532,7 +532,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             if (String.Equals(field, "authParameter", StringComparison.OrdinalIgnoreCase))
             {
                 var _secretMasker = HostContext.GetService<ISecretMasker>();
-                _secretMasker.AddRegex(data);
+                _secretMasker.AddValue(data);
+
+                if (!Uri.EscapeDataString(data).Equals(data, StringComparison.OrdinalIgnoreCase))
+                {
+                    _secretMasker.AddValue(Uri.EscapeDataString(data));
+                }
             }
             
             String endpointIdInput;
@@ -548,7 +553,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             }
 
             var endpoint = context.Endpoints.Find(a => a.Id == endpointId);
-            if (EqualityComparer<ServiceEndpoint>.Default.Equals(endpoint, default(ServiceEndpoint)))
+            if (endpoint == null)
             {
                 throw new Exception(StringUtil.Loc("InvalidEndpointId"));
             }
