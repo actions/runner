@@ -139,7 +139,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
                 // when tf.exe talk to any devfabric site, it will always bypass proxy. 
                 // for testing, we need set this variable to let tf.exe hit the proxy server on devfabric.
-                if (Endpoint.Url.Host.Contains(".me.tfsallin.net"))
+                if (Endpoint.Url.Host.Contains(".me.tfsallin.net") || Endpoint.Url.Host.Contains(".vsts.me"))
                 {
                     ExecutionContext.Debug("Set TFS_BYPASS_PROXY_ON_LOCAL on devfabric.");
                     AdditionalEnvironmentVariables["TFS_BYPASS_PROXY_ON_LOCAL"] = "0";
