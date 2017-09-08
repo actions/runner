@@ -250,10 +250,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                     if ((failure = testCaseNode.SelectSingleNode("./failure")) != null)
                     {
                         ProcessFailureNode(failure, resultCreateModel);
+                        AddSystemLogsToResult(testCaseNode, resultCreateModel);
                     }
                     else if ((error = testCaseNode.SelectSingleNode("./error")) != null)
                     {
                         ProcessFailureNode(error, resultCreateModel);
+                        AddSystemLogsToResult(testCaseNode, resultCreateModel);
                     }
                     else if ((skipped = testCaseNode.SelectSingleNode("./skipped")) != null)
                     {
@@ -327,6 +329,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
             if (!string.IsNullOrWhiteSpace(failure.InnerText))
             {
                 resultCreateModel.StackTrace = failure.InnerText;
+            }
+        }
+
+        private void AddSystemLogsToResult(XmlNode testCaseNode, TestCaseResultData resultCreateModel)
+        {
+            XmlNode stdout, stderr;
+
+            if ((stdout = testCaseNode.SelectSingleNode("./system-out")) != null)
+            {
+                resultCreateModel.ConsoleLog = stdout.InnerText;
+            }
+            if ((stderr = testCaseNode.SelectSingleNode("./system-err")) != null)
+            {
+                resultCreateModel.StandardError = stderr.InnerText;
             }
         }
 
