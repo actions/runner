@@ -10,6 +10,8 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Net.Http;
+using System.Text;
+using System.IO.Compression;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
@@ -308,6 +310,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
                 Trace.Info($"Job result after all post-job steps finish: {jobContext.Result}");
 
+                // Upload support.zip
+                bool uploadSupportLogs = true;
+                if (uploadSupportLogs)
+                {
+                    var supportLogManager = new SupportLogManager(
+                        tempDirectory: Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), "_temp")); // TODO: Is there a better way to get this folder?
+                    supportLogManager.UploadSupportLogs();
+                }
+
                 // Complete the job.
                 Trace.Info("Completing the job execution context.");
                 return await CompleteJobAsync(jobServer, jobContext, message);
@@ -483,6 +494,109 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             // back compat server url
             message.Environment.Variables[Constants.Variables.System.TFServerUrl] = message.Environment.SystemConnection.Url.AbsoluteUri;
             Trace.Info($"Ensure System.TFServerUrl match config url base. {message.Environment.SystemConnection.Url.AbsoluteUri}");
+        }
+
+        // This class manages gathering data for support logs, zipping the data, and uploading it.
+        // The files are created with the following folder structure:
+        // ..\_layout\_work\_temp
+        //      \support (supportRootFolder)
+        //          \files (supportFolder)
+        //              ...
+        //          support.zip
+        private class SupportLogManager
+        {
+            // \_layout\_work\_temp\support\files\environment.txt
+            private readonly string _environmentFile;
+            
+            // \_layout\_work\_temp\support\files\logs
+            private readonly string _logsExtractionFolder;
+            
+            // \_layout\_work\_temp\support
+            private readonly string _supportRootFolder;
+
+            public SupportLogManager(string tempDirectory)
+            {
+                if (String.IsNullOrEmpty(tempDirectory) || !Directory.Exists(tempDirectory))
+                {
+                    throw new ArgumentException(nameof(tempDirectory));
+                }
+
+                _supportRootFolder = Path.Combine(tempDirectory, "support");
+                Directory.CreateDirectory(_supportRootFolder);
+
+                _environmentFile = Path.Combine(supportFilesFolder, "environment.txt");
+                _logsExtractionFolder = Path.Combine(supportFilesFolder, "logs");
+
+            }
+
+            public void UploadSupportLogs()
+            {
+                string supportFilesFolder = "";
+
+                // Copy the worker log from the _diag folder into the support folder
+                // TODO: Does this file contain all diag logs for the job?
+                string workerLogFile = "";
+                File.Copy(workerLogFile, supportFilesFolder + Path.GetFileName(workerLogFile));
+                
+                CreateEnvironmentFile();
+                DownloadAndExtractBuildLogs();
+
+                // Copy the _diag worker logs for this job
+                // TODO: The job needs to hold the name of the worker log file?
+
+
+
+                // Zip the support folder
+                string supportZip = Path.Combine(_supportRootFolder, "support.zip");
+                ZipFile.CreateFromDirectory(supportFilesFolder, supportZip);
+
+                // Upload the zip, we need to create a timeline and add an artifact to it? Timeline named Support?
+                // I think later this can be a "known named" item
+                
+
+                DeleteSupportFolder();
+            }
+
+            private void CreateEnvironmentFile()
+            {
+                string content = GetEnvironmentContent();
+                using (StreamWriter writer = File.CreateText(_environmentFile)) 
+                {
+                    writer.Write(content);
+                }
+            }
+
+            private void DownloadAndExtractBuildLogs()
+            {
+                //_extractionFolder
+                // TODO: Implement.
+
+            }
+
+            private string GetEnvironmentContent()
+            {
+                // TODO: names and versions of all tasks, agent version, os and version, tools?
+                var builder = new StringBuilder();
+
+                builder.AppendLine("Environment file created at: " + DateTime.UtcNow); // TODO: Format this like we do in other places.
+                builder.AppendLine("Agent Version: " + ""); // TODO: Get Agent version.
+                builder.AppendLine("OS: "); // TODO: Implement.
+                builder.AppendLine("OS Version: "); // TODO: Implement.
+                builder.AppendLine("Tasks:");
+
+                builder.AppendLine("\tName: " + "TASKNAME" + " Version: " + "TASKVERSION");
+                builder.AppendLine("\tName: " + "TASKNAME" + " Version: " + "TASKVERSION");
+                builder.AppendLine("\tName: " + "TASKNAME" + " Version: " + "TASKVERSION");
+
+                builder.AppendLine("Tools: "); // TODO: Not sure what goes here
+
+                return builder.ToString();
+            }
+
+            private void DeleteSupportFolder()
+            {
+                Directory.Delete(_supportRootFolder);
+            }
         }
     }
 }
