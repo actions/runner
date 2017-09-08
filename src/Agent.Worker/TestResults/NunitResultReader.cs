@@ -198,6 +198,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                         {
                             resultCreateModel.StackTrace = failureStackTraceNode.InnerText;
                         }
+
+                        // console log
+                        XmlNode consoleLog = testCaseNode.SelectSingleNode("./output");
+                        if (consoleLog != null && string.IsNullOrWhiteSpace(consoleLog.InnerText) == false)
+                        {
+                            resultCreateModel.ConsoleLog = consoleLog.InnerText;
+                        }
                     }
                     else
                     {
@@ -320,6 +327,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                     var failureStackTraceNode = failureNode.SelectSingleNode("stack-trace");
                     testCaseResultData.ErrorMessage = failureMessageNode?.InnerText;
                     testCaseResultData.StackTrace = failureStackTraceNode?.InnerText;
+
+                    // console log
+                    XmlNode consoleLog = testCaseResultNode.SelectSingleNode("output");
+                    if (consoleLog != null && string.IsNullOrWhiteSpace(consoleLog.InnerText) == false)
+                    {
+                        testCaseResultData.ConsoleLog = consoleLog.InnerText;
+                    }
+
                 }
             }
             testCaseResultData.State = "Completed";

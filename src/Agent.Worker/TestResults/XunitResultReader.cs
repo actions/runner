@@ -189,6 +189,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                         {
                             resultCreateModel.StackTrace = failureStackTraceNode.InnerText;
                         }
+
+                        // Console log
+                        XmlNode consoleLog = testCaseNode.SelectSingleNode("./output");
+                        if (consoleLog != null && string.IsNullOrWhiteSpace(consoleLog.InnerText) == false)
+                        {
+                            resultCreateModel.ConsoleLog = consoleLog.InnerText;
+                        }
                     }
                     else if (testCaseNode.Attributes["result"] != null && string.Equals(testCaseNode.Attributes["result"].Value, "pass", StringComparison.OrdinalIgnoreCase))
                     {
