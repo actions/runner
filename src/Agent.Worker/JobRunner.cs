@@ -12,6 +12,8 @@ using System.Threading.Tasks;
 using System.Net.Http;
 using System.Text;
 using System.IO.Compression;
+using Microsoft.VisualStudio.Services.Agent.Worker.Build;
+//using Microsoft.TeamFoundation.Build.WebApi;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
@@ -310,13 +312,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
                 Trace.Info($"Job result after all post-job steps finish: {jobContext.Result}");
 
-                // Upload support.zip
                 bool uploadSupportLogs = true;
                 if (uploadSupportLogs)
                 {
+                    Trace.Info("Starting to upload support logs.");
+
+                    // TODO: Get this from HostContext.GetService<ISupportLogManager>?
                     var supportLogManager = new SupportLogManager(
-                        tempDirectory: Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), "_temp")); // TODO: Is there a better way to get this folder?
-                    supportLogManager.UploadSupportLogs();
+                        tempDirectory: Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), "_temp")); // TODO: Is there a better way to get this folder? Should we pass what we need to upload support logs method?
+
+                    supportLogManager.UploadSupportLogs(jobName: message.JobName);
+
+                    Trace.Info("Support log upload complete.");
                 }
 
                 // Complete the job.
@@ -503,16 +510,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         //          \files (supportFolder)
         //              ...
         //          support.zip
+        // TODO: Rewrite and pass what we need to UploadSupportLogs for current execution
         private class SupportLogManager
         {
-            // \_layout\_work\_temp\support\files\environment.txt
+            // \_layout\_work\_temp\support\[jobname-support]files\environment.txt
             private readonly string _environmentFile;
             
-            // \_layout\_work\_temp\support\files\logs
+            // \_layout\_work\_temp\support\[jobname-support]\files\logs
             private readonly string _logsExtractionFolder;
             
-            // \_layout\_work\_temp\support
+            // \_layout\_work\_temp\support\[jobname-support]
             private readonly string _supportRootFolder;
+
+            // \_layout\_work\_temp\support\[jobname-support]\files
+            private readonly string _supportFilesFolder;
 
             public SupportLogManager(string tempDirectory)
             {
@@ -524,35 +535,29 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 _supportRootFolder = Path.Combine(tempDirectory, "support");
                 Directory.CreateDirectory(_supportRootFolder);
 
-                _environmentFile = Path.Combine(supportFilesFolder, "environment.txt");
-                _logsExtractionFolder = Path.Combine(supportFilesFolder, "logs");
+                // TODO: How do we set this?
+                _supportFilesFolder = "";
 
+                _environmentFile = Path.Combine(_supportFilesFolder, "environment.txt");
+                _logsExtractionFolder = Path.Combine(_supportFilesFolder, "logs");
             }
 
-            public void UploadSupportLogs()
+            public void UploadSupportLogs(IExecutionContext executionContext, HostContext hostContext, string jobName)
             {
-                string supportFilesFolder = "";
+                
 
                 // Copy the worker log from the _diag folder into the support folder
-                // TODO: Does this file contain all diag logs for the job?
+                // TODO: The job needs to hold the name of the worker log file?
                 string workerLogFile = "";
-                File.Copy(workerLogFile, supportFilesFolder + Path.GetFileName(workerLogFile));
+                File.Copy(workerLogFile, _supportFilesFolder + Path.GetFileName(workerLogFile));
                 
                 CreateEnvironmentFile();
+                
                 DownloadAndExtractBuildLogs();
 
-                // Copy the _diag worker logs for this job
-                // TODO: The job needs to hold the name of the worker log file?
-
-
-
-                // Zip the support folder
-                string supportZip = Path.Combine(_supportRootFolder, "support.zip");
-                ZipFile.CreateFromDirectory(supportFilesFolder, supportZip);
-
-                // Upload the zip, we need to create a timeline and add an artifact to it? Timeline named Support?
-                // I think later this can be a "known named" item
+                ZipSupportFolder(jobName);
                 
+                UploadSupportZip();
 
                 DeleteSupportFolder();
             }
@@ -568,9 +573,53 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
             private void DownloadAndExtractBuildLogs()
             {
+                // download from build client endpoint
+                // /_build/
+
+                // add method to BuildServer
+                // _buildHttpCLient.?
+
                 //_extractionFolder
                 // TODO: Implement.
+                // TODO: There is a download build artifact task...
 
+            }
+
+            private void ZipSupportFolder(string jobName)
+            {
+                string supportZip = Path.Combine(_supportRootFolder, "[jobname]-support.zip");
+                ZipFile.CreateFromDirectory(_supportFilesFolder, supportZip);
+            }
+
+            private void UploadSupportZip(IExecutionContext executionContext, HostContext hostContext)
+            {
+                //_jobServerQueue.QueueFileUpload(_mainTimelineId, _record.Id, type, name, filePath, deleteSource: false);
+
+
+
+
+
+                // TODO: This is a hack for now.
+                // TODO: What is the difference between Upload and Associate?
+                // var artifactCommandExtension = new ArtifactCommandExtension();
+                // var command = new Command("area", "eventName");
+                // command.Data = "";
+                // // command.Properties.Add(ArtifactAssociateEventProperties.ArtifactName, "value");
+                // // command.Properties.Add(ArtifactAssociateEventProperties.ArtifactType, "value");
+
+                // command.Properties.Add(ArtifactUploadEventProperties.ArtifactName, "support-logs");
+                // command.Properties.Add(ArtifactUploadEventProperties.Browsable, "true");
+                // command.Properties.Add(ArtifactUploadEventProperties.ContainerFolder, "value");
+
+                // artifactCommandExtension.ProcessCommand(executionContext, command);
+
+                // TODO: Upload to the root job with a specific well known name so it can be first class?
+                // Attachment name: support-log
+
+                // Add to root job node
+                // In the UI we can query for this type so its first class
+
+                // 
             }
 
             private string GetEnvironmentContent()
