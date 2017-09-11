@@ -192,7 +192,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
 
                         // Console log
                         XmlNode consoleLog = testCaseNode.SelectSingleNode("./output");
-                        if (consoleLog != null && string.IsNullOrWhiteSpace(consoleLog.InnerText) == false)
+                        if (consoleLog != null && !string.IsNullOrWhiteSpace(consoleLog.InnerText))
                         {
                             resultCreateModel.ConsoleLog = consoleLog.InnerText;
                         }

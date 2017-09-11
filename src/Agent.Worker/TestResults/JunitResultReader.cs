@@ -338,14 +338,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
 
             // Standard output logs
             stdout = testCaseNode.SelectSingleNode("./system-out");
-            if (stdout != null && string.IsNullOrWhiteSpace(stdout.InnerText) == false)
+            if (stdout != null && !string.IsNullOrWhiteSpace(stdout.InnerText))
             {
                 resultCreateModel.ConsoleLog = stdout.InnerText;
             }
 
             // Standard error logs
             stderr = testCaseNode.SelectSingleNode("./system-err");
-            if (stderr != null && string.IsNullOrWhiteSpace(stderr.InnerText) == false)
+            if (stderr != null && !string.IsNullOrWhiteSpace(stderr.InnerText))
             {
                 resultCreateModel.StandardError = stderr.InnerText;
             }

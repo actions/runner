@@ -201,7 +201,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
 
                         // console log
                         XmlNode consoleLog = testCaseNode.SelectSingleNode("./output");
-                        if (consoleLog != null && string.IsNullOrWhiteSpace(consoleLog.InnerText) == false)
+                        if (consoleLog != null && !string.IsNullOrWhiteSpace(consoleLog.InnerText))
                         {
                             resultCreateModel.ConsoleLog = consoleLog.InnerText;
                         }
@@ -330,7 +330,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
 
                     // console log
                     XmlNode consoleLog = testCaseResultNode.SelectSingleNode("output");
-                    if (consoleLog != null && string.IsNullOrWhiteSpace(consoleLog.InnerText) == false)
+                    if (consoleLog != null && !string.IsNullOrWhiteSpace(consoleLog.InnerText))
                     {
                         testCaseResultData.ConsoleLog = consoleLog.InnerText;
                     }
