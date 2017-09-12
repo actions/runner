@@ -344,6 +344,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                 public static readonly string HostType = "system.hosttype";
                 public static readonly string PreferGitFromPath = "system.prefergitfrompath";
                 public static readonly string SelfManageGitCreds = "system.selfmanagegitcreds";
+                public static readonly string SupportLog = "system.supportLog";
                 public static readonly string TFServerUrl = "system.TeamFoundationServerUri"; // back compat variable, do not document
                 public static readonly string TeamProject = "system.teamproject";
                 public static readonly string TeamProjectId = "system.teamProjectId";
