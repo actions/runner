@@ -39,6 +39,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
             + "<system-err><![CDATA[]]></system-err>"
             + "</testsuite>";
 
+        private const string _jUnitBasicResultsWithLogsXml =
+            "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" +
+            "<testsuite errors=\"0\" failures=\"1\" hostname=\"mghost\" name=\"com.contoso.billingservice.ConsoleMessageRendererTest\" skipped=\"0\" tests=\"2\" time=\"0.006\" timestamp=\"2015-04-06T21:56:24\">" +
+              "<testcase classname=\"com.contoso.billingservice.ConsoleMessageRendererTest\" name=\"testRenderMessage\" time=\"0.003\">" +
+                "<failure type=\"junit.framework.AssertionFailedError\">junit.framework.AssertionFailedError at com.contoso.billingservice.ConsoleMessageRendererTest.testRenderMessage(ConsoleMessageRendererTest.java:11)" +
+                "</failure>" +
+                "<system-out><![CDATA[system out...]]></system-out>" +
+                "<system-err><![CDATA[system err...]]></system-err>" +
+              "</testcase >" +
+            "</testsuite>";
+
         private const string _jUnitBasicResultsXml =
             "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" +
             "<testsuite errors=\"0\" failures=\"1\" hostname=\"mghost\" name=\"com.contoso.billingservice.ConsoleMessageRendererTest\" skipped=\"0\" tests=\"2\" time=\"0.006\" timestamp=\"2015-04-06T21:56:24\">" +
@@ -275,6 +286,21 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
             Assert.Equal("releaseUri", _testRunData.ReleaseUri);
             Assert.Equal("releaseEnvironmentUri", _testRunData.ReleaseEnvironmentUri);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
+        public void VerifyPublishingStandardLogs()
+        {
+            SetupMocks();
+            _junitResultsToBeRead = _jUnitBasicResultsWithLogsXml;
+            ReadResults(new TestRunContext("owner", "platform", "configuration", 1, "buildUri", "releaseUri", "releaseEnvironmentUri"));
+
+            Assert.NotNull(_testRunData);
+            Assert.Equal(1, _testRunData.Results.Length);
+            Assert.Equal("system out...", _testRunData.Results[0].ConsoleLog);
+            Assert.Equal("system err...", _testRunData.Results[0].StandardError);
         }
 
         [Fact]
