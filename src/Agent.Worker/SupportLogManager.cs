@@ -4,14 +4,16 @@ using System.IO;
 using System.IO.Compression;
 using System.Text;
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
+using Microsoft.VisualStudio.Services.Agent.Util;
+using Microsoft.VisualStudio.Services.Agent.Worker.Build;
+using Build2 = Microsoft.TeamFoundation.Build.WebApi;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
     [ServiceLocator(Default = typeof(SupportLogManager))]
-    public interface ISupportLogManager
+    public interface ISupportLogManager : IAgentService
     {
         void UploadSupportLogs(IExecutionContext executionContext, 
-                               HostContext hostContext, 
                                string jobName, 
                                string tempDirectory, /* Can we get this from host context? */
                                string workerLogFile);
@@ -24,10 +26,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
     //          \files (supportFolder)
     //              ...
     //          support.zip
-    public class SupportLogManager
+    public class SupportLogManager : AgentService
     {
         public void UploadSupportLogs(IExecutionContext executionContext, 
-                                      HostContext hostContext, 
                                       string jobName, 
                                       string tempDirectory /* Can we get this from host context? */, 
                                       string workerLogFile)
@@ -49,7 +50,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
             // Copy the worker log from the _diag folder into the support folder
             // TODO: The job needs to hold the name of the worker log file?
-            string newWorkerLogFile = supportFilesFolder + Path.GetFileName(workerLogFile)
+            string newWorkerLogFile = supportFilesFolder + Path.GetFileName(workerLogFile);
             File.Copy(workerLogFile, newWorkerLogFile);
             filesToUpload.Add(newWorkerLogFile);
             
@@ -64,11 +65,29 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             filesToUpload.Add(environmentFile);
             
             // Download build logs
-            string buildLogsZip = DownloadBuildLogs();
+            string buildLogsZip = ""; // TODO: Set this.
+
+            Guid projectId = executionContext.Variables.System_TeamProjectId ?? Guid.Empty;
+            ArgUtil.NotEmpty(projectId, nameof(projectId));
+
+            int? buildId = executionContext.Variables.Build_BuildId;
+            ArgUtil.NotNull(buildId, nameof(buildId));
+
+            // TODO: Make async?
+            var buildServer = new BuildServer(WorkerUtilities.GetVssConnection(executionContext), projectId);
+            Build2.BuildArtifact artifact = buildServer.DownloadBuildArtifact(
+                project: projectId.ToString(), // TODO: Not sure if this is right. Other methods take the guid.
+                buildId: buildId.Value, 
+                artifactName: ""
+            ).Result;
+
+            // TODO: Do I then download this?
+            //artifact.Resource.DownloadUrl
+
             filesToUpload.Add(buildLogsZip);
 
             // Upload support zip
-            IJobServerQueue jobServerQueue = hostContext.GetService<IJobServerQueue>();
+            IJobServerQueue jobServerQueue = HostContext.GetService<IJobServerQueue>();
 
             // TODO: Keep a list of files to upload and queue them all? Do that if we aren't going to zip them
             // We would iterate all of the files we added to the support folder
@@ -76,30 +95,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             foreach (string fileToUpload in filesToUpload)
             {
                 jobServerQueue.QueueFileUpload(
-                    timelineId: _mainTimelineId, 
-                    timelineRecordId: _record.Id, 
-                    type: CoreAttachmentType.Support, 
+                    timelineId: executionContext.MainTimelineId, 
+                    timelineRecordId: executionContext.TimelineId, 
+                    // type: CoreAttachmentType.Support,
+                    type: "DistributedTask.Core.Support", 
                     name: "SupportLog", 
-                    filePath: fileToUpload, 
+                    path: fileToUpload, 
                     deleteSource: false);
             }
 
             // Delete support folder
             Directory.Delete(supportRootFolder);
-        }
-
-        private string DownloadBuildLogs()
-        {
-            // download from build client endpoint
-            // /_build/
-
-            // add method to BuildServer
-            // _buildHttpCLient.?
-
-            //_extractionFolder
-            // TODO: Implement.
-            // TODO: There is a download build artifact task...
-
         }
 
         private string GetEnvironmentContent()
@@ -124,11 +130,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
     }
 
     // TODO: This is temporary, we should add this to WebAPI directly.
-    public static class CoreAttachmentTypeExtensions
-    {
-        public static string Support(this CoreAttachmentType coreAttachmentType)
-        {
-            return "DistributedTask.Core.Support";
-        }
-    }
+    // public static class CoreAttachmentTypeExtensions
+    // {
+    //     public static string Support(this CoreAttachmentType coreAttachmentType)
+    //     {
+    //         return "DistributedTask.Core.Support";
+    //     }
+    // }
 }

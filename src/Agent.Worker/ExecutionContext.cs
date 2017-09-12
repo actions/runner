@@ -31,6 +31,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         List<IAsyncCommandContext> AsyncCommands { get; }
         List<string> PrependPath { get; }
         ContainerInfo Container { get; }
+        Guid MainTimelineId { get; }
+        Guid TimelineId { get; }
 
         // Initialize
         void InitializeJob(JobRequestMessage message, CancellationToken token);
@@ -68,6 +70,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         private IExecutionContext _parentExecutionContext;
 
         private Guid _mainTimelineId;
+
+        public Guid MainTimelineId { get { return _mainTimelineId; } }
+
+        public Guid TimelineId { get { return _record.Id; } }
+
         private Guid _detailTimelineId;
         private int _childTimelineRecordOrder = 0;
         private CancellationTokenSource _cancellationTokenSource;

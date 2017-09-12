@@ -318,7 +318,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     Trace.Info("Starting to upload support logs.");
 
                     ISupportLogManager supportLogManager = HostContext.GetService<ISupportLogManager>();
-                    supportLogManager.UploadSupportLogs(executionContext: jobContext, hostContext: HostContext, jobName: message.JobName);
+                    supportLogManager.UploadSupportLogs(
+                        executionContext: jobContext, 
+                        jobName: message.JobName,
+                        tempDirectory: "", 
+                        workerLogFile: "");
 
                     Trace.Info("Support log upload complete.");
                 }
