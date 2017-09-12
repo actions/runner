@@ -137,8 +137,8 @@ if [[ "$PLATFORM" == "windows" ]]; then
     acquireExternalTool "$CONTAINER_URL/pdbstr/1/pdbstr.zip" pdbstr
     acquireExternalTool "$CONTAINER_URL/mingit/2.12.2.3/MinGit-2.12.2.3-olddeps-64-bit.zip" git
     acquireExternalTool "$CONTAINER_URL/symstore/1/symstore.zip" symstore
-    acquireExternalTool "$CONTAINER_URL/vstshost/m121_1_c7acb19d/vstshost.zip" vstshost
-    acquireExternalTool "$CONTAINER_URL/vstsom/m121_1_c7acb19d/vstsom.zip" vstsom
+    acquireExternalTool "$CONTAINER_URL/vstshost/m122_887c6659/vstshost.zip" vstshost
+    acquireExternalTool "$CONTAINER_URL/vstsom/m122_887c6659/vstsom.zip" vstsom
     acquireExternalTool "$CONTAINER_URL/vswhere/1_0_62/vswhere.zip" vswhere
     acquireExternalTool "$NODE_URL/v${NODE_VERSION}/win-x64/node.exe" node/bin
     acquireExternalTool "$NODE_URL/v${NODE_VERSION}/win-x64/node.lib" node/bin
