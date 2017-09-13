@@ -313,7 +313,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 Trace.Info($"Job result after all post-job steps finish: {jobContext.Result}");
 
                 // If missing, will default to false.
-                bool uploadSupportLogs = StringUtil.ConvertToBoolean(message.Environment.Variables[Constants.Variables.System.SupportLog]);
+                bool uploadSupportLogs = false;
+                
+                if (message.Environment.Variables.ContainsKey(Constants.Variables.System.SupportLog))
+                {
+                    uploadSupportLogs = StringUtil.ConvertToBoolean(message.Environment.Variables[Constants.Variables.System.SupportLog]);
+
+                }
 
                 if (uploadSupportLogs)
                 {

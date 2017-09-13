@@ -87,7 +87,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 typeof(IWorkerCommandExtension),
                 typeof(IContainerProvider),
                 typeof(INUnitResultsXmlReader),
-                typeof(IMaintenanceServiceProvider)
+                typeof(IMaintenanceServiceProvider), 
+                typeof(ISupportLogManager)
             };
             Validate(
                 assembly: typeof(IStepsRunner).GetTypeInfo().Assembly,
