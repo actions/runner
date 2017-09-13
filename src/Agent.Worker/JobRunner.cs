@@ -318,7 +318,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 if (message.Environment.Variables.ContainsKey(Constants.Variables.System.SupportLog))
                 {
                     uploadSupportLogs = StringUtil.ConvertToBoolean(message.Environment.Variables[Constants.Variables.System.SupportLog]);
-
                 }
 
                 if (uploadSupportLogs)

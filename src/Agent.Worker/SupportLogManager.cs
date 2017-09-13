@@ -5,10 +5,11 @@ using System.IO.Compression;
 using System.Text;
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Util;
+using Microsoft.VisualStudio.Services.Agent.Worker;
 using Microsoft.VisualStudio.Services.Agent.Worker.Build;
 using Build2 = Microsoft.TeamFoundation.Build.WebApi;
 
-namespace Microsoft.VisualStudio.Services.Agent.Worker
+namespace Microsoft.VisualStudio.Services.Agent
 {
     [ServiceLocator(Default = typeof(SupportLogManager))]
     public interface ISupportLogManager : IAgentService
@@ -26,7 +27,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
     //          \files (supportFolder)
     //              ...
     //          support.zip
-    public class SupportLogManager : AgentService
+    public sealed class SupportLogManager : AgentService, ISupportLogManager
     {
         public void UploadSupportLogs(IExecutionContext executionContext, 
                                       string jobName, 
@@ -36,6 +37,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             if (String.IsNullOrEmpty(tempDirectory)) { throw new ArgumentNullException(nameof(tempDirectory)); }
             if (!Directory.Exists(tempDirectory)) { throw new DirectoryNotFoundException(nameof(tempDirectory)); }
             if (!File.Exists(workerLogFile)) { throw new FileNotFoundException(nameof(workerLogFile)); }
+
+
+            executionContext.Debug("");
 
             // Setup folders
             // \_layout\_work\_temp\[jobname-support]
