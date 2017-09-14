@@ -297,10 +297,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
             duration = (duration <0) ? 0 : duration;
             testCaseResultData.DurationInMs = TimeSpan.FromSeconds(duration).TotalMilliseconds;
             var testExecutionStartedOn = DateTime.MinValue;
-            DateTime.TryParse(testCaseResultNode.Attributes["start-time"]?.Value, DateTimeFormatInfo.InvariantInfo, DateTimeStyles.None, out testExecutionStartedOn);
+            DateTime.TryParse(testCaseResultNode.Attributes["start-time"]?.Value, DateTimeFormatInfo.InvariantInfo, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out testExecutionStartedOn);
             testCaseResultData.StartedDate = testExecutionStartedOn;
             var testExecutionEndedOn = DateTime.MinValue;
-            DateTime.TryParse(testCaseResultNode.Attributes["end-time"]?.Value, DateTimeFormatInfo.InvariantInfo, DateTimeStyles.None, out testExecutionEndedOn);
+            DateTime.TryParse(testCaseResultNode.Attributes["end-time"]?.Value, DateTimeFormatInfo.InvariantInfo,DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out testExecutionEndedOn);
             testCaseResultData.CompletedDate = testExecutionEndedOn; 
             if (testCaseResultNode.Attributes["result"] != null)
             {
@@ -356,8 +356,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
             _platform = runContext != null ? runContext.Platform : string.Empty;
             if (testRunNode.Attributes["start-time"] != null)
             {
-                DateTime.TryParse(testRunNode.Attributes["start-time"]?.Value, DateTimeFormatInfo.InvariantInfo, DateTimeStyles.None, out testRunStartedOn);
-                DateTime.TryParse(testRunNode.Attributes["end-time"]?.Value, DateTimeFormatInfo.InvariantInfo, DateTimeStyles.None, out testRunEndedOn);
+                DateTime.TryParse(testRunNode.Attributes["start-time"]?.Value, DateTimeFormatInfo.InvariantInfo, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out testRunStartedOn);
+                DateTime.TryParse(testRunNode.Attributes["end-time"]?.Value, DateTimeFormatInfo.InvariantInfo, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out testRunEndedOn);
                 var testAssemblyNodes = testRunNode.SelectNodes("//test-suite[@type='Assembly']");
                 if (testAssemblyNodes != null)
                 {

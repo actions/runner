@@ -311,10 +311,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
             TestRunData runData = reader.ReadResults(_ec.Object, _xUnitResultFile, new TestRunContext("Owner", "any cpu", "debug", 1, "", "releaseUri", "releaseEnvironmentUri"));
             Assert.Equal(40, (int)runData.Results[0].DurationInMs);
             DateTime startDate, completeDate;
-            DateTime.TryParse(runData.StartDate, out startDate);
-            Assert.Equal("2016-06-08T07:12:09.0000000", startDate.ToString("o"));
-            DateTime.TryParse(runData.CompleteDate, out completeDate);
-            Assert.Equal("2016-06-08T07:12:14.4330000", completeDate.ToString("o"));
+            DateTime.TryParse(runData.StartDate, DateTimeFormatInfo.InvariantInfo, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out startDate);
+            Assert.Equal("2016-06-08T07:12:09.0000000Z", startDate.ToString("o"));
+            DateTime.TryParse(runData.CompleteDate, DateTimeFormatInfo.InvariantInfo, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out completeDate);
+            Assert.Equal("2016-06-08T07:12:14.4330000Z", completeDate.ToString("o"));
             Assert.Equal((completeDate - startDate).TotalMilliseconds, 5433);
         }
 
