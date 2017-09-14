@@ -205,7 +205,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
             var runData = GetTestRunData(trxContents, null, new TestRunContext("Owner", "any cpu", "debug", 1, "", "releaseUri", "releaseEnvironmentUri"));
 
             DateTime StartedDate;
-            DateTime.TryParse("2015-03-20T16:53:32.3099353+05:30", out StartedDate);
+            DateTime.TryParse("2015-03-20T16:53:32.3099353+05:30", DateTimeFormatInfo.InvariantInfo, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out StartedDate);
             Assert.Equal(runData.Results[0].StartedDate, StartedDate);
 
             TimeSpan Duration;
@@ -325,7 +325,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
                 var runData = GetTestRunData(trxContents, null, new TestRunContext("Owner", "any cpu", "debug", 1, "", "releaseUri", "releaseEnvironmentUri"));
 
                 DateTime StartedDate;
-                DateTime.TryParse("2015-03-20T16:53:32.3099353+05:30", out StartedDate);
+                DateTime.TryParse("2015-03-20T16:53:32.3099353+05:30", DateTimeFormatInfo.InvariantInfo, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out StartedDate);
                 Assert.Equal(runData.Results[0].StartedDate, StartedDate);
 
                 TimeSpan Duration;
@@ -633,11 +633,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
             var runData = GetTestRunData(trxContents, null, new TestRunContext("Owner", "any cpu", "debug", 1, "", "releaseUri", "releaseEnvironmentUri"));
 
             DateTime StartedDate;
-            DateTime.TryParse("2015-03-20T16:53:32.3349628+05:30", out StartedDate);
+            DateTime.TryParse("2015-03-20T16:53:32.3349628+05:30", DateTimeFormatInfo.InvariantInfo, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out StartedDate);
             Assert.Equal(runData.StartDate, StartedDate.ToString("o"));
 
             DateTime CompletedDate;
-            DateTime.TryParse("2015-03-20T16:53:32.9232329+05:30", out CompletedDate);
+            DateTime.TryParse("2015-03-20T16:53:32.9232329+05:30", DateTimeFormatInfo.InvariantInfo, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out CompletedDate);
             Assert.Equal(runData.CompleteDate, CompletedDate.ToString("o"));
         }
         public void Dispose()
