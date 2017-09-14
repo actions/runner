@@ -30,12 +30,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
 #if OS_WINDOWS
             // Validate .NET Framework 4.6 or higher is installed.
-            //
-            // Note, system.NoVerifyNet46 is a temporary variable to bypass .NET 4.6 validation.
-            // Remove this variable after we have more confidence in this validation check.
             var netFrameworkUtil = HostContext.GetService<INetFrameworkUtil>();
-            if (!(executionContext.Variables.GetBoolean("system.noVerifyNet46") ?? false) &&
-                !netFrameworkUtil.Test(new Version(4, 6)))
+            if (!netFrameworkUtil.Test(new Version(4, 6)))
             {
                 throw new Exception(StringUtil.Loc("MinimumNetFramework46"));
             }
@@ -48,7 +44,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             tf.ExecutionContext = executionContext;
 
             // Setup proxy.
-            if (!string.IsNullOrEmpty(executionContext.Variables.Agent_ProxyUrl))
+            var agentProxy = HostContext.GetService<IVstsAgentWebProxy>();
+            if (!string.IsNullOrEmpty(executionContext.Variables.Agent_ProxyUrl) && !agentProxy.IsBypassed(endpoint.Url))
             {
                 executionContext.Debug($"Configure '{tf.FilePath}' to work through proxy server '{executionContext.Variables.Agent_ProxyUrl}'.");
                 tf.SetupProxy(executionContext.Variables.Agent_ProxyUrl, executionContext.Variables.Agent_ProxyUsername, executionContext.Variables.Agent_ProxyPassword);
@@ -61,6 +58,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             executionContext.Output(StringUtil.Loc("Prepending0WithDirectoryContaining1", Constants.PathVariable, Path.GetFileName(tfPath)));
             varUtil.PrependPath(Path.GetDirectoryName(tfPath));
             executionContext.Debug($"{Constants.PathVariable}: '{Environment.GetEnvironmentVariable(Constants.PathVariable)}'");
+
+#if OS_WINDOWS
+            // Set TFVC_BUILDAGENT_POLICYPATH
+            string policyDllPath = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.ServerOM), "Microsoft.TeamFoundation.VersionControl.Controls.dll");
+            ArgUtil.File(policyDllPath, nameof(policyDllPath));
+            const string policyPathEnvKey = "TFVC_BUILDAGENT_POLICYPATH";
+            executionContext.Output(StringUtil.Loc("SetEnvVar", policyPathEnvKey));
+            Environment.SetEnvironmentVariable(policyPathEnvKey, policyDllPath);
+#endif
 
             // Check if the administrator accepted the license terms of the TEE EULA when configuring the agent.
             AgentSettings settings = HostContext.GetService<IConfigurationStore>().GetSettings();
@@ -294,7 +300,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                         string firstLocalDirectory =
                             (definitionMappings ?? new DefinitionWorkspaceMapping[0])
                             .Where(x => x.MappingType == DefinitionMappingType.Map)
-                            .Select( x=> x.GetRootedLocalPath(sourcesDirectory))
+                            .Select(x => x.GetRootedLocalPath(sourcesDirectory))
                             .FirstOrDefault(x => Directory.Exists(x));
                         if (firstLocalDirectory == null)
                         {
@@ -382,7 +388,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             }
 
             // Cleanup proxy settings.
-            if (!string.IsNullOrEmpty(executionContext.Variables.Agent_ProxyUrl))
+            if (!string.IsNullOrEmpty(executionContext.Variables.Agent_ProxyUrl) && !agentProxy.IsBypassed(endpoint.Url))
             {
                 executionContext.Debug($"Remove proxy setting for '{tf.FilePath}' to work through proxy server '{executionContext.Variables.Agent_ProxyUrl}'.");
                 tf.CleanupProxySetting();

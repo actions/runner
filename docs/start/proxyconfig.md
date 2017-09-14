@@ -19,13 +19,13 @@
   2. If your proxy requires additionally authentication, you will need to provide that credential to vsts agent through environment variables. We will treate the proxy credential as sensitive information and mask it in any job logs or agent diag logs.  
   
   **Set following environment variables before configure and run vsts agent.**  
-  ###Windows  
+### Windows  
   ```batch
   set VSTS_HTTP_PROXY_USERNAME=proxyuser
   set VSTS_HTTP_PROXY_PASSWORD=proxypassword
   ```  
    
-  ###Unix and OSX  
+### Unix and OSX  
   ```bash
   export VSTS_HTTP_PROXY_USERNAME=proxyuser
   export VSTS_HTTP_PROXY_PASSWORD=proxypassword

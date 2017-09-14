@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.VisualStudio.Services.Agent.Util;
 using Microsoft.VisualStudio.Services.WebApi;
 
 namespace Microsoft.VisualStudio.Services.Agent
@@ -46,6 +47,11 @@ namespace Microsoft.VisualStudio.Services.Agent
 
         public async Task ConnectAsync(VssConnection agentConnection)
         {
+            if (HostContext.RunMode == RunMode.Local)
+            {
+                return;
+            }
+
             _connection = agentConnection;
             int attemptCount = 5;
             while (!_connection.HasAuthenticated && attemptCount-- > 0)
@@ -144,18 +150,29 @@ namespace Microsoft.VisualStudio.Services.Agent
 
         public Task<TaskAgentJobRequest> RenewAgentRequestAsync(int poolId, long requestId, Guid lockToken, CancellationToken cancellationToken = default(CancellationToken))
         {
+            if (HostContext.RunMode == RunMode.Local)
+            {
+                return Task.FromResult(JsonUtility.FromString<TaskAgentJobRequest>("{ lockedUntil: \"" + DateTime.Now.Add(TimeSpan.FromMinutes(5)).ToString("u") + "\" }"));
+            }
+
             CheckConnection();
             return _taskAgentClient.RenewAgentRequestAsync(poolId, requestId, lockToken, cancellationToken: cancellationToken);
         }
 
         public Task<TaskAgentJobRequest> FinishAgentRequestAsync(int poolId, long requestId, Guid lockToken, DateTime finishTime, TaskResult result, CancellationToken cancellationToken = default(CancellationToken))
         {
+            if (HostContext.RunMode == RunMode.Local)
+            {
+                return Task.FromResult<TaskAgentJobRequest>(null);
+            }
+
             CheckConnection();
             return _taskAgentClient.FinishAgentRequestAsync(poolId, requestId, lockToken, finishTime, result, cancellationToken: cancellationToken);
         }
 
         public Task<TaskAgentJobRequest> GetAgentRequestAsync(int poolId, long requestId, CancellationToken cancellationToken = default(CancellationToken))
         {
+            ArgUtil.Equal(RunMode.Normal, HostContext.RunMode, nameof(HostContext.RunMode));
             CheckConnection();
             return _taskAgentClient.GetAgentRequestAsync(poolId, requestId, cancellationToken: cancellationToken);
         }
@@ -165,6 +182,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         //-----------------------------------------------------------------
         public Task<List<PackageMetadata>> GetPackagesAsync(string packageType, string platform, int top, CancellationToken cancellationToken)
         {
+            ArgUtil.Equal(RunMode.Normal, HostContext.RunMode, nameof(HostContext.RunMode));
             CheckConnection();
             return _taskAgentClient.GetPackagesAsync(packageType, platform, top, cancellationToken: cancellationToken);
         }

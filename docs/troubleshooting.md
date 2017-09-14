@@ -6,7 +6,7 @@ Often these logs are most relevant to the product but they can sometimes provide
 
 ## System.Debug
 
-If you are having issues with a build, the first step is to set System.Debug to true on the build definitions variables tab.  The agent and tasks will emit [debug]xxx lines for more detailed insight into what the specific task is doing.
+If you are having issues with a build, the first step is to set System.Debug to `true` on the build or release definitions variables tab.  The agent and tasks will emit [debug]xxx lines for more detailed insight into what the specific task is doing.
 
 ## Agent Trace Logs
 

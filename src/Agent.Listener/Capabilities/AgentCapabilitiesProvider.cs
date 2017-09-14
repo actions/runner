@@ -1,3 +1,4 @@
+using Microsoft.VisualStudio.Services.Agent.Listener.Configuration;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using Microsoft.Win32;
 using System;
@@ -18,23 +19,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Capabilities
             ArgUtil.NotNull(settings, nameof(settings));
             var capabilities = new List<Capability>();
             Add(capabilities, "Agent.Name", settings.AgentName ?? string.Empty);
-            switch (Constants.Agent.Platform)
-            {
-                case Constants.OSPlatform.Linux:
-                    Add(capabilities, "Agent.OS", "linux");
-                    break;
-                case Constants.OSPlatform.OSX:
-                    Add(capabilities, "Agent.OS", "darwin");
-                    break;
-                case Constants.OSPlatform.Windows:
-                    Add(capabilities, "Agent.OS", Environment.GetEnvironmentVariable("OS"));
-                    break;
-            }
-
+            Add(capabilities, "Agent.OS", VarUtil.OS);
 #if OS_WINDOWS
             Add(capabilities, "Agent.OSVersion", GetOSVersionString());
             Add(capabilities, "Cmd", Environment.GetEnvironmentVariable("comspec"));
 #endif
+            Add(capabilities, "InteractiveSession", (HostContext.StartupType != StartupType.Service).ToString());
             Add(capabilities, "Agent.Version", Constants.Agent.Version);
             Add(capabilities, "Agent.ComputerName", Environment.MachineName ?? string.Empty);
             return Task.FromResult(capabilities);

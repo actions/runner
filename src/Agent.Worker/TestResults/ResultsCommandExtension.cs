@@ -73,7 +73,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
 
             IResultReader resultReader = GetTestResultReader(_testRunner);
             TestRunContext runContext = new TestRunContext(owner, _platform, _configuration, buildId, buildUri, releaseUri, releaseEnvironmentUri);
-            VssConnection connection = WorkerUtilies.GetVssConnection(_executionContext);
+            VssConnection connection = WorkerUtilities.GetVssConnection(_executionContext);
 
             var publisher = HostContext.GetService<ITestRunPublisher>();
             publisher.InitializePublisher(context, connection, teamProject, resultReader);

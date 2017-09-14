@@ -90,7 +90,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 var commandContext = HostContext.CreateService<IAsyncCommandContext>();
                 commandContext.InitializeCommandContext(context, StringUtil.Loc("UpdateBuildNumber"));
                 commandContext.Task = UpdateBuildNumberAsync(commandContext,
-                                                             WorkerUtilies.GetVssConnection(context),
+                                                             WorkerUtilities.GetVssConnection(context),
                                                              projectId,
                                                              buildId.Value,
                                                              data,
@@ -135,7 +135,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 var commandContext = HostContext.CreateService<IAsyncCommandContext>();
                 commandContext.InitializeCommandContext(context, StringUtil.Loc("AddBuildTag"));
                 commandContext.Task = AddBuildTagAsync(commandContext,
-                                                       WorkerUtilies.GetVssConnection(context),
+                                                       WorkerUtilities.GetVssConnection(context),
                                                        projectId,
                                                        buildId.Value,
                                                        data,
@@ -159,7 +159,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             BuildServer buildServer = new BuildServer(connection, projectId);
             var tags = await buildServer.AddBuildTag(buildId, buildTag, cancellationToken);
 
-            if (tags == null || !tags.Contains(buildTag))
+            if (tags == null || !tags.Any(t => t.Equals(buildTag, StringComparison.OrdinalIgnoreCase)))
             {
                 throw new Exception(StringUtil.Loc("BuildTagAddFailed", buildTag));
             }

@@ -2,6 +2,12 @@ using System;
 
 namespace Microsoft.VisualStudio.Services.Agent
 {
+    public enum RunMode
+    {
+        Normal, // Keep "Normal" first (default value).
+        Local,
+    }
+
     public enum WellKnownDirectory
     {
         Bin,
@@ -38,7 +44,7 @@ namespace Microsoft.VisualStudio.Services.Agent
 
         public static class Agent
         {
-            public static readonly string Version = "2.119.1";
+            public static readonly string Version = "2.123.0";
 
 #if OS_LINUX
             public static readonly OSPlatform Platform = OSPlatform.Linux;
@@ -51,31 +57,41 @@ namespace Microsoft.VisualStudio.Services.Agent
 
             public static class CommandLine
             {
+                //if you are adding a new arg, please make sure you update the
+                //validArgs array as well present in the CommandSettings.cs
                 public static class Args
                 {
                     public static readonly string Agent = "agent";
                     public static readonly string Auth = "auth";
+                    public static readonly string CollectionName = "collectionname";
+                    public static readonly string DeploymentGroupName = "deploymentgroupname";
+                    public static readonly string DeploymentGroupTags = "deploymentgrouptags";
+                    public static readonly string MachineGroupName = "machinegroupname";
+                    public static readonly string MachineGroupTags = "machinegrouptags";
+                    public static readonly string Matrix = "matrix";
                     public static readonly string NotificationPipeName = "notificationpipename";
                     public static readonly string NotificationSocketAddress = "notificationsocketaddress";
+                    public static readonly string Phase = "phase";
                     public static readonly string Pool = "pool";
+                    public static readonly string ProjectName = "projectname";
+                    public static readonly string ProxyUrl = "proxyurl";
+                    public static readonly string ProxyUserName = "proxyusername";
+                    public static readonly string StartupType = "startuptype";
                     public static readonly string Url = "url";
                     public static readonly string UserName = "username";
                     public static readonly string WindowsLogonAccount = "windowslogonaccount";
                     public static readonly string Work = "work";
-                    public static readonly string MachineGroupName = "machinegroupname";
-                    public static readonly string DeploymentGroupName = "deploymentgroupname";
-                    public static readonly string ProjectName = "projectname";
-                    public static readonly string CollectionName = "collectionname";
-                    public static readonly string MachineGroupTags = "machinegrouptags";
-                    public static readonly string DeploymentGroupTags = "deploymentgrouptags";
+                    public static readonly string Yml = "yml";
 
                     // Secret args. Must be added to the "Secrets" getter as well.
                     public static readonly string Password = "password";
+                    public static readonly string ProxyPassword = "proxypassword";
                     public static readonly string Token = "token";
                     public static readonly string WindowsLogonPassword = "windowslogonpassword";
                     public static string[] Secrets => new[]
                     {
                         Password,
+                        ProxyPassword,
                         Token,
                         WindowsLogonPassword,
                     };
@@ -84,23 +100,30 @@ namespace Microsoft.VisualStudio.Services.Agent
                 public static class Commands
                 {
                     public static readonly string Configure = "configure";
+                    public static readonly string LocalRun = "localRun";
+                    public static readonly string Remove = "remove";
                     public static readonly string Run = "run";
-                    public static readonly string Unconfigure = "remove";
                 }
 
+                //if you are adding a new flag, please make sure you update the
+                //validFlags array as well present in the CommandSettings.cs
                 public static class Flags
                 {
                     public static readonly string AcceptTeeEula = "acceptteeeula";
                     public static readonly string AddDeploymentGroupTags = "adddeploymentgrouptags";
                     public static readonly string AddMachineGroupTags = "addmachinegrouptags";
                     public static readonly string Commit = "commit";
+                    public static readonly string DeploymentGroup = "deploymentgroup";
+                    public static readonly string OverwriteAutoLogon = "overwriteautologon";
                     public static readonly string Help = "help";
+                    public static readonly string MachineGroup = "machinegroup";
                     public static readonly string Replace = "replace";
+                    public static readonly string NoRestart = "norestart";
+                    public static readonly string RunAsAutoLogon = "runasautologon";
                     public static readonly string RunAsService = "runasservice";
                     public static readonly string Unattended = "unattended";
                     public static readonly string Version = "version";
-                    public static readonly string MachineGroup = "machinegroup";
-                    public static readonly string DeploymentGroup = "deploymentgroup";
+                    public static readonly string WhatIf = "whatif";
                 }
             }
 
@@ -224,7 +247,9 @@ namespace Microsoft.VisualStudio.Services.Agent
                 public static readonly string ProxyUrl = "agent.proxyurl";
                 public static readonly string ProxyUsername = "agent.proxyusername";
                 public static readonly string ProxyPassword = "agent.proxypassword";
+                public static readonly string ProxyBypassList = "agent.proxybypasslist";
                 public static readonly string RootDirectory = "agent.RootDirectory";
+                public static readonly string RunMode = "agent.runmode";
                 public static readonly string ServerOMDirectory = "agent.ServerOMDirectory";
                 public static readonly string TempDirectory = "agent.TempDirectory";
                 public static readonly string ToolsDirectory = "agent.ToolsDirectory";

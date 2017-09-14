@@ -33,8 +33,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
         public TestRunData ReadResults(IExecutionContext executionContext, string filePath, TestRunContext runContext)
         {
             _executionContext = executionContext;
-            _attachmentLocation = Path.Combine(Path.GetDirectoryName(filePath), Path.GetFileNameWithoutExtension(filePath), "In");
-            _executionContext.Debug(string.Format(CultureInfo.InvariantCulture, "Attachment location: {0}", _attachmentLocation));
 
             _definitions = new Dictionary<string, TestCaseDefinition>();
 
@@ -102,6 +100,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                 releaseUri: runContext.ReleaseUri,
                 releaseEnvironmentUri: runContext.ReleaseEnvironmentUri
                 );
+
+            //Parse the Deployment node for the runDeploymentRoot - this is the attachment root. Required for .NET Core
+            XmlNode deploymentNode = doc.SelectSingleNode("/TestRun/TestSettings/Deployment");
+            var _attachmentRoot = string.Empty;
+            if (deploymentNode != null && deploymentNode.Attributes["runDeploymentRoot"] != null )
+            {
+                _attachmentRoot = deploymentNode.Attributes["runDeploymentRoot"].Value;
+            }
+            else
+            {
+                _attachmentRoot = Path.GetFileNameWithoutExtension(filePath); // This for platform v1
+            }
+            _attachmentLocation = Path.Combine(Path.GetDirectoryName(filePath), _attachmentRoot, "In");
+            _executionContext.Debug(string.Format(CultureInfo.InvariantCulture, "Attachment location: {0}", _attachmentLocation));
 
             AddRunLevelAttachments(filePath, doc, testRunData);
 
@@ -372,7 +384,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
 
                 if (resultCreateModel.Outcome.Equals("Failed"))
                 {
-                    XmlNode errorMessage, errorStackTrace, consoleLog;
+                    XmlNode errorMessage, errorStackTrace, consoleLog, standardError;
 
                     if ((errorMessage = resultNode.SelectSingleNode("./Output/ErrorInfo/Message")) != null && !string.IsNullOrWhiteSpace(errorMessage.InnerText))
                     {
@@ -389,6 +401,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                     if ((consoleLog = resultNode.SelectSingleNode("./Output/StdOut")) != null && !string.IsNullOrWhiteSpace(consoleLog.InnerText))
                     {
                         resultCreateModel.ConsoleLog = consoleLog.InnerText;
+                    }
+
+                    // standard error
+                    if ((standardError = resultNode.SelectSingleNode("./Output/StdErr")) != null && !string.IsNullOrWhiteSpace(standardError.InnerText))
+                    {
+                        resultCreateModel.StandardError = standardError.InnerText;
                     }
                 }
 

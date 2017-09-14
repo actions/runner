@@ -6,6 +6,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
     {
         public string ConsoleLog { get; set; }
 
+        public string StandardError { get; set; }
+
         public string[] Attachments { get; set; }
     }
 }

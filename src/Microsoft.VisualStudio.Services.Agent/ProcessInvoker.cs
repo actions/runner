@@ -494,7 +494,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         private void WindowsKillProcessTree()
         {
             Dictionary<int, int> processRelationship = new Dictionary<int, int>();
-            Trace.Info($"Scean all processes to find relationship between all processes.");
+            Trace.Info($"Scan all processes to find relationship between all processes.");
             foreach (Process proc in Process.GetProcesses())
             {
                 try

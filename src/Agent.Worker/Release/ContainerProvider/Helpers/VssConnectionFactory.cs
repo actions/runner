@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Net.Http;
 using System.Threading.Tasks;
+using Microsoft.VisualStudio.Services.Agent.Util;
 using Microsoft.VisualStudio.Services.Client;
 using Microsoft.VisualStudio.Services.Common;
 using Microsoft.VisualStudio.Services.OAuth;
@@ -27,21 +28,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.ContainerProvider
             {
                 VssClientCredentials cred = GetCredentials(accessToken);
 
-                VssClientHttpRequestSettings settings = VssClientHttpRequestSettings.Default.Clone();
-
-                if (settings.SendTimeout < _minTimeout)
-                {
-                    settings.SendTimeout = _minTimeout;
-                }
-                
-                VssHttpMessageHandler innerHandler = new VssHttpMessageHandler(cred, settings);
-
                 DelegatingHandler[] handlers = new DelegatingHandler[]
                 {
                     retryOnTimeoutMessageHandler
                 };
 
-                connection = new VssConnection(uri, innerHandler, handlers);
+                connection = ApiUtil.CreateConnection(uri, cred, handlers);
+                connection.Settings.SendTimeout = TimeSpan.FromSeconds(Math.Max(_minTimeout.TotalSeconds, connection.Settings.SendTimeout.TotalSeconds));
                 await connection.ConnectAsync().ConfigureAwait(false);
 
                 if (!_vssConnections.TryAdd(uri, connection))
@@ -53,7 +46,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.ContainerProvider
 
             return connection;
         }
-        
+
         private static VssClientCredentials GetCredentials(String accessToken)
         {
             VssClientCredentials cred;
@@ -69,5 +62,5 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.ContainerProvider
             cred.PromptType = CredentialPromptType.DoNotPrompt;
             return cred;
         }
-   }
+    }
 }

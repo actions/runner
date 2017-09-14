@@ -29,7 +29,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
         #region Private
         const int BATCH_SIZE = 1000;
         const int PUBLISH_TIMEOUT = 300;
-        const int TCM_MAX_FILESIZE = 104857600;
+        const int TCM_MAX_FILECONTENT_SIZE = 100 * 1024 * 1024; //100 MB
+        const int TCM_MAX_FILESIZE = 75 * 1024 * 1024; // 75 MB
         private IExecutionContext _executionContext;
         private string _projectName;
         private ITestResultsServer _testResultsServer;
@@ -77,7 +78,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                 for (int j = 0; j < noOfResultsToBePublished; j++)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    // Do not upload duplicate entries 
+                    // Do not upload duplicate entries
                     string[] attachments = testResults[i + j].Attachments;
                     if (attachments != null)
                     {
@@ -104,6 +105,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                     {
                         await _testResultsServer.CreateTestResultAttachmentAsync(attachmentRequestModel, _projectName, testRun.Id, testresults[j].Id, cancellationToken);
                     }
+
+                    // Upload standard error as attachment
+                    string standardError = testResults[i + j].StandardError;
+                    TestAttachmentRequestModel stdErrAttachmentRequestModel = GetStandardErrorAttachmentRequestModel(standardError);
+                    if (stdErrAttachmentRequestModel != null)
+                    {
+                        await _testResultsServer.CreateTestResultAttachmentAsync(stdErrAttachmentRequestModel, _projectName, testRun.Id, testresults[j].Id, cancellationToken);
+                    }
                 }
             }
 
@@ -111,7 +120,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
         }
 
         /// <summary>
-        /// Start a test run  
+        /// Start a test run
         /// </summary>
         public async Task<TestRun> StartTestRunAsync(TestRunData testRunData, CancellationToken cancellationToken)
         {
@@ -123,7 +132,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
         }
 
         /// <summary>
-        /// Mark the test run as completed 
+        /// Mark the test run as completed
         /// </summary>
         public async Task EndTestRunAsync(TestRunData testRunData, int testRunId, bool publishAttachmentsAsArchive = false, CancellationToken cancellationToken = default(CancellationToken))
         {
@@ -135,8 +144,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
             TestRun testRun = await _testResultsServer.UpdateTestRunAsync(_projectName, testRunId, updateModel, cancellationToken);
 
             // Uploading run level attachments, only after run is marked completed;
-            // so as to make sure that any server jobs that acts on the uploaded data (like CoverAn job does for Coverage files)  
-            // have a fully published test run results, in case it wants to iterate over results 
+            // so as to make sure that any server jobs that acts on the uploaded data (like CoverAn job does for Coverage files)
+            // have a fully published test run results, in case it wants to iterate over results
 
             if (publishAttachmentsAsArchive)
             {
@@ -178,7 +187,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
         private async Task UploadTestRunAttachmentsAsArchiveAsync(int testRunId, string[] attachments, CancellationToken cancellationToken)
         {
             Trace.Entering();
-            // Do not upload duplicate entries 
+            // Do not upload duplicate entries
             HashSet<string> attachedFiles = GetUniqueTestRunFiles(attachments);
             try
             {
@@ -215,7 +224,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
         {
             Trace.Entering();
             _executionContext.Debug("Uploading test run attachements individually");
-            // Do not upload duplicate entries 
+            // Do not upload duplicate entries
             HashSet<string> attachedFiles = GetUniqueTestRunFiles(attachments);
             var attachFilesTasks = attachedFiles.Select(async file =>
              {
@@ -264,11 +273,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
         private TestAttachmentRequestModel GetAttachmentRequestModel(string attachment)
         {
             Trace.Entering();
-            if (File.Exists(attachment) && new FileInfo(attachment).Length <= TCM_MAX_FILESIZE)
+            if (!File.Exists(attachment))
+            {
+                _executionContext.Warning(StringUtil.Loc("TestAttachmentNotExists", attachment));
+                return null;
+            }
+
+            // https://stackoverflow.com/questions/13378815/base64-length-calculation
+            if (new FileInfo(attachment).Length <= TCM_MAX_FILESIZE)
             {
                 byte[] bytes = File.ReadAllBytes(attachment);
                 string encodedData = Convert.ToBase64String(bytes);
-                if (encodedData.Length <= TCM_MAX_FILESIZE)
+                if (encodedData.Length <= TCM_MAX_FILECONTENT_SIZE)
                 {
                     return new TestAttachmentRequestModel(encodedData, Path.GetFileName(attachment), "", GetAttachmentType(attachment));
                 }
@@ -279,7 +295,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
             }
             else
             {
-                _executionContext.Warning(StringUtil.Loc("NoSpaceOnDisk", attachment));
+                _executionContext.Warning(StringUtil.Loc("AttachmentExceededMaximum", attachment));
             }
 
             return null;
@@ -290,7 +306,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
             Trace.Entering();
             if (!string.IsNullOrWhiteSpace(consoleLog))
             {
-                string consoleLogFileName = "Standard Console Output.log";
+                string consoleLogFileName = "Standard_Console_Output.log";
 
                 if (consoleLog.Length <= TCM_MAX_FILESIZE)
                 {
@@ -302,6 +318,29 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                 else
                 {
                     _executionContext.Warning(StringUtil.Loc("AttachmentExceededMaximum", consoleLogFileName));
+                }
+            }
+
+            return null;
+        }
+
+        private TestAttachmentRequestModel GetStandardErrorAttachmentRequestModel(string stdErr)
+        {
+            Trace.Entering();
+            if (string.IsNullOrWhiteSpace(stdErr) == false)
+            {
+                const string stdErrFileName = "Standard_Error_Output.log";
+
+                if (stdErr.Length <= TCM_MAX_FILESIZE)
+                {
+                    byte[] bytes = System.Text.Encoding.UTF8.GetBytes(stdErr);
+                    string encodedData = Convert.ToBase64String(bytes);
+                    return new TestAttachmentRequestModel(encodedData, stdErrFileName, "",
+                        AttachmentType.ConsoleLog.ToString());
+                }
+                else
+                {
+                    _executionContext.Warning(StringUtil.Loc("AttachmentExceededMaximum", stdErrFileName));
                 }
             }
 

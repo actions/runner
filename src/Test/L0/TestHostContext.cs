@@ -25,6 +25,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         private Tracing _trace;
         private AssemblyLoadContext _loadContext;
         private List<string> _tempDirectorys = new List<string>();
+        private StartupType _startupType;
         public event EventHandler Unloading;
         public CancellationToken AgentShutdownToken => _agentShutdownTokenSource.Token;
         public ShutdownReason AgentShutdownReason { get; private set; }
@@ -42,8 +43,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             _suiteName = _suiteName.Replace(".", "_");
 
             // Setup the trace manager.
-            TraceFileName = Path.Combine(
-                IOUtil.GetBinPath(),
+            TraceFileName = Path.Combine( 
+                Path.Combine(TestUtil.GetSrcPath(), "Test", "TestLogs"), 
                 $"trace_{_suiteName}_{_testName}.log");
             if (File.Exists(TraceFileName))
             {
@@ -66,7 +67,21 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
 
         public CultureInfo DefaultCulture { get; private set; }
 
+        public RunMode RunMode { get; set; }
+
         public string TraceFileName { get; private set; }
+
+        public StartupType StartupType
+        { 
+            get 
+            {
+                return _startupType;
+            }
+            set
+            {
+                _startupType = value;
+            } 
+        }
 
         public async Task Delay(TimeSpan delay, CancellationToken token)
         {
@@ -139,7 +154,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
 
         public string GetDirectory(WellKnownDirectory directory)
         {
-            string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            // TODO: Not sure if we should always return GetTempPath here.
+            string tempDir = Path.Combine(Path.GetTempPath(), directory.ToString());
             _tempDirectorys.Add(tempDir);
             return tempDir;
         }

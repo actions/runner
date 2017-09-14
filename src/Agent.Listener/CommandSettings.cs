@@ -19,8 +19,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         private readonly string[] validCommands =
         {
             Constants.Agent.CommandLine.Commands.Configure,
+            Constants.Agent.CommandLine.Commands.LocalRun,
+            Constants.Agent.CommandLine.Commands.Remove,
             Constants.Agent.CommandLine.Commands.Run,
-            Constants.Agent.CommandLine.Commands.Unconfigure
         };
 
         private readonly string[] validFlags =
@@ -32,10 +33,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             Constants.Agent.CommandLine.Flags.DeploymentGroup,
             Constants.Agent.CommandLine.Flags.Help,
             Constants.Agent.CommandLine.Flags.MachineGroup,
+            Constants.Agent.CommandLine.Flags.NoRestart,
+            Constants.Agent.CommandLine.Flags.OverwriteAutoLogon,
             Constants.Agent.CommandLine.Flags.Replace,
+            Constants.Agent.CommandLine.Flags.RunAsAutoLogon,
             Constants.Agent.CommandLine.Flags.RunAsService,
             Constants.Agent.CommandLine.Flags.Unattended,
-            Constants.Agent.CommandLine.Flags.Version
+            Constants.Agent.CommandLine.Flags.Version,
+            Constants.Agent.CommandLine.Flags.WhatIf
         };
 
         private readonly string[] validArgs =
@@ -47,22 +52,30 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             Constants.Agent.CommandLine.Args.DeploymentGroupTags,
             Constants.Agent.CommandLine.Args.MachineGroupName,
             Constants.Agent.CommandLine.Args.MachineGroupTags,
+            Constants.Agent.CommandLine.Args.Matrix,
             Constants.Agent.CommandLine.Args.NotificationPipeName,
             Constants.Agent.CommandLine.Args.Password,
+            Constants.Agent.CommandLine.Args.Phase,
             Constants.Agent.CommandLine.Args.Pool,
             Constants.Agent.CommandLine.Args.ProjectName,
+            Constants.Agent.CommandLine.Args.ProxyPassword,
+            Constants.Agent.CommandLine.Args.ProxyUrl,
+            Constants.Agent.CommandLine.Args.ProxyUserName,
+            Constants.Agent.CommandLine.Args.StartupType,
             Constants.Agent.CommandLine.Args.Token,
             Constants.Agent.CommandLine.Args.Url,
             Constants.Agent.CommandLine.Args.UserName,
             Constants.Agent.CommandLine.Args.WindowsLogonAccount,
             Constants.Agent.CommandLine.Args.WindowsLogonPassword,
-            Constants.Agent.CommandLine.Args.Work
+            Constants.Agent.CommandLine.Args.Work,
+            Constants.Agent.CommandLine.Args.Yml
         };
 
         // Commands.
         public bool Configure => TestCommand(Constants.Agent.CommandLine.Commands.Configure);
+        public bool LocalRun => TestCommand(Constants.Agent.CommandLine.Commands.LocalRun);
+        public bool Remove => TestCommand(Constants.Agent.CommandLine.Commands.Remove);
         public bool Run => TestCommand(Constants.Agent.CommandLine.Commands.Run);
-        public bool Unconfigure => TestCommand(Constants.Agent.CommandLine.Commands.Unconfigure);
 
         // Flags.
         public bool Commit => TestFlag(Constants.Agent.CommandLine.Flags.Commit);
@@ -70,6 +83,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         public bool Unattended => TestFlag(Constants.Agent.CommandLine.Flags.Unattended);
         public bool Version => TestFlag(Constants.Agent.CommandLine.Flags.Version);
         public bool DeploymentGroup => TestFlag(Constants.Agent.CommandLine.Flags.MachineGroup) || TestFlag(Constants.Agent.CommandLine.Flags.DeploymentGroup);
+        public bool WhatIf => TestFlag(Constants.Agent.CommandLine.Flags.WhatIf);
 
         // Constructor.
         public CommandSettings(IHostContext context, string[] args)
@@ -125,13 +139,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             List<string> unknowns = new List<string>();
 
             // detect unknown commands
-            unknowns.AddRange(_parser.Commands.Where(x => !validCommands.Contains(x)));
+            unknowns.AddRange(_parser.Commands.Where(x => !validCommands.Contains(x, StringComparer.OrdinalIgnoreCase)));
 
             // detect unknown flags
-            unknowns.AddRange(_parser.Flags.Where(x => !validFlags.Contains(x)));
+            unknowns.AddRange(_parser.Flags.Where(x => !validFlags.Contains(x, StringComparer.OrdinalIgnoreCase)));
 
             // detect unknown args
-            unknowns.AddRange(_parser.Args.Keys.Where(x => !validArgs.Contains(x)));
+            unknowns.AddRange(_parser.Args.Keys.Where(x => !validArgs.Contains(x, StringComparer.OrdinalIgnoreCase)));
 
             return unknowns;
         }
@@ -160,6 +174,30 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             return TestFlagOrPrompt(
                 name: Constants.Agent.CommandLine.Flags.RunAsService,
                 description: StringUtil.Loc("RunAgentAsServiceDescription"),
+                defaultValue: false);
+        }
+
+        public bool GetRunAsAutoLogon()
+        {
+            return TestFlagOrPrompt(
+                name: Constants.Agent.CommandLine.Flags.RunAsAutoLogon,
+                description: StringUtil.Loc("RunAsAutoLogonDescription"),
+                defaultValue: false);
+        }
+
+        public bool GetOverwriteAutoLogon(string logonAccount)
+        {
+            return TestFlagOrPrompt(
+                name: Constants.Agent.CommandLine.Flags.OverwriteAutoLogon,
+                description: StringUtil.Loc("OverwriteAutoLogon", logonAccount),
+                defaultValue: false);
+        }
+
+        public bool GetNoRestart()
+        {
+            return TestFlagOrPrompt(
+                name: Constants.Agent.CommandLine.Flags.NoRestart,
+                description: StringUtil.Loc("NoRestart"),
                 defaultValue: false);
         }
 
@@ -193,6 +231,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 validator: Validators.AuthSchemeValidator);
         }
 
+        public string GetMatrix()
+        {
+            return GetArg(Constants.Agent.CommandLine.Args.Matrix);
+        }
+
         public string GetPassword()
         {
             return GetArgOrPrompt(
@@ -200,6 +243,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 description: StringUtil.Loc("Password"),
                 defaultValue: string.Empty,
                 validator: Validators.NonEmptyValidator);
+        }
+
+        public string GetPhase()
+        {
+            return GetArg(Constants.Agent.CommandLine.Args.Phase);
         }
 
         public string GetPool()
@@ -220,8 +268,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 validator: Validators.NonEmptyValidator);
         }
 
-        public string GetUrl()
+        public string GetUrl(bool suppressPromptIfEmpty = false)
         {
+            // Note, GetArg does not consume the arg (like GetArgOrPrompt does).
+            if (suppressPromptIfEmpty &&
+                string.IsNullOrEmpty(GetArg(Constants.Agent.CommandLine.Args.Url)))
+            {
+                return string.Empty;
+            }
+
             return GetArgOrPrompt(
                 name: Constants.Agent.CommandLine.Args.Url,
                 description: StringUtil.Loc("ServerUrl"),
@@ -284,11 +339,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 validator: Validators.NonEmptyValidator);
         }
 
-        public string GetWindowsLogonAccount(string defaultValue)
+        public string GetWindowsLogonAccount(string defaultValue, string descriptionMsg)
         {
             return GetArgOrPrompt(
                 name: Constants.Agent.CommandLine.Args.WindowsLogonAccount,
-                description: StringUtil.Loc("WindowsLogonAccountNameDescription"),
+                description: descriptionMsg,
                 defaultValue: defaultValue,
                 validator: Validators.NTAccountValidator);
         }
@@ -319,6 +374,37 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         public string GetNotificationSocketAddress()
         {
             return GetArg(Constants.Agent.CommandLine.Args.NotificationSocketAddress);
+        }
+
+        // This is used to find out the source from where the agent.listener.exe was launched at the time of run
+        public string GetStartupType()
+        {
+            return GetArg(Constants.Agent.CommandLine.Args.StartupType);
+        }
+
+        public string GetYml()
+        {
+            return GetArg(Constants.Agent.CommandLine.Args.Yml);
+        }
+
+        public string GetProxyUrl()
+        {
+            return GetArg(Constants.Agent.CommandLine.Args.ProxyUrl);
+        }
+
+        public string GetProxyUserName()
+        {
+            return GetArg(Constants.Agent.CommandLine.Args.ProxyUserName);
+        }
+
+        public string GetProxyPassword()
+        {
+            return GetArg(Constants.Agent.CommandLine.Args.ProxyPassword);
+        }
+
+        public void SetUnattended()
+        {
+            _parser.Flags.Add(Constants.Agent.CommandLine.Flags.Unattended);
         }
 
         //
@@ -364,7 +450,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             {
                 // After read the arg from input commandline args, remove it from Arg dictionary,
                 // This will help if bad arg value passed through CommandLine arg, when ConfigurationManager ask CommandSetting the second time, 
-                // It will prompt for input intead of continue use the bad input.
+                // It will prompt for input instead of continue use the bad input.
                 _trace.Info($"Remove {name} from Arg dictionary.");
                 RemoveArg(name);
 

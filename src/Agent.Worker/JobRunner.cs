@@ -34,6 +34,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             ArgUtil.NotNull(message.Tasks, nameof(message.Tasks));
             Trace.Info("Job ID {0}", message.JobId);
 
+            // Agent.RunMode
+            RunMode runMode;
+            if (message.Environment.Variables.ContainsKey(Constants.Variables.Agent.RunMode) &&
+                Enum.TryParse(message.Environment.Variables[Constants.Variables.Agent.RunMode], ignoreCase: true, result: out runMode) &&
+                runMode == RunMode.Local)
+            {
+                HostContext.RunMode = runMode;
+            }
+
             // System.AccessToken
             if (message.Environment.Variables.ContainsKey(Constants.Variables.System.EnableAccessToken) &&
                 StringUtil.ConvertToBoolean(message.Environment.Variables[Constants.Variables.System.EnableAccessToken]))
@@ -117,10 +126,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 // Set agent variables.
                 AgentSettings settings = HostContext.GetService<IConfigurationStore>().GetSettings();
                 jobContext.Variables.Set(Constants.Variables.Agent.Id, settings.AgentId.ToString(CultureInfo.InvariantCulture));
-                jobContext.Variables.Set(Constants.Variables.Agent.HomeDirectory, IOUtil.GetRootPath());
+                jobContext.Variables.Set(Constants.Variables.Agent.HomeDirectory, HostContext.GetDirectory(WellKnownDirectory.Root));
                 jobContext.Variables.Set(Constants.Variables.Agent.JobName, message.JobName);
                 jobContext.Variables.Set(Constants.Variables.Agent.MachineName, Environment.MachineName);
                 jobContext.Variables.Set(Constants.Variables.Agent.Name, settings.AgentName);
+                jobContext.Variables.Set(Constants.Variables.Agent.OS, VarUtil.OS);
                 jobContext.Variables.Set(Constants.Variables.Agent.RootDirectory, IOUtil.GetWorkPath(HostContext));
 #if OS_WINDOWS
                 jobContext.Variables.Set(Constants.Variables.Agent.ServerOMDirectory, Path.Combine(IOUtil.GetExternalsPath(), Constants.Path.ServerOMDirectory));
@@ -159,7 +169,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     await taskServer.ConnectAsync(ApiUtil.CreateConnection(taskServerUri, taskServerCredential));
                 }
 
-                if (taskServerUri == null || !await taskServer.TaskDefinitionEndpointExist(jobRequestCancellationToken))
+                if (taskServerUri == null || !await taskServer.TaskDefinitionEndpointExist())
                 {
                     Trace.Info($"Can't determine task download url from JobMessage or the endpoint doesn't exist.");
                     var configStore = HostContext.GetService<IConfigurationStore>();
@@ -193,16 +203,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 try
                 {
                     Trace.Info("Initialize job. Getting all job steps.");
-                    var initalizeResult = await jobExtension.InitializeJob(jobContext, message);
-                    preJobSteps = initalizeResult.PreJobSteps;
-                    jobSteps = initalizeResult.JobSteps;
-                    postJobSteps = initalizeResult.PostJobStep;
+                    var initializeResult = await jobExtension.InitializeJob(jobContext, message);
+                    preJobSteps = initializeResult.PreJobSteps;
+                    jobSteps = initializeResult.JobSteps;
+                    postJobSteps = initializeResult.PostJobStep;
                 }
                 catch (OperationCanceledException ex) when (jobContext.CancellationToken.IsCancellationRequested)
                 {
                     // set the job to canceled
                     // don't log error issue to job ExecutionContext, since server owns the job level issue
-                    Trace.Error($"Job is canclled during initialize.");
+                    Trace.Error($"Job is canceled during initialize.");
                     Trace.Error($"Caught exception: {ex}");
                     return await CompleteJobAsync(jobServer, jobContext, message, TaskResult.Canceled);
                 }
@@ -227,7 +237,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
                 // Run all pre job steps
                 // All pre job steps are critical to the job
-                // Stop exection on any step failure or cancelled
+                // Stop execution on any step failure or cancelled
                 Trace.Info("Run all pre-job steps.");
                 var stepsRunner = HostContext.GetService<IStepsRunner>();
                 try
@@ -316,9 +326,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         private async Task<TaskResult> CompleteJobAsync(IJobServer jobServer, IExecutionContext jobContext, AgentJobRequestMessage message, TaskResult? taskResult = null)
         {
-            // Clean TEMP.
-            _tempDirectoryManager?.CleanupTempDirectory(jobContext);
-
             jobContext.Section(StringUtil.Loc("StepFinishing", message.JobName));
             TaskResult result = jobContext.Complete(taskResult);
 
@@ -333,6 +340,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 Trace.Error(ex);
                 result = TaskResultUtil.MergeTaskResults(result, TaskResult.Failed);
             }
+
+            // Clean TEMP after finish process jobserverqueue, since there might be a pending fileupload still use the TEMP dir.
+            _tempDirectoryManager?.CleanupTempDirectory();
 
             if (!jobContext.Features.HasFlag(PlanFeatures.JobCompletedPlanEvent))
             {
@@ -400,11 +410,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             }
         }
 
-        // the hostname (how the agent knows the server) is external to our server
+        // the scheme://hostname:port (how the agent knows the server) is external to our server
         // in other words, an agent may have it's own way (DNS, hostname) of refering
-        // to the server.  it owns that.  That's the hostname we will use.
+        // to the server.  it owns that.  That's the scheme://hostname:port we will use.
         // Example: Server's notification url is http://tfsserver:8080/tfs 
-        //          Agent config url is http://tfsserver.mycompany.com:8080/tfs 
+        //          Agent config url is https://tfsserver.mycompany.com:9090/tfs 
         private Uri ReplaceWithConfigUriBase(Uri messageUri)
         {
             AgentSettings settings = HostContext.GetService<IConfigurationStore>().GetSettings();
@@ -416,22 +426,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     return messageUri;
                 }
 
-                var configUri = new Uri(settings.ServerUrl);
                 Uri result = null;
-                Uri configBaseUri = null;
-                string scheme = messageUri.GetComponents(UriComponents.Scheme, UriFormat.Unescaped);
-                string host = configUri.GetComponents(UriComponents.Host, UriFormat.Unescaped);
-
-                int portValue = 0;
-                string port = messageUri.GetComponents(UriComponents.Port, UriFormat.Unescaped);
-                if (!string.IsNullOrEmpty(port))
-                {
-                    int.TryParse(port, out portValue);
-                }
-
-                configBaseUri = portValue > 0 ? new UriBuilder(scheme, host, portValue).Uri : new UriBuilder(scheme, host).Uri;
-
-                if (Uri.TryCreate(configBaseUri, messageUri.PathAndQuery, out result))
+                Uri configUri = new Uri(settings.ServerUrl);
+                if (Uri.TryCreate(new Uri(configUri.GetComponents(UriComponents.SchemeAndServer, UriFormat.Unescaped)), messageUri.PathAndQuery, out result))
                 {
                     //replace the schema and host portion of messageUri with the host from the
                     //server URI (which was set at config time)
@@ -454,11 +451,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         private void ReplaceConfigUriBaseInJobRequestMessage(AgentJobRequestMessage message)
         {
-            string systemConnectionHostName = message.Environment.SystemConnection.Url.GetComponents(UriComponents.Host, UriFormat.Unescaped);
-            // fixup any endpoint Url that match SystemConnect host.
+            // fixup any endpoint Url that match SystemConnect server.
             foreach (var endpoint in message.Environment.Endpoints)
             {
-                if (endpoint.Url.GetComponents(UriComponents.Host, UriFormat.Unescaped).Equals(systemConnectionHostName, StringComparison.OrdinalIgnoreCase))
+                if (Uri.Compare(endpoint.Url, message.Environment.SystemConnection.Url, UriComponents.SchemeAndServer, UriFormat.Unescaped, StringComparison.OrdinalIgnoreCase) == 0)
                 {
                     endpoint.Url = ReplaceWithConfigUriBase(endpoint.Url);
                     Trace.Info($"Ensure endpoint url match config url base. {endpoint.Url}");

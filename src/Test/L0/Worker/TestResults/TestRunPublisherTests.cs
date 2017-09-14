@@ -352,6 +352,87 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
             Assert.Equal(decodedData, testResultWithLog.ConsoleLog);
         }
 
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
+        public void PublishStandardErrorLogIsSuccessful()
+        {
+            SetupMocks();
+            ResetValues();
+
+            TestCaseResultData testResultWithStandardError = new TestCaseResultData();
+            testResultWithStandardError.StandardError = "Publish standard error is successfully logged";
+
+            TestCaseResultData testResultWithNoStandardError = new TestCaseResultData();
+            testResultWithNoStandardError.StandardError = "";
+
+            TestCaseResultData testResultDefault = new TestCaseResultData();
+
+            List<TestCaseResultData> testResults = new List<TestCaseResultData>() { testResultWithStandardError, testResultWithNoStandardError, testResultDefault };
+
+            // execute publish task
+            _testRunData = _publisher.ReadResultsFromFile(_testRunContext, "filepath");
+            _publisher.StartTestRunAsync(_testRunData).Wait();
+            var testRun = new TestRun { Id = 1 };
+            _publisher.AddResultsAsync(testRun, testResults.ToArray()).Wait();
+            _publisher.EndTestRunAsync(_testRunData, 1).Wait();
+
+            // validate
+            Assert.Equal(_resultsLevelAttachments.Count, 1);
+            Assert.Equal(_resultsLevelAttachments[1].Count, 1);
+            Assert.Equal(_resultsLevelAttachments[1][0].AttachmentType, AttachmentType.ConsoleLog.ToString());
+            string encodedData = _resultsLevelAttachments[1][0].Stream;
+            byte[] bytes = Convert.FromBase64String(encodedData);
+            string decodedData = System.Text.Encoding.UTF8.GetString(bytes);
+            Assert.Equal(decodedData, testResultWithStandardError.StandardError);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
+        public void PublishStandardErrorLogWithMultiupleResultsIsSuccessful()
+        {
+            SetupMocks();
+            ResetValues();
+
+            TestCaseResultData testResultWithStandardError1 = new TestCaseResultData();
+            testResultWithStandardError1.StandardError = "Publish standard error is successfully logged for result 1";
+
+            TestCaseResultData testResultWithStandardError2 = new TestCaseResultData();
+            testResultWithStandardError2.StandardError = "Publish standard error is successfully logged for result 2";
+
+            TestCaseResultData testResultWithNoStandardError = new TestCaseResultData();
+            testResultWithNoStandardError.StandardError = "";
+
+            TestCaseResultData testResultDefault = new TestCaseResultData();
+
+            List<TestCaseResultData> testResults = new List<TestCaseResultData>() { testResultWithStandardError1, testResultWithStandardError2, testResultWithNoStandardError, testResultDefault };
+
+            // execute publish task
+            _testRunData = _publisher.ReadResultsFromFile(_testRunContext, "filepath");
+            _publisher.StartTestRunAsync(_testRunData).Wait();
+            var testRun = new TestRun { Id = 1 };
+            _publisher.AddResultsAsync(testRun, testResults.ToArray()).Wait();
+            _publisher.EndTestRunAsync(_testRunData, 1).Wait();
+
+            // validate
+            Assert.Equal(_resultsLevelAttachments.Count, 2);
+            Assert.Equal(_resultsLevelAttachments[1].Count, 1);
+            Assert.Equal(_resultsLevelAttachments[2].Count, 1);
+            Assert.Equal(_resultsLevelAttachments[1][0].AttachmentType, AttachmentType.ConsoleLog.ToString());
+            Assert.Equal(_resultsLevelAttachments[2][0].AttachmentType, AttachmentType.ConsoleLog.ToString());
+
+            string encodedData1 = _resultsLevelAttachments[1][0].Stream;
+            byte[] bytes1 = Convert.FromBase64String(encodedData1);
+            string decodedData1 = System.Text.Encoding.UTF8.GetString(bytes1);
+            Assert.Equal(decodedData1, testResultWithStandardError1.StandardError);
+
+            string encodedData2 = _resultsLevelAttachments[2][0].Stream;
+            byte[] bytes2 = Convert.FromBase64String(encodedData2);
+            string decodedData2 = System.Text.Encoding.UTF8.GetString(bytes2);
+            Assert.Equal(decodedData2, testResultWithStandardError2.StandardError);
+        }
+
         public void Dispose()
         {
             try

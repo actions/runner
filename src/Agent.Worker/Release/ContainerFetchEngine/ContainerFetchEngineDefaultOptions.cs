@@ -8,6 +8,5 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.ContainerFetchEng
         public const int ParallelDownloadLimit = 4;
         public const int RetryLimit = 5;
         public const int DownloadBufferSize = 8192;
-        public static readonly TimeSpan GetFileAsyncTimeout = TimeSpan.FromMinutes(5);
     }
 }

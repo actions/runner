@@ -31,7 +31,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             {
                 typeof(ICapabilitiesProvider),
                 typeof(ICredentialProvider),
-                typeof(IConfigurationProvider)
+                typeof(IConfigurationProvider),
             };
             Validate(
                 assembly: typeof(IMessageListener).GetTypeInfo().Assembly,
@@ -54,10 +54,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 typeof(ISecret),
                 typeof(ITraceManager),
                 typeof(IThrottlingReporter),
-                typeof(Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressions.IFunctionInfo),
-                typeof(Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressions.INamedValueInfo),
-                typeof(Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressions.INode),
-                typeof(Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressions.ITraceWriter),
             };
             Validate(
                 assembly: typeof(IHostContext).GetTypeInfo().Assembly,
@@ -104,6 +100,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             IDictionary<TypeInfo, Type> w = whitelist.ToDictionary(x => x.GetTypeInfo());
             foreach (TypeInfo interfaceTypeInfo in assembly.DefinedTypes.Where(x => x.IsInterface && !w.ContainsKey(x)))
             {
+                // Temporary hack due to shared code copied in two places.
+                if (interfaceTypeInfo.FullName.StartsWith("Microsoft.TeamFoundation.DistributedTask"))
+                {
+                    continue;
+                }
+
                 // Assert the ServiceLocatorAttribute is defined on the interface.
                 CustomAttributeData attribute =
                     interfaceTypeInfo

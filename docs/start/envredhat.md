@@ -1,10 +1,10 @@
 
 
-# ![redhat](../res/redhat_med.png) Redhat/CentOS System Prerequisites
+# ![redhat](../res/redhat_med.png) Red Hat/CentOS System Prerequisites
 
 ## Versions
 
-Tested on Redhat 7.2.  Not domain joined.
+Tested on Red Hat 7.2.  Not domain joined.
 
 64-bit supported.
 
@@ -18,9 +18,9 @@ If you're still having issues:
 
 ## Git
 
-If you use git, git >= 2.9.0 is a pre-requisite for Redhat/CentOS agents.
+If you use git, git >= 2.9.0 is a pre-requisite for Red Hat/CentOS agents.
 
-[Based on Install Latest Git on Redhat/Centos](http://tecadmin.net/install-git-2-x-on-centos-rhel-and-fedora/#)
+[Based on Install Latest Git on Red Hat/CentOS](http://tecadmin.net/install-git-2-x-on-centos-rhel-and-fedora/#)
 
 ```bash
 $ yum install curl-devel expat-devel gettext-devel openssl-devel zlib-devel

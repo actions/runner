@@ -288,6 +288,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 Assert.Equal(true, EvaluateBoolean(hc, "eq('nested sub object property value 2', testFunction()['subObj'].nestedProp2)", functions: new IFunctionInfo[] { new FunctionInfo<TestFunctionNode>("testFunction", 0, 0) }, state: obj));
                 Assert.Equal(true, EvaluateBoolean(hc, "eq('nested sub object property value 1', testFunction().subObj['nestedProp1'])", functions: new IFunctionInfo[] { new FunctionInfo<TestFunctionNode>("testFunction", 0, 0) }, state: obj));
                 Assert.Equal(true, EvaluateBoolean(hc, "eq('nested sub object property value 2', testFunction().subObj.nestedProp2)", functions: new IFunctionInfo[] { new FunctionInfo<TestFunctionNode>("testFunction", 0, 0) }, state: obj));
+                Assert.Equal(true, EvaluateBoolean(hc, "eq('array element at index 0', testFunction().array['0'])", functions: new IFunctionInfo[] { new FunctionInfo<TestFunctionNode>("testFunction", 0, 0) }, state: obj));
+                Assert.Equal(true, EvaluateBoolean(hc, "eq('array element at index 1', testFunction().array['1'])", functions: new IFunctionInfo[] { new FunctionInfo<TestFunctionNode>("testFunction", 0, 0) }, state: obj));
             }
         }
 
@@ -1302,6 +1304,69 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 {
                     Assert.Equal("ExpectedStartParameter", GetKind(ex));
                     Assert.Equal("eq", GetRawToken(ex));
+                }
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void ThrowsWhenMaxParametersExceeded()
+        {
+            using (var hc = new TestHostContext(this))
+            {
+                try
+                {
+                    EvaluateBoolean(
+                        hc,
+                        "eq('lookup-value', testFunction('lookup-value', 'extra param'))",
+                        functions: new[] { new FunctionInfo<TestFunctionNode>("testFunction", 1, 1) },
+                        state: new Dictionary<string, object>() { { "lookup-key", "lookup-value" } });
+                    throw new Exception("Should not reach here.");
+                }
+                catch (ParseException ex)
+                {
+                    Assert.Equal("UnexpectedSymbol", GetKind(ex));
+                    Assert.Equal(",", GetRawToken(ex));
+                }
+
+                try
+                {
+                    EvaluateBoolean(
+                        hc,
+                        "eq('lookup-value', testFunction('lookup-value'))",
+                        functions: new[] { new FunctionInfo<TestFunctionNode>("testFunction", 0, 0) },
+                        state: new Dictionary<string, object>() { { "lookup-key", "lookup-value" } });
+                    throw new Exception("Should not reach here.");
+                }
+                catch (ParseException ex)
+                {
+                    Assert.Equal("UnexpectedSymbol", GetKind(ex));
+                    Assert.Equal(")", GetRawToken(ex));
+                }
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void ThrowsWhenMinParametersNotSatisfied()
+        {
+            using (var hc = new TestHostContext(this))
+            {
+                try
+                {
+                    EvaluateBoolean(
+                        hc,
+                        "eq('lookup-value', testFunction())",
+                        functions: new[] { new FunctionInfo<TestFunctionNode>("testFunction", 1, 1) },
+                        state: new Dictionary<string, object>() { { "lookup-key", "lookup-value" } });
+                    throw new Exception("Should not reach here.");
+                }
+                catch (ParseException ex)
+                {
+                    Assert.Equal("UnexpectedSymbol", GetKind(ex));
+                    Assert.Equal(")", GetRawToken(ex));
                 }
             }
         }

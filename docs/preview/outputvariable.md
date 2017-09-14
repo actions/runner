@@ -13,11 +13,14 @@ There will be 2 different ways to produce output variables.
 
 Declare a new section in the task.json to indicate which variable will get published.
 ```	JSON
-OutputVariables: [
-    "variable1",
-    "variable2",
-    "variable3"
-]
+"OutputVariables": [{
+    "name" : "MY_OUTPUTVARIABLE_1",
+    "description" : "This is the description of my output variable."
+}, 
+{
+    "name" : "MY_OUTPUTVARIABLE_2",
+    "description" : "Description can contains markdown [vsts-tasks](https://github.com/microsoft/vsts-tasks)"
+}]
 ```
 Task author doesn't have to change their task script if the script already use `##vso[task.setvariable]` to set variable.
 

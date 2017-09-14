@@ -15,8 +15,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Telemetry
 {
     public class TelemetryCommandExtension : AgentService, IWorkerCommandExtension
     {
-        private string _area;
-        private string _feature;
         public HostTypes SupportedHostTypes => HostTypes.All;
 
         public void ProcessCommand(IExecutionContext context, Command command)
@@ -51,47 +49,31 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Telemetry
         {
             ArgUtil.NotNull(context, nameof(context));
 
-            LoadTelemetryInputs(eventProperties);
-
-            var ciService = HostContext.GetService<ICustomerIntelligenceServer>();
-            var vssConnection = WorkerUtilies.GetVssConnection(context);
-            ciService.Initialize(vssConnection);
-
-            var commandContext = HostContext.CreateService<IAsyncCommandContext>();
-            commandContext.InitializeCommandContext(context, StringUtil.Loc("Telemetry"));
-            commandContext.Task = ciService.PublishEventsAsync(new CustomerIntelligenceEvent[] { PopulateCustomerIntelligenceData(context, data) });
-            context.AsyncCommands.Add(commandContext);
-        }
-
-        private void LoadTelemetryInputs(Dictionary<string, string> eventProperties)
-        {
-            eventProperties.TryGetValue(WellKnownEventTrackProperties.Area, out _area);
-            if (string.IsNullOrEmpty(_area))
+            string area;
+            if (!eventProperties.TryGetValue(WellKnownEventTrackProperties.Area, out area) || string.IsNullOrEmpty(area))
             {
                 throw new ArgumentException(StringUtil.Loc("ArgumentNeeded", "Area"));
             }
 
-            eventProperties.TryGetValue(WellKnownEventTrackProperties.Feature, out _feature);
-            if (string.IsNullOrEmpty(_feature))
+            string feature;
+            if (!eventProperties.TryGetValue(WellKnownEventTrackProperties.Feature, out feature) || string.IsNullOrEmpty(feature))
             {
                 throw new ArgumentException(StringUtil.Loc("ArgumentNeeded", "Feature"));
             }
-        }
 
-        private CustomerIntelligenceEvent PopulateCustomerIntelligenceData(IExecutionContext context, string data)
-        {
             if (string.IsNullOrEmpty(data))
             {
                 throw new ArgumentException(StringUtil.Loc("ArgumentNeeded", "EventTrackerData"));
             }
 
+            CustomerIntelligenceEvent ciEvent;
             try
             {
                 var ciProperties = JsonConvert.DeserializeObject<Dictionary<string, object>>(data);
-                return new CustomerIntelligenceEvent
+                ciEvent = new CustomerIntelligenceEvent()
                 {
-                    Area = _area,
-                    Feature = _feature,
+                    Area = area,
+                    Feature = feature,
                     Properties = ciProperties
                 };
             }
@@ -99,6 +81,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Telemetry
             {
                 throw new ArgumentException(StringUtil.Loc("TelemetryCommandDataError", data, ex.Message));
             }
+
+            var ciService = HostContext.GetService<ICustomerIntelligenceServer>();
+            var vssConnection = WorkerUtilities.GetVssConnection(context);
+            ciService.Initialize(vssConnection);
+
+            var commandContext = HostContext.CreateService<IAsyncCommandContext>();
+            commandContext.InitializeCommandContext(context, StringUtil.Loc("Telemetry"));
+            commandContext.Task = ciService.PublishEventsAsync(new CustomerIntelligenceEvent[] { ciEvent });
+            context.AsyncCommands.Add(commandContext);
         }
 
         internal static class WellKnownEventTrackCommand

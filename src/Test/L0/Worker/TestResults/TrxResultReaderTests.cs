@@ -171,7 +171,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
                  "</TestSettings>" +
 
                  "<Results>" +
-                   "<UnitTestResult executionId = \"48ec1e47-b9df-43b9-aef2-a2cc8742353d\" testId = \"f0d6b58f-dc08-9c0b-aab7-0a1411d4a346\" testName = \"TestMethod2\" computerName = \"SOMERANDOMCOMPUTERNAME\" duration = \"00:00:00.0834563\" startTime = \"2015-03-20T16:53:32.3099353+05:30\" endTime = \"2015-03-20T16:53:32.3939623+05:30\" testType = \"13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b\" outcome = \"Failed\" testListId = \"8c84fa94-04c1-424b-9868-57a2d4851a1d\" relativeResultsDirectory = \"48ec1e47-b9df-43b9-aef2-a2cc8742353d\" ><Output><StdOut>Show console log output.</StdOut><ErrorInfo><Message>Assert.Fail failed.</Message><StackTrace>at UnitTestProject4.UnitTest1.TestMethod2() in C:\\Users\\somerandomusername\\Source\\Repos\\Projectx\\UnitTestProject4\\UnitTestProject4\\UnitTest1.cs:line 21</StackTrace></ErrorInfo></Output>" +
+                   "<UnitTestResult executionId = \"48ec1e47-b9df-43b9-aef2-a2cc8742353d\" testId = \"f0d6b58f-dc08-9c0b-aab7-0a1411d4a346\" testName = \"TestMethod2\" computerName = \"SOMERANDOMCOMPUTERNAME\" duration = \"00:00:00.0834563\" startTime = \"2015-03-20T16:53:32.3099353+05:30\" endTime = \"2015-03-20T16:53:32.3939623+05:30\" testType = \"13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b\" outcome = \"Failed\" testListId = \"8c84fa94-04c1-424b-9868-57a2d4851a1d\" relativeResultsDirectory = \"48ec1e47-b9df-43b9-aef2-a2cc8742353d\" ><Output><StdOut>Show console log output.</StdOut><StdErr>This is standard error message.</StdErr><ErrorInfo><Message>Assert.Fail failed.</Message><StackTrace>at UnitTestProject4.UnitTest1.TestMethod2() in C:\\Users\\somerandomusername\\Source\\Repos\\Projectx\\UnitTestProject4\\UnitTestProject4\\UnitTest1.cs:line 21</StackTrace></ErrorInfo></Output>" +
                      "<ResultFiles><ResultFile path=\"DIGANR-DEV4\\x.txt\" /></ResultFiles>" +
                    "</UnitTestResult>" +
 
@@ -231,6 +231,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
             Assert.Equal(runData.Results[0].StackTrace, "at UnitTestProject4.UnitTest1.TestMethod2() in C:\\Users\\somerandomusername\\Source\\Repos\\Projectx\\UnitTestProject4\\UnitTestProject4\\UnitTest1.cs:line 21");
             Assert.Equal(runData.Results[0].Priority.ToString(), "1");
             Assert.Equal(runData.Results[0].ConsoleLog, "Show console log output.");
+            Assert.Equal(runData.Results[0].StandardError, "This is standard error message.");
             Assert.Equal(runData.Results[0].Attachments.Length, 1);
             Assert.True(runData.Results[0].Attachments[0].Contains("x.txt"));
 
@@ -290,7 +291,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
                  "</TestSettings>" +
 
                  "<Results>" +
-                   "<UnitTestResult executionId = \"48ec1e47-b9df-43b9-aef2-a2cc8742353d\" testId = \"f0d6b58f-dc08-9c0b-aab7-0a1411d4a346\" testName = \"TestMethod2\" computerName = \"SOMERANDOMCOMPUTERNAME\" duration = \"00:00:00.0834563\" startTime = \"2015-03-20T16:53:32.3099353+05:30\" endTime = \"2015-03-20T16:53:32.3939623+05:30\" testType = \"13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b\" outcome = \"Failed\" testListId = \"8c84fa94-04c1-424b-9868-57a2d4851a1d\" relativeResultsDirectory = \"48ec1e47-b9df-43b9-aef2-a2cc8742353d\" ><Output><StdOut>Show console log output.</StdOut><ErrorInfo><Message>Assert.Fail failed.</Message><StackTrace>at UnitTestProject4.UnitTest1.TestMethod2() in C:\\Users\\somerandomusername\\Source\\Repos\\Projectx\\UnitTestProject4\\UnitTestProject4\\UnitTest1.cs:line 21</StackTrace></ErrorInfo></Output>" +
+                   "<UnitTestResult executionId = \"48ec1e47-b9df-43b9-aef2-a2cc8742353d\" testId = \"f0d6b58f-dc08-9c0b-aab7-0a1411d4a346\" testName = \"TestMethod2\" computerName = \"SOMERANDOMCOMPUTERNAME\" duration = \"00:00:00.0834563\" startTime = \"2015-03-20T16:53:32.3099353+05:30\" endTime = \"2015-03-20T16:53:32.3939623+05:30\" testType = \"13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b\" outcome = \"Failed\" testListId = \"8c84fa94-04c1-424b-9868-57a2d4851a1d\" relativeResultsDirectory = \"48ec1e47-b9df-43b9-aef2-a2cc8742353d\" ><Output><StdOut>Show console log output.</StdOut><StdErr>This is standard error message.</StdErr><ErrorInfo><Message>Assert.Fail failed.</Message><StackTrace>at UnitTestProject4.UnitTest1.TestMethod2() in C:\\Users\\somerandomusername\\Source\\Repos\\Projectx\\UnitTestProject4\\UnitTestProject4\\UnitTest1.cs:line 21</StackTrace></ErrorInfo></Output>" +
                      "<ResultFiles><ResultFile path=\"DIGANR-DEV4\\x.txt\" /></ResultFiles>" +
                    "</UnitTestResult>" +
 
@@ -350,6 +351,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
                 Assert.Equal(runData.Results[0].StackTrace, "at UnitTestProject4.UnitTest1.TestMethod2() in C:\\Users\\somerandomusername\\Source\\Repos\\Projectx\\UnitTestProject4\\UnitTestProject4\\UnitTest1.cs:line 21");
                 Assert.Equal(runData.Results[0].Priority.ToString(), "1");
                 Assert.Equal(runData.Results[0].ConsoleLog, "Show console log output.");
+                Assert.Equal(runData.Results[0].StandardError, "This is standard error message.");
                 Assert.Equal(runData.Results[0].Attachments.Length, 1);
                 Assert.True(runData.Results[0].Attachments[0].Contains("x.txt"));
 
@@ -535,6 +537,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "PublishTestResults")]
+        public void VerifyCoverageSourceFilesAndPdbsAreAddedAsRunLevelAttachmentsWithDeployment()
+        {
+            SetupMocks();
+            var runData = GetTestRunDataWithAttachments(13);
+            Assert.Equal(3, runData.Attachments.Length);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void VerifyDataCollectorFilesAndPdbsAreAddedAsRunLevelAttachments()
         {
             SetupMocks();
@@ -678,6 +690,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
                       "</DataCollectors>" +
                     "</AgentRule>" +
                   "</Execution>" +
+                   "{3}" +
                 "</TestSettings>" +
 
                 "{0}" +
@@ -718,19 +731,25 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
                     "<ResultFile path=\"vstest_console.static.data.coverage\" /></ResultFiles>" +
                     "<ResultFile path=\"DIGANR-DEV4\\mstest.static.data.coverage\" />";
 
+            var part3 = "<Deployment runDeploymentRoot=\"results\"></Deployment>";
+                      
+
             switch (val)
             {
                 case 0:
-                    trxContents = string.Format(trxContents, part0, string.Empty, string.Empty);
+                    trxContents = string.Format(trxContents, part0, string.Empty, string.Empty, string.Empty);
                     break;
                 case 1:
-                    trxContents = string.Format(trxContents, string.Empty, part1, string.Empty);
+                    trxContents = string.Format(trxContents, string.Empty, part1, string.Empty, string.Empty);
                     break;
                 case 2:
-                    trxContents = string.Format(trxContents, string.Empty, string.Empty, part2);
+                    trxContents = string.Format(trxContents, string.Empty, string.Empty, part2, string.Empty);
                     break;
                 case 3:
-                    trxContents = string.Format(trxContents, string.Empty, string.Empty, string.Empty);
+                    trxContents = string.Format(trxContents, string.Empty, string.Empty, string.Empty, string.Empty);
+                    break;
+                case 13:
+                    trxContents = string.Format(trxContents, string.Empty, part1, string.Empty, part3);
                     break;
                 default:
                     trxContents = string.Format(trxContents, part0, part1, part2);

@@ -58,6 +58,9 @@
 .PARAMETER ProxyUseDefaultCredentials
     Default: false
     Use default credentials, when using proxy address.
+.PARAMETER SkipNonVersionedFiles
+    Default: false
+    Skips installing non-versioned files if they already exist, such as dotnet.exe.
 #>
 [cmdletbinding()]
 param(
@@ -71,7 +74,8 @@ param(
    [string]$AzureFeed="https://dotnetcli.azureedge.net/dotnet",
    [string]$UncachedFeed="https://dotnetcli.blob.core.windows.net/dotnet",
    [string]$ProxyAddress,
-   [switch]$ProxyUseDefaultCredentials
+   [switch]$ProxyUseDefaultCredentials,
+   [switch]$SkipNonVersionedFiles
 )
 
 Set-StrictMode -Version Latest
@@ -82,10 +86,10 @@ $BinFolderRelativePath=""
 
 # example path with regex: shared/1.0.0-beta-12345/somepath
 $VersionRegEx="/\d+\.\d+[^/]+/"
-$OverrideNonVersionedFiles=$true
+$OverrideNonVersionedFiles = !$SkipNonVersionedFiles
 
 function Say($str) {
-    Write-Output "dotnet-install: $str"
+    Write-Host "dotnet-install: $str"
 }
 
 function Say-Verbose($str) {
@@ -182,7 +186,7 @@ function GetHTTPResponse([Uri] $Uri)
                 $HttpClientHandler = New-Object System.Net.Http.HttpClientHandler
                 $HttpClientHandler.Proxy =  New-Object System.Net.WebProxy -Property @{Address=$ProxyAddress;UseDefaultCredentials=$ProxyUseDefaultCredentials}
                 $HttpClient = New-Object System.Net.Http.HttpClient -ArgumentList $HttpClientHandler
-            } 
+            }
             else {
                 $HttpClient = New-Object System.Net.Http.HttpClient
             }
@@ -208,7 +212,7 @@ function GetHTTPResponse([Uri] $Uri)
                 $HttpClient.Dispose()
             }
         }
-    })  
+    })
 }
 
 
@@ -227,12 +231,12 @@ function Get-Latest-Version-Info([string]$AzureFeed, [string]$Channel, [bool]$Co
             $VersionFileUrl = "$UncachedFeed/Sdk/$Channel/latest.version"
         }
     }
-    
+
     $Response = GetHTTPResponse -Uri $VersionFileUrl
     $StringContent = $Response.Content.ReadAsStringAsync().Result
 
     switch ($Response.Content.Headers.ContentType) {
-        { ($_ -eq "application/octet-stream") } { $VersionText = [Text.Encoding]::UTF8.GetString($StringContent) }
+        { ($_ -eq "application/octet-stream") } { $VersionText = $StringContent }
         { ($_ -eq "text/plain") } { $VersionText = $StringContent }
         { ($_ -eq "text/plain; charset=UTF-8") } { $VersionText = $StringContent }
         default { throw "``$Response.Content.Headers.ContentType`` is an unknown .version file content type." }
@@ -260,9 +264,9 @@ function Get-Specific-Version-From-Version([string]$AzureFeed, [string]$Channel,
     }
 }
 
-function Get-Download-Link([string]$AzureFeed, [string]$Channel, [string]$SpecificVersion, [string]$CLIArchitecture) {
+function Get-Download-Link([string]$AzureFeed, [string]$SpecificVersion, [string]$CLIArchitecture) {
     Say-Invocation $MyInvocation
-    
+
     if ($SharedRuntime) {
         $PayloadURL = "$AzureFeed/Runtime/$SpecificVersion/dotnet-runtime-$SpecificVersion-win-$CLIArchitecture.zip"
     }
@@ -275,9 +279,9 @@ function Get-Download-Link([string]$AzureFeed, [string]$Channel, [string]$Specif
     return $PayloadURL
 }
 
-function Get-LegacyDownload-Link([string]$AzureFeed, [string]$Channel, [string]$SpecificVersion, [string]$CLIArchitecture) {
+function Get-LegacyDownload-Link([string]$AzureFeed, [string]$SpecificVersion, [string]$CLIArchitecture) {
     Say-Invocation $MyInvocation
-    
+
     if ($SharedRuntime) {
         $PayloadURL = "$AzureFeed/Runtime/$SpecificVersion/dotnet-win-$CLIArchitecture.$SpecificVersion.zip"
     }
@@ -314,7 +318,7 @@ function Get-Version-Info-From-Version-File([string]$InstallRoot, [string]$Relat
 
     $VersionFile = Join-Path -Path $InstallRoot -ChildPath $RelativePathToVersionFile
     Say-Verbose "Local version file: $VersionFile"
-    
+
     if (Test-Path $VersionFile) {
         $VersionText = cat $VersionFile
         Say-Verbose "Local version file text: $VersionText"
@@ -328,7 +332,7 @@ function Get-Version-Info-From-Version-File([string]$InstallRoot, [string]$Relat
 
 function Is-Dotnet-Package-Installed([string]$InstallRoot, [string]$RelativePathToPackage, [string]$SpecificVersion) {
     Say-Invocation $MyInvocation
-    
+
     $DotnetPackagePath = Join-Path -Path $InstallRoot -ChildPath $RelativePathToPackage | Join-Path -ChildPath $SpecificVersion
     Say-Verbose "Is-Dotnet-Package-Installed: Path to a package: $DotnetPackagePath"
     return Test-Path $DotnetPackagePath -PathType Container
@@ -346,13 +350,13 @@ function Get-Path-Prefix-With-Version($path) {
     if ($match.Success) {
         return $entry.FullName.Substring(0, $match.Index + $match.Length)
     }
-    
+
     return $null
 }
 
 function Get-List-Of-Directories-And-Versions-To-Unpack-From-Dotnet-Package([System.IO.Compression.ZipArchive]$Zip, [string]$OutPath) {
     Say-Invocation $MyInvocation
-    
+
     $ret = @()
     foreach ($entry in $Zip.Entries) {
         $dir = Get-Path-Prefix-With-Version $entry.FullName
@@ -363,12 +367,12 @@ function Get-List-Of-Directories-And-Versions-To-Unpack-From-Dotnet-Package([Sys
             }
         }
     }
-    
+
     $ret = $ret | Sort-Object | Get-Unique
-    
+
     $values = ($ret | foreach { "$_" }) -join ";"
     Say-Verbose "Directories to unpack: $values"
-    
+
     return $ret
 }
 
@@ -392,9 +396,9 @@ function Extract-Dotnet-Package([string]$ZipPath, [string]$OutPath) {
     Set-Variable -Name Zip
     try {
         $Zip = [System.IO.Compression.ZipFile]::OpenRead($ZipPath)
-        
+
         $DirectoriesToUnpack = Get-List-Of-Directories-And-Versions-To-Unpack-From-Dotnet-Package -Zip $Zip -OutPath $OutPath
-        
+
         foreach ($entry in $Zip.Entries) {
             $PathWithVersion = Get-Path-Prefix-With-Version $entry.FullName
             if (($PathWithVersion -eq $null) -Or ($DirectoriesToUnpack -contains $PathWithVersion)) {
@@ -445,14 +449,14 @@ function Prepend-Sdk-InstallRoot-To-Path([string]$InstallRoot, [string]$BinFolde
 
 $CLIArchitecture = Get-CLIArchitecture-From-Architecture $Architecture
 $SpecificVersion = Get-Specific-Version-From-Version -AzureFeed $AzureFeed -Channel $Channel -Version $Version
-$DownloadLink = Get-Download-Link -AzureFeed $AzureFeed -Channel $Channel -SpecificVersion $SpecificVersion -CLIArchitecture $CLIArchitecture
-$LegacyDownloadLink = Get-LegacyDownload-Link -AzureFeed $AzureFeed -Channel $Channel -SpecificVersion $SpecificVersion -CLIArchitecture $CLIArchitecture
+$DownloadLink = Get-Download-Link -AzureFeed $AzureFeed -SpecificVersion $SpecificVersion -CLIArchitecture $CLIArchitecture
+$LegacyDownloadLink = Get-LegacyDownload-Link -AzureFeed $AzureFeed -SpecificVersion $SpecificVersion -CLIArchitecture $CLIArchitecture
 
 if ($DryRun) {
     Say "Payload URLs:"
     Say "Primary - $DownloadLink"
     Say "Legacy - $LegacyDownloadLink"
-    Say "Repeatable invocation: .\$($MyInvocation.MyCommand) -Version $SpecificVersion -Channel $Channel -Architecture $CLIArchitecture -InstallDir $InstallDir"
+    Say "Repeatable invocation: .\$($MyInvocation.Line)"
     exit 0
 }
 
@@ -470,14 +474,13 @@ if ($IsSdkInstalled) {
 New-Item -ItemType Directory -Force -Path $InstallRoot | Out-Null
 
 $installDrive = $((Get-Item $InstallRoot).PSDrive.Name);
-Write-Output "${installDrive}:";
 $free = Get-CimInstance -Class win32_logicaldisk | where Deviceid -eq "${installDrive}:"
 if ($free.Freespace / 1MB -le 100 ) {
     Say "There is not enough disk space on drive ${installDrive}:"
     exit 0
 }
 
-$ZipPath = [System.IO.Path]::GetTempFileName()
+$ZipPath = [System.IO.Path]::combine([System.IO.Path]::GetTempPath(), [System.IO.Path]::GetRandomFileName())
 Say-Verbose "Zip path: $ZipPath"
 Say "Downloading link: $DownloadLink"
 try {
@@ -486,7 +489,7 @@ try {
 catch {
     Say "Cannot download: $DownloadLink"
     $DownloadLink = $LegacyDownloadLink
-    $ZipPath = [System.IO.Path]::GetTempFileName()
+    $ZipPath = [System.IO.Path]::combine([System.IO.Path]::GetTempPath(), [System.IO.Path]::GetRandomFileName())
     Say-Verbose "Legacy zip path: $ZipPath"
     Say "Downloading legacy link: $DownloadLink"
     DownloadFile -Uri $DownloadLink -OutPath $ZipPath

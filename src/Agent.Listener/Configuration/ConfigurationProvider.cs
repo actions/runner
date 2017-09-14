@@ -178,7 +178,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             deploymentMachine.Agent = agent;
             deploymentMachine = await _deploymentGroupServer.ReplaceDeploymentMachineAsync(new Guid(agentSettings.ProjectId), agentSettings.DeploymentGroupId, deploymentMachine.Id, deploymentMachine);
 
-            await GetAndAddTags(deploymentMachine.Id, agentSettings, agent, command);
+            await GetAndAddTags(deploymentMachine, agentSettings, command);
             return deploymentMachine.Agent;
         }
 
@@ -187,7 +187,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             var deploymentMachine = new DeploymentMachine(){ Agent = agent };
             deploymentMachine = await _deploymentGroupServer.AddDeploymentMachineAsync(new Guid(agentSettings.ProjectId), agentSettings.DeploymentGroupId, deploymentMachine);
             
-            await GetAndAddTags(deploymentMachine.Id, agentSettings, deploymentMachine.Agent, command);
+            await GetAndAddTags(deploymentMachine, agentSettings, command);
 
             return deploymentMachine.Agent;
         }
@@ -197,7 +197,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             var machines = await GetDeploymentMachinesAsync(agentSettings);
             Trace.Verbose("Returns {0} machines with name {1}", machines.Count, agentSettings.AgentName);
             var machine = machines.FirstOrDefault();
-            if(machine != null)
+            if (machine != null)
             {
                 if (!string.IsNullOrWhiteSpace(agentSettings.ProjectId))
                 {
@@ -244,7 +244,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             return null;
         }
 
-        private async Task GetAndAddTags(int machineId, AgentSettings agentSettings, TaskAgent agent, CommandSettings command)
+        private async Task GetAndAddTags(DeploymentMachine deploymentMachine, AgentSettings agentSettings, CommandSettings command)
         {
             // Get and apply Tags in case agent is configured against Deployment Group
             bool needToAddTags = command.GetDeploymentGroupTagsRequired();
@@ -266,13 +266,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                         {
                             Trace.Info("Adding tags - {0}", string.Join(",", tagsList.ToArray()));
 
-                            var deploymentMachine = new DeploymentMachine()
-                            {
-                                Agent = agent,
-                                Tags = tagsList
-                            };
-
-                            await _deploymentGroupServer.UpdateDeploymentMachineAsync(new Guid(agentSettings.ProjectId), agentSettings.DeploymentGroupId, machineId, deploymentMachine);
+                            deploymentMachine.Tags = tagsList;
+                            await _deploymentGroupServer.UpdateDeploymentMachinesAsync(new Guid(agentSettings.ProjectId), agentSettings.DeploymentGroupId, new List<DeploymentMachine>() { deploymentMachine });
 
                             _term.WriteLine(StringUtil.Loc("DeploymentGroupTagsAddedMsg"));
                         }

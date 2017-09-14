@@ -5,6 +5,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.Services.Common;
+using Microsoft.VisualStudio.Services.WebApi;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener
 {
@@ -45,13 +46,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 Trace.Info(nameof(ExecuteCommand));
                 var configManager = HostContext.GetService<IConfigurationManager>();
 
-                // command is not required, if no command it just starts and/or configures if not configured
+                // command is not required, if no command it just starts if configured
 
                 // TODO: Invalid config prints usage
 
                 if (command.Help)
                 {
-                    PrintUsage();
+                    PrintUsage(command);
                     return Constants.Agent.ReturnCode.Success;
                 }
 
@@ -84,8 +85,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     }
                 }
 
-                // Unconfigure, remove config files, service and exit
-                if (command.Unconfigure)
+                // remove config files, remove service, and exit
+                if (command.Remove)
                 {
                     try
                     {
@@ -102,8 +103,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
                 _inConfigStage = false;
 
+                // Local run
+                if (command.LocalRun)
+                {
+                    var localManager = HostContext.GetService<ILocalRunner>();
+                    return await localManager.LocalRunAsync(command, HostContext.AgentShutdownToken);
+                }
+
                 AgentSettings settings = configManager.LoadSettings();
-                bool runAsService = configManager.IsServiceConfigured();
+
+                var store = HostContext.GetService<IConfigurationStore>();
+                bool configuredAsService = store.IsServiceConfigured();
 
                 // Run agent
                 //if (command.Run) // this line is current break machine provisioner.
@@ -113,15 +123,53 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 if (!configManager.IsConfigured())
                 {
                     _term.WriteError(StringUtil.Loc("AgentIsNotConfigured"));
-                    PrintUsage();
+                    PrintUsage(command);
                     return Constants.Agent.ReturnCode.TerminatedError;
                 }
 
-                // Run the agent interactively or as service
-                Trace.Verbose($"Run as service: '{runAsService}'");
-                return await RunAsync(settings, runAsService);
+                Trace.Verbose($"Configured as service: '{configuredAsService}'");
 
-                //}
+                //Get the startup type of the agent i.e., autostartup, service, manual
+                StartupType startType;
+                var startupTypeAsString = command.GetStartupType();
+                if (string.IsNullOrEmpty(startupTypeAsString) && configuredAsService)
+                {
+                    // We need try our best to make the startup type accurate 
+                    // The problem is coming from agent autoupgrade, which result an old version service host binary but a newer version agent binary
+                    // At that time the servicehost won't pass --startuptype to agent.listener while the agent is actually running as service.
+                    // We will guess the startup type only when the agent is configured as service and the guess will based on whether STDOUT/STDERR/STDIN been redirect or not
+                    Trace.Info($"Try determine agent startup type base on console redirects.");
+                    startType = (Console.IsErrorRedirected && Console.IsInputRedirected && Console.IsOutputRedirected) ? StartupType.Service : StartupType.Manual;
+                }
+                else
+                {
+                    if (!Enum.TryParse(startupTypeAsString, true, out startType))
+                    {
+                        Trace.Info($"Could not parse the argument value '{startupTypeAsString}' for StartupType. Defaulting to {StartupType.Manual}");
+                        startType = StartupType.Manual;
+                    }
+                }
+
+                Trace.Info($"Set agent startup type - {startType}");
+                HostContext.StartupType = startType;
+
+#if OS_WINDOWS
+                if (store.IsAutoLogonConfigured())
+                {
+                    if(HostContext.StartupType != StartupType.Service)
+                    {
+                        Trace.Info($"Autologon is configured on the machine, dumping all the autologon related registry settings");
+                        var autoLogonRegManager = HostContext.GetService<IAutoLogonRegistryManager>();
+                        autoLogonRegManager.DumpAutoLogonRegistrySettings();
+                    }
+                    else
+                    {
+                        Trace.Info($"Autologon is configured on the machine but current Agent.Listner.exe is launched from the windows service");
+                    }
+                }
+#endif
+                // Run the agent interactively or as service
+                return await RunAsync(settings);
             }
             finally
             {
@@ -175,7 +223,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         }
 
         //create worker manager, create message listener and start listening to the queue
-        private async Task<int> RunAsync(AgentSettings settings, bool runAsService)
+        private async Task<int> RunAsync(AgentSettings settings)
         {
             Trace.Info(nameof(RunAsync));
             _listener = HostContext.GetService<IMessageListener>();
@@ -258,7 +306,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                                     autoUpdateInProgress = true;
                                     var agentUpdateMessage = JsonUtility.FromString<AgentRefreshMessage>(message.Body);
                                     var selfUpdater = HostContext.GetService<ISelfUpdater>();
-                                    selfUpdateTask = selfUpdater.SelfUpdate(agentUpdateMessage, jobDispatcher, !runAsService, HostContext.AgentShutdownToken);
+                                    selfUpdateTask = selfUpdater.SelfUpdate(agentUpdateMessage, jobDispatcher, HostContext.StartupType != StartupType.Service, HostContext.AgentShutdownToken);
                                     Trace.Info("Refresh message received, kick-off selfupdate background process.");
                                 }
                                 else
@@ -327,9 +375,36 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             return Constants.Agent.ReturnCode.Success;
         }
 
-        private void PrintUsage()
+        private void PrintUsage(CommandSettings command)
         {
-            _term.WriteLine(StringUtil.Loc("ListenerHelp"));
+            string separator;
+            string ext;
+#if OS_WINDOWS
+            separator = "\\";
+            ext = "cmd";
+#else
+            separator = "/";
+            ext = "sh";
+#endif
+
+            string commonHelp = StringUtil.Loc("CommandLineHelp_Common");
+            string envHelp = StringUtil.Loc("CommandLineHelp_Env");
+            if (command.Configure)
+            {
+                _term.WriteLine(StringUtil.Loc("CommandLineHelp_Configure", separator, ext, commonHelp, envHelp));
+            }
+            else if (command.LocalRun)
+            {
+                _term.WriteLine(StringUtil.Loc("CommandLineHelp_LocalRun", separator, ext, commonHelp, envHelp));
+            }
+            else if (command.Remove)
+            {
+                _term.WriteLine(StringUtil.Loc("CommandLineHelp_Remove", separator, ext, commonHelp, envHelp));
+            }
+            else
+            {
+                _term.WriteLine(StringUtil.Loc("CommandLineHelp", separator, ext));
+            }
         }
     }
 }

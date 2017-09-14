@@ -55,7 +55,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             // Put the 0.5.5 version vso-task-lib into the root of _work/node_modules folder, so tasks are able to find those lib.
             if (!File.Exists(Path.Combine(IOUtil.GetWorkPath(HostContext), "node_modules", "vso-task-lib", "package.json")))
             {
-                string vsoTaskLibFromExternal = Path.Combine(IOUtil.GetExternalsPath(), "vso-task-lib");
+                string vsoTaskLibFromExternal = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), "vso-task-lib");
                 string compatVsoTaskLibInWork = Path.Combine(IOUtil.GetWorkPath(HostContext), "node_modules", "vso-task-lib");
                 IOUtil.CopyDirectory(vsoTaskLibFromExternal, compatVsoTaskLibInWork, ExecutionContext.CancellationToken);
             }
@@ -115,7 +115,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
 
                 string file;
                 string arguments;
-                file = Path.Combine(IOUtil.GetExternalsPath(),
+                file = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals),
                                         useNode5 ? "node-5.10.1" : "node",
                                         "bin",
                                         $"node{IOUtil.ExeExtension}");

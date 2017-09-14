@@ -1,7 +1,7 @@
+using Microsoft.VisualStudio.Services.Agent.Util;
 using System.IO;
 using System.Runtime.Serialization;
 using System.Threading;
-using Microsoft.VisualStudio.Services.Agent.Util;
 
 namespace Microsoft.VisualStudio.Services.Agent
 {
@@ -59,12 +59,23 @@ namespace Microsoft.VisualStudio.Services.Agent
         public string CollectionName { get; set; }
     }
 
+    [DataContract]
+    public sealed class AutoLogonSettings
+    {
+        [DataMember(EmitDefaultValue = false)]
+        public string UserDomainName { get; set; }
+
+        [DataMember(EmitDefaultValue = false)]
+        public string UserName { get; set; }
+    }
+
     [ServiceLocator(Default = typeof(ConfigurationStore))]
     public interface IConfigurationStore : IAgentService
     {
         string RootFolder { get; }
         bool IsConfigured();
         bool IsServiceConfigured();
+        bool IsAutoLogonConfigured();
         bool HasCredentials();
         CredentialData GetCredentials();
         AgentSettings GetSettings();
@@ -72,6 +83,9 @@ namespace Microsoft.VisualStudio.Services.Agent
         void SaveSettings(AgentSettings settings);
         void DeleteCredential();
         void DeleteSettings();
+        void DeleteAutoLogonSettings();
+        void SaveAutoLogonSettings(AutoLogonSettings settings);
+        AutoLogonSettings GetAutoLogonSettings();
     }
 
     public sealed class ConfigurationStore : AgentService, IConfigurationStore
@@ -80,8 +94,10 @@ namespace Microsoft.VisualStudio.Services.Agent
         private string _configFilePath;
         private string _credFilePath;
         private string _serviceConfigFilePath;
+        private string _autoLogonSettingsFilePath;
         private CredentialData _creds;
         private AgentSettings _settings;
+        private AutoLogonSettings _autoLogonSettings;
 
         public override void Initialize(IHostContext hostContext)
         {
@@ -90,10 +106,10 @@ namespace Microsoft.VisualStudio.Services.Agent
             var currentAssemblyLocation = System.Reflection.Assembly.GetEntryAssembly().Location;
             Trace.Info("currentAssemblyLocation: {0}", currentAssemblyLocation);
 
-            _binPath = IOUtil.GetBinPath();
+            _binPath = HostContext.GetDirectory(WellKnownDirectory.Bin);
             Trace.Info("binPath: {0}", _binPath);
 
-            RootFolder = IOUtil.GetRootPath();
+            RootFolder = HostContext.GetDirectory(WellKnownDirectory.Root);
             Trace.Info("RootFolder: {0}", RootFolder);
 
             _configFilePath = IOUtil.GetConfigFilePath();
@@ -104,12 +120,16 @@ namespace Microsoft.VisualStudio.Services.Agent
 
             _serviceConfigFilePath = IOUtil.GetServiceConfigFilePath();
             Trace.Info("ServiceConfigFilePath: {0}", _serviceConfigFilePath);
+
+            _autoLogonSettingsFilePath = IOUtil.GetAutoLogonSettingsFilePath();
+            Trace.Info("AutoLogonSettingsFilePath: {0}", _autoLogonSettingsFilePath);
         }
 
         public string RootFolder { get; private set; }
 
         public bool HasCredentials()
         {
+            ArgUtil.Equal(RunMode.Normal, HostContext.RunMode, nameof(HostContext.RunMode));
             Trace.Info("HasCredentials()");
             bool credsStored = (new FileInfo(_credFilePath)).Exists;
             Trace.Info("stored {0}", credsStored);
@@ -119,21 +139,31 @@ namespace Microsoft.VisualStudio.Services.Agent
         public bool IsConfigured()
         {
             Trace.Info("IsConfigured()");
-            bool configured = (new FileInfo(_configFilePath)).Exists;
+            bool configured = HostContext.RunMode == RunMode.Local || (new FileInfo(_configFilePath)).Exists;
             Trace.Info("IsConfigured: {0}", configured);
             return configured;
         }
 
         public bool IsServiceConfigured()
         {
+            ArgUtil.Equal(RunMode.Normal, HostContext.RunMode, nameof(HostContext.RunMode));
             Trace.Info("IsServiceConfigured()");
             bool serviceConfigured = (new FileInfo(_serviceConfigFilePath)).Exists;
             Trace.Info($"IsServiceConfigured: {serviceConfigured}");
             return serviceConfigured;
         }
 
+        public bool IsAutoLogonConfigured()
+        {
+            Trace.Entering();
+            bool autoLogonConfigured = (new FileInfo(_autoLogonSettingsFilePath)).Exists;
+            Trace.Info($"IsAutoLogonConfigured: {autoLogonConfigured}");
+            return autoLogonConfigured;
+        }
+
         public CredentialData GetCredentials()
         {
+            ArgUtil.Equal(RunMode.Normal, HostContext.RunMode, nameof(HostContext.RunMode));
             if (_creds == null)
             {
                 _creds = IOUtil.LoadObject<CredentialData>(_credFilePath);
@@ -146,14 +176,48 @@ namespace Microsoft.VisualStudio.Services.Agent
         {
             if (_settings == null)
             {
-                _settings = IOUtil.LoadObject<AgentSettings>(_configFilePath);
+                AgentSettings configuredSettings = null;
+                if (File.Exists(_configFilePath))
+                {
+                    configuredSettings = IOUtil.LoadObject<AgentSettings>(_configFilePath);
+                }
+
+                if (HostContext.RunMode == RunMode.Local)
+                {
+                    _settings = new AgentSettings()
+                    {
+                        AcceptTeeEula = configuredSettings?.AcceptTeeEula ?? false,
+                        AgentId = 1,
+                        AgentName = "local-runner-agent",
+                        PoolId = 1,
+                        PoolName = "local-runner-pool",
+                        ServerUrl = "http://127.0.0.1/vsts-agent-local-runner",
+                        WorkFolder = configuredSettings?.WorkFolder ?? Constants.Path.WorkDirectory
+                    };
+                }
+                else
+                {
+                    ArgUtil.NotNull(configuredSettings, nameof(configuredSettings));
+                    _settings = configuredSettings;
+                }
             }
 
             return _settings;
         }
 
+        public AutoLogonSettings GetAutoLogonSettings()
+        {
+            if (_autoLogonSettings == null)
+            {
+                _autoLogonSettings = IOUtil.LoadObject<AutoLogonSettings>(_autoLogonSettingsFilePath);
+            }
+
+            return _autoLogonSettings;
+        }        
+
         public void SaveCredential(CredentialData credential)
         {
+            ArgUtil.Equal(RunMode.Normal, HostContext.RunMode, nameof(HostContext.RunMode));
             Trace.Info("Saving {0} credential @ {1}", credential.Scheme, _credFilePath);
             if (File.Exists(_credFilePath))
             {
@@ -169,6 +233,7 @@ namespace Microsoft.VisualStudio.Services.Agent
 
         public void SaveSettings(AgentSettings settings)
         {
+            ArgUtil.Equal(RunMode.Normal, HostContext.RunMode, nameof(HostContext.RunMode));
             Trace.Info("Saving agent settings.");
             if (File.Exists(_configFilePath))
             {
@@ -182,14 +247,36 @@ namespace Microsoft.VisualStudio.Services.Agent
             File.SetAttributes(_configFilePath, File.GetAttributes(_configFilePath) | FileAttributes.Hidden);
         }
 
+        public void SaveAutoLogonSettings(AutoLogonSettings autoLogonSettings)
+        {
+            Trace.Info("Saving autologon settings.");
+            if (File.Exists(_autoLogonSettingsFilePath))
+            {
+                // Delete existing autologon settings file first, since the file is hidden and not able to overwrite.
+                Trace.Info("Delete existing autologon settings file.");
+                IOUtil.DeleteFile(_autoLogonSettingsFilePath);
+            }
+
+            IOUtil.SaveObject(autoLogonSettings, _autoLogonSettingsFilePath);
+            Trace.Info("AutoLogon settings Saved.");
+            File.SetAttributes(_autoLogonSettingsFilePath, File.GetAttributes(_autoLogonSettingsFilePath) | FileAttributes.Hidden);
+        }
+
         public void DeleteCredential()
         {
+            ArgUtil.Equal(RunMode.Normal, HostContext.RunMode, nameof(HostContext.RunMode));
             IOUtil.Delete(_credFilePath, default(CancellationToken));
         }
 
         public void DeleteSettings()
         {
+            ArgUtil.Equal(RunMode.Normal, HostContext.RunMode, nameof(HostContext.RunMode));
             IOUtil.Delete(_configFilePath, default(CancellationToken));
+        }
+
+        public void DeleteAutoLogonSettings()
+        {
+            IOUtil.Delete(_autoLogonSettingsFilePath, default(CancellationToken));
         }
     }
 }

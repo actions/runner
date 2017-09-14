@@ -15,7 +15,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         Task<List<DeploymentGroup>> GetDeploymentGroupsAsync(string projectName, string machineGroupName);
 
         // Update Machine Group ( Used for adding tags)
-        Task<DeploymentMachine> UpdateDeploymentMachineAsync(Guid projectId, int deploymentGroupId, int machineId, DeploymentMachine deploymentMachine);
+        Task<List<DeploymentMachine>> UpdateDeploymentMachinesAsync(Guid projectId, int deploymentGroupId, List<DeploymentMachine> deploymentMachine);
 
         // Add Deployment Machine
         Task<DeploymentMachine> AddDeploymentMachineAsync(Guid projectId, int deploymentGroupId, DeploymentMachine machine);
@@ -108,10 +108,10 @@ namespace Microsoft.VisualStudio.Services.Agent
         //-----------------------------------------------------------------
         // Update
         //-----------------------------------------------------------------
-        public Task<DeploymentMachine> UpdateDeploymentMachineAsync(Guid projectId, int deploymentGroupId, int machineId, DeploymentMachine deploymentMachine)
+        public Task<List<DeploymentMachine>> UpdateDeploymentMachinesAsync(Guid projectId, int deploymentGroupId, List<DeploymentMachine> deploymentMachine)
         {
             CheckConnection();
-            return _taskAgentClient.UpdateDeploymentMachineAsync(projectId, deploymentGroupId, machineId, deploymentMachine);
+            return _taskAgentClient.UpdateDeploymentMachinesAsync(projectId, deploymentGroupId, deploymentMachine);
         }
     }
 }

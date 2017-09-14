@@ -25,13 +25,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
         public async Task ChmodAsync(string mode, string file)
         {
             Trace.Entering();
-            await ExecAsync(IOUtil.GetRootPath(), "chmod", $"{mode} \"{file}\"");
+            await ExecAsync(HostContext.GetDirectory(WellKnownDirectory.Root), "chmod", $"{mode} \"{file}\"");
         }
 
         public async Task ChownAsync(string owner, string group, string file)
         {
             Trace.Entering();
-            await ExecAsync(IOUtil.GetRootPath(), "chown", $"{owner}:{group} \"{file}\"");
+            await ExecAsync(HostContext.GetDirectory(WellKnownDirectory.Root), "chown", $"{owner}:{group} \"{file}\"");
         }
 
         public async Task ExecAsync(string workingDirectory, string toolName, string argLine)

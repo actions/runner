@@ -32,6 +32,24 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             }
         }
 
+        public static string OS
+        {
+            get
+            {
+                switch (Constants.Agent.Platform)
+                {
+                    case Constants.OSPlatform.Linux:
+                        return "Linux";
+                    case Constants.OSPlatform.OSX:
+                        return "Darwin";
+                    case Constants.OSPlatform.Windows:
+                        return Environment.GetEnvironmentVariable("OS");
+                    default:
+                        throw new NotSupportedException(); // Should never reach here.
+                }
+            }
+        }
+
         public static string PrependPath(string path, string currentPath)
         {
             ArgUtil.NotNullOrEmpty(path, nameof(path));

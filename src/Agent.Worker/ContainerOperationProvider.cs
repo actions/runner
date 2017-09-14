@@ -101,7 +101,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             }
 
             // Mount folder into container
-            executionContext.Container.MountVolumes.Add(new MountVolume(executionContext.Variables.System_DefaultWorkingDirectory));
+            executionContext.Container.MountVolumes.Add(new MountVolume(Path.GetDirectoryName(executionContext.Variables.System_DefaultWorkingDirectory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar))));
             executionContext.Container.MountVolumes.Add(new MountVolume(executionContext.Variables.Agent_TempDirectory));
             executionContext.Container.MountVolumes.Add(new MountVolume(executionContext.Variables.Agent_ToolsDirectory));
             executionContext.Container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Externals), true));
@@ -143,7 +143,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             // All command execute in docker will run as Root by default, 
             // this will cause the agent on the host machine doesn't have permission to any new file/folder created inside the container.
             // So, we create a user account with same UID inside the container and let all docker exec command run as that user.
-            int execUseraddExitCode = await _dockerManger.DockerExec(executionContext, executionContext.Container.ContainerId, string.Empty, $"useradd -m -u {executionContext.Container.CurrentUserId} {executionContext.Container.CurrentUserName}_VSTSContainer");
+            int execUseraddExitCode = await _dockerManger.DockerExec(executionContext, executionContext.Container.ContainerId, string.Empty, $"useradd -m -o -u {executionContext.Container.CurrentUserId} {executionContext.Container.CurrentUserName}_VSTSContainer");
             if (execUseraddExitCode != 0)
             {
                 throw new InvalidOperationException($"Docker exec fail with exit code {execUseraddExitCode}");

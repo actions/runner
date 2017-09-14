@@ -22,7 +22,7 @@ var runService = function() {
 
     if(!stopping) {
         try {
-            listener = childProcess.spawn(listenerExePath, ['run'], { env: process.env });
+            listener = childProcess.spawn(listenerExePath, ['run', '--startuptype', 'service'], { env: process.env });
             console.log('started listener process');
         
             listener.stdout.on('data', (data) => {

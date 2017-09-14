@@ -126,7 +126,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
                 context.Warning(StringUtil.Loc("CodeCoverageDataIsNull"));
             }
 
-            VssConnection connection = WorkerUtilies.GetVssConnection(context);
+            VssConnection connection = WorkerUtilities.GetVssConnection(context);
             var codeCoveragePublisher = HostContext.GetService<ICodeCoveragePublisher>();
             codeCoveragePublisher.InitializePublisher(_buildId, connection);
 

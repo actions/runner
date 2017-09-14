@@ -418,7 +418,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
 
             // Prepare the sources directory. The workspace helper will not return any
             // matches if the sources directory does not exist with something in it.
-            _sourcesDirectory = Path.Combine(IOUtil.GetBinPath(), Path.GetRandomFileName());
+            _sourcesDirectory = Path.Combine(hostContext.GetDirectory(WellKnownDirectory.Bin), Path.GetRandomFileName());
             _sourceFile = Path.Combine(_sourcesDirectory, "some file");
             Directory.CreateDirectory(_sourcesDirectory);
             File.WriteAllText(path: _sourceFile, contents: "some contents");

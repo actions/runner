@@ -17,6 +17,7 @@ namespace Microsoft.VisualStudio.Services.Agent
 {
     public interface IHostContext : IDisposable
     {
+        RunMode RunMode { get; set; }
         string GetDirectory(WellKnownDirectory directory);
         Tracing GetTrace(string name);
         Task Delay(TimeSpan delay, CancellationToken cancellationToken);
@@ -24,9 +25,17 @@ namespace Microsoft.VisualStudio.Services.Agent
         T GetService<T>() where T : class, IAgentService;
         void SetDefaultCulture(string name);
         event EventHandler Unloading;
+        StartupType StartupType {get; set;}
         CancellationToken AgentShutdownToken { get; }
         ShutdownReason AgentShutdownReason { get; }
         void ShutdownAgent(ShutdownReason reason);
+    }
+
+    public enum StartupType
+    {
+        Manual,
+        Service,
+        AutoStartup
     }
 
     public sealed class HostContext : EventListener, IObserver<DiagnosticListener>, IObserver<KeyValuePair<string, object>>, IHostContext, IDisposable
@@ -38,7 +47,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         private readonly ConcurrentDictionary<Type, object> _serviceInstances = new ConcurrentDictionary<Type, object>();
         private readonly ConcurrentDictionary<Type, Type> _serviceTypes = new ConcurrentDictionary<Type, Type>();
         private CancellationTokenSource _agentShutdownTokenSource = new CancellationTokenSource();
-
+        private RunMode _runMode = RunMode.Normal;
         private Tracing _trace;
         private Tracing _vssTrace;
         private Tracing _httpTrace;
@@ -46,6 +55,8 @@ namespace Microsoft.VisualStudio.Services.Agent
         private AssemblyLoadContext _loadContext;
         private IDisposable _httpTraceSubscription;
         private IDisposable _diagListenerSubscription;
+
+        private StartupType _startupType;
 
         public event EventHandler Unloading;
         public CancellationToken AgentShutdownToken => _agentShutdownTokenSource.Token;
@@ -98,6 +109,20 @@ namespace Microsoft.VisualStudio.Services.Agent
 
                 _httpTrace = GetTrace("HttpTrace");
                 _diagListenerSubscription = DiagnosticListener.AllListeners.Subscribe(this);
+            }
+        }
+
+        public RunMode RunMode
+        {
+            get
+            {
+                return _runMode;
+            }
+
+            set
+            {
+                _trace.Info($"Set run mode: {value}");
+                _runMode = value;
             }
         }
 
@@ -263,6 +288,18 @@ namespace Microsoft.VisualStudio.Services.Agent
         {
             Dispose(true);
             GC.SuppressFinalize(this);
+        }
+
+        public StartupType StartupType
+        {
+            get
+            {
+                return _startupType;
+            }
+            set
+            {
+                _startupType = value;
+            }
         }
 
         private void Dispose(bool disposing)

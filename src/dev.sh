@@ -221,6 +221,7 @@ function layout ()
     
     cp -Rf ./Misc/layoutroot/* ${LAYOUT_DIR}
     cp -Rf ./Misc/layoutbin/* ${LAYOUT_DIR}/bin
+    grep --invert-match '^ *"CLI-WIDTH-' ./Misc/layoutbin/en-US/strings.json > ${LAYOUT_DIR}/bin/en-US/strings.json
     
     #change execution flag to allow running with sudo
     if [[ "$PLATFORM" == 'linux' ]]; then
@@ -255,6 +256,8 @@ function update ()
         rundotnet publish failed ${update_dir}
         copyBin ${update_dir}
     done
+
+    grep --invert-match '^ *"CLI-WIDTH-' ./Misc/layoutbin/en-US/strings.json > ${LAYOUT_DIR}/bin/en-US/strings.json
 }
 
 function runtest ()
@@ -367,6 +370,7 @@ case $DEV_CMD in
    "b") build;;
    "test") runtest;;
    "t") runtest;;
+   "buildtest") buildtest;;
    "bt") buildtest;;   
    "clean") clean;;
    "c") clean;;

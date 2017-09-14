@@ -15,15 +15,6 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressi
 {
     public sealed class EvaluationResult
     {
-        // internal EvaluationResult(EvaluationContext context, Int32 level, Object raw)
-        // {
-        //     m_level = level;
-        //     ValueKind kind;
-        //     Value = ConvertToCanonicalValue(raw, out kind);
-        //     Kind = kind;
-        //     TraceValue(context);
-        // }
-
         internal EvaluationResult(EvaluationContext context, Int32 level, Object val, ValueKind kind)
         {
             m_level = level;

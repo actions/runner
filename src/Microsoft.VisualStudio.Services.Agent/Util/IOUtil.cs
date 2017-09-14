@@ -24,6 +24,23 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             }
         }
 
+        public static StringComparison FilePathStringComparison
+        {
+            get
+            {
+                switch (Constants.Agent.Platform)
+                {
+                    case Constants.OSPlatform.Linux:
+                        return StringComparison.Ordinal;
+                    case Constants.OSPlatform.OSX:
+                    case Constants.OSPlatform.Windows:
+                        return StringComparison.OrdinalIgnoreCase;
+                    default:
+                        throw new NotSupportedException(); // Should never reach here.
+                }
+            }
+        }
+
         public static void SaveObject(object obj, string path)
         {
             File.WriteAllText(path, StringUtil.ConvertToJson(obj), Encoding.UTF8);
@@ -58,6 +75,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             }
         }
 
+        // TODO: Get rid of this too, use host context. Last reference to this is HostTraceContext, not sure how to remove there.
         public static string GetDiagPath()
         {
             return Path.Combine(
@@ -65,6 +83,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
                 Constants.Path.DiagDirectory);
         }
 
+        // TODO: Get rid of this too, use host context.
         public static string GetExternalsPath()
         {
             return Path.Combine(
@@ -97,9 +116,35 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             return Path.Combine(GetRootPath(), ".credentials_rsaparams");
         }
 
+#if OS_LINUX
+        public static string GetAgentCredStoreFilePath()
+        {
+            return Path.Combine(GetRootPath(), ".credential_store");
+        }
+#elif OS_OSX
+        public static string GetAgentCredStoreFilePath()
+        {
+            return Path.Combine(GetRootPath(), ".credential_store.keychain");
+        }       
+#endif
         public static string GetProxyConfigFilePath()
         {
             return Path.Combine(GetRootPath(), ".proxy");
+        }
+
+        public static string GetProxyCredentialsFilePath()
+        {
+            return Path.Combine(GetRootPath(), ".proxycredentials");
+        }
+
+        public static string GetProxyBypassFilePath()
+        {
+            return Path.Combine(GetRootPath(), ".proxybypass");
+        }
+
+        public static string GetAutoLogonSettingsFilePath()
+        {
+            return Path.Combine(GetRootPath(), ".autologon");
         }
 
         public static string GetWorkPath(IHostContext hostContext)

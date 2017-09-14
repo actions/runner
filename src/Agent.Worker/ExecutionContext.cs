@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using Microsoft.VisualStudio.Services.Agent.Worker.Container;
+using Microsoft.VisualStudio.Services.WebApi;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
@@ -68,7 +69,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         private Guid _mainTimelineId;
         private Guid _detailTimelineId;
-        private int _childExecutionContextCount = 0;
+        private int _childTimelineRecordOrder = 0;
         private CancellationTokenSource _cancellationTokenSource;
         private bool _throttlingReported = false;
 
@@ -149,13 +150,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             child.PrependPath = PrependPath;
             child.Container = Container;
 
-            // the job timeline record is at order 1.
-            child.InitializeTimelineRecord(_mainTimelineId, recordId, _record.Id, ExecutionContextType.Task, displayName, refName, _childExecutionContextCount + 2);
+            child.InitializeTimelineRecord(_mainTimelineId, recordId, _record.Id, ExecutionContextType.Task, displayName, refName, ++_childTimelineRecordOrder);
 
             child._logger = HostContext.CreateService<IPagingLogger>();
             child._logger.Setup(_mainTimelineId, recordId);
 
-            _childExecutionContextCount++;
             return child;
         }
 
@@ -376,6 +375,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     Variables.Set(Constants.Variables.Agent.ProxyPassword, agentWebProxy.ProxyPassword, true);
                     Environment.SetEnvironmentVariable("VSTS_HTTP_PROXY_PASSWORD", string.Empty);
                 }
+
+                if (agentWebProxy.ProxyBypassList.Count > 0)
+                {
+                    Variables.Set(Constants.Variables.Agent.ProxyBypassList, JsonUtility.ToString(agentWebProxy.ProxyBypassList));
+                }
             }
 
             // Job timeline record.
@@ -386,7 +390,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 recordType: ExecutionContextType.Job,
                 displayName: message.JobName,
                 refName: message.JobRefName,
-                order: 1); // The job timeline record must be at order 1.
+                order: null); // The job timeline record's order is set by server.
 
             // Logger (must be initialized before writing warnings).
             _logger = HostContext.CreateService<IPagingLogger>();
@@ -440,7 +444,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             _jobServerQueue.QueueFileUpload(_mainTimelineId, _record.Id, type, name, filePath, deleteSource: false);
         }
 
-        private void InitializeTimelineRecord(Guid timelineId, Guid timelineRecordId, Guid? parentTimelineRecordId, string recordType, string displayName, string refName, int order)
+        private void InitializeTimelineRecord(Guid timelineId, Guid timelineRecordId, Guid? parentTimelineRecordId, string recordType, string displayName, string refName, int? order)
         {
             _mainTimelineId = timelineId;
             _record.Id = timelineRecordId;

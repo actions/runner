@@ -235,13 +235,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
             // copy latest agent into agent root folder
             // copy bin from _work/_update -> bin.version under root
-            string binVersionDir = Path.Combine(IOUtil.GetRootPath(), $"{Constants.Path.BinDirectory}.{_targetPackage.Version}");
+            string binVersionDir = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), $"{Constants.Path.BinDirectory}.{_targetPackage.Version}");
             Directory.CreateDirectory(binVersionDir);
             Trace.Info($"Copy {Path.Combine(latestAgentDirectory, Constants.Path.BinDirectory)} to {binVersionDir}.");
             IOUtil.CopyDirectory(Path.Combine(latestAgentDirectory, Constants.Path.BinDirectory), binVersionDir, token);
 
             // copy externals from _work/_update -> externals.version under root
-            string externalsVersionDir = Path.Combine(IOUtil.GetRootPath(), $"{Constants.Path.ExternalsDirectory}.{_targetPackage.Version}");
+            string externalsVersionDir = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), $"{Constants.Path.ExternalsDirectory}.{_targetPackage.Version}");
             Directory.CreateDirectory(externalsVersionDir);
             Trace.Info($"Copy {Path.Combine(latestAgentDirectory, Constants.Path.ExternalsDirectory)} to {externalsVersionDir}.");
             IOUtil.CopyDirectory(Path.Combine(latestAgentDirectory, Constants.Path.ExternalsDirectory), externalsVersionDir, token);
@@ -251,7 +251,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             foreach (FileInfo file in new DirectoryInfo(latestAgentDirectory).GetFiles() ?? new FileInfo[0])
             {
                 // Copy and replace the file.
-                file.CopyTo(Path.Combine(IOUtil.GetRootPath(), file.Name), true);
+                file.CopyTo(Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), file.Name), true);
             }
 
             // for windows service back compat with old windows agent, we need make sure the servicehost.exe is still the old name
@@ -286,7 +286,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             // delete previous backup agent (back compat, can be remove after serval sprints)
             // bin.bak.2.99.0
             // externals.bak.2.99.0
-            foreach (string existBackUp in Directory.GetDirectories(IOUtil.GetRootPath(), "*.bak.*"))
+            foreach (string existBackUp in Directory.GetDirectories(HostContext.GetDirectory(WellKnownDirectory.Root), "*.bak.*"))
             {
                 Trace.Info($"Delete existing agent backup at {existBackUp}.");
                 try
@@ -301,16 +301,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             }
 
             // delete old bin.2.99.0 folder, only leave the current version and the latest download version
-            var allBinDirs = Directory.GetDirectories(IOUtil.GetRootPath(), "bin.*");
+            var allBinDirs = Directory.GetDirectories(HostContext.GetDirectory(WellKnownDirectory.Root), "bin.*");
             if (allBinDirs.Length > 2)
             {
                 // there are more than 2 bin.version folder.
                 // delete older bin.version folders.
                 foreach (var oldBinDir in allBinDirs)
                 {
-                    if (string.Equals(oldBinDir, Path.Combine(IOUtil.GetRootPath(), $"bin"), StringComparison.OrdinalIgnoreCase) ||
-                        string.Equals(oldBinDir, Path.Combine(IOUtil.GetRootPath(), $"bin.{Constants.Agent.Version}"), StringComparison.OrdinalIgnoreCase) ||
-                        string.Equals(oldBinDir, Path.Combine(IOUtil.GetRootPath(), $"bin.{_targetPackage.Version}"), StringComparison.OrdinalIgnoreCase))
+                    if (string.Equals(oldBinDir, Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), $"bin"), StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(oldBinDir, Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), $"bin.{Constants.Agent.Version}"), StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(oldBinDir, Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), $"bin.{_targetPackage.Version}"), StringComparison.OrdinalIgnoreCase))
                     {
                         // skip for current agent version
                         continue;
@@ -330,16 +330,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             }
 
             // delete old externals.2.99.0 folder, only leave the current version and the latest download version
-            var allExternalsDirs = Directory.GetDirectories(IOUtil.GetRootPath(), "externals.*");
+            var allExternalsDirs = Directory.GetDirectories(HostContext.GetDirectory(WellKnownDirectory.Root), "externals.*");
             if (allExternalsDirs.Length > 2)
             {
                 // there are more than 2 externals.version folder.
                 // delete older externals.version folders.
                 foreach (var oldExternalDir in allExternalsDirs)
                 {
-                    if (string.Equals(oldExternalDir, Path.Combine(IOUtil.GetRootPath(), $"externals"), StringComparison.OrdinalIgnoreCase) ||
-                        string.Equals(oldExternalDir, Path.Combine(IOUtil.GetRootPath(), $"externals.{Constants.Agent.Version}"), StringComparison.OrdinalIgnoreCase) ||
-                        string.Equals(oldExternalDir, Path.Combine(IOUtil.GetRootPath(), $"externals.{_targetPackage.Version}"), StringComparison.OrdinalIgnoreCase))
+                    if (string.Equals(oldExternalDir, Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), $"externals"), StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(oldExternalDir, Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), $"externals.{Constants.Agent.Version}"), StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(oldExternalDir, Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), $"externals.{_targetPackage.Version}"), StringComparison.OrdinalIgnoreCase))
                     {
                         // skip for current agent version
                         continue;
@@ -362,8 +362,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         private string GenerateUpdateScript(bool restartInteractiveAgent)
         {
             int processId = Process.GetCurrentProcess().Id;
-            string updateLog = Path.Combine(IOUtil.GetDiagPath(), $"SelfUpdate-{DateTime.UtcNow.ToString("yyyyMMdd-HHmmss")}.log");
-            string agentRoot = IOUtil.GetRootPath();
+            string updateLog = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Diag), $"SelfUpdate-{DateTime.UtcNow.ToString("yyyyMMdd-HHmmss")}.log");
+            string agentRoot = HostContext.GetDirectory(WellKnownDirectory.Root);
 
 #if OS_WINDOWS
             string templateName = "update.cmd.template";

@@ -547,10 +547,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 formattedArgs.Add(QuotedArgument(_password));
             }
 
+            formattedArgs.Add("--no-auth-cache"); // Do not cache credentials
             formattedArgs.Add("--non-interactive");
 
             // Add proxy setting parameters
-            if (!string.IsNullOrEmpty(_context.Variables.Agent_ProxyUrl))
+            var agentProxy = HostContext.GetService<IVstsAgentWebProxy>();
+            if (!string.IsNullOrEmpty(_context.Variables.Agent_ProxyUrl) && !agentProxy.IsBypassed(_endpoint.Url))
             {
                 _context.Debug($"Add proxy setting parameters to '{_svn}' for proxy server '{_context.Variables.Agent_ProxyUrl}'.");
 

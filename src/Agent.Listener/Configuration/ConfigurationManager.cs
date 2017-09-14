@@ -2,16 +2,17 @@ using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Listener.Capabilities;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using Microsoft.VisualStudio.Services.Common;
+using Microsoft.VisualStudio.Services.OAuth;
+using Microsoft.VisualStudio.Services.WebApi;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Security.Principal;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Security.Cryptography;
-using Microsoft.VisualStudio.Services.WebApi;
-using Microsoft.VisualStudio.Services.OAuth;
-using System.Security.Principal;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 {
@@ -19,7 +20,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
     public interface IConfigurationManager : IAgentService
     {
         bool IsConfigured();
-        bool IsServiceConfigured();
         Task ConfigureAsync(CommandSettings command);
         Task UnconfigureAsync(CommandSettings command);
         AgentSettings LoadSettings();
@@ -38,13 +38,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             _store = hostContext.GetService<IConfigurationStore>();
             Trace.Verbose("store created");
             _term = hostContext.GetService<ITerminal>();
-        }
-
-        public bool IsServiceConfigured()
-        {
-            bool result = _store.IsServiceConfigured();
-            Trace.Info($"Is service configured: {result}");
-            return result;
         }
 
         public bool IsConfigured()
@@ -70,10 +63,29 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
         public async Task ConfigureAsync(CommandSettings command)
         {
+            ArgUtil.Equal(RunMode.Normal, HostContext.RunMode, nameof(HostContext.RunMode));
             Trace.Info(nameof(ConfigureAsync));
             if (IsConfigured())
             {
                 throw new InvalidOperationException(StringUtil.Loc("AlreadyConfiguredError"));
+            }
+
+            // Populate proxy setting from commandline args
+            var vstsProxy = HostContext.GetService<IVstsAgentWebProxy>();
+            bool saveProxySetting = false;
+            string proxyUrl = command.GetProxyUrl();
+            if (!string.IsNullOrEmpty(proxyUrl))
+            {
+                if (!Uri.IsWellFormedUriString(proxyUrl, UriKind.Absolute))
+                {
+                    throw new ArgumentOutOfRangeException(nameof(proxyUrl));
+                }
+
+                Trace.Info("Reset proxy base on commandline args.");
+                string proxyUserName = command.GetProxyUserName();
+                string proxyPassword = command.GetProxyPassword();
+                (vstsProxy as VstsAgentWebProxy).SetupProxy(proxyUrl, proxyUserName, proxyPassword);
+                saveProxySetting = true;
             }
 
             AgentSettings agentSettings = new AgentSettings();
@@ -120,8 +132,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 (extensionManager.GetExtensions<IConfigurationProvider>())
                 .FirstOrDefault(x => x.ConfigurationProviderType == agentType);
             ArgUtil.NotNull(agentProvider, agentType);
-
-            // TODO: Check if its running with elevated permission and stop early if its not
 
             // Loop getting url and creds until you can connect
             ICredentialProvider credProvider = null;
@@ -242,13 +252,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             {
                 Trace.Info($"Agent server url resolve by server: '{agentServerUrl}'.");
 
-                // we need make sure the Host component of the url remain the same.
+                // we need make sure the Schema/Host/Port component of the url remain the same.
                 UriBuilder inputServerUrl = new UriBuilder(agentSettings.ServerUrl);
                 UriBuilder serverReturnedServerUrl = new UriBuilder(agentServerUrl);
-                if (Uri.Compare(inputServerUrl.Uri, serverReturnedServerUrl.Uri, UriComponents.Host, UriFormat.Unescaped, StringComparison.OrdinalIgnoreCase) != 0)
+                if (Uri.Compare(inputServerUrl.Uri, serverReturnedServerUrl.Uri, UriComponents.SchemeAndServer, UriFormat.Unescaped, StringComparison.OrdinalIgnoreCase) != 0)
                 {
                     inputServerUrl.Path = serverReturnedServerUrl.Path;
-                    Trace.Info($"Replace server returned url's host component with user input server url's host: '{inputServerUrl.Uri.AbsoluteUri}'.");
+                    Trace.Info($"Replace server returned url's scheme://host:port component with user input server url's scheme://host:port: '{inputServerUrl.Uri.AbsoluteUri}'.");
                     agentSettings.ServerUrl = inputServerUrl.Uri.AbsoluteUri;
                 }
                 else
@@ -262,13 +272,26 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 agent.Authorization.ClientId != Guid.Empty &&
                 agent.Authorization.AuthorizationUrl != null)
             {
+                // For TFS, we need make sure the Schema/Host/Port component of the authorization url also match configuration url.
+                // We can't do this for VSTS, since its SPS/TFS urls are different.
+                UriBuilder configServerUrl = new UriBuilder(agentSettings.ServerUrl);
+                UriBuilder authorizationUrl = new UriBuilder(agent.Authorization.AuthorizationUrl);
+                if (!UrlUtil.IsHosted(configServerUrl.Uri.AbsoluteUri) &&
+                    Uri.Compare(configServerUrl.Uri, authorizationUrl.Uri, UriComponents.SchemeAndServer, UriFormat.Unescaped, StringComparison.OrdinalIgnoreCase) != 0)
+                {
+                    authorizationUrl.Scheme = configServerUrl.Scheme;
+                    authorizationUrl.Host = configServerUrl.Host;
+                    authorizationUrl.Port = configServerUrl.Port;
+                    Trace.Info($"Replace authorization url's scheme://host:port component with agent configure url's scheme://host:port: '{authorizationUrl.Uri.AbsoluteUri}'.");
+                }
+
                 var credentialData = new CredentialData
                 {
                     Scheme = Constants.Configuration.OAuth,
                     Data =
                     {
                         { "clientId", agent.Authorization.ClientId.ToString("D") },
-                        { "authorizationUrl", agent.Authorization.AuthorizationUrl.AbsoluteUri },
+                        { "authorizationUrl", authorizationUrl.Uri.AbsoluteUri },
                     },
                 };
 
@@ -322,23 +345,34 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             agentSettings.NotificationSocketAddress = command.GetNotificationSocketAddress();
 
             _store.SaveSettings(agentSettings);
+
+            if (saveProxySetting)
+            {
+                Trace.Info("Save proxy setting to disk.");
+                (vstsProxy as VstsAgentWebProxy).SaveProxySetting();
+            }
+
             _term.WriteLine(StringUtil.Loc("SavedSettings", DateTime.UtcNow));
 
 #if OS_WINDOWS
-            // config windows service as part of configuration
+            // config windows service
             bool runAsService = command.GetRunAsService();
             if (runAsService)
             {
-                if (!new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator))
-                {
-                    Trace.Error("Needs Administrator privileges for configure agent as windows service.");
-                    throw new SecurityException(StringUtil.Loc("NeedAdminForConfigAgentWinService"));
-                }
-
                 Trace.Info("Configuring to run the agent as service");
                 var serviceControlManager = HostContext.GetService<IWindowsServiceControlManager>();
                 serviceControlManager.ConfigureService(agentSettings, command);
             }
+            // config auto logon
+            else if (command.GetRunAsAutoLogon())
+            {                
+                Trace.Info("Agent is going to run as process setting up the 'AutoLogon' capability for the agent.");
+                var autoLogonConfigManager = HostContext.GetService<IAutoLogonManager>();
+                await autoLogonConfigManager.ConfigureAsync(command);
+                //Important: The machine may restart if the autologon user is not same as the current user
+                //if you are adding code after this, keep that in mind
+            }
+
 #elif OS_LINUX || OS_OSX
             // generate service config script for OSX and Linux, GenerateScripts() will no-opt on windows.
             var serviceControlManager = HostContext.GetService<ILinuxServiceControlManager>();
@@ -348,20 +382,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
         public async Task UnconfigureAsync(CommandSettings command)
         {
-            string currentAction = StringUtil.Loc("UninstallingService");
+            ArgUtil.Equal(RunMode.Normal, HostContext.RunMode, nameof(HostContext.RunMode));
+            string currentAction = string.Empty;
             try
             {
                 //stop, uninstall service and remove service config file
-                _term.WriteLine(currentAction);
                 if (_store.IsServiceConfigured())
                 {
+                    currentAction = StringUtil.Loc("UninstallingService");
+                    _term.WriteLine(currentAction);
 #if OS_WINDOWS
-                    if (!new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator))
-                    {
-                        Trace.Error("Needs Administrator privileges for unconfigure windows service agent.");
-                        throw new SecurityException(StringUtil.Loc("NeedAdminForUnconfigWinServiceAgent"));
-                    }
-
                     var serviceControlManager = HostContext.GetService<IWindowsServiceControlManager>();
                     serviceControlManager.UnconfigureService();
                     _term.WriteLine(StringUtil.Loc("Success") + currentAction);
@@ -371,6 +401,24 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 #elif OS_OSX
                     // unconfig osx service first
                     throw new Exception(StringUtil.Loc("UnconfigureOSXService"));
+#endif
+                }
+                else
+                {
+#if OS_WINDOWS
+                    //running as process, unconfigure autologon if it was configured                    
+                    if (_store.IsAutoLogonConfigured())
+                    {
+                        currentAction = StringUtil.Loc("UnconfigAutologon");
+                        _term.WriteLine(currentAction);
+                        var autoLogonConfigManager = HostContext.GetService<IAutoLogonManager>();
+                        autoLogonConfigManager.Unconfigure();         
+                        _term.WriteLine(StringUtil.Loc("Success") + currentAction);               
+                    }
+                    else
+                    {
+                        Trace.Info("AutoLogon was not configured on the agent.");
+                    }
 #endif
                 }
 
@@ -439,6 +487,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 _term.WriteLine(currentAction);
                 if (isConfigured)
                 {
+                    (HostContext.GetService<IVstsAgentWebProxy>() as VstsAgentWebProxy).DeleteProxySetting();
                     _store.DeleteSettings();
                     _term.WriteLine(StringUtil.Loc("Success") + currentAction);
                 }

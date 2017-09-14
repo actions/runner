@@ -19,7 +19,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Util
                 Tracing trace = hc.GetTrace();
 
                 // Arrange: Create a directory with a file.
-                string directory = Path.Combine(IOUtil.GetBinPath(), Path.GetRandomFileName());
+                string directory = Path.Combine(hc.GetDirectory(WellKnownDirectory.Bin), Path.GetRandomFileName());
                 string file = Path.Combine(directory, "some file");
                 try
                 {
@@ -53,7 +53,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Util
                 Tracing trace = hc.GetTrace();
 
                 // Arrange: Create a directory with a file.
-                string directory = Path.Combine(IOUtil.GetBinPath(), Path.GetRandomFileName());
+                string directory = Path.Combine(hc.GetDirectory(WellKnownDirectory.Bin), Path.GetRandomFileName());
                 string file = Path.Combine(directory, "some file");
                 try
                 {
@@ -87,7 +87,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Util
                 Tracing trace = hc.GetTrace();
 
                 // Arrange: Create a directory with a grandchild directory.
-                string directory = Path.Combine(IOUtil.GetBinPath(), Path.GetRandomFileName());
+                string directory = Path.Combine(hc.GetDirectory(WellKnownDirectory.Bin), Path.GetRandomFileName());
                 try
                 {
                     Directory.CreateDirectory(Path.Combine(directory, "some child directory", "some grandchild directory"));
@@ -131,7 +131,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Util
                 // The purpose of this test is to verify that DirectoryNotFoundException is gracefully handled when
                 // deleting a chain of reparse point directories. Since the reparse points are named in a random order,
                 // the DirectoryNotFoundException case is likely to be encountered.
-                string randomDir = Path.Combine(IOUtil.GetBinPath(), Path.GetRandomFileName());
+                string randomDir = Path.Combine(hc.GetDirectory(WellKnownDirectory.Bin), Path.GetRandomFileName());
                 try
                 {
                     string targetDir = Directory.CreateDirectory(Path.Combine(randomDir, "targetDir")).FullName;
@@ -190,7 +190,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Util
                 //
                 // The accuracy of this test relies on an assumption that IOUtil sorts the directories in
                 // descending order before deleting them - either by length or by default sort order.
-                string randomDir = Path.Combine(IOUtil.GetBinPath(), Path.GetRandomFileName());
+                string randomDir = Path.Combine(hc.GetDirectory(WellKnownDirectory.Bin), Path.GetRandomFileName());
                 try
                 {
                     string targetDir = Directory.CreateDirectory(Path.Combine(randomDir, "targetDir")).FullName;
@@ -234,7 +234,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Util
                 Tracing trace = hc.GetTrace();
 
                 // Arrange: Create a directory with a grandchild file.
-                string directory = Path.Combine(IOUtil.GetBinPath(), Path.GetRandomFileName());
+                string directory = Path.Combine(hc.GetDirectory(WellKnownDirectory.Bin), Path.GetRandomFileName());
                 try
                 {
                     string file = Path.Combine(directory, "some subdirectory", "some file");
@@ -268,7 +268,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Util
                 Tracing trace = hc.GetTrace();
 
                 // Arrange: Create a directory with a read-only subdirectory.
-                string directory = Path.Combine(IOUtil.GetBinPath(), Path.GetRandomFileName());
+                string directory = Path.Combine(hc.GetDirectory(WellKnownDirectory.Bin), Path.GetRandomFileName());
                 string subdirectory = Path.Combine(directory, "some subdirectory");
                 try
                 {
@@ -309,7 +309,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Util
                 Tracing trace = hc.GetTrace();
 
                 // Arrange: Create a read-only directory.
-                string directory = Path.Combine(IOUtil.GetBinPath(), Path.GetRandomFileName());
+                string directory = Path.Combine(hc.GetDirectory(WellKnownDirectory.Bin), Path.GetRandomFileName());
                 try
                 {
                     var directoryInfo = new DirectoryInfo(directory);
@@ -345,7 +345,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Util
                 Tracing trace = hc.GetTrace();
 
                 // Arrange: Create a directory with a read-only file.
-                string directory = Path.Combine(IOUtil.GetBinPath(), Path.GetRandomFileName());
+                string directory = Path.Combine(hc.GetDirectory(WellKnownDirectory.Bin), Path.GetRandomFileName());
                 string file = Path.Combine(directory, "some file");
                 try
                 {
@@ -389,7 +389,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Util
                 //   randomDir/targetDir
                 //   randomDir/targetDir/file.txt
                 //   randomDir/linkDir -> targetDir
-                string randomDir = Path.Combine(IOUtil.GetBinPath(), Path.GetRandomFileName());
+                string randomDir = Path.Combine(hc.GetDirectory(WellKnownDirectory.Bin), Path.GetRandomFileName());
                 try
                 {
                     string targetDir = Directory.CreateDirectory(Path.Combine(randomDir, "targetDir")).FullName;
@@ -437,7 +437,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Util
                 //   randomDir/targetDir/file.txt
                 //   randomDir/subDir
                 //   randomDir/subDir/linkDir -> ../targetDir
-                string randomDir = Path.Combine(IOUtil.GetBinPath(), Path.GetRandomFileName());
+                string randomDir = Path.Combine(hc.GetDirectory(WellKnownDirectory.Bin), Path.GetRandomFileName());
                 try
                 {
                     string targetDir = Directory.CreateDirectory(Path.Combine(randomDir, "targetDir")).FullName;
@@ -487,7 +487,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Util
                 //   randomDir/subDir1
                 //   randomDir/subDir1/subDir2
                 //   randomDir/subDir1/subDir2/linkDir -> ../../targetDir
-                string randomDir = Path.Combine(IOUtil.GetBinPath(), Path.GetRandomFileName());
+                string randomDir = Path.Combine(hc.GetDirectory(WellKnownDirectory.Bin), Path.GetRandomFileName());
                 try
                 {
                     string targetDir = Directory.CreateDirectory(Path.Combine(randomDir, "targetDir")).FullName;
@@ -532,7 +532,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Util
                 Tracing trace = hc.GetTrace();
 
                 // Arrange: Create a directory with a file.
-                string directory = Path.Combine(IOUtil.GetBinPath(), Path.GetRandomFileName());
+                string directory = Path.Combine(hc.GetDirectory(WellKnownDirectory.Bin), Path.GetRandomFileName());
                 string file = Path.Combine(directory, "some file");
                 try
                 {
@@ -567,7 +567,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Util
                 Tracing trace = hc.GetTrace();
 
                 // Arrange: Create a directory with a file.
-                string directory = Path.Combine(IOUtil.GetBinPath(), Path.GetRandomFileName());
+                string directory = Path.Combine(hc.GetDirectory(WellKnownDirectory.Bin), Path.GetRandomFileName());
                 string file = Path.Combine(directory, "some file");
                 try
                 {
@@ -601,7 +601,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Util
                 Tracing trace = hc.GetTrace();
 
                 // Arrange: Create a directory with a read-only file.
-                string directory = Path.Combine(IOUtil.GetBinPath(), Path.GetRandomFileName());
+                string directory = Path.Combine(hc.GetDirectory(WellKnownDirectory.Bin), Path.GetRandomFileName());
                 string file = Path.Combine(directory, "some file");
                 try
                 {
@@ -641,7 +641,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Util
                 Tracing trace = hc.GetTrace();
 
                 // Arrange: Create a directory.
-                string directory = Path.Combine(IOUtil.GetBinPath(), Path.GetRandomFileName());
+                string directory = Path.Combine(hc.GetDirectory(WellKnownDirectory.Bin), Path.GetRandomFileName());
                 try
                 {
                     Directory.CreateDirectory(directory);
@@ -772,7 +772,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Util
                 Tracing trace = hc.GetTrace();
 
                 // Arrange: Create a directory.
-                string directory = Path.Combine(IOUtil.GetBinPath(), Path.GetRandomFileName());
+                string directory = Path.Combine(hc.GetDirectory(WellKnownDirectory.Bin), Path.GetRandomFileName());
                 try
                 {
                     Directory.CreateDirectory(directory);
@@ -801,7 +801,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Util
                 Tracing trace = hc.GetTrace();
 
                 // Arrange: Create a deep directory.
-                string directory = Path.Combine(IOUtil.GetBinPath(), Path.GetRandomFileName(), "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20");
+                string directory = Path.Combine(hc.GetDirectory(WellKnownDirectory.Bin), Path.GetRandomFileName(), "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20");
                 try
                 {
                     Directory.CreateDirectory(directory);
@@ -845,7 +845,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Util
             {
                 processInvoker.Initialize(context);
                 await processInvoker.ExecuteAsync(
-                    workingDirectory: IOUtil.GetBinPath(),
+                    workingDirectory: context.GetDirectory(WellKnownDirectory.Bin),
                     fileName: fileName,
                     arguments: arguments,
                     environment: null,

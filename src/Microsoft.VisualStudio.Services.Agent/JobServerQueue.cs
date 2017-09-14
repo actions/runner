@@ -24,7 +24,8 @@ namespace Microsoft.VisualStudio.Services.Agent
     public sealed class JobServerQueue : AgentService, IJobServerQueue
     {
         // Default delay for Dequeue process
-        private static readonly TimeSpan _delayForWebConsoleLineDequeue = TimeSpan.FromMilliseconds(200);
+        private static readonly TimeSpan _aggressiveDelayForWebConsoleLineDequeue = TimeSpan.FromMilliseconds(250);
+        private static readonly TimeSpan _delayForWebConsoleLineDequeue = TimeSpan.FromMilliseconds(500);
         private static readonly TimeSpan _delayForTimelineUpdateDequeue = TimeSpan.FromMilliseconds(500);
         private static readonly TimeSpan _delayForFileUploadDequeue = TimeSpan.FromMilliseconds(1000);
 
@@ -60,8 +61,17 @@ namespace Microsoft.VisualStudio.Services.Agent
         private Task[] _allDequeueTasks;
         private readonly TaskCompletionSource<int> _jobCompletionSource = new TaskCompletionSource<int>();
         private bool _queueInProcess = false;
+        private ITerminal _term;
 
         public event EventHandler<ThrottlingEventArgs> JobServerQueueThrottling;
+
+        // Web console dequeue will start with process queue every 250ms for the first 60*4 times (~60 seconds).
+        // Then the dequeue will happen every 500ms.
+        // In this way, customer still can get instance live console output on job start, 
+        // at the same time we can cut the load to server after the build run for more than 60s
+        private int _webConsoleLineAggressiveDequeueCount = 0;
+        private const int _webConsoleLineAggressiveDequeueLimit = 4 * 60;
+        private bool _webConsoleLineAggressiveDequeue = true;
 
         public override void Initialize(IHostContext hostContext)
         {
@@ -72,6 +82,12 @@ namespace Microsoft.VisualStudio.Services.Agent
         public void Start(JobRequestMessage jobRequest)
         {
             Trace.Entering();
+            if (HostContext.RunMode == RunMode.Local)
+            {
+                _term = HostContext.GetService<ITerminal>();
+                return;
+            }
+
             if (_queueInProcess)
             {
                 Trace.Info("No-opt, all queue process tasks are running.");
@@ -110,6 +126,11 @@ namespace Microsoft.VisualStudio.Services.Agent
         // TimelineUpdate queue error will become critical when timeline records contain output variabls.
         public async Task ShutdownAsync()
         {
+            if (HostContext.RunMode == RunMode.Local)
+            {
+                return;
+            }
+
             if (!_queueInProcess)
             {
                 Trace.Info("No-op, all queue process tasks have been stopped.");
@@ -145,11 +166,32 @@ namespace Microsoft.VisualStudio.Services.Agent
         public void QueueWebConsoleLine(string line)
         {
             Trace.Verbose("Enqueue web console line queue: {0}", line);
+            if (HostContext.RunMode == RunMode.Local)
+            {
+                if ((line ?? string.Empty).StartsWith("##[section]"))
+                {
+                    Console.WriteLine("******************************************************************************");
+                    Console.WriteLine(line.Substring("##[section]".Length));
+                    Console.WriteLine("******************************************************************************");
+                }
+                else
+                {
+                    Console.WriteLine(line);
+                }
+
+                return;
+            }
+
             _webConsoleLineQueue.Enqueue(line);
         }
 
         public void QueueFileUpload(Guid timelineId, Guid timelineRecordId, string type, string name, string path, bool deleteSource)
         {
+            if (HostContext.RunMode == RunMode.Local)
+            {
+                return;
+            }
+
             ArgUtil.NotEmpty(timelineId, nameof(timelineId));
             ArgUtil.NotEmpty(timelineRecordId, nameof(timelineRecordId));
 
@@ -170,6 +212,11 @@ namespace Microsoft.VisualStudio.Services.Agent
 
         public void QueueTimelineRecordUpdate(Guid timelineId, TimelineRecord timelineRecord)
         {
+            if (HostContext.RunMode == RunMode.Local)
+            {
+                return;
+            }
+
             ArgUtil.NotEmpty(timelineId, nameof(timelineId));
             ArgUtil.NotNull(timelineRecord, nameof(timelineRecord));
             ArgUtil.NotEmpty(timelineRecord.Id, nameof(timelineRecord.Id));
@@ -194,6 +241,12 @@ namespace Microsoft.VisualStudio.Services.Agent
         {
             while (!_jobCompletionSource.Task.IsCompleted || runOnce)
             {
+                if (_webConsoleLineAggressiveDequeue && ++_webConsoleLineAggressiveDequeueCount > _webConsoleLineAggressiveDequeueLimit)
+                {
+                    Trace.Info("Stop aggressive process web console line queue.");
+                    _webConsoleLineAggressiveDequeue = false;
+                }
+
                 List<List<string>> batchedLines = new List<List<string>>();
                 List<string> currentBatch = new List<string>();
                 string line;
@@ -253,7 +306,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                 }
                 else
                 {
-                    await Task.Delay(_delayForWebConsoleLineDequeue);
+                    await Task.Delay(_webConsoleLineAggressiveDequeue ? _aggressiveDelayForWebConsoleLineDequeue : _delayForWebConsoleLineDequeue);
                 }
             }
         }

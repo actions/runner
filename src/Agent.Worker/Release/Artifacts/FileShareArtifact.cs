@@ -119,6 +119,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
                 var relativePath = artifactDefinition.Details.RelativePath;
 
                 dropLocation = Path.Combine(dropLocation.TrimEnd(trimChars), relativePath.Trim(trimChars));
+                downloadFolderPath = downloadFolderPath.TrimEnd(trimChars);
 
                 string robocopyArguments = "\"" + dropLocation + "\" \"" + downloadFolderPath + "\" /E /Z /NP /R:3";
                 if (verbose != true)

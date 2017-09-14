@@ -194,6 +194,7 @@ check_pre_reqs() {
         [ -z "$($LDCONFIG_COMMAND -p | grep libunwind)" ] && say_err "Unable to locate libunwind. Install libunwind to continue" && failing=true
         [ -z "$($LDCONFIG_COMMAND -p | grep libssl)" ] && say_err "Unable to locate libssl. Install libssl to continue" && failing=true
         [ -z "$($LDCONFIG_COMMAND -p | grep libicu)" ] && say_err "Unable to locate libicu. Install libicu to continue" && failing=true
+        [ -z "$($LDCONFIG_COMMAND -p | grep -F libcurl.so)" ] && say_err "Unable to locate libcurl. Install libcurl to continue" && failing=true
     fi
 
     if [ "$failing" = true ]; then
@@ -333,6 +334,7 @@ is_dotnet_package_installed() {
 # azure_feed - $1
 # channel - $2
 # normalized_architecture - $3
+# coherent - $4
 get_latest_version_info() {
     eval $invocation
     
@@ -346,7 +348,7 @@ get_latest_version_info() {
         version_file_url="$uncached_feed/Runtime/$channel/latest.version"
     else
         if [ "$coherent" = true ]; then
-            version_file_url="$uncached_feed/Runtime/$channel/latest.coherent.version"
+            version_file_url="$uncached_feed/Sdk/$channel/latest.coherent.version"
         else
             version_file_url="$uncached_feed/Sdk/$channel/latest.version"
         fi
@@ -541,7 +543,7 @@ extract_dotnet_package() {
     
     local folders_with_version_regex='^.*/[0-9]+\.[0-9]+[^/]+/'
     find $temp_out_path -type f | grep -Eo $folders_with_version_regex | copy_files_or_dirs_from_list $temp_out_path $out_path false
-    find $temp_out_path -type f | grep -Ev $folders_with_version_regex | copy_files_or_dirs_from_list $temp_out_path $out_path true
+    find $temp_out_path -type f | grep -Ev $folders_with_version_regex | copy_files_or_dirs_from_list $temp_out_path $out_path $override_non_versioned_files
     
     rm -rf $temp_out_path
     
@@ -600,7 +602,7 @@ downloadwget() {
 
     local failed=false
     if [ -z "$out_path" ]; then
-        wget -q --tries 10 $remote_path || failed=true
+        wget -q --tries 10 -O - $remote_path || failed=true
     else
         wget -v --tries 10 -O $out_path $remote_path || failed=true
     fi
@@ -687,6 +689,7 @@ uncached_feed="https://dotnetcli.blob.core.windows.net/dotnet"
 verbose=false
 shared_runtime=false
 runtime_id=""
+override_non_versioned_files=true
 
 while [ $# -ne 0 ]
 do
@@ -732,6 +735,10 @@ do
             shift
             runtime_id="$1"
             ;;
+        --skip-non-versioned-files|-[Ss]kip[Nn]on[Vv]ersioned[Ff]iles)
+            shift
+            override_non_versioned_files=false
+            ;;
         -?|--?|-h|--help|-[Hh]elp)
             script_name="$(basename $0)"
             echo ".NET Tools Installer"
@@ -764,6 +771,8 @@ do
             echo "      --arch,-Architecture,-Arch"
             echo "  --shared-runtime               Installs just the shared runtime bits, not the entire SDK."
             echo "      -SharedRuntime"
+            echo "  --skip-non-versioned-files     Skips non-versioned files if they already exist, such as the dotnet executable."
+            echo "      -SkipNonVersionedFiles"
             echo "  --dry-run,-DryRun              Do not perform installation. Display download link."
             echo "  --no-path, -NoPath             Do not set PATH for the current process."
             echo "  --verbose,-Verbose             Display diagnostics information."

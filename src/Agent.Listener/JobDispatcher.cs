@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.VisualStudio.Services.WebApi;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener
 {
@@ -15,6 +16,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         void Run(AgentJobRequestMessage message);
         bool Cancel(JobCancelMessage message);
         Task WaitAsync(CancellationToken token);
+        TaskResult GetLocalRunJobResult(AgentJobRequestMessage message);
         Task ShutdownAsync();
     }
 
@@ -25,6 +27,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
     // and server will not send another job while this one is still running.
     public sealed class JobDispatcher : AgentService, IJobDispatcher
     {
+        private readonly Lazy<Dictionary<long, TaskResult>> _localRunJobResult = new Lazy<Dictionary<long, TaskResult>>();
         private int _poolId;
         private static readonly string _workerProcessName = $"Agent.Worker{IOUtil.ExeExtension}";
 
@@ -141,6 +144,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     }
                 }
             }
+        }
+
+        public TaskResult GetLocalRunJobResult(AgentJobRequestMessage message)
+        {
+            return _localRunJobResult.Value[message.RequestId];
         }
 
         public async Task ShutdownAsync()
@@ -331,32 +339,40 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                             ArgUtil.NotNullOrEmpty(pipeHandleOut, nameof(pipeHandleOut));
                             ArgUtil.NotNullOrEmpty(pipeHandleIn, nameof(pipeHandleIn));
 
-                            // Save STDOUT from worker, worker will use STDOUT report unhandle exception.
-                            processInvoker.OutputDataReceived += delegate (object sender, ProcessDataReceivedEventArgs stdout)
+                            if (HostContext.RunMode == RunMode.Normal)
                             {
-                                if (!string.IsNullOrEmpty(stdout.Data))
+                                // Save STDOUT from worker, worker will use STDOUT report unhandle exception.
+                                processInvoker.OutputDataReceived += delegate (object sender, ProcessDataReceivedEventArgs stdout)
                                 {
-                                    lock (_outputLock)
+                                    if (!string.IsNullOrEmpty(stdout.Data))
                                     {
-                                        workerOutput.Add(stdout.Data);
+                                        lock (_outputLock)
+                                        {
+                                            workerOutput.Add(stdout.Data);
+                                        }
                                     }
-                                }
-                            };
+                                };
 
-                            // Save STDERR from worker, worker will use STDERR on crash.
-                            processInvoker.ErrorDataReceived += delegate (object sender, ProcessDataReceivedEventArgs stderr)
-                            {
-                                if (!string.IsNullOrEmpty(stderr.Data))
+                                // Save STDERR from worker, worker will use STDERR on crash.
+                                processInvoker.ErrorDataReceived += delegate (object sender, ProcessDataReceivedEventArgs stderr)
                                 {
-                                    lock (_outputLock)
+                                    if (!string.IsNullOrEmpty(stderr.Data))
                                     {
-                                        workerOutput.Add(stderr.Data);
+                                        lock (_outputLock)
+                                        {
+                                            workerOutput.Add(stderr.Data);
+                                        }
                                     }
-                                }
-                            };
+                                };
+                            }
+                            else if (HostContext.RunMode == RunMode.Local)
+                            {
+                                processInvoker.OutputDataReceived += (object sender, ProcessDataReceivedEventArgs e) => Console.WriteLine(e.Data);
+                                processInvoker.ErrorDataReceived += (object sender, ProcessDataReceivedEventArgs e) => Console.WriteLine(e.Data);
+                            }
 
                             // Start the child process.
-                            var assemblyDirectory = IOUtil.GetBinPath();
+                            var assemblyDirectory = HostContext.GetDirectory(WellKnownDirectory.Bin);
                             string workerFileName = Path.Combine(assemblyDirectory, _workerProcessName);
                             workerProcessTask = processInvoker.ExecuteAsync(
                                 workingDirectory: assemblyDirectory,
@@ -636,6 +652,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         private async Task CompleteJobRequestAsync(int poolId, AgentJobRequestMessage message, Guid lockToken, TaskResult result, string detailInfo = null)
         {
             Trace.Entering();
+            if (HostContext.RunMode == RunMode.Local)
+            {
+                _localRunJobResult.Value[message.RequestId] = result;
+                return;
+            }
+
             if (ApiUtil.GetFeatures(message.Plan).HasFlag(PlanFeatures.JobCompletedPlanEvent))
             {
                 Trace.Verbose($"Skip FinishAgentRequest call from Listener because Plan version is {message.Plan.Version}");

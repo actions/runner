@@ -53,10 +53,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
             // Get the list of available artifacts from build. 
             executionContext.Output(StringUtil.Loc("RMPreparingToGetBuildArtifactList"));
 
-            var vssConnection = new VssConnection(buildArtifactDetails.TfsUrl, buildArtifactDetails.Credentials);
+            var vssConnection = ApiUtil.CreateConnection(buildArtifactDetails.TfsUrl, buildArtifactDetails.Credentials);
             var buildClient = vssConnection.GetClient<BuildHttpClient>();
             var xamlBuildClient = vssConnection.GetClient<XamlBuildHttpClient>();
             List<ServerBuildArtifact> buildArtifacts = null;
+
+            EnsureVersionBelongsToLinkedDefinition(artifactDefinition, buildClient, xamlBuildClient);
 
             try
             {
@@ -103,7 +105,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
             var tfsUrl = context.Variables.Get(WellKnownDistributedTaskVariables.TFCollectionUrl);
 
             Guid projectId = context.Variables.System_TeamProjectId ?? Guid.Empty;
-            if(artifactDetails.ContainsKey("Project"))
+            if (artifactDetails.ContainsKey("Project"))
             {
                 Guid.TryParse(artifactDetails["Project"], out projectId);
             }
@@ -116,14 +118,26 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
 
             if (artifactDetails.TryGetValue("RelativePath", out relativePath))
             {
-                return new BuildArtifactDetails
+                var buildArtifactDetails = new BuildArtifactDetails
+                    {
+                        Credentials = vssCredentials,
+                        RelativePath = artifactDetails["RelativePath"],
+                        AccessToken = accessToken,
+                        Project = projectId.ToString(),
+                        TfsUrl = new Uri(tfsUrl)
+                    };
+
+                if (artifactDetails.ContainsKey("DefinitionName"))
                 {
-                    Credentials = vssCredentials,
-                    RelativePath = artifactDetails["RelativePath"],
-                    AccessToken = accessToken,
-                    Project = projectId.ToString(),
-                    TfsUrl = new Uri(tfsUrl),
-                };
+                    buildArtifactDetails.DefinitionName = artifactDetails["DefinitionName"];
+                }
+
+                if (artifactDetails.ContainsKey("DefinitionId"))
+                {
+                    buildArtifactDetails.DefintionId = Convert.ToInt32(artifactDetails["DefinitionId"], CultureInfo.InvariantCulture);
+                }
+
+                return buildArtifactDetails;
             }
             else
             {
@@ -210,7 +224,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
                 string rootLocation = parts[2];
                 if (!int.TryParse(parts[1], out containerId))
                 {
-                    throw new ArtifactDownloadException(StringUtil.Loc("RMArtifactContainerDetailsInvaidError", buildArtifact.Name));
+                    throw new ArtifactDownloadException(StringUtil.Loc("RMArtifactContainerDetailsInvalidError", buildArtifact.Name));
                 }
 
                 string rootDestinationDir = Path.Combine(localFolderPath, rootLocation);
@@ -239,6 +253,34 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
             else
             {
                 executionContext.Warning(StringUtil.Loc("RMArtifactTypeNotSupported", buildArtifact.Resource.Type));
+            }
+        }
+
+        private void EnsureVersionBelongsToLinkedDefinition(ArtifactDefinition artifactDefinition, BuildHttpClient buildClient, XamlBuildHttpClient xamlBuildClient)
+        {
+            var buildArtifactDetails = artifactDefinition.Details as BuildArtifactDetails;
+            if (buildArtifactDetails != null && buildArtifactDetails.DefintionId > 0)
+            {
+                var buildId = Convert.ToInt32(artifactDefinition.Version, CultureInfo.InvariantCulture);
+                TeamFoundation.Build.WebApi.Build build = null;
+
+                try
+                {
+                    build = buildClient.GetBuildAsync(buildArtifactDetails.Project, buildId).Result;
+                }
+                catch (AggregateException ex)
+                {
+                    if (ex.InnerException != null && ex.InnerException is BuildNotFoundException)
+                    {
+                        build = xamlBuildClient.GetBuildAsync(buildArtifactDetails.Project, buildId).Result;
+                    }
+                }
+
+                if (build != null && build.Definition.Id != buildArtifactDetails.DefintionId)
+                {
+                    string errorMessage = StringUtil.Loc("RMBuildNotFromLinkedDefinition", artifactDefinition.Name, buildArtifactDetails.DefinitionName);
+                    throw new ArtifactDownloadException(errorMessage);
+                }
             }
         }
     }
