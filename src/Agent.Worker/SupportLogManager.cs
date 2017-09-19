@@ -45,23 +45,24 @@ namespace Microsoft.VisualStudio.Services.Agent
             Directory.CreateDirectory(supportRootFolder);
 
             // \_layout\_work\_temp\[jobname-support]\files
-            executionContext.Debug("Creating files folder.");
-            string supportFilesFolder = Path.Combine(supportRootFolder, "files");
-            Directory.CreateDirectory(supportFilesFolder);
+            // TODO: I dont think we need this any more since we arent zipping anything on the agent.
+            // executionContext.Debug("Creating files folder.");
+            // string supportFilesFolder = Path.Combine(supportRootFolder, "files");
+            // Directory.CreateDirectory(supportFilesFolder);
 
             var filesToUpload = new List<string>();
 
             // Copy the worker log from the _diag folder into the support folder
             // TODO: The job needs to hold the name of the worker log file?
             executionContext.Debug("Copying worker _diag log file.");
-            string newWorkerLogFile = supportFilesFolder + Path.GetFileName(workerLogFile);
+            string newWorkerLogFile = supportRootFolder + Path.GetFileName(workerLogFile);
             File.Copy(workerLogFile, newWorkerLogFile);
             filesToUpload.Add(newWorkerLogFile);
             
             // Create the environment file
             // \_layout\_work\_temp\[jobname-support]\files\environment.txt
             executionContext.Debug("Creating environment file.");
-            string environmentFile = Path.Combine(supportFilesFolder, "environment.txt");
+            string environmentFile = Path.Combine(supportRootFolder, "environment.txt");
             string content = GetEnvironmentContent();
             using (StreamWriter writer = File.CreateText(environmentFile)) 
             {

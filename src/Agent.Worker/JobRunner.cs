@@ -328,7 +328,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     supportLogManager.UploadSupportLogs(
                         executionContext: jobContext, 
                         jobName: message.JobName,
-                        tempDirectory: "", 
+                        tempDirectory: Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Bin), "_temp"),  
                         workerLogFile: "");
 
                     Trace.Info("Support log upload complete.");
