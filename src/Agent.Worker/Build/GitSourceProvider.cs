@@ -31,15 +31,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         }
     }
 
-    public sealed class GitHubSourceProvider : GitSourceProvider
+    public abstract class AuthenticatedGitSourceProvider : GitSourceProvider
     {
-        public override string RepositoryType => WellKnownRepositoryTypes.GitHub;
-
         public override bool GitUseAuthHeaderCmdlineArg
         {
             get
             {
-                // v2.9 git exist use auth header for github repository.
+                // v2.9 git exist use auth header.
                 ArgUtil.NotNull(_gitCommandManager, nameof(_gitCommandManager));
                 return _gitCommandManager.EnsureGitVersion(_minGitVersionSupportAuthHeader, throwOnNotMatch: false);
             }
@@ -49,7 +47,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         {
             get
             {
-                // v2.1 git-lfs exist use auth header for github repository.
+                // v2.1 git-lfs exist use auth header.
                 ArgUtil.NotNull(_gitCommandManager, nameof(_gitCommandManager));
                 return _gitCommandManager.EnsureGitLFSVersion(_minGitLfsVersionSupportAuthHeader, throwOnNotMatch: false);
             }
@@ -57,12 +55,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
         public override void RequirementCheck(IExecutionContext executionContext, ServiceEndpoint endpoint)
         {
-            // no-opt for github repo, there is no additional requirements.
+            // no-opt, there is no additional requirements.
         }
 
         public override string GenerateAuthHeader(string username, string password)
         {
-            // github use basic auth header with username:password in base64encoding. 
+            // use basic auth header with username:password in base64encoding. 
             string authHeader = $"{username ?? string.Empty}:{password ?? string.Empty}";
             string base64encodedAuthHeader = Convert.ToBase64String(Encoding.UTF8.GetBytes(authHeader));
 
@@ -73,47 +71,21 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         }
     }
 
-    public sealed class BitbucketSourceProvider : GitSourceProvider
+    public sealed class GitHubSourceProvider : AuthenticatedGitSourceProvider
     {
-        // TODO: Replace this with correct type lookup WellKnownRepositoryTypes.Bitbucket
-        public override string RepositoryType => "Bitbucket";
+        public override string RepositoryType => WellKnownRepositoryTypes.GitHub;
+    }
 
-        public override bool GitUseAuthHeaderCmdlineArg
-        {
-            get
-            {
-                // v2.9 git exist use auth header for Bitbucket repository.
-                ArgUtil.NotNull(_gitCommandManager, nameof(_gitCommandManager));
-                return _gitCommandManager.EnsureGitVersion(_minGitVersionSupportAuthHeader, throwOnNotMatch: false);
-            }
-        }
+    public sealed class GitHubEnterpriseSourceProvider : AuthenticatedGitSourceProvider
+    {
+        // TODO: Update this when the vss-api-netcore dependency has been updated and WellKnownRepositoryTypes includes GitHubEnterprise
+        public override string RepositoryType => "GitHubEnterprise"; //WellKnownRepositoryTypes.GitHubEnterprise;
+    }
 
-        public override bool GitLfsUseAuthHeaderCmdlineArg
-        {
-            get
-            {
-                // v2.1 git-lfs exist use auth header for github repository.
-                ArgUtil.NotNull(_gitCommandManager, nameof(_gitCommandManager));
-                return _gitCommandManager.EnsureGitLFSVersion(_minGitLfsVersionSupportAuthHeader, throwOnNotMatch: false);
-            }
-        }
-
-        public override void RequirementCheck(IExecutionContext executionContext, ServiceEndpoint endpoint)
-        {
-            // no-opt for Bitbucket repo, there is no additional requirements.
-        }
-
-        public override string GenerateAuthHeader(string username, string password)
-        {
-            // Bitbucket use basic auth header with username:password in base64encoding. 
-            string authHeader = $"{username ?? string.Empty}:{password ?? string.Empty}";
-            string base64encodedAuthHeader = Convert.ToBase64String(Encoding.UTF8.GetBytes(authHeader));
-
-            // add base64 encoding auth header into secretMasker.
-            var secretMasker = HostContext.GetService<ISecretMasker>();
-            secretMasker.AddValue(base64encodedAuthHeader);
-            return $"basic {base64encodedAuthHeader}";
-        }
+    public sealed class BitbucketSourceProvider : AuthenticatedGitSourceProvider
+    {
+        // TODO: Update this when the vss-api-netcore dependency has been updated and WellKnownRepositoryTypes includes Bitbucket
+        public override string RepositoryType => "Bitbucket"; //WellKnownRepositoryTypes.Bitbucket;
     }
 
     public sealed class TfsGitSourceProvider : GitSourceProvider

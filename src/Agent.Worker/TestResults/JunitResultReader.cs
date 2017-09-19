@@ -195,7 +195,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
             XmlAttribute timestampNode = rootNode.Attributes["timestamp"];
             if (timestampNode != null && timestampNode.Value != null)
             {
-                if (DateTime.TryParse(timestampNode.Value, DateTimeFormatInfo.InvariantInfo, DateTimeStyles.None, out timestampFromXml))
+                if (DateTime.TryParse(timestampNode.Value, DateTimeFormatInfo.InvariantInfo, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out timestampFromXml))
                 {
                     testSuiteSummary.TimeStamp = timestampFromXml;
                 }
@@ -250,10 +250,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                     if ((failure = testCaseNode.SelectSingleNode("./failure")) != null)
                     {
                         ProcessFailureNode(failure, resultCreateModel);
+                        AddSystemLogsToResult(testCaseNode, resultCreateModel);
                     }
                     else if ((error = testCaseNode.SelectSingleNode("./error")) != null)
                     {
                         ProcessFailureNode(error, resultCreateModel);
+                        AddSystemLogsToResult(testCaseNode, resultCreateModel);
                     }
                     else if ((skipped = testCaseNode.SelectSingleNode("./skipped")) != null)
                     {
@@ -330,6 +332,25 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
             }
         }
 
+        private void AddSystemLogsToResult(XmlNode testCaseNode, TestCaseResultData resultCreateModel)
+        {
+            XmlNode stdout, stderr;
+
+            // Standard output logs
+            stdout = testCaseNode.SelectSingleNode("./system-out");
+            if (stdout != null && !string.IsNullOrWhiteSpace(stdout.InnerText))
+            {
+                resultCreateModel.ConsoleLog = stdout.InnerText;
+            }
+
+            // Standard error logs
+            stderr = testCaseNode.SelectSingleNode("./system-err");
+            if (stderr != null && !string.IsNullOrWhiteSpace(stderr.InnerText))
+            {
+                resultCreateModel.StandardError = stderr.InnerText;
+            }
+        }
+
         class TestSuiteSummary
         {
             public string Name { get; set; }
@@ -352,7 +373,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
             {
                 Name = name;
                 Host = string.Empty;
-                TimeStamp = DateTime.Now;
+                TimeStamp = DateTime.UtcNow;
                 TestSuiteDuration = TimeSpan.Zero;
                 SuiteTimeDataAvailable = true;
                 SuiteTimeStampAvailable = true;

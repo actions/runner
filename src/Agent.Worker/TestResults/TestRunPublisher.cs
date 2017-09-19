@@ -306,7 +306,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
             Trace.Entering();
             if (!string.IsNullOrWhiteSpace(consoleLog))
             {
-                string consoleLogFileName = "Standard Console Output.log";
+                string consoleLogFileName = "Standard_Console_Output.log";
 
                 if (consoleLog.Length <= TCM_MAX_FILESIZE)
                 {
@@ -329,7 +329,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
             Trace.Entering();
             if (string.IsNullOrWhiteSpace(stdErr) == false)
             {
-                const string stdErrFileName = "Standard_Error_Output.log";
+                const string stdErrFileName = "Standard_Console_Error.log";
 
                 if (stdErr.Length <= TCM_MAX_FILESIZE)
                 {

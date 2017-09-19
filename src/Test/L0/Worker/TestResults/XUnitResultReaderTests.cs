@@ -158,6 +158,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
             "Actual: 4]]></message >" +
             "<stack-trace><![CDATA[at MyFirstUnitTests.Class1.FailingTest() in C: \\Users\\somerandomusername\\Source\\Workspaces\\p1\\ClassLibrary2\\ClassLibrary2\\Class1.cs:line 17]]></stack-trace>" +
             "</failure >" +
+            "<output><![CDATA[This is standard console output for xunit.]]></output>" +
             "</test>" +
             "<test name=\"MyFirstUnitTests.Class1.PassingTest\" type=\"MyFirstUnitTests.Class1\" method=\"PassingTest\" time=\"0.0014079\" result=\"Pass\">" +
             "<traits>" +
@@ -194,6 +195,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
             Assert.Equal("MyFirstUnitTests.Class1.FailingTest", runData.Results[0].AutomatedTestName);
             Assert.Equal("Assert.Equal() FailureExpected: 5Actual: 4", runData.Results[0].ErrorMessage);
             Assert.Equal("at MyFirstUnitTests.Class1.FailingTest() in C: \\Users\\somerandomusername\\Source\\Workspaces\\p1\\ClassLibrary2\\ClassLibrary2\\Class1.cs:line 17", runData.Results[0].StackTrace);
+            Assert.Equal("This is standard console output for xunit.", runData.Results[0].ConsoleLog);
             Assert.Equal("Owner", runData.Results[0].RunBy.DisplayName);
             Assert.Equal("Completed", runData.Results[0].State);
             Assert.Equal("1042", runData.Results[0].DurationInMs.ToString());
@@ -235,6 +237,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
             "Actual: 4]]></message >" +
             "<stack-trace><![CDATA[at MyFirstUnitTests.Class1.FailingTest() in C: \\Users\\somerandomusername\\Source\\Workspaces\\p1\\ClassLibrary2\\ClassLibrary2\\Class1.cs:line 17]]></stack-trace>" +
             "</failure >" +
+            "<output><![CDATA[This is standard console output for xunit.]]></output>" +
             "</test>" +
             "<test name=\"MyFirstUnitTests.Class1.PassingTest\" type=\"MyFirstUnitTests.Class1\" method=\"PassingTest\" time=\"0.0014079\" result=\"Pass\">" +
             "<traits>" +
@@ -271,6 +274,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
                 Assert.Equal("MyFirstUnitTests.Class1.FailingTest", runData.Results[0].AutomatedTestName);
                 Assert.Equal("Assert.Equal() FailureExpected: 5Actual: 4", runData.Results[0].ErrorMessage);
                 Assert.Equal("at MyFirstUnitTests.Class1.FailingTest() in C: \\Users\\somerandomusername\\Source\\Workspaces\\p1\\ClassLibrary2\\ClassLibrary2\\Class1.cs:line 17", runData.Results[0].StackTrace);
+                Assert.Equal("This is standard console output for xunit.", runData.Results[0].ConsoleLog);
                 Assert.Equal("Owner", runData.Results[0].RunBy.DisplayName);
                 Assert.Equal("Completed", runData.Results[0].State);
                 Assert.Equal("1042", runData.Results[0].DurationInMs.ToString());
@@ -307,10 +311,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
             TestRunData runData = reader.ReadResults(_ec.Object, _xUnitResultFile, new TestRunContext("Owner", "any cpu", "debug", 1, "", "releaseUri", "releaseEnvironmentUri"));
             Assert.Equal(40, (int)runData.Results[0].DurationInMs);
             DateTime startDate, completeDate;
-            DateTime.TryParse(runData.StartDate, out startDate);
-            Assert.Equal("2016-06-08T07:12:09.0000000", startDate.ToString("o"));
-            DateTime.TryParse(runData.CompleteDate, out completeDate);
-            Assert.Equal("2016-06-08T07:12:14.4330000", completeDate.ToString("o"));
+            DateTime.TryParse(runData.StartDate, DateTimeFormatInfo.InvariantInfo, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out startDate);
+            Assert.Equal("2016-06-08T07:12:09.0000000Z", startDate.ToString("o"));
+            DateTime.TryParse(runData.CompleteDate, DateTimeFormatInfo.InvariantInfo, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out completeDate);
+            Assert.Equal("2016-06-08T07:12:14.4330000Z", completeDate.ToString("o"));
             Assert.Equal((completeDate - startDate).TotalMilliseconds, 5433);
         }
 

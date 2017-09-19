@@ -83,7 +83,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
 
                     var startDate = DateTime.Now;
                     var startTime = TimeSpan.Zero;
-                    if (DateTime.TryParse(runDate, DateTimeFormatInfo.InvariantInfo, DateTimeStyles.None, out startDate) && 
+                    if (DateTime.TryParse(runDate, DateTimeFormatInfo.InvariantInfo, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out startDate) && 
                         TimeSpan.TryParse(runTime, CultureInfo.InvariantCulture, out startTime))
                     {
                         dateTimeParseError = false;
@@ -188,6 +188,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                         if (failureStackTraceNode != null && !string.IsNullOrWhiteSpace(failureStackTraceNode.InnerText))
                         {
                             resultCreateModel.StackTrace = failureStackTraceNode.InnerText;
+                        }
+
+                        // Console log
+                        XmlNode consoleLog = testCaseNode.SelectSingleNode("./output");
+                        if (consoleLog != null && !string.IsNullOrWhiteSpace(consoleLog.InnerText))
+                        {
+                            resultCreateModel.ConsoleLog = consoleLog.InnerText;
                         }
                     }
                     else if (testCaseNode.Attributes["result"] != null && string.Equals(testCaseNode.Attributes["result"].Value, "pass", StringComparison.OrdinalIgnoreCase))
