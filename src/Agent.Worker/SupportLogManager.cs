@@ -38,15 +38,14 @@ namespace Microsoft.VisualStudio.Services.Agent
             if (!Directory.Exists(tempDirectory)) { throw new DirectoryNotFoundException(nameof(tempDirectory)); }
             if (!File.Exists(workerLogFile)) { throw new FileNotFoundException(nameof(workerLogFile)); }
 
-
-            executionContext.Debug("");
-
             // Setup folders
             // \_layout\_work\_temp\[jobname-support]
+            executionContext.Debug("Setting up folders.");
             string supportRootFolder = Path.Combine(tempDirectory, jobName + "-support");
             Directory.CreateDirectory(supportRootFolder);
 
             // \_layout\_work\_temp\[jobname-support]\files
+            executionContext.Debug("Creating files folder.");
             string supportFilesFolder = Path.Combine(supportRootFolder, "files");
             Directory.CreateDirectory(supportFilesFolder);
 
@@ -54,12 +53,14 @@ namespace Microsoft.VisualStudio.Services.Agent
 
             // Copy the worker log from the _diag folder into the support folder
             // TODO: The job needs to hold the name of the worker log file?
+            executionContext.Debug("Copying worker _diag log file.");
             string newWorkerLogFile = supportFilesFolder + Path.GetFileName(workerLogFile);
             File.Copy(workerLogFile, newWorkerLogFile);
             filesToUpload.Add(newWorkerLogFile);
             
             // Create the environment file
             // \_layout\_work\_temp\[jobname-support]\files\environment.txt
+            executionContext.Debug("Creating environment file.");
             string environmentFile = Path.Combine(supportFilesFolder, "environment.txt");
             string content = GetEnvironmentContent();
             using (StreamWriter writer = File.CreateText(environmentFile)) 
@@ -69,6 +70,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             filesToUpload.Add(environmentFile);
             
             // Download build logs
+            executionContext.Debug("Downloading build logs.");
             string buildLogsZip = ""; // TODO: Set this.
 
             Guid projectId = executionContext.Variables.System_TeamProjectId ?? Guid.Empty;
@@ -96,19 +98,21 @@ namespace Microsoft.VisualStudio.Services.Agent
             // TODO: Keep a list of files to upload and queue them all? Do that if we aren't going to zip them
             // We would iterate all of the files we added to the support folder
             // TODO: Find how we set the name when we normally use this method.
+            executionContext.Debug("Uploading diagnostic log files.");
             foreach (string fileToUpload in filesToUpload)
             {
                 jobServerQueue.QueueFileUpload(
                     timelineId: executionContext.MainTimelineId, 
                     timelineRecordId: executionContext.TimelineId, 
-                    // type: CoreAttachmentType.Support,
-                    type: "DistributedTask.Core.Support", 
+                    // type: CoreAttachmentType.DiagnosticLog,
+                    type: "DistributedTask.Core.DiagnosticLog", 
                     name: "SupportLog", 
                     path: fileToUpload, 
                     deleteSource: false);
             }
 
             // Delete support folder
+            executionContext.Debug("Deleting support folder.");
             Directory.Delete(supportRootFolder);
         }
 
