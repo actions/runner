@@ -109,6 +109,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
             {
                 if (int.TryParse(jenkinsDetails.EndCommitArtifactVersion, out endJobId))
                 {
+                    context.Output(StringUtil.Loc("RMDownloadingCommits"));
                     if (int.TryParse(jenkinsDetails.StartCommitArtifactVersion, out startJobId))
                     {
                         if (startJobId < endJobId)

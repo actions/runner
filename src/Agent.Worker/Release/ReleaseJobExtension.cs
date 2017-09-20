@@ -127,7 +127,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
                     await DownloadArtifacts(executionContext, filteredReleaseArtifacts, ArtifactsWorkingFolder);
                 }
 
-                executionContext.Output(StringUtil.Loc("RMDownloadingCommits"));
                 await DownloadCommits(executionContext, TeamProjectId, releaseArtifacts);
             }
             catch (Exception ex)
