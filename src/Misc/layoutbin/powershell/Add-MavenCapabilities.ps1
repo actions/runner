@@ -7,4 +7,9 @@ if (!$env:JAVA_HOME) {
     return
 }
 
-Add-CapabilityFromEnvironment -Name 'maven' -VariableName 'M2_HOME'
+if($env:M2_HOME) {
+    Add-CapabilityFromEnvironment -Name 'maven' -VariableName 'M2_HOME'
+} else {
+	Write-Host "M2_HOME not set. Checking in PATH"
+    Add-CapabilityFromApplication -Name 'maven' -ApplicationName 'mvn'
+}
