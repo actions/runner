@@ -207,7 +207,8 @@ check_pre_reqs() {
             LDCONFIG_COMMAND="ldconfig"
         fi
 
-        LDCONFIG_COMMAND="$LDCONFIG_COMMAND -NXv ${LD_LIBRARY_PATH//:/ }"
+        local librarypath=${LD_LIBRARY_PATH:-}
+        LDCONFIG_COMMAND="$LDCONFIG_COMMAND -NXv ${librarypath//:/ }"
 
         [ -z "$($LDCONFIG_COMMAND | grep libunwind)" ] && say_err "Unable to locate libunwind. Install libunwind to continue" && failing=true
         [ -z "$($LDCONFIG_COMMAND | grep libssl)" ] && say_err "Unable to locate libssl. Install libssl to continue" && failing=true
