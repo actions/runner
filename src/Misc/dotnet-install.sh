@@ -84,6 +84,10 @@ get_os_download_name_from_platform() {
             echo "opensuse.42.1"
             return 0
             ;;
+        "rhel.6"*)
+            echo "rhel.6"
+            return 0
+            ;;
         "rhel.7"*)
             echo "rhel"
             return 0
@@ -115,8 +119,14 @@ get_current_os_name() {
     if [ "$uname" = "Darwin" ]; then
         echo "osx"
         return 0
-    else
-        if [ "$uname" = "Linux" ]; then
+    elif [ "$uname" = "Linux" ]; then
+        local distro_specific_osname
+        distro_specific_osname=$(get_distro_specific_os_name) || return 1
+
+        if [ "$distro_specific_osname" = "rhel.6" ]; then
+            echo $distro_specific_osname
+            return 0
+        else
             echo "linux"
             return 0
         fi
@@ -142,6 +152,12 @@ get_distro_specific_os_name() {
             os=$(get_os_download_name_from_platform "$ID.$VERSION_ID" || echo "")
             if [ -n "$os" ]; then
                 echo "$os"
+                return 0
+            fi
+        elif [ -e /etc/redhat-release ]; then
+            local redhatRelease=$(</etc/redhat-release)
+            if [[ $redhatRelease == "CentOS release 6."* || $redhatRelease == "Red Hat Enterprise Linux Server release 6."* ]]; then
+                echo "rhel.6"
                 return 0
             fi
         fi
@@ -191,10 +207,12 @@ check_pre_reqs() {
             LDCONFIG_COMMAND="ldconfig"
         fi
 
-        [ -z "$($LDCONFIG_COMMAND -p | grep libunwind)" ] && say_err "Unable to locate libunwind. Install libunwind to continue" && failing=true
-        [ -z "$($LDCONFIG_COMMAND -p | grep libssl)" ] && say_err "Unable to locate libssl. Install libssl to continue" && failing=true
-        [ -z "$($LDCONFIG_COMMAND -p | grep libicu)" ] && say_err "Unable to locate libicu. Install libicu to continue" && failing=true
-        [ -z "$($LDCONFIG_COMMAND -p | grep -F libcurl.so)" ] && say_err "Unable to locate libcurl. Install libcurl to continue" && failing=true
+        LDCONFIG_COMMAND="$LDCONFIG_COMMAND -NXv ${LD_LIBRARY_PATH//:/ }"
+
+        [ -z "$($LDCONFIG_COMMAND | grep libunwind)" ] && say_err "Unable to locate libunwind. Install libunwind to continue" && failing=true
+        [ -z "$($LDCONFIG_COMMAND | grep libssl)" ] && say_err "Unable to locate libssl. Install libssl to continue" && failing=true
+        [ -z "$($LDCONFIG_COMMAND | grep libicu)" ] && say_err "Unable to locate libicu. Install libicu to continue" && failing=true
+        [ -z "$($LDCONFIG_COMMAND | grep -F libcurl.so)" ] && say_err "Unable to locate libcurl. Install libcurl to continue" && failing=true
     fi
 
     if [ "$failing" = true ]; then
