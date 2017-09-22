@@ -324,8 +324,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 {
                     Trace.Info("Starting to upload support logs.");
 
-                    ISupportLogManager supportLogManager = HostContext.GetService<ISupportLogManager>();
-                    supportLogManager.UploadSupportLogs(
+                    IDiagnosticLogManager diagnosticLogManager = HostContext.GetService<IDiagnosticLogManager>();
+                    diagnosticLogManager.UploadDiagnosticLogs(
                         executionContext: jobContext, 
                         jobName: message.JobName,
                         tempDirectory: Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), "_temp"),  
