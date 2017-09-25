@@ -54,6 +54,6 @@ phases:
 
 ```yaml
 clean: true | false
-fetchDeptch: number
+fetchDepth: number
 lfs: true | false
 ```
