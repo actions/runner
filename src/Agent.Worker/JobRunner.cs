@@ -325,16 +325,26 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     Trace.Info("Starting to upload support logs.");
 
                     IDiagnosticLogManager diagnosticLogManager = HostContext.GetService<IDiagnosticLogManager>();
-                    diagnosticLogManager.UploadDiagnosticLogs(
-                        executionContext: jobContext, 
-                        jobName: message.JobName,
-                        tempDirectory: Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), "_temp"),  
-                        workerLogFile: "");
+
+                    try
+                    {
+                        diagnosticLogManager.UploadDiagnosticLogs(
+                            executionContext: jobContext, 
+                            jobName: message.JobName,
+                            tempDirectory: Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), "_temp"),  
+                            workerLogFile: "", 
+                            tasks: message.Tasks);
+                    }
+                    catch (Exception ex)
+                    {
+                        // Log the error but make sure we continue gracefully.
+                        Trace.Info("Error uploading support logs.");
+                        Trace.Error(ex);
+                    }
 
                     Trace.Info("Support log upload complete.");
                 }
 
-                // Complete the job.
                 Trace.Info("Completing the job execution context.");
                 return await CompleteJobAsync(jobServer, jobContext, message);
             }

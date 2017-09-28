@@ -3,12 +3,17 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Text;
+using System.Runtime.InteropServices;
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using Microsoft.VisualStudio.Services.Agent.Worker;
 using Microsoft.VisualStudio.Services.Agent.Worker.Build;
 using Microsoft.VisualStudio.Services.WebApi;
 using Build2 = Microsoft.TeamFoundation.Build.WebApi;
+using Microsoft.Win32;
+using System.Diagnostics;
+using System.Linq;
+using System.Collections.ObjectModel;
 
 namespace Microsoft.VisualStudio.Services.Agent
 {
@@ -18,7 +23,8 @@ namespace Microsoft.VisualStudio.Services.Agent
         void UploadDiagnosticLogs(IExecutionContext executionContext, 
                                   string jobName, 
                                   string tempDirectory, /* Can we get this from host context? */
-                                  string workerLogFile);
+                                  string workerLogFile, 
+                                  ReadOnlyCollection<TaskInstance> tasks);
     }
 
     // This class manages gathering data for support logs, zipping the data, and uploading it.
@@ -33,7 +39,8 @@ namespace Microsoft.VisualStudio.Services.Agent
         public void UploadDiagnosticLogs(IExecutionContext executionContext, 
                                       string jobName, 
                                       string tempDirectory /* Can we get this from host context? */, 
-                                      string workerLogFile)
+                                      string workerLogFile, 
+                                      ReadOnlyCollection<TaskInstance> tasks)
         {
             if (String.IsNullOrEmpty(tempDirectory)) { throw new ArgumentNullException(nameof(tempDirectory)); }
             if (!Directory.Exists(tempDirectory)) { throw new DirectoryNotFoundException(nameof(tempDirectory)); }
@@ -68,7 +75,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             // \_layout\_work\_temp\[jobname-support]\files\environment.txt
             executionContext.Debug("Creating environment file.");
             string environmentFile = Path.Combine(supportFilesFolder, "environment.txt");
-            string content = GetEnvironmentContent();
+            string content = GetEnvironmentContent(tasks);
             using (StreamWriter writer = File.CreateText(environmentFile)) 
             {
                 writer.Write(content);
@@ -105,10 +112,6 @@ namespace Microsoft.VisualStudio.Services.Agent
             // We would iterate all of the files we added to the support folder
             // TODO: Find how we set the name when we normally use this method.
             executionContext.Debug("Zipping diagnostic files.");
-            // foreach (string fileToUpload in filesToUpload)
-            // {
-                
-            // }
 
             // zip the files
             string diagnosticsZipFileName = "build1-phase1.zip";
@@ -122,14 +125,14 @@ namespace Microsoft.VisualStudio.Services.Agent
             string metadataFilePath = Path.Combine(supportFilesFolder, metadataFileName);
             using (StreamWriter writer = File.CreateText(metadataFilePath)) 
             {
-                writer.Write(JsonUtility.Serialize(new DiagnosticLogMetadata("AGENTNAME", "AGENTID", "PHASEID")));
+                writer.Write(JsonUtility.ToString(new DiagnosticLogMetadata("AGENTNAME", "AGENTID", "PHASEID", diagnosticsZipFileName)));
             }
 
             // upload it
             jobServerQueue.QueueFileUpload(
                     timelineId: executionContext.MainTimelineId, 
                     timelineRecordId: executionContext.TimelineId, 
-                    // type: CoreAttachmentType.DiagnosticLog,
+                    // type: CoreAttachmentType.DiagnosticLog, may need to rev dependency version?
                     type: "DistributedTask.Core.DiagnosticLog", 
                     name: metadataFileName, 
                     path: metadataFilePath, 
@@ -147,43 +150,79 @@ namespace Microsoft.VisualStudio.Services.Agent
                     deleteSource: false);
 
             // Delete support folder
-            executionContext.Debug("Deleting support folder.");
-            Directory.Delete(supportRootFolder);
+            // TODO: We can't delete here. The file upload is queued so they will be gone when its time to upload. Will normal cleanup take care of it?
 
             executionContext.Debug("Diagnostic file upload complete.");
         }
 
-        private string GetEnvironmentContent()
+        private string GetEnvironmentContent(ReadOnlyCollection<TaskInstance> tasks)
         {
-            // TODO: names and versions of all tasks, agent version, os and version, tools?
             var builder = new StringBuilder();
 
-            builder.AppendLine("Environment file created at: " + DateTime.UtcNow); // TODO: Format this like we do in other places.
+            builder.AppendLine($"Environment file created at(UTC): {DateTime.UtcNow}"); // TODO: Format this like we do in other places.
             builder.AppendLine("Agent Version: " + ""); // TODO: Get Agent version.
-            builder.AppendLine("OS: "); // TODO: Implement.
-            builder.AppendLine("OS Version: "); // TODO: Implement.
+            builder.AppendLine($"OS: {System.Runtime.InteropServices.RuntimeInformation.OSDescription}");
             builder.AppendLine("Tasks:");
 
-            builder.AppendLine("\tName: " + "TASKNAME" + " Version: " + "TASKVERSION");
-            builder.AppendLine("\tName: " + "TASKNAME" + " Version: " + "TASKVERSION");
-            builder.AppendLine("\tName: " + "TASKNAME" + " Version: " + "TASKVERSION");
+            foreach (TaskInstance task in tasks)
+            {
+                builder.AppendLine($"\tName: {task.Name} Version: {task.Version}");
+            }
 
-            // TODO: Check windows defender and stuff, do an if and find stuff based on specific OS we are currently running on.
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                // windows defender on/off
+                builder.AppendLine($"Defender enabled: {IsDefenderEnabled()}");
 
+                // firewall on/off
+                builder.AppendLine($"Firewall enabled: {IsFirewallEnabled()}");
+            }
+
+            // TODO: Add information for tools.
             builder.AppendLine("Tools: "); // TODO: Not sure what goes here
 
             return builder.ToString();
         }
 
+        // Returns whether or not Windows Defender is running.
+        private static bool IsDefenderEnabled()
+        {
+            return Process.GetProcessesByName("MsMpEng.exe").FirstOrDefault() != null;
+        }
+
+        // Returns whether or not the Windows firewall is enabled.
+        private static bool IsFirewallEnabled()
+        {
+            try 
+            {
+                using (var key = Registry.LocalMachine.OpenSubKey("System\\CurrentControlSet\\Services\\SharedAccess\\Parameters\\FirewallPolicy\\StandardProfile")) 
+                {
+                    if (key == null) { return false; } 
+
+                    Object o = key.GetValue("EnableFirewall");
+                    if (o == null) { return false; } 
+
+                    int firewall = (int) o;
+                    if (firewall == 1) { return true; } 
+                    return false;
+                }
+            } 
+            catch 
+            {
+                return false;
+            }
+        }
+
         private class DiagnosticLogMetadata
         {
-            public DiagnosticLogMetadata(string agentName, string agentId, string phaseId)
+            public DiagnosticLogMetadata(string agentName, string agentId, string phaseId, string fileName)
             {
                 //ArgUtil.NotNullOrEmpty(agentName, nameof(agentName));
                 //ArgUtil.NotNullOrEmpty(agentName, nameof(agentName));
                 AgentName = agentName;
                 AgentId = agentId;
                 PhaseId = phaseId;
+                FileName = fileName;
             }
 
             // TODO: Maybe we only need id?
@@ -192,15 +231,8 @@ namespace Microsoft.VisualStudio.Services.Agent
             public string AgentId { get; }
 
             public string PhaseId { get; }
+
+            public string FileName { get; }
         }
     }
-
-    // TODO: This is temporary, we should add this to WebAPI directly.
-    // public static class CoreAttachmentTypeExtensions
-    // {
-    //     public static string Support(this CoreAttachmentType coreAttachmentType)
-    //     {
-    //         return "DistributedTask.Core.Support";
-    //     }
-    // }
 }
