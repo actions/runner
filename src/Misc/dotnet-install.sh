@@ -55,6 +55,9 @@ say_verbose() {
     fi
 }
 
+# This platform list is finite - if the SDK/Runtime has supported Linux distribution-specific assets,
+#   then and only then should the Linux distribution appear in this list.
+# Adding a Linux distribution to this list does not imply distribution-specific support.
 get_os_download_name_from_platform() {
     eval $invocation
 
@@ -315,7 +318,7 @@ get_normalized_architecture_from_architecture() {
 get_version_from_version_info() {
     eval $invocation
     
-    cat | tail -n 1
+    cat | tail -n 1 | sed 's/\r$//'
     return 0
 }
 
@@ -324,7 +327,7 @@ get_version_from_version_info() {
 get_commit_hash_from_version_info() {
     eval $invocation
     
-    cat | head -n 1
+    cat | head -n 1 | sed 's/\r$//'
     return 0
 }
 
@@ -675,8 +678,9 @@ install_dotnet() {
     say_verbose "Zip path: $zip_path"
 
     say "Downloading link: $download_link"
-    # Failures are expected in the non-legacy case. Do not output to stderr, since
-    # the output stderr are considered an error
+    
+    # Failures are normal in the non-legacy case for ultimately legacy downloads.
+    # Do not output to stderr, since output to stderr is considered an error.
     download "$download_link" $zip_path 2>&1 || download_failed=true
 
     #  if the download fails, download the legacy_download_link

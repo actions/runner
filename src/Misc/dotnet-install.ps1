@@ -172,7 +172,7 @@ function GetHTTPResponse([Uri] $Uri)
             # HttpClient is used vs Invoke-WebRequest in order to support Nano Server which doesn't support the Invoke-WebRequest cmdlet.
             Load-Assembly -Assembly System.Net.Http
 
-            if( -not $ProxyAddress) {
+            if(-not $ProxyAddress) {
                 try {
                     # Despite no proxy being explicitly specified, we may still be behind a default proxy
                     $DefaultProxy = [System.Net.WebRequest]::DefaultWebProxy;
