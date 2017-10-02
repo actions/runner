@@ -55,15 +55,12 @@ namespace Microsoft.VisualStudio.Services.Agent
             Directory.CreateDirectory(supportRootFolder);
 
             // \_layout\_work\_temp\[jobname-support]\files
-            // TODO: I dont think we need this any more since we arent zipping anything on the agent.
-            // TODO2: Yes we need this again. This should upload a zip of diag information for the phase.
             executionContext.Debug("Creating files folder.");
             string supportFilesFolder = Path.Combine(supportRootFolder, "files");
             Directory.CreateDirectory(supportFilesFolder);
            
             // Create the environment file
             // \_layout\_work\_temp\[jobname-support]\files\environment.txt
-
             var configurationStore = HostContext.GetService<IConfigurationStore>();
             AgentSettings settings = configurationStore.GetSettings();
             int agentId = settings.AgentId;
@@ -81,9 +78,6 @@ namespace Microsoft.VisualStudio.Services.Agent
 
             // TODO: Set these correctly.
             string buildName = "build1";
-
-            //string phaseName = command.GetPhase();
-            //string phaseName = "phase1";
             string phaseName = jobName; // TODO: It seems like this is the phase name, can we trust this?
 
             // zip the files
@@ -194,8 +188,6 @@ namespace Microsoft.VisualStudio.Services.Agent
         {
             public DiagnosticLogMetadata(string agentName, string agentId, string phaseName, string fileName)
             {
-                //ArgUtil.NotNullOrEmpty(agentName, nameof(agentName));
-                //ArgUtil.NotNullOrEmpty(agentName, nameof(agentName));
                 AgentName = agentName;
                 AgentId = agentId;
                 PhaseName = phaseName;
