@@ -79,10 +79,12 @@ namespace Microsoft.VisualStudio.Services.Agent
             
             executionContext.Debug("Zipping diagnostic files.");
 
-            // TODO: Set these 3 correctly.
+            // TODO: Set these correctly.
             string buildName = "build1";
-            string phaseName = "phase1";
-            string phaseId = "PHASEID"; // TODO: Is this phase name not id?
+
+            //string phaseName = command.GetPhase();
+            //string phaseName = "phase1";
+            string phaseName = jobName; // TODO: It seems like this is the phase name, can we trust this?
 
             // zip the files
             string diagnosticsZipFileName = $"{buildName}-{phaseName}.zip";
@@ -96,7 +98,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             string metadataFilePath = Path.Combine(supportFilesFolder, metadataFileName);
             using (StreamWriter writer = File.CreateText(metadataFilePath)) 
             {
-                writer.Write(JsonUtility.ToString(new DiagnosticLogMetadata(agentName, agentId.ToString(), phaseId, diagnosticsZipFileName)));
+                writer.Write(JsonUtility.ToString(new DiagnosticLogMetadata(agentName, agentId.ToString(), phaseName, diagnosticsZipFileName)));
             }
 
             IJobServerQueue jobServerQueue = HostContext.GetService<IJobServerQueue>();
@@ -190,22 +192,21 @@ namespace Microsoft.VisualStudio.Services.Agent
 
         private class DiagnosticLogMetadata
         {
-            public DiagnosticLogMetadata(string agentName, string agentId, string phaseId, string fileName)
+            public DiagnosticLogMetadata(string agentName, string agentId, string phaseName, string fileName)
             {
                 //ArgUtil.NotNullOrEmpty(agentName, nameof(agentName));
                 //ArgUtil.NotNullOrEmpty(agentName, nameof(agentName));
                 AgentName = agentName;
                 AgentId = agentId;
-                PhaseId = phaseId;
+                PhaseName = phaseName;
                 FileName = fileName;
             }
 
-            // TODO: Maybe we only need id?
             public string AgentName { get; }
 
             public string AgentId { get; }
 
-            public string PhaseId { get; }
+            public string PhaseName { get; }
 
             public string FileName { get; }
         }

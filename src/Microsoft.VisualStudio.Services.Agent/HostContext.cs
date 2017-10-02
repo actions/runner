@@ -245,13 +245,6 @@ namespace Microsoft.VisualStudio.Services.Agent
             // Create a new instance.
             T svc = Activator.CreateInstance(target) as T;
 
-            if (_trace != null)
-            {
-                _trace.Info("Trying to create instance [" + target.Name + "]");
-                _trace.Info("svc == null: " + (svc == null));
-                _trace.Info("this == null: " + (this == null));
-            }
-
             svc.Initialize(this);
             return svc;
         }
