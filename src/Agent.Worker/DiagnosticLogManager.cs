@@ -60,17 +60,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             executionContext.Debug("Creating files folder.");
             string supportFilesFolder = Path.Combine(supportRootFolder, "files");
             Directory.CreateDirectory(supportFilesFolder);
-
-            var filesToUpload = new List<string>(); // TODO: Get rid of this.
-
-            // Copy the worker log from the _diag folder into the support folder
-            // TODO: The job needs to hold the name of the worker log file?
-            // TODO: Add back.
-            // executionContext.Debug("Copying worker _diag log file.");
-            // string newWorkerLogFile = supportFilesFolder + Path.GetFileName(workerLogFile);
-            // File.Copy(workerLogFile, newWorkerLogFile);
-            // filesToUpload.Add(newWorkerLogFile);
-            
+           
             // Create the environment file
             // \_layout\_work\_temp\[jobname-support]\files\environment.txt
 
@@ -86,53 +76,30 @@ namespace Microsoft.VisualStudio.Services.Agent
             {
                 writer.Write(content);
             }
-            filesToUpload.Add(environmentFile);
             
-            // Download build logs
-            // executionContext.Debug("Downloading build logs.");
-            // string buildLogsZip = ""; // TODO: Set this.
-
-            // Guid projectId = executionContext.Variables.System_TeamProjectId ?? Guid.Empty;
-            // ArgUtil.NotEmpty(projectId, nameof(projectId));
-
-            // int? buildId = executionContext.Variables.Build_BuildId;
-            // ArgUtil.NotNull(buildId, nameof(buildId));
-
-            // TODO: Make async?
-            // var buildServer = new BuildServer(WorkerUtilities.GetVssConnection(executionContext), projectId);
-            // Build2.BuildArtifact artifact = buildServer.DownloadBuildArtifact(
-            //     project: projectId.ToString(), // TODO: Not sure if this is right. Other methods take the guid.
-            //     buildId: buildId.Value, 
-            //     artifactName: ""
-            // ).Result;
-
-            // TODO: Do I then download this?
-            //artifact.Resource.DownloadUrl
-
-            //filesToUpload.Add(buildLogsZip);
-
-            // Upload support zip
-            IJobServerQueue jobServerQueue = HostContext.GetService<IJobServerQueue>();
-
-            // TODO: Keep a list of files to upload and queue them all? Do that if we aren't going to zip them
-            // We would iterate all of the files we added to the support folder
-            // TODO: Find how we set the name when we normally use this method.
             executionContext.Debug("Zipping diagnostic files.");
 
+            // TODO: Set these 3 correctly.
+            string buildName = "build1";
+            string phaseName = "phase1";
+            string phaseId = "PHASEID"; // TODO: Is this phase name not id?
+
             // zip the files
-            string diagnosticsZipFileName = "build1-phase1.zip";
+            string diagnosticsZipFileName = $"{buildName}-{phaseName}.zip";
             string diagnosticsZipFilePath = Path.Combine(supportRootFolder, diagnosticsZipFileName);
             ZipFile.CreateFromDirectory(supportFilesFolder, diagnosticsZipFilePath);
 
             // upload the json metadata file
             executionContext.Debug("Uploading diagnostic metadata file.");
-            string metadataFileName = "diagnostics-build1-phase1.json";
+            string metadataFileName = $"diagnostics-{buildName}-{phaseName}.json";
             // create the file
             string metadataFilePath = Path.Combine(supportFilesFolder, metadataFileName);
             using (StreamWriter writer = File.CreateText(metadataFilePath)) 
             {
-                writer.Write(JsonUtility.ToString(new DiagnosticLogMetadata(agentName, agentId.ToString(), "PHASEID", diagnosticsZipFileName)));
+                writer.Write(JsonUtility.ToString(new DiagnosticLogMetadata(agentName, agentId.ToString(), phaseId, diagnosticsZipFileName)));
             }
+
+            IJobServerQueue jobServerQueue = HostContext.GetService<IJobServerQueue>();
 
             // upload it
             jobServerQueue.QueueFileUpload(
@@ -203,8 +170,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         {
             try 
             {
-                // TODO: Dont use var here.
-                using (var key = Registry.LocalMachine.OpenSubKey("System\\CurrentControlSet\\Services\\SharedAccess\\Parameters\\FirewallPolicy\\StandardProfile")) 
+                using (RegistryKey key = Registry.LocalMachine.OpenSubKey("System\\CurrentControlSet\\Services\\SharedAccess\\Parameters\\FirewallPolicy\\StandardProfile")) 
                 {
                     if (key == null) { return false; } 
 

@@ -324,6 +324,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     Trace.Info("Support log upload starting.");
 
                     IDiagnosticLogManager diagnosticLogManager = HostContext.GetService<IDiagnosticLogManager>();
+                    
+                    HostContext.
 
                     try
                     {
