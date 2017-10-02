@@ -236,6 +236,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                 public static readonly string AllowAllEndpoints = "agent.allowAllEndpoints"; // remove after sprint 120 or so.
                 public static readonly string AllowAllSecureFiles = "agent.allowAllSecureFiles"; // remove after sprint 121 or so.
                 public static readonly string BuildDirectory = "agent.builddirectory";
+                public static readonly string Diagnostic = "agent.diagnostic";
                 public static readonly string HomeDirectory = "agent.homedirectory";
                 public static readonly string Id = "agent.id";
                 public static readonly string JobName = "agent.jobname";
@@ -344,7 +345,6 @@ namespace Microsoft.VisualStudio.Services.Agent
                 public static readonly string HostType = "system.hosttype";
                 public static readonly string PreferGitFromPath = "system.prefergitfrompath";
                 public static readonly string SelfManageGitCreds = "system.selfmanagegitcreds";
-                public static readonly string SupportLog = "system.supportLog"; // TODO: Change this to agent.diagnostic
                 public static readonly string TFServerUrl = "system.TeamFoundationServerUri"; // back compat variable, do not document
                 public static readonly string TeamProject = "system.teamproject";
                 public static readonly string TeamProjectId = "system.teamProjectId";

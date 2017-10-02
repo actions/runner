@@ -45,14 +45,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             return await _buildHttpClient.CreateArtifactAsync(artifact, _projectId, buildId, cancellationToken: cancellationToken);
         }
 
-        public async Task<Build2.BuildArtifact> DownloadBuildArtifact(
-            string project, 
-            int buildId, 
-            string artifactName, 
-            CancellationToken cancellationToken = default(CancellationToken))
-        {
-            return await _buildHttpClient.GetArtifactAsync(project, buildId, artifactName, null, cancellationToken);
-        }
+        // public async Task<Build2.BuildArtifact> DownloadBuildArtifact(
+        //     string project, 
+        //     int buildId, 
+        //     string artifactName, 
+        //     CancellationToken cancellationToken = default(CancellationToken))
+        // {
+        //     return await _buildHttpClient.GetArtifactAsync(project, buildId, artifactName, null, cancellationToken);
+        // }
 
         public async Task<Build2.Build> UpdateBuildNumber(
             int buildId,

@@ -313,16 +313,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 Trace.Info($"Job result after all post-job steps finish: {jobContext.Result}");
 
                 // If missing, will default to false.
-                bool uploadSupportLogs = false;
-                
-                if (message.Environment.Variables.ContainsKey(Constants.Variables.System.SupportLog))
+                bool uploadDiagnosticLogs = false;
+                if (message.Environment.Variables.ContainsKey(Constants.Variables.Agent.Diagnostic))
                 {
-                    uploadSupportLogs = StringUtil.ConvertToBoolean(message.Environment.Variables[Constants.Variables.System.SupportLog]);
+                    uploadDiagnosticLogs = StringUtil.ConvertToBoolean(message.Environment.Variables[Constants.Variables.Agent.Diagnostic]);
                 }
 
-                if (uploadSupportLogs)
+                if (uploadDiagnosticLogs)
                 {
-                    Trace.Info("Starting to upload support logs.");
+                    Trace.Info("Support log upload starting.");
 
                     IDiagnosticLogManager diagnosticLogManager = HostContext.GetService<IDiagnosticLogManager>();
 
@@ -331,9 +330,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                         diagnosticLogManager.UploadDiagnosticLogs(
                             executionContext: jobContext, 
                             jobName: message.JobName,
-                            tempDirectory: Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), "_temp"),  
+                            tempDirectory: Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), Constants.Path.TempDirectory),  
                             workerLogFile: "", 
                             tasks: message.Tasks);
+
+                        Trace.Info("Support log upload complete.");
                     }
                     catch (Exception ex)
                     {
@@ -341,8 +342,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                         Trace.Info("Error uploading support logs.");
                         Trace.Error(ex);
                     }
-
-                    Trace.Info("Support log upload complete.");
                 }
 
                 Trace.Info("Completing the job execution context.");
