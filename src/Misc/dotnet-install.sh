@@ -55,6 +55,9 @@ say_verbose() {
     fi
 }
 
+# This platform list is finite - if the SDK/Runtime has supported Linux distribution-specific assets,
+#   then and only then should the Linux distribution appear in this list.
+# Adding a Linux distribution to this list does not imply distribution-specific support.
 get_os_download_name_from_platform() {
     eval $invocation
 
@@ -82,6 +85,10 @@ get_os_download_name_from_platform() {
             ;;
         "opensuse.42.1")
             echo "opensuse.42.1"
+            return 0
+            ;;
+        "rhel.6"*)
+            echo "rhel.6"
             return 0
             ;;
         "rhel.7"*)
@@ -115,8 +122,14 @@ get_current_os_name() {
     if [ "$uname" = "Darwin" ]; then
         echo "osx"
         return 0
-    else
-        if [ "$uname" = "Linux" ]; then
+    elif [ "$uname" = "Linux" ]; then
+        local distro_specific_osname
+        distro_specific_osname=$(get_distro_specific_os_name) || return 1
+
+        if [ "$distro_specific_osname" = "rhel.6" ]; then
+            echo $distro_specific_osname
+            return 0
+        else
             echo "linux"
             return 0
         fi
@@ -142,6 +155,12 @@ get_distro_specific_os_name() {
             os=$(get_os_download_name_from_platform "$ID.$VERSION_ID" || echo "")
             if [ -n "$os" ]; then
                 echo "$os"
+                return 0
+            fi
+        elif [ -e /etc/redhat-release ]; then
+            local redhatRelease=$(</etc/redhat-release)
+            if [[ $redhatRelease == "CentOS release 6."* || $redhatRelease == "Red Hat Enterprise Linux Server release 6."* ]]; then
+                echo "rhel.6"
                 return 0
             fi
         fi
@@ -191,10 +210,13 @@ check_pre_reqs() {
             LDCONFIG_COMMAND="ldconfig"
         fi
 
-        [ -z "$($LDCONFIG_COMMAND -p | grep libunwind)" ] && say_err "Unable to locate libunwind. Install libunwind to continue" && failing=true
-        [ -z "$($LDCONFIG_COMMAND -p | grep libssl)" ] && say_err "Unable to locate libssl. Install libssl to continue" && failing=true
-        [ -z "$($LDCONFIG_COMMAND -p | grep libicu)" ] && say_err "Unable to locate libicu. Install libicu to continue" && failing=true
-        [ -z "$($LDCONFIG_COMMAND -p | grep -F libcurl.so)" ] && say_err "Unable to locate libcurl. Install libcurl to continue" && failing=true
+        local librarypath=${LD_LIBRARY_PATH:-}
+        LDCONFIG_COMMAND="$LDCONFIG_COMMAND -NXv ${librarypath//:/ }"
+
+        [ -z "$($LDCONFIG_COMMAND | grep libunwind)" ] && say_err "Unable to locate libunwind. Install libunwind to continue" && failing=true
+        [ -z "$($LDCONFIG_COMMAND | grep libssl)" ] && say_err "Unable to locate libssl. Install libssl to continue" && failing=true
+        [ -z "$($LDCONFIG_COMMAND | grep libicu)" ] && say_err "Unable to locate libicu. Install libicu to continue" && failing=true
+        [ -z "$($LDCONFIG_COMMAND | grep -F libcurl.so)" ] && say_err "Unable to locate libcurl. Install libcurl to continue" && failing=true
     fi
 
     if [ "$failing" = true ]; then
@@ -296,7 +318,7 @@ get_normalized_architecture_from_architecture() {
 get_version_from_version_info() {
     eval $invocation
     
-    cat | tail -n 1
+    cat | tail -n 1 | sed 's/\r$//'
     return 0
 }
 
@@ -305,7 +327,7 @@ get_version_from_version_info() {
 get_commit_hash_from_version_info() {
     eval $invocation
     
-    cat | head -n 1
+    cat | head -n 1 | sed 's/\r$//'
     return 0
 }
 
@@ -656,8 +678,9 @@ install_dotnet() {
     say_verbose "Zip path: $zip_path"
 
     say "Downloading link: $download_link"
-    # Failures are expected in the non-legacy case. Do not output to stderr, since
-    # the output stderr are considered an error
+    
+    # Failures are normal in the non-legacy case for ultimately legacy downloads.
+    # Do not output to stderr, since output to stderr is considered an error.
     download "$download_link" $zip_path 2>&1 || download_failed=true
 
     #  if the download fails, download the legacy_download_link

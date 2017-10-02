@@ -18,6 +18,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Container
         Task<int> DockerStart(IExecutionContext context, string containerId);
         Task<int> DockerStop(IExecutionContext context, string containerId);
         Task<int> DockerExec(IExecutionContext context, string containerId, string options, string command);
+        Task<int> DockerExec(IExecutionContext context, string containerId, string options, string command, List<string> outputs);
     }
 
     public class DockerCommandManager : AgentService, IDockerCommandManager
@@ -106,6 +107,47 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Container
         public async Task<int> DockerExec(IExecutionContext context, string containerId, string options, string command)
         {
             return await ExecuteDockerCommandAsync(context, "exec", $"{options} {containerId} {command}", context.CancellationToken);
+        }
+
+        public async Task<int> DockerExec(IExecutionContext context, string containerId, string options, string command, List<string> output)
+        {
+            ArgUtil.NotNull(output, nameof(output));
+
+            string arg = $"exec {options} {containerId} {command}".Trim();
+            context.Command($"{DockerPath} {arg}");
+
+            object outputLock = new object();
+            var processInvoker = HostContext.CreateService<IProcessInvoker>();
+            processInvoker.OutputDataReceived += delegate (object sender, ProcessDataReceivedEventArgs message)
+            {
+                if (!string.IsNullOrEmpty(message.Data))
+                {
+                    lock (outputLock)
+                    {
+                        output.Add(message.Data);
+                    }
+                }
+            };
+
+            processInvoker.ErrorDataReceived += delegate (object sender, ProcessDataReceivedEventArgs message)
+            {
+                if (!string.IsNullOrEmpty(message.Data))
+                {
+                    lock (outputLock)
+                    {
+                        output.Add(message.Data);
+                    }
+                }
+            };
+
+            return await processInvoker.ExecuteAsync(
+                            workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Work),
+                            fileName: DockerPath,
+                            arguments: arg,
+                            environment: null,
+                            requireExitCodeZero: false,
+                            outputEncoding: null,
+                            cancellationToken: CancellationToken.None);
         }
 
         private async Task<int> ExecuteDockerCommandAsync(IExecutionContext context, string command, string options, CancellationToken cancellationToken = default(CancellationToken))
