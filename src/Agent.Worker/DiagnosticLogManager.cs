@@ -73,9 +73,15 @@ namespace Microsoft.VisualStudio.Services.Agent
             
             // Create the environment file
             // \_layout\_work\_temp\[jobname-support]\files\environment.txt
+
+            var configurationStore = HostContext.GetService<IConfigurationStore>();
+            AgentSettings settings = configurationStore.GetSettings();
+            int agentId = settings.AgentId;
+            string agentName = settings.AgentName;
+
             executionContext.Debug("Creating environment file.");
             string environmentFile = Path.Combine(supportFilesFolder, "environment.txt");
-            string content = GetEnvironmentContent(tasks);
+            string content = GetEnvironmentContent(agentId, agentName, tasks);
             using (StreamWriter writer = File.CreateText(environmentFile)) 
             {
                 writer.Write(content);
@@ -125,7 +131,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             string metadataFilePath = Path.Combine(supportFilesFolder, metadataFileName);
             using (StreamWriter writer = File.CreateText(metadataFilePath)) 
             {
-                writer.Write(JsonUtility.ToString(new DiagnosticLogMetadata("AGENTNAME", "AGENTID", "PHASEID", diagnosticsZipFileName)));
+                writer.Write(JsonUtility.ToString(new DiagnosticLogMetadata(agentName, agentId.ToString(), "PHASEID", diagnosticsZipFileName)));
             }
 
             // upload it
@@ -155,12 +161,14 @@ namespace Microsoft.VisualStudio.Services.Agent
             executionContext.Debug("Diagnostic file upload complete.");
         }
 
-        private string GetEnvironmentContent(ReadOnlyCollection<TaskInstance> tasks)
+        private string GetEnvironmentContent(int agentId, string agentName, ReadOnlyCollection<TaskInstance> tasks)
         {
             var builder = new StringBuilder();
 
             builder.AppendLine($"Environment file created at(UTC): {DateTime.UtcNow}"); // TODO: Format this like we do in other places.
             builder.AppendLine("Agent Version: " + ""); // TODO: Get Agent version.
+            builder.AppendLine($"Agent Id: {agentId}");
+            builder.AppendLine($"Agent Name: {agentName}");
             builder.AppendLine($"OS: {System.Runtime.InteropServices.RuntimeInformation.OSDescription}");
             builder.AppendLine("Tasks:");
 
