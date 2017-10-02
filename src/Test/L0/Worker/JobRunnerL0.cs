@@ -8,6 +8,7 @@ using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Xunit;
 using System.Threading;
+using System.Collections.ObjectModel;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
 {
@@ -29,6 +30,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
         private Mock<IJobExtension> _jobExtension;
         private Mock<IPagingLogger> _logger;
         private Mock<ITempDirectoryManager> _temp;
+        private Mock<IDiagnosticLogManager> _diagnosticLogManager;        
 
         private TestHostContext CreateTestContext([CallerMemberName] String testName = "")
         {
@@ -45,6 +47,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             _stepRunner = new Mock<IStepsRunner>();
             _logger = new Mock<IPagingLogger>();
             _temp = new Mock<ITempDirectoryManager>();
+            _diagnosticLogManager = new Mock<IDiagnosticLogManager>();
 
             if (_tokenSource != null)
             {
@@ -274,6 +277,64 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                 _stepRunner.Verify(x => x.RunAsync(It.IsAny<IExecutionContext>(), It.Is<IList<IStep>>(s => s.Equals(_initResult.JobSteps)), JobRunStage.Main), Times.Once);
                 _stepRunner.Verify(x => x.RunAsync(It.IsAny<IExecutionContext>(), It.Is<IList<IStep>>(s => s.Equals(_initResult.PostJobStep)), JobRunStage.PostJob), Times.Once);
             }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task UploadDiganosticLogIfEnvironmentVariableSet()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                _message.Environment.Variables[Constants.Variables.Agent.Diagnostic] = "true";
+
+                await _jobRunner.RunAsync(_message, _tokenSource.Token);
+
+                _diagnosticLogManager.Verify(x => x.UploadDiagnosticLogs(It.IsAny<IExecutionContext>(), 
+                                                                         It.IsAny<string>(), 
+                                                                         It.IsAny<string>(), 
+                                                                         It.IsAny<string>(), 
+                                                                         It.IsAny<ReadOnlyCollection<TaskInstance>>()),  
+                                             Times.Once);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task DontUploadDiagnosticLogIfEnvironmentVariableFalse()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                _message.Environment.Variables[Constants.Variables.Agent.Diagnostic] = "false";
+
+                await _jobRunner.RunAsync(_message, _tokenSource.Token);
+
+                _diagnosticLogManager.Verify(x => x.UploadDiagnosticLogs(It.IsAny<IExecutionContext>(), 
+                                                                         It.IsAny<string>(), 
+                                                                         It.IsAny<string>(), 
+                                                                         It.IsAny<string>(), 
+                                                                         It.IsAny<ReadOnlyCollection<TaskInstance>>()),  
+                                             Times.Never);
+            }            
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task DontUploadDiagnosticLogIfEnvironmentVariableMissing()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                await _jobRunner.RunAsync(_message, _tokenSource.Token);
+
+                _diagnosticLogManager.Verify(x => x.UploadDiagnosticLogs(It.IsAny<IExecutionContext>(), 
+                                                                         It.IsAny<string>(), 
+                                                                         It.IsAny<string>(), 
+                                                                         It.IsAny<string>(), 
+                                                                         It.IsAny<ReadOnlyCollection<TaskInstance>>()),  
+                                             Times.Never);
+            }  
         }
     }
 }
