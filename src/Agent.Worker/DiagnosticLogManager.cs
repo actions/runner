@@ -195,6 +195,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         {
             try 
             {
+                // TODO: Dont use var here.
                 using (var key = Registry.LocalMachine.OpenSubKey("System\\CurrentControlSet\\Services\\SharedAccess\\Parameters\\FirewallPolicy\\StandardProfile")) 
                 {
                     if (key == null) { return false; } 

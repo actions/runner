@@ -117,6 +117,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             hc.SetSingleton(_stepRunner.Object);
             hc.SetSingleton(_extensions.Object);
             hc.SetSingleton(_temp.Object);
+            hc.SetSingleton(_diagnosticLogManager.Object);
             hc.EnqueueInstance<IExecutionContext>(_jobEc);
             hc.EnqueueInstance<IPagingLogger>(_logger.Object);
             return hc;
