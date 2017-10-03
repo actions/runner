@@ -42,8 +42,8 @@ namespace Microsoft.VisualStudio.Services.Agent
                                       string workerLogFile, 
                                       ReadOnlyCollection<TaskInstance> tasks)
         {
-            if (String.IsNullOrEmpty(tempDirectory)) { throw new ArgumentNullException(nameof(tempDirectory)); }
-            if (!Directory.Exists(tempDirectory)) { throw new DirectoryNotFoundException(nameof(tempDirectory)); }
+            ArgUtil.NotNullOrEmpty(tempDirectory, nameof(tempDirectory));
+            ArgUtil.Directory(tempDirectory, nameof(tempDirectory));
             // if (!File.Exists(workerLogFile)) { throw new FileNotFoundException(nameof(workerLogFile)); } // TODO: Add back.
 
             executionContext.Debug("Starting diagnostic file upload.");
@@ -140,14 +140,13 @@ namespace Microsoft.VisualStudio.Services.Agent
                 builder.AppendLine($"\tName: {task.Name} Version: {task.Version}");
             }
 
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            {
-                // windows defender on/off
-                builder.AppendLine($"Defender enabled: {IsDefenderEnabled()}");
+#if OS_WINDOWS
+            // windows defender on/off
+            builder.AppendLine($"Defender enabled: {IsDefenderEnabled()}");
 
-                // firewall on/off
-                builder.AppendLine($"Firewall enabled: {IsFirewallEnabled()}");
-            }
+            // firewall on/off
+            builder.AppendLine($"Firewall enabled: {IsFirewallEnabled()}");
+#endif
 
             // TODO: Add information for tools.
             builder.AppendLine("Tools: "); // TODO: Not sure what goes here
@@ -155,12 +154,15 @@ namespace Microsoft.VisualStudio.Services.Agent
             return builder.ToString();
         }
 
+#if OS_WINDOWS
         // Returns whether or not Windows Defender is running.
         private static bool IsDefenderEnabled()
         {
             return Process.GetProcessesByName("MsMpEng.exe").FirstOrDefault() != null;
         }
+#endif
 
+#if OS_WINDOWS
         // Returns whether or not the Windows firewall is enabled.
         private static bool IsFirewallEnabled()
         {
@@ -183,6 +185,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                 return false;
             }
         }
+#endif
 
         private class DiagnosticLogMetadata
         {
