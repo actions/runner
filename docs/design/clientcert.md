@@ -67,12 +67,14 @@ From Terminal:
 openssl pkcs12 -export -out client-cert-archive.pfx -passout pass:<YOURCERTPASSWORD> -inkey client-cert-key.pem -in client-cert.pem -passin pass:<YOURCERTPASSWORD> -certfile CA.pem
 ```
 
-## Configuration
+## Configuration  
+
+**In order to get directory/file ACL setup correctly, make sure you put all certificates files under agent root directory**
 
 Pass `--sslcacert`, `--sslclientcert`, `--sslclientcertkey`. `--sslclientcertarchive` and `--sslclientcertpassword` during agent configuration.   
 Ex:
 ```batch
-.\config.cmd --sslcacert .\enterprise.pem --sslclientcert .\client.pem --sslclientcertkey .\clientcert-key-pass.pem --sslclientcertarchive .\clientcert-2.pfx --sslclientcertpassword "test123"
+.\config.cmd --sslcacert enterprise.pem --sslclientcert client.pem --sslclientcertkey clientcert-key-pass.pem --sslclientcertarchive clientcert-2.pfx --sslclientcertpassword "test123"
 ```  
 
 We store your client cert private key password securely on each platform.  

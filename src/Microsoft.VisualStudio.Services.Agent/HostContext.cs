@@ -25,7 +25,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         T GetService<T>() where T : class, IAgentService;
         void SetDefaultCulture(string name);
         event EventHandler Unloading;
-        StartupType StartupType {get; set;}
+        StartupType StartupType { get; set; }
         CancellationToken AgentShutdownToken { get; }
         ShutdownReason AgentShutdownReason { get; }
         void ShutdownAgent(ShutdownReason reason);

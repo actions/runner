@@ -61,6 +61,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             Constants.Agent.CommandLine.Args.ProxyPassword,
             Constants.Agent.CommandLine.Args.ProxyUrl,
             Constants.Agent.CommandLine.Args.ProxyUserName,
+            Constants.Agent.CommandLine.Args.SslCACert,
+            Constants.Agent.CommandLine.Args.SslClientCert,
+            Constants.Agent.CommandLine.Args.SslClientCertKey,
+            Constants.Agent.CommandLine.Args.SslClientCertArchive,
+            Constants.Agent.CommandLine.Args.SslClientCertPassword,
             Constants.Agent.CommandLine.Args.StartupType,
             Constants.Agent.CommandLine.Args.Token,
             Constants.Agent.CommandLine.Args.Url,
@@ -400,6 +405,31 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         public string GetProxyPassword()
         {
             return GetArg(Constants.Agent.CommandLine.Args.ProxyPassword);
+        }
+
+        public string GetCACertificate()
+        {
+            return GetArg(Constants.Agent.CommandLine.Args.SslCACert);
+        }
+
+        public string GetClientCertificate()
+        {
+            return GetArg(Constants.Agent.CommandLine.Args.SslClientCert);
+        }
+
+        public string GetClientCertificatePrivateKey()
+        {
+            return GetArg(Constants.Agent.CommandLine.Args.SslClientCertKey);
+        }
+
+        public string GetClientCertificateArchrive()
+        {
+            return GetArg(Constants.Agent.CommandLine.Args.SslClientCertArchive);
+        }
+
+        public string GetClientCertificatePassword()
+        {
+            return GetArg(Constants.Agent.CommandLine.Args.SslClientCertPassword);
         }
 
         public void SetUnattended()

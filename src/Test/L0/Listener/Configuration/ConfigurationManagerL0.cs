@@ -27,6 +27,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
         private Mock<IDeploymentGroupServer> _machineGroupServer;
         private Mock<INetFrameworkUtil> _netFrameworkUtil;
         private Mock<IVstsAgentWebProxy> _vstsAgentWebProxy;
+        private Mock<IAgentCertificateManager> _cert;
 
 #if OS_WINDOWS
         private Mock<IWindowsServiceControlManager> _serviceControlManager;
@@ -66,6 +67,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
             _machineGroupServer = new Mock<IDeploymentGroupServer>();
             _netFrameworkUtil = new Mock<INetFrameworkUtil>();
             _vstsAgentWebProxy = new Mock<IVstsAgentWebProxy>();
+            _cert = new Mock<IAgentCertificateManager>();
 
 #if OS_WINDOWS
             _serviceControlManager = new Mock<IWindowsServiceControlManager>();
@@ -144,6 +146,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
             tc.SetSingleton<INetFrameworkUtil>(_netFrameworkUtil.Object);
             tc.SetSingleton<ICapabilitiesManager>(_capabilitiesManager);
             tc.SetSingleton<IVstsAgentWebProxy>(_vstsAgentWebProxy.Object);
+            tc.SetSingleton<IAgentCertificateManager>(_cert.Object);
 
 #if OS_WINDOWS
             tc.SetSingleton<IWindowsServiceControlManager>(_serviceControlManager.Object);

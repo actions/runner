@@ -76,6 +76,11 @@ namespace Microsoft.VisualStudio.Services.Agent
                     public static readonly string ProjectName = "projectname";
                     public static readonly string ProxyUrl = "proxyurl";
                     public static readonly string ProxyUserName = "proxyusername";
+                    public static readonly string SslCACert = "sslcacert";
+                    public static readonly string SslClientCert = "sslclientcert";
+                    public static readonly string SslClientCertKey = "sslclientcertkey";
+                    public static readonly string SslClientCertArchive = "sslclientcertarchive";
+                    public static readonly string SslClientCertPassword = "sslclientcertpassword";
                     public static readonly string StartupType = "startuptype";
                     public static readonly string Url = "url";
                     public static readonly string UserName = "username";
@@ -92,6 +97,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                     {
                         Password,
                         ProxyPassword,
+                        SslClientCertPassword,
                         Token,
                         WindowsLogonPassword,
                     };
@@ -251,6 +257,11 @@ namespace Microsoft.VisualStudio.Services.Agent
                 public static readonly string RootDirectory = "agent.RootDirectory";
                 public static readonly string RunMode = "agent.runmode";
                 public static readonly string ServerOMDirectory = "agent.ServerOMDirectory";
+                public static readonly string SslCAInfo = "agent.cainfo";
+                public static readonly string SslClientCert = "agent.clientcert";
+                public static readonly string SslClientCertKey = "agent.clientcertkey";
+                public static readonly string SslClientCertArchive = "agent.clientcertarchive";
+                public static readonly string SslClientCertPassword = "agent.clientcertpassword";
                 public static readonly string TempDirectory = "agent.TempDirectory";
                 public static readonly string ToolsDirectory = "agent.ToolsDirectory";
                 public static readonly string Version = "agent.version";

@@ -29,6 +29,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         Task ScorchAsync();
         void SetupProxy(string proxyUrl, string proxyUsername, string proxyPassword);
         void CleanupProxySetting();
+        void SetupClientCertificate(string clientCert, string clientCertKey, string clientCertArchive, string clientCertPassword);
         // TODO: Remove parameter move after last-saved-checkin-metadata problem is fixed properly.
         Task ShelveAsync(string shelveset, string commentFile, bool move);
         Task<ITfsVCShelveset> ShelvesetsAsync(string shelveset);

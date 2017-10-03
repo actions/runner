@@ -2,17 +2,33 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Runtime.InteropServices;
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Common;
 using Microsoft.VisualStudio.Services.WebApi;
 using Microsoft.VisualStudio.Services.OAuth;
+using System.Net.Http.Headers;
+using System.Runtime.InteropServices;
 
 namespace Microsoft.VisualStudio.Services.Agent.Util
 {
     public static class ApiUtil
     {
+        public static void InitializeVssClientSettings(IVstsAgentWebProxy proxySetting, IAgentCertificateManager certSetting)
+        {
+            var headerValues = new List<ProductInfoHeaderValue>();
+            headerValues.Add(new ProductInfoHeaderValue($"VstsAgentCore-{BuildConstants.AgentPackage.PackageName}", Constants.Agent.Version));
+            headerValues.Add(new ProductInfoHeaderValue($"({RuntimeInformation.OSDescription.Trim()})"));
+
+            if (VssClientHttpRequestSettings.Default.UserAgent != null && VssClientHttpRequestSettings.Default.UserAgent.Count > 0)
+            {
+                headerValues.AddRange(VssClientHttpRequestSettings.Default.UserAgent);
+            }
+
+            VssClientHttpRequestSettings.Default.UserAgent = headerValues;
+            VssClientHttpRequestSettings.Default.ClientCertificateManager = certSetting;
+            VssHttpMessageHandler.DefaultWebProxy = proxySetting;
+        }
+
         public static VssConnection CreateConnection(Uri serverUri, VssCredentials credentials, IEnumerable<DelegatingHandler> additionalDelegatingHandler = null)
         {
             VssClientHttpRequestSettings settings = VssClientHttpRequestSettings.Default.Clone();
@@ -43,17 +59,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             // languages, then "System.ArgumentException: The value cannot be null or empty." will be thrown when the
             // settings are applied to an HttpRequestMessage.
             settings.AcceptLanguages.Remove(CultureInfo.InvariantCulture);
-
-            var headerValues = new List<ProductInfoHeaderValue>();
-            headerValues.Add(new ProductInfoHeaderValue($"VstsAgentCore-{BuildConstants.AgentPackage.PackageName}", Constants.Agent.Version));
-            headerValues.Add(new ProductInfoHeaderValue($"({RuntimeInformation.OSDescription.Trim()})"));
-
-            if (settings.UserAgent != null && settings.UserAgent.Count > 0)
-            {
-                headerValues.AddRange(settings.UserAgent);
-            }
-
-            settings.UserAgent = headerValues;
 
             VssConnection connection = new VssConnection(serverUri, new VssHttpMessageHandler(credentials, settings), additionalDelegatingHandler);
             return connection;

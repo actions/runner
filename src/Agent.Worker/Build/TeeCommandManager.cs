@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
 
@@ -69,6 +70,37 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 Uri proxy = UrlUtil.GetCredentialEmbeddedUrl(new Uri(proxyUrl), proxyUsername, proxyPassword);
                 AdditionalEnvironmentVariables["http_proxy"] = proxy.AbsoluteUri;
             }
+        }
+
+        public void SetupClientCertificate(string clientCert, string clientCertKey, string clientCertArchive, string clientCertPassword)
+        {
+            ExecutionContext.Debug("Convert client certificate from 'pkcs' format to 'jks' format.");
+            var whichUtil = HostContext.GetService<IWhichUtil>();
+            string toolPath = whichUtil.Which("keytool", true);
+            string jksFile = Path.Combine(ExecutionContext.Variables.Agent_TempDirectory, $"{Guid.NewGuid()}.jks");
+            string argLine = $"-importkeystore -srckeystore \"{clientCertArchive}\" -srcstoretype pkcs12 -destkeystore \"{jksFile}\" -deststoretype JKS -srcstorepass \"{clientCertPassword}\" -deststorepass \"{clientCertPassword}\"";
+            ExecutionContext.Command($"{toolPath} {argLine}");
+
+            var processInvoker = HostContext.CreateService<IProcessInvoker>();
+            processInvoker.OutputDataReceived += (object sender, ProcessDataReceivedEventArgs args) =>
+            {
+                if (!string.IsNullOrEmpty(args.Data))
+                {
+                    ExecutionContext.Output(args.Data);
+                }
+            };
+            processInvoker.ErrorDataReceived += (object sender, ProcessDataReceivedEventArgs args) =>
+            {
+                if (!string.IsNullOrEmpty(args.Data))
+                {
+                    ExecutionContext.Output(args.Data);
+                }
+            };
+
+            processInvoker.ExecuteAsync(ExecutionContext.Variables.System_DefaultWorkingDirectory, toolPath, argLine, null, true, CancellationToken.None).GetAwaiter().GetResult();
+
+            ExecutionContext.Debug($"Set TF_ADDITIONAL_JAVA_ARGS=-Djavax.net.ssl.keyStore={jksFile} -Djavax.net.ssl.keyStorePassword={clientCertPassword}");
+            AdditionalEnvironmentVariables["TF_ADDITIONAL_JAVA_ARGS"]=$"-Djavax.net.ssl.keyStore={jksFile} -Djavax.net.ssl.keyStorePassword={clientCertPassword}";
         }
 
         public async Task ShelveAsync(string shelveset, string commentFile, bool move)
@@ -281,7 +313,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             // may preceed the XML content.
             output = output ?? string.Empty;
             int xmlIndex = output.IndexOf("<?xml");
-            if (xmlIndex > 0) {
+            if (xmlIndex > 0)
+            {
                 return output.Substring(xmlIndex);
             }
 

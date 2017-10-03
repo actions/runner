@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using System.Xml.Serialization;
 using System.Text;
 using System.Xml;
+using System.Security.Cryptography.X509Certificates;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 {
@@ -145,6 +146,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                     AdditionalEnvironmentVariables["TFS_BYPASS_PROXY_ON_LOCAL"] = "0";
                 }
             }
+        }
+
+        public void SetupClientCertificate(string clientCert, string clientCertKey, string clientCertArchive, string clientCertPassword)
+        {
+            ArgUtil.File(clientCert, nameof(clientCert));
+            X509Certificate2 cert = new X509Certificate2(clientCert);
+            ExecutionContext.Debug($"Set VstsClientCertificate={cert.Thumbprint} for Tf.exe to support client certificate.");
+            AdditionalEnvironmentVariables["VstsClientCertificate"] = cert.Thumbprint;
+
+            // Script Tf commands in tasks
+            ExecutionContext.SetVariable("VstsClientCertificate", cert.Thumbprint, false, false);
         }
 
         public async Task ShelveAsync(string shelveset, string commentFile, bool move)

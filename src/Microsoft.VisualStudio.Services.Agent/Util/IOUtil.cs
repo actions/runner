@@ -127,6 +127,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             return Path.Combine(GetRootPath(), ".credential_store.keychain");
         }       
 #endif
+        public static string GetAgentCertificateSettingFilePath()
+        {
+            return Path.Combine(GetRootPath(), ".certificates");
+        }
+
         public static string GetProxyConfigFilePath()
         {
             return Path.Combine(GetRootPath(), ".proxy");

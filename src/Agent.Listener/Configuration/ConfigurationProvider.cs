@@ -51,7 +51,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
         public void GetServerUrl(AgentSettings agentSettings, CommandSettings command)
         {
-            agentSettings.ServerUrl =  command.GetUrl();
+            agentSettings.ServerUrl = command.GetUrl();
         }
 
         public async Task GetPoolId(AgentSettings agentSettings, CommandSettings command)
@@ -79,13 +79,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         }
 
         public Task<TaskAgent> AddAgentAsync(AgentSettings agentSettings, TaskAgent agent, CommandSettings command)
-        { 
+        {
             return _agentServer.AddAgentAsync(agentSettings.PoolId, agent);
         }
 
         public Task DeleteAgentAsync(AgentSettings agentSettings)
         {
-            return  _agentServer.DeleteAgentAsync(agentSettings.PoolId, agentSettings.AgentId);
+            return _agentServer.DeleteAgentAsync(agentSettings.PoolId, agentSettings.AgentId);
         }
 
         public async Task TestConnectionAsync(AgentSettings agentSettings, VssCredentials creds)
@@ -137,13 +137,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
         public void GetServerUrl(AgentSettings agentSettings, CommandSettings command)
         {
-            agentSettings.ServerUrl =  command.GetUrl();
+            agentSettings.ServerUrl = command.GetUrl();
             Trace.Info("url - {0}", agentSettings.ServerUrl);
 
             var isHosted = UrlUtil.IsHosted(agentSettings.ServerUrl);
 
             // for onprem tfs, collection is required for deploymentGroup
-            if (! isHosted)
+            if (!isHosted)
             {
                 Trace.Info("Provided url is for onprem tfs, need collection name");
                 agentSettings.CollectionName = command.GetCollectionName();
@@ -155,7 +155,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             _projectName = command.GetProjectName(_projectName);
             var deploymentGroupName = command.GetDeploymentGroupName();
 
-            var deploymentGroup =  await GetDeploymentGroupAsync(_projectName, deploymentGroupName);
+            var deploymentGroup = await GetDeploymentGroupAsync(_projectName, deploymentGroupName);
             Trace.Info($"PoolId for deployment group '{deploymentGroupName}' is '{deploymentGroup.Pool.Id}'.");
             Trace.Info($"Project id for deployment group '{deploymentGroupName}' is '{deploymentGroup.Project.Id.ToString()}'.");
 
@@ -184,9 +184,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
         public async Task<TaskAgent> AddAgentAsync(AgentSettings agentSettings, TaskAgent agent, CommandSettings command)
         {
-            var deploymentMachine = new DeploymentMachine(){ Agent = agent };
+            var deploymentMachine = new DeploymentMachine() { Agent = agent };
             deploymentMachine = await _deploymentGroupServer.AddDeploymentMachineAsync(new Guid(agentSettings.ProjectId), agentSettings.DeploymentGroupId, deploymentMachine);
-            
+
             await GetAndAddTags(deploymentMachine, agentSettings, command);
 
             return deploymentMachine.Agent;
