@@ -292,10 +292,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                 await _jobRunner.RunAsync(_message, _tokenSource.Token);
 
                 _diagnosticLogManager.Verify(x => x.UploadDiagnosticLogs(It.IsAny<IExecutionContext>(), 
-                                                                         It.IsAny<string>(), 
-                                                                         It.IsAny<string>(), 
-                                                                         It.IsAny<string>(), 
-                                                                         It.IsAny<ReadOnlyCollection<TaskInstance>>()),  
+                                                                         It.IsAny<AgentJobRequestMessage>(), 
+                                                                         It.IsAny<DateTime>()), 
                                              Times.Once);
             }
         }
@@ -312,10 +310,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                 await _jobRunner.RunAsync(_message, _tokenSource.Token);
 
                 _diagnosticLogManager.Verify(x => x.UploadDiagnosticLogs(It.IsAny<IExecutionContext>(), 
-                                                                         It.IsAny<string>(), 
-                                                                         It.IsAny<string>(), 
-                                                                         It.IsAny<string>(), 
-                                                                         It.IsAny<ReadOnlyCollection<TaskInstance>>()),  
+                                                                         It.IsAny<AgentJobRequestMessage>(), 
+                                                                         It.IsAny<DateTime>()), 
                                              Times.Never);
             }            
         }
@@ -330,10 +326,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                 await _jobRunner.RunAsync(_message, _tokenSource.Token);
 
                 _diagnosticLogManager.Verify(x => x.UploadDiagnosticLogs(It.IsAny<IExecutionContext>(), 
-                                                                         It.IsAny<string>(), 
-                                                                         It.IsAny<string>(), 
-                                                                         It.IsAny<string>(), 
-                                                                         It.IsAny<ReadOnlyCollection<TaskInstance>>()),  
+                                                                         It.IsAny<AgentJobRequestMessage>(), 
+                                                                         It.IsAny<DateTime>()), 
                                              Times.Never);
             }  
         }

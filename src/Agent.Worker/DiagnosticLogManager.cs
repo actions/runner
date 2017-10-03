@@ -14,6 +14,7 @@ using Microsoft.Win32;
 using System.Diagnostics;
 using System.Linq;
 using System.Collections.ObjectModel;
+using System.Globalization;
 
 namespace Microsoft.VisualStudio.Services.Agent
 {
@@ -21,10 +22,8 @@ namespace Microsoft.VisualStudio.Services.Agent
     public interface IDiagnosticLogManager : IAgentService
     {
         void UploadDiagnosticLogs(IExecutionContext executionContext, 
-                                  string jobName, 
-                                  string tempDirectory, /* Can we get this from host context? */
-                                  string workerLogFile, 
-                                  ReadOnlyCollection<TaskInstance> tasks);
+                                  AgentJobRequestMessage message, 
+                                  DateTime jobStartTimeUtc);
     }
 
     // This class manages gathering data for support logs, zipping the data, and uploading it.
@@ -37,25 +36,23 @@ namespace Microsoft.VisualStudio.Services.Agent
     public sealed class DiagnosticLogManager : AgentService, IDiagnosticLogManager
     {
         public void UploadDiagnosticLogs(IExecutionContext executionContext, 
-                                      string jobName, 
-                                      string tempDirectory /* Can we get this from host context? */, 
-                                      string workerLogFile, 
-                                      ReadOnlyCollection<TaskInstance> tasks)
+                                         AgentJobRequestMessage message, 
+                                         DateTime jobStartTimeUtc)
         {
-            ArgUtil.NotNullOrEmpty(tempDirectory, nameof(tempDirectory));
-            ArgUtil.Directory(tempDirectory, nameof(tempDirectory));
-            // if (!File.Exists(workerLogFile)) { throw new FileNotFoundException(nameof(workerLogFile)); } // TODO: Add back.
-
             executionContext.Debug("Starting diagnostic file upload.");
 
             // Setup folders
             // \_layout\_work\_temp\[jobname-support]
-            executionContext.Debug("Setting up folders.");
-            string supportRootFolder = Path.Combine(tempDirectory, jobName + "-support"); // TODO: Is JobName safe to use as a path? We could just generate a GUID as the name of our scoped folder?
+            executionContext.Debug("Setting up diagnostic log folders.");
+            string tempDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), Constants.Path.TempDirectory);
+            ArgUtil.NotNullOrEmpty(tempDirectory, nameof(tempDirectory));
+            ArgUtil.Directory(tempDirectory, nameof(tempDirectory));
+
+            string supportRootFolder = Path.Combine(tempDirectory, message.JobName + "-support"); // TODO: Is JobName safe to use as a path? We could just generate a GUID as the name of our scoped folder?
             Directory.CreateDirectory(supportRootFolder);
 
             // \_layout\_work\_temp\[jobname-support]\files
-            executionContext.Debug("Creating files folder.");
+            executionContext.Debug("Creating diagnostic log files folder.");
             string supportFilesFolder = Path.Combine(supportRootFolder, "files");
             Directory.CreateDirectory(supportFilesFolder);
            
@@ -66,19 +63,30 @@ namespace Microsoft.VisualStudio.Services.Agent
             int agentId = settings.AgentId;
             string agentName = settings.AgentName;
 
-            executionContext.Debug("Creating environment file.");
+            executionContext.Debug("Creating diagnostic log environment file.");
             string environmentFile = Path.Combine(supportFilesFolder, "environment.txt");
-            string content = GetEnvironmentContent(agentId, agentName, tasks);
+            string content = GetEnvironmentContent(agentId, agentName, message.Tasks);
             using (StreamWriter writer = File.CreateText(environmentFile)) 
             {
                 writer.Write(content);
             }
+
+            // Copy worker diag log files
+            List<string> workerDiagLogFiles = GetWorkerDiagLogFiles(HostContext.GetDirectory(WellKnownDirectory.Diag), jobStartTimeUtc);
+            executionContext.Debug($"Copying {workerDiagLogFiles.Count()} worker diag logs.");
+
+            foreach(string workerLogFile in workerDiagLogFiles)
+            {
+                ArgUtil.Directory(workerLogFile, nameof(workerLogFile));
+
+                string destination = Path.Combine(supportFilesFolder, Path.GetFileName(workerLogFile));
+                File.Copy(workerLogFile, destination);
+            }
             
             executionContext.Debug("Zipping diagnostic files.");
 
-            // TODO: Set these correctly.
-            string buildName = "build1";
-            string phaseName = jobName; // TODO: It seems like this is the phase name, can we trust this?
+            string buildName = "Build " + message.Environment.Variables[Constants.Variables.Build.Number] ?? "UnknownBuildNumber";
+            string phaseName = message.Environment.Variables[Constants.Variables.System.PhaseDisplayName] ?? "UnknownPhaseName";
 
             // zip the files
             string diagnosticsZipFileName = $"{buildName}-{phaseName}.zip";
@@ -124,12 +132,35 @@ namespace Microsoft.VisualStudio.Services.Agent
             executionContext.Debug("Diagnostic file upload complete.");
         }
 
+        // The current solution is a hack. We need to rethink this and find a better one.
+        // The list of worker log files isnt available from the logger. It's also nested several levels deep.
+        // For this solution we deduce the applicable worker log files by comparing their create time to the start time of the job.
+        private List<string> GetWorkerDiagLogFiles(string diagFolder, DateTime jobStartTimeUtc)
+        {
+            // Get all worker log files with a timestamp equal or greater than the start of the job
+            var workerLogFiles = new List<string>();
+            var directoryInfo = new DirectoryInfo(diagFolder);
+            foreach (FileInfo file in directoryInfo.GetFiles())
+            {
+                // The format of the logs is:
+                // Worker_20171003-143110-utc.log
+                DateTime fileCreateTime = DateTime.ParseExact(s: file.Name.Substring(startIndex: 7, length: 15), format: "yyyyMMdd-HHmmss", provider: CultureInfo.InvariantCulture);
+
+                if (fileCreateTime >= jobStartTimeUtc)
+                {
+                    workerLogFiles.Add(file.FullName);
+                }
+            }
+            
+            return workerLogFiles;
+        }
+
         private string GetEnvironmentContent(int agentId, string agentName, ReadOnlyCollection<TaskInstance> tasks)
         {
             var builder = new StringBuilder();
 
             builder.AppendLine($"Environment file created at(UTC): {DateTime.UtcNow}"); // TODO: Format this like we do in other places.
-            builder.AppendLine("Agent Version: " + ""); // TODO: Get Agent version.
+            builder.AppendLine($"Agent Version: {Constants.Agent.Version}");
             builder.AppendLine($"Agent Id: {agentId}");
             builder.AppendLine($"Agent Name: {agentName}");
             builder.AppendLine($"OS: {System.Runtime.InteropServices.RuntimeInformation.OSDescription}");
@@ -147,9 +178,6 @@ namespace Microsoft.VisualStudio.Services.Agent
             // firewall on/off
             builder.AppendLine($"Firewall enabled: {IsFirewallEnabled()}");
 #endif
-
-            // TODO: Add information for tools.
-            builder.AppendLine("Tools: "); // TODO: Not sure what goes here
 
             return builder.ToString();
         }

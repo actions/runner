@@ -38,6 +38,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             ArgUtil.NotNull(message.Tasks, nameof(message.Tasks));
             Trace.Info("Job ID {0}", message.JobId);
 
+            DateTime jobStartTimeUtc = DateTime.UtcNow;
+
             // Agent.RunMode
             RunMode runMode;
             if (message.Environment.Variables.ContainsKey(Constants.Variables.Agent.RunMode) &&
@@ -320,12 +322,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
                     try
                     {
-                        diagnosticLogManager.UploadDiagnosticLogs(
-                            executionContext: jobContext, 
-                            jobName: message.JobName,
-                            tempDirectory: Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), Constants.Path.TempDirectory),  
-                            workerLogFile: "", 
-                            tasks: message.Tasks);
+                        diagnosticLogManager.UploadDiagnosticLogs(executionContext: jobContext, message: message, jobStartTimeUtc: jobStartTimeUtc);
 
                         Trace.Info("Support log upload complete.");
                     }
