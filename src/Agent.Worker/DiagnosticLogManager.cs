@@ -85,8 +85,18 @@ namespace Microsoft.VisualStudio.Services.Agent
             
             executionContext.Debug("Zipping diagnostic files.");
 
-            string buildName = "Build " + message.Environment.Variables[Constants.Variables.Build.Number] ?? "UnknownBuildNumber";
-            string phaseName = message.Environment.Variables[Constants.Variables.System.PhaseDisplayName] ?? "UnknownPhaseName";
+            string buildNumber;
+            if (!message.Environment.Variables.TryGetValue(Constants.Variables.Build.Number, out buildNumber))
+            {
+                buildNumber = "UnknownBuildNumber";
+            }
+            string buildName = $"Build {buildNumber}";
+            
+            string phaseName;
+            if (!message.Environment.Variables.TryGetValue(Constants.Variables.System.PhaseDisplayName, out phaseName))
+            {
+                phaseName = "UnknownPhaseName";
+            }
 
             // zip the files
             string diagnosticsZipFileName = $"{buildName}-{phaseName}.zip";
@@ -140,7 +150,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             // Get all worker log files with a timestamp equal or greater than the start of the job
             var workerLogFiles = new List<string>();
             var directoryInfo = new DirectoryInfo(diagFolder);
-            foreach (FileInfo file in directoryInfo.GetFiles())
+            foreach (FileInfo file in directoryInfo.GetFiles().Where(f => f.Name.StartsWith("Worker_")))
             {
                 // The format of the logs is:
                 // Worker_20171003-143110-utc.log
