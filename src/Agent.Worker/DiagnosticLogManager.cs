@@ -113,28 +113,11 @@ namespace Microsoft.VisualStudio.Services.Agent
                 writer.Write(JsonUtility.ToString(new DiagnosticLogMetadata(agentName, agentId.ToString(), phaseName, diagnosticsZipFileName)));
             }
 
-            IJobServerQueue jobServerQueue = HostContext.GetService<IJobServerQueue>();
+            // CoreAttachmentType.DiagnosticLog
+            executionContext.QueueAttachFile(type: "DistributedTask.Core.DiagnosticLog", name: metadataFileName, filePath: metadataFilePath);
 
-            // upload it
-            jobServerQueue.QueueFileUpload(
-                    timelineId: executionContext.MainTimelineId, 
-                    timelineRecordId: executionContext.TimelineId, 
-                    // type: CoreAttachmentType.DiagnosticLog, may need to rev dependency version?
-                    type: "DistributedTask.Core.DiagnosticLog", 
-                    name: metadataFileName, 
-                    path: metadataFilePath, 
-                    deleteSource: false);
-
-            // upload the diagnostics zip file
-            executionContext.Debug("Uploading Diagnostic zip file.");
-            jobServerQueue.QueueFileUpload(
-                    timelineId: executionContext.MainTimelineId, 
-                    timelineRecordId: executionContext.TimelineId, 
-                    // type: CoreAttachmentType.DiagnosticLog,
-                    type: "DistributedTask.Core.DiagnosticLog", 
-                    name: diagnosticsZipFileName, 
-                    path: diagnosticsZipFilePath, 
-                    deleteSource: false);
+            // CoreAttachmentType.DiagnosticLog
+            executionContext.QueueAttachFile(type: "DistributedTask.Core.DiagnosticLog", name: diagnosticsZipFileName, filePath: diagnosticsZipFilePath);
 
             // Delete support folder
             // TODO: We can't delete here. The file upload is queued so they will be gone when its time to upload. Will normal cleanup take care of it?
