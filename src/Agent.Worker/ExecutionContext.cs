@@ -67,6 +67,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         private IJobServerQueue _jobServerQueue;
         private IExecutionContext _parentExecutionContext;
 
+        private Guid _mainTimelineId;
+
         private Guid _detailTimelineId;
         private int _childTimelineRecordOrder = 0;
         private CancellationTokenSource _cancellationTokenSource;
