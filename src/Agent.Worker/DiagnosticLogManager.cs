@@ -62,6 +62,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             AgentSettings settings = configurationStore.GetSettings();
             int agentId = settings.AgentId;
             string agentName = settings.AgentName;
+            int poolId = settings.PoolId;
 
             executionContext.Debug("Creating diagnostic log environment file.");
             string environmentFile = Path.Combine(supportFilesFolder, "environment.txt");
@@ -110,7 +111,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             string metadataFilePath = Path.Combine(supportFilesFolder, metadataFileName);
             using (StreamWriter writer = File.CreateText(metadataFilePath)) 
             {
-                writer.Write(JsonUtility.ToString(new DiagnosticLogMetadata(agentName, agentId.ToString(), phaseName, diagnosticsZipFileName)));
+                writer.Write(JsonUtility.ToString(new DiagnosticLogMetadata(agentName, agentId.ToString(), poolId, phaseName, diagnosticsZipFileName)));
             }
 
             // CoreAttachmentType.DiagnosticLog
@@ -210,10 +211,11 @@ namespace Microsoft.VisualStudio.Services.Agent
 
         private class DiagnosticLogMetadata
         {
-            public DiagnosticLogMetadata(string agentName, string agentId, string phaseName, string fileName)
+            public DiagnosticLogMetadata(string agentName, string agentId, int poolId, string phaseName, string fileName)
             {
                 AgentName = agentName;
                 AgentId = agentId;
+                PoolId = poolId;
                 PhaseName = phaseName;
                 FileName = fileName;
             }
@@ -221,6 +223,8 @@ namespace Microsoft.VisualStudio.Services.Agent
             public string AgentName { get; }
 
             public string AgentId { get; }
+
+            public int PoolId { get; }
 
             public string PhaseName { get; }
 
