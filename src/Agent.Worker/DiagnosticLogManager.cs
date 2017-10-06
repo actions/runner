@@ -109,9 +109,12 @@ namespace Microsoft.VisualStudio.Services.Agent
             string metadataFileName = $"diagnostics-{buildName}-{phaseName}.json";
             // create the file
             string metadataFilePath = Path.Combine(supportFilesFolder, metadataFileName);
+            string phaseResult = GetTaskResultAsString(executionContext.Result);
             using (StreamWriter writer = File.CreateText(metadataFilePath)) 
             {
-                writer.Write(JsonUtility.ToString(new DiagnosticLogMetadata(agentName, agentId.ToString(), poolId, phaseName, diagnosticsZipFileName)));
+                // TODO: Put this into the metadata.
+                //executionContext.Result.Value (could be null)
+                writer.Write(JsonUtility.ToString(new DiagnosticLogMetadata(agentName, agentId.ToString(), poolId, phaseName, diagnosticsZipFileName, phaseResult)));
             }
 
             // CoreAttachmentType.DiagnosticLog
@@ -124,6 +127,30 @@ namespace Microsoft.VisualStudio.Services.Agent
             // TODO: We can't delete here. The file upload is queued so they will be gone when its time to upload. Will normal cleanup take care of it?
 
             executionContext.Debug("Diagnostic file upload complete.");
+        }
+
+        // TODO: Is there a better place to put this? I didn't see any code in DT that does this.
+        private string GetTaskResultAsString(TaskResult? taskResult)
+        {
+            if (!taskResult.HasValue) { return "Unknown"; }
+            
+            switch (taskResult.Value)
+            {
+                case TaskResult.Abandoned:
+                    return "Abandoned";
+                case TaskResult.Canceled:
+                    return "Canceled";
+                case TaskResult.Failed:
+                    return "Failed";
+                case TaskResult.Skipped:
+                    return "Skipped";
+                case TaskResult.Succeeded:
+                    return "Succeeded";
+                case TaskResult.SucceededWithIssues:
+                    return "SucceededWithIssues";
+                default:
+                    return "Unknown";
+            }
         }
 
         // The current solution is a hack. We need to rethink this and find a better one.
@@ -211,13 +238,14 @@ namespace Microsoft.VisualStudio.Services.Agent
 
         private class DiagnosticLogMetadata
         {
-            public DiagnosticLogMetadata(string agentName, string agentId, int poolId, string phaseName, string fileName)
+            public DiagnosticLogMetadata(string agentName, string agentId, int poolId, string phaseName, string fileName, string phaseResult)
             {
                 AgentName = agentName;
                 AgentId = agentId;
                 PoolId = poolId;
                 PhaseName = phaseName;
                 FileName = fileName;
+                PhaseResult = phaseResult;
             }
 
             public string AgentName { get; }
@@ -229,6 +257,8 @@ namespace Microsoft.VisualStudio.Services.Agent
             public string PhaseName { get; }
 
             public string FileName { get; }
+
+            public string PhaseResult { get; }
         }
     }
 }
