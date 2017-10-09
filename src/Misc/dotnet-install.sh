@@ -240,7 +240,7 @@ to_lowercase() {
 remove_trailing_slash() {
     #eval $invocation
     
-    local input=${1:-}
+    local input="${1:-}"
     echo "${input%/}"
     return 0
 }
@@ -250,7 +250,7 @@ remove_trailing_slash() {
 remove_beginning_slash() {
     #eval $invocation
     
-    local input=${1:-}
+    local input="${1:-}"
     echo "${input#/}"
     return 0
 }
@@ -267,8 +267,8 @@ combine_paths() {
         return 1
     fi
     
-    local root_path=$(remove_trailing_slash $1)
-    local child_path=$(remove_beginning_slash ${2:-})
+    local root_path="$(remove_trailing_slash "$1")"
+    local child_path="$(remove_beginning_slash "${2:-}")"
     say_verbose "combine_paths: root_path=$root_path"
     say_verbose "combine_paths: child_path=$child_path"
     echo "$root_path/$child_path"
@@ -288,10 +288,10 @@ get_machine_architecture() {
 get_normalized_architecture_from_architecture() {
     eval $invocation
     
-    local architecture=$(to_lowercase $1)
-    case $architecture in
+    local architecture="$(to_lowercase "$1")"
+    case "$architecture" in
         \<auto\>)
-            echo "$(get_normalized_architecture_from_architecture $(get_machine_architecture))"
+            echo "$(get_normalized_architecture_from_architecture "$(get_machine_architecture)")"
             return 0
             ;;
         amd64|x64)
@@ -338,11 +338,11 @@ get_commit_hash_from_version_info() {
 is_dotnet_package_installed() {
     eval $invocation
     
-    local install_root=$1
-    local relative_path_to_package=$2
-    local specific_version=${3//[$'\t\r\n']}
+    local install_root="$1"
+    local relative_path_to_package="$2"
+    local specific_version="${3//[$'\t\r\n']}"
     
-    local dotnet_package_path=$(combine_paths $(combine_paths $install_root $relative_path_to_package) $specific_version)
+    local dotnet_package_path="$(combine_paths "$(combine_paths "$install_root" "$relative_path_to_package")" "$specific_version")"
     say_verbose "is_dotnet_package_installed: dotnet_package_path=$dotnet_package_path"
     
     if [ -d "$dotnet_package_path" ]; then
@@ -360,10 +360,10 @@ is_dotnet_package_installed() {
 get_latest_version_info() {
     eval $invocation
     
-    local azure_feed=$1
-    local channel=$2
-    local normalized_architecture=$3
-    local coherent=$4
+    local azure_feed="$1"
+    local channel="$2"
+    local normalized_architecture="$3"
+    local coherent="$4"
 
     local version_file_url=null
     if [ "$shared_runtime" = true ]; then
@@ -377,7 +377,7 @@ get_latest_version_info() {
     fi
     say_verbose "get_latest_version_info: latest url: $version_file_url"
     
-    download $version_file_url
+    download "$version_file_url"
     return $?
 }
 
@@ -389,28 +389,28 @@ get_latest_version_info() {
 get_specific_version_from_version() {
     eval $invocation
     
-    local azure_feed=$1
-    local channel=$2
-    local normalized_architecture=$3
-    local version=$(to_lowercase $4)
+    local azure_feed="$1"
+    local channel="$2"
+    local normalized_architecture="$3"
+    local version="$(to_lowercase "$4")"
 
-    case $version in
+    case "$version" in
         latest)
             local version_info
-            version_info="$(get_latest_version_info $azure_feed $channel $normalized_architecture false)" || return 1
+            version_info="$(get_latest_version_info "$azure_feed" "$channel" "$normalized_architecture" false)" || return 1
             say_verbose "get_specific_version_from_version: version_info=$version_info"
             echo "$version_info" | get_version_from_version_info
             return 0
             ;;
         coherent)
             local version_info
-            version_info="$(get_latest_version_info $azure_feed $channel $normalized_architecture true)" || return 1
+            version_info="$(get_latest_version_info "$azure_feed" "$channel" "$normalized_architecture" true)" || return 1
             say_verbose "get_specific_version_from_version: version_info=$version_info"
             echo "$version_info" | get_version_from_version_info
             return 0
             ;;
         *)
-            echo $version
+            echo "$version"
             return 0
             ;;
     esac
@@ -424,13 +424,13 @@ get_specific_version_from_version() {
 construct_download_link() {
     eval $invocation
     
-    local azure_feed=$1
-    local channel=$2
-    local normalized_architecture=$3
-    local specific_version=${4//[$'\t\r\n']}
+    local azure_feed="$1"
+    local channel="$2"
+    local normalized_architecture="$3"
+    local specific_version="${4//[$'\t\r\n']}"
     
     local osname
-    osname=$(get_current_os_name) || return 1
+    osname="$(get_current_os_name)" || return 1
 
     local download_link=null
     if [ "$shared_runtime" = true ]; then
@@ -451,13 +451,13 @@ construct_download_link() {
 construct_legacy_download_link() {
     eval $invocation
     
-    local azure_feed=$1
-    local channel=$2
-    local normalized_architecture=$3
-    local specific_version=${4//[$'\t\r\n']}
+    local azure_feed="$1"
+    local channel="$2"
+    local normalized_architecture="$3"
+    local specific_version="${4//[$'\t\r\n']}"
 
     local distro_specific_osname
-    distro_specific_osname=$(get_distro_specific_os_name) || return 1
+    distro_specific_osname="$(get_distro_specific_os_name)" || return 1
 
     local legacy_download_link=null
     if [ "$shared_runtime" = true ]; then
@@ -474,7 +474,7 @@ get_user_install_path() {
     eval $invocation
     
     if [ ! -z "${DOTNET_INSTALL_DIR:-}" ]; then
-        echo $DOTNET_INSTALL_DIR
+        echo "$DOTNET_INSTALL_DIR"
     else
         echo "$HOME/.dotnet"
     fi
@@ -488,7 +488,7 @@ resolve_installation_path() {
     
     local install_dir=$1
     if [ "$install_dir" = "<auto>" ]; then
-        local user_install_path=$(get_user_install_path)
+        local user_install_path="$(get_user_install_path)"
         say_verbose "resolve_installation_path: user_install_path=$user_install_path"
         echo "$user_install_path"
         return 0
@@ -503,11 +503,11 @@ resolve_installation_path() {
 get_installed_version_info() {
     eval $invocation
     
-    local install_root=$1
-    local version_file=$(combine_paths "$install_root" "$local_version_file_relative_path")
+    local install_root="$1"
+    local version_file="$(combine_paths "$install_root" "$local_version_file_relative_path")"
     say_verbose "Local version file: $version_file"
     if [ ! -z "$version_file" ] | [ -r "$version_file" ]; then
-        local version_info="$(cat $version_file)"
+        local version_info="$(cat "$version_file")"
         echo "$version_info"
         return 0
     fi
@@ -522,7 +522,7 @@ get_absolute_path() {
     eval $invocation
     
     local relative_or_absolute_path=$1
-    echo $(cd $(dirname "$1") && pwd -P)/$(basename "$1")
+    echo "$(cd "$(dirname "$1")" && pwd -P)/$(basename "$1")"
     return 0
 }
 
@@ -534,17 +534,17 @@ get_absolute_path() {
 copy_files_or_dirs_from_list() {
     eval $invocation
 
-    local root_path=$(remove_trailing_slash $1)
-    local out_path=$(remove_trailing_slash $2)
-    local override=$3
+    local root_path="$(remove_trailing_slash "$1")"
+    local out_path="$(remove_trailing_slash "$2")"
+    local override="$3"
     local override_switch=$(if [ "$override" = false ]; then printf -- "-n"; fi)
     
     cat | uniq | while read -r file_path; do
-        local path=$(remove_beginning_slash ${file_path#$root_path})
-        local target=$out_path/$path
+        local path="$(remove_beginning_slash "${file_path#$root_path}")"
+        local target="$out_path/$path"
         if [ "$override" = true ] || (! ([ -d "$target" ] || [ -e "$target" ])); then
-            mkdir -p $out_path/$(dirname $path)
-            cp -R $override_switch $root_path/$path $target
+            mkdir -p "$out_path/$(dirname "$path")"
+            cp -R $override_switch "$root_path/$path" "$target"
         fi
     done
 }
@@ -555,19 +555,19 @@ copy_files_or_dirs_from_list() {
 extract_dotnet_package() {
     eval $invocation
     
-    local zip_path=$1
-    local out_path=$2
+    local zip_path="$1"
+    local out_path="$2"
     
-    local temp_out_path=$(mktemp -d $temporary_file_template)
+    local temp_out_path="$(mktemp -d "$temporary_file_template")"
     
     local failed=false
     tar -xzf "$zip_path" -C "$temp_out_path" > /dev/null || failed=true
     
     local folders_with_version_regex='^.*/[0-9]+\.[0-9]+[^/]+/'
-    find $temp_out_path -type f | grep -Eo $folders_with_version_regex | copy_files_or_dirs_from_list $temp_out_path $out_path false
-    find $temp_out_path -type f | grep -Ev $folders_with_version_regex | copy_files_or_dirs_from_list $temp_out_path $out_path $override_non_versioned_files
+    find "$temp_out_path" -type f | grep -Eo "$folders_with_version_regex" | copy_files_or_dirs_from_list "$temp_out_path" "$out_path" false
+    find "$temp_out_path" -type f | grep -Ev "$folders_with_version_regex" | copy_files_or_dirs_from_list "$temp_out_path" "$out_path" "$override_non_versioned_files"
     
-    rm -rf $temp_out_path
+    rm -rf "$temp_out_path"
     
     if [ "$failed" = true ]; then
         say_err "Extraction failed"
@@ -581,14 +581,14 @@ extract_dotnet_package() {
 download() {
     eval $invocation
 
-    local remote_path=$1
-    local out_path=${2:-}
+    local remote_path="$1"
+    local out_path="${2:-}"
 
     local failed=false
     if machine_has "curl"; then
-        downloadcurl $remote_path $out_path || failed=true
+        downloadcurl "$remote_path" "$out_path" || failed=true
     elif machine_has "wget"; then
-        downloadwget $remote_path $out_path || failed=true
+        downloadwget "$remote_path" "$out_path" || failed=true
     else
         failed=true
     fi
@@ -601,14 +601,14 @@ download() {
 
 downloadcurl() {
     eval $invocation
-    local remote_path=$1
-    local out_path=${2:-}
+    local remote_path="$1"
+    local out_path="${2:-}"
 
     local failed=false
     if [ -z "$out_path" ]; then
-        curl --retry 10 -sSL -f --create-dirs $remote_path || failed=true
+        curl --retry 10 -sSL -f --create-dirs "$remote_path" || failed=true
     else
-        curl --retry 10 -sSL -f --create-dirs -o $out_path $remote_path || failed=true
+        curl --retry 10 -sSL -f --create-dirs -o "$out_path" "$remote_path" || failed=true
     fi
     if [ "$failed" = true ]; then
         say_verbose "Curl download failed"
@@ -619,14 +619,14 @@ downloadcurl() {
 
 downloadwget() {
     eval $invocation
-    local remote_path=$1
-    local out_path=${2:-}
+    local remote_path="$1"
+    local out_path="${2:-}"
 
     local failed=false
     if [ -z "$out_path" ]; then
-        wget -q --tries 10 -O - $remote_path || failed=true
+        wget -q --tries 10 -O - "$remote_path" || failed=true
     else
-        wget -v --tries 10 -O $out_path $remote_path || failed=true
+        wget -v --tries 10 -O "$out_path" "$remote_path" || failed=true
     fi
     if [ "$failed" = true ]; then
         say_verbose "Wget download failed"
@@ -639,20 +639,20 @@ calculate_vars() {
     eval $invocation
     valid_legacy_download_link=true
 
-    normalized_architecture=$(get_normalized_architecture_from_architecture "$architecture")
+    normalized_architecture="$(get_normalized_architecture_from_architecture "$architecture")"
     say_verbose "normalized_architecture=$normalized_architecture"
     
-    specific_version=$(get_specific_version_from_version $azure_feed $channel $normalized_architecture $version)
+    specific_version="$(get_specific_version_from_version "$azure_feed" "$channel" "$normalized_architecture" "$version")"
     say_verbose "specific_version=$specific_version"
     if [ -z "$specific_version" ]; then
         say_err "Could not get version information."
         return 1
     fi
     
-    download_link=$(construct_download_link $azure_feed $channel $normalized_architecture $specific_version)
+    download_link="$(construct_download_link "$azure_feed" "$channel" "$normalized_architecture" "$specific_version")"
     say_verbose "download_link=$download_link"
 
-    legacy_download_link=$(construct_legacy_download_link $azure_feed $channel $normalized_architecture $specific_version) || valid_legacy_download_link=false
+    legacy_download_link="$(construct_legacy_download_link "$azure_feed" "$channel" "$normalized_architecture" "$specific_version")" || valid_legacy_download_link=false
 
     if [ "$valid_legacy_download_link" = true ]; then
         say_verbose "legacy_download_link=$legacy_download_link"
@@ -660,7 +660,7 @@ calculate_vars() {
         say_verbose "Cound not construct a legacy_download_link; omitting..."
     fi
 
-    install_root=$(resolve_installation_path $install_dir)
+    install_root="$(resolve_installation_path "$install_dir")"
     say_verbose "install_root=$install_root"
 }
 
@@ -668,33 +668,33 @@ install_dotnet() {
     eval $invocation
     local download_failed=false
 
-    if is_dotnet_package_installed $install_root "sdk" $specific_version; then
+    if is_dotnet_package_installed "$install_root" "sdk" "$specific_version"; then
         say ".NET SDK version $specific_version is already installed."
         return 0
     fi
     
-    mkdir -p $install_root
-    zip_path=$(mktemp $temporary_file_template)
+    mkdir -p "$install_root"
+    zip_path="$(mktemp "$temporary_file_template")"
     say_verbose "Zip path: $zip_path"
 
     say "Downloading link: $download_link"
     
     # Failures are normal in the non-legacy case for ultimately legacy downloads.
     # Do not output to stderr, since output to stderr is considered an error.
-    download "$download_link" $zip_path 2>&1 || download_failed=true
+    download "$download_link" "$zip_path" 2>&1 || download_failed=true
 
     #  if the download fails, download the legacy_download_link
     if [ "$download_failed" = true ] && [ "$valid_legacy_download_link" = true ]; then
         say "Cannot download: $download_link"
-        download_link=$legacy_download_link
-        zip_path=$(mktemp $temporary_file_template)
+        download_link="$legacy_download_link"
+        zip_path="$(mktemp "$temporary_file_template")"
         say_verbose "Legacy zip path: $zip_path"
         say "Downloading legacy link: $download_link"
-        download "$download_link" $zip_path
+        download "$download_link" "$zip_path"
     fi
     
     say "Extracting zip from $download_link"
-    extract_dotnet_package $zip_path $install_root
+    extract_dotnet_package "$zip_path" "$install_root"
     
     return 0
 }
@@ -718,11 +718,11 @@ override_non_versioned_files=true
 
 while [ $# -ne 0 ]
 do
-    name=$1
-    case $name in
+    name="$1"
+    case "$name" in
         -c|--channel|-[Cc]hannel)
             shift
-            channel=$1
+            channel="$1"
             ;;
         -v|--version|-[Vv]ersion)
             shift
@@ -765,7 +765,7 @@ do
             override_non_versioned_files=false
             ;;
         -?|--?|-h|--help|-[Hh]elp)
-            script_name="$(basename $0)"
+            script_name="$(basename "$0")"
             echo ".NET Tools Installer"
             echo "Usage: $script_name [-c|--channel <CHANNEL>] [-v|--version <VERSION>] [-p|--prefix <DESTINATION>]"
             echo "       $script_name -h|-?|--help"
@@ -831,17 +831,17 @@ if [ "$dry_run" = true ]; then
     if [ "$valid_legacy_download_link" = true ]; then
         say "Legacy payload URL: $legacy_download_link"
     fi
-    say "Repeatable invocation: ./$(basename $0) --version $specific_version --channel $channel --install-dir $install_dir"
+    say "Repeatable invocation: ./$(basename "$0") --version $specific_version --channel $channel --install-dir $install_dir"
     exit 0
 fi
 
 check_pre_reqs
 install_dotnet
 
-bin_path=$(get_absolute_path $(combine_paths $install_root $bin_folder_relative_path))
+bin_path="$(get_absolute_path "$(combine_paths "$install_root" "$bin_folder_relative_path")")"
 if [ "$no_path" = false ]; then
     say "Adding to current process PATH: \`$bin_path\`. Note: This change will be visible only when sourcing script."
-    export PATH=$bin_path:$PATH
+    export PATH="$bin_path":"$PATH"
 else
     say "Binaries of dotnet can be found in $bin_path"
 fi
