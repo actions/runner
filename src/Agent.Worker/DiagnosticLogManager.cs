@@ -107,13 +107,11 @@ namespace Microsoft.VisualStudio.Services.Agent
             // upload the json metadata file
             executionContext.Debug("Uploading diagnostic metadata file.");
             string metadataFileName = $"diagnostics-{buildName}-{phaseName}.json";
-            // create the file
             string metadataFilePath = Path.Combine(supportFilesFolder, metadataFileName);
             string phaseResult = GetTaskResultAsString(executionContext.Result);
+            
             using (StreamWriter writer = File.CreateText(metadataFilePath)) 
             {
-                // TODO: Put this into the metadata.
-                //executionContext.Result.Value (could be null)
                 writer.Write(JsonUtility.ToString(new DiagnosticLogMetadata(agentName, agentId.ToString(), poolId, phaseName, diagnosticsZipFileName, phaseResult)));
             }
 
