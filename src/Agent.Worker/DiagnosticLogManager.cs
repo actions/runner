@@ -73,12 +73,17 @@ namespace Microsoft.VisualStudio.Services.Agent
             }
 
             // Copy worker diag log files
-            List<string> workerDiagLogFiles = GetWorkerDiagLogFiles(HostContext.GetDirectory(WellKnownDirectory.Diag), jobStartTimeUtc);
+
+            // Sometimes the timing is off between the job start time and the time the worker log file is created.
+            // This adds a small buffer that provides some leeway in case the worker log file was created slightly
+            // before the time we log as job start time.
+            int bufferInSeconds = -30;
+            List<string> workerDiagLogFiles = GetWorkerDiagLogFiles(HostContext.GetDirectory(WellKnownDirectory.Diag), jobStartTimeUtc.AddSeconds(bufferInSeconds));
             executionContext.Debug($"Copying {workerDiagLogFiles.Count()} worker diag logs.");
 
             foreach(string workerLogFile in workerDiagLogFiles)
             {
-                ArgUtil.Directory(workerLogFile, nameof(workerLogFile));
+                ArgUtil.File(workerLogFile, nameof(workerLogFile));
 
                 string destination = Path.Combine(supportFilesFolder, Path.GetFileName(workerLogFile));
                 File.Copy(workerLogFile, destination);
