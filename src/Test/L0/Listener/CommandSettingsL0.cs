@@ -913,6 +913,33 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", nameof(CommandSettings))]
+        public void PromptsForDeploymentPoolName()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange.
+                var command = new CommandSettings(hc, args: new string[0]);
+                _promptManager
+                    .Setup(x => x.ReadValue(
+                        Constants.Agent.CommandLine.Args.DeploymentPoolName, // argName
+                        StringUtil.Loc("DeploymentPoolName"), // description
+                        false, // secret
+                        string.Empty, // defaultValue
+                        Validators.NonEmptyValidator, // validator
+                        false)) // unattended
+                    .Returns("Test Deployment Pool Name");
+
+                // Act.
+                string actual = command.GetDeploymentPoolName();
+
+                // Assert.
+                Assert.Equal("Test Deployment Pool Name", actual);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", nameof(CommandSettings))]
         public void DeploymentGroupNameBackCompat()
         {
             using (TestHostContext hc = CreateTestContext())

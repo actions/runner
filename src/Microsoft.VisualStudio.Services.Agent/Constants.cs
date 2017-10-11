@@ -65,6 +65,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                     public static readonly string Auth = "auth";
                     public static readonly string CollectionName = "collectionname";
                     public static readonly string DeploymentGroupName = "deploymentgroupname";
+                    public static readonly string DeploymentPoolName = "deploymentpoolname";
                     public static readonly string DeploymentGroupTags = "deploymentgrouptags";
                     public static readonly string MachineGroupName = "machinegroupname";
                     public static readonly string MachineGroupTags = "machinegrouptags";
@@ -120,6 +121,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                     public static readonly string AddMachineGroupTags = "addmachinegrouptags";
                     public static readonly string Commit = "commit";
                     public static readonly string DeploymentGroup = "deploymentgroup";
+                    public static readonly string DeploymentPool = "deploymentpool";
                     public static readonly string OverwriteAutoLogon = "overwriteautologon";
                     public static readonly string Help = "help";
                     public static readonly string MachineGroup = "machinegroup";
@@ -145,6 +147,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             {
                 public static readonly string BuildReleasesAgentConfiguration = "BuildReleasesAgentConfiguration";
                 public static readonly string DeploymentAgentConfiguration = "DeploymentAgentConfiguration";
+                public static readonly string SharedDeploymentAgentConfiguration = "SharedDeploymentAgentConfiguration";
             }
         }
 

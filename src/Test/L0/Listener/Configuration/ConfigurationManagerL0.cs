@@ -120,7 +120,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
 #endif
 
             var expectedPools = new List<TaskAgentPool>() { new TaskAgentPool(_expectedPoolName) { Id = _expectedPoolId } };
-            _agentServer.Setup(x => x.GetAgentPoolsAsync(It.IsAny<string>())).Returns(Task.FromResult(expectedPools));
+            _agentServer.Setup(x => x.GetAgentPoolsAsync(It.IsAny<string>(),It.IsAny<TaskAgentPoolType>())).Returns(Task.FromResult(expectedPools));
 
             var expectedAgents = new List<TaskAgent>();
             _agentServer.Setup(x => x.GetAgentsAsync(It.IsAny<int>(), It.IsAny<string>())).Returns(Task.FromResult(expectedAgents));
@@ -209,7 +209,74 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
                 Assert.True(s.PoolId.Equals(_expectedPoolId));
                 Assert.True(s.WorkFolder.Equals(_expectedWorkFolder));
 
-                // For build and release agent, tags logic should not get trigger
+                // validate GetAgentPoolsAsync gets called once with automation pool type
+                _agentServer.Verify(x => x.GetAgentPoolsAsync(It.IsAny<string>(), It.Is<TaskAgentPoolType>(p => p == TaskAgentPoolType.Automation)), Times.Once);
+
+                // validate GetAgentPoolsAsync not called with deployment pool type
+                _agentServer.Verify(x => x.GetAgentPoolsAsync(It.IsAny<string>(), It.Is<TaskAgentPoolType>(p => p == TaskAgentPoolType.Deployment)), Times.Never);
+
+                // For build and release agent / deployment pool, tags logic should not get trigger;
+                _machineGroupServer.Verify(x =>
+                     x.UpdateDeploymentMachinesAsync(It.IsAny<Guid>(), It.IsAny<int>(), It.IsAny<List<DeploymentMachine>>()), Times.Never);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "ConfigurationManagement")]
+        public async Task CanEnsureConfigureForDeploymentPool()
+        {
+            using (TestHostContext tc = CreateTestContext())
+            {
+                Tracing trace = tc.GetTrace();
+
+                trace.Info("Creating config manager");
+                IConfigurationManager configManager = new ConfigurationManager();
+                configManager.Initialize(tc);
+
+                trace.Info("Preparing command line arguments");
+                var command = new CommandSettings(
+                    tc,
+                    new[]
+                    {
+                       "configure",
+#if !OS_WINDOWS
+                       "--acceptteeeula", 
+#endif                       
+                       "--url", _expectedServerUrl,
+                       "--agent", _expectedAgentName,
+                       "--deploymentpoolname", _expectedPoolName,
+                       "--work", _expectedWorkFolder,
+                       "--auth", _expectedAuthType,
+                       "--token", _expectedToken,
+                       "--deploymentpool"
+                    });
+                trace.Info("Constructed.");
+                _store.Setup(x => x.IsConfigured()).Returns(false);
+                _configMgrAgentSettings = null;
+
+                _extnMgr.Setup(x => x.GetExtensions<IConfigurationProvider>()).Returns(GetConfigurationProviderList(tc));
+
+                trace.Info("Ensuring all the required parameters are available in the command line parameter");
+                await configManager.ConfigureAsync(command);
+
+                _store.Setup(x => x.IsConfigured()).Returns(true);
+
+                trace.Info("Configured, verifying all the parameter value");
+                var s = configManager.LoadSettings();
+                Assert.NotNull(s);
+                Assert.True(s.ServerUrl.Equals(_expectedServerUrl));
+                Assert.True(s.AgentName.Equals(_expectedAgentName));
+                Assert.True(s.PoolId.Equals(_expectedPoolId));
+                Assert.True(s.WorkFolder.Equals(_expectedWorkFolder));
+
+                // validate GetAgentPoolsAsync gets called once with deployment pool type
+                _agentServer.Verify(x => x.GetAgentPoolsAsync(It.IsAny<string>(), It.Is<TaskAgentPoolType>(p => p == TaskAgentPoolType.Deployment)), Times.Once);
+
+                // validate GetAgentPoolsAsync not called with Automation pool type
+                _agentServer.Verify(x => x.GetAgentPoolsAsync(It.IsAny<string>(), It.Is<TaskAgentPoolType>(p => p == TaskAgentPoolType.Automation)), Times.Never);
+
+                // For build and release agent / deployment pool, tags logic should not get trigger;
                 _machineGroupServer.Verify(x =>
                      x.UpdateDeploymentMachinesAsync(It.IsAny<Guid>(), It.IsAny<int>(), It.IsAny<List<DeploymentMachine>>()), Times.Never);
             }
@@ -462,7 +529,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
             _deploymentGroupAgentConfigProvider = new DeploymentGroupAgentConfigProvider();
             _deploymentGroupAgentConfigProvider.Initialize(tc);
 
-            return new List<IConfigurationProvider> { buildReleasesAgentConfigProvider, _deploymentGroupAgentConfigProvider };
+            IConfigurationProvider sharedDeploymentAgentConfiguration = new SharedDeploymentAgentConfigProvider();
+            sharedDeploymentAgentConfiguration.Initialize(tc);
+
+            return new List<IConfigurationProvider> { buildReleasesAgentConfigProvider, _deploymentGroupAgentConfigProvider, sharedDeploymentAgentConfiguration };
         }
         // TODO Unit Test for IsConfigured - Rename config file and make sure it returns false
 

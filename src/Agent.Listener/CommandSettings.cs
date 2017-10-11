@@ -31,6 +31,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             Constants.Agent.CommandLine.Flags.AddDeploymentGroupTags,
             Constants.Agent.CommandLine.Flags.Commit,
             Constants.Agent.CommandLine.Flags.DeploymentGroup,
+            Constants.Agent.CommandLine.Flags.DeploymentPool,
             Constants.Agent.CommandLine.Flags.Help,
             Constants.Agent.CommandLine.Flags.MachineGroup,
             Constants.Agent.CommandLine.Flags.NoRestart,
@@ -49,6 +50,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             Constants.Agent.CommandLine.Args.Auth,
             Constants.Agent.CommandLine.Args.CollectionName,
             Constants.Agent.CommandLine.Args.DeploymentGroupName,
+            Constants.Agent.CommandLine.Args.DeploymentPoolName,
             Constants.Agent.CommandLine.Args.DeploymentGroupTags,
             Constants.Agent.CommandLine.Args.MachineGroupName,
             Constants.Agent.CommandLine.Args.MachineGroupTags,
@@ -88,6 +90,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         public bool Unattended => TestFlag(Constants.Agent.CommandLine.Flags.Unattended);
         public bool Version => TestFlag(Constants.Agent.CommandLine.Flags.Version);
         public bool DeploymentGroup => TestFlag(Constants.Agent.CommandLine.Flags.MachineGroup) || TestFlag(Constants.Agent.CommandLine.Flags.DeploymentGroup);
+        public bool DeploymentPool => TestFlag(Constants.Agent.CommandLine.Flags.DeploymentPool);
         public bool WhatIf => TestFlag(Constants.Agent.CommandLine.Flags.WhatIf);
 
         // Constructor.
@@ -301,6 +304,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                             validator: Validators.NonEmptyValidator);
             }
             return result;
+        }
+
+        public string GetDeploymentPoolName()
+        {
+            return GetArgOrPrompt(
+                name: Constants.Agent.CommandLine.Args.DeploymentPoolName,
+                description: StringUtil.Loc("DeploymentPoolName"),
+                defaultValue: string.Empty,
+                validator: Validators.NonEmptyValidator);
         }
 
         public string GetProjectName(string defaultValue)

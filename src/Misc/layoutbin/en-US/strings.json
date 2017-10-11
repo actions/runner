@@ -242,6 +242,8 @@
   "DeploymentGroupTags": "Comma separated list of tags (e.g tag1,tag2)",
   "DeploymentGroupTagsAddedMsg": "Tags added successfully",
   "DeploymentMachineWithSameNameAlreadyExistInDeploymentGroup": "DeploymentGroup {0} already contains a machine with name {1}.",
+  "DeploymentPoolName": "Deployment Pool name",
+  "DeploymentPoolNotFound": "Deployment pool not found: '{0}'",
   "DirectoryHierarchyUnauthorized": "Permission to read the directory contents is required for '{0}' and each directory up the hierarchy. {1}",
   "DirectoryIsEmptyForArtifact": "Directory '{0}' is empty. Nothing will be added to build artifact '{1}'.",
   "DirectoryNotFound": "Directory not found: '{0}'",
