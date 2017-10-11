@@ -6,6 +6,7 @@ using System.IO;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using System.Globalization;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 {
@@ -54,8 +55,26 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             }
             else
             {
-                topLevelConfig = JsonConvert.DeserializeObject<TopLevelTrackingConfig>(
-                    value: File.ReadAllText(topLevelFile));
+                topLevelConfig = JsonConvert.DeserializeObject<TopLevelTrackingConfig>(File.ReadAllText(topLevelFile));
+                if (topLevelConfig == null)
+                {
+                    executionContext.Warning($"Rebuild corruptted top-level tracking configure file {topLevelFile}.");
+                    // save the corruptted file in case we need to investigate more.
+                    File.Copy(topLevelFile, $"{topLevelFile}.corruptted", true);
+
+                    topLevelConfig = new TopLevelTrackingConfig();
+                    DirectoryInfo workDir = new DirectoryInfo(HostContext.GetDirectory(WellKnownDirectory.Work));
+
+                    foreach (var dir in workDir.EnumerateDirectories())
+                    {
+                        // we scan the entire _work directory and find the directory with the highest integer number.
+                        if (int.TryParse(dir.Name, NumberStyles.Integer, CultureInfo.InvariantCulture, out int lastBuildNumber) &&
+                            lastBuildNumber > topLevelConfig.LastBuildDirectoryNumber)
+                        {
+                            topLevelConfig.LastBuildDirectoryNumber = lastBuildNumber;
+                        }
+                    }
+                }
             }
 
             // Determine the build directory.
