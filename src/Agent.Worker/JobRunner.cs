@@ -13,7 +13,6 @@ using System.Net.Http;
 using System.Text;
 using System.IO.Compression;
 using Microsoft.VisualStudio.Services.Agent.Worker.Build;
-//using Microsoft.TeamFoundation.Build.WebApi;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
 {

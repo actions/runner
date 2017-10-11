@@ -44,7 +44,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             // Setup folders
             // \_layout\_work\_temp\[jobname-support]
             executionContext.Debug("Setting up diagnostic log folders.");
-            string tempDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), Constants.Path.TempDirectory);
+            string tempDirectory = executionContext.Variables.Agent_TempDirectory;
             ArgUtil.NotNullOrEmpty(tempDirectory, nameof(tempDirectory));
             ArgUtil.Directory(tempDirectory, nameof(tempDirectory));
 
@@ -67,18 +67,10 @@ namespace Microsoft.VisualStudio.Services.Agent
             executionContext.Debug("Creating diagnostic log environment file.");
             string environmentFile = Path.Combine(supportFilesFolder, "environment.txt");
             string content = GetEnvironmentContent(agentId, agentName, message.Tasks);
-            using (StreamWriter writer = File.CreateText(environmentFile)) 
-            {
-                writer.Write(content);
-            }
+            File.WriteAllText(environmentFile, content);
 
             // Copy worker diag log files
-
-            // Sometimes the timing is off between the job start time and the time the worker log file is created.
-            // This adds a small buffer that provides some leeway in case the worker log file was created slightly
-            // before the time we log as job start time.
-            int bufferInSeconds = -30;
-            List<string> workerDiagLogFiles = GetWorkerDiagLogFiles(HostContext.GetDirectory(WellKnownDirectory.Diag), jobStartTimeUtc.AddSeconds(bufferInSeconds));
+            List<string> workerDiagLogFiles = GetWorkerDiagLogFiles(HostContext.GetDirectory(WellKnownDirectory.Diag), jobStartTimeUtc);
             executionContext.Debug($"Copying {workerDiagLogFiles.Count()} worker diag logs.");
 
             foreach(string workerLogFile in workerDiagLogFiles)
@@ -91,18 +83,9 @@ namespace Microsoft.VisualStudio.Services.Agent
             
             executionContext.Debug("Zipping diagnostic files.");
 
-            string buildNumber;
-            if (!message.Environment.Variables.TryGetValue(Constants.Variables.Build.Number, out buildNumber))
-            {
-                buildNumber = "UnknownBuildNumber";
-            }
+            string buildNumber = executionContext.Variables.Build_Number ?? "UnknownBuildNumber";
             string buildName = $"Build {buildNumber}";
-            
-            string phaseName;
-            if (!message.Environment.Variables.TryGetValue(Constants.Variables.System.PhaseDisplayName, out phaseName))
-            {
-                phaseName = "UnknownPhaseName";
-            }
+            string phaseName = executionContext.Variables.System_PhaseDisplayName ?? "UnknownPhaseName";
 
             // zip the files
             string diagnosticsZipFileName = $"{buildName}-{phaseName}.zip";
@@ -115,19 +98,13 @@ namespace Microsoft.VisualStudio.Services.Agent
             string metadataFilePath = Path.Combine(supportFilesFolder, metadataFileName);
             string phaseResult = GetTaskResultAsString(executionContext.Result);
             
-            using (StreamWriter writer = File.CreateText(metadataFilePath)) 
-            {
-                writer.Write(JsonUtility.ToString(new DiagnosticLogMetadata(agentName, agentId.ToString(), poolId, phaseName, diagnosticsZipFileName, phaseResult)));
-            }
+            IOUtil.SaveObject(new DiagnosticLogMetadata(agentName, agentId.ToString(), poolId, phaseName, diagnosticsZipFileName, phaseResult), metadataFilePath);
 
             // CoreAttachmentType.DiagnosticLog
             executionContext.QueueAttachFile(type: "DistributedTask.Core.DiagnosticLog", name: metadataFileName, filePath: metadataFilePath);
 
             // CoreAttachmentType.DiagnosticLog
             executionContext.QueueAttachFile(type: "DistributedTask.Core.DiagnosticLog", name: diagnosticsZipFileName, filePath: diagnosticsZipFilePath);
-
-            // Delete support folder
-            // TODO: We can't delete here. The file upload is queued so they will be gone when its time to upload. Will normal cleanup take care of it?
 
             executionContext.Debug("Diagnostic file upload complete.");
         }
@@ -136,24 +113,26 @@ namespace Microsoft.VisualStudio.Services.Agent
         private string GetTaskResultAsString(TaskResult? taskResult)
         {
             if (!taskResult.HasValue) { return "Unknown"; }
+
+            return taskResult.ToString();
             
-            switch (taskResult.Value)
-            {
-                case TaskResult.Abandoned:
-                    return "Abandoned";
-                case TaskResult.Canceled:
-                    return "Canceled";
-                case TaskResult.Failed:
-                    return "Failed";
-                case TaskResult.Skipped:
-                    return "Skipped";
-                case TaskResult.Succeeded:
-                    return "Succeeded";
-                case TaskResult.SucceededWithIssues:
-                    return "SucceededWithIssues";
-                default:
-                    return "Unknown";
-            }
+            // switch (taskResult.Value)
+            // {
+            //     case TaskResult.Abandoned:
+            //         return "Abandoned";
+            //     case TaskResult.Canceled:
+            //         return "Canceled";
+            //     case TaskResult.Failed:
+            //         return "Failed";
+            //     case TaskResult.Skipped:
+            //         return "Skipped";
+            //     case TaskResult.Succeeded:
+            //         return "Succeeded";
+            //     case TaskResult.SucceededWithIssues:
+            //         return "SucceededWithIssues";
+            //     default:
+            //         return "Unknown";
+            // }
         }
 
         // The current solution is a hack. We need to rethink this and find a better one.
@@ -164,13 +143,20 @@ namespace Microsoft.VisualStudio.Services.Agent
             // Get all worker log files with a timestamp equal or greater than the start of the job
             var workerLogFiles = new List<string>();
             var directoryInfo = new DirectoryInfo(diagFolder);
+
+            // Sometimes the timing is off between the job start time and the time the worker log file is created.
+            // This adds a small buffer that provides some leeway in case the worker log file was created slightly
+            // before the time we log as job start time.
+            int bufferInSeconds = -30;
+            DateTime searchTimeUtc = jobStartTimeUtc.AddSeconds(bufferInSeconds);
+
             foreach (FileInfo file in directoryInfo.GetFiles().Where(f => f.Name.StartsWith("Worker_")))
             {
                 // The format of the logs is:
                 // Worker_20171003-143110-utc.log
                 DateTime fileCreateTime = DateTime.ParseExact(s: file.Name.Substring(startIndex: 7, length: 15), format: "yyyyMMdd-HHmmss", provider: CultureInfo.InvariantCulture);
 
-                if (fileCreateTime >= jobStartTimeUtc)
+                if (fileCreateTime >= searchTimeUtc)
                 {
                     workerLogFiles.Add(file.FullName);
                 }
