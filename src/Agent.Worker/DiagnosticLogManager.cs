@@ -15,6 +15,8 @@ using System.Diagnostics;
 using System.Linq;
 using System.Collections.ObjectModel;
 using System.Globalization;
+using Microsoft.VisualStudio.Services.Agent.Listener.Capabilities;
+using System.Threading;
 
 namespace Microsoft.VisualStudio.Services.Agent
 {
@@ -69,6 +71,14 @@ namespace Microsoft.VisualStudio.Services.Agent
             string content = GetEnvironmentContent(agentId, agentName, message.Tasks);
             File.WriteAllText(environmentFile, content);
 
+            // Create the capabilities file
+            var capabilitiesManager = HostContext.GetService<ICapabilitiesManager>();
+            Dictionary<string, string> capabilities = capabilitiesManager.GetCapabilitiesAsync(configurationStore.GetSettings(), default(CancellationToken)).Result;
+            executionContext.Debug("Creating capabilities file.");
+            string capabilitiesFile = Path.Combine(supportFilesFolder, "capabilities.txt");
+            string capabilitiesContent = GetCapabilitiesContent(capabilities);
+            File.WriteAllText(capabilitiesFile, capabilitiesContent);
+
             // Copy worker diag log files
             List<string> workerDiagLogFiles = GetWorkerDiagLogFiles(HostContext.GetDirectory(WellKnownDirectory.Diag), jobStartTimeUtc);
             executionContext.Debug($"Copying {workerDiagLogFiles.Count()} worker diag logs.");
@@ -107,6 +117,28 @@ namespace Microsoft.VisualStudio.Services.Agent
             executionContext.QueueAttachFile(type: "DistributedTask.Core.DiagnosticLog", name: diagnosticsZipFileName, filePath: diagnosticsZipFilePath);
 
             executionContext.Debug("Diagnostic file upload complete.");
+        }
+
+        private string GetCapabilitiesContent(Dictionary<string, string> capabilities)
+        {
+            var builder = new StringBuilder();
+
+            builder.AppendLine("Capabilities");
+            builder.AppendLine("");
+
+            foreach (string key in capabilities.Keys)
+            {
+                builder.Append(key);
+
+                if (!string.IsNullOrEmpty(capabilities[key]))
+                {
+                    builder.Append($" = {capabilities[key]}");
+                }
+
+                builder.AppendLine();
+            }
+
+            return builder.ToString();
         }
 
         // TODO: Is there a better place to put this? I didn't see any code in DT that does this.

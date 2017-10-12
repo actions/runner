@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Microsoft.VisualStudio.Services.Agent\Microsoft.VisualStudio.Services.Agent.csproj" />
+    <ProjectReference Include="..\Agent.Listener\Agent.Listener.csproj" />
   </ItemGroup>
 
   <ItemGroup>
