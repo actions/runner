@@ -45,8 +45,8 @@ namespace Microsoft.VisualStudio.Services.Agent
             // Inspect whether response has throttling information
             IEnumerable<string> vssRequestDelayed = null;
             IEnumerable<string> vssRequestQuotaReset = null;
-            if (response.Headers.TryGetValues(HttpHeaders.VssRequestDelayed, out vssRequestDelayed) &&
-                response.Headers.TryGetValues(HttpHeaders.VssRequestQuotaReset, out vssRequestQuotaReset) &&
+            if (response.Headers.TryGetValues(HttpHeaders.VssRateLimitDelay, out vssRequestDelayed) &&
+                response.Headers.TryGetValues(HttpHeaders.VssRateLimitReset, out vssRequestQuotaReset) &&
                 !string.IsNullOrEmpty(vssRequestDelayed.FirstOrDefault()) &&
                 !string.IsNullOrEmpty(vssRequestQuotaReset.FirstOrDefault()))
             {
