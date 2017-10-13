@@ -141,30 +141,11 @@ namespace Microsoft.VisualStudio.Services.Agent
             return builder.ToString();
         }
 
-        // TODO: Is there a better place to put this? I didn't see any code in DT that does this.
         private string GetTaskResultAsString(TaskResult? taskResult)
         {
             if (!taskResult.HasValue) { return "Unknown"; }
 
             return taskResult.ToString();
-            
-            // switch (taskResult.Value)
-            // {
-            //     case TaskResult.Abandoned:
-            //         return "Abandoned";
-            //     case TaskResult.Canceled:
-            //         return "Canceled";
-            //     case TaskResult.Failed:
-            //         return "Failed";
-            //     case TaskResult.Skipped:
-            //         return "Skipped";
-            //     case TaskResult.Succeeded:
-            //         return "Succeeded";
-            //     case TaskResult.SucceededWithIssues:
-            //         return "SucceededWithIssues";
-            //     default:
-            //         return "Unknown";
-            // }
         }
 
         // The current solution is a hack. We need to rethink this and find a better one.
@@ -256,30 +237,5 @@ namespace Microsoft.VisualStudio.Services.Agent
             }
         }
 #endif
-
-        private class DiagnosticLogMetadata
-        {
-            public DiagnosticLogMetadata(string agentName, string agentId, int poolId, string phaseName, string fileName, string phaseResult)
-            {
-                AgentName = agentName;
-                AgentId = agentId;
-                PoolId = poolId;
-                PhaseName = phaseName;
-                FileName = fileName;
-                PhaseResult = phaseResult;
-            }
-
-            public string AgentName { get; }
-
-            public string AgentId { get; }
-
-            public int PoolId { get; }
-
-            public string PhaseName { get; }
-
-            public string FileName { get; }
-
-            public string PhaseResult { get; }
-        }
     }
 }
