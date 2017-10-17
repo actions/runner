@@ -17,13 +17,14 @@ using System.Collections.ObjectModel;
 using System.Globalization;
 using Microsoft.VisualStudio.Services.Agent.Listener.Capabilities;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace Microsoft.VisualStudio.Services.Agent
 {
     [ServiceLocator(Default = typeof(DiagnosticLogManager))]
     public interface IDiagnosticLogManager : IAgentService
     {
-        void UploadDiagnosticLogs(IExecutionContext executionContext, 
+        Task UploadDiagnosticLogsAsync(IExecutionContext executionContext, 
                                   AgentJobRequestMessage message, 
                                   DateTime jobStartTimeUtc);
     }
@@ -37,7 +38,7 @@ namespace Microsoft.VisualStudio.Services.Agent
     //          support.zip
     public sealed class DiagnosticLogManager : AgentService, IDiagnosticLogManager
     {
-        public void UploadDiagnosticLogs(IExecutionContext executionContext, 
+        public async Task UploadDiagnosticLogsAsync(IExecutionContext executionContext, 
                                          AgentJobRequestMessage message, 
                                          DateTime jobStartTimeUtc)
         {
@@ -73,7 +74,7 @@ namespace Microsoft.VisualStudio.Services.Agent
 
             // Create the capabilities file
             var capabilitiesManager = HostContext.GetService<ICapabilitiesManager>();
-            Dictionary<string, string> capabilities = capabilitiesManager.GetCapabilitiesAsync(configurationStore.GetSettings(), default(CancellationToken)).Result;
+            Dictionary<string, string> capabilities = await capabilitiesManager.GetCapabilitiesAsync(configurationStore.GetSettings(), default(CancellationToken));
             executionContext.Debug("Creating capabilities file.");
             string capabilitiesFile = Path.Combine(supportFilesFolder, "capabilities.txt");
             string capabilitiesContent = GetCapabilitiesContent(capabilities);

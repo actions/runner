@@ -321,7 +321,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
                     try
                     {
-                        diagnosticLogManager.UploadDiagnosticLogs(executionContext: jobContext, message: message, jobStartTimeUtc: jobStartTimeUtc);
+                        await diagnosticLogManager.UploadDiagnosticLogsAsync(executionContext: jobContext, message: message, jobStartTimeUtc: jobStartTimeUtc);
 
                         Trace.Info("Support log upload complete.");
                     }
