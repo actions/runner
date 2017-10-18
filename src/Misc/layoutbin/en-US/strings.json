@@ -544,6 +544,7 @@
   ],
   "Telemetry": "Telemetry",
   "TelemetryCommandDataError": "Unable to parse telemetry data {0}. Error: {1}",
+  "TelemetryCommandFailed": "Failed to publish telemetry data. Error {0}",
   "TelemetryCommandNotFound": "##vso[telemetry.{0}] is not a recognized command for Task command extension.",
   "TestAgentConnection": "Testing agent connection.",
   "TestAttachmentNotExists": "Skipping attachment as it is not available on disk: {0}",
