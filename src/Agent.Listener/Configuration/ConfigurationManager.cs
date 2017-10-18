@@ -107,8 +107,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
             if (!string.IsNullOrEmpty(clientCert) &&
                 !string.IsNullOrEmpty(clientCertKey) &&
-                !string.IsNullOrEmpty(clientCertArchive) &&
-                !string.IsNullOrEmpty(clientCertPassword))
+                !string.IsNullOrEmpty(clientCertArchive))
             {
                 // Ensure all client cert pieces are there.
                 clientCert = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), clientCert);
@@ -121,14 +120,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             }
             else if (!string.IsNullOrEmpty(clientCert) ||
                      !string.IsNullOrEmpty(clientCertKey) ||
-                     !string.IsNullOrEmpty(clientCertArchive) ||
-                     !string.IsNullOrEmpty(clientCertPassword))
+                     !string.IsNullOrEmpty(clientCertArchive))
             {
                 // Print out which args are missing.
                 ArgUtil.NotNullOrEmpty(Constants.Agent.CommandLine.Args.SslClientCert, Constants.Agent.CommandLine.Args.SslClientCert);
                 ArgUtil.NotNullOrEmpty(Constants.Agent.CommandLine.Args.SslClientCertKey, Constants.Agent.CommandLine.Args.SslClientCertKey);
                 ArgUtil.NotNullOrEmpty(Constants.Agent.CommandLine.Args.SslClientCertArchive, Constants.Agent.CommandLine.Args.SslClientCertArchive);
-                ArgUtil.NotNullOrEmpty(Constants.Agent.CommandLine.Args.SslClientCertPassword, Constants.Agent.CommandLine.Args.SslClientCertPassword);
             }
 
             if (!string.IsNullOrEmpty(caCert) || !string.IsNullOrEmpty(clientCert))
