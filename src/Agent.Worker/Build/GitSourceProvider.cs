@@ -232,6 +232,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 checkoutNestedSubmodules = StringUtil.ConvertToBoolean(endpoint.Data[WellKnownEndpointData.CheckoutNestedSubmodules]);
             }
 
+            bool acceptUntrustedCerts = false;
+            if (endpoint.Data.ContainsKey("acceptUntrustedCerts")) // TODO: Use WellKnownEndpointData.AcceptUntrustedCerts when available.
+            {
+                acceptUntrustedCerts = StringUtil.ConvertToBoolean(endpoint.Data["acceptUntrustedCerts"]); // TODO: Use WellKnownEndpointData.AcceptUntrustedCerts when available.
+            }
+
             int fetchDepth = 0;
             if (endpoint.Data.ContainsKey("fetchDepth") &&
                 (!int.TryParse(endpoint.Data["fetchDepth"], out fetchDepth) || fetchDepth < 0))
@@ -261,6 +267,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             Trace.Info($"exposeCred={exposeCred}");
             Trace.Info($"fetchDepth={fetchDepth}");
             Trace.Info($"gitLfsSupport={gitLfsSupport}");
+            Trace.Info($"acceptUntrustedCerts={acceptUntrustedCerts}");
 
             // Determine which git will be use
             // On windows, we prefer the built-in portable git within the agent's externals folder, set system.prefergitfrompath=true can change the behavior, 
@@ -542,6 +549,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
             List<string> additionalFetchArgs = new List<string>();
             List<string> additionalLfsFetchArgs = new List<string>();
+            if (acceptUntrustedCerts)
+            {
+                additionalFetchArgs.Add($"-c http.sslVerify=false");
+            }
+
             if (!_selfManageGitCreds)
             {
                 // v2.9 git support provide auth header as cmdline arg. 
