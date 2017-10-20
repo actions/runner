@@ -88,14 +88,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Telemetry
 
             var commandContext = HostContext.CreateService<IAsyncCommandContext>();
             commandContext.InitializeCommandContext(context, StringUtil.Loc("Telemetry"));
-            try
-            {
-                ciService.PublishEventsAsync(new CustomerIntelligenceEvent[] { ciEvent }).SyncResult();
-            }
-            catch (Exception ex)
-            {
-                context.Warning(StringUtil.Loc("TelemetryCommandFailed", ex.Message));
-            }
+            commandContext.Task = ciService.PublishEventsAsync(new CustomerIntelligenceEvent[] { ciEvent });
+            context.AsyncCommands.Add(commandContext);
         }
 
         internal static class WellKnownEventTrackCommand
