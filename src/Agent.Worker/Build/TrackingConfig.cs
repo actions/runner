@@ -20,6 +20,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             IExecutionContext executionContext,
             LegacyTrackingConfig copy,
             string sourcesDirectoryNameOnly,
+            string repositoryType,
             bool useNewArtifactsDirectoryName = false)
         {
             // Set the directories.
@@ -35,6 +36,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             CollectionUrl = executionContext.Variables.System_TFCollectionUrl;
             DefinitionId = copy.DefinitionId;
             HashKey = copy.HashKey;
+            RepositoryType = repositoryType;
             RepositoryUrl = copy.RepositoryUrl;
             System = copy.System;
         }
@@ -52,6 +54,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             DefinitionId = executionContext.Variables.System_DefinitionId;
             HashKey = hashKey;
             RepositoryUrl = endpoint.Url.AbsoluteUri;
+            RepositoryType = endpoint.Type;
             System = BuildSystem;
             UpdateJobRunProperties(executionContext);
         }
@@ -112,6 +115,56 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 }
 
                 LastRunOn = DateTimeOffset.Parse(value, CultureInfo.InvariantCulture);
+            }
+        }
+
+        public string RepositoryType { get; set; }
+
+        [JsonIgnore]
+        public DateTimeOffset? LastMaintenanceAttemptedOn { get; set; }
+
+        [JsonProperty("lastMaintenanceAttemptedOn")]
+        [EditorBrowsableAttribute(EditorBrowsableState.Never)]
+        public string LastMaintenanceAttemptedOnString
+        {
+            get
+            {
+                return string.Format(CultureInfo.InvariantCulture, "{0}", LastMaintenanceAttemptedOn);
+            }
+
+            set
+            {
+                if (string.IsNullOrEmpty(value))
+                {
+                    LastMaintenanceAttemptedOn = null;
+                    return;
+                }
+
+                LastMaintenanceAttemptedOn = DateTimeOffset.Parse(value, CultureInfo.InvariantCulture);
+            }
+        }
+
+        [JsonIgnore]
+        public DateTimeOffset? LastMaintenanceCompletedOn { get; set; }
+
+        [JsonProperty("lastMaintenanceCompletedOn")]
+        [EditorBrowsableAttribute(EditorBrowsableState.Never)]
+        public string LastMaintenanceCompletedOnString
+        {
+            get
+            {
+                return string.Format(CultureInfo.InvariantCulture, "{0}", LastMaintenanceCompletedOn);
+            }
+
+            set
+            {
+                if (string.IsNullOrEmpty(value))
+                {
+                    LastMaintenanceCompletedOn = null;
+                    return;
+                }
+
+                LastMaintenanceCompletedOn = DateTimeOffset.Parse(value, CultureInfo.InvariantCulture);
             }
         }
 

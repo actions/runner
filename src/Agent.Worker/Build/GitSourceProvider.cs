@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using System.IO;
 using System.Text.RegularExpressions;
 using System.Text;
+using System.Diagnostics;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 {
@@ -934,6 +935,64 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             if (_useClientCert && !string.IsNullOrEmpty(_clientCertPrivateKeyAskPassFile))
             {
                 IOUtil.DeleteFile(_clientCertPrivateKeyAskPassFile);
+            }
+        }
+
+        public override async Task RunMaintenanceOperations(IExecutionContext executionContext, string repositoryPath)
+        {
+            Trace.Entering();
+            // Validate args.
+            ArgUtil.NotNull(executionContext, nameof(executionContext));
+            ArgUtil.NotNullOrEmpty(repositoryPath, nameof(repositoryPath));
+            executionContext.Output($"Run maintenance operation on repository: {repositoryPath}");
+
+            // Initialize git command manager
+            _gitCommandManager = HostContext.GetService<IGitCommandManager>();
+#if OS_WINDOWS
+            // On Windows, we will always find git from externals
+            await _gitCommandManager.LoadGitExecutionInfo(executionContext, useBuiltInGit: true);
+#else
+            // On linux/OSX, we will always find git from %PATH%
+            await _gitCommandManager.LoadGitExecutionInfo(executionContext, useBuiltInGit: false);
+#endif
+
+            // if the folder is missing, skip it
+            if (!Directory.Exists(repositoryPath) || !Directory.Exists(Path.Combine(repositoryPath, ".git")))
+            {
+                return;
+            }
+
+            // add a timer to track how much time we used for git-repack
+            Stopwatch timer = Stopwatch.StartNew();
+            try
+            {
+                // git count-objects before git repack
+                executionContext.Output("Repository status before executing 'git repack'");
+                int exitCode_countobjectsbefore = await _gitCommandManager.GitCountObjects(executionContext, repositoryPath);
+                if (exitCode_countobjectsbefore != 0)
+                {
+                    throw new InvalidOperationException($"Git count-objects failed with exit code: {exitCode_countobjectsbefore}");
+                }
+
+                // git repack
+                int exitCode_repack = await _gitCommandManager.GitRepack(executionContext, repositoryPath);
+                if (exitCode_repack != 0)
+                {
+                    throw new InvalidOperationException($"Git repack failed with exit code: {exitCode_repack}");
+                }
+
+                // git count-objects after git repack
+                executionContext.Output("Repository status after executing 'git repack'");
+                int exitCode_countobjectsafter = await _gitCommandManager.GitCountObjects(executionContext, repositoryPath);
+                if (exitCode_countobjectsafter != 0)
+                {
+                    throw new InvalidOperationException($"Git count-objects failed with exit code: {exitCode_countobjectsafter}");
+                }
+            }
+            finally
+            {
+                timer.Stop();
+                executionContext.Output($"Total time for executing maintenance for repository '{repositoryPath}': {timer.Elapsed.TotalSeconds} seconds.");
             }
         }
 

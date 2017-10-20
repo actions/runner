@@ -7,7 +7,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Maintenance
     public interface IMaintenanceServiceProvider : IExtension
     {
         string MaintenanceDescription { get; }
-        void RunMaintenanceOperation(IExecutionContext context);
+        Task RunMaintenanceOperation(IExecutionContext context);
     }
 
     public sealed class MaintenanceJobExtension : JobExtension
@@ -39,7 +39,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Maintenance
             repoName = string.Empty;
         }
 
-        private Task MaintainAsync(IExecutionContext executionContext)
+        private async Task MaintainAsync(IExecutionContext executionContext)
         {
             // Validate args.
             Trace.Entering();
@@ -54,7 +54,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Maintenance
                     executionContext.Section(StringUtil.Loc("StartMaintenance", maintenanceProvider.MaintenanceDescription));
                     try
                     {
-                        maintenanceProvider.RunMaintenanceOperation(executionContext);
+                        await maintenanceProvider.RunMaintenanceOperation(executionContext);
                     }
                     catch (Exception ex)
                     {
@@ -64,8 +64,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Maintenance
                     executionContext.Section(StringUtil.Loc("FinishMaintenance", maintenanceProvider.MaintenanceDescription));
                 }
             }
-
-            return Task.CompletedTask;
         }
 
         public override void InitializeJobExtension(IExecutionContext context)
