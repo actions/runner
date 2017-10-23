@@ -39,8 +39,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             // TODO: Fix bug that exists in the legacy Windows agent where configuration using mirrored credentials causes an error, but the agent is still functional (after restarting). Mirrored credentials is a supported scenario and shouldn't manifest any errors.
 
             // We use NetworkService as default account for build and release agent
-            // We use Local System as default account for deployment agent
-            NTAccount defaultServiceAccount = command.DeploymentGroup ? _windowsServiceHelper.GetDefaultAdminServiceAccount() : _windowsServiceHelper.GetDefaultServiceAccount();
+            // We use Local System as default account for deployment agent, deployment pool agent
+            bool isDeploymentGroupScenario = command.DeploymentGroup || command.DeploymentPool;
+            NTAccount defaultServiceAccount = isDeploymentGroupScenario ? _windowsServiceHelper.GetDefaultAdminServiceAccount() : _windowsServiceHelper.GetDefaultServiceAccount();
             string logonAccount = command.GetWindowsLogonAccount(defaultValue: defaultServiceAccount.ToString(), descriptionMsg: StringUtil.Loc("WindowsLogonAccountNameDescription"));
 
             string domainName;

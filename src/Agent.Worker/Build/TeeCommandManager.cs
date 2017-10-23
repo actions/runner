@@ -78,7 +78,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             var whichUtil = HostContext.GetService<IWhichUtil>();
             string toolPath = whichUtil.Which("keytool", true);
             string jksFile = Path.Combine(ExecutionContext.Variables.Agent_TempDirectory, $"{Guid.NewGuid()}.jks");
-            string argLine = $"-importkeystore -srckeystore \"{clientCertArchive}\" -srcstoretype pkcs12 -destkeystore \"{jksFile}\" -deststoretype JKS -srcstorepass \"{clientCertPassword}\" -deststorepass \"{clientCertPassword}\"";
+            string argLine;
+            if (!string.IsNullOrEmpty(clientCertPassword))
+            {
+                argLine = $"-importkeystore -srckeystore \"{clientCertArchive}\" -srcstoretype pkcs12 -destkeystore \"{jksFile}\" -deststoretype JKS -srcstorepass \"{clientCertPassword}\" -deststorepass \"{clientCertPassword}\"";
+            }
+            else
+            {
+                argLine = $"-importkeystore -srckeystore \"{clientCertArchive}\" -srcstoretype pkcs12 -destkeystore \"{jksFile}\" -deststoretype JKS";
+            }
+
             ExecutionContext.Command($"{toolPath} {argLine}");
 
             var processInvoker = HostContext.CreateService<IProcessInvoker>();
@@ -99,8 +108,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
             processInvoker.ExecuteAsync(ExecutionContext.Variables.System_DefaultWorkingDirectory, toolPath, argLine, null, true, CancellationToken.None).GetAwaiter().GetResult();
 
-            ExecutionContext.Debug($"Set TF_ADDITIONAL_JAVA_ARGS=-Djavax.net.ssl.keyStore={jksFile} -Djavax.net.ssl.keyStorePassword={clientCertPassword}");
-            AdditionalEnvironmentVariables["TF_ADDITIONAL_JAVA_ARGS"]=$"-Djavax.net.ssl.keyStore={jksFile} -Djavax.net.ssl.keyStorePassword={clientCertPassword}";
+            if (!string.IsNullOrEmpty(clientCertPassword))
+            {
+                ExecutionContext.Debug($"Set TF_ADDITIONAL_JAVA_ARGS=-Djavax.net.ssl.keyStore={jksFile} -Djavax.net.ssl.keyStorePassword={clientCertPassword}");
+                AdditionalEnvironmentVariables["TF_ADDITIONAL_JAVA_ARGS"] = $"-Djavax.net.ssl.keyStore={jksFile} -Djavax.net.ssl.keyStorePassword={clientCertPassword}";
+            }
+            else
+            {
+                ExecutionContext.Debug($"Set TF_ADDITIONAL_JAVA_ARGS=-Djavax.net.ssl.keyStore={jksFile}");
+                AdditionalEnvironmentVariables["TF_ADDITIONAL_JAVA_ARGS"] = $"-Djavax.net.ssl.keyStore={jksFile}";
+            }
         }
 
         public async Task ShelveAsync(string shelveset, string commentFile, bool move)

@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using System.IO;
 using System.Text.RegularExpressions;
 using System.Text;
+using System.Diagnostics;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 {
@@ -351,40 +352,44 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 }
 
                 if (!string.IsNullOrEmpty(agentCert.ClientCertificateFile) &&
-                    !string.IsNullOrEmpty(agentCert.ClientCertificatePrivateKeyFile) &&
-                    !string.IsNullOrEmpty(agentCert.ClientCertificatePassword))
+                    !string.IsNullOrEmpty(agentCert.ClientCertificatePrivateKeyFile))
                 {
                     _useClientCert = true;
-                    _clientCertPrivateKeyAskPassFile = Path.Combine(executionContext.Variables.Agent_TempDirectory, $"{Guid.NewGuid()}.sh");
-                    List<string> askPass = new List<string>();
-                    askPass.Add("#!/bin/sh");
-                    askPass.Add($"echo \"{agentCert.ClientCertificatePassword}\"");
-                    File.WriteAllLines(_clientCertPrivateKeyAskPassFile, askPass);
+
+                    // prepare askpass for client cert password
+                    if (!string.IsNullOrEmpty(agentCert.ClientCertificatePassword))
+                    {
+                        _clientCertPrivateKeyAskPassFile = Path.Combine(executionContext.Variables.Agent_TempDirectory, $"{Guid.NewGuid()}.sh");
+                        List<string> askPass = new List<string>();
+                        askPass.Add("#!/bin/sh");
+                        askPass.Add($"echo \"{agentCert.ClientCertificatePassword}\"");
+                        File.WriteAllLines(_clientCertPrivateKeyAskPassFile, askPass);
 
 #if !OS_WINDOWS
-                    var whichUtil = HostContext.GetService<IWhichUtil>();
-                    string toolPath = whichUtil.Which("chmod", true);
-                    string argLine = $"775 {_clientCertPrivateKeyAskPassFile}";
-                    executionContext.Command($"chmod {argLine}");
+                        var whichUtil = HostContext.GetService<IWhichUtil>();
+                        string toolPath = whichUtil.Which("chmod", true);
+                        string argLine = $"775 {_clientCertPrivateKeyAskPassFile}";
+                        executionContext.Command($"chmod {argLine}");
 
-                    var processInvoker = HostContext.CreateService<IProcessInvoker>();
-                    processInvoker.OutputDataReceived += (object sender, ProcessDataReceivedEventArgs args) =>
-                    {
-                        if (!string.IsNullOrEmpty(args.Data))
+                        var processInvoker = HostContext.CreateService<IProcessInvoker>();
+                        processInvoker.OutputDataReceived += (object sender, ProcessDataReceivedEventArgs args) =>
                         {
-                            executionContext.Output(args.Data);
-                        }
-                    };
-                    processInvoker.ErrorDataReceived += (object sender, ProcessDataReceivedEventArgs args) =>
-                    {
-                        if (!string.IsNullOrEmpty(args.Data))
+                            if (!string.IsNullOrEmpty(args.Data))
+                            {
+                                executionContext.Output(args.Data);
+                            }
+                        };
+                        processInvoker.ErrorDataReceived += (object sender, ProcessDataReceivedEventArgs args) =>
                         {
-                            executionContext.Output(args.Data);
-                        }
-                    };
+                            if (!string.IsNullOrEmpty(args.Data))
+                            {
+                                executionContext.Output(args.Data);
+                            }
+                        };
 
-                    await processInvoker.ExecuteAsync(executionContext.Variables.System_DefaultWorkingDirectory, toolPath, argLine, null, true, CancellationToken.None);
+                        await processInvoker.ExecuteAsync(executionContext.Variables.System_DefaultWorkingDirectory, toolPath, argLine, null, true, CancellationToken.None);
 #endif
+                    }
                 }
             }
 
@@ -591,8 +596,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 if (_useClientCert)
                 {
                     executionContext.Debug($"Use client certificate '{agentCert.ClientCertificateFile}' for git fetch.");
-                    additionalFetchArgs.Add($"-c http.sslcert=\"{agentCert.ClientCertificateFile}\" -c http.sslkey=\"{agentCert.ClientCertificatePrivateKeyFile}\" -c http.sslCertPasswordProtected=true -c core.askpass=\"{_clientCertPrivateKeyAskPassFile}\"");
-                    additionalLfsFetchArgs.Add($"-c http.sslcert=\"{agentCert.ClientCertificateFile}\" -c http.sslkey=\"{agentCert.ClientCertificatePrivateKeyFile}\" -c http.sslCertPasswordProtected=true -c core.askpass=\"{_clientCertPrivateKeyAskPassFile}\"");
+
+                    if (!string.IsNullOrEmpty(_clientCertPrivateKeyAskPassFile))
+                    {
+                        additionalFetchArgs.Add($"-c http.sslcert=\"{agentCert.ClientCertificateFile}\" -c http.sslkey=\"{agentCert.ClientCertificatePrivateKeyFile}\" -c http.sslCertPasswordProtected=true -c core.askpass=\"{_clientCertPrivateKeyAskPassFile}\"");
+                        additionalLfsFetchArgs.Add($"-c http.sslcert=\"{agentCert.ClientCertificateFile}\" -c http.sslkey=\"{agentCert.ClientCertificatePrivateKeyFile}\" -c http.sslCertPasswordProtected=true -c core.askpass=\"{_clientCertPrivateKeyAskPassFile}\"");
+                    }
+                    else
+                    {
+                        additionalFetchArgs.Add($"-c http.sslcert=\"{agentCert.ClientCertificateFile}\" -c http.sslkey=\"{agentCert.ClientCertificatePrivateKeyFile}\"");
+                        additionalLfsFetchArgs.Add($"-c http.sslcert=\"{agentCert.ClientCertificateFile}\" -c http.sslkey=\"{agentCert.ClientCertificatePrivateKeyFile}\"");
+                    }
                 }
 
                 // Prepare gitlfs url for fetch and checkout
@@ -738,7 +752,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                     {
                         executionContext.Debug($"Use client certificate '{agentCert.ClientCertificateFile}' for git submodule update.");
                         string authorityUrl = repositoryUrl.AbsoluteUri.Replace(repositoryUrl.PathAndQuery, string.Empty);
-                        additionalSubmoduleUpdateArgs.Add($"-c http.{authorityUrl}.sslcert=\"{agentCert.ClientCertificateFile}\" -c http.{authorityUrl}.sslkey=\"{agentCert.ClientCertificatePrivateKeyFile}\" -c http.{authorityUrl}.sslCertPasswordProtected=true -c core.askpass=\"{_clientCertPrivateKeyAskPassFile}\"");
+
+                        if (!string.IsNullOrEmpty(_clientCertPrivateKeyAskPassFile))
+                        {
+                            additionalSubmoduleUpdateArgs.Add($"-c http.{authorityUrl}.sslcert=\"{agentCert.ClientCertificateFile}\" -c http.{authorityUrl}.sslkey=\"{agentCert.ClientCertificatePrivateKeyFile}\" -c http.{authorityUrl}.sslCertPasswordProtected=true -c core.askpass=\"{_clientCertPrivateKeyAskPassFile}\"");
+                        }
+                        else
+                        {
+                            additionalSubmoduleUpdateArgs.Add($"-c http.{authorityUrl}.sslcert=\"{agentCert.ClientCertificateFile}\" -c http.{authorityUrl}.sslkey=\"{agentCert.ClientCertificatePrivateKeyFile}\"");
+                        }
                     }
                 }
 
@@ -812,15 +834,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                         string sslCertConfigValue = $"\"{agentCert.ClientCertificateFile}\"";
                         string sslKeyConfigKey = "http.sslkey";
                         string sslKeyConfigValue = $"\"{agentCert.CACertificateFile}\"";
-                        string sslCertPasswordProtectedConfigKey = "http.sslcertpasswordprotected";
-                        string sslCertPasswordProtectedConfigValue = "true";
-                        string askPassConfigKey = "core.askpass";
-                        string askPassConfigValue = $"\"{_clientCertPrivateKeyAskPassFile}\"";
-
                         _configModifications[sslCertConfigKey] = sslCertConfigValue.Trim('\"');
                         _configModifications[sslKeyConfigKey] = sslKeyConfigValue.Trim('\"');
-                        _configModifications[sslCertPasswordProtectedConfigKey] = sslCertPasswordProtectedConfigValue.Trim('\"');
-                        _configModifications[askPassConfigKey] = askPassConfigValue.Trim('\"');
 
                         int exitCode_sslconfig = await _gitCommandManager.GitConfig(executionContext, targetPath, sslCertConfigKey, sslCertConfigValue);
                         if (exitCode_sslconfig != 0)
@@ -834,16 +849,27 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                             throw new InvalidOperationException($"Git config failed with exit code: {exitCode_sslconfig}");
                         }
 
-                        exitCode_sslconfig = await _gitCommandManager.GitConfig(executionContext, targetPath, sslCertPasswordProtectedConfigKey, sslCertPasswordProtectedConfigValue);
-                        if (exitCode_sslconfig != 0)
+                        // the client private key has a password
+                        if (!string.IsNullOrEmpty(_clientCertPrivateKeyAskPassFile))
                         {
-                            throw new InvalidOperationException($"Git config failed with exit code: {exitCode_sslconfig}");
-                        }
+                            string sslCertPasswordProtectedConfigKey = "http.sslcertpasswordprotected";
+                            string sslCertPasswordProtectedConfigValue = "true";
+                            string askPassConfigKey = "core.askpass";
+                            string askPassConfigValue = $"\"{_clientCertPrivateKeyAskPassFile}\"";
+                            _configModifications[sslCertPasswordProtectedConfigKey] = sslCertPasswordProtectedConfigValue.Trim('\"');
+                            _configModifications[askPassConfigKey] = askPassConfigValue.Trim('\"');
 
-                        exitCode_sslconfig = await _gitCommandManager.GitConfig(executionContext, targetPath, askPassConfigKey, askPassConfigValue);
-                        if (exitCode_sslconfig != 0)
-                        {
-                            throw new InvalidOperationException($"Git config failed with exit code: {exitCode_sslconfig}");
+                            exitCode_sslconfig = await _gitCommandManager.GitConfig(executionContext, targetPath, sslCertPasswordProtectedConfigKey, sslCertPasswordProtectedConfigValue);
+                            if (exitCode_sslconfig != 0)
+                            {
+                                throw new InvalidOperationException($"Git config failed with exit code: {exitCode_sslconfig}");
+                            }
+
+                            exitCode_sslconfig = await _gitCommandManager.GitConfig(executionContext, targetPath, askPassConfigKey, askPassConfigValue);
+                            if (exitCode_sslconfig != 0)
+                            {
+                                throw new InvalidOperationException($"Git config failed with exit code: {exitCode_sslconfig}");
+                            }
                         }
                     }
                 }
@@ -873,7 +899,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                     }
                 }
 
-                if (_useClientCert && !exposeCred)
+                if (_useClientCert && !string.IsNullOrEmpty(_clientCertPrivateKeyAskPassFile) && !exposeCred)
                 {
                     executionContext.Debug("Remove git.sslkey askpass file.");
                     IOUtil.DeleteFile(_clientCertPrivateKeyAskPassFile);
@@ -909,6 +935,64 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             if (_useClientCert && !string.IsNullOrEmpty(_clientCertPrivateKeyAskPassFile))
             {
                 IOUtil.DeleteFile(_clientCertPrivateKeyAskPassFile);
+            }
+        }
+
+        public override async Task RunMaintenanceOperations(IExecutionContext executionContext, string repositoryPath)
+        {
+            Trace.Entering();
+            // Validate args.
+            ArgUtil.NotNull(executionContext, nameof(executionContext));
+            ArgUtil.NotNullOrEmpty(repositoryPath, nameof(repositoryPath));
+            executionContext.Output($"Run maintenance operation on repository: {repositoryPath}");
+
+            // Initialize git command manager
+            _gitCommandManager = HostContext.GetService<IGitCommandManager>();
+#if OS_WINDOWS
+            // On Windows, we will always find git from externals
+            await _gitCommandManager.LoadGitExecutionInfo(executionContext, useBuiltInGit: true);
+#else
+            // On linux/OSX, we will always find git from %PATH%
+            await _gitCommandManager.LoadGitExecutionInfo(executionContext, useBuiltInGit: false);
+#endif
+
+            // if the folder is missing, skip it
+            if (!Directory.Exists(repositoryPath) || !Directory.Exists(Path.Combine(repositoryPath, ".git")))
+            {
+                return;
+            }
+
+            // add a timer to track how much time we used for git-repack
+            Stopwatch timer = Stopwatch.StartNew();
+            try
+            {
+                // git count-objects before git repack
+                executionContext.Output("Repository status before executing 'git repack'");
+                int exitCode_countobjectsbefore = await _gitCommandManager.GitCountObjects(executionContext, repositoryPath);
+                if (exitCode_countobjectsbefore != 0)
+                {
+                    throw new InvalidOperationException($"Git count-objects failed with exit code: {exitCode_countobjectsbefore}");
+                }
+
+                // git repack
+                int exitCode_repack = await _gitCommandManager.GitRepack(executionContext, repositoryPath);
+                if (exitCode_repack != 0)
+                {
+                    throw new InvalidOperationException($"Git repack failed with exit code: {exitCode_repack}");
+                }
+
+                // git count-objects after git repack
+                executionContext.Output("Repository status after executing 'git repack'");
+                int exitCode_countobjectsafter = await _gitCommandManager.GitCountObjects(executionContext, repositoryPath);
+                if (exitCode_countobjectsafter != 0)
+                {
+                    throw new InvalidOperationException($"Git count-objects failed with exit code: {exitCode_countobjectsafter}");
+                }
+            }
+            finally
+            {
+                timer.Stop();
+                executionContext.Output($"Total time for executing maintenance for repository '{repositoryPath}': {timer.Elapsed.TotalSeconds} seconds.");
             }
         }
 

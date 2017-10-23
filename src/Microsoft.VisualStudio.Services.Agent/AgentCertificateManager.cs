@@ -43,7 +43,6 @@ namespace Microsoft.VisualStudio.Services.Agent
                 ArgUtil.File(clientCert, nameof(clientCert));
                 ArgUtil.File(clientCertPrivateKey, nameof(clientCertPrivateKey));
                 ArgUtil.File(clientCertArchive, nameof(clientCertArchive));
-                ArgUtil.NotNullOrEmpty(clientCertPassword, nameof(clientCertPassword));
 
                 Trace.Info($"Client cert '{clientCert}'");
                 Trace.Info($"Client cert private key '{clientCertPrivateKey}'");
@@ -79,21 +78,24 @@ namespace Microsoft.VisualStudio.Services.Agent
 
             if (!string.IsNullOrEmpty(ClientCertificateFile) &&
                 !string.IsNullOrEmpty(ClientCertificatePrivateKeyFile) &&
-                !string.IsNullOrEmpty(ClientCertificateArchiveFile) &&
-                !string.IsNullOrEmpty(ClientCertificatePassword))
+                !string.IsNullOrEmpty(ClientCertificateArchiveFile))
             {
                 Trace.Info($"Store client cert settings to '{certSettingFile}'");
-
-                string lookupKey = Guid.NewGuid().ToString("D").ToUpperInvariant();
-                Trace.Info($"Store client cert private key password with lookup key {lookupKey}");
-
-                var credStore = HostContext.GetService<IAgentCredentialStore>();
-                credStore.Write($"VSTS_AGENT_CLIENT_CERT_PASSWORD_{lookupKey}", "VSTS", ClientCertificatePassword);
 
                 setting.ClientCert = ClientCertificateFile;
                 setting.ClientCertPrivatekey = ClientCertificatePrivateKeyFile;
                 setting.ClientCertArchive = ClientCertificateArchiveFile;
-                setting.ClientCertPasswordLookupKey = lookupKey;
+
+                if (!string.IsNullOrEmpty(ClientCertificatePassword))
+                {
+                    string lookupKey = Guid.NewGuid().ToString("D").ToUpperInvariant();
+                    Trace.Info($"Store client cert private key password with lookup key {lookupKey}");
+
+                    var credStore = HostContext.GetService<IAgentCredentialStore>();
+                    credStore.Write($"VSTS_AGENT_CLIENT_CERT_PASSWORD_{lookupKey}", "VSTS", ClientCertificatePassword);
+
+                    setting.ClientCertPasswordLookupKey = lookupKey;
+                }
             }
 
             if (!string.IsNullOrEmpty(CACertificateFile) ||
@@ -148,7 +150,6 @@ namespace Microsoft.VisualStudio.Services.Agent
                     ArgUtil.File(certSetting.ClientCert, nameof(certSetting.ClientCert));
                     ArgUtil.File(certSetting.ClientCertPrivatekey, nameof(certSetting.ClientCertPrivatekey));
                     ArgUtil.File(certSetting.ClientCertArchive, nameof(certSetting.ClientCertArchive));
-                    ArgUtil.NotNullOrEmpty(certSetting.ClientCertPasswordLookupKey, nameof(certSetting.ClientCertPasswordLookupKey));
 
                     Trace.Info($"Client cert '{certSetting.ClientCert}'");
                     Trace.Info($"Client cert private key '{certSetting.ClientCertPrivatekey}'");
@@ -158,11 +159,14 @@ namespace Microsoft.VisualStudio.Services.Agent
                     ClientCertificatePrivateKeyFile = certSetting.ClientCertPrivatekey;
                     ClientCertificateArchiveFile = certSetting.ClientCertArchive;
 
-                    var cerdStore = HostContext.GetService<IAgentCredentialStore>();
-                    ClientCertificatePassword = cerdStore.Read($"VSTS_AGENT_CLIENT_CERT_PASSWORD_{certSetting.ClientCertPasswordLookupKey}").Password;
+                    if (!string.IsNullOrEmpty(certSetting.ClientCertPasswordLookupKey))
+                    {
+                        var cerdStore = HostContext.GetService<IAgentCredentialStore>();
+                        ClientCertificatePassword = cerdStore.Read($"VSTS_AGENT_CLIENT_CERT_PASSWORD_{certSetting.ClientCertPasswordLookupKey}").Password;
 
-                    var secretMasker = HostContext.GetService<ISecretMasker>();
-                    secretMasker.AddValue(ClientCertificatePassword);
+                        var secretMasker = HostContext.GetService<ISecretMasker>();
+                        secretMasker.AddValue(ClientCertificatePassword);
+                    }
 
                     _clientCertificates.Clear();
                     _clientCertificates.Add(new X509Certificate2(ClientCertificateArchiveFile, ClientCertificatePassword));

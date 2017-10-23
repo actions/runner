@@ -514,6 +514,7 @@
   "ShallowCheckoutFail": "Git checkout failed on shallow repository, this might because of git fetch with depth '{0}' doesn't include the checkout commit '{1}'. Please reference documentation (http://go.microsoft.com/fwlink/?LinkId=829603)",
   "ShutdownMessage": "Restarting the machine in order to launch agent in interactive mode.",
   "Skipping": "Does not exist. Skipping ",
+  "SkipTrackingFileWithoutRepoType": "Skip tracking file '{0}', repository type haven't been updated yet.",
   "SourceArtifactProviderNotFound": "Cannot find source provider for artifact of type {0}",
   "SourceDirectoriesNotSpecified": "Source directories field is not specified. Specify valid source directories for code coverage reports to include highlighted source code and try again.",
   "SourceDirectoriesNotSpecifiedForMultiModule": "Source directories field is not specified. Source directories field is required for a multi module project for code coverage reports to include highlighted source code.",

@@ -83,6 +83,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         // git lfs logs last
         Task<int> GitLFSLogs(IExecutionContext context, string repositoryPath);
 
+        // git repack -adfl
+        Task<int> GitRepack(IExecutionContext context, string repositoryPath);
+
+        // git count-objects -v -H
+        Task<int> GitCountObjects(IExecutionContext context, string repositoryPath);
+
         // git version
         Task<Version> GitVersion(IExecutionContext context);
     }
@@ -399,6 +405,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         {
             context.Debug("Disable git auto garbage collection.");
             return await ExecuteGitCommandAsync(context, repositoryPath, "config", "gc.auto 0");
+        }
+
+        // git repack -adfl
+        public async Task<int> GitRepack(IExecutionContext context, string repositoryPath)
+        {
+            context.Debug("Compress .git directory.");
+            return await ExecuteGitCommandAsync(context, repositoryPath, "repack", "-adfl");
+        }
+
+        // git count-objects -v -H
+        public async Task<int> GitCountObjects(IExecutionContext context, string repositoryPath)
+        {
+            context.Debug("Inspect .git directory.");
+            return await ExecuteGitCommandAsync(context, repositoryPath, "count-objects", "-v -H");
         }
 
         // git lfs install --local

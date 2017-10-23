@@ -107,8 +107,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
             if (!string.IsNullOrEmpty(clientCert) &&
                 !string.IsNullOrEmpty(clientCertKey) &&
-                !string.IsNullOrEmpty(clientCertArchive) &&
-                !string.IsNullOrEmpty(clientCertPassword))
+                !string.IsNullOrEmpty(clientCertArchive))
             {
                 // Ensure all client cert pieces are there.
                 clientCert = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), clientCert);
@@ -121,14 +120,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             }
             else if (!string.IsNullOrEmpty(clientCert) ||
                      !string.IsNullOrEmpty(clientCertKey) ||
-                     !string.IsNullOrEmpty(clientCertArchive) ||
-                     !string.IsNullOrEmpty(clientCertPassword))
+                     !string.IsNullOrEmpty(clientCertArchive))
             {
                 // Print out which args are missing.
                 ArgUtil.NotNullOrEmpty(Constants.Agent.CommandLine.Args.SslClientCert, Constants.Agent.CommandLine.Args.SslClientCert);
                 ArgUtil.NotNullOrEmpty(Constants.Agent.CommandLine.Args.SslClientCertKey, Constants.Agent.CommandLine.Args.SslClientCertKey);
                 ArgUtil.NotNullOrEmpty(Constants.Agent.CommandLine.Args.SslClientCertArchive, Constants.Agent.CommandLine.Args.SslClientCertArchive);
-                ArgUtil.NotNullOrEmpty(Constants.Agent.CommandLine.Args.SslClientCertPassword, Constants.Agent.CommandLine.Args.SslClientCertPassword);
             }
 
             if (!string.IsNullOrEmpty(caCert) || !string.IsNullOrEmpty(clientCert))
@@ -333,17 +330,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 agent.Authorization.ClientId != Guid.Empty &&
                 agent.Authorization.AuthorizationUrl != null)
             {
-                // For TFS, we need make sure the Schema/Host/Port component of the authorization url also match configuration url.
+                // We use authorizationUrl as the oauth endpoint url by default.
+                // For TFS, we need make sure the Schema/Host/Port component of the oauth endpoint url also match configuration url. (Incase of customer's agent configure URL and TFS server public URL are different)
+                // Which means, we will keep use the original authorizationUrl in the VssOAuthJwtBearerClientCredential (authorizationUrl is the audience),
+                // But might have different Url in VssOAuthCredential (connection url)
                 // We can't do this for VSTS, since its SPS/TFS urls are different.
                 UriBuilder configServerUrl = new UriBuilder(agentSettings.ServerUrl);
-                UriBuilder authorizationUrl = new UriBuilder(agent.Authorization.AuthorizationUrl);
+                UriBuilder oauthEndpointUrlBuilder = new UriBuilder(agent.Authorization.AuthorizationUrl);
                 if (!UrlUtil.IsHosted(configServerUrl.Uri.AbsoluteUri) &&
-                    Uri.Compare(configServerUrl.Uri, authorizationUrl.Uri, UriComponents.SchemeAndServer, UriFormat.Unescaped, StringComparison.OrdinalIgnoreCase) != 0)
+                    Uri.Compare(configServerUrl.Uri, oauthEndpointUrlBuilder.Uri, UriComponents.SchemeAndServer, UriFormat.Unescaped, StringComparison.OrdinalIgnoreCase) != 0)
                 {
-                    authorizationUrl.Scheme = configServerUrl.Scheme;
-                    authorizationUrl.Host = configServerUrl.Host;
-                    authorizationUrl.Port = configServerUrl.Port;
-                    Trace.Info($"Replace authorization url's scheme://host:port component with agent configure url's scheme://host:port: '{authorizationUrl.Uri.AbsoluteUri}'.");
+                    oauthEndpointUrlBuilder.Scheme = configServerUrl.Scheme;
+                    oauthEndpointUrlBuilder.Host = configServerUrl.Host;
+                    oauthEndpointUrlBuilder.Port = configServerUrl.Port;
+                    Trace.Info($"Set oauth endpoint url's scheme://host:port component to match agent configure url's scheme://host:port: '{oauthEndpointUrlBuilder.Uri.AbsoluteUri}'.");
                 }
 
                 var credentialData = new CredentialData
@@ -352,7 +352,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                     Data =
                     {
                         { "clientId", agent.Authorization.ClientId.ToString("D") },
-                        { "authorizationUrl", authorizationUrl.Uri.AbsoluteUri },
+                        { "authorizationUrl", agent.Authorization.AuthorizationUrl.AbsoluteUri },
+                        { "oauthEndpointUrl", oauthEndpointUrlBuilder.Uri.AbsoluteUri },
                     },
                 };
 

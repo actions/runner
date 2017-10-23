@@ -397,13 +397,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
             if (!string.IsNullOrEmpty(agentCert.ClientCertificateFile) &&
                 !string.IsNullOrEmpty(agentCert.ClientCertificatePrivateKeyFile) &&
-                !string.IsNullOrEmpty(agentCert.ClientCertificateArchiveFile) &&
-                !string.IsNullOrEmpty(agentCert.ClientCertificatePassword))
+                !string.IsNullOrEmpty(agentCert.ClientCertificateArchiveFile))
             {
                 Variables.Set(Constants.Variables.Agent.SslClientCert, agentCert.ClientCertificateFile);
                 Variables.Set(Constants.Variables.Agent.SslClientCertKey, agentCert.ClientCertificatePrivateKeyFile);
                 Variables.Set(Constants.Variables.Agent.SslClientCertArchive, agentCert.ClientCertificateArchiveFile);
-                Variables.Set(Constants.Variables.Agent.SslClientCertPassword, agentCert.ClientCertificatePassword, true);
+
+                if (!string.IsNullOrEmpty(agentCert.ClientCertificatePassword))
+                {
+                    Variables.Set(Constants.Variables.Agent.SslClientCertPassword, agentCert.ClientCertificatePassword, true);
+                }
             }
 
             // Job timeline record.

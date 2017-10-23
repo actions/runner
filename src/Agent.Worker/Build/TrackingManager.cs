@@ -29,6 +29,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         void MarkExpiredForGarbageCollection(IExecutionContext executionContext, TimeSpan expiration);
 
         void DisposeCollectedGarbage(IExecutionContext executionContext);
+
+        void MaintenanceStarted(TrackingConfig config, string file);
+
+        void MaintenanceCompleted(TrackingConfig config, string file);
     }
 
     public sealed class TrackingManager : AgentService, ITrackingManager
@@ -160,10 +164,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 config = new TrackingConfig(
                     executionContext,
                     legacyConfig,
-                    // The sources folder wasn't stored in the legacy format - only the
+                    // The repository type and sources folder wasn't stored in the legacy format - only the
                     // build folder was stored. Since the hash key has changed, it is
                     // unknown what the source folder was named. Just set the folder name
-                    // to "s" so the property isn't left blank.
+                    // to "s" so the property isn't left blank. 
+                    repositoryType: string.Empty,
                     sourcesDirectoryNameOnly: Constants.Build.Path.SourcesDirectory);
             }
 
@@ -184,6 +189,21 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
             // Update the info properties and save the file.
             config.UpdateJobRunProperties(executionContext);
+            WriteToFile(file, config);
+        }
+
+        public void MaintenanceStarted(TrackingConfig config, string file)
+        {
+            Trace.Entering();
+            config.LastMaintenanceAttemptedOn = DateTimeOffset.Now;
+            config.LastMaintenanceCompletedOn = null;
+            WriteToFile(file, config);
+        }
+
+        public void MaintenanceCompleted(TrackingConfig config, string file)
+        {
+            Trace.Entering();
+            config.LastMaintenanceCompletedOn = DateTimeOffset.Now;
             WriteToFile(file, config);
         }
 
@@ -277,6 +297,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             {
                 foreach (string gcFile in gcTrackingFiles)
                 {
+                    // maintenance has been cancelled.
+                    executionContext.CancellationToken.ThrowIfCancellationRequested();
+
                     try
                     {
                         var gcConfig = LoadIfExists(executionContext, gcFile) as TrackingConfig;

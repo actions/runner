@@ -87,7 +87,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
                     Constants.Build.Path.TopLevelTrackingConfigFile);
                 var config = JsonConvert.DeserializeObject<TopLevelTrackingConfig>(
                     value: File.ReadAllText(topLevelFile));
-                    Assert.Equal(1, config.LastBuildDirectoryNumber);
+                Assert.Equal(1, config.LastBuildDirectoryNumber);
                 // Manipulate the expected seconds due to loss of granularity when the
                 // date-time-offset is serialized in a friendly format.
                 Assert.True(testStartOn.AddSeconds(-1) <= config.LastBuildDirectoryCreatedOn);
@@ -371,6 +371,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
   ""definitionName"": ""M87_PrintEnvVars"",
   ""fileFormatVersion"": 3,
   ""lastRunOn"": ""09/16/2015 23:56:46 -04:00"",
+  ""repositoryType"": ""tfsgit"",
+  ""lastMaintenanceAttemptedOn"": ""09/16/2015 23:56:46 -04:00"",
+  ""lastMaintenanceCompletedOn"": ""09/16/2015 23:56:46 -04:00"",
   ""build_sourcesdirectory"": ""b00335b6\\gitTest"",
   ""common_testresultsdirectory"": ""b00335b6\\TestResults"",
   ""collectionId"": ""7aee6dde-6381-4098-93e7-50a8264cf066"",
@@ -452,6 +455,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
   ""definitionName"": null,
   ""fileFormatVersion"": 3,
   ""lastRunOn"": """",
+  ""repositoryType"": """",
+  ""lastMaintenanceAttemptedOn"": """",
+  ""lastMaintenanceCompletedOn"": """",
   ""build_sourcesdirectory"": ""b00335b6\\s"",
   ""common_testresultsdirectory"": ""b00335b6\\TestResults"",
   ""collectionId"": ""7aee6dde-6381-4098-93e7-50a8264cf066"",
