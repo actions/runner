@@ -139,6 +139,35 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Telemetry
             var ex = Assert.Throws<Exception>(() => publishTelemetryCmd.ProcessCommand(_ec.Object, cmd));
         }
 
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Telemetry")]
+        public void PublishTelemetryCommandWithExceptionFromServer()
+        {
+            SetupMocks();
+            _mockCiService.Setup(x => x.PublishEventsAsync(It.IsAny<CustomerIntelligenceEvent[]>())).Throws<Exception>();
+
+            var publishTelemetryCmd = new TelemetryCommandExtension();
+            publishTelemetryCmd.Initialize(_hc);
+
+            var data = new Dictionary<string, object>()
+            {
+                {"key1", "valu\\e1"},
+                {"key2", "value2"},
+                {"key3", Int64.Parse("4") }
+            };
+
+            var json = JsonConvert.SerializeObject(data, Formatting.None);
+            var cmd = new Command("telemetry", "publish");
+            cmd.Data = json;
+            cmd.Properties.Add("area", "Test");
+            cmd.Properties.Add("feature", "Task");
+
+            publishTelemetryCmd.ProcessCommand(_ec.Object, cmd);
+            _mockCiService.Verify(s => s.PublishEventsAsync(It.Is<CustomerIntelligenceEvent[]>(e => VerifyEvent(e, data))), Times.Once());
+            Assert.True(_warnings.Count > 0);
+        }
+
         private void SetupMocks([CallerMemberName] string name = "")
         {
             _hc = new TestHostContext(this, name);
