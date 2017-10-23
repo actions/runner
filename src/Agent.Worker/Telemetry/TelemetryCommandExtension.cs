@@ -88,9 +88,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Telemetry
 
             var commandContext = HostContext.CreateService<IAsyncCommandContext>();
             commandContext.InitializeCommandContext(context, StringUtil.Loc("Telemetry"));
+            commandContext.Task = PublishEventsAsync(context, ciService, ciEvent);
+        }
+
+        private async Task PublishEventsAsync(IExecutionContext context, ICustomerIntelligenceServer ciService, CustomerIntelligenceEvent ciEvent)
+        {
             try
             {
-                ciService.PublishEventsAsync(new CustomerIntelligenceEvent[] { ciEvent }).SyncResult();
+                await ciService.PublishEventsAsync(new CustomerIntelligenceEvent[] { ciEvent });
             }
             catch (Exception ex)
             {
