@@ -4,11 +4,17 @@
 
 ## OSX Version
 
-Tested on 10.10 (Yosemite) and 10.11 (El Capitan).  Not domain joined.
+### Agent version 2.125.0 or above (.Net Core 2.x)  
+  - macOS 10.12 "Sierra" and later versions
 
-## OSX
+.Net Core 2.x doesn't has any extra prerequisites
 
-Net core requires update OpenSSL - [issue 110](https://github.com/Microsoft/vsts-agent/issues/110) 
+### Agent version 2.124.0 or below (.Net Core 1.x) 
+  - macOS 10.12 "Sierra"
+  - macOS 10.11 "El Capitan"
+  - macOS 10.10 "Yosemite"
+
+.Net Core 1.x requires update OpenSSL - [issue 110](https://github.com/Microsoft/vsts-agent/issues/110) 
 
 [From Net Core Instructions](https://www.microsoft.com/net/core#macos)
 
