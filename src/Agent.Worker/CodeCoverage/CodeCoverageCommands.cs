@@ -28,10 +28,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
             {
                 ProcessPublishCodeCoverageCommand(context, command.Properties);
             }
-            else if (string.Equals(command.Event, WellKnownResultsCommand.EnableCodeCoverage, StringComparison.OrdinalIgnoreCase))
-            {
-                ProcessEnableCodeCoverageCommand(context, command.Properties);
-            }
             else
             {
                 throw new Exception(StringUtil.Loc("CodeCoverageCommandNotFound", command.Event));
@@ -53,45 +49,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
                 return "codecoverage";
             }
         }
-
-        #region enable code coverage helper methods
-        private void ProcessEnableCodeCoverageCommand(IExecutionContext context, Dictionary<string, string> eventProperties)
-        {
-            string codeCoverageTool;
-            eventProperties.TryGetValue(EnableCodeCoverageEventProperties.CodeCoverageTool, out codeCoverageTool);
-            if (string.IsNullOrWhiteSpace(codeCoverageTool))
-            {
-                // no code coverage tool specified. Dont enable code coverage.
-                return;
-            }
-            codeCoverageTool = codeCoverageTool.Trim();
-
-            string buildTool;
-            eventProperties.TryGetValue(EnableCodeCoverageEventProperties.BuildTool, out buildTool);
-            if (string.IsNullOrEmpty(buildTool))
-            {
-                throw new ArgumentException(StringUtil.Loc("ArgumentNeeded", "BuildTool"));
-            }
-            buildTool = buildTool.Trim();
-
-            var codeCoverageInputs = new CodeCoverageEnablerInputs(context, buildTool, eventProperties);
-            ICodeCoverageEnabler ccEnabler = GetCodeCoverageEnabler(buildTool, codeCoverageTool);
-            ccEnabler.EnableCodeCoverage(context, codeCoverageInputs);
-        }
-
-        private ICodeCoverageEnabler GetCodeCoverageEnabler(string buildTool, string codeCoverageTool)
-        {
-            var extensionManager = HostContext.GetService<IExtensionManager>();
-            ICodeCoverageEnabler codeCoverageEnabler = (extensionManager.GetExtensions<ICodeCoverageEnabler>()).FirstOrDefault(
-                        x => x.Name.Equals(codeCoverageTool + "_" + buildTool, StringComparison.OrdinalIgnoreCase));
-
-            if (codeCoverageEnabler == null)
-            {
-                throw new ArgumentException(StringUtil.Loc("InvalidBuildOrCoverageTool", buildTool, codeCoverageTool));
-            }
-            return codeCoverageEnabler;
-        }
-        #endregion
 
         #region publish code coverage helper methods
         private void ProcessPublishCodeCoverageCommand(IExecutionContext context, Dictionary<string, string> eventProperties)
