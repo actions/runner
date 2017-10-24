@@ -27,4 +27,15 @@ Execute ./bin/installdependencies.sh to install any missing Dotnet Core 2.0 depe
 You can easily correct the problem by execute `./bin/installdependencies.sh`.  
 The `installdependencies.sh` script should install all required dependencies on all supported Linux versions   
 
+
+## Git
+
+If you use git, git >= 2.9.0 is a pre-requisite for Linux agents.
+
+## Optionally Java if Tfvc
+
+The agent distributes team explorer everywhere.
+
+But, if you are using Tfvc, install Oracle Java 1.6+ as TEE uses Java.
+
 ## [More .Net Core Prerequisites Information](https://docs.microsoft.com/en-us/dotnet/core/linux-prerequisites?tabs=netcore2x)
