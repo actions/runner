@@ -15,7 +15,6 @@ using System.Diagnostics;
 using System.Linq;
 using System.Collections.ObjectModel;
 using System.Globalization;
-using Microsoft.VisualStudio.Services.Agent.Listener.Capabilities;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -109,13 +108,11 @@ namespace Microsoft.VisualStudio.Services.Agent
             string metadataFilePath = Path.Combine(supportFilesFolder, metadataFileName);
             string phaseResult = GetTaskResultAsString(executionContext.Result);
             
-            IOUtil.SaveObject(new DiagnosticLogMetadata(agentName, agentId.ToString(), poolId, phaseName, diagnosticsZipFileName, phaseResult), metadataFilePath);
+            IOUtil.SaveObject(new DiagnosticLogMetadata(agentName, agentId, poolId, phaseName, diagnosticsZipFileName, phaseResult), metadataFilePath);
 
-            // CoreAttachmentType.DiagnosticLog
-            executionContext.QueueAttachFile(type: "DistributedTask.Core.DiagnosticLog", name: metadataFileName, filePath: metadataFilePath);
+            executionContext.QueueAttachFile(type: CoreAttachmentType.DiagnosticLog, name: metadataFileName, filePath: metadataFilePath);
 
-            // CoreAttachmentType.DiagnosticLog
-            executionContext.QueueAttachFile(type: "DistributedTask.Core.DiagnosticLog", name: diagnosticsZipFileName, filePath: diagnosticsZipFilePath);
+            executionContext.QueueAttachFile(type: CoreAttachmentType.DiagnosticLog, name: diagnosticsZipFileName, filePath: diagnosticsZipFilePath);
 
             executionContext.Debug("Diagnostic file upload complete.");
         }

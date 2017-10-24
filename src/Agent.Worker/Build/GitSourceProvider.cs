@@ -79,14 +79,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
     public sealed class GitHubEnterpriseSourceProvider : AuthenticatedGitSourceProvider
     {
-        // TODO: Update this when the vss-api-netcore dependency has been updated and WellKnownRepositoryTypes includes GitHubEnterprise
-        public override string RepositoryType => "GitHubEnterprise"; //WellKnownRepositoryTypes.GitHubEnterprise;
+        public override string RepositoryType => WellKnownRepositoryTypes.GitHubEnterprise;
     }
 
     public sealed class BitbucketSourceProvider : AuthenticatedGitSourceProvider
     {
-        // TODO: Update this when the vss-api-netcore dependency has been updated and WellKnownRepositoryTypes includes Bitbucket
-        public override string RepositoryType => "Bitbucket"; //WellKnownRepositoryTypes.Bitbucket;
+        public override string RepositoryType => WellKnownRepositoryTypes.Bitbucket;
     }
 
     public sealed class TfsGitSourceProvider : GitSourceProvider
