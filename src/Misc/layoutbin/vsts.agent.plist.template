@@ -17,7 +17,7 @@
     <key>StandardOutPath</key>
     <string>{{UserHome}}/Library/Logs/{{SvcName}}/stdout.log</string>
     <key>StandardErrorPath</key>
-    <string>{{UserHome}}/Library/Logs/{{SvcName}}/stdout.log</string>
+    <string>{{UserHome}}/Library/Logs/{{SvcName}}/stderr.log</string>
     <key>EnvironmentVariables</key>
     <dict> 
       <key>VSTS_AGENT_SVC</key>

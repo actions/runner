@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.VisualStudio.Services.Common;
 using Microsoft.VisualStudio.Services.WebApi;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
@@ -26,7 +25,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             ArgUtil.NotNullOrEmpty(pipeIn, nameof(pipeIn));
             ArgUtil.NotNullOrEmpty(pipeOut, nameof(pipeOut));
             var agentWebProxy = HostContext.GetService<IVstsAgentWebProxy>();
-            VssHttpMessageHandler.DefaultWebProxy = agentWebProxy;
+            var agentCertManager = HostContext.GetService<IAgentCertificateManager>();
+            ApiUtil.InitializeVssClientSettings(agentWebProxy, agentCertManager);
 
             var jobRunner = HostContext.CreateService<IJobRunner>();
 

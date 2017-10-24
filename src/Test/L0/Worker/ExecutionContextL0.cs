@@ -63,6 +63,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             var proxy = new Mock<IVstsAgentWebProxy>();
             hc.SetSingleton(proxy.Object);
 
+            // Arrange: Setup the cert configation.
+            var cert = new Mock<IAgentCertificateManager>();
+            hc.SetSingleton(cert.Object);
+
             // Arrange: Create the execution context.
             hc.SetSingleton(new Mock<IJobServerQueue>().Object);
             return hc;

@@ -83,7 +83,7 @@ Agent routing demands can be specified, which match against agent capabilities. 
 ```yaml
 queue:
   name: myQueue
-  demands: agent.os -eq Windows_NT
+  demands: agent.os -equals Windows_NT
 steps:
 - script: echo hello world
 ```
@@ -94,8 +94,8 @@ Or multiple demands:
 queue:
   name: myQueue
   demands:
-  - agent.os -eq Darwin
-  - anotherCapability -eq somethingElse
+  - agent.os -equals Darwin
+  - anotherCapability -equals somethingElse
 steps:
 - script: echo hello world
 ```
@@ -106,7 +106,7 @@ The `timeoutInMinutes` allows a limit to be set for the job execution time. When
 
 The `cancelTimeoutInMinutes` allows a limit to be set for the job cancel time. When not specified, the default is 5 minutes.
 
-#### Matrix (applies to: queue, server)
+### Matrix (applies to: queue, server)
 
 The `matrix` setting enables a phase to be dispatched multiple times, with different variable sets.
 

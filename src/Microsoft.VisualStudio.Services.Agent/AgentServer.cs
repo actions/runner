@@ -16,7 +16,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         // Configuration
         Task<TaskAgent> AddAgentAsync(Int32 agentPoolId, TaskAgent agent);
         Task DeleteAgentAsync(int agentPoolId, int agentId);
-        Task<List<TaskAgentPool>> GetAgentPoolsAsync(string agentPoolName);
+        Task<List<TaskAgentPool>> GetAgentPoolsAsync(string agentPoolName, TaskAgentPoolType poolType = TaskAgentPoolType.Automation);
         Task<List<TaskAgent>> GetAgentsAsync(int agentPoolId, string agentName = null);
         Task<TaskAgent> UpdateAgentAsync(int agentPoolId, TaskAgent agent);
 
@@ -86,10 +86,10 @@ namespace Microsoft.VisualStudio.Services.Agent
         // Configuration
         //-----------------------------------------------------------------
 
-        public Task<List<TaskAgentPool>> GetAgentPoolsAsync(string agentPoolName)
+        public Task<List<TaskAgentPool>> GetAgentPoolsAsync(string agentPoolName, TaskAgentPoolType poolType = TaskAgentPoolType.Automation)
         {
             CheckConnection();
-            return _taskAgentClient.GetAgentPoolsAsync(agentPoolName);
+            return _taskAgentClient.GetAgentPoolsAsync(agentPoolName, poolType: poolType);
         }
 
         public Task<TaskAgent> AddAgentAsync(Int32 agentPoolId, TaskAgent agent)

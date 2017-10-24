@@ -23,6 +23,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
         void SetVariablesInEndpoint(IExecutionContext executionContext, ServiceEndpoint endpoint);
 
+        Task RunMaintenanceOperations(IExecutionContext executionContext, string repositoryPath);
+
         bool TestOverrideBuildDirectory();
     }
 
@@ -85,6 +87,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
             trace.Info($"Get '{name}' (not found)");
             return null;
+        }
+        
+        public virtual Task RunMaintenanceOperations(IExecutionContext executionContext, string repositoryPath)
+        {
+            return Task.CompletedTask;
         }
 
         public virtual bool TestOverrideBuildDirectory()

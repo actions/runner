@@ -135,6 +135,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
                 tc.SetSingleton<IGitCommandManager>(_gitCommandManager.Object);
                 tc.SetSingleton<IWhichUtil>(new WhichUtil());
                 tc.SetSingleton<IVstsAgentWebProxy>(new VstsAgentWebProxy());
+                var _configStore = new Mock<IConfigurationStore>();
+                _configStore.Setup(x => x.GetSettings()).Returns(() => new AgentSettings() { ServerUrl = "http://localhost:8080/tfs" });
+                tc.SetSingleton<IConfigurationStore>(_configStore.Object);
+                tc.SetSingleton<IAgentCertificateManager>(new AgentCertificateManager());
 
                 GitSourceProvider gitSourceProvider = new ExternalGitSourceProvider();
                 gitSourceProvider.Initialize(tc);
@@ -177,6 +181,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
                     tc.SetSingleton<IGitCommandManager>(_gitCommandManager.Object);
                     tc.SetSingleton<IWhichUtil>(new WhichUtil());
                     tc.SetSingleton<IVstsAgentWebProxy>(new VstsAgentWebProxy());
+                    var _configStore = new Mock<IConfigurationStore>();
+                    _configStore.Setup(x => x.GetSettings()).Returns(() => new AgentSettings() { ServerUrl = "http://localhost:8080/tfs" });
+                    tc.SetSingleton<IConfigurationStore>(_configStore.Object);
+                    tc.SetSingleton<IAgentCertificateManager>(new AgentCertificateManager());
 
                     GitSourceProvider gitSourceProvider = new ExternalGitSourceProvider();
                     gitSourceProvider.Initialize(tc);
@@ -218,6 +226,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
                 tc.SetSingleton<IGitCommandManager>(_gitCommandManager.Object);
                 tc.SetSingleton<IWhichUtil>(new WhichUtil());
                 tc.SetSingleton<IVstsAgentWebProxy>(new VstsAgentWebProxy());
+                var _configStore = new Mock<IConfigurationStore>();
+                _configStore.Setup(x => x.GetSettings()).Returns(() => new AgentSettings() { ServerUrl = "http://localhost:8080/tfs" });
+                tc.SetSingleton<IConfigurationStore>(_configStore.Object);
+                tc.SetSingleton<IAgentCertificateManager>(new AgentCertificateManager());
 
                 GitSourceProvider gitSourceProvider = new ExternalGitSourceProvider();
                 gitSourceProvider.Initialize(tc);
@@ -261,6 +273,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
                     tc.SetSingleton<IGitCommandManager>(_gitCommandManager.Object);
                     tc.SetSingleton<IWhichUtil>(new WhichUtil());
                     tc.SetSingleton<IVstsAgentWebProxy>(new VstsAgentWebProxy());
+                    var _configStore = new Mock<IConfigurationStore>();
+                    _configStore.Setup(x => x.GetSettings()).Returns(() => new AgentSettings() { ServerUrl = "http://localhost:8080/tfs" });
+                    tc.SetSingleton<IConfigurationStore>(_configStore.Object);
+                    tc.SetSingleton<IAgentCertificateManager>(new AgentCertificateManager());
 
                     GitSourceProvider gitSourceProvider = new ExternalGitSourceProvider();
                     gitSourceProvider.Initialize(tc);
@@ -314,6 +330,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
                     tc.SetSingleton<IGitCommandManager>(_gitCommandManager.Object);
                     tc.SetSingleton<IWhichUtil>(new WhichUtil());
                     tc.SetSingleton<IVstsAgentWebProxy>(new VstsAgentWebProxy());
+                    var _configStore = new Mock<IConfigurationStore>();
+                    _configStore.Setup(x => x.GetSettings()).Returns(() => new AgentSettings() { ServerUrl = "http://localhost:8080/tfs" });
+                    tc.SetSingleton<IConfigurationStore>(_configStore.Object);
+                    tc.SetSingleton<IAgentCertificateManager>(new AgentCertificateManager());
 
                     GitSourceProvider gitSourceProvider = new ExternalGitSourceProvider();
                     gitSourceProvider.Initialize(tc);
@@ -359,6 +379,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
                     tc.SetSingleton<IGitCommandManager>(_gitCommandManager.Object);
                     tc.SetSingleton<IWhichUtil>(new WhichUtil());
                     tc.SetSingleton<IVstsAgentWebProxy>(new VstsAgentWebProxy());
+                    var _configStore = new Mock<IConfigurationStore>();
+                    _configStore.Setup(x => x.GetSettings()).Returns(() => new AgentSettings() { ServerUrl = "http://localhost:8080/tfs" });
+                    tc.SetSingleton<IConfigurationStore>(_configStore.Object);
+                    tc.SetSingleton<IAgentCertificateManager>(new AgentCertificateManager());
 
                     GitSourceProvider gitSourceProvider = new ExternalGitSourceProvider();
                     gitSourceProvider.Initialize(tc);
@@ -405,6 +429,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
                     tc.SetSingleton<IGitCommandManager>(_gitCommandManager.Object);
                     tc.SetSingleton<IWhichUtil>(new WhichUtil());
                     tc.SetSingleton<IVstsAgentWebProxy>(new VstsAgentWebProxy());
+                    var _configStore = new Mock<IConfigurationStore>();
+                    _configStore.Setup(x => x.GetSettings()).Returns(() => new AgentSettings() { ServerUrl = "http://localhost:8080/tfs" });
+                    tc.SetSingleton<IConfigurationStore>(_configStore.Object);
+                    tc.SetSingleton<IAgentCertificateManager>(new AgentCertificateManager());
 
                     GitSourceProvider gitSourceProvider = new ExternalGitSourceProvider();
                     gitSourceProvider.Initialize(tc);
@@ -446,6 +474,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
                     tc.SetSingleton<IGitCommandManager>(_gitCommandManager.Object);
                     tc.SetSingleton<IWhichUtil>(new WhichUtil());
                     tc.SetSingleton<IVstsAgentWebProxy>(new VstsAgentWebProxy());
+                    var _configStore = new Mock<IConfigurationStore>();
+                    _configStore.Setup(x => x.GetSettings()).Returns(() => new AgentSettings() { ServerUrl = "http://localhost:8080/tfs" });
+                    tc.SetSingleton<IConfigurationStore>(_configStore.Object);
+                    tc.SetSingleton<IAgentCertificateManager>(new AgentCertificateManager());
 
                     GitSourceProvider gitSourceProvider = new ExternalGitSourceProvider();
                     gitSourceProvider.Initialize(tc);
@@ -494,6 +526,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
                     tc.SetSingleton<IGitCommandManager>(_gitCommandManager.Object);
                     tc.SetSingleton<IWhichUtil>(new WhichUtil());
                     tc.SetSingleton<IVstsAgentWebProxy>(new VstsAgentWebProxy());
+                    var _configStore = new Mock<IConfigurationStore>();
+                    _configStore.Setup(x => x.GetSettings()).Returns(() => new AgentSettings() { ServerUrl = "http://localhost:8080/tfs" });
+                    tc.SetSingleton<IConfigurationStore>(_configStore.Object);
+                    tc.SetSingleton<IAgentCertificateManager>(new AgentCertificateManager());
 
                     GitSourceProvider gitSourceProvider = new ExternalGitSourceProvider();
                     gitSourceProvider.Initialize(tc);

@@ -22,6 +22,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
         private Mock<IJobServer> _jobServer;
         private Mock<IJobServerQueue> _jobServerQueue;
         private Mock<IVstsAgentWebProxy> _proxyConfig;
+        private Mock<IAgentCertificateManager> _cert;
         private Mock<IConfigurationStore> _config;
         private Mock<ITaskServer> _taskServer;
         private Mock<IExtensionManager> _extensions;
@@ -43,6 +44,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             _jobServer = new Mock<IJobServer>();
             _jobServerQueue = new Mock<IJobServerQueue>();
             _proxyConfig = new Mock<IVstsAgentWebProxy>();
+            _cert = new Mock<IAgentCertificateManager>();
             _taskServer = new Mock<ITaskServer>();
             _stepRunner = new Mock<IStepsRunner>();
             _logger = new Mock<IPagingLogger>();
@@ -113,6 +115,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             hc.SetSingleton(_jobServer.Object);
             hc.SetSingleton(_jobServerQueue.Object);
             hc.SetSingleton(_proxyConfig.Object);
+            hc.SetSingleton(_cert.Object);
             hc.SetSingleton(_taskServer.Object);
             hc.SetSingleton(_stepRunner.Object);
             hc.SetSingleton(_extensions.Object);

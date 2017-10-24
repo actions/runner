@@ -58,7 +58,7 @@ say_verbose() {
 # This platform list is finite - if the SDK/Runtime has supported Linux distribution-specific assets,
 #   then and only then should the Linux distribution appear in this list.
 # Adding a Linux distribution to this list does not imply distribution-specific support.
-get_os_download_name_from_platform() {
+get_legacy_os_name_from_platform() {
     eval $invocation
 
     platform="$1"
@@ -87,10 +87,6 @@ get_os_download_name_from_platform() {
             echo "opensuse.42.1"
             return 0
             ;;
-        "rhel.6"*)
-            echo "rhel.6"
-            return 0
-            ;;
         "rhel.7"*)
             echo "rhel"
             return 0
@@ -115,6 +111,30 @@ get_os_download_name_from_platform() {
     return 1
 }
 
+get_linux_platform_name() {
+    eval $invocation
+
+    if [ -n "$runtime_id" ]; then
+        echo "${runtime_id%-*}"
+        return 0
+    else
+        if [ -e /etc/os-release ]; then
+            . /etc/os-release
+            echo "$ID.$VERSION_ID"
+            return 0
+        elif [ -e /etc/redhat-release ]; then
+            local redhatRelease=$(</etc/redhat-release)
+            if [[ $redhatRelease == "CentOS release 6."* || $redhatRelease == "Red Hat Enterprise Linux Server release 6."* ]]; then
+                echo "rhel.6"
+                return 0
+            fi
+        fi
+    fi
+    
+    say_verbose "Linux specific platform name and version could not be detected: $ID.$VERSION_ID"
+    return 1
+}
+
 get_current_os_name() {
     eval $invocation
 
@@ -123,11 +143,11 @@ get_current_os_name() {
         echo "osx"
         return 0
     elif [ "$uname" = "Linux" ]; then
-        local distro_specific_osname
-        distro_specific_osname=$(get_distro_specific_os_name) || return 1
+        local linux_platform_name
+        linux_platform_name="$(get_linux_platform_name)" || { echo "linux" && return 0 ; }
 
-        if [ "$distro_specific_osname" = "rhel.6" ]; then
-            echo $distro_specific_osname
+        if [[ $linux_platform_name == "rhel.6"* ]]; then
+            echo "rhel.6"
             return 0
         else
             echo "linux"
@@ -139,7 +159,7 @@ get_current_os_name() {
     return 1
 }
 
-get_distro_specific_os_name() {
+get_legacy_os_name() {
     eval $invocation
 
     local uname=$(uname)
@@ -147,20 +167,14 @@ get_distro_specific_os_name() {
         echo "osx"
         return 0
     elif [ -n "$runtime_id" ]; then
-        echo $(get_os_download_name_from_platform "${runtime_id%-*}" || echo "${runtime_id%-*}")
+        echo $(get_legacy_os_name_from_platform "${runtime_id%-*}" || echo "${runtime_id%-*}")
         return 0
     else
         if [ -e /etc/os-release ]; then
             . /etc/os-release
-            os=$(get_os_download_name_from_platform "$ID.$VERSION_ID" || echo "")
+            os=$(get_legacy_os_name_from_platform "$ID.$VERSION_ID" || echo "")
             if [ -n "$os" ]; then
                 echo "$os"
-                return 0
-            fi
-        elif [ -e /etc/redhat-release ]; then
-            local redhatRelease=$(</etc/redhat-release)
-            if [[ $redhatRelease == "CentOS release 6."* || $redhatRelease == "Red Hat Enterprise Linux Server release 6."* ]]; then
-                echo "rhel.6"
                 return 0
             fi
         fi
@@ -203,7 +217,7 @@ check_pre_reqs() {
     fi
 
     if [ "$(uname)" = "Linux" ]; then
-        if ! [ -x "$(command -v ldconfig)" ]; then
+        if [ ! -x "$(command -v ldconfig)" ]; then
             echo "ldconfig is not in PATH, trying /sbin/ldconfig."
             LDCONFIG_COMMAND="/sbin/ldconfig"
         else
@@ -457,7 +471,7 @@ construct_legacy_download_link() {
     local specific_version="${4//[$'\t\r\n']}"
 
     local distro_specific_osname
-    distro_specific_osname="$(get_distro_specific_os_name)" || return 1
+    distro_specific_osname="$(get_legacy_os_name)" || return 1
 
     local legacy_download_link=null
     if [ "$shared_runtime" = true ]; then

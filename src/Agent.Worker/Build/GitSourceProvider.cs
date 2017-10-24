@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using System.IO;
 using System.Text.RegularExpressions;
 using System.Text;
+using System.Diagnostics;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 {
@@ -176,6 +177,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         private Uri _proxyUrlWithCred = null;
         private string _proxyUrlWithCredString = null;
         private Uri _gitLfsUrlWithCred = null;
+        private bool _useSelfSignedCACert = false;
+        private bool _useClientCert = false;
+        private string _clientCertPrivateKeyAskPassFile = null;
 
         protected IGitCommandManager _gitCommandManager;
 
@@ -229,6 +233,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 checkoutNestedSubmodules = StringUtil.ConvertToBoolean(endpoint.Data[WellKnownEndpointData.CheckoutNestedSubmodules]);
             }
 
+            bool acceptUntrustedCerts = false;
+            if (endpoint.Data.ContainsKey("acceptUntrustedCerts")) // TODO: Use WellKnownEndpointData.AcceptUntrustedCerts when available.
+            {
+                acceptUntrustedCerts = StringUtil.ConvertToBoolean(endpoint.Data["acceptUntrustedCerts"]); // TODO: Use WellKnownEndpointData.AcceptUntrustedCerts when available.
+            }
+
             int fetchDepth = 0;
             if (endpoint.Data.ContainsKey("fetchDepth") &&
                 (!int.TryParse(endpoint.Data["fetchDepth"], out fetchDepth) || fetchDepth < 0))
@@ -258,6 +268,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             Trace.Info($"exposeCred={exposeCred}");
             Trace.Info($"fetchDepth={fetchDepth}");
             Trace.Info($"gitLfsSupport={gitLfsSupport}");
+            Trace.Info($"acceptUntrustedCerts={acceptUntrustedCerts}");
 
             // Determine which git will be use
             // On windows, we prefer the built-in portable git within the agent's externals folder, set system.prefergitfrompath=true can change the behavior, 
@@ -334,6 +345,58 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 else
                 {
                     _proxyUrlWithCredString = _proxyUrlWithCred.OriginalString;
+                }
+            }
+
+            // prepare askpass for client cert private key
+            var agentCert = HostContext.GetService<IAgentCertificateManager>();
+            var configUrl = new Uri(HostContext.GetService<IConfigurationStore>().GetSettings().ServerUrl);
+            if (Uri.Compare(repositoryUrl, configUrl, UriComponents.SchemeAndServer, UriFormat.Unescaped, StringComparison.OrdinalIgnoreCase) == 0)
+            {
+                if (!string.IsNullOrEmpty(agentCert.CACertificateFile))
+                {
+                    _useSelfSignedCACert = true;
+                }
+
+                if (!string.IsNullOrEmpty(agentCert.ClientCertificateFile) &&
+                    !string.IsNullOrEmpty(agentCert.ClientCertificatePrivateKeyFile))
+                {
+                    _useClientCert = true;
+
+                    // prepare askpass for client cert password
+                    if (!string.IsNullOrEmpty(agentCert.ClientCertificatePassword))
+                    {
+                        _clientCertPrivateKeyAskPassFile = Path.Combine(executionContext.Variables.Agent_TempDirectory, $"{Guid.NewGuid()}.sh");
+                        List<string> askPass = new List<string>();
+                        askPass.Add("#!/bin/sh");
+                        askPass.Add($"echo \"{agentCert.ClientCertificatePassword}\"");
+                        File.WriteAllLines(_clientCertPrivateKeyAskPassFile, askPass);
+
+#if !OS_WINDOWS
+                        var whichUtil = HostContext.GetService<IWhichUtil>();
+                        string toolPath = whichUtil.Which("chmod", true);
+                        string argLine = $"775 {_clientCertPrivateKeyAskPassFile}";
+                        executionContext.Command($"chmod {argLine}");
+
+                        var processInvoker = HostContext.CreateService<IProcessInvoker>();
+                        processInvoker.OutputDataReceived += (object sender, ProcessDataReceivedEventArgs args) =>
+                        {
+                            if (!string.IsNullOrEmpty(args.Data))
+                            {
+                                executionContext.Output(args.Data);
+                            }
+                        };
+                        processInvoker.ErrorDataReceived += (object sender, ProcessDataReceivedEventArgs args) =>
+                        {
+                            if (!string.IsNullOrEmpty(args.Data))
+                            {
+                                executionContext.Output(args.Data);
+                            }
+                        };
+
+                        await processInvoker.ExecuteAsync(executionContext.Variables.System_DefaultWorkingDirectory, toolPath, argLine, null, true, CancellationToken.None);
+#endif
+                    }
                 }
             }
 
@@ -487,6 +550,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
             List<string> additionalFetchArgs = new List<string>();
             List<string> additionalLfsFetchArgs = new List<string>();
+            if (acceptUntrustedCerts)
+            {
+                additionalFetchArgs.Add($"-c http.sslVerify=false");
+            }
+
             if (!_selfManageGitCreds)
             {
                 // v2.9 git support provide auth header as cmdline arg. 
@@ -526,6 +594,31 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                     ArgUtil.NotNullOrEmpty(_proxyUrlWithCredString, nameof(_proxyUrlWithCredString));
                     additionalFetchArgs.Add($"-c http.proxy=\"{_proxyUrlWithCredString}\"");
                     additionalLfsFetchArgs.Add($"-c http.proxy=\"{_proxyUrlWithCredString}\"");
+                }
+
+                // Prepare self-signed CA cert config for fetch from TFS.
+                if (_useSelfSignedCACert)
+                {
+                    executionContext.Debug($"Use self-signed certificate '{agentCert.CACertificateFile}' for git fetch.");
+                    additionalFetchArgs.Add($"-c http.sslcainfo=\"{agentCert.CACertificateFile}\"");
+                    additionalLfsFetchArgs.Add($"-c http.sslcainfo=\"{agentCert.CACertificateFile}\"");
+                }
+
+                // Prepare client cert config for fetch from TFS.
+                if (_useClientCert)
+                {
+                    executionContext.Debug($"Use client certificate '{agentCert.ClientCertificateFile}' for git fetch.");
+
+                    if (!string.IsNullOrEmpty(_clientCertPrivateKeyAskPassFile))
+                    {
+                        additionalFetchArgs.Add($"-c http.sslcert=\"{agentCert.ClientCertificateFile}\" -c http.sslkey=\"{agentCert.ClientCertificatePrivateKeyFile}\" -c http.sslCertPasswordProtected=true -c core.askpass=\"{_clientCertPrivateKeyAskPassFile}\"");
+                        additionalLfsFetchArgs.Add($"-c http.sslcert=\"{agentCert.ClientCertificateFile}\" -c http.sslkey=\"{agentCert.ClientCertificatePrivateKeyFile}\" -c http.sslCertPasswordProtected=true -c core.askpass=\"{_clientCertPrivateKeyAskPassFile}\"");
+                    }
+                    else
+                    {
+                        additionalFetchArgs.Add($"-c http.sslcert=\"{agentCert.ClientCertificateFile}\" -c http.sslkey=\"{agentCert.ClientCertificatePrivateKeyFile}\"");
+                        additionalLfsFetchArgs.Add($"-c http.sslcert=\"{agentCert.ClientCertificateFile}\" -c http.sslkey=\"{agentCert.ClientCertificatePrivateKeyFile}\"");
+                    }
                 }
 
                 // Prepare gitlfs url for fetch and checkout
@@ -657,6 +750,30 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                         ArgUtil.NotNullOrEmpty(_proxyUrlWithCredString, nameof(_proxyUrlWithCredString));
                         additionalSubmoduleUpdateArgs.Add($"-c http.proxy=\"{_proxyUrlWithCredString}\"");
                     }
+
+                    // Prepare self-signed CA cert config for submodule update.
+                    if (_useSelfSignedCACert)
+                    {
+                        executionContext.Debug($"Use self-signed CA certificate '{agentCert.CACertificateFile}' for git submodule update.");
+                        string authorityUrl = repositoryUrl.AbsoluteUri.Replace(repositoryUrl.PathAndQuery, string.Empty);
+                        additionalSubmoduleUpdateArgs.Add($"-c http.{authorityUrl}.sslcainfo=\"{agentCert.CACertificateFile}\"");
+                    }
+
+                    // Prepare client cert config for submodule update.
+                    if (_useClientCert)
+                    {
+                        executionContext.Debug($"Use client certificate '{agentCert.ClientCertificateFile}' for git submodule update.");
+                        string authorityUrl = repositoryUrl.AbsoluteUri.Replace(repositoryUrl.PathAndQuery, string.Empty);
+
+                        if (!string.IsNullOrEmpty(_clientCertPrivateKeyAskPassFile))
+                        {
+                            additionalSubmoduleUpdateArgs.Add($"-c http.{authorityUrl}.sslcert=\"{agentCert.ClientCertificateFile}\" -c http.{authorityUrl}.sslkey=\"{agentCert.ClientCertificatePrivateKeyFile}\" -c http.{authorityUrl}.sslCertPasswordProtected=true -c core.askpass=\"{_clientCertPrivateKeyAskPassFile}\"");
+                        }
+                        else
+                        {
+                            additionalSubmoduleUpdateArgs.Add($"-c http.{authorityUrl}.sslcert=\"{agentCert.ClientCertificateFile}\" -c http.{authorityUrl}.sslkey=\"{agentCert.ClientCertificatePrivateKeyFile}\"");
+                        }
+                    }
                 }
 
                 int exitCode_submoduleUpdate = await _gitCommandManager.GitSubmoduleUpdate(executionContext, targetPath, string.Join(" ", additionalSubmoduleUpdateArgs), checkoutNestedSubmodules, cancellationToken);
@@ -705,6 +822,68 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                             throw new InvalidOperationException($"Git config failed with exit code: {exitCode_proxyconfig}");
                         }
                     }
+
+                    // save CA cert setting to git config.
+                    if (_useSelfSignedCACert)
+                    {
+                        executionContext.Debug($"Save CA cert config into git config.");
+                        string sslCaInfoConfigKey = "http.sslcainfo";
+                        string sslCaInfoConfigValue = $"\"{agentCert.CACertificateFile}\"";
+                        _configModifications[sslCaInfoConfigKey] = sslCaInfoConfigValue.Trim('\"');
+
+                        int exitCode_sslconfig = await _gitCommandManager.GitConfig(executionContext, targetPath, sslCaInfoConfigKey, sslCaInfoConfigValue);
+                        if (exitCode_sslconfig != 0)
+                        {
+                            throw new InvalidOperationException($"Git config failed with exit code: {exitCode_sslconfig}");
+                        }
+                    }
+
+                    // save client cert setting to git config.
+                    if (_useClientCert)
+                    {
+                        executionContext.Debug($"Save client cert config into git config.");
+                        string sslCertConfigKey = "http.sslcert";
+                        string sslCertConfigValue = $"\"{agentCert.ClientCertificateFile}\"";
+                        string sslKeyConfigKey = "http.sslkey";
+                        string sslKeyConfigValue = $"\"{agentCert.CACertificateFile}\"";
+                        _configModifications[sslCertConfigKey] = sslCertConfigValue.Trim('\"');
+                        _configModifications[sslKeyConfigKey] = sslKeyConfigValue.Trim('\"');
+
+                        int exitCode_sslconfig = await _gitCommandManager.GitConfig(executionContext, targetPath, sslCertConfigKey, sslCertConfigValue);
+                        if (exitCode_sslconfig != 0)
+                        {
+                            throw new InvalidOperationException($"Git config failed with exit code: {exitCode_sslconfig}");
+                        }
+
+                        exitCode_sslconfig = await _gitCommandManager.GitConfig(executionContext, targetPath, sslKeyConfigKey, sslKeyConfigValue);
+                        if (exitCode_sslconfig != 0)
+                        {
+                            throw new InvalidOperationException($"Git config failed with exit code: {exitCode_sslconfig}");
+                        }
+
+                        // the client private key has a password
+                        if (!string.IsNullOrEmpty(_clientCertPrivateKeyAskPassFile))
+                        {
+                            string sslCertPasswordProtectedConfigKey = "http.sslcertpasswordprotected";
+                            string sslCertPasswordProtectedConfigValue = "true";
+                            string askPassConfigKey = "core.askpass";
+                            string askPassConfigValue = $"\"{_clientCertPrivateKeyAskPassFile}\"";
+                            _configModifications[sslCertPasswordProtectedConfigKey] = sslCertPasswordProtectedConfigValue.Trim('\"');
+                            _configModifications[askPassConfigKey] = askPassConfigValue.Trim('\"');
+
+                            exitCode_sslconfig = await _gitCommandManager.GitConfig(executionContext, targetPath, sslCertPasswordProtectedConfigKey, sslCertPasswordProtectedConfigValue);
+                            if (exitCode_sslconfig != 0)
+                            {
+                                throw new InvalidOperationException($"Git config failed with exit code: {exitCode_sslconfig}");
+                            }
+
+                            exitCode_sslconfig = await _gitCommandManager.GitConfig(executionContext, targetPath, askPassConfigKey, askPassConfigValue);
+                            if (exitCode_sslconfig != 0)
+                            {
+                                throw new InvalidOperationException($"Git config failed with exit code: {exitCode_sslconfig}");
+                            }
+                        }
+                    }
                 }
 
                 if (gitLfsSupport)
@@ -731,6 +910,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                         _configModifications.Remove("remote.origin.lfspushurl");
                     }
                 }
+
+                if (_useClientCert && !string.IsNullOrEmpty(_clientCertPrivateKeyAskPassFile) && !exposeCred)
+                {
+                    executionContext.Debug("Remove git.sslkey askpass file.");
+                    IOUtil.DeleteFile(_clientCertPrivateKeyAskPassFile);
+                }
             }
         }
 
@@ -749,13 +934,77 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
             if (!_selfManageGitCreds)
             {
-                executionContext.Debug("Remove any extraheader and proxy setting from git config.");
+                executionContext.Debug("Remove any extraheader, proxy and client cert setting from git config.");
                 foreach (var config in _configModifications)
                 {
                     await RemoveGitConfig(executionContext, targetPath, config.Key, config.Value);
                 }
 
                 await RemoveCachedCredential(executionContext, targetPath, repositoryUrl, "origin");
+            }
+
+            // delete client cert askpass file.
+            if (_useClientCert && !string.IsNullOrEmpty(_clientCertPrivateKeyAskPassFile))
+            {
+                IOUtil.DeleteFile(_clientCertPrivateKeyAskPassFile);
+            }
+        }
+
+        public override async Task RunMaintenanceOperations(IExecutionContext executionContext, string repositoryPath)
+        {
+            Trace.Entering();
+            // Validate args.
+            ArgUtil.NotNull(executionContext, nameof(executionContext));
+            ArgUtil.NotNullOrEmpty(repositoryPath, nameof(repositoryPath));
+            executionContext.Output($"Run maintenance operation on repository: {repositoryPath}");
+
+            // Initialize git command manager
+            _gitCommandManager = HostContext.GetService<IGitCommandManager>();
+#if OS_WINDOWS
+            // On Windows, we will always find git from externals
+            await _gitCommandManager.LoadGitExecutionInfo(executionContext, useBuiltInGit: true);
+#else
+            // On linux/OSX, we will always find git from %PATH%
+            await _gitCommandManager.LoadGitExecutionInfo(executionContext, useBuiltInGit: false);
+#endif
+
+            // if the folder is missing, skip it
+            if (!Directory.Exists(repositoryPath) || !Directory.Exists(Path.Combine(repositoryPath, ".git")))
+            {
+                return;
+            }
+
+            // add a timer to track how much time we used for git-repack
+            Stopwatch timer = Stopwatch.StartNew();
+            try
+            {
+                // git count-objects before git repack
+                executionContext.Output("Repository status before executing 'git repack'");
+                int exitCode_countobjectsbefore = await _gitCommandManager.GitCountObjects(executionContext, repositoryPath);
+                if (exitCode_countobjectsbefore != 0)
+                {
+                    throw new InvalidOperationException($"Git count-objects failed with exit code: {exitCode_countobjectsbefore}");
+                }
+
+                // git repack
+                int exitCode_repack = await _gitCommandManager.GitRepack(executionContext, repositoryPath);
+                if (exitCode_repack != 0)
+                {
+                    throw new InvalidOperationException($"Git repack failed with exit code: {exitCode_repack}");
+                }
+
+                // git count-objects after git repack
+                executionContext.Output("Repository status after executing 'git repack'");
+                int exitCode_countobjectsafter = await _gitCommandManager.GitCountObjects(executionContext, repositoryPath);
+                if (exitCode_countobjectsafter != 0)
+                {
+                    throw new InvalidOperationException($"Git count-objects failed with exit code: {exitCode_countobjectsafter}");
+                }
+            }
+            finally
+            {
+                timer.Stop();
+                executionContext.Output($"Total time for executing maintenance for repository '{repositoryPath}': {timer.Elapsed.TotalSeconds} seconds.");
             }
         }
 
@@ -804,7 +1053,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             int exitCode_configUnset = await _gitCommandManager.GitConfigUnset(executionContext, targetPath, configKey);
             if (exitCode_configUnset != 0)
             {
-                // if unable to use git.exe unset http.extraheader or http.proxy, modify git config file on disk. make sure we don't left credential.
+                // if unable to use git.exe unset http.extraheader, http.proxy or core.askpass, modify git config file on disk. make sure we don't left credential.
                 if (!string.IsNullOrEmpty(configValue))
                 {
                     executionContext.Warning(StringUtil.Loc("AttemptRemoveCredFromConfig"));
@@ -818,6 +1067,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                             gitConfigContent = Regex.Replace(gitConfigContent, setting, string.Empty, RegexOptions.IgnoreCase);
 
                             setting = $"proxy = {configValue}";
+                            gitConfigContent = Regex.Replace(gitConfigContent, setting, string.Empty, RegexOptions.IgnoreCase);
+
+                            setting = $"askpass = {configValue}";
                             gitConfigContent = Regex.Replace(gitConfigContent, setting, string.Empty, RegexOptions.IgnoreCase);
 
                             File.WriteAllText(gitConfig, gitConfigContent);

@@ -101,62 +101,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
             Assert.Throws<ArgumentException>(() => CodeCoverageUtilities.TrimNonEmptyParam("       ", "inputName"));
         }
 
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "EnableCodeCoverage")]
-        public void SetSourceDirectoryToCurrentLogsMessage()
-        {
-            SetupMocks();
-            CodeCoverageUtilities.SetCurrentDirectoryIfDirectoriesParameterIsEmpty(_ec.Object, " ", "warningMessage");
-            Assert.Equal(0, _warnings.Count);
-            Assert.Equal(0, _errors.Count);
-            Assert.Equal(1, _outputMessages.Count);
-            Assert.Equal(_outputMessages[0], "warningMessage");
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "EnableCodeCoverage")]
-        public void SetSourceDirectoryTrimsSourceDirectory()
-        {
-            SetupMocks();
-            var sourceDir = CodeCoverageUtilities.SetCurrentDirectoryIfDirectoriesParameterIsEmpty(_ec.Object, " sourceDir  ", "warningMessage");
-            Assert.Equal(0, _warnings.Count);
-            Assert.Equal(0, _errors.Count);
-            Assert.Equal(0, _outputMessages.Count);
-            Assert.Equal("sourceDir", sourceDir);
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "EnableCodeCoverage")]
-        public void GetFiltersWithInvalidFilterInput()
-        {
-            string include, exclude;
-            Assert.Throws<ArgumentException>(() => CodeCoverageUtilities.GetFilters("invalidFilter", out include, out exclude));
-            Assert.Throws<ArgumentException>(() => CodeCoverageUtilities.GetFilters("+,-:", out include, out exclude));
-            Assert.Throws<ArgumentException>(() => CodeCoverageUtilities.GetFilters("+: , -: ", out include, out exclude));
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "EnableCodeCoverage")]
-        public void GetFiltersWithValidFilterInput()
-        {
-            string include, exclude;
-            CodeCoverageUtilities.GetFilters("", out include, out exclude);
-            Assert.Equal(include, "");
-            Assert.Equal(exclude, "");
-
-            CodeCoverageUtilities.GetFilters("+:avfd.s.sdsd,-:sad.fdf.fs,-:aa.bb,+:av.fd", out include, out exclude);
-            Assert.Equal(include, "avfd.s.sdsd:av.fd");
-            Assert.Equal(exclude, "sad.fdf.fs:aa.bb");
-
-            CodeCoverageUtilities.GetFilters("+:avfd.s.sdsd,-:sad.fdf.fs", out include, out exclude);
-            Assert.Equal(include, "avfd.s.sdsd");
-            Assert.Equal(exclude, "sad.fdf.fs");
-        }
-
         private void SetupMocks()
         {
             _ec = new Mock<IExecutionContext>();

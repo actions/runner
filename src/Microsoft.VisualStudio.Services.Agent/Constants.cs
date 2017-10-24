@@ -44,7 +44,7 @@ namespace Microsoft.VisualStudio.Services.Agent
 
         public static class Agent
         {
-            public static readonly string Version = "2.123.0";
+            public static readonly string Version = "2.124.0";
 
 #if OS_LINUX
             public static readonly OSPlatform Platform = OSPlatform.Linux;
@@ -65,6 +65,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                     public static readonly string Auth = "auth";
                     public static readonly string CollectionName = "collectionname";
                     public static readonly string DeploymentGroupName = "deploymentgroupname";
+                    public static readonly string DeploymentPoolName = "deploymentpoolname";
                     public static readonly string DeploymentGroupTags = "deploymentgrouptags";
                     public static readonly string MachineGroupName = "machinegroupname";
                     public static readonly string MachineGroupTags = "machinegrouptags";
@@ -76,6 +77,11 @@ namespace Microsoft.VisualStudio.Services.Agent
                     public static readonly string ProjectName = "projectname";
                     public static readonly string ProxyUrl = "proxyurl";
                     public static readonly string ProxyUserName = "proxyusername";
+                    public static readonly string SslCACert = "sslcacert";
+                    public static readonly string SslClientCert = "sslclientcert";
+                    public static readonly string SslClientCertKey = "sslclientcertkey";
+                    public static readonly string SslClientCertArchive = "sslclientcertarchive";
+                    public static readonly string SslClientCertPassword = "sslclientcertpassword";
                     public static readonly string StartupType = "startuptype";
                     public static readonly string Url = "url";
                     public static readonly string UserName = "username";
@@ -92,6 +98,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                     {
                         Password,
                         ProxyPassword,
+                        SslClientCertPassword,
                         Token,
                         WindowsLogonPassword,
                     };
@@ -114,6 +121,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                     public static readonly string AddMachineGroupTags = "addmachinegrouptags";
                     public static readonly string Commit = "commit";
                     public static readonly string DeploymentGroup = "deploymentgroup";
+                    public static readonly string DeploymentPool = "deploymentpool";
                     public static readonly string OverwriteAutoLogon = "overwriteautologon";
                     public static readonly string Help = "help";
                     public static readonly string MachineGroup = "machinegroup";
@@ -139,6 +147,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             {
                 public static readonly string BuildReleasesAgentConfiguration = "BuildReleasesAgentConfiguration";
                 public static readonly string DeploymentAgentConfiguration = "DeploymentAgentConfiguration";
+                public static readonly string SharedDeploymentAgentConfiguration = "SharedDeploymentAgentConfiguration";
             }
         }
 
@@ -252,6 +261,11 @@ namespace Microsoft.VisualStudio.Services.Agent
                 public static readonly string RootDirectory = "agent.RootDirectory";
                 public static readonly string RunMode = "agent.runmode";
                 public static readonly string ServerOMDirectory = "agent.ServerOMDirectory";
+                public static readonly string SslCAInfo = "agent.cainfo";
+                public static readonly string SslClientCert = "agent.clientcert";
+                public static readonly string SslClientCertKey = "agent.clientcertkey";
+                public static readonly string SslClientCertArchive = "agent.clientcertarchive";
+                public static readonly string SslClientCertPassword = "agent.clientcertpassword";
                 public static readonly string TempDirectory = "agent.TempDirectory";
                 public static readonly string ToolsDirectory = "agent.ToolsDirectory";
                 public static readonly string Version = "agent.version";
