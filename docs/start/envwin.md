@@ -11,3 +11,5 @@ No known system prerequisites are known at this time.
 ## Visual Studio
 
 Even though not technically required by the agent, many build scenarios require Visual Studio installed to get all the tools.  We recommend Visual Studio 2015 or later.
+
+## [More .Net Core Prerequisites Information](https://docs.microsoft.com/en-us/dotnet/core/windows-prerequisites?tabs=netcore2x)
