@@ -91,8 +91,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
 
             ArgUtil.Directory(workingDirectory, nameof(workingDirectory));
 
-            bool useNode5 = ExecutionContext.Variables.Agent_UseNode5 ?? false;
-
             // fix vsts-task-lib for node 6.x
             // vsts-task-lib 0.6/0.7/0.8/0.9/2.0-preview implemented String.prototype.startsWith and String.prototype.endsWith since Node 5.x doesn't have them.
             // however the implementation is added in node 6.x, the implementation in vsts-task-lib is different.
@@ -101,11 +99,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             // as long as vsts-task-lib be loaded into memory, it will overwrite the implementation node 6.x has, 
             // so any scirpt that use the second parameter (length) will encounter unexpected result.
             // to avoid customer hit this error, we will modify the file (extensions.js) under vsts-task-lib module folder when customer choose to use Node 6.x
-            if (!useNode5)
-            {
-                Trace.Info("Inspect node_modules folder, make sure vsts-task-lib doesn't overwrite String.startsWith/endsWith.");
-                FixVstsTaskLibModule();
-            }
+            Trace.Info("Inspect node_modules folder, make sure vsts-task-lib doesn't overwrite String.startsWith/endsWith.");
+            FixVstsTaskLibModule();
+
 
             // Setup the process invoker.
             using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
@@ -115,10 +111,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
 
                 string file;
                 string arguments;
-                file = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals),
-                                        useNode5 ? "node-5.10.1" : "node",
-                                        "bin",
-                                        $"node{IOUtil.ExeExtension}");
+                file = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), "node", "bin", $"node{IOUtil.ExeExtension}");
                 // Format the arguments passed to node.
                 // 1) Wrap the script file path in double quotes.
                 // 2) Escape double quotes within the script file path. Double-quote is a valid
