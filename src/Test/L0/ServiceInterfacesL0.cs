@@ -29,7 +29,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             // Otherwise, the interface needs to whitelisted.
             var whitelist = new[]
             {
-                typeof(ICapabilitiesProvider),
                 typeof(ICredentialProvider),
                 typeof(IConfigurationProvider),
             };
@@ -54,6 +53,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 typeof(ISecret),
                 typeof(ITraceManager),
                 typeof(IThrottlingReporter),
+                typeof(ICapabilitiesProvider),
             };
             Validate(
                 assembly: typeof(IHostContext).GetTypeInfo().Assembly,
