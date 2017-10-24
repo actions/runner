@@ -39,7 +39,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             switch (typeof(T).FullName)
             {
                 // Listener capabilities providers.
-                case "Microsoft.VisualStudio.Services.Agent.Listener.Capabilities.ICapabilitiesProvider":
+                case "Microsoft.VisualStudio.Services.Agent.ICapabilitiesProvider":
                     Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Listener.Capabilities.AgentCapabilitiesProvider, Agent.Listener");
                     Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Listener.Capabilities.EnvironmentCapabilitiesProvider, Agent.Listener");
 #if OS_LINUX || OS_OSX
