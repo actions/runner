@@ -12,10 +12,8 @@ Supported on Windows, OSX, Ubuntu and Red Hat.  Written for the .NET Core CLR as
 |   | Build & Test |
 |---|:-----:|
 |![Win](docs/res/win_med.png) **Windows**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/b924d696-3eae-4116-8443-9a18392d8544/3531/badge?branch=master)| 
-|![Apple](docs/res/apple_med.png) **OSX**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/b924d696-3eae-4116-8443-9a18392d8544/3080/badge?branch=master)| 
-|![Ubuntu14](docs/res/ubuntu_med.png) **Ubuntu 14.04**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/b924d696-3eae-4116-8443-9a18392d8544/2853/badge?branch=master)|
-|![Ubuntu16](docs/res/ubuntu_med.png) **Ubuntu 16.04**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/b924d696-3eae-4116-8443-9a18392d8544/3742/badge?branch=master)| 
-|![RedHat](docs/res/redhat_med.png) **RedHat**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/b924d696-3eae-4116-8443-9a18392d8544/3418/badge?branch=master)| 
+|![macOS](docs/res/apple_med.png) **macOS**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/b924d696-3eae-4116-8443-9a18392d8544/3080/badge?branch=master)| 
+|![Linux](docs/res/linux_med.png) **Linux**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/b924d696-3eae-4116-8443-9a18392d8544/4411/badge?branch=master)|
 
 
 ## System Pre-Requisites
@@ -24,11 +22,9 @@ First, ensure you have the necessary system prequisites
 
 ![win](docs/res/win_sm.png) [Windows](docs/start/envwin.md)    
 
-![osx](docs/res/apple_sm.png) [OSX](docs/start/envosx.md)    
+![macOS](docs/res/apple_sm.png) [macOS](docs/start/envosx.md)    
 
-![ubuntu](docs/res/ubuntu_sm.png) [Ubuntu](docs/start/envubuntu.md)    
-
-![redhat](docs/res/redhat_sm.png) [RedHat & CentOS](docs/start/envredhat.md)  
+![linux](docs/res/linux_sm.png) [Linux](docs/start/envlinux.md)    
 
 ## Get the Agent
 
@@ -36,11 +32,9 @@ Next, download and configure the agent
 
 ![win](docs/res/win_sm.png)  [Start Windows](https://www.visualstudio.com/en-us/docs/build/admin/agents/v2-windows)  
 
-![osx](docs/res/apple_sm.png)  [Start OSX](https://www.visualstudio.com/en-us/docs/build/admin/agents/v2-osx)  
+![macOS](docs/res/apple_sm.png)  [Start macOS](https://www.visualstudio.com/en-us/docs/build/admin/agents/v2-osx)  
 
-![ubuntu](docs/res/ubuntu_sm.png)  [Start Ubuntu](https://www.visualstudio.com/en-us/docs/build/admin/agents/v2-linux)  
-
-![redhat](docs/res/redhat_sm.png)  [Start RedHat & CentOS](https://www.visualstudio.com/en-us/docs/build/admin/agents/v2-linux)  
+![linux](docs/res/linux_sm.png)  [Start Linux](https://www.visualstudio.com/en-us/docs/build/admin/agents/v2-linux)  
 
 ## Supported Usage
 

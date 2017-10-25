@@ -2,9 +2,9 @@
 
 ## Dev Dependencies
 
-![Win](res/win_sm.png) Git for Windows [Install Here](https://git-scm.com/downloads) _(needed for dev sh script)
+![Win](res/win_sm.png) Git for Windows [Install Here](https://git-scm.com/downloads) (needed for dev sh script)
 
-## Build, Test, Clean, Restore 
+## Build, Test, Layout 
 
 From src:
 
@@ -14,28 +14,21 @@ From src:
   
 **Commands:**  
 
-`restore` (`r`): Run first time and any time you change a project.json  
+`layout` (`l`):  Run first time to create a full agent layout in {root}/_layout  
 
-`build` (`b`):   build everything  
+`build` (`b`):   build everything and update agent layout folder  
 
-`test` (`t`):    run unit tests
-        
-  results in: 
-  Test/bin/Debug/dnxcore50/{platform}/testResults.xml
+`test` (`t`):    build agent binaries and run unit tests  
 
-`buildtest` (`bt`): build and test
-
-`clean` (`c`):   deletes build output for each projects
- 
-`layout` (`l`): Creates a full layout in {root}/_layout  
-   Does a clean, restore, build, publish and copy
-   Default is Debug.  Passing Release as argument is supported (dev l Release)
-
-`update` (`u`) {dirname}: Builds and publishes just one dir.  Patches the layout
-   update {dirname}
-   Use if you change code in an assembly and don't want to wait for the full layout.
-
-`validate` (`v`): Precheckin validation.  Runs git clean, layout and test.
+Normal dev flow:
+```bash
+git clone https://github.com/microsoft/vsts-agent
+cd ./src
+./dev.(sh/cmd) layout # the agent that build from source is in {root}/_layout
+<make code changes>
+./dev.(sh/cmd) build # {root}/_layout will get updated
+./dev.(sh/cmd) test # run all unit tests before git commit/push
+```
 
 ## Editors
 
