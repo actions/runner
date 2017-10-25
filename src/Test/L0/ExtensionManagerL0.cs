@@ -42,9 +42,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 manager.Initialize(tc);
 
                 // Act/Assert.
-                AssertContains<Microsoft.VisualStudio.Services.Agent.ICapabilitiesProvider>(
+                AssertContains<Microsoft.VisualStudio.Services.Agent.Capabilities.ICapabilitiesProvider>(
                     manager,
-                    concreteType: typeof(Microsoft.VisualStudio.Services.Agent.Listener.Capabilities.AgentCapabilitiesProvider));
+                    concreteType: typeof(Microsoft.VisualStudio.Services.Agent.Capabilities.AgentCapabilitiesProvider));
                 AssertContains<Microsoft.VisualStudio.Services.Agent.Worker.IJobExtension>(
                     manager,
                     concreteType: typeof(Microsoft.VisualStudio.Services.Agent.Worker.Build.BuildJobExtension));
