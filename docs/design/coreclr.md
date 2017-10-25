@@ -20,8 +20,8 @@ For that reason, we have separated the work into two clear phases.  Move the age
 
 **Windows**: Windows 7 SP1+, Server 2008 R2 SP1+  
 **Mac OS**: 10.12 (Sierra)+ (reduction)  
-**RedHat Linux**: 7.3+ minimum.  6+ stretch goal as part of this work (mitigated with containers)  
-**Ubuntu Linux**: 14.04+ (LTS versions)
+**Fedora Based Linux**: RedHat/CentOS/Oracle Linux 7+ and Fedora 25+  
+**Debian Based Linux**: Ubuntu 17.04/16.04/14.04, Debian 8.7+ and Linux Mint 17+  
 **openSUSE Linux**: 42.2+
 
 ### Expanding Linux
@@ -38,11 +38,14 @@ We will attempt to make versions like RedHat 6 work, but the ultimate Linux solu
 
 ### OS Dependencies
 
-Customers need to install OS dependencies.  Getting the OS dependencies installed [has been a pain point for customers](https://github.com/Microsoft/vsts-agent/issues/232).  For tasks and docker container support, it's critical (covered in phase 2 below). 
+Customers need to install OS dependencies.  Getting the OS dependencies installed [has been a pain point for customers](https://github.com/Microsoft/vsts-agent/issues/232).  
+In order to improve the customer experience around getting OS dependencies, we will add OS dependencies check as part of agent configuration.  
+When a required .net core dependency is missing, customer can just run another script we added to install all missing dependencies.  
 
 Here is a [list of the OS dependencies](https://github.com/dotnet/core/blob/master/Documentation/prereqs.md).
 
-For OSX, openssl via homebrew will no longer be required in core clr 2.0.  For Linux, core CLR 2.0 has a new feature to allow loading OS dependencies from a folder for [self contained linux apps](https://github.com/dotnet/core/blob/master/Documentation/self-contained-linux-apps.md).
+For OSX, openssl via homebrew will no longer be required in core clr 2.0.  For Linux, core CLR 2.0 has a new feature to allow loading OS dependencies from a folder for [self contained linux apps](https://github.com/dotnet/core/blob/master/Documentation/self-contained-linux-apps.md).  
+However we can't really levage this feature since we can't redistribute those native OS binary due to legal issue. 
 
 ### Reducing Supported Versions Implications
 
@@ -72,7 +75,7 @@ With Consuming CoreCLR 2.0 in the agent, we will change to have only 3 agent pac
   - osx-x64
   - linux-x64
 
-We will change download urls to an azure blob url (firewall considerations) but we will continue to offer [release metadata](https://github.com/Microsoft/vsts-agent/releases) along with the source.  
+We will change download urls to an Azure CDN url backed by Azure blob storage (firewall considerations and github throttling during agent update) but we will continue to offer [release metadata](https://github.com/Microsoft/vsts-agent/releases) along with the source.  
 
 The agent major version will remain 2.x.  Agents will still update along major version lines if we choose to register the appropriate paths.
 
