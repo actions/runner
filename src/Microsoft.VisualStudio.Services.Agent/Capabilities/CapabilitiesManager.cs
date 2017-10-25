@@ -1,11 +1,11 @@
-using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.VisualStudio.Services.Agent.Util;
 
-namespace Microsoft.VisualStudio.Services.Agent.Listener.Capabilities
+namespace Microsoft.VisualStudio.Services.Agent.Capabilities
 {
     [ServiceLocator(Default = typeof(CapabilitiesManager))]
     public interface ICapabilitiesManager : IAgentService

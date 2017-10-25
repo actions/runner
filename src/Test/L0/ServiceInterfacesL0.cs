@@ -1,5 +1,5 @@
 using Microsoft.VisualStudio.Services.Agent.Listener;
-using Microsoft.VisualStudio.Services.Agent.Listener.Capabilities;
+using Microsoft.VisualStudio.Services.Agent.Capabilities;
 using Microsoft.VisualStudio.Services.Agent.Listener.Configuration;
 using Microsoft.VisualStudio.Services.Agent.Worker;
 using Microsoft.VisualStudio.Services.Agent.Worker.Build;
@@ -29,7 +29,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             // Otherwise, the interface needs to whitelisted.
             var whitelist = new[]
             {
-                typeof(ICapabilitiesProvider),
                 typeof(ICredentialProvider),
                 typeof(IConfigurationProvider),
             };
@@ -54,6 +53,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 typeof(ISecret),
                 typeof(ITraceManager),
                 typeof(IThrottlingReporter),
+                typeof(ICapabilitiesProvider),
             };
             Validate(
                 assembly: typeof(IHostContext).GetTypeInfo().Assembly,
@@ -86,7 +86,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 typeof(IWorkerCommandExtension),
                 typeof(IContainerProvider),
                 typeof(INUnitResultsXmlReader),
-                typeof(IMaintenanceServiceProvider)
+                typeof(IMaintenanceServiceProvider), 
+                typeof(IDiagnosticLogManager)
             };
             Validate(
                 assembly: typeof(IStepsRunner).GetTypeInfo().Assembly,

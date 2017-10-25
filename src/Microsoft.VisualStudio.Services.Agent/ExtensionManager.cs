@@ -39,13 +39,13 @@ namespace Microsoft.VisualStudio.Services.Agent
             switch (typeof(T).FullName)
             {
                 // Listener capabilities providers.
-                case "Microsoft.VisualStudio.Services.Agent.Listener.Capabilities.ICapabilitiesProvider":
-                    Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Listener.Capabilities.AgentCapabilitiesProvider, Agent.Listener");
-                    Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Listener.Capabilities.EnvironmentCapabilitiesProvider, Agent.Listener");
+                case "Microsoft.VisualStudio.Services.Agent.Capabilities.ICapabilitiesProvider":
+                    Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Capabilities.AgentCapabilitiesProvider, Microsoft.VisualStudio.Services.Agent");
+                    Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Capabilities.EnvironmentCapabilitiesProvider, Microsoft.VisualStudio.Services.Agent");
 #if OS_LINUX || OS_OSX
-                    Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Listener.Capabilities.NixCapabilitiesProvider, Agent.Listener");
+                    Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Capabilities.NixCapabilitiesProvider, Microsoft.VisualStudio.Services.Agent");
 #elif OS_WINDOWS
-                    Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Listener.Capabilities.PowerShellCapabilitiesProvider, Agent.Listener");
+                    Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Capabilities.PowerShellCapabilitiesProvider, Microsoft.VisualStudio.Services.Agent");
 #endif
                     break;
                 // Listener agent configuration providers

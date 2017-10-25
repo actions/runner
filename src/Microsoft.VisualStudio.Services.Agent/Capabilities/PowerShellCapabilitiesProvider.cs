@@ -5,7 +5,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Microsoft.VisualStudio.Services.Agent.Listener.Capabilities
+namespace Microsoft.VisualStudio.Services.Agent.Capabilities
 {
     public sealed class PowerShellCapabilitiesProvider : AgentService, ICapabilitiesProvider
     {

@@ -8,6 +8,7 @@ using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Xunit;
 using System.Threading;
+using System.Collections.ObjectModel;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
 {
@@ -30,6 +31,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
         private Mock<IJobExtension> _jobExtension;
         private Mock<IPagingLogger> _logger;
         private Mock<ITempDirectoryManager> _temp;
+        private Mock<IDiagnosticLogManager> _diagnosticLogManager;        
 
         private TestHostContext CreateTestContext([CallerMemberName] String testName = "")
         {
@@ -47,6 +49,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             _stepRunner = new Mock<IStepsRunner>();
             _logger = new Mock<IPagingLogger>();
             _temp = new Mock<ITempDirectoryManager>();
+            _diagnosticLogManager = new Mock<IDiagnosticLogManager>();
 
             if (_tokenSource != null)
             {
@@ -117,6 +120,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             hc.SetSingleton(_stepRunner.Object);
             hc.SetSingleton(_extensions.Object);
             hc.SetSingleton(_temp.Object);
+            hc.SetSingleton(_diagnosticLogManager.Object);
             hc.EnqueueInstance<IExecutionContext>(_jobEc);
             hc.EnqueueInstance<IPagingLogger>(_logger.Object);
             return hc;
@@ -277,6 +281,58 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                 _stepRunner.Verify(x => x.RunAsync(It.IsAny<IExecutionContext>(), It.Is<IList<IStep>>(s => s.Equals(_initResult.JobSteps)), JobRunStage.Main), Times.Once);
                 _stepRunner.Verify(x => x.RunAsync(It.IsAny<IExecutionContext>(), It.Is<IList<IStep>>(s => s.Equals(_initResult.PostJobStep)), JobRunStage.PostJob), Times.Once);
             }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task UploadDiganosticLogIfEnvironmentVariableSet()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                _message.Environment.Variables[Constants.Variables.Agent.Diagnostic] = "true";
+
+                await _jobRunner.RunAsync(_message, _tokenSource.Token);
+
+                _diagnosticLogManager.Verify(x => x.UploadDiagnosticLogsAsync(It.IsAny<IExecutionContext>(), 
+                                                                         It.IsAny<AgentJobRequestMessage>(), 
+                                                                         It.IsAny<DateTime>()), 
+                                             Times.Once);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task DontUploadDiagnosticLogIfEnvironmentVariableFalse()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                _message.Environment.Variables[Constants.Variables.Agent.Diagnostic] = "false";
+
+                await _jobRunner.RunAsync(_message, _tokenSource.Token);
+
+                _diagnosticLogManager.Verify(x => x.UploadDiagnosticLogsAsync(It.IsAny<IExecutionContext>(), 
+                                                                         It.IsAny<AgentJobRequestMessage>(), 
+                                                                         It.IsAny<DateTime>()), 
+                                             Times.Never);
+            }            
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task DontUploadDiagnosticLogIfEnvironmentVariableMissing()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                await _jobRunner.RunAsync(_message, _tokenSource.Token);
+
+                _diagnosticLogManager.Verify(x => x.UploadDiagnosticLogsAsync(It.IsAny<IExecutionContext>(), 
+                                                                         It.IsAny<AgentJobRequestMessage>(), 
+                                                                         It.IsAny<DateTime>()), 
+                                             Times.Never);
+            }  
         }
     }
 }

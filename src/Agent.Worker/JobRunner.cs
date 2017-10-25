@@ -10,6 +10,9 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Net.Http;
+using System.Text;
+using System.IO.Compression;
+using Microsoft.VisualStudio.Services.Agent.Worker.Build;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
@@ -33,6 +36,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             ArgUtil.NotNull(message.Environment.Variables, nameof(message.Environment.Variables));
             ArgUtil.NotNull(message.Tasks, nameof(message.Tasks));
             Trace.Info("Job ID {0}", message.JobId);
+
+            DateTime jobStartTimeUtc = DateTime.UtcNow;
 
             // Agent.RunMode
             RunMode runMode;
@@ -308,7 +313,26 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
                 Trace.Info($"Job result after all post-job steps finish: {jobContext.Result}");
 
-                // Complete the job.
+                if (jobContext.Variables.GetBoolean(Constants.Variables.Agent.Diagnostic) ?? false)
+                {
+                    Trace.Info("Support log upload starting.");
+
+                    IDiagnosticLogManager diagnosticLogManager = HostContext.GetService<IDiagnosticLogManager>();
+
+                    try
+                    {
+                        await diagnosticLogManager.UploadDiagnosticLogsAsync(executionContext: jobContext, message: message, jobStartTimeUtc: jobStartTimeUtc);
+
+                        Trace.Info("Support log upload complete.");
+                    }
+                    catch (Exception ex)
+                    {
+                        // Log the error but make sure we continue gracefully.
+                        Trace.Info("Error uploading support logs.");
+                        Trace.Error(ex);
+                    }
+                }
+
                 Trace.Info("Completing the job execution context.");
                 return await CompleteJobAsync(jobServer, jobContext, message);
             }
