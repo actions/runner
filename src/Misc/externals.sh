@@ -1,4 +1,7 @@
 #!/bin/bash
+PLATFORM=$1
+PRECACHE=$2
+
 CONTAINER_URL=https://vstsagenttools.blob.core.windows.net/tools
 NODE_URL=https://nodejs.org/dist
 NODE_VERSION="6.10.3"
@@ -9,35 +12,7 @@ get_abs_path() {
 }
 
 LAYOUT_DIR=$(get_abs_path `dirname $0`/../../_layout)
-DOWNLOAD_DIR=$(get_abs_path `dirname $0`/../../_downloads)
-
-function get_current_os_name() {
-    local uname=$(uname)
-    if [ "$uname" = "Darwin" ]; then
-        echo "darwin"
-        return 0
-    else
-        # Detect Distro
-        if [ "$(cat /etc/*-release 2>/dev/null | grep -cim1 ubuntu)" -eq 1 ]; then
-            echo "ubuntu"
-            return 0
-        elif [ "$(cat /etc/*-release 2>/dev/null | grep -cim1 centos)" -eq 1 ]; then
-            echo "centos"
-            return 0
-        elif [ "$(cat /etc/*-release 2>/dev/null | grep -cim1 rhel)" -eq 1 ]; then
-            echo "rhel"
-            return 0
-        elif [ "$(cat /etc/*-release 2>/dev/null | grep -cim1 debian)" -eq 1 ]; then
-            echo "debian"
-            return 0
-        fi
-    fi
-    
-    echo "windows"
-    return 0
-}
-
-PLATFORM=$(get_current_os_name)
+DOWNLOAD_DIR="$(get_abs_path `dirname $0`/../../_downloads)/netcore2x"
 
 function failed() {
    local error=${1:-Undefined error}
@@ -66,66 +41,87 @@ function acquireExternalTool() {
     # Check if the download already exists.
     local download_target="$DOWNLOAD_DIR/$relative_url"
     local download_basename="$(basename $download_target)"
-    if [ -f "$download_target" ]; then
-        echo "Download exists: $download_basename"
-    else
-        # Delete any previous partial file.
-        local partial_target="$DOWNLOAD_DIR/partial/$download_basename"
-        mkdir -p "$(dirname "$partial_target")" || checkRC 'mkdir'
-        if [ -f "$partial_target" ]; then
-            rm "$partial_target" || checkRC 'rm'
-        fi
+    local download_dir="$(dirname $download_target)"
 
-        # Download from source to the partial file.
-        echo "Downloading $download_source"
-        mkdir -p "$(dirname $download_target)" || checkRC 'mkdir'
-        # curl -f Fail silently (no output at all) on HTTP errors (H)
-        #      -k Allow connections to SSL sites without certs (H)
-        #      -S Show error. With -s, make curl show errors when they occur
-        #      -L Follow redirects (H)
-        #      -o FILE    Write to FILE instead of stdout
-        curl -fkSL -o "$partial_target" "$download_source" 2>"${download_target}_download.log" || checkRC 'curl'
+    if [[ "$PRECACHE" != "" ]]; then
+        if [ -f "$download_target" ]; then
+            echo "Download exists: $download_basename"
+        else
+            # Delete any previous partial file.
+            local partial_target="$DOWNLOAD_DIR/partial/$download_basename"
+            mkdir -p "$(dirname "$partial_target")" || checkRC 'mkdir'
+            if [ -f "$partial_target" ]; then
+                rm "$partial_target" || checkRC 'rm'
+            fi
 
-        # Move the partial file to the download target.
-        mv "$partial_target" "$download_target" || checkRC 'mv'
-    fi
+            # Download from source to the partial file.
+            echo "Downloading $download_source"
+            mkdir -p "$(dirname $download_target)" || checkRC 'mkdir'
+            # curl -f Fail silently (no output at all) on HTTP errors (H)
+            #      -k Allow connections to SSL sites without certs (H)
+            #      -S Show error. With -s, make curl show errors when they occur
+            #      -L Follow redirects (H)
+            #      -o FILE    Write to FILE instead of stdout
+            curl -fkSL -o "$partial_target" "$download_source" 2>"${download_target}_download.log" || checkRC 'curl'
 
-    # Extract to layout.
-    mkdir -p "$target_dir" || checkRC 'mkdir'
-    local nested_dir=""
-    if [[ "$download_basename" == *.zip ]]; then
-        # Extract the zip.
-        echo "Extracting zip to layout"
-        unzip "$download_target" -d "$target_dir" > /dev/null
-        local rc=$?
-        if [[ $rc -ne 0 && $rc -ne 1 ]]; then
-            failed "unzip failed with return code $rc"
-        fi
+            # Move the partial file to the download target.
+            mv "$partial_target" "$download_target" || checkRC 'mv'
 
-        # Capture the nested directory path if the fix_nested_dir flag is set.
-        if [[ "$fix_nested_dir" == "fix_nested_dir" ]]; then
-            nested_dir="${download_basename%.zip}" # Remove the trailing ".zip".
-        fi
-    elif [[ "$download_basename" == *.tar.gz ]]; then
-        # Extract the tar gz.
-        echo "Extracting tar gz to layout"
-        tar xzf "$download_target" -C "$target_dir" > /dev/null || checkRC 'tar'
-
-        # Capture the nested directory path if the fix_nested_dir flag is set.
-        if [[ "$fix_nested_dir" == "fix_nested_dir" ]]; then
-            nested_dir="${download_basename%.tar.gz}" # Remove the trailing ".tar.gz".
+            # Extract to current directory
+            # Ensure we can extract those files
+            # We might use them during dev.sh
+            if [[ "$download_basename" == *.zip ]]; then
+                # Extract the zip.
+                echo "Testing zip"
+                unzip "$download_target" -d "$download_dir" > /dev/null
+                local rc=$?
+                if [[ $rc -ne 0 && $rc -ne 1 ]]; then
+                    failed "unzip failed with return code $rc"
+                fi
+            elif [[ "$download_basename" == *.tar.gz ]]; then
+                # Extract the tar gz.
+                echo "Testing tar gz"
+                tar xzf "$download_target" -C "$download_dir" > /dev/null || checkRC 'tar'
+            fi
         fi
     else
-        # Copy the file.
-        echo "Copying to layout"
-        cp "$download_target" "$target_dir/" || checkRC 'cp'
-    fi
+        # Extract to layout.
+        mkdir -p "$target_dir" || checkRC 'mkdir'
+        local nested_dir=""
+        if [[ "$download_basename" == *.zip ]]; then
+            # Extract the zip.
+            echo "Extracting zip to layout"
+            unzip "$download_target" -d "$target_dir" > /dev/null
+            local rc=$?
+            if [[ $rc -ne 0 && $rc -ne 1 ]]; then
+                failed "unzip failed with return code $rc"
+            fi
 
-    # Fixup the nested directory.
-    if [[ "$nested_dir" != "" ]]; then
-        if [ -d "$target_dir/$nested_dir" ]; then
-            mv "$target_dir/$nested_dir"/* "$target_dir/" || checkRC 'mv'
-            rmdir "$target_dir/$nested_dir" || checkRC 'rmdir'
+            # Capture the nested directory path if the fix_nested_dir flag is set.
+            if [[ "$fix_nested_dir" == "fix_nested_dir" ]]; then
+                nested_dir="${download_basename%.zip}" # Remove the trailing ".zip".
+            fi
+        elif [[ "$download_basename" == *.tar.gz ]]; then
+            # Extract the tar gz.
+            echo "Extracting tar gz to layout"
+            tar xzf "$download_target" -C "$target_dir" > /dev/null || checkRC 'tar'
+
+            # Capture the nested directory path if the fix_nested_dir flag is set.
+            if [[ "$fix_nested_dir" == "fix_nested_dir" ]]; then
+                nested_dir="${download_basename%.tar.gz}" # Remove the trailing ".tar.gz".
+            fi
+        else
+            # Copy the file.
+            echo "Copying to layout"
+            cp "$download_target" "$target_dir/" || checkRC 'cp'
+        fi
+
+        # Fixup the nested directory.
+        if [[ "$nested_dir" != "" ]]; then
+            if [ -d "$target_dir/$nested_dir" ]; then
+                mv "$target_dir/$nested_dir"/* "$target_dir/" || checkRC 'mv'
+                rmdir "$target_dir/$nested_dir" || checkRC 'rmdir'
+            fi
         fi
     fi
 }
@@ -150,12 +146,12 @@ if [[ "$PLATFORM" == "darwin" ]]; then
 fi
 
 # Download the external tools common across OSX and Linux platforms.
-if [[ "$PLATFORM" == "ubuntu" || "$PLATFORM" == "debian" || "$PLATFORM" == "rhel" || "$PLATFORM" == "centos" || "$PLATFORM" == "darwin" ]]; then
+if [[ "$PLATFORM" == "linux" || "$PLATFORM" == "darwin" ]]; then
     acquireExternalTool "$CONTAINER_URL/tee/14_0_4_20160606/TEE-CLC-14.0.4.zip" tee fix_nested_dir
     acquireExternalTool "$CONTAINER_URL/vso-task-lib/0.5.5/vso-task-lib.tar.gz" vso-task-lib
 fi
 
 # Download the external tools common across Linux platforms (excluding OSX).
-if [[ "$PLATFORM" == "ubuntu" || "$PLATFORM" == "debian" || "$PLATFORM" == "rhel" || "$PLATFORM" == "centos" ]]; then
+if [[ "$PLATFORM" == "linux" ]]; then
     acquireExternalTool "$NODE_URL/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-x64.tar.gz" node fix_nested_dir
 fi

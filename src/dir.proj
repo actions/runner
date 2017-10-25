@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="14.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Target Name="GenerateConstant">
+    <Exec Command="git rev-parse HEAD" ConsoleToMSBuild="true">
+      <Output TaskParameter="ConsoleOutput" PropertyName="GitInfoCommitHash" />
+    </Exec>
+    <Message Text="Building $(GitInfoCommitHash) --- $(PackageRuntime)" Importance="high"/>
+
+    <ItemGroup>
+        <BuildConstants Include="namespace Microsoft.VisualStudio.Services.Agent"/>
+        <BuildConstants Include="{"/>
+        <BuildConstants Include="%20%20%20%20public static class BuildConstants"/>
+        <BuildConstants Include="%20%20%20%20{"/>
+        <BuildConstants Include="%20%20%20%20%20%20%20%20public static class Source"/>
+        <BuildConstants Include="%20%20%20%20%20%20%20%20{"/>
+        <BuildConstants Include="%20%20%20%20%20%20%20%20%20%20%20%20public static readonly string CommitHash = %22$(GitInfoCommitHash)%22%3B"/>
+        <BuildConstants Include="%20%20%20%20%20%20%20%20}%0A"/>
+        <BuildConstants Include="%20%20%20%20%20%20%20%20public static class AgentPackage"/>
+        <BuildConstants Include="%20%20%20%20%20%20%20%20{"/>
+        <BuildConstants Include="%20%20%20%20%20%20%20%20%20%20%20%20public static readonly string PackageName = %22$(PackageRuntime)%22%3B"/>
+        <BuildConstants Include="%20%20%20%20%20%20%20%20}"/>
+        <BuildConstants Include="%20%20%20%20}"/>
+        <BuildConstants Include="}"/>
+    </ItemGroup>
+
+    <WriteLinesToFile  
+            File="Microsoft.VisualStudio.Services.Agent/BuildConstants.cs"
+            Lines="@(BuildConstants)"
+            Overwrite="true"  
+            Encoding="Unicode"/>
+  </Target>
+
+  <Target Name="Build" DependsOnTargets="GenerateConstant">
+    <Exec Command="dotnet publish Microsoft.VisualStudio.Services.Agent/Microsoft.VisualStudio.Services.Agent.csproj --output %22$(MSBuildProjectDirectory)/../_layout/bin%22 --runtime $(PackageRuntime) -c $(BUILDCONFIG)" ConsoleToMSBuild="true" />
+    <Exec Command="dotnet publish Agent.Listener/Agent.Listener.csproj --output %22$(MSBuildProjectDirectory)/../_layout/bin%22 --runtime $(PackageRuntime) -c $(BUILDCONFIG)" ConsoleToMSBuild="true" />
+    <Exec Command="dotnet publish Agent.Worker/Agent.Worker.csproj --output %22$(MSBuildProjectDirectory)/../_layout/bin%22 --runtime $(PackageRuntime) -c $(BUILDCONFIG)" ConsoleToMSBuild="true" />
+    <Exec Command="%22$(DesktopMSBuild)%22 Agent.Service/Windows/AgentService.csproj /p:Configuration=$(BUILDCONFIG) /p:OutputPath=%22$(MSBuildProjectDirectory)/../_layout/bin%22" ConsoleToMSBuild="true" Condition="'$(PackageRuntime)' == 'win-x64'" />
+  </Target>
+   
+  <Target Name="Test" DependsOnTargets="GenerateConstant">
+    <Exec Command="dotnet build Test/Test.csproj -c $(BUILDCONFIG)" ConsoleToMSBuild="true" />
+    <Exec Command="dotnet test Test/Test.csproj --no-build --logger:trx" ConsoleToMSBuild="true" />
+  </Target>
+
+  <Target Name="Layout" DependsOnTargets="Clean;Build">
+    <ItemGroup>  
+        <LayoutRootFiles Include="$(MSBuildProjectDirectory)/Misc/layoutroot/**"/>
+        <LayoutBinFiles Include="$(MSBuildProjectDirectory)/Misc/layoutbin/**"/>
+    </ItemGroup>  
+
+    <Copy SourceFiles="@(LayoutRootFiles)"  DestinationFolder="$(MSBuildProjectDirectory)/../_layout/%(RecursiveDir)"/>
+    <Copy SourceFiles="@(LayoutBinFiles)"  DestinationFolder="$(MSBuildProjectDirectory)/../_layout/bin/%(RecursiveDir)"/>
+
+    <ItemGroup>
+        <LayoutRootFilesToDelete Include="$(MSBuildProjectDirectory)/../_layout/*.cmd" Condition="'$(PackageRuntime)' != 'win-x64'"/>
+        <LayoutRootFilesToDelete Include="$(MSBuildProjectDirectory)/../_layout/*.sh" Condition="'$(PackageRuntime)' == 'win-x64'"/>
+    </ItemGroup>
+
+    <Delete Files="@(LayoutRootFilesToDelete)" />
+  </Target>
+
+  <Target Name="Clean">
+    <RemoveDir  Directories="$(MSBuildProjectDirectory)/../_layout" ContinueOnError="WarnAndContinue" />
+    <RemoveDir  Directories="Microsoft.VisualStudio.Services.Agent/bin" />
+    <RemoveDir  Directories="Microsoft.VisualStudio.Services.Agent/obj" />
+    <RemoveDir  Directories="Agent.Listener/bin" />
+    <RemoveDir  Directories="Agent.Listener/obj" />
+    <RemoveDir  Directories="Agent.Worker/bin" />
+    <RemoveDir  Directories="Agent.Worker/obj" />
+    <RemoveDir  Directories="Test/bin" />
+    <RemoveDir  Directories="Test/obj" />
+  </Target>
+</Project>
