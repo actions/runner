@@ -1,4 +1,3 @@
-using Microsoft.VisualStudio.Services.Agent.Listener.Configuration;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using Microsoft.Win32;
 using System;
@@ -6,7 +5,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Microsoft.VisualStudio.Services.Agent.Listener.Capabilities
+namespace Microsoft.VisualStudio.Services.Agent.Capabilities
 {
     public sealed class AgentCapabilitiesProvider : AgentService, ICapabilitiesProvider
     {

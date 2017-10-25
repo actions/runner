@@ -18,7 +18,7 @@ using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Microsoft.VisualStudio.Services.Agent
+namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
     [ServiceLocator(Default = typeof(DiagnosticLogManager))]
     public interface IDiagnosticLogManager : IAgentService
@@ -47,7 +47,6 @@ namespace Microsoft.VisualStudio.Services.Agent
             // \_layout\_work\_temp\[jobname-support]
             executionContext.Debug("Setting up diagnostic log folders.");
             string tempDirectory = executionContext.Variables.Agent_TempDirectory;
-            ArgUtil.NotNullOrEmpty(tempDirectory, nameof(tempDirectory));
             ArgUtil.Directory(tempDirectory, nameof(tempDirectory));
 
             string supportRootFolder = Path.Combine(tempDirectory, message.JobName + "-support"); // TODO: Is JobName safe to use as a path? We could just generate a GUID as the name of our scoped folder?
