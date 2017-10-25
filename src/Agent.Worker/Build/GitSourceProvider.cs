@@ -553,6 +553,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             if (acceptUntrustedCerts)
             {
                 additionalFetchArgs.Add($"-c http.sslVerify=false");
+                additionalLfsFetchArgs.Add($"-c http.sslVerify=false");
             }
 
             if (!_selfManageGitCreds)
@@ -735,6 +736,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 }
 
                 List<string> additionalSubmoduleUpdateArgs = new List<string>();
+                if (acceptUntrustedCerts)
+                {
+                    additionalSubmoduleUpdateArgs.Add($"-c http.sslVerify=false");
+                }
+
                 if (!_selfManageGitCreds)
                 {
                     if (GitUseAuthHeaderCmdlineArg)
