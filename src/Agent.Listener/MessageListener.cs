@@ -32,11 +32,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         private ITerminal _term;
         private IAgentServer _agentServer;
         private TaskAgentSession _session;
+        private TimeSpan _getNextMessageRetryInterval;
         private readonly TimeSpan _sessionCreationRetryInterval = TimeSpan.FromSeconds(30);
         private readonly TimeSpan _sessionConflictRetryLimit = TimeSpan.FromMinutes(4);
         private readonly TimeSpan _clockSkewRetryLimit = TimeSpan.FromMinutes(30);
         private readonly Dictionary<string, int> _sessionCreationExceptionTracker = new Dictionary<string, int>();
-        private readonly TimeSpan _getNextMessageRetryInterval = TimeSpan.FromSeconds(15);
 
         public override void Initialize(IHostContext hostContext)
         {
@@ -149,6 +149,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             ArgUtil.NotNull(_session, nameof(_session));
             ArgUtil.NotNull(_settings, nameof(_settings));
             bool encounteringError = false;
+            int continuousError = 0;
             string errorMessage = string.Empty;
             Stopwatch heartbeat = new Stopwatch();
             heartbeat.Restart();
@@ -175,6 +176,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     {
                         _term.WriteLine(StringUtil.Loc("QueueConnected", DateTime.UtcNow));
                         encounteringError = false;
+                        continuousError = 0;
                     }
                 }
                 catch (OperationCanceledException) when (token.IsCancellationRequested)
@@ -197,11 +199,24 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     }
                     else
                     {
-                        //retry after a delay
+                        continuousError++;
+                        //retry after a random backoff to avoid service throttling
+                        //in case of there is a service error happened and all agents get kicked off of the long poll and all agent try to reconnect back at the same time.
+                        if (continuousError <= 5)
+                        {
+                            // random backoff [15, 30]
+                            _getNextMessageRetryInterval = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(15), TimeSpan.FromSeconds(30), _getNextMessageRetryInterval);
+                        }
+                        else
+                        {
+                            // more aggressive backoff [30, 60]
+                            _getNextMessageRetryInterval = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(60), _getNextMessageRetryInterval);
+                        }
+
                         if (!encounteringError)
                         {
                             //print error only on the first consecutive error
-                            _term.WriteError(StringUtil.Loc("QueueConError", DateTime.UtcNow, ex.Message, _getNextMessageRetryInterval.TotalSeconds));
+                            _term.WriteError(StringUtil.Loc("QueueConError", DateTime.UtcNow, ex.Message));
                             encounteringError = true;
                         }
 
