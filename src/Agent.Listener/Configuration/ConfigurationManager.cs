@@ -13,6 +13,7 @@ using System.Security.Cryptography;
 using System.Security.Principal;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Runtime.InteropServices;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 {
@@ -604,6 +605,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
             // update - update instead of delete so we don't lose user capabilities etc...
             agent.Version = Constants.Agent.Version;
+            agent.OSDescription = RuntimeInformation.OSDescription;
 
             foreach (KeyValuePair<string, string> capability in systemCapabilities)
             {
@@ -622,7 +624,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                     PublicKey = new TaskAgentPublicKey(publicKey.Exponent, publicKey.Modulus),
                 },
                 MaxParallelism = 1,
-                Version = Constants.Agent.Version
+                Version = Constants.Agent.Version,
+                OSDescription = RuntimeInformation.OSDescription,
             };
 
             foreach (KeyValuePair<string, string> capability in systemCapabilities)

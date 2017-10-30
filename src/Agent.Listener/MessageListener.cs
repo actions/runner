@@ -13,6 +13,7 @@ using System.Text;
 using Microsoft.VisualStudio.Services.WebApi;
 using Microsoft.VisualStudio.Services.OAuth;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener
 {
@@ -72,6 +73,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 Id = _settings.AgentId,
                 Name = _settings.AgentName,
                 Version = Constants.Agent.Version,
+                OSDescription = RuntimeInformation.OSDescription,
             };
             string sessionName = $"{Environment.MachineName ?? "AGENT"}";
             var taskAgentSession = new TaskAgentSession(sessionName, agent, systemCapabilities);

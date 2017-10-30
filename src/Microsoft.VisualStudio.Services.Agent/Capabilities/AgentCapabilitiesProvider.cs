@@ -26,6 +26,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Capabilities
             Add(capabilities, "InteractiveSession", (HostContext.StartupType != StartupType.Service).ToString());
             Add(capabilities, "Agent.Version", Constants.Agent.Version);
             Add(capabilities, "Agent.ComputerName", Environment.MachineName ?? string.Empty);
+            Add(capabilities, "Agent.HomeDirectory", HostContext.GetDirectory(WellKnownDirectory.Root));
             return Task.FromResult(capabilities);
         }
 
