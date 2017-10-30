@@ -5,8 +5,8 @@ phases:
 ################################################################################
   displayName: Windows Agent
   queue:
-    name: Hosted VS2017
-    #demands: agent.os -equals Windows_NT
+    name: buildDevs
+    demands: agent.os -equals Windows_NT
   steps:
 
   # Clean
@@ -119,7 +119,7 @@ phases:
   displayName: OSX Agent
   queue:
     name: buildDevs
-    #demands: agent.os -equals darwin
+    demands: agent.os -equals darwin
   steps:
 
   # Clean
@@ -156,8 +156,8 @@ phases:
 ################################################################################
   displayName: Publish Agents (Windows/Linux/OSX)
   queue:
-    name: Hosted VS2017
-    #demands: agent.os -equals Windows_NT
+    name: buildDevs
+    demands: agent.os -equals Windows_NT
   dependsOn: 
   - build_windows_agent
   - build_osx_agent
