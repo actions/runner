@@ -465,6 +465,7 @@
   "RMJenkinsInvalidBuild": "Jenkins build {0} is invalid.",
   "RMJenkinsJobName": "Job Name: {0}",
   "RMJenkinsNoArtifactsFound": "No artifacts are available in the Jenkins build {0}.",
+  "RMLowAvailableDiskSpace": "Low disk space on {0} drive, less than 100 MB is available.",
   "RMNoBuildArtifactsFound": "No artifacts are available in the build {0}.",
   "RMParallelDownloadLimit": "Parallel download limit: {0}",
   "RMPrepareToGetFromJenkinsServer": "Preparing to get artifacts info from Jenkins server",

@@ -28,17 +28,24 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
         private string ReleaseWorkingFolder { get; set; }
         private string ArtifactsWorkingFolder { get; set; }
         private bool SkipArtifactsDownload { get; set; }
+        private IList<AgentArtifactDefinition> ReleaseArtifacts { get; set; } = new List<AgentArtifactDefinition>();
 
         public override Type ExtensionType => typeof(IJobExtension);
         public override HostTypes HostType => HostTypes.Release;
 
         public override IStep GetExtensionPreJobStep(IExecutionContext jobContext)
         {
-            return new JobExtensionRunner(
-                context: jobContext.CreateChild(Guid.NewGuid(), StringUtil.Loc("DownloadArtifacts"), nameof(ReleaseJobExtension)),
-                runAsync: GetArtifactsAsync,
-                condition: ExpressionManager.Succeeded,
-                displayName: StringUtil.Loc("DownloadArtifacts"));
+            if (ReleaseArtifacts.Any())
+            {
+                return new JobExtensionRunner(
+                    context: jobContext.CreateChild(Guid.NewGuid(), StringUtil.Loc("DownloadArtifacts"),
+                        nameof(ReleaseJobExtension)),
+                    runAsync: DownloadArtifactsAndCommitsAsync,
+                    condition: ExpressionManager.Succeeded,
+                    displayName: StringUtil.Loc("DownloadArtifacts"));
+            }
+
+            return null;
         }
 
         public override IStep GetExtensionPostJobStep(IExecutionContext jobContext)
@@ -103,13 +110,28 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
             sourcePath = string.Empty;
         }
 
-        private async Task GetArtifactsAsync(IExecutionContext executionContext)
+        private async Task DownloadArtifactsAndCommitsAsync(IExecutionContext executionContext)
         {
             Trace.Entering();
 
             try
             {
-                ServiceEndpoint vssEndpoint = executionContext.Endpoints.FirstOrDefault(e => string.Equals(e.Name, ServiceEndpoints.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
+                await DownloadArtifacts(executionContext, ReleaseArtifacts, ArtifactsWorkingFolder);
+                await DownloadCommits(executionContext, TeamProjectId, ReleaseArtifacts);
+            }
+            catch (Exception ex)
+            {
+                LogDownloadFailureTelemetry(executionContext, ex);
+                throw;
+            }
+        }
+
+        private IList<AgentArtifactDefinition> GetReleaseArtifacts(IExecutionContext executionContext)
+        {
+            try
+            {
+                ServiceEndpoint vssEndpoint = executionContext.Endpoints.FirstOrDefault(e =>
+                    string.Equals(e.Name, ServiceEndpoints.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
                 ArgUtil.NotNull(vssEndpoint, nameof(vssEndpoint));
                 ArgUtil.NotNull(vssEndpoint.Url, nameof(vssEndpoint.Url));
 
@@ -119,15 +141,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
                 IList<AgentArtifactDefinition> releaseArtifacts = releaseServer.GetReleaseArtifactsFromService(ReleaseId).ToList();
                 IList<AgentArtifactDefinition> filteredReleaseArtifacts = FilterArtifactDefintions(releaseArtifacts);
                 filteredReleaseArtifacts.ToList().ForEach(x => Trace.Info($"Found Artifact = {x.Alias} of type {x.ArtifactType}"));
-
-                if (!SkipArtifactsDownload)
-                {
-                    // TODO: Create this as new task. Old windows agent does this. First is initialize which does the above and download task will be added based on skipDownloadArtifact option
-                    executionContext.Output(StringUtil.Loc("RMDownloadingArtifact"));
-                    await DownloadArtifacts(executionContext, filteredReleaseArtifacts, ArtifactsWorkingFolder);
-                }
-
-                await DownloadCommits(executionContext, TeamProjectId, releaseArtifacts);
+                return releaseArtifacts;
             }
             catch (Exception ex)
             {
@@ -173,31 +187,41 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
             return commitsRootDirectory;
         }
 
-        private async Task DownloadArtifacts(IExecutionContext executionContext, IList<AgentArtifactDefinition> agentArtifactDefinitions, string artifactsWorkingFolder)
+        private async Task DownloadArtifacts(IExecutionContext executionContext,
+            IList<AgentArtifactDefinition> agentArtifactDefinitions, string artifactsWorkingFolder)
         {
             Trace.Entering();
 
             CreateArtifactsFolder(executionContext, artifactsWorkingFolder);
+
+            executionContext.Output(StringUtil.Loc("RMDownloadingArtifact"));
+
             foreach (AgentArtifactDefinition agentArtifactDefinition in agentArtifactDefinitions)
             {
                 // We don't need to check if its old style artifact anymore. All the build data has been fixed and all the build artifact has Alias now.
                 ArgUtil.NotNullOrEmpty(agentArtifactDefinition.Alias, nameof(agentArtifactDefinition.Alias));
 
                 var extensionManager = HostContext.GetService<IExtensionManager>();
-                IArtifactExtension extension = (extensionManager.GetExtensions<IArtifactExtension>()).FirstOrDefault(x => agentArtifactDefinition.ArtifactType == x.ArtifactType);
+                IArtifactExtension extension =
+                    (extensionManager.GetExtensions<IArtifactExtension>()).FirstOrDefault(x =>
+                        agentArtifactDefinition.ArtifactType == x.ArtifactType);
 
                 if (extension == null)
                 {
-                    throw new InvalidOperationException(StringUtil.Loc("RMArtifactTypeNotSupported", agentArtifactDefinition.ArtifactType));
+                    throw new InvalidOperationException(StringUtil.Loc("RMArtifactTypeNotSupported",
+                        agentArtifactDefinition.ArtifactType));
                 }
 
                 Trace.Info($"Found artifact extension of type {extension.ArtifactType}");
                 executionContext.Output(StringUtil.Loc("RMStartArtifactsDownload"));
-                ArtifactDefinition artifactDefinition = ConvertToArtifactDefinition(agentArtifactDefinition, executionContext, extension);
-                executionContext.Output(StringUtil.Loc("RMArtifactDownloadBegin", agentArtifactDefinition.Alias, agentArtifactDefinition.ArtifactType));
+                ArtifactDefinition artifactDefinition =
+                    ConvertToArtifactDefinition(agentArtifactDefinition, executionContext, extension);
+                executionContext.Output(StringUtil.Loc("RMArtifactDownloadBegin", agentArtifactDefinition.Alias,
+                    agentArtifactDefinition.ArtifactType));
 
                 // Get the local path where this artifact should be downloaded. 
-                string downloadFolderPath = Path.GetFullPath(Path.Combine(artifactsWorkingFolder, agentArtifactDefinition.Alias ?? string.Empty));
+                string downloadFolderPath = Path.GetFullPath(Path.Combine(artifactsWorkingFolder,
+                    agentArtifactDefinition.Alias ?? string.Empty));
 
                 // download the artifact to this path. 
                 RetryExecutor retryExecutor = new RetryExecutor();
@@ -221,15 +245,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
 
                 await retryExecutor.ExecuteAsync(
                     async () =>
-                        {
-                            var releaseFileSystemManager = HostContext.GetService<IReleaseFileSystemManager>();
-                            executionContext.Output(StringUtil.Loc("RMEnsureArtifactFolderExistsAndIsClean", downloadFolderPath));
-                            releaseFileSystemManager.EnsureEmptyDirectory(downloadFolderPath, executionContext.CancellationToken);
+                    {
+                        var releaseFileSystemManager = HostContext.GetService<IReleaseFileSystemManager>();
+                        executionContext.Output(StringUtil.Loc("RMEnsureArtifactFolderExistsAndIsClean",
+                            downloadFolderPath));
+                        releaseFileSystemManager.EnsureEmptyDirectory(downloadFolderPath,
+                            executionContext.CancellationToken);
 
-                            await extension.DownloadAsync(executionContext, artifactDefinition, downloadFolderPath);
-                        });
+                        await extension.DownloadAsync(executionContext, artifactDefinition, downloadFolderPath);
+                    });
 
-                executionContext.Output(StringUtil.Loc("RMArtifactDownloadFinished", agentArtifactDefinition.Alias));
+                executionContext.Output(StringUtil.Loc("RMArtifactDownloadFinished",
+                    agentArtifactDefinition.Alias));
             }
 
             executionContext.Output(StringUtil.Loc("RMArtifactsDownloadFinished"));
@@ -320,7 +347,45 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
                 executionContext.Output(StringUtil.Loc("RMUserChoseToSkipArtifactDownload"));
                 Trace.Info("Skipping artifact download based on the setting specified.");
             }
+            else
+            {
+                ReleaseArtifacts = GetReleaseArtifacts(executionContext);
 
+                if (!ReleaseArtifacts.Any())
+                {
+                    CreateArtifactsFolder(executionContext, ArtifactsWorkingFolder);
+                    Trace.Info("No artifacts found to be downloaded by agent.");
+                }
+            }
+
+            CheckForAvailableDiskSpace(executionContext);
+        }
+
+        private void CheckForAvailableDiskSpace(IExecutionContext executionContext)
+        {
+            try
+            {
+                var root = Path.GetPathRoot(ArtifactsWorkingFolder);
+
+                foreach (var drive in DriveInfo.GetDrives())
+                {
+                    if (string.Equals(root, drive.Name, StringComparison.OrdinalIgnoreCase))
+                    {
+                        var availableSpaceInMB = drive.AvailableFreeSpace / (1024 * 1024);
+                        if (availableSpaceInMB < 100)
+                        {
+                            executionContext.Warning(StringUtil.Loc("RMLowAvailableDiskSpace", root));
+                        }
+
+                        break;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // ignore any exceptions during checking for free disk space
+                Trace.Error("Failed to check for available disk space: " + ex);
+            }
         }
 
         private void SetLocalVariables(IExecutionContext executionContext, string artifactsDirectoryPath)
