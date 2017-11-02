@@ -45,7 +45,7 @@ steps:
 ## Resiliency
 
 For resiliency when using extension tasks, instead of the task name you can use
-"<CONTRIBUTION_IDENTIFIER>.<NAME>" to avoid collisions on the name. Otherwise
+`<CONTRIBUTION_IDENTIFIER>.<NAME>` to avoid collisions on the name. Otherwise
 if the name collides, in-the-box tasks take precedence.
 
 Alternatively, the task ID (a GUID) can be used instead of the task name.
