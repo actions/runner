@@ -12,7 +12,7 @@ When `enableAccessToken` is set to true, script tasks (script, powershell, bash)
 
 ## Phase target
 
-When a phase is started, it is dispatched as one or more jobs to it's target (agent `queue`, `deployment` group, or `server`). Each target section has settings that are either specific to the target type, or specific to the individual jobs that are dispatched.
+When a phase is started, it is dispatched as one or more jobs to it's target (agent `queue`<!--, `deployment` group,--> or `server`). Each target section has settings that are either specific to the target type, or specific to the individual jobs that are dispatched.
 
 When not defined, the target defaults to `queue`.
 
@@ -26,10 +26,11 @@ queue: string
 
 Otherwise the full syntax is:
 
+<!-- continueOnError: true | false -->
+
 ```yaml
 queue:
   name: string
-  continueOnError: true | false
   parallel: number
   timeoutInMinutes: number
   cancelTimeoutInMinutes: number
@@ -37,7 +38,7 @@ queue:
   matrix: { string: { string: string } }
 ```
 
-### Deployment target
+<!-- ### Deployment target
 
 Likewise the simplified deployment syntax is:
 
@@ -55,7 +56,7 @@ deployment:
   percentage: string
   timeoutInMinutes: number
   cancelTimeoutInMinutes: number
-```
+``` -->
 
 ### Server target
 
@@ -67,9 +68,10 @@ server: true
 
 Full syntax:
 
+<!-- continueOnError: true | false -->
+
 ```yaml
 server:
-  continueOnError: true | false
   parallel: number
   timeoutInMinutes: number
   cancelTimeoutInMinutes: number
@@ -100,7 +102,9 @@ steps:
 - script: echo hello world
 ```
 
-### Job timeout (applies to: queue, deployment, server)
+### Job timeout (applies to: queue, server)
+
+<!-- Job timeout (applies to: queue, deployment, server) -->
 
 The `timeoutInMinutes` allows a limit to be set for the job execution time. When not specified, the default is 60 minutes.
 
@@ -131,9 +135,9 @@ queue:
 
 When `parallel` is specified and `matrix` is not defined, the setting indicates how many jobs to dispatch. Variables `System.SliceNumber` and `System.SliceCount` are added to each job. The variables can then be used within your scripts to divide work among the jobs.
 
-### Continue on error (applies to: queue, deployment, server)
+<!-- ### Continue on error (applies to: queue, deployment, server)
 
-When `continueOnError` is `true` and the job fails, the result will be \"Succeeded with issues\" instead of "Failed\".
+When `continueOnError` is `true` and the job fails, the result will be \"Succeeded with issues\" instead of "Failed\". -->
 
 ## Variables
 

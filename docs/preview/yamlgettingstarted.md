@@ -1,10 +1,13 @@
 # YAML getting started (internal only, public preview soon)
 
-# Create a definition
-- Set feature flag Build2.Yaml
-- Opt in to YAML definition editor preview feature
+- Requires a feature flag to be turned on for your account
+- Opt-in to YAML definition editor preview feature
 
-# Samples
+## Hello world
+
+[Create a definition](yamlgettingstarted-definition.md)
+
+## Examples
 
 [Run scripts](yamlgettingstarted-scripts.md)
 
@@ -16,18 +19,20 @@
 
 [Checkout options](yamlgettingstarted-checkout.md)
 
+[Queues](yamlgettingstarted-queues.md)
+
+[Endpoints](yamlgettingstarted-endpoints.md)
+
 [Phase options](yamlgettingstarted-phase.md)
 
 [Multiple phases](yamlgettingstarted-phases.md)
 
-<!--
-[Mustache text templating](yamlgettingstarted-mustache.md)
--->
+## Misc
 
 [Schema reference](yamlgettingstarted-schema.md)
 
-<!--
-[Process templates](yamlgettingstarted-templates.md)
--->
-
 [Local run](yamlgettingstarted-localrun.md)
+
+[Resource authorization](yamlgettingstarted-authz.md)
+
+[Feature gaps](yamlgettingstarted-features.md)
