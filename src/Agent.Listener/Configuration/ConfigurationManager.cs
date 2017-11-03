@@ -92,6 +92,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             // Populate cert setting from commandline args
             var agentCertManager = HostContext.GetService<IAgentCertificateManager>();
             bool saveCertSetting = false;
+            bool skipCertValidation = command.GetSkipCertificateValidation();
             string caCert = command.GetCACertificate();
             string clientCert = command.GetClientCertificate();
             string clientCertKey = command.GetClientCertificatePrivateKey();
@@ -129,10 +130,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 ArgUtil.NotNullOrEmpty(Constants.Agent.CommandLine.Args.SslClientCertArchive, Constants.Agent.CommandLine.Args.SslClientCertArchive);
             }
 
-            if (!string.IsNullOrEmpty(caCert) || !string.IsNullOrEmpty(clientCert))
+            if (skipCertValidation || !string.IsNullOrEmpty(caCert) || !string.IsNullOrEmpty(clientCert))
             {
                 Trace.Info("Reset agent cert setting base on commandline args.");
-                (agentCertManager as AgentCertificateManager).SetupCertificate(caCert, clientCert, clientCertKey, clientCertArchive, clientCertPassword);
+                (agentCertManager as AgentCertificateManager).SetupCertificate(skipCertValidation, caCert, clientCert, clientCertKey, clientCertArchive, clientCertPassword);
                 saveCertSetting = true;
             }
 
@@ -434,7 +435,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             }
             // config auto logon
             else if (command.GetRunAsAutoLogon())
-            {                
+            {
                 Trace.Info("Agent is going to run as process setting up the 'AutoLogon' capability for the agent.");
                 var autoLogonConfigManager = HostContext.GetService<IAutoLogonManager>();
                 await autoLogonConfigManager.ConfigureAsync(command);
@@ -481,8 +482,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                         currentAction = StringUtil.Loc("UnconfigAutologon");
                         _term.WriteLine(currentAction);
                         var autoLogonConfigManager = HostContext.GetService<IAutoLogonManager>();
-                        autoLogonConfigManager.Unconfigure();         
-                        _term.WriteLine(StringUtil.Loc("Success") + currentAction);               
+                        autoLogonConfigManager.Unconfigure();
+                        _term.WriteLine(StringUtil.Loc("Success") + currentAction);
                     }
                     else
                     {

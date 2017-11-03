@@ -209,6 +209,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 throw new InvalidOperationException("Repository url need to be an absolute uri.");
             }
 
+            var agentCert = HostContext.GetService<IAgentCertificateManager>();
+
             string targetPath = GetEndpointData(endpoint, Constants.EndpointData.SourcesDirectory);
             string sourceBranch = GetEndpointData(endpoint, Constants.EndpointData.SourceBranch);
             string sourceVersion = GetEndpointData(endpoint, Constants.EndpointData.SourceVersion);
@@ -236,6 +238,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             {
                 acceptUntrustedCerts = StringUtil.ConvertToBoolean(endpoint.Data["acceptUntrustedCerts"]); // TODO: Use WellKnownEndpointData.AcceptUntrustedCerts when available.
             }
+
+            acceptUntrustedCerts = acceptUntrustedCerts || agentCert.SkipServerCertificateValidation;
 
             int fetchDepth = 0;
             if (endpoint.Data.ContainsKey("fetchDepth") &&
@@ -347,7 +351,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             }
 
             // prepare askpass for client cert private key
-            var agentCert = HostContext.GetService<IAgentCertificateManager>();
             var configUrl = new Uri(HostContext.GetService<IConfigurationStore>().GetSettings().ServerUrl);
             if (Uri.Compare(repositoryUrl, configUrl, UriComponents.SchemeAndServer, UriFormat.Unescaped, StringComparison.OrdinalIgnoreCase) == 0)
             {
@@ -548,12 +551,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
             List<string> additionalFetchArgs = new List<string>();
             List<string> additionalLfsFetchArgs = new List<string>();
-            if (acceptUntrustedCerts)
-            {
-                additionalFetchArgs.Add($"-c http.sslVerify=false");
-                additionalLfsFetchArgs.Add($"-c http.sslVerify=false");
-            }
-
             if (!_selfManageGitCreds)
             {
                 // v2.9 git support provide auth header as cmdline arg. 
@@ -593,6 +590,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                     ArgUtil.NotNullOrEmpty(_proxyUrlWithCredString, nameof(_proxyUrlWithCredString));
                     additionalFetchArgs.Add($"-c http.proxy=\"{_proxyUrlWithCredString}\"");
                     additionalLfsFetchArgs.Add($"-c http.proxy=\"{_proxyUrlWithCredString}\"");
+                }
+
+                // Prepare ignore ssl cert error config for fetch.
+                if (acceptUntrustedCerts)
+                {
+                    additionalFetchArgs.Add($"-c http.sslVerify=false");
+                    additionalLfsFetchArgs.Add($"-c http.sslVerify=false");
                 }
 
                 // Prepare self-signed CA cert config for fetch from TFS.
@@ -734,11 +738,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 }
 
                 List<string> additionalSubmoduleUpdateArgs = new List<string>();
-                if (acceptUntrustedCerts)
-                {
-                    additionalSubmoduleUpdateArgs.Add($"-c http.sslVerify=false");
-                }
-
                 if (!_selfManageGitCreds)
                 {
                     if (GitUseAuthHeaderCmdlineArg)
@@ -753,6 +752,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                         executionContext.Debug($"Config proxy server '{executionContext.Variables.Agent_ProxyUrl}' for git submodule update.");
                         ArgUtil.NotNullOrEmpty(_proxyUrlWithCredString, nameof(_proxyUrlWithCredString));
                         additionalSubmoduleUpdateArgs.Add($"-c http.proxy=\"{_proxyUrlWithCredString}\"");
+                    }
+
+                    // Prepare ignore ssl cert error config for fetch.
+                    if (acceptUntrustedCerts)
+                    {
+                        additionalSubmoduleUpdateArgs.Add($"-c http.sslVerify=false");
                     }
 
                     // Prepare self-signed CA cert config for submodule update.
@@ -824,6 +829,21 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                         if (exitCode_proxyconfig != 0)
                         {
                             throw new InvalidOperationException($"Git config failed with exit code: {exitCode_proxyconfig}");
+                        }
+                    }
+
+                    // save ignore ssl cert error setting to git config.
+                    if (acceptUntrustedCerts)
+                    {
+                        executionContext.Debug($"Save ignore ssl cert error config into git config.");
+                        string sslVerifyConfigKey = "http.sslVerify";
+                        string sslVerifyConfigValue = "\"false\"";
+                        _configModifications[sslVerifyConfigKey] = sslVerifyConfigValue.Trim('\"');
+
+                        int exitCode_sslconfig = await _gitCommandManager.GitConfig(executionContext, targetPath, sslVerifyConfigKey, sslVerifyConfigValue);
+                        if (exitCode_sslconfig != 0)
+                        {
+                            throw new InvalidOperationException($"Git config failed with exit code: {exitCode_sslconfig}");
                         }
                     }
 

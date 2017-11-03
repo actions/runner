@@ -129,6 +129,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                     public static readonly string NoRestart = "norestart";
                     public static readonly string RunAsAutoLogon = "runasautologon";
                     public static readonly string RunAsService = "runasservice";
+                    public static readonly string SslSkipCertValidation = "sslskipcertvalidation";
                     public static readonly string Unattended = "unattended";
                     public static readonly string Version = "version";
                     public static readonly string WhatIf = "whatif";
@@ -266,6 +267,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                 public static readonly string SslClientCertKey = "agent.clientcertkey";
                 public static readonly string SslClientCertArchive = "agent.clientcertarchive";
                 public static readonly string SslClientCertPassword = "agent.clientcertpassword";
+                public static readonly string SslSkipCertValidation = "agent.skipcertvalidation";
                 public static readonly string TempDirectory = "agent.TempDirectory";
                 public static readonly string ToolsDirectory = "agent.ToolsDirectory";
                 public static readonly string Version = "agent.version";

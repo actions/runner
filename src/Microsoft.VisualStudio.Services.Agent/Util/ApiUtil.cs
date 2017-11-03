@@ -26,6 +26,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
 
             VssClientHttpRequestSettings.Default.UserAgent = headerValues;
             VssClientHttpRequestSettings.Default.ClientCertificateManager = certSetting;
+            VssClientHttpRequestSettings.Default.ServerCertificateValidationCallback = certSetting.ServerCertificateValidationCallback;
             VssHttpMessageHandler.DefaultWebProxy = proxySetting;
         }
 

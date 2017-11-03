@@ -20,7 +20,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Util
                 Tracing trace = hc.GetTrace();
 
                 // Act.
-                ApiUtil.InitializeVssClientSettings(null, null);
+                ApiUtil.InitializeVssClientSettings(null, new AgentCertificateManager());
                 var connect = ApiUtil.CreateConnection(new Uri("https://github.com/Microsoft/vsts-agent"), new VssCredentials());
 
                 // Trace
@@ -55,7 +55,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Util
                 Tracing trace = hc.GetTrace();
 
                 // Act.
-                ApiUtil.InitializeVssClientSettings(null, null);
+                ApiUtil.InitializeVssClientSettings(null, new AgentCertificateManager());
                 var connect = ApiUtil.CreateConnection(new Uri("https://github.com/Microsoft/vsts-agent"), new VssCredentials());
 
                 string platformInfo = null;

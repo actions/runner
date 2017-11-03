@@ -390,6 +390,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
             // Certificate variables
             var agentCert = HostContext.GetService<IAgentCertificateManager>();
+            if (agentCert.SkipServerCertificateValidation)
+            {
+                Variables.Set(Constants.Variables.Agent.SslSkipCertValidation, bool.TrueString);
+            }
+
             if (!string.IsNullOrEmpty(agentCert.CACertificateFile))
             {
                 Variables.Set(Constants.Variables.Agent.SslCAInfo, agentCert.CACertificateFile);

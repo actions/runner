@@ -4,12 +4,18 @@ using System.IO;
 using System.Runtime.Serialization;
 using Microsoft.VisualStudio.Services.Common;
 using System.Security.Cryptography.X509Certificates;
+using System.Net;
+using System.Net.Security;
+using System.Net.Http;
+using Microsoft.VisualStudio.Services.WebApi;
 
 namespace Microsoft.VisualStudio.Services.Agent
 {
     [ServiceLocator(Default = typeof(AgentCertificateManager))]
     public interface IAgentCertificateManager : IAgentService, IVssClientCertificateManager
     {
+        bool SkipServerCertificateValidation { get; }
+        Func<HttpRequestMessage, X509Certificate2, X509Chain, SslPolicyErrors, bool> ServerCertificateValidationCallback { get; }
         string CACertificateFile { get; }
         string ClientCertificateFile { get; }
         string ClientCertificatePrivateKeyFile { get; }
@@ -28,9 +34,15 @@ namespace Microsoft.VisualStudio.Services.Agent
         }
 
         // This should only be called from config
-        public void SetupCertificate(string caCert, string clientCert, string clientCertPrivateKey, string clientCertArchive, string clientCertPassword)
+        public void SetupCertificate(bool skipCertValidation, string caCert, string clientCert, string clientCertPrivateKey, string clientCertArchive, string clientCertPassword)
         {
             Trace.Info("Setup agent certificate setting base on configuration inputs.");
+
+            if (skipCertValidation)
+            {
+                Trace.Info("Ignore SSL server certificate validation error");
+                SkipServerCertificateValidation = true;
+            }
 
             if (!string.IsNullOrEmpty(caCert))
             {
@@ -49,7 +61,6 @@ namespace Microsoft.VisualStudio.Services.Agent
                 Trace.Info($"Client cert archive '{clientCertArchive}'");
             }
 
-            // TODO: Setup ServicePointManager.ServerCertificateValidationCallback when adopt netcore 2.0 to support self-signed cert for agent infrastructure.
             CACertificateFile = caCert;
             ClientCertificateFile = clientCert;
             ClientCertificatePrivateKeyFile = clientCertPrivateKey;
@@ -70,6 +81,12 @@ namespace Microsoft.VisualStudio.Services.Agent
             IOUtil.DeleteFile(certSettingFile);
 
             var setting = new AgentCertificateSetting();
+            if (SkipServerCertificateValidation)
+            {
+                Trace.Info($"Store Skip ServerCertificateValidation setting to '{certSettingFile}'");
+                setting.SkipServerCertValidation = true;
+            }
+
             if (!string.IsNullOrEmpty(CACertificateFile))
             {
                 Trace.Info($"Store CA cert setting to '{certSettingFile}'");
@@ -98,7 +115,8 @@ namespace Microsoft.VisualStudio.Services.Agent
                 }
             }
 
-            if (!string.IsNullOrEmpty(CACertificateFile) ||
+            if (SkipServerCertificateValidation ||
+                !string.IsNullOrEmpty(CACertificateFile) ||
                 !string.IsNullOrEmpty(ClientCertificateFile))
             {
                 IOUtil.SaveObject(setting, certSettingFile);
@@ -136,17 +154,23 @@ namespace Microsoft.VisualStudio.Services.Agent
                 var certSetting = IOUtil.LoadObject<AgentCertificateSetting>(certSettingFile);
                 ArgUtil.NotNull(certSetting, nameof(AgentCertificateSetting));
 
-                // make sure all settings file exist
+                if (certSetting.SkipServerCertValidation)
+                {
+                    Trace.Info("Ignore SSL server certificate validation error");
+                    SkipServerCertificateValidation = true;
+                }
+
                 if (!string.IsNullOrEmpty(certSetting.CACert))
                 {
+                    // make sure all settings file exist
                     ArgUtil.File(certSetting.CACert, nameof(certSetting.CACert));
                     Trace.Info($"CA '{certSetting.CACert}'");
                     CACertificateFile = certSetting.CACert;
-                    // TODO: Setup ServicePointManager.ServerCertificateValidationCallback when adopt netcore 2.0 to support self-signed cert for agent infrastructure.
                 }
 
                 if (!string.IsNullOrEmpty(certSetting.ClientCert))
                 {
+                    // make sure all settings file exist
                     ArgUtil.File(certSetting.ClientCert, nameof(certSetting.ClientCert));
                     ArgUtil.File(certSetting.ClientCertPrivatekey, nameof(certSetting.ClientCertPrivatekey));
                     ArgUtil.File(certSetting.ClientCertArchive, nameof(certSetting.ClientCertArchive));
@@ -178,6 +202,26 @@ namespace Microsoft.VisualStudio.Services.Agent
             }
         }
 
+        public Func<HttpRequestMessage, X509Certificate2, X509Chain, SslPolicyErrors, bool> ServerCertificateValidationCallback
+        {
+            get
+            {
+                return (sender, certificate, chain, sslPolicyErrors) =>
+                {
+                    if (SkipServerCertificateValidation)
+                    {
+                        Trace.Verbose($"Ignore SSL certificate error '{sslPolicyErrors.ToString()}' for request '{sender.RequestUri.AbsoluteUri}' with certificate '{certificate.Thumbprint}' issued by '{certificate.IssuerName.Name}'.");
+                        return true;
+                    }
+                    else
+                    {
+                        return sslPolicyErrors == SslPolicyErrors.None;
+                    }
+                };
+            }
+        }
+
+        public bool SkipServerCertificateValidation { private set; get; }
         public string CACertificateFile { private set; get; }
         public string ClientCertificateFile { private set; get; }
         public string ClientCertificatePrivateKeyFile { private set; get; }
@@ -190,6 +234,9 @@ namespace Microsoft.VisualStudio.Services.Agent
     [DataContract]
     internal class AgentCertificateSetting
     {
+        [DataMember]
+        public bool SkipServerCertValidation { get; set; }
+
         [DataMember]
         public string CACert { get; set; }
 

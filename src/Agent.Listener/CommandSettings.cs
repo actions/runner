@@ -39,6 +39,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             Constants.Agent.CommandLine.Flags.Replace,
             Constants.Agent.CommandLine.Flags.RunAsAutoLogon,
             Constants.Agent.CommandLine.Flags.RunAsService,
+            Constants.Agent.CommandLine.Flags.SslSkipCertValidation,
             Constants.Agent.CommandLine.Flags.Unattended,
             Constants.Agent.CommandLine.Flags.Version,
             Constants.Agent.CommandLine.Flags.WhatIf
@@ -417,6 +418,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         public string GetProxyPassword()
         {
             return GetArg(Constants.Agent.CommandLine.Args.ProxyPassword);
+        }
+
+        public bool GetSkipCertificateValidation()
+        {
+            return TestFlag(Constants.Agent.CommandLine.Flags.SslSkipCertValidation);
         }
 
         public string GetCACertificate()
