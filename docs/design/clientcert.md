@@ -85,10 +85,6 @@ OSX: OSX Keychain
 Linux: Encrypted with symmetric key based on machine id
 ```
 
-**Windows service configure limitation**  
-Since we store your client certificate private key password into `Windows Credential Store` and the `Windows Credential Store` is per user, when you configure the agent as Windows service, you need run the configuration as the same user as the service is going to run as.  
-Ex, in order to configure the agent service run as `mydomain\buildadmin`, you need either login the box as `mydomain\buildadmin` and run `config.cmd` or login the box as someone else but use `Run as different user` option when you run `config.cmd` to run as `mydomain\buildadmin`  
-
 ## How agent handle client cert within a Build/Release job
 
 After configuring client cert for agent, agent infrastructure will start talk to VSTS/TFS service using the client cert configured.  

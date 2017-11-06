@@ -23,9 +23,6 @@ Agent version 2.122.0 or above
       OSX: OSX Keychain
       Linux: Encrypted with symmetric key based on machine id
     ```
-    **NOTE: The Windows Crednetial Store will cause a limitation for configuring agent as Windows service**  
-    Since we store your proxy credential into `Windows Credential Store` and the `Windows Credential Store` is per user, when you configure the agent as Windows service, you need run the configuration as the same user as the service is going to run as.  
-    Ex, in order to configure the agent service run as `mydomain\buildadmin`, you need either login the box as `mydomain\buildadmin` and run `config.cmd` or login the box as someone else but use `Run as different user` option when you run `config.cmd` to run as `mydomain\buildadmin`  
     
   - Create a `.proxybypass` file under agent root to specify proxy bypass Url's Regex (ECMAScript syntax).  
     Ex:
