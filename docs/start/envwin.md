@@ -8,7 +8,7 @@ No known system prerequisites are known at this time.
 
 [PowerShell 3.0 or higher](https://msdn.microsoft.com/en-us/powershell/scripting/setup/installing-windows-powershell)
 
-**DO NOT use PowerShell ISE during agent configuration and uninstall (#1266)**  
+**DO NOT use PowerShell ISE during agent configuration and uninstall ([issue 1266](https://github.com/Microsoft/vsts-agent/issues/1266))**  
 
 [Detail of PowerShell ISE limitation](https://blogs.msdn.microsoft.com/powershell/2009/02/04/console-application-non-support-in-the-ise/)  
 
