@@ -1,6 +1,6 @@
 
 
-# ![Linux](../res/linux_med.png) Linux System Prerequisites
+# ![Linux](../res/linux_med.png) Linux System Prerequisites [2.125.0 or above]
 
 ## Supported Distributions and Versions
   - Red Hat Enterprise Linux 7
