@@ -39,7 +39,7 @@
   [Details here](nixsvc.md#setting-the-environment)
   
 ## Limitations  
-  - Only agent infustructure itself has proxy support, which means the agent is able to run a Build/Release job behind proxy. However, you still have to setup proxy config for each individual tool that agent invoke during a Build/Release job.  
+  - Only agent infrastructure itself has proxy support, which means the agent is able to run a Build/Release job behind proxy. However, you still have to setup proxy config for each individual tool that agent invoke during a Build/Release job.  
     Ex, 
       - proxy config for git.
       - proxy config for any tasks that make REST call. (We will add built-in proxy support to task lib.)
