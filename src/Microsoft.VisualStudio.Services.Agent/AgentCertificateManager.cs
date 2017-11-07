@@ -15,7 +15,6 @@ namespace Microsoft.VisualStudio.Services.Agent
     public interface IAgentCertificateManager : IAgentService, IVssClientCertificateManager
     {
         bool SkipServerCertificateValidation { get; }
-        Func<HttpRequestMessage, X509Certificate2, X509Chain, SslPolicyErrors, bool> ServerCertificateValidationCallback { get; }
         string CACertificateFile { get; }
         string ClientCertificateFile { get; }
         string ClientCertificatePrivateKeyFile { get; }
@@ -42,6 +41,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             {
                 Trace.Info("Ignore SSL server certificate validation error");
                 SkipServerCertificateValidation = true;
+                VssClientHttpRequestSettings.Default.ServerCertificateValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
             }
 
             if (!string.IsNullOrEmpty(caCert))
@@ -158,6 +158,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                 {
                     Trace.Info("Ignore SSL server certificate validation error");
                     SkipServerCertificateValidation = true;
+                    VssClientHttpRequestSettings.Default.ServerCertificateValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
                 }
 
                 if (!string.IsNullOrEmpty(certSetting.CACert))
@@ -199,25 +200,6 @@ namespace Microsoft.VisualStudio.Services.Agent
             else
             {
                 Trace.Info("No certificate setting found.");
-            }
-        }
-
-        public Func<HttpRequestMessage, X509Certificate2, X509Chain, SslPolicyErrors, bool> ServerCertificateValidationCallback
-        {
-            get
-            {
-                return (sender, certificate, chain, sslPolicyErrors) =>
-                {
-                    if (SkipServerCertificateValidation)
-                    {
-                        Trace.Verbose($"Ignore SSL certificate error '{sslPolicyErrors.ToString()}' for request '{sender.RequestUri.AbsoluteUri}' with certificate '{certificate.Thumbprint}' issued by '{certificate.IssuerName.Name}'.");
-                        return true;
-                    }
-                    else
-                    {
-                        return sslPolicyErrors == SslPolicyErrors.None;
-                    }
-                };
             }
         }
 
