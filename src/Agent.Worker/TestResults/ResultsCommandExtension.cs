@@ -30,6 +30,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
 
         public HostTypes SupportedHostTypes => HostTypes.All;
 
+        public static int PublishBatchSize = 10;
+
         public void ProcessCommand(IExecutionContext context, Command command)
         {
             if (string.Equals(command.Event, WellKnownResultsCommand.PublishTestResults, StringComparison.OrdinalIgnoreCase))
@@ -87,7 +89,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
             }
             else
             {
-                commandContext.Task = PublishToNewTestRunPerTestResultFileAsync(_testResultFiles, publisher, runContext, resultReader.Name, context.CancellationToken);
+                commandContext.Task = PublishToNewTestRunPerTestResultFileAsync(_testResultFiles, publisher, runContext, resultReader.Name, PublishBatchSize, context.CancellationToken);
             }
             _executionContext.AsyncCommands.Add(commandContext);
         }
@@ -212,37 +214,51 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
         /// <summary>
         /// Publish separate test run for each result file that has results.
         /// </summary>
-        private async Task PublishToNewTestRunPerTestResultFileAsync(List<string> resultFiles, ITestRunPublisher publisher, TestRunContext runContext, string resultReader, CancellationToken cancellationToken)
+        private async Task PublishToNewTestRunPerTestResultFileAsync(List<string> resultFiles, 
+            ITestRunPublisher publisher, 
+            TestRunContext runContext, 
+            string resultReader, 
+            int batchSize,
+            CancellationToken cancellationToken)
         {
             try
             {
-                // Publish separate test run for each result file that has results.
-                var publishTasks = resultFiles.Select(async resultFile =>
+                var groupedFiles = resultFiles
+                    .Select((resultFile, index) => new { Index = index, file = resultFile })
+                    .GroupBy(pair => pair.Index / batchSize)
+                    .Select(bucket => bucket.Select(pair => pair.file).ToList())
+                    .ToList();
+
+                foreach(var files in groupedFiles)
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    string runName = null;
-                    if (!string.IsNullOrWhiteSpace(_runTitle))
+                    // Publish separate test run for each result file that has results.
+                    var publishTasks = files.Select(async resultFile =>
                     {
-                        runName = GetRunTitle();
-                    }
+                        cancellationToken.ThrowIfCancellationRequested();
+                        string runName = null;
+                        if (!string.IsNullOrWhiteSpace(_runTitle))
+                        {
+                            runName = GetRunTitle();
+                        }
 
-                    _executionContext.Debug(StringUtil.Format("Reading test results from file '{0}'", resultFile));
-                    TestRunData testRunData = publisher.ReadResultsFromFile(runContext, resultFile, runName);
+                        _executionContext.Debug(StringUtil.Format("Reading test results from file '{0}'", resultFile));
+                        TestRunData testRunData = publisher.ReadResultsFromFile(runContext, resultFile, runName);
 
-                    cancellationToken.ThrowIfCancellationRequested();
+                        cancellationToken.ThrowIfCancellationRequested();
 
-                    if (testRunData != null && testRunData.Results != null && testRunData.Results.Length > 0)
-                    {
-                        TestRun testRun = await publisher.StartTestRunAsync(testRunData, _executionContext.CancellationToken);
-                        await publisher.AddResultsAsync(testRun, testRunData.Results, _executionContext.CancellationToken);
-                        await publisher.EndTestRunAsync(testRunData, testRun.Id, cancellationToken: _executionContext.CancellationToken);
-                    }
-                    else
-                    {
-                        _executionContext.Warning(StringUtil.Loc("InvalidResultFiles", resultFile, resultReader));
-                    }
-                });
-                await Task.WhenAll(publishTasks);
+                        if (testRunData != null && testRunData.Results != null && testRunData.Results.Length > 0)
+                        {
+                            TestRun testRun = await publisher.StartTestRunAsync(testRunData, _executionContext.CancellationToken);
+                            await publisher.AddResultsAsync(testRun, testRunData.Results, _executionContext.CancellationToken);
+                            await publisher.EndTestRunAsync(testRunData, testRun.Id, cancellationToken: _executionContext.CancellationToken);
+                        }
+                        else
+                        {
+                            _executionContext.Warning(StringUtil.Loc("InvalidResultFiles", resultFile, resultReader));
+                        }
+                    });
+                    await Task.WhenAll(publishTasks);
+                }
             }
             catch (Exception ex) when (!(ex is OperationCanceledException))
             {
