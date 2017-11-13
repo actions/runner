@@ -7,7 +7,6 @@ The YAML document describes an entire process.
 At a high level, the structure of a process is:
 
 ```
-├───resources (endpoints, etc)
 └───phases
     ├───phase
     │   ├───queue|deployment|server
@@ -47,12 +46,10 @@ All YAML definitions start with an entry \"process\" file.
 
 ```yaml
 # process properties
-resources: [ repoResource ]
+name: string
 phases: [ phase ]
 
 # phase properties - not allowed when "phases" is defined
-displayName: string
-name: string
 dependsOn: string | [ string ]
 condition: string
 continueOnError: true | false
@@ -63,14 +60,14 @@ variables: { string: string }
 steps: [ script | powershell | bash | task | checkout ]
 ```
 
-#### repoResource
+<!-- #### repoResource
 
 ```yaml
 repo: string # e.g. repo: self
 clean: true | false
 fetchDepth: number
 lfs: true | false
-```
+``` -->
 
 <!-- Commenting-out template schema for now
 #### processTemplateReference

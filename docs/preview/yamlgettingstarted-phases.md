@@ -102,13 +102,13 @@ dependencies:
       variable2: value2
 ```
 
-The following functions are available:
+In addition to the general expression functions, the following functions are available for use within a phase condition:
 
 * **succeeded()** - Runs if all previous phases in the dependency graph completed with a result of Succeeded or SucceededWithIssues. Specific phase names may be specified as arguments.
 * **failed()** - Runs if any previous phase in the dependency graph failed. Specific phases names may be specified as arguments.
 * **succeededOrFailed()** - Runs if all previous phases in the dependency graph succeeded or any previous phase failed. Specific phase names may be specified as arguments.
-* **canceled()** - Runs if the orchestration plan has been canceled. 
-* **always()** - Runs always.
+<!-- * **canceled()** - Runs if the orchestration plan has been canceled. 
+* **always()** - Runs always. -->
 
 If no condition is explictly specified, a default condition of ```succeeded()``` will be used.
 
@@ -118,12 +118,15 @@ An example condition may look like the following, assuming ```InitialA``` provid
 phases:
 - phase: InitialA
   steps:
-  - script: echo hello from initial A
+  - script: "echo ##vso[task.setvariable variable=skipsubsequent;isOutput=true]false"
+    name: printvar
+
 - phase: InitialB
   steps:
   - script: echo hello from initial B
+
 - phase: Subsequent
-  condition: or(succeeded(), not(eq(dependencies.InitialA.outputs.cmdline.skipsubsequent, 'true')))
+  condition: and(succeeded(), ne(dependencies.InitialA.outputs['printvar.skipsubsequent'], 'true'))
   dependsOn:
   - InitialA
   - InitialB

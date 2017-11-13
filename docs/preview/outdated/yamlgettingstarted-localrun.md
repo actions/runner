@@ -1,4 +1,4 @@
-# YAML getting started - Run local (internal only, public preview soon)
+# YAML getting started - Run local (feature is in progress, removing docs for now since it is in flux)
 
 The agent supports locally testing YAML configuration without queuing a build against the server.
 
