@@ -144,12 +144,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
                     processInvoker.ErrorDataReceived += OnOutputDataReceived;
                 }
 
-                int exitCode = await processInvoker.ExecuteAsync(
-                    workingDirectory: workingDirectory,
-                    fileName: cmdExe,
-                    arguments: cmdExeArgs,
-                    environment: Environment,
-                    cancellationToken: ExecutionContext.CancellationToken);
+                int exitCode = await processInvoker.ExecuteAsync(workingDirectory: workingDirectory,
+                                                                 fileName: cmdExe,
+                                                                 arguments: cmdExeArgs,
+                                                                 environment: Environment,
+                                                                 requireExitCodeZero: false,
+                                                                 outputEncoding: null,
+                                                                 killProcessOnCancel: false,
+                                                                 enhancedProcessesCleanup: ExecutionContext.Variables.GetBoolean("process.clean") ?? false,
+                                                                 cancellationToken: ExecutionContext.CancellationToken);
                 FlushErrorData();
 
                 // Fail on error count.

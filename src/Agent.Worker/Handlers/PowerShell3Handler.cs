@@ -61,13 +61,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
                 // Execute the process. Exit code 0 should always be returned.
                 // A non-zero exit code indicates infrastructural failure.
                 // Task failure should be communicated over STDOUT using ## commands.
-                await processInvoker.ExecuteAsync(
-                    workingDirectory: scriptDirectory,
-                    fileName: powerShellExe,
-                    arguments: powerShellExeArgs,
-                    environment: Environment,
-                    requireExitCodeZero: true,
-                    cancellationToken: ExecutionContext.CancellationToken);
+                await processInvoker.ExecuteAsync(workingDirectory: scriptDirectory,
+                                                  fileName: powerShellExe,
+                                                  arguments: powerShellExeArgs,
+                                                  environment: Environment,
+                                                  requireExitCodeZero: true,
+                                                  outputEncoding: null,
+                                                  killProcessOnCancel: false,
+                                                  enhancedProcessesCleanup: ExecutionContext.Variables.GetBoolean("process.clean") ?? false,
+                                                  cancellationToken: ExecutionContext.CancellationToken);
             }
         }
 
