@@ -1,4 +1,4 @@
-# YAML getting started - Checkout options (internal only, public preview soon)
+# YAML getting started - Checkout options
 
 ## Checkout step
 

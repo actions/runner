@@ -1,4 +1,4 @@
-# YAML getting started - Tasks (internal only, public preview soon)
+# YAML getting started - Tasks
 
 ## Syntax
 

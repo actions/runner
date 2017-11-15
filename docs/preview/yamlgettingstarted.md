@@ -1,4 +1,4 @@
-# YAML getting started (internal only, public preview soon)
+# YAML getting started
 
 To create a YAML build definition, you must opt-in to the account-level preview feature: `Build YAML definitions`
 

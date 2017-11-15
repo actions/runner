@@ -1,4 +1,4 @@
-# YAML getting started - Queues (internal only, public preview soon)
+# YAML getting started - Queues
 
 The agent queue can be specified in the YAML file. For example,
 

@@ -1,4 +1,4 @@
-# YAML getting started - Create a definition (internal only, public preview soon)
+# YAML getting started - Create a definition
 
 ## When using a Git repo in your VSTS team project
 

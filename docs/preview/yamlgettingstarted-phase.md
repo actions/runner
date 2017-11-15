@@ -1,4 +1,4 @@
-# YAML getting started - Phase options (internal only, public preview soon)
+# YAML getting started - Phase options
 
 ## Continue on error
 

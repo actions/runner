@@ -1,4 +1,4 @@
-# YAML getting started - PowerShell scripts (internal only, public preview soon)
+# YAML getting started - PowerShell scripts
 
 ## Simple script
 

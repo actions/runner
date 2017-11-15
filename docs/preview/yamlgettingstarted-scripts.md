@@ -1,4 +1,4 @@
-# YAML getting started - Scripts (internal only, public preview soon)
+# YAML getting started - Scripts
 
 ## Simple script
 

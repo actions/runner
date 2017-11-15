@@ -1,4 +1,4 @@
-# YAML getting started - Endpoints (internal only, public preview soon)
+# YAML getting started - Endpoints
 
 Endpoints can be specified by name. For example,
 

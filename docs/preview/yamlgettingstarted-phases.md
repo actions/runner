@@ -1,4 +1,4 @@
-# YAML getting started - Multiple phases (internal only, public preview soon)
+# YAML getting started - Multiple phases
 
 ## Phase dependencies
 

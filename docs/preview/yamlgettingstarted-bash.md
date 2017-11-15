@@ -1,4 +1,4 @@
-# YAML getting started - Bash scripts (internal only, public preview soon)
+# YAML getting started - Bash scripts
 
 ## Simple script
 

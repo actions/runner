@@ -1,4 +1,4 @@
-# YAML getting started - Feature gaps (internal only, public preview soon)
+# YAML getting started - Feature gaps
 
 - Badge enabled
 - Pause/disable definition from web editor
