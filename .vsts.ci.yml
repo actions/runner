@@ -7,6 +7,7 @@ phases:
   queue:
     name: buildDevs
     demands: agent.os -equals Windows_NT
+  condition: eq(variables.skip_windows, false)
   steps:
 
   # Clean
@@ -48,7 +49,7 @@ phases:
       CertificateId: 67
       ProductName: Visual Studio Team Services Build and Release Agent
     displayName: Sign Agent Assemblies (Strong Name Signing)
-    condition: and(succeeded(), eq(variables.publish, true), ne(variables['build.reason'], 'PullRequest'))
+    condition: and(succeeded(), ne(variables['build.reason'], 'PullRequest'))
 
   - task: CodeSign@1
     inputs:
@@ -58,7 +59,7 @@ phases:
       CertificateId: 401
       ProductName: Visual Studio Team Services Build and Release Agent
     displayName: Sign Agent Assemblies (Authenticode Signing)
-    condition: and(succeeded(), eq(variables.publish, true), ne(variables['build.reason'], 'PullRequest'))
+    condition: and(succeeded(), ne(variables['build.reason'], 'PullRequest'))
   
   # Create agent package zip
   - script: dev.cmd package Release
@@ -81,7 +82,7 @@ phases:
   displayName: Linux Agent
   queue:
     name: Hosted Linux Preview
-    #demands: agent.os -equals linux
+  condition: eq(variables.skip_linux, false)
   steps:
 
   # Clean
@@ -120,6 +121,7 @@ phases:
   queue:
     name: buildDevs
     demands: agent.os -equals darwin
+  condition: eq(variables.skip_macos, false)
   steps:
 
   # Clean
@@ -162,7 +164,7 @@ phases:
   - build_windows_agent
   - build_osx_agent
   - build_linux_agent
-  condition: and(succeeded(), eq(variables.publish, true), ne(variables['build.reason'], 'PullRequest'))
+  condition: and(succeeded(), eq(variables.publish, true))
   steps:
   
   # Clean
@@ -172,7 +174,6 @@ phases:
   # Download all agent packages from all previous phases
   - task: DownloadBuildArtifacts@0
     displayName: Download Agent Packages
-    condition: and(succeeded(), ne(variables['build.reason'], 'PullRequest'))
     inputs:
       artifactName: agent
 
@@ -181,24 +182,26 @@ phases:
       Write-Host "Preloading Azure modules." # This is for better performance, to avoid module-autoloading.
       Import-Module AzureRM, AzureRM.profile, AzureRM.Storage, Azure.Storage, AzureRM.Cdn -ErrorAction Ignore -PassThru
       $uploadFiles = New-Object System.Collections.ArrayList
-      $userName = "$(ApplicationId)"
-      $password = ConvertTo-SecureString "$(Token)" -AsPlainText -Force
-      $credential = New-Object System.Management.Automation.PSCredential($username, $password)
-      Login-AzureRmAccount -ServicePrincipal -Credential $credential -TenantId $(TenantId)
-      $storage = Get-AzureRmStorageAccount -ResourceGroupName vstsagentpackages -AccountName vstsagentpackages
+      $certificateThumbprint = (Get-ItemProperty -Path "Registry::HKEY_CURRENT_USER\SOFTWARE\Microsoft\Visual Studio Team Services\LightRail").ServicePrincipalCertThumbprint
+      $clientId = (Get-ItemProperty -Path "Registry::HKEY_CURRENT_USER\SOFTWARE\Microsoft\Visual Studio Team Services\LightRail").ServicePrincipalClientId
+      Write-Host "##vso[task.setsecret]$certificateThumbprint"
+      Write-Host "##vso[task.setsecret]$clientId"
+      Login-AzureRmAccount -ServicePrincipal -CertificateThumbprint $certificateThumbprint -ApplicationId $clientId -TenantId $(TenantId)
+      Select-AzureRmSubscription -SubscriptionId $(SubscriptionId)
+      $storage = Get-AzureRmStorageAccount -ResourceGroupName vstsagentpackage -AccountName vstsagentpackage
       Get-ChildItem -LiteralPath "$(System.ArtifactsDirectory)/agent" | ForEach-Object {
         $versionDir = $_.Name.Trim('.zip').Trim('.tar.gz')
         $versionDir = $versionDir.SubString($versionDir.LastIndexOf('-') + 1)
         Write-Host "##vso[task.setvariable variable=ReleaseAgentVersion;]$versionDir"
-        Write-Host "Uploading $_ to BlobStorage vstsagentpackages/agent/$versionDir"
+        Write-Host "Uploading $_ to BlobStorage vstsagentpackage/agent/$versionDir"
         Set-AzureStorageBlobContent -Context $storage.Context -Container agent -File "$(System.ArtifactsDirectory)/agent/$_" -Blob "$versionDir/$_" -Force
         $uploadFiles.Add("/agent/$versionDir/$_")
       }
       Write-Host "Purge Azure CDN Cache"
-      Unpublish-AzureRmCdnEndpointContent -EndpointName vstsagent -ProfileName vstsagentpackages -ResourceGroupName vstsagentpackages -PurgeContent $uploadFiles
+      Unpublish-AzureRmCdnEndpointContent -EndpointName vstsagentpackage -ProfileName vstsagentpackage -ResourceGroupName vstsagentpackage -PurgeContent $uploadFiles
       Write-Host "Force Refresh Azure CDN Cache"
-      Publish-AzureRmCdnEndpointContent -EndpointName vstsagent -ProfileName vstsagentpackages -ResourceGroupName vstsagentpackages -LoadContent $uploadFiles
-      Get-AzureRmCdnEndpoint -EndpointName vstsagent -ProfileName vstsagentpackages -ResourceGroupName vstsagentpackages
+      Publish-AzureRmCdnEndpointContent -EndpointName vstsagentpackage -ProfileName vstsagentpackage -ResourceGroupName vstsagentpackage -LoadContent $uploadFiles
+      Get-AzureRmCdnEndpoint -EndpointName vstsagentpackage -ProfileName vstsagentpackage -ResourceGroupName vstsagentpackage
     displayName: Upload to Azure Blob
 
   # Create agent release on Github
@@ -214,7 +217,7 @@ phases:
         prerelease = $true;
       }
       $releaseParams = @{
-        Uri = "https://api.github.com/repos/Microsoft/vsts-agent/releases";
+        Uri = "https://api.github.com/repos/TingluoHuang/vsts-agent/releases";
         Method = 'POST';
         Headers = @{
           Authorization = 'Basic ' + [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("vsts:$(GithubToken)"));
