@@ -188,7 +188,6 @@ phases:
       Login-AzureRmAccount -ServicePrincipal -CertificateThumbprint $certificateThumbprint -ApplicationId $clientId -TenantId $(TenantId)
       Select-AzureRmSubscription -SubscriptionId $(SubscriptionId)
       $storage = Get-AzureRmStorageAccount -ResourceGroupName vstsagentpackage -AccountName vstsagentpackage
-      New-AzureStorageContainer -Name agent -Permission Container -Context $storage.Context
       Get-ChildItem -LiteralPath "$(System.ArtifactsDirectory)/agent" | ForEach-Object {
         $versionDir = $_.Name.Trim('.zip').Trim('.tar.gz')
         $versionDir = $versionDir.SubString($versionDir.LastIndexOf('-') + 1)
@@ -201,7 +200,6 @@ phases:
       Unpublish-AzureRmCdnEndpointContent -EndpointName vstsagentpackage -ProfileName vstsagentpackage -ResourceGroupName vstsagentpackage -PurgeContent $uploadFiles
       Write-Host "Force Refresh Azure CDN Cache"
       Publish-AzureRmCdnEndpointContent -EndpointName vstsagentpackage -ProfileName vstsagentpackage -ResourceGroupName vstsagentpackage -LoadContent $uploadFiles
-      Get-AzureRmCdnEndpoint -EndpointName vstsagentpackage -ProfileName vstsagentpackage -ResourceGroupName vstsagentpackage
     displayName: Upload to Azure Blob
 
   # Create agent release on Github
@@ -217,7 +215,7 @@ phases:
         prerelease = $true;
       }
       $releaseParams = @{
-        Uri = "https://api.github.com/repos/TingluoHuang/vsts-agent/releases";
+        Uri = "https://api.github.com/repos/Microsoft/vsts-agent/releases";
         Method = 'POST';
         Headers = @{
           Authorization = 'Basic ' + [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("vsts:$(GithubToken)"));
