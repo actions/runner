@@ -1,21 +1,20 @@
 ## Features
- - Consume NetCore 2.0 in agent. #1219
+ - Consume Git 2.14.3. #1295
+ - Process cleanup enhance. #1292
 
-<!--- Add when needed
 ## Bugs
-  - Bug 1
+  - Fix artifacts to be downloaded by agent. #1289
 
 ## Misc
-  - Misc 1
---->
+  - Collect PowerShell version in diagnostic log. #1296 
 
 ## Agent Downloads  
 
 |         | Package                                                                                                       |
-| ------- | :-----------------------------------------------------------------------------------------------------------: |
-| Windows | [Download](https://vstsagent.azureedge.net/agent/<AGENT_VERSION>/vsts-agent-win-x64-<AGENT_VERSION>.zip)      |
-| macOS   | [Download](https://vstsagent.azureedge.net/agent/<AGENT_VERSION>/vsts-agent-osx-x64-<AGENT_VERSION>.tar.gz)   |
-| Linux   | [Download](https://vstsagent.azureedge.net/agent/<AGENT_VERSION>/vsts-agent-linux-x64-<AGENT_VERSION>.tar.gz) |
+| ------- | ----------------------------------------------------------------------------------------------------------- |
+| Windows | [vsts-agent-win-x64-<AGENT_VERSION>.zip](https://vstsagentpackage.azureedge.net/agent/<AGENT_VERSION>/vsts-agent-win-x64-<AGENT_VERSION>.zip)      |
+| macOS   | [vsts-agent-osx-x64-<AGENT_VERSION>.tar.gz](https://vstsagentpackage.azureedge.net/agent/<AGENT_VERSION>/vsts-agent-osx-x64-<AGENT_VERSION>.tar.gz)   |
+| Linux   | [vsts-agent-linux-x64-<AGENT_VERSION>.tar.gz](https://vstsagentpackage.azureedge.net/agent/<AGENT_VERSION>/vsts-agent-linux-x64-<AGENT_VERSION>.tar.gz) |
 
 After Download:  
 
