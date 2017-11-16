@@ -41,25 +41,25 @@ phases:
     condition: and(succeeded(), ne(variables['build.reason'], 'PullRequest'))
 
   # Signing steps
-  - task: CodeSign@1
-    inputs:
-      ConnectedServiceName: VSTSAgentCodeSignCloudConnector
-      RootFolder: _layout\bin
-      SearchPattern: AgentService.exe
-      CertificateId: 67
-      ProductName: Visual Studio Team Services Build and Release Agent
-    displayName: Sign Agent Assemblies (Strong Name Signing)
-    condition: and(succeeded(), ne(variables['build.reason'], 'PullRequest'))
+  # - task: CodeSign@1
+  #   inputs:
+  #     ConnectedServiceName: VSTSAgentCodeSignCloudConnector
+  #     RootFolder: _layout\bin
+  #     SearchPattern: AgentService.exe
+  #     CertificateId: 67
+  #     ProductName: Visual Studio Team Services Build and Release Agent
+  #   displayName: Sign Agent Assemblies (Strong Name Signing)
+  #   condition: and(succeeded(), ne(variables['build.reason'], 'PullRequest'))
 
-  - task: CodeSign@1
-    inputs:
-      ConnectedServiceName: VSTSAgentCodeSignCloudConnector
-      RootFolder: _layout\bin
-      SearchPattern: Agent.*.dll,Agent.*.exe,Microsoft.VisualStudio.Services.Agent.dll,AgentService.exe
-      CertificateId: 401
-      ProductName: Visual Studio Team Services Build and Release Agent
-    displayName: Sign Agent Assemblies (Authenticode Signing)
-    condition: and(succeeded(), ne(variables['build.reason'], 'PullRequest'))
+  # - task: CodeSign@1
+  #   inputs:
+  #     ConnectedServiceName: VSTSAgentCodeSignCloudConnector
+  #     RootFolder: _layout\bin
+  #     SearchPattern: Agent.*.dll,Agent.*.exe,Microsoft.VisualStudio.Services.Agent.dll,AgentService.exe
+  #     CertificateId: 401
+  #     ProductName: Visual Studio Team Services Build and Release Agent
+  #   displayName: Sign Agent Assemblies (Authenticode Signing)
+  #   condition: and(succeeded(), ne(variables['build.reason'], 'PullRequest'))
   
   # Create agent package zip
   - script: dev.cmd package Release
