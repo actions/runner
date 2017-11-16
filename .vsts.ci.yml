@@ -7,7 +7,7 @@ phases:
   queue:
     name: buildDevs
     demands: agent.os -equals Windows_NT
-  condition: eq(variables.skip_windows, false)
+  condition: eq(false, variables.skip_windows)
   steps:
 
   # Clean
@@ -82,7 +82,7 @@ phases:
   displayName: Linux Agent
   queue:
     name: Hosted Linux Preview
-  condition: eq(variables.skip_linux, false)
+  condition: eq(false, variables.skip_linux)
   steps:
 
   # Clean
@@ -121,7 +121,7 @@ phases:
   queue:
     name: buildDevs
     demands: agent.os -equals darwin
-  condition: eq(variables.skip_macos, false)
+  condition: eq(false, variables.skip_macos)
   steps:
 
   # Clean
@@ -164,7 +164,7 @@ phases:
   - build_windows_agent
   - build_osx_agent
   - build_linux_agent
-  condition: and(succeeded(), eq(variables.publish, true))
+  condition: and(succeeded(), eq(true, variables.publish))
   steps:
   
   # Clean
