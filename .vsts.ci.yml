@@ -188,6 +188,7 @@ phases:
       Login-AzureRmAccount -ServicePrincipal -CertificateThumbprint $certificateThumbprint -ApplicationId $clientId -TenantId $(TenantId)
       Select-AzureRmSubscription -SubscriptionId $(SubscriptionId)
       $storage = Get-AzureRmStorageAccount -ResourceGroupName vstsagentpackage -AccountName vstsagentpackage
+      New-AzureStorageContainer -Name agent -Permission Container -Context $storage.Context
       Get-ChildItem -LiteralPath "$(System.ArtifactsDirectory)/agent" | ForEach-Object {
         $versionDir = $_.Name.Trim('.zip').Trim('.tar.gz')
         $versionDir = $versionDir.SubString($versionDir.LastIndexOf('-') + 1)
