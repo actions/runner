@@ -158,8 +158,7 @@ phases:
 ################################################################################
   displayName: Publish Agents (Windows/Linux/OSX)
   queue:
-    name: buildDevs
-    demands: agent.os -equals Windows_NT
+    name: ProductionRMAgents
   dependsOn: 
   - build_windows_agent
   - build_osx_agent
