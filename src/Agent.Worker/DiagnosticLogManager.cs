@@ -68,7 +68,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
             executionContext.Debug("Creating diagnostic log environment file.");
             string environmentFile = Path.Combine(supportFilesFolder, "environment.txt");
-            string content = GetEnvironmentContent(agentId, agentName, message.Tasks);
+            string content = await GetEnvironmentContent(agentId, agentName, message.Tasks);
             File.WriteAllText(environmentFile, content);
 
             // Create the capabilities file
@@ -176,7 +176,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             return workerLogFiles;
         }
 
-        private string GetEnvironmentContent(int agentId, string agentName, ReadOnlyCollection<TaskInstance> tasks)
+        private async Task<string> GetEnvironmentContent(int agentId, string agentName, ReadOnlyCollection<TaskInstance> tasks)
         {
             var builder = new StringBuilder();
 
@@ -198,6 +198,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
             // firewall on/off
             builder.AppendLine($"Firewall enabled: {IsFirewallEnabled()}");
+
+            // $psversiontable
+            builder.AppendLine("Powershell Version Info:");
+            builder.AppendLine(await GetPsVersionInfo());
 #endif
 
             return builder.ToString();
@@ -205,15 +209,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
 #if OS_WINDOWS
         // Returns whether or not Windows Defender is running.
-        private static bool IsDefenderEnabled()
+        private bool IsDefenderEnabled()
         {
             return Process.GetProcessesByName("MsMpEng.exe").FirstOrDefault() != null;
         }
-#endif
 
-#if OS_WINDOWS
         // Returns whether or not the Windows firewall is enabled.
-        private static bool IsFirewallEnabled()
+        private bool IsFirewallEnabled()
         {
             try 
             {
@@ -233,6 +235,38 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             {
                 return false;
             }
+        }
+
+        private async Task<string> GetPsVersionInfo()
+        {
+            var builder = new StringBuilder();
+
+            string powerShellExe = HostContext.GetService<IPowerShellExeUtil>().GetPath();
+            string arguments = @"Write-Host ($PSVersionTable | Out-String)";
+            using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
+            {
+                processInvoker.OutputDataReceived += (object sender, ProcessDataReceivedEventArgs args) =>
+                {
+                    builder.AppendLine(args.Data);
+                };
+
+                processInvoker.ErrorDataReceived += (object sender, ProcessDataReceivedEventArgs args) =>
+                {
+                    builder.AppendLine(args.Data);
+                };
+
+                await processInvoker.ExecuteAsync(
+                    workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Bin),
+                    fileName: powerShellExe,
+                    arguments: arguments,
+                    environment: null,
+                    requireExitCodeZero: false,
+                    outputEncoding: null,
+                    killProcessOnCancel: false,
+                    cancellationToken: default(CancellationToken));
+            }
+
+            return builder.ToString();
         }
 #endif
     }
