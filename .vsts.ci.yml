@@ -41,25 +41,25 @@ phases:
     condition: and(succeeded(), ne(variables['build.reason'], 'PullRequest'))
 
   # Signing steps
-  # - task: CodeSign@1
-  #   inputs:
-  #     ConnectedServiceName: VSTSAgentCodeSignCloudConnector
-  #     RootFolder: _layout\bin
-  #     SearchPattern: AgentService.exe
-  #     CertificateId: 67
-  #     ProductName: Visual Studio Team Services Build and Release Agent
-  #   displayName: Sign Agent Assemblies (Strong Name Signing)
-  #   condition: and(succeeded(), ne(variables['build.reason'], 'PullRequest'))
+  - task: CodeSign@1
+    inputs:
+      ConnectedServiceName: VSTSAgentCodeSignCloudConnector
+      RootFolder: _layout\bin
+      SearchPattern: AgentService.exe
+      CertificateId: 67
+      ProductName: Visual Studio Team Services Build and Release Agent
+    displayName: Sign Agent Assemblies (Strong Name Signing)
+    condition: and(succeeded(), ne(variables['build.reason'], 'PullRequest'))
 
-  # - task: CodeSign@1
-  #   inputs:
-  #     ConnectedServiceName: VSTSAgentCodeSignCloudConnector
-  #     RootFolder: _layout\bin
-  #     SearchPattern: Agent.*.dll,Agent.*.exe,Microsoft.VisualStudio.Services.Agent.dll,AgentService.exe
-  #     CertificateId: 401
-  #     ProductName: Visual Studio Team Services Build and Release Agent
-  #   displayName: Sign Agent Assemblies (Authenticode Signing)
-  #   condition: and(succeeded(), ne(variables['build.reason'], 'PullRequest'))
+  - task: CodeSign@1
+    inputs:
+      ConnectedServiceName: VSTSAgentCodeSignCloudConnector
+      RootFolder: _layout\bin
+      SearchPattern: Agent.*.dll,Agent.*.exe,Microsoft.VisualStudio.Services.Agent.dll,AgentService.exe
+      CertificateId: 401
+      ProductName: Visual Studio Team Services Build and Release Agent
+    displayName: Sign Agent Assemblies (Authenticode Signing)
+    condition: and(succeeded(), ne(variables['build.reason'], 'PullRequest'))
   
   # Create agent package zip
   - script: dev.cmd package Release
@@ -181,8 +181,8 @@ phases:
       Write-Host "Preloading Azure modules." # This is for better performance, to avoid module-autoloading.
       Import-Module AzureRM, AzureRM.profile, AzureRM.Storage, Azure.Storage, AzureRM.Cdn -ErrorAction Ignore -PassThru
       $uploadFiles = New-Object System.Collections.ArrayList
-      $certificateThumbprint = (Get-ItemProperty -Path "Registry::HKEY_CURRENT_USER\SOFTWARE\Microsoft\Visual Studio Team Services\LightRail").ServicePrincipalCertThumbprint
-      $clientId = (Get-ItemProperty -Path "Registry::HKEY_CURRENT_USER\SOFTWARE\Microsoft\Visual Studio Team Services\LightRail").ServicePrincipalClientId
+      $certificateThumbprint = (Get-ItemProperty -Path "$(ServicePrincipalReg)").ServicePrincipalCertThumbprint
+      $clientId = (Get-ItemProperty -Path "$(ServicePrincipalReg)").ServicePrincipalClientId
       Write-Host "##vso[task.setsecret]$certificateThumbprint"
       Write-Host "##vso[task.setsecret]$clientId"
       Login-AzureRmAccount -ServicePrincipal -CertificateThumbprint $certificateThumbprint -ApplicationId $clientId -TenantId $(TenantId)

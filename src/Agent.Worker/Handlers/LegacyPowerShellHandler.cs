@@ -371,7 +371,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
 
                     ids.Add(partialKey);
                     AddEnvironmentVariable("VSTSPSHOSTENDPOINT_URL_" + partialKey, endpoint.Url.ToString());
-                    AddEnvironmentVariable("VSTSPSHOSTENDPOINT_NAME_" + partialKey, endpoint.Name);
+
+                    // We fixed endpoint.name to be the name of the endpoint, before endpoint.name=endpoint.id is a guid
+                    // The legacy PSHost take dependency on this to retrive endpoint.                    
+                    if (Guid.TryParse(endpoint.Name, out Guid endpointId))
+                    {
+                        AddEnvironmentVariable("VSTSPSHOSTENDPOINT_NAME_" + partialKey, endpoint.Name);
+                    }
+                    else
+                    {
+                        AddEnvironmentVariable("VSTSPSHOSTENDPOINT_NAME_" + partialKey, endpoint.Id.ToString());
+                    }
+
                     AddEnvironmentVariable("VSTSPSHOSTENDPOINT_TYPE_" + partialKey, endpoint.Type);
                     AddEnvironmentVariable("VSTSPSHOSTENDPOINT_AUTH_" + partialKey, JsonUtility.ToString(endpoint.Authorization));
                     AddEnvironmentVariable("VSTSPSHOSTENDPOINT_DATA_" + partialKey, JsonUtility.ToString(endpoint.Data));
