@@ -372,9 +372,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
                     ids.Add(partialKey);
                     AddEnvironmentVariable("VSTSPSHOSTENDPOINT_URL_" + partialKey, endpoint.Url.ToString());
 
-                    // We fixed endpoint.name to be the name of the endpoint, before endpoint.name=endpoint.id is a guid
-                    // The legacy PSHost take dependency on this to retrive endpoint.                    
-                    if (Guid.TryParse(endpoint.Name, out Guid endpointId))
+                    // We fixed endpoint.name to be the name of the endpoint in yaml, before endpoint.name=endpoint.id is a guid
+                    // However, for source endpoint, the endpoint.id is Guid.Empty and endpoint.name is already the name of the endpoint
+                    // The legacy PSHost use the Guid to retrive endpoint, the legacy PSHost assume `VSTSPSHOSTENDPOINT_NAME_` is the Guid.
+                    if (endpoint.Id == Guid.Empty && endpoint.Data.ContainsKey("repositoryId"))
                     {
                         AddEnvironmentVariable("VSTSPSHOSTENDPOINT_NAME_" + partialKey, endpoint.Name);
                     }
