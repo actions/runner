@@ -83,26 +83,9 @@ phases:
 
 ## Phase conditions
 
-You can specify conditions under which the phase will run. All general functions of [task conditions](https://go.microsoft.com/fwlink/?linkid=842996) are available in phase conditions. Phase conditions may make use of the following context:
+### Basic phase conditions
 
-* **variables** - all variables which are available in the root orchestration environment, including input variables, definition variables, linked variable groups, etc.
-* **dependencies** - a property for each phase exists as the name of the phase. For instance, using the **Fan in** example from above, the phase Subsequent would have the following dependencies (the output variables are a Dictionary(string, string) and the result can have one of the listed values):
-
-```yaml
-dependencies:
-  InitialA:
-    result: (Succeeded|SucceededWithIssues|Skipped|Failed|Canceled)
-    outputs:
-      variable1: value1
-      variable2: value2
-  InitialB:
-    result: (Succeeded|SucceededWithIssues|Skipped|Failed|Canceled)
-    outputs:
-      variable1: value1
-      variable2: value2
-```
-
-In addition to the general expression functions, the following functions are available for use within a phase condition:
+You can specify conditions under which phases will run. The following functions can be used to evaluate the result of dependent phases:
 
 * **succeeded()** - Runs if all previous phases in the dependency graph completed with a result of Succeeded or SucceededWithIssues. Specific phase names may be specified as arguments.
 * **failed()** - Runs if any previous phase in the dependency graph failed. Specific phases names may be specified as arguments.
@@ -112,26 +95,114 @@ In addition to the general expression functions, the following functions are ava
 
 If no condition is explictly specified, a default condition of ```succeeded()``` will be used.
 
-An example condition may look like the following, assuming ```InitialA``` provides an output named ```skipsubsequent```. Only phases which are referenced as direct dependencies are available for context in conditions.
+Example - Using the result functions in the expression:
 
 ```yaml
 phases:
-- phase: InitialA
+- phase: A
+  steps:
+  - script: exit 1
+
+- phase: B
+  dependsOn: A
+  condition: failed()
+  steps:
+  - script: echo this will run when A fails
+
+- phase: C
+  dependsOn:
+  - A
+  - B
+  condition: succeeded('B')
+  steps:
+  - script: echo this will run when B runs and succeeds
+```
+
+### Custom phase condition, with a variable
+
+Variables and all general functions of [task conditions](https://go.microsoft.com/fwlink/?linkid=842996) are also available in phase conditions.
+
+Example - Using a variable in the expression:
+
+```yaml
+phases:
+- phase: A
+  steps:
+  - script: echo hello
+
+- phase: B
+  dependsOn: A
+  condition: and(succeeded(), eq(variables['build.sourceBranch'], 'refs/heads/master'))
+  steps:
+  - script: echo this only runs for master
+```
+
+### Custom phase condition, with an output variable
+
+Output variables from previous phases can also be used within conditions.
+
+Only phases which are referenced as direct dependencies are available for use.
+
+Example - Using an output variable in the expression:
+
+```yaml
+phases:
+- phase: A
   steps:
   - script: "echo ##vso[task.setvariable variable=skipsubsequent;isOutput=true]false"
     name: printvar
 
-- phase: InitialB
+- phase: B
+  condition: and(succeeded(), ne(dependencies.A.outputs['printvar.skipsubsequent'], 'true'))
+  dependsOn: A
   steps:
-  - script: echo hello from initial B
-
-- phase: Subsequent
-  condition: and(succeeded(), ne(dependencies.InitialA.outputs['printvar.skipsubsequent'], 'true'))
-  dependsOn:
-  - InitialA
-  - InitialB
-  steps:
-  - script: echo hello from subsequent
+  - script: echo hello from B
 ```
 
 For details about output variables, refer [here](https://github.com/Microsoft/vsts-agent/blob/master/docs/preview/outputvariable.md#for-ad-hoc-script).
+
+## Output variables
+
+Output variables can be used to set a variable in one phase, and then use the variable in a downstream phase.
+
+Output variables are prefixed with the step name.
+
+Output variables can only be referenced from phases which listed as direct dependencies.
+
+Example - Mapping an output variable using an expression:
+
+```yaml
+phases:
+- phase: A
+  steps: 
+  - script: "echo ##vso[task.setvariable variable=myOutputVar;isOutput=true]this is the value"
+    name: setvar
+  - script: echo $(setvar.myOutputVar)
+    name: echovar
+
+- phase: B
+  dependsOn: A
+  variables:
+    myVarFromPhaseA: $[ dependencies.A.outputs['setvar.myOutputVar'] ]
+  steps:
+  - script: "echo $(myVarFromPhaseA)"
+    name: echovar
+```
+
+### Expression context
+
+Phase-level expressions may use the following context:
+
+* **variables** - all variables which are available in the root orchestration environment, including input variables, definition variables, linked variable groups, etc.
+* **dependencies** - a property for each phase exists as the name of the phase.
+
+Structure of the dependencies object:
+
+```yaml
+dependencies:
+  <PHASE_NAME>:
+    result: (Succeeded|SucceededWithIssues|Skipped|Failed|Canceled)
+    outputs:
+      variable1: value1
+      variable2: value2
+```
