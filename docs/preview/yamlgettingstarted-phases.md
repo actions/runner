@@ -189,7 +189,7 @@ phases:
     name: echovar
 ```
 
-### Expression context
+## Expression context
 
 Phase-level expressions may use the following context:
 
