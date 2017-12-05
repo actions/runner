@@ -637,7 +637,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
                     if (GitLfsUseAuthHeaderCmdlineArg)
                     {
-                        additionalLfsFetchArgs.Add($"-c http.extraheader=\"AUTHORIZATION: {GenerateAuthHeader(username, password)}\"");
+                        string authorityUrl = repositoryUrl.AbsoluteUri.Replace(repositoryUrl.PathAndQuery, string.Empty);
+                        additionalLfsFetchArgs.Add($"-c http.{authorityUrl}.extraheader=\"AUTHORIZATION: {GenerateAuthHeader(username, password)}\"");
                     }
                     else
                     {
