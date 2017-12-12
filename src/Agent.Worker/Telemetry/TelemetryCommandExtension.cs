@@ -82,9 +82,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Telemetry
                 throw new ArgumentException(StringUtil.Loc("TelemetryCommandDataError", data, ex.Message));
             }
 
-            var ciService = HostContext.GetService<ICustomerIntelligenceServer>();
-            var vssConnection = WorkerUtilities.GetVssConnection(context);
-            ciService.Initialize(vssConnection);
+            ICustomerIntelligenceServer ciService;
+            VssConnection vssConnection;
+            try
+            {
+                ciService = HostContext.GetService<ICustomerIntelligenceServer>();
+                vssConnection = WorkerUtilities.GetVssConnection(context);
+                ciService.Initialize(vssConnection);
+            }
+            catch (Exception ex)
+            {
+                context.Warning(StringUtil.Loc("TelemetryCommandFailed", ex.Message));
+                return;
+            }
 
             var commandContext = HostContext.CreateService<IAsyncCommandContext>();
             commandContext.InitializeCommandContext(context, StringUtil.Loc("Telemetry"));
