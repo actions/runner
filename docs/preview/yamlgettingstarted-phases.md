@@ -21,6 +21,39 @@ phases:
   - script: echo hello from the Release build
 ```
 
+Example where an artifact is published in the first phase, and downloaded in the second phase:
+
+```yaml
+phases:
+- phase: A
+  steps:
+  - script: echo hello > $(system.artifactsDirectory)/hello.txt
+    displayName: Stage artifact
+
+  - task: PublishBuildArtifacts@1
+    displayName: Upload artifact
+    inputs:
+      pathtoPublish: $(system.artifactsDirectory)
+      artifactName: hello
+      artifactType: Container
+
+- phase: B
+  dependsOn: A
+  steps:
+  - task: DownloadBuildArtifacts@0
+    displayName: Download artifact
+    inputs:
+      artifactName: hello
+
+  - script: dir /s /b $(system.artifactsDirectory)
+    displayName: List artifact (Windows)
+    condition: and(succeeded(), eq(variables['agent.os'], 'Windows_NT'))
+
+  - script: find $(system.artifactsDirectory)
+    displayName: List artifact (macOS and Linux)
+    condition: and(succeeded(), ne(variables['agent.os'], 'Windows_NT'))
+```
+
 ## Parallel phases
 
 Example phases that build in parallel (no dependencies).
