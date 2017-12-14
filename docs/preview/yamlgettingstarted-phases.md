@@ -251,7 +251,7 @@ phases:
     name: echovar
 ```
 
-Example = Mapping an output variable from a phase with slicing
+Example - Mapping an output variable from a phase with slicing
 
 ```yaml
 phases:
