@@ -130,7 +130,7 @@ Root CA cert:
 `MakeCert -n "CN=Enterprise_issuer_2" -pe -ss Root -sr LocalMachine -sky exchange -m 6 -a sha1 -len 2048 -r -eku 1.3.6.1.5.5.7.3.2,1.3.6.1.5.5.7.3.1`  
 
 Server cert:  
-`MakeCert -n "CN=TFSAT.mycompany.com" -pe -ss My -sr LocalMachine -sky exchange -m 6 -in Enterprise_issuer_2 -is Root -ir LocalMachine -a sha1 -sku 1.3.6.1.5.5.7.3.1 -len 2048`  
+`MakeCert -n "CN=TFSAT.mycompany.com" -pe -ss My -sr LocalMachine -sky exchange -m 6 -in Enterprise_issuer_2 -is Root -ir LocalMachine -a sha1 -eku 1.3.6.1.5.5.7.3.1 -len 2048`  
 
 Client cert:  
 `MakeCert -n "CN=mycompany\ting" -pe -ss My -sr CurrentUser -sky exchange -m 6 -in Enterprise_issuer_2 -is Root -ir LocalMachine -a sha1 -eku 1.3.6.1.5.5.7.3.2 -len 2048`
