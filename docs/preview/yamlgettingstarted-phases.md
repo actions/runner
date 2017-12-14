@@ -222,6 +222,57 @@ phases:
     name: echovar
 ```
 
+Example - Mapping an output variable from a phase with a matrix
+
+```yaml
+phases:
+- phase: A
+  queue:
+    parallel: 2
+    matrix:
+      debug:
+        configuration: debug
+        platform: x64
+      release:
+        configuration: release
+        platform: x64
+  steps:
+  - script: "echo ##vso[task.setvariable variable=myOutputVar;isOutput=true]this is the $(configuration) value"
+    name: setvar
+  - script: echo $(setvar.myOutputVar)
+    name: echovar
+
+- phase: B
+  dependsOn: A
+  variables:
+    myVarFromPhaseADebug: $[ dependencies.A.outputs['debug.setvar.myOutputVar'] ]
+  steps:
+  - script: "echo $(myVarFromPhaseADebug)"
+    name: echovar
+```
+
+Example = Mapping an output variable from a phase with slicing
+
+```yaml
+phases:
+- phase: A
+  queue:
+    parallel: 2
+  steps:
+  - script: "echo ##vso[task.setvariable variable=myOutputVar;isOutput=true]this is the slice $(system.jobPositionInPhase) value"
+    name: setvar
+  - script: echo $(setvar.myOutputVar)
+    name: echovar
+
+- phase: B
+  dependsOn: A
+  variables:
+    myVarFromPhaseA1: $[ dependencies.A.outputs['job1.setvar.myOutputVar'] ]
+  steps:
+  - script: "echo $(myVarFromPhaseA1)"
+    name: echovar
+```
+
 ## Expression context
 
 Phase-level expressions may use the following context:
