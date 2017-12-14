@@ -130,13 +130,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
         {
             try
             {
-                ServiceEndpoint vssEndpoint = executionContext.Endpoints.FirstOrDefault(e =>
-                    string.Equals(e.Name, ServiceEndpoints.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
-                ArgUtil.NotNull(vssEndpoint, nameof(vssEndpoint));
-                ArgUtil.NotNull(vssEndpoint.Url, nameof(vssEndpoint.Url));
-
-                Trace.Info($"Connecting to {vssEndpoint.Url}/{TeamProjectId}");
-                var releaseServer = new ReleaseServer(vssEndpoint.Url, ApiUtil.GetVssCredential(vssEndpoint), TeamProjectId);
+                var connection = WorkerUtilities.GetVssConnection(executionContext);
+                var releaseServer = new ReleaseServer(connection, TeamProjectId);
 
                 IList<AgentArtifactDefinition> releaseArtifacts = releaseServer.GetReleaseArtifactsFromService(ReleaseId).ToList();
                 IList<AgentArtifactDefinition> filteredReleaseArtifacts = FilterArtifactDefintions(releaseArtifacts);
