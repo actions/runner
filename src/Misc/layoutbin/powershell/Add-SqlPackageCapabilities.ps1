@@ -137,7 +137,7 @@ function Get-SqlPacakgeFromDacDirectory {
 
 
     if (!(Test-Container -LiteralPath $dacDirectory)) {
-        continue
+        return
     }
 
     # Get the DAC version folders.
