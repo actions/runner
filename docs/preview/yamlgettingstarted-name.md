@@ -1,4 +1,4 @@
-# YAML getting started - Build number format (deploying end of Nov)
+# YAML getting started - Build number format
 
 The build number format can be specified as a name property at the root of the document.
 
