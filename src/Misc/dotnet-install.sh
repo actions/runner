@@ -120,6 +120,10 @@ get_linux_platform_name() {
     else
         if [ -e /etc/os-release ]; then
             . /etc/os-release
+            if [[ $ID == "alpine" ]]; then
+                # remove the last version digit
+                VERSION_ID=${VERSION_ID%.*}
+            fi
             echo "$ID.$VERSION_ID"
             return 0
         elif [ -e /etc/redhat-release ]; then
@@ -146,8 +150,8 @@ get_current_os_name() {
         local linux_platform_name
         linux_platform_name="$(get_linux_platform_name)" || { echo "linux" && return 0 ; }
 
-        if [[ $linux_platform_name == "rhel.6"* ]]; then
-            echo "rhel.6"
+        if [[ $linux_platform_name == "rhel.6" || $linux_platform_name == "alpine.3.6" ]]; then
+            echo $linux_platform_name
             return 0
         else
             echo "linux"
@@ -646,7 +650,7 @@ downloadwget() {
     if [ -z "$out_path" ]; then
         wget -q --tries 10 -O - "$remote_path" || failed=true
     else
-        wget -v --tries 10 -O "$out_path" "$remote_path" || failed=true
+        wget --tries 10 -O "$out_path" "$remote_path" || failed=true
     fi
     if [ "$failed" = true ]; then
         say_verbose "Wget download failed"
