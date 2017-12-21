@@ -73,7 +73,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Capabilities
             builder.Check(
                 name: "Xamarin.Android",
                 fileName: "generator",
-                filePaths: new string[] { "/Library/Frameworks/Xamarin.Android.framework/Commands/generator" });
+                filePaths: new string[] { 
+                    "/Library/Frameworks/Xamarin.Android.framework/Commands/generator",
+                    "/Library/Frameworks/Xamarin.Android.framework/Versions/Current/Version"});
             await builder.CheckToolOutputAsync(
                 name: "xcode",
                 fileName: "xcode-select",
