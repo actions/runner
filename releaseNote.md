@@ -1,12 +1,12 @@
 ## Features
- - Consume Git 2.14.3. #1295
- - Process cleanup enhance. #1292
+ N/A
 
 ## Bugs
-  - Fix artifacts to be downloaded by agent. #1289
-
+  - fix git lfs support for github.com. #1316
+  - fix client cert support in RM. #1331
+  - fix SqlPackage capability search. #1323 
 ## Misc
-  - Collect PowerShell version in diagnostic log. #1296 
+  N/A
 
 ## Agent Downloads  
 
