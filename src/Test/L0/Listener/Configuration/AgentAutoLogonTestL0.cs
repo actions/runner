@@ -38,6 +38,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
         {
             using (var hc = new TestHostContext(this))
             {
+                _domainName = "avengers";
                 SetupTestEnv(hc, _sid);
 
                 var iConfigManager = new AutoLogonManager();
@@ -53,10 +54,35 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Agent")]
+        public async void TestAutoLogonConfigurationForDotAsDomainName()
+        {
+            using (var hc = new TestHostContext(this))
+            {
+                // Set the domain name to '.'
+                _domainName = ".";
+                SetupTestEnv(hc, _sid);
+
+                var iConfigManager = new AutoLogonManager();
+                iConfigManager.Initialize(hc);
+                await iConfigManager.ConfigureAsync(_command);
+                
+                // Domain should have been set to Environment.Machine name in case the value passsed was '.'
+                _domainName = Environment.MachineName;
+
+                VerifyRegistryChanges(_sid);
+                Assert.True(_powerCfgCalledForACOption);
+                Assert.True(_powerCfgCalledForDCOption);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Agent")]
         public async void TestAutoLogonConfigurationForDifferentUser()
         {
             using (var hc = new TestHostContext(this))
             {
+                _domainName = "avengers";
                 SetupTestEnv(hc, _sidForDifferentUser);
 
                 var iConfigManager = new AutoLogonManager();
@@ -81,6 +107,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
             //4. make sure the autologon settings are reset
             using (var hc = new TestHostContext(this))
             {
+                _domainName = "avengers";
                 SetupTestEnv(hc, _sid);
                 SetupRegistrySettings(_sid);
 
@@ -110,6 +137,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
 
             using (var hc = new TestHostContext(this))
             {
+                _domainName = "avengers";
                 SetupTestEnv(hc, _sidForDifferentUser);
 
                 SetupRegistrySettings(_sidForDifferentUser);
@@ -243,6 +271,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                                     RegistryConstants.MachineSettings.SubKeys.AutoLogon,
                                     RegistryConstants.MachineSettings.ValueNames.AutoLogonUserName,
                                     _userName);
+
+            ValidateRegistryValue(RegistryHive.LocalMachine,
+                                    RegistryConstants.MachineSettings.SubKeys.AutoLogon,
+                                    RegistryConstants.MachineSettings.ValueNames.AutoLogonDomainName,
+                                    _domainName);   
 
             ValidateRegistryValue(RegistryHive.LocalMachine,
                                     RegistryConstants.MachineSettings.SubKeys.AutoLogon,
