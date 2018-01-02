@@ -9,7 +9,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             return serverUrl.IndexOf(".visualstudio.com", StringComparison.OrdinalIgnoreCase) != -1
                 || serverUrl.IndexOf(".tfsallin.net", StringComparison.OrdinalIgnoreCase) != -1
                 || serverUrl.IndexOf(".vsts.me", StringComparison.OrdinalIgnoreCase) != -1
-                || serverUrl.IndexOf(".vsallin.net", StringComparison.OrdinalIgnoreCase) != -1;
+                || serverUrl.IndexOf(".vsallin.net", StringComparison.OrdinalIgnoreCase) != -1
+                || serverUrl.IndexOf(".vsts.io", StringComparison.OrdinalIgnoreCase) != -1;
         }
 
         public static Uri GetCredentialEmbeddedUrl(Uri baseUrl, string username, string password)
