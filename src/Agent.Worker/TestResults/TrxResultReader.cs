@@ -167,12 +167,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                 }
             }
 
-            // Read UnitTestResults as well as WebTestResults
+            // Read UnitTestResults, WebTestResults and OrderedTestResults
             XmlNodeList resultsNodes = doc.SelectNodes("/TestRun/Results/UnitTestResult");
             XmlNodeList webTestResultNodes = doc.SelectNodes("/TestRun/Results/WebTestResult");
+            XmlNodeList orderedTestResultNodes = doc.SelectNodes("/TestRun/Results/TestResultAggregation");
 
             results.AddRange(ReadActualResults(resultsNodes, "UnitTest"));
             results.AddRange(ReadActualResults(webTestResultNodes, "WebTest"));
+            results.AddRange(ReadActualResults(orderedTestResultNodes, "OrderedTest"));
+
 
             testRunData.Results = results.ToArray<TestCaseResultData>();
             _executionContext.Debug(string.Format(CultureInfo.InvariantCulture, "Total test results: {0}", testRunData.Results.Length));
