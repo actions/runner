@@ -17,18 +17,19 @@ such as queues and endpoints.
 
 When a definition is created or updated, any resources referenced by the YAML file are authorized
 for use. Authorization is performed based whether the person creating or updating the definition
-has use permission.
+has use permission for the resource.
 
-The YAML file in the default branch is used to discover resources when saving
-the definition using the web UI or REST API.
+The YAML file in the default branch (specified on the definition) is used to discover resources
+when saving the definition using the web UI or REST API.
 
 ## Resource authorization on push
 
 The ability to authorize resources on push, is currently only supported for Git repos in VSTS.
 
-Only pushes to the file `.vsts-ci.yml` in the root of the repo, in the default branch, will
-cause the definition to be updated. When the YAML file is changed, the person who pushed the
-branch update is considered to be the person updating the definition (regardless of commit author).
+This feature is only supported for pushes to the file `.vsts-ci.yml` in the root of the repo,
+and in the default branch (specified on the repo options in source control). A push to the file
+will cause the definition to be updated. When the YAML file is changed, the person who pushed
+the branch update is considered to be the person updating the definition (regardless of commit author).
 
 Note, resource authorization is currently append only. Removing a resource from the YAML
 file will not remove it's authorized status. A future update will provide a way to
