@@ -13,9 +13,11 @@ For details about creating a definition on-push, refer [here](yamlgettingstarted
 ## Resource authorization
 
 Build definitions commonly refer to resources within VSTS that have security restrictions -
-such as queues and endpoints. When a definition is created or updated, any resources
-referenced by the YAML file are authorized for use, if the person creating or updating the
-definition has use permission.
+such as queues and endpoints.
+
+When a definition is created or updated, any resources referenced by the YAML file are authorized
+for use. Authorization is performed based whether the person creating or updating the definition
+has use permission.
 
 The YAML file in the default branch is used to discover resources when saving
 the definition using the web UI or REST API.
