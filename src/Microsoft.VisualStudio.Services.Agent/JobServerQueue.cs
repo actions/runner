@@ -281,6 +281,17 @@ namespace Microsoft.VisualStudio.Services.Agent
 
                 if (batchedLines.Count > 0)
                 {
+                    // When job finish, web console lines becomes less interesting to customer
+                    // We batch and produce 600 lines of web console output every 500ms
+                    // If customer's task produce massive of outputs, then the last queue drain run might take forever.
+                    // So we will only upload the last 200 lines of all buffered web console lines.
+                    if (runOnce && batchedLines.Count > 2)
+                    {
+                        Trace.Info($"Skip {batchedLines.Count - 2} batches web console lines for last run");
+                        batchedLines = batchedLines.TakeLast(2).ToList();
+                        batchedLines[0].Insert(0, "...");
+                    }
+
                     int errorCount = 0;
                     foreach (var batch in batchedLines)
                     {
