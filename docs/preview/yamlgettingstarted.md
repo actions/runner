@@ -28,12 +28,14 @@ YAML builds require the latest agent. When a YAML build is queued, your agent wi
 
 [Multiple phases](yamlgettingstarted-phases.md)
 
-[Build number format](yamlgettingstarted-name.md)
-
 ## Misc
 
-[Schema reference](yamlgettingstarted-schema.md)
-
 [Resource authorization](yamlgettingstarted-authz.md)
+
+[Build number format](yamlgettingstarted-name.md)
+
+[Allow scripts to access OAuth token](yamlgettingstarted-token.md)
+
+[Schema reference](yamlgettingstarted-schema.md)
 
 [Feature gaps](yamlgettingstarted-features.md)
