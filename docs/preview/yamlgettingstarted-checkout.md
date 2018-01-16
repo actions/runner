@@ -23,33 +23,6 @@ steps:
 - script: echo hello world
 ```
 
-## Multi-phase checkout options
-
-The checkout options can also be specified in the resources section of the .yml file. The values specified in the resource section are treated as the defaults, and can be overridden by individual checkout steps.
-
-For example:
-
-```yaml
-resources:
-- repo: self
-  clean: true
-  lfs: true
-phases:
-- phase: A
-  steps:
-  # implicit checkout step; inherits checkout options from the resources section
-  - script: echo hello world from phase A
-- phase: B
-  steps:
-  - checkout: self # explicit checkout step, inherits options from the resources section
-  - script: echo hello world from phase B
-- phase: C
-  steps:
-  - checkout: self # explicit checkout step
-    clean: false # overrides clean, inherits other options from the resources section
-  - script: echo hello world from phase C
-```
-
 ## Checkout/repo options reference
 
 ```yaml
