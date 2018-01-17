@@ -20,6 +20,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Capabilities
             Trace.Entering();
             ArgUtil.NotNull(settings, nameof(settings));
 
+            // Initialize a dictionary of capabilities.
+            var capabilities = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+            if (settings.SkipCapabilitiesScan)
+            {
+                Trace.Info("Skip capabilities scan.");
+                return capabilities;
+            }
+
             // Get the providers.
             var extensionManager = HostContext.GetService<IExtensionManager>();
             IEnumerable<ICapabilitiesProvider> providers =
@@ -27,10 +36,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Capabilities
                 .GetExtensions<ICapabilitiesProvider>()
                 ?.OrderBy(x => x.Order);
 
-            // Initialize a dictionary of capabilities.
-            var capabilities = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-
-            // Make sure we mask secrets in capabilitie values.
+            // Make sure we mask secrets in capabilities values.
             var secretMasker = HostContext.GetService<ISecretMasker>();
 
             // Add each capability returned from each provider.

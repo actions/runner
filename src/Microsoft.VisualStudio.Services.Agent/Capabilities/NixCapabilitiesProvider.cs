@@ -51,8 +51,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Capabilities
             builder.Check(name: "JDK", fileName: "javac");
             builder.Check(name: "make");
             builder.Check(name: "maven", fileName: "mvn");
-            builder.Check(name: "MSBuild", fileName: "xbuild",  filePaths: new [] { "/Library/Frameworks/Mono.framework/Commands/xbuild" });
-            builder.Check(name: "MSBuild", fileName: "msbuild", filePaths: new [] { "/Library/Frameworks/Mono.framework/Commands/msbuild" });
+            builder.Check(name: "MSBuild", fileName: "xbuild", filePaths: new[] { "/Library/Frameworks/Mono.framework/Commands/xbuild" });
+            builder.Check(name: "MSBuild", fileName: "msbuild", filePaths: new[] { "/Library/Frameworks/Mono.framework/Commands/msbuild" });
             builder.Check(name: "node.js", fileName: "node");
             builder.Check(name: "node.js", fileName: "nodejs");
             builder.Check(name: "npm");
@@ -66,14 +66,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Capabilities
             builder.Check(
                 name: "Xamarin.iOS",
                 fileName: "mdtool",
-                filePaths: new string[] { 
+                filePaths: new string[] {
                     "/Applications/Xamarin Studio.app/Contents/MacOS/mdtool",
                     "/Applications/Visual Studio.app/Contents/MacOS/vstool"
                 });
             builder.Check(
                 name: "Xamarin.Android",
                 fileName: "generator",
-                filePaths: new string[] { 
+                filePaths: new string[] {
                     "/Library/Frameworks/Xamarin.Android.framework/Commands/generator",
                     "/Library/Frameworks/Xamarin.Android.framework/Versions/Current/Version"});
             await builder.CheckToolOutputAsync(

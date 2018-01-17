@@ -30,6 +30,12 @@ namespace Microsoft.VisualStudio.Services.Agent
         public string NotificationSocketAddress { get; set; }
 
         [DataMember(EmitDefaultValue = false)]
+        public bool SkipCapabilitiesScan { get; set; }
+
+        [DataMember(EmitDefaultValue = false)]
+        public bool SkipSessionRecover { get; set; }
+
+        [DataMember(EmitDefaultValue = false)]
         public int PoolId { get; set; }
 
         [DataMember(EmitDefaultValue = false)]
@@ -42,7 +48,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         public string WorkFolder { get; set; }
 
         // Do not use Project Name any more to save in agent settings file. Ensure to use ProjectId. 
-        // Deployment Group scenario will not work for project rename scneario if we work with projectName
+        // Deployment Group scenario will not work for project rename scenario if we work with projectName
         [DataMember(EmitDefaultValue = false)]
         public string ProjectName { get; set; }
 
@@ -213,7 +219,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             }
 
             return _autoLogonSettings;
-        }        
+        }
 
         public void SaveCredential(CredentialData credential)
         {

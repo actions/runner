@@ -191,9 +191,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     Trace.Error("Catch exception during get next message.");
                     Trace.Error(ex);
 
-                    if (ex is TaskAgentSessionExpiredException && await CreateSessionAsync(token))
+                    // don't retry if SkipSessionRecover = true, DT service will delete agent session to stop agent from taking more jobs.
+                    if (ex is TaskAgentSessionExpiredException && !_settings.SkipSessionRecover && await CreateSessionAsync(token))
                     {
-                        Trace.Info($"{nameof(TaskAgentSessionExpiredException)} received, recoverd by recreate session.");
+                        Trace.Info($"{nameof(TaskAgentSessionExpiredException)} received, recovered by recreate session.");
                     }
                     else if (!IsGetNextMessageExceptionRetriable(ex))
                     {
