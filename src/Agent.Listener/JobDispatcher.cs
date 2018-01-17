@@ -153,7 +153,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
         public async Task ShutdownAsync()
         {
-            Trace.Info($"Shutting down JobDispather. Make sure all WorkerDispatcher has finished.");
+            Trace.Info($"Shutting down JobDispatcher. Make sure all WorkerDispatcher has finished.");
             WorkerDispatcher currentDispatch = null;
             if (_jobDispatchedQueue.Count > 0)
             {

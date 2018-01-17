@@ -45,11 +45,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         {
             if (!await UpdateNeeded(updateMessage.TargetVersion, token))
             {
-                Trace.Info($"Can't find availiable update package.");
+                Trace.Info($"Can't find available update package.");
                 return false;
             }
 
-            Trace.Info($"An update is availiable.");
+            Trace.Info($"An update is available.");
 
             // Print console line that warn user not shutdown agent.
             await UpdateAgentUpdateStateAsync(StringUtil.Loc("UpdateInProgress"));
@@ -117,7 +117,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 }
             }
 
-            Trace.Info($"Version '{_targetPackage.Version}' of '{_targetPackage.Type}' package availiable in server.");
+            Trace.Info($"Version '{_targetPackage.Version}' of '{_targetPackage.Type}' package available in server.");
             PackageVersion serverVersion = new PackageVersion(_targetPackage.Version);
             Trace.Info($"Current running agent version is {Constants.Agent.Version}");
             PackageVersion agentVersion = new PackageVersion(Constants.Agent.Version);
