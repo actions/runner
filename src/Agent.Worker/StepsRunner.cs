@@ -121,6 +121,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                             }
                         });
                     }
+                    else
+                    {
+                        if (jobContext.Result != TaskResult.Canceled)
+                        {
+                            // mark job as cancelled
+                            jobContext.Result = TaskResult.Canceled;
+                            jobContext.Variables.Agent_JobStatus = jobContext.Result;
+                        }
+                    }
 
                     // Evaluate condition.
                     step.ExecutionContext.Debug($"Evaluating condition for step: '{step.DisplayName}'");
