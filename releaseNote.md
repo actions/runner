@@ -1,10 +1,12 @@
 ## Features
- N/A
-
+  - use SChannel for git during get source. #1377
+  - enable process force clean by default. #1372
+  - ordered test support in trx reader #1361
 ## Bugs
-  - fix git lfs support for github.com. #1316
-  - fix client cert support in RM. #1331
-  - fix SqlPackage capability search. #1323 
+  - fix cancellation race condition. #1352
+  - skip most of the web console lines for last run. #1364
+  - fixed issue where autologon was not working with .\username #1343
+  - update Xamarin.Android capability on macOS #1342
 ## Misc
   N/A
 
