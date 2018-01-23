@@ -124,6 +124,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                     public static readonly string DeploymentGroup = "deploymentgroup";
                     public static readonly string DeploymentPool = "deploymentpool";
                     public static readonly string OverwriteAutoLogon = "overwriteautologon";
+                    public static readonly string GitUseSChannel = "gituseschannel";
                     public static readonly string Help = "help";
                     public static readonly string MachineGroup = "machinegroup";
                     public static readonly string Replace = "replace";

@@ -75,6 +75,15 @@ namespace Microsoft.VisualStudio.Services.Agent
         public string UserName { get; set; }
     }
 
+    [DataContract]
+    public sealed class AgentRuntimeOptions
+    {
+#if OS_WINDOWS
+        [DataMember(EmitDefaultValue = false)]
+        public bool GitUseSecureChannel { get; set; }
+#endif
+    }
+
     [ServiceLocator(Default = typeof(ConfigurationStore))]
     public interface IConfigurationStore : IAgentService
     {
@@ -92,6 +101,9 @@ namespace Microsoft.VisualStudio.Services.Agent
         void DeleteAutoLogonSettings();
         void SaveAutoLogonSettings(AutoLogonSettings settings);
         AutoLogonSettings GetAutoLogonSettings();
+        AgentRuntimeOptions GetAgentRuntimeOptions();
+        void SaveAgentRuntimeOptions(AgentRuntimeOptions options);
+        void DeleteAgentRuntimeOptions();
     }
 
     public sealed class ConfigurationStore : AgentService, IConfigurationStore
@@ -101,9 +113,12 @@ namespace Microsoft.VisualStudio.Services.Agent
         private string _credFilePath;
         private string _serviceConfigFilePath;
         private string _autoLogonSettingsFilePath;
+        private string _runtimeOptionsFilePath;
+
         private CredentialData _creds;
         private AgentSettings _settings;
         private AutoLogonSettings _autoLogonSettings;
+        private AgentRuntimeOptions _runtimeOptions;
 
         public override void Initialize(IHostContext hostContext)
         {
@@ -129,6 +144,9 @@ namespace Microsoft.VisualStudio.Services.Agent
 
             _autoLogonSettingsFilePath = IOUtil.GetAutoLogonSettingsFilePath();
             Trace.Info("AutoLogonSettingsFilePath: {0}", _autoLogonSettingsFilePath);
+
+            _runtimeOptionsFilePath = IOUtil.GetRuntimeOptionsFilePath();
+            Trace.Info("RuntimeOptionsFilePath: {0}", _runtimeOptionsFilePath);
         }
 
         public string RootFolder { get; private set; }
@@ -283,6 +301,36 @@ namespace Microsoft.VisualStudio.Services.Agent
         public void DeleteAutoLogonSettings()
         {
             IOUtil.Delete(_autoLogonSettingsFilePath, default(CancellationToken));
+        }
+
+        public AgentRuntimeOptions GetAgentRuntimeOptions()
+        {
+            if (_runtimeOptions == null && File.Exists(_runtimeOptionsFilePath))
+            {
+                _runtimeOptions = IOUtil.LoadObject<AgentRuntimeOptions>(_runtimeOptionsFilePath);
+            }
+
+            return _runtimeOptions;
+        }
+
+        public void SaveAgentRuntimeOptions(AgentRuntimeOptions options)
+        {
+            Trace.Info("Saving runtime options.");
+            if (File.Exists(_runtimeOptionsFilePath))
+            {
+                // Delete existing runtime options file first, since the file is hidden and not able to overwrite.
+                Trace.Info("Delete exist runtime options file.");
+                IOUtil.DeleteFile(_runtimeOptionsFilePath);
+            }
+
+            IOUtil.SaveObject(options, _runtimeOptionsFilePath);
+            Trace.Info("Options Saved.");
+            File.SetAttributes(_runtimeOptionsFilePath, File.GetAttributes(_runtimeOptionsFilePath) | FileAttributes.Hidden);
+        }
+
+        public void DeleteAgentRuntimeOptions()
+        {
+            IOUtil.Delete(_runtimeOptionsFilePath, default(CancellationToken));
         }
     }
 }

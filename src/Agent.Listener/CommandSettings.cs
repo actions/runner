@@ -32,6 +32,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             Constants.Agent.CommandLine.Flags.Commit,
             Constants.Agent.CommandLine.Flags.DeploymentGroup,
             Constants.Agent.CommandLine.Flags.DeploymentPool,
+#if OS_WINDOWS
+            Constants.Agent.CommandLine.Flags.GitUseSChannel,
+#endif
             Constants.Agent.CommandLine.Flags.Help,
             Constants.Agent.CommandLine.Flags.MachineGroup,
             Constants.Agent.CommandLine.Flags.NoRestart,
@@ -93,7 +96,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         public bool DeploymentGroup => TestFlag(Constants.Agent.CommandLine.Flags.MachineGroup) || TestFlag(Constants.Agent.CommandLine.Flags.DeploymentGroup);
         public bool DeploymentPool => TestFlag(Constants.Agent.CommandLine.Flags.DeploymentPool);
         public bool WhatIf => TestFlag(Constants.Agent.CommandLine.Flags.WhatIf);
-
+#if OS_WINDOWS
+        public bool GitUseSChannel => TestFlag(Constants.Agent.CommandLine.Flags.GitUseSChannel);
+#endif
         // Constructor.
         public CommandSettings(IHostContext context, string[] args)
         {

@@ -424,6 +424,21 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
             _term.WriteLine(StringUtil.Loc("SavedSettings", DateTime.UtcNow));
 
+            bool saveRuntimeOptions = false;
+            var runtimeOptions = new AgentRuntimeOptions();
+#if OS_WINDOWS
+            if (command.GitUseSChannel)
+            {
+                saveRuntimeOptions = true;
+                runtimeOptions.GitUseSecureChannel = true;
+            }
+#endif
+            if (saveRuntimeOptions)
+            {
+                Trace.Info("Save agent runtime options to disk.");
+                _store.SaveAgentRuntimeOptions(runtimeOptions);
+            }
+
 #if OS_WINDOWS
             // config windows service
             bool runAsService = command.GetRunAsService();
@@ -562,6 +577,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
                     // delete agent cert setting
                     (HostContext.GetService<IAgentCertificateManager>() as AgentCertificateManager).DeleteCertificateSetting();
+
+                    // delete agent runtime option
+                    _store.DeleteAgentRuntimeOptions();
 
                     _store.DeleteSettings();
                     _term.WriteLine(StringUtil.Loc("Success") + currentAction);

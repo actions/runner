@@ -150,6 +150,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             return Path.Combine(GetRootPath(), ".autologon");
         }
 
+        public static string GetRuntimeOptionsFilePath()
+        {
+            return Path.Combine(GetRootPath(), ".options");
+        }
+
         public static string GetWorkPath(IHostContext hostContext)
         {
             var configurationStore = hostContext.GetService<IConfigurationStore>();

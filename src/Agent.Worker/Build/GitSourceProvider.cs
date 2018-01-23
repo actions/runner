@@ -22,7 +22,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
         public override void RequirementCheck(IExecutionContext executionContext, ServiceEndpoint endpoint)
         {
-            // no-opt for external git repo, there is no additional requirements.
+#if OS_WINDOWS
+            // check git version for SChannel SSLBackend (Windows Only)
+            bool schannelSslBackend = HostContext.GetService<IConfigurationStore>().GetAgentRuntimeOptions()?.GitUseSecureChannel ?? false;
+            if (schannelSslBackend)
+            {
+                _gitCommandManager.EnsureGitVersion(_minGitVersionSupportSSLBackendOverride, throwOnNotMatch: true);
+            }
+#endif
         }
 
         public override string GenerateAuthHeader(string username, string password)
@@ -56,7 +63,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
         public override void RequirementCheck(IExecutionContext executionContext, ServiceEndpoint endpoint)
         {
-            // no-opt, there is no additional requirements.
+#if OS_WINDOWS
+            // check git version for SChannel SSLBackend (Windows Only)
+            bool schannelSslBackend = HostContext.GetService<IConfigurationStore>().GetAgentRuntimeOptions()?.GitUseSecureChannel ?? false;
+            if (schannelSslBackend)
+            {
+                _gitCommandManager.EnsureGitVersion(_minGitVersionSupportSSLBackendOverride, throwOnNotMatch: true);
+            }
+#endif
         }
 
         public override string GenerateAuthHeader(string username, string password)
@@ -133,7 +147,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 onPremTfsGit = StringUtil.ConvertToBoolean(onPremTfsGitString);
             }
 
-            // only ensure git version and git-lfs version for on-prem tfsgit.
+            // ensure git version and git-lfs version for on-prem tfsgit.
             if (onPremTfsGit.Value)
             {
                 _gitCommandManager.EnsureGitVersion(_minGitVersionSupportAuthHeader, throwOnNotMatch: true);
@@ -151,6 +165,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                     _gitCommandManager.EnsureGitLFSVersion(_minGitLfsVersionSupportAuthHeader, throwOnNotMatch: true);
                 }
             }
+
+#if OS_WINDOWS
+            // check git version for SChannel SSLBackend (Windows Only)
+            bool schannelSslBackend = HostContext.GetService<IConfigurationStore>().GetAgentRuntimeOptions()?.GitUseSecureChannel ?? false;
+            if (schannelSslBackend)
+            {
+                _gitCommandManager.EnsureGitVersion(_minGitVersionSupportSSLBackendOverride, throwOnNotMatch: true);
+            }
+#endif
         }
 
         public override string GenerateAuthHeader(string username, string password)
@@ -183,6 +206,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
         // min git version that support add extra auth header.
         protected Version _minGitVersionSupportAuthHeader = new Version(2, 9);
+
+#if OS_WINDOWS
+        // min git version that support override sslBackend setting.
+        protected Version _minGitVersionSupportSSLBackendOverride = new Version(2, 14, 2);
+#endif
 
         // min git-lfs version that support add extra auth header.
         protected Version _minGitLfsVersionSupportAuthHeader = new Version(2, 1);
@@ -234,16 +262,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             }
 
             bool acceptUntrustedCerts = false;
-            if (endpoint.Data.ContainsKey("acceptUntrustedCerts")) // TODO: Use WellKnownEndpointData.AcceptUntrustedCerts when available.
+            if (endpoint.Data.ContainsKey(WellKnownEndpointData.AcceptUntrustedCertificates))
             {
-                acceptUntrustedCerts = StringUtil.ConvertToBoolean(endpoint.Data["acceptUntrustedCerts"]); // TODO: Use WellKnownEndpointData.AcceptUntrustedCerts when available.
+                acceptUntrustedCerts = StringUtil.ConvertToBoolean(endpoint.Data[WellKnownEndpointData.AcceptUntrustedCertificates]);
             }
 
             acceptUntrustedCerts = acceptUntrustedCerts || agentCert.SkipServerCertificateValidation;
 
             int fetchDepth = 0;
-            if (endpoint.Data.ContainsKey("fetchDepth") &&
-                (!int.TryParse(endpoint.Data["fetchDepth"], out fetchDepth) || fetchDepth < 0))
+            if (endpoint.Data.ContainsKey(WellKnownEndpointData.FetchDepth) &&
+                (!int.TryParse(endpoint.Data[WellKnownEndpointData.FetchDepth], out fetchDepth) || fetchDepth < 0))
             {
                 fetchDepth = 0;
             }
@@ -251,9 +279,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             fetchDepth = executionContext.Variables.GetInt(Constants.Variables.Features.GitShallowDepth) ?? fetchDepth;
 
             bool gitLfsSupport = false;
-            if (endpoint.Data.ContainsKey("GitLfsSupport"))
+            if (endpoint.Data.ContainsKey(WellKnownEndpointData.GitLfsSupport))
             {
-                gitLfsSupport = StringUtil.ConvertToBoolean(endpoint.Data["GitLfsSupport"]);
+                gitLfsSupport = StringUtil.ConvertToBoolean(endpoint.Data[WellKnownEndpointData.GitLfsSupport]);
             }
             // prefer feature variable over endpoint data
             gitLfsSupport = executionContext.Variables.GetBoolean(Constants.Variables.Features.GitLfsSupport) ?? gitLfsSupport;
@@ -271,6 +299,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             Trace.Info($"fetchDepth={fetchDepth}");
             Trace.Info($"gitLfsSupport={gitLfsSupport}");
             Trace.Info($"acceptUntrustedCerts={acceptUntrustedCerts}");
+
+#if OS_WINDOWS
+            bool schannelSslBackend = HostContext.GetService<IConfigurationStore>().GetAgentRuntimeOptions()?.GitUseSecureChannel ?? false;
+            Trace.Info($"schannelSslBackend={schannelSslBackend}");
+#endif
 
             // Determine which git will be use
             // On windows, we prefer the built-in portable git within the agent's externals folder, set system.prefergitfrompath=true can change the behavior, 
@@ -295,7 +328,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             await _gitCommandManager.LoadGitExecutionInfo(executionContext, useBuiltInGit: !preferGitFromPath);
 
             // Make sure the build machine met all requirements for the git repository
-            // For now, the requirement we have is git version greater than 2.9  and git-lfs version greater than 2.1 for on-prem tfsgit
+            // For now, the requirement we have are:
+            // 1. git version greater than 2.9  and git-lfs version greater than 2.1 for on-prem tfsgit
+            // 2. git version greater than 2.14.2 if use SChannel for SSL backend (Windows only)
             RequirementCheck(executionContext, endpoint);
 
             // retrieve credential from endpoint.
@@ -623,7 +658,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                         additionalLfsFetchArgs.Add($"-c http.sslcert=\"{agentCert.ClientCertificateFile}\" -c http.sslkey=\"{agentCert.ClientCertificatePrivateKeyFile}\"");
                     }
                 }
-
+#if OS_WINDOWS
+                if (schannelSslBackend)
+                {
+                    executionContext.Debug("Use SChannel SslBackend for git fetch.");
+                    additionalFetchArgs.Add("-c http.sslbackend=\"schannel\"");
+                    additionalLfsFetchArgs.Add("-c http.sslbackend=\"schannel\"");
+                }
+#endif
                 // Prepare gitlfs url for fetch and checkout
                 if (gitLfsSupport)
                 {
@@ -784,6 +826,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                             additionalSubmoduleUpdateArgs.Add($"-c http.{authorityUrl}.sslcert=\"{agentCert.ClientCertificateFile}\" -c http.{authorityUrl}.sslkey=\"{agentCert.ClientCertificatePrivateKeyFile}\"");
                         }
                     }
+#if OS_WINDOWS
+                    if (schannelSslBackend)
+                    {
+                        executionContext.Debug("Use SChannel SslBackend for git submodule update.");
+                        additionalSubmoduleUpdateArgs.Add("-c http.sslbackend=\"schannel\"");
+                    }
+#endif                    
                 }
 
                 int exitCode_submoduleUpdate = await _gitCommandManager.GitSubmoduleUpdate(executionContext, targetPath, string.Join(" ", additionalSubmoduleUpdateArgs), checkoutNestedSubmodules, cancellationToken);
