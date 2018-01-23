@@ -146,7 +146,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
                         requireExitCodeZero: false,
                         outputEncoding: null,
                         killProcessOnCancel: false,
-                        enhancedProcessesCleanup: ExecutionContext.Variables.GetBoolean("process.clean") ?? false,
                         cancellationToken: ExecutionContext.CancellationToken);
                     FlushErrorData();
 

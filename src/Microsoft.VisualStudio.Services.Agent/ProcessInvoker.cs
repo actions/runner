@@ -52,17 +52,6 @@ namespace Microsoft.VisualStudio.Services.Agent
             Encoding outputEncoding,
             bool killProcessOnCancel,
             CancellationToken cancellationToken);
-
-        Task<int> ExecuteAsync(
-            string workingDirectory,
-            string fileName,
-            string arguments,
-            IDictionary<string, string> environment,
-            bool requireExitCodeZero,
-            Encoding outputEncoding,
-            bool killProcessOnCancel,
-            bool enhancedProcessesCleanup,
-            CancellationToken cancellationToken);
     }
 
     // The implementation of the process invoker does not hook up DataReceivedEvent and ErrorReceivedEvent of Process,
@@ -78,8 +67,6 @@ namespace Microsoft.VisualStudio.Services.Agent
         private Stopwatch _stopWatch;
         private int _asyncStreamReaderCount = 0;
         private bool _waitingOnStreams = false;
-        private HashSet<string> _existingProcesses = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        private readonly Guid _processLookupId = Guid.NewGuid();
         private readonly AsyncManualResetEvent _outputProcessEvent = new AsyncManualResetEvent();
         private readonly TaskCompletionSource<bool> _processExitedCompletionSource = new TaskCompletionSource<bool>();
         private readonly ConcurrentQueue<string> _errorData = new ConcurrentQueue<string>();
@@ -144,28 +131,6 @@ namespace Microsoft.VisualStudio.Services.Agent
                 cancellationToken: cancellationToken);
         }
 
-        public Task<int> ExecuteAsync(
-            string workingDirectory,
-            string fileName,
-            string arguments,
-            IDictionary<string, string> environment,
-            bool requireExitCodeZero,
-            Encoding outputEncoding,
-            bool killProcessOnCancel,
-            CancellationToken cancellationToken)
-        {
-            return ExecuteAsync(
-                workingDirectory: workingDirectory,
-                fileName: fileName,
-                arguments: arguments,
-                environment: environment,
-                requireExitCodeZero: requireExitCodeZero,
-                outputEncoding: outputEncoding,
-                killProcessOnCancel: false,
-                enhancedProcessesCleanup: false,
-                cancellationToken: cancellationToken);
-        }
-
         public async Task<int> ExecuteAsync(
             string workingDirectory,
             string fileName,
@@ -174,7 +139,6 @@ namespace Microsoft.VisualStudio.Services.Agent
             bool requireExitCodeZero,
             Encoding outputEncoding,
             bool killProcessOnCancel,
-            bool enhancedProcessesCleanup,
             CancellationToken cancellationToken)
         {
             ArgUtil.Null(_proc, nameof(_proc));
@@ -187,7 +151,6 @@ namespace Microsoft.VisualStudio.Services.Agent
             Trace.Info($"  Require exit code zero: '{requireExitCodeZero}'");
             Trace.Info($"  Encoding web name: {outputEncoding?.WebName} ; code page: '{outputEncoding?.CodePage}'");
             Trace.Info($"  Force kill process on cancellation: '{killProcessOnCancel}'");
-            Trace.Info($"  Enhanced processes cleanup on process exit: '{enhancedProcessesCleanup}'");
             _proc = new Process();
             _proc.StartInfo.FileName = fileName;
             _proc.StartInfo.Arguments = arguments;
@@ -236,19 +199,6 @@ namespace Microsoft.VisualStudio.Services.Agent
             // Set the TF_BUILD env variable.
             _proc.StartInfo.Environment[Constants.TFBuild] = "True";
 
-            if (enhancedProcessesCleanup)
-            {
-                // Set the VSTS_PROCESS_LOOKUP_ID env variable.
-                _proc.StartInfo.Environment[Constants.ProcessLookupId] = $"vsts_{_processLookupId.ToString("D")}";
-
-                // Take a snapshot of current running processes
-                Dictionary<int, Process> processes = SnapshotProcesses();
-                foreach (var proc in processes)
-                {
-                    _existingProcesses.Add($"{proc.Key}_{proc.Value.ProcessName}");
-                }
-            }
-
             // Hook up the events.
             _proc.EnableRaisingEvents = true;
             _proc.Exited += ProcessExitedHandler;
@@ -257,69 +207,59 @@ namespace Microsoft.VisualStudio.Services.Agent
             _stopWatch = Stopwatch.StartNew();
             _proc.Start();
 
-            try
+            // Close the input stream. This is done to prevent commands from blocking the build waiting for input from the user.
+            if (_proc.StartInfo.RedirectStandardInput)
             {
-                // Close the input stream. This is done to prevent commands from blocking the build waiting for input from the user.
-                if (_proc.StartInfo.RedirectStandardInput)
-                {
-                    _proc.StandardInput.Dispose();
-                }
+                _proc.StandardInput.Dispose();
+            }
 
-                // Start the standard error notifications, if appropriate.
-                if (_proc.StartInfo.RedirectStandardError)
-                {
-                    StartReadStream(_proc.StandardError, _errorData);
-                }
+            // Start the standard error notifications, if appropriate.
+            if (_proc.StartInfo.RedirectStandardError)
+            {
+                StartReadStream(_proc.StandardError, _errorData);
+            }
 
-                // Start the standard output notifications, if appropriate.
-                if (_proc.StartInfo.RedirectStandardOutput)
-                {
-                    StartReadStream(_proc.StandardOutput, _outputData);
-                }
+            // Start the standard output notifications, if appropriate.
+            if (_proc.StartInfo.RedirectStandardOutput)
+            {
+                StartReadStream(_proc.StandardOutput, _outputData);
+            }
 
-                using (var registration = cancellationToken.Register(async () => await CancelAndKillProcessTree(killProcessOnCancel)))
+            using (var registration = cancellationToken.Register(async () => await CancelAndKillProcessTree(killProcessOnCancel)))
+            {
+                Trace.Info($"Process started with process id {_proc.Id}, waiting for process exit.");
+                while (true)
                 {
-                    Trace.Info($"Process started with process id {_proc.Id}, waiting for process exit.");
-                    while (true)
+                    Task outputSignal = _outputProcessEvent.WaitAsync();
+                    var signaled = await Task.WhenAny(outputSignal, _processExitedCompletionSource.Task);
+
+                    if (signaled == outputSignal)
                     {
-                        Task outputSignal = _outputProcessEvent.WaitAsync();
-                        var signaled = await Task.WhenAny(outputSignal, _processExitedCompletionSource.Task);
-
-                        if (signaled == outputSignal)
-                        {
-                            ProcessOutput();
-                        }
-                        else
-                        {
-                            _stopWatch.Stop();
-                            break;
-                        }
+                        ProcessOutput();
                     }
-
-                    // Just in case there was some pending output when the process shut down go ahead and check the
-                    // data buffers one last time before returning
-                    ProcessOutput();
-
-                    Trace.Info($"Finished process with exit code {_proc.ExitCode}, and elapsed time {_stopWatch.Elapsed}.");
+                    else
+                    {
+                        _stopWatch.Stop();
+                        break;
+                    }
                 }
 
-                cancellationToken.ThrowIfCancellationRequested();
+                // Just in case there was some pending output when the process shut down go ahead and check the
+                // data buffers one last time before returning
+                ProcessOutput();
 
-                // Wait for process to finish.
-                if (_proc.ExitCode != 0 && requireExitCodeZero)
-                {
-                    throw new ProcessExitCodeException(exitCode: _proc.ExitCode, fileName: fileName, arguments: arguments);
-                }
-
-                return _proc.ExitCode;
+                Trace.Info($"Finished process with exit code {_proc.ExitCode}, and elapsed time {_stopWatch.Elapsed}.");
             }
-            finally
+
+            cancellationToken.ThrowIfCancellationRequested();
+
+            // Wait for process to finish.
+            if (_proc.ExitCode != 0 && requireExitCodeZero)
             {
-                if (enhancedProcessesCleanup)
-                {
-                    ProcessesCleanup();
-                }
+                throw new ProcessExitCodeException(exitCode: _proc.ExitCode, fileName: fileName, arguments: arguments);
             }
+
+            return _proc.ExitCode;
         }
 
         public void Dispose()
@@ -383,30 +323,6 @@ namespace Microsoft.VisualStudio.Services.Agent
                     }
                 }
             }
-        }
-
-        private Dictionary<int, Process> SnapshotProcesses()
-        {
-            Dictionary<int, Process> snapshot = new Dictionary<int, Process>();
-            foreach (var proc in Process.GetProcesses())
-            {
-                try
-                {
-                    // On Windows, this will throw exception on error.
-                    // On Linux, this will be NULL on error.
-                    if (!string.IsNullOrEmpty(proc.ProcessName))
-                    {
-                        snapshot[proc.Id] = proc;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Trace.Verbose($"Ignore any exception during taking process snapshot of process pid={proc.Id}: '{ex.Message}'.");
-                }
-            }
-
-            Trace.Info($"Total accessible running process: {snapshot.Count}.");
-            return snapshot;
         }
 
         private async Task CancelAndKillProcessTree(bool killProcessOnCancel)
@@ -490,55 +406,6 @@ namespace Microsoft.VisualStudio.Services.Agent
                     _processExitedCompletionSource.TrySetResult(true);
                 }
             });
-        }
-
-        private void ProcessesCleanup()
-        {
-            Trace.Entering();
-
-            // Only check environment variable for any process that doesn't run before we invoke our process.
-            Dictionary<int, Process> currentProcesses = SnapshotProcesses();
-            foreach (var proc in currentProcesses)
-            {
-                if (_existingProcesses.Contains($"{proc.Key}_{proc.Value.ProcessName}"))
-                {
-                    Trace.Verbose($"Skip existing process. PID: {proc.Key} ({proc.Value.ProcessName})");
-                }
-                else
-                {
-                    Trace.Info($"Inspecting process environment variables. PID: {proc.Key} ({proc.Value.ProcessName})");
-
-                    Dictionary<string, string> env = new Dictionary<string, string>();
-                    try
-                    {
-                        env = proc.Value.GetEnvironmentVariables();
-                        foreach (var e in env)
-                        {
-                            Trace.Verbose($"PID:{proc.Key} ({e.Key}={e.Value})");
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Trace.Verbose("Ignore any exception during read process environment variables.");
-                        Trace.Verbose(ex.ToString());
-                    }
-
-                    if (env.TryGetValue(Constants.ProcessLookupId, out string lookupId) &&
-                        lookupId.Equals($"vsts_{_processLookupId.ToString("D")}", StringComparison.OrdinalIgnoreCase))
-                    {
-                        Trace.Info($"Terminate orphan process: pid ({proc.Key}) ({proc.Value.ProcessName})");
-                        try
-                        {
-                            proc.Value.Kill();
-                        }
-                        catch (Exception ex)
-                        {
-                            Trace.Error("Catch exception during orphan process cleanup.");
-                            Trace.Error(ex);
-                        }
-                    }
-                }
-            }
         }
 
         private void KillProcessTree()

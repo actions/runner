@@ -231,7 +231,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
                                                                        requireExitCodeZero: false,
                                                                        outputEncoding: null,
                                                                        killProcessOnCancel: false,
-                                                                       enhancedProcessesCleanup: ExecutionContext.Variables.GetBoolean("process.clean") ?? false,
                                                                        cancellationToken: ExecutionContext.CancellationToken);
 
                     // the exit code from vstsPSHost.exe indicate how many error record we get during execution

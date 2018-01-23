@@ -143,7 +143,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
                                                   requireExitCodeZero: true,
                                                   outputEncoding: outputEncoding,
                                                   killProcessOnCancel: false,
-                                                  enhancedProcessesCleanup: ExecutionContext.Variables.GetBoolean("process.clean") ?? false,
                                                   cancellationToken: ExecutionContext.CancellationToken);
             }
         }

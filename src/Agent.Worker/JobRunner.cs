@@ -13,6 +13,7 @@ using System.Net.Http;
 using System.Text;
 using System.IO.Compression;
 using Microsoft.VisualStudio.Services.Agent.Worker.Build;
+using System.Diagnostics;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
@@ -240,75 +241,143 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 Trace.Info($"Total post-job steps: {postJobSteps.Count}.");
                 Trace.Verbose($"Post-job steps: '{string.Join(", ", postJobSteps.Select(x => x.DisplayName))}'");
 
+                bool processCleanup = jobContext.Variables.GetBoolean("process.clean") ?? true;
+                HashSet<string> existingProcesses = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                if (processCleanup)
+                {
+                    // Set the VSTS_PROCESS_LOOKUP_ID env variable.
+                    jobContext.SetVariable(Constants.ProcessLookupId, $"vsts_{message.JobId}", false, false);
+
+                    // Take a snapshot of current running processes
+                    Dictionary<int, Process> processes = SnapshotProcesses();
+                    foreach (var proc in processes)
+                    {
+                        // Pid_ProcessName
+                        existingProcesses.Add($"{proc.Key}_{proc.Value.ProcessName}");
+                    }
+                }
+
                 // Run all pre job steps
                 // All pre job steps are critical to the job
                 // Stop execution on any step failure or cancelled
                 Trace.Info("Run all pre-job steps.");
-                var stepsRunner = HostContext.GetService<IStepsRunner>();
                 try
                 {
-                    await stepsRunner.RunAsync(jobContext, preJobSteps, JobRunStage.PreJob);
-                }
-                catch (Exception ex)
-                {
-                    // StepRunner should never throw exception out.
-                    // End up here mean there is a bug in StepRunner
-                    // Log the error and fail the job.
-                    Trace.Error($"Caught exception from pre-job steps {nameof(StepsRunner)}: {ex}");
-                    jobContext.Error(ex);
-                    return await CompleteJobAsync(jobServer, jobContext, message, TaskResult.Failed);
-                }
-
-                Trace.Info($"Job result after all pre-job steps finish: {jobContext.Result}");
-
-                // Base on the Job result after all pre-job steps finish.
-                // Run all job steps only if the job result is still Succeeded or SucceededWithIssues
-                if (jobContext.Result == null ||
-                    jobContext.Result == TaskResult.Succeeded ||
-                    jobContext.Result == TaskResult.SucceededWithIssues)
-                {
-                    Trace.Info("Run all job steps.");
+                    var stepsRunner = HostContext.GetService<IStepsRunner>();
                     try
                     {
-                        await stepsRunner.RunAsync(jobContext, jobSteps, JobRunStage.Main);
+                        await stepsRunner.RunAsync(jobContext, preJobSteps, JobRunStage.PreJob);
                     }
                     catch (Exception ex)
                     {
                         // StepRunner should never throw exception out.
                         // End up here mean there is a bug in StepRunner
                         // Log the error and fail the job.
-                        Trace.Error($"Caught exception from job steps {nameof(StepsRunner)}: {ex}");
+                        Trace.Error($"Caught exception from pre-job steps {nameof(StepsRunner)}: {ex}");
+                        jobContext.Error(ex);
+                        return await CompleteJobAsync(jobServer, jobContext, message, TaskResult.Failed);
+                    }
+
+                    Trace.Info($"Job result after all pre-job steps finish: {jobContext.Result}");
+
+                    // Base on the Job result after all pre-job steps finish.
+                    // Run all job steps only if the job result is still Succeeded or SucceededWithIssues
+                    if (jobContext.Result == null ||
+                        jobContext.Result == TaskResult.Succeeded ||
+                        jobContext.Result == TaskResult.SucceededWithIssues)
+                    {
+                        Trace.Info("Run all job steps.");
+                        try
+                        {
+                            await stepsRunner.RunAsync(jobContext, jobSteps, JobRunStage.Main);
+                        }
+                        catch (Exception ex)
+                        {
+                            // StepRunner should never throw exception out.
+                            // End up here mean there is a bug in StepRunner
+                            // Log the error and fail the job.
+                            Trace.Error($"Caught exception from job steps {nameof(StepsRunner)}: {ex}");
+                            jobContext.Error(ex);
+                            return await CompleteJobAsync(jobServer, jobContext, message, TaskResult.Failed);
+                        }
+                    }
+                    else
+                    {
+                        Trace.Info("Skip all job steps due to pre-job step failure.");
+                        foreach (var step in jobSteps)
+                        {
+                            step.ExecutionContext.Start();
+                            step.ExecutionContext.Complete(TaskResult.Skipped);
+                        }
+                    }
+
+                    Trace.Info($"Job result after all job steps finish: {jobContext.Result}");
+
+                    // Always run all post job steps
+                    // step might not run base on it's own condition.
+                    Trace.Info("Run all post-job steps.");
+                    try
+                    {
+                        await stepsRunner.RunAsync(jobContext, postJobSteps, JobRunStage.PostJob);
+                    }
+                    catch (Exception ex)
+                    {
+                        // StepRunner should never throw exception out.
+                        // End up here mean there is a bug in StepRunner
+                        // Log the error and fail the job.
+                        Trace.Error($"Caught exception from post-job steps {nameof(StepsRunner)}: {ex}");
                         jobContext.Error(ex);
                         return await CompleteJobAsync(jobServer, jobContext, message, TaskResult.Failed);
                     }
                 }
-                else
+                finally
                 {
-                    Trace.Info("Skip all job steps due to pre-job step failure.");
-                    foreach (var step in jobSteps)
+                    if (processCleanup)
                     {
-                        step.ExecutionContext.Start();
-                        step.ExecutionContext.Complete(TaskResult.Skipped);
+                        // Only check environment variable for any process that doesn't run before we invoke our process.
+                        Dictionary<int, Process> currentProcesses = SnapshotProcesses();
+                        foreach (var proc in currentProcesses)
+                        {
+                            if (existingProcesses.Contains($"{proc.Key}_{proc.Value.ProcessName}"))
+                            {
+                                Trace.Verbose($"Skip existing process. PID: {proc.Key} ({proc.Value.ProcessName})");
+                            }
+                            else
+                            {
+                                Trace.Info($"Inspecting process environment variables. PID: {proc.Key} ({proc.Value.ProcessName})");
+
+                                Dictionary<string, string> env = new Dictionary<string, string>();
+                                try
+                                {
+                                    env = proc.Value.GetEnvironmentVariables();
+                                    foreach (var e in env)
+                                    {
+                                        Trace.Verbose($"PID:{proc.Key} ({e.Key}={e.Value})");
+                                    }
+                                }
+                                catch (Exception ex)
+                                {
+                                    Trace.Verbose("Ignore any exception during read process environment variables.");
+                                    Trace.Verbose(ex.ToString());
+                                }
+
+                                if (env.TryGetValue(Constants.ProcessLookupId, out string lookupId) &&
+                                    lookupId.Equals($"vsts_{message.JobId}", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    Trace.Info($"Terminate orphan process: pid ({proc.Key}) ({proc.Value.ProcessName})");
+                                    try
+                                    {
+                                        proc.Value.Kill();
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        Trace.Error("Catch exception during orphan process cleanup.");
+                                        Trace.Error(ex);
+                                    }
+                                }
+                            }
+                        }
                     }
-                }
-
-                Trace.Info($"Job result after all job steps finish: {jobContext.Result}");
-
-                // Always run all post job steps
-                // step might not run base on it's own condition.
-                Trace.Info("Run all post-job steps.");
-                try
-                {
-                    await stepsRunner.RunAsync(jobContext, postJobSteps, JobRunStage.PostJob);
-                }
-                catch (Exception ex)
-                {
-                    // StepRunner should never throw exception out.
-                    // End up here mean there is a bug in StepRunner
-                    // Log the error and fail the job.
-                    Trace.Error($"Caught exception from post-job steps {nameof(StepsRunner)}: {ex}");
-                    jobContext.Error(ex);
-                    return await CompleteJobAsync(jobServer, jobContext, message, TaskResult.Failed);
                 }
 
                 Trace.Info($"Job result after all post-job steps finish: {jobContext.Result}");
@@ -507,6 +576,30 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             // back compat server url
             message.Environment.Variables[Constants.Variables.System.TFServerUrl] = message.Environment.SystemConnection.Url.AbsoluteUri;
             Trace.Info($"Ensure System.TFServerUrl match config url base. {message.Environment.SystemConnection.Url.AbsoluteUri}");
+        }
+
+        private Dictionary<int, Process> SnapshotProcesses()
+        {
+            Dictionary<int, Process> snapshot = new Dictionary<int, Process>();
+            foreach (var proc in Process.GetProcesses())
+            {
+                try
+                {
+                    // On Windows, this will throw exception on error.
+                    // On Linux, this will be NULL on error.
+                    if (!string.IsNullOrEmpty(proc.ProcessName))
+                    {
+                        snapshot[proc.Id] = proc;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Trace.Verbose($"Ignore any exception during taking process snapshot of process pid={proc.Id}: '{ex.Message}'.");
+                }
+            }
+
+            Trace.Info($"Total accessible running process: {snapshot.Count}.");
+            return snapshot;
         }
     }
 }
