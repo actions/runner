@@ -2,7 +2,7 @@
 
 ## Phase dependencies
 
-Multiple phases can be defined in a process. The order in which phases are started, can be controlled by defining dependencies. The start of one phase, can depend on another phase completing. And phases can have more than one dependency.
+Multiple phases can be defined in a pipeline. The order in which phases are started, can be controlled by defining dependencies. The start of one phase, can depend on another phase completing. And phases can have more than one dependency.
 
 Phase dependencies enables four types of controls.
 
@@ -153,7 +153,7 @@ phases:
 
 ### Custom phase condition, with a variable
 
-Variables and all general functions of [task conditions](https://go.microsoft.com/fwlink/?linkid=842996) are also available in phase conditions.
+[Variables](https://docs.microsoft.com/en-us/vsts/build-release/concepts/definitions/build/variables) and all general functions of [task conditions](https://go.microsoft.com/fwlink/?linkid=842996) are also available in phase conditions.
 
 Example - Using a variable in the expression:
 

@@ -2,9 +2,7 @@
 
 ## Structural overview
 
-The YAML document describes an entire process.
-
-At a high level, the structure of a process is:
+At a high level, the structure of the YAML document is:
 
 ```
 └───phases
@@ -22,7 +20,7 @@ At a high level, the structure of a process is:
 
 In the spirit of simplicity, the YAML file is not required to define the full structural hierarchy.
 
-For example, a very simple process may only define steps (one job implied, one phase implied):
+For example, a very simple pipeline may only define steps (one phase implied):
 
 ```yaml
 steps:
@@ -30,7 +28,7 @@ steps:
 - script: echo hello world from script 2
 ```
 
-In short, where a process is defined, properties for a single phase can be specified without defining `phases -> phase`.
+In short, at the top of the file, properties for a single phase can be specified without defining `phases -> phase`.
 
 <!-- Commenting-out template schema for now
 The inference rules apply to templates as well. For details, see the schema reference section below.
@@ -38,14 +36,14 @@ The inference rules apply to templates as well. For details, see the schema refe
 
 ## Schema reference
 
-All YAML definitions start with an entry \"process\" file.
+All YAML definitions start with an entry \"pipeline\" file.
 
-### Process structures
+### Pipeline structures
 
-#### process
+#### pipeline
 
 ```yaml
-# process properties
+# pipeline properties
 name: string
 phases: [ phase ]
 
