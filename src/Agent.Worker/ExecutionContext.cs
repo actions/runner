@@ -39,7 +39,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         // logging
         bool WriteDebug { get; }
-        void Write(string tag, string message);
+        long Write(string tag, string message);
         void QueueAttachFile(string type, string name, string filePath);
 
         // timeline record update methods
@@ -256,8 +256,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         {
             ArgUtil.NotNull(issue, nameof(issue));
             issue.Message = _secretMasker.MaskSecrets(issue.Message);
+
             if (issue.Type == IssueType.Error)
             {
+                // tracking line number for each issue in log file
+                // log UI use this to navigate from issue to log
+                if (!string.IsNullOrEmpty(issue.Message))
+                {
+                    long logLineNumber = Write(WellKnownTags.Error, issue.Message);
+                    issue.Data["logFileLineNumber"] = logLineNumber.ToString();
+                }
+
                 if (_record.ErrorCount <= _maxIssueCount)
                 {
                     _record.Issues.Add(issue);
@@ -267,6 +276,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             }
             else if (issue.Type == IssueType.Warning)
             {
+                // tracking line number for each issue in log file
+                // log UI use this to navigate from issue to log
+                if (!string.IsNullOrEmpty(issue.Message))
+                {
+                    long logLineNumber = Write(WellKnownTags.Warning, issue.Message);
+                    issue.Data["logFileLineNumber"] = logLineNumber.ToString();
+                }
+
                 if (_record.WarningCount <= _maxIssueCount)
                 {
                     _record.Issues.Add(issue);
@@ -441,11 +458,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         // Do not add a format string overload. In general, execution context messages are user facing and
         // therefore should be localized. Use the Loc methods from the StringUtil class. The exception to
         // the rule is command messages - which should be crafted using strongly typed wrapper methods.
-        public void Write(string tag, string message)
+        public long Write(string tag, string message)
         {
             string msg = _secretMasker.MaskSecrets($"{tag}{message}");
+            long totalLines;
             lock (_loggerLock)
             {
+                totalLines = _logger.TotalLines + 1;
                 _logger.Write(msg);
             }
 
@@ -460,6 +479,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             }
 
             _jobServerQueue.QueueWebConsoleLine(msg);
+            return totalLines;
         }
 
         public void QueueAttachFile(string type, string name, string filePath)
@@ -525,14 +545,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         // Do not add a format string overload. See comment on ExecutionContext.Write().
         public static void Error(this IExecutionContext context, string message)
         {
-            context.Write(WellKnownTags.Error, message);
             context.AddIssue(new Issue() { Type = IssueType.Error, Message = message });
         }
 
         // Do not add a format string overload. See comment on ExecutionContext.Write().
         public static void Warning(this IExecutionContext context, string message)
         {
-            context.Write(WellKnownTags.Warning, message);
             context.AddIssue(new Issue() { Type = IssueType.Warning, Message = message });
         }
 
