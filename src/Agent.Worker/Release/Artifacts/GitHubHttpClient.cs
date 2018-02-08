@@ -41,8 +41,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
             request.Headers.Add("Authorization", "Token " + accessToken);
             request.Headers.Add("User-Agent", "VSTS-Agent/" + Constants.Agent.Version);
 
+            int httpRequestTimeoutSeconds;
+            if (!int.TryParse(Environment.GetEnvironmentVariable("VSTS_HTTP_TIMEOUT") ?? string.Empty, out httpRequestTimeoutSeconds))
+            {
+                httpRequestTimeoutSeconds = 100;
+            }
+
             using (var httpClientHandler = HostContext.CreateHttpClientHandler())
-            using (var httpClient = new HttpClient(httpClientHandler) { Timeout = new TimeSpan(0, 0, 30) })
+            using (var httpClient = new HttpClient(httpClientHandler) { Timeout = new TimeSpan(0, 0, httpRequestTimeoutSeconds) })
             {
                 errorMessage = string.Empty;
                 Task<HttpResponseMessage> sendAsyncTask = httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
