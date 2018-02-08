@@ -36,7 +36,7 @@ Use `##vso` command to publish output variables. We will add a new parameter `is
 ##vso[task.setvariable variable=foo;isSecret=false;isOutput=true;]value
 ```
 
-In definition editor, downstream task won't get variable name intellisence for output variable that published by ad-hoc script.
+In definition editor, downstream task won't get variable name intellisense for output variable that published by ad-hoc script.
 
 ## Server side changes:
 
@@ -70,7 +70,7 @@ It should be something like:
 {DefinitionName}_{JobName}
 ```
 
-### Definition editor intellisence
+### Definition editor intellisense
 
 We need add intellisense for typing variables in definition editor, since all output variables are defined in task.json.
 
@@ -132,5 +132,5 @@ In the above example:
 ```
 In this example:
 TaskB_1’s input will be $(Job_1.TaskA_1.AuthToken).
-TaskB_2’s input will be $(Job_2.TaskA_2.AuthToken). 
+TaskB_2’s input will be $(Job_1.TaskA_2.AuthToken). 
 ```
