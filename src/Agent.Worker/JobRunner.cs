@@ -243,10 +243,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
                 bool processCleanup = jobContext.Variables.GetBoolean("process.clean") ?? true;
                 HashSet<string> existingProcesses = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                string processLookupId = null;
                 if (processCleanup)
                 {
+                    processLookupId = $"vsts_{Guid.NewGuid()}";
+
                     // Set the VSTS_PROCESS_LOOKUP_ID env variable.
-                    jobContext.SetVariable(Constants.ProcessLookupId, $"vsts_{message.JobId}", false, false);
+                    jobContext.SetVariable(Constants.ProcessLookupId, processLookupId, false, false);
 
                     // Take a snapshot of current running processes
                     Dictionary<int, Process> processes = SnapshotProcesses();
@@ -362,7 +365,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                                 }
 
                                 if (env.TryGetValue(Constants.ProcessLookupId, out string lookupId) &&
-                                    lookupId.Equals($"vsts_{message.JobId}", StringComparison.OrdinalIgnoreCase))
+                                    lookupId.Equals(processLookupId, StringComparison.OrdinalIgnoreCase))
                                 {
                                     Trace.Info($"Terminate orphan process: pid ({proc.Key}) ({proc.Value.ProcessName})");
                                     try

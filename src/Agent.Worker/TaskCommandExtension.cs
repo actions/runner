@@ -309,7 +309,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         private void ProcessTaskIssueCommand(IExecutionContext context, Dictionary<string, string> eventProperties, string data)
         {
-            string logLine = "";
             Issue taskIssue = null;
 
             String issueType;

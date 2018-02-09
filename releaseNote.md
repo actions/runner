@@ -1,12 +1,9 @@
 ## Features
-  - use SChannel for git during get source. #1377
-  - enable process force clean by default. #1372
-  - ordered test support in trx reader #1361
+  N/A
 ## Bugs
-  - fix cancellation race condition. #1352
-  - skip most of the web console lines for last run. #1364
-  - fixed issue where autologon was not working with .\username #1343
-  - update Xamarin.Android capability on macOS #1342
+  - fix process cleanup when multiple agents on same machine
+  - increase github client timeout to 100 seconds (#1403)
+  - stop redirect TMP to agent.tempdirectory by default
 ## Misc
   N/A
 
