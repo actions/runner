@@ -10,7 +10,7 @@ At a high level, the structure of the YAML document is:
     │   ├───queue|deployment|server
     │   ├───variables
     │   └───steps
-    │       ├───step # e.g. run msbuild
+    │       ├───step # e.g. script: echo hello world
     │       └───[...]
     │
     └───[...]
@@ -28,7 +28,7 @@ steps:
 - script: echo hello world from script 2
 ```
 
-In short, at the top of the file, properties for a single phase can be specified without defining `phases -> phase`.
+In short, at the top of the file, properties for a single phase can be specified without defining an array of phases.
 
 <!-- Commenting-out template schema for now
 The inference rules apply to templates as well. For details, see the schema reference section below.
@@ -36,9 +36,9 @@ The inference rules apply to templates as well. For details, see the schema refe
 
 ## Schema reference
 
-All YAML definitions start with an entry \"pipeline\" file.
+All YAML definitions start with \"pipeline\" schema.
 
-### Pipeline structures
+### Pipeline schema
 
 #### pipeline
 
@@ -104,7 +104,7 @@ steps: [ script | powershell | bash | task | stepsPhase | stepsTemplateReference
 ```
 -->
 
-### Phase structures
+### Phase schema
 
 #### phase
 
@@ -216,7 +216,7 @@ variables: [ variable ]
 ```
 -->
 
-### Step structures
+### Step schema
 
 #### script
 
