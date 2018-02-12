@@ -1,4 +1,4 @@
-# YAML getting started - Allow scripts to access OAuth token (coming end of Jan)
+# YAML getting started - Allow scripts to access OAuth token
 
 The OAuth token to communicate back to VSTS is available as a secret variable within a YAML build. The token can be use to authenticate to the [VSTS REST API](https://www.visualstudio.com/en-us/integrate/api/overview).
 
