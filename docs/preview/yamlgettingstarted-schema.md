@@ -18,7 +18,7 @@ At a high level, the structure of the YAML document is:
 
 ## Level inference
 
-In the spirit of simplicity, the YAML file is not required to define the full structural hierarchy.
+In the spirit of simplicity, the YAML file is not required to define the schema hierarchy.
 
 For example, a very simple pipeline may only define steps (one phase implied):
 
