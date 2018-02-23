@@ -28,6 +28,8 @@ YAML builds require the latest agent. When a YAML build is queued, your agent wi
 
 [Multiple phases](yamlgettingstarted-phases.md)
 
+[Triggers](yamlgettingstarted-triggers.md)
+
 ## Misc
 
 [Resource authorization](yamlgettingstarted-authz.md)

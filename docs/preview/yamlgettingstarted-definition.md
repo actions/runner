@@ -2,9 +2,12 @@
 
 ## When using a Git repo in your VSTS team project
 
-Push a YAML file `.vsts-ci.yml` to the default branch (typically master) in the root
-of your repository. A definition `<REPO_NAME>/<REPO_NAME> CI` will be created with a
-continuous integration trigger for the default branch.
+Push a YAML file `.vsts-ci.yml` to the root directory of your repository. A definition
+`<REPO_NAME>/<REPO_NAME> CI` will be created, and a CI build will be triggered.
+
+In March when the YAML trigger feature rolls out, newly created definitions will default
+to CI builds for all branches. Definitions created prior to that, default to a centrally
+managed trigger on the web definition, for the default branch only.
 
 Note, the definition will only be created if whoever pushes the branch update has
 permission to create a definition.
@@ -21,6 +24,7 @@ located anywhere within your repo.
 
 ```yaml
 queue: Hosted VS2017
+
 steps:
 - script: echo hello world
 ```
@@ -28,3 +32,7 @@ steps:
 ## Authorization details
 
 For details about authorization, refer [here](yamlgettingstarted-authz.md).
+
+## Trigger details
+
+For details about triggers, refer [here](yamlgettingstarted-triggers.md).
