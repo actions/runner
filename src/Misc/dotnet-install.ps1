@@ -43,8 +43,8 @@
 .PARAMETER Runtime
     Installs just a shared runtime, not the entire SDK.
     Possible values:
-        - dotnet
-        - aspnetcore
+        - dotnet     - the Microsoft.NETCore.App shared runtime
+        - aspnetcore - the Microsoft.AspNetCore.App shared runtime
 .PARAMETER DryRun
     If set it will not perform installation but instead display what command line to use to consistently install
     currently requested version of dotnet cli. In example if you specify version 'latest' it will display a link
@@ -249,16 +249,19 @@ function Get-Latest-Version-Info([string]$AzureFeed, [string]$Channel, [bool]$Co
     if ($Runtime -eq "dotnet") {
         $VersionFileUrl = "$UncachedFeed/Runtime/$Channel/latest.version"
     }
-    elseif ($Runtime) {
-        $VersionFileUrl = "$UncachedFeed/Runtime/$Channel/latest.$Runtime.version"
+    elseif ($Runtime -eq "aspnetcore") {
+        $VersionFileUrl = "$UncachedFeed/aspnetcore/Runtime/$Channel/latest.version"
     }
-    else {
+    elseif (-not $Runtime) {
         if ($Coherent) {
             $VersionFileUrl = "$UncachedFeed/Sdk/$Channel/latest.coherent.version"
         }
         else {
             $VersionFileUrl = "$UncachedFeed/Sdk/$Channel/latest.version"
         }
+    }
+    else {
+        throw "Invalid value for `$Runtime"
     }
 
     $Response = GetHTTPResponse -Uri $VersionFileUrl
@@ -296,11 +299,17 @@ function Get-Specific-Version-From-Version([string]$AzureFeed, [string]$Channel,
 function Get-Download-Link([string]$AzureFeed, [string]$SpecificVersion, [string]$CLIArchitecture) {
     Say-Invocation $MyInvocation
 
-    if ($Runtime) {
-        $PayloadURL = "$AzureFeed/Runtime/$SpecificVersion/$Runtime-runtime-$SpecificVersion-win-$CLIArchitecture.zip"
+    if ($Runtime -eq "dotnet") {
+        $PayloadURL = "$AzureFeed/Runtime/$SpecificVersion/dotnet-runtime-$SpecificVersion-win-$CLIArchitecture.zip"
+    }
+    elseif ($Runtime -eq "aspnetcore") {
+        $PayloadURL = "$AzureFeed/aspnetcore/Runtime/$SpecificVersion/aspnetcore-runtime-$SpecificVersion-win-$CLIArchitecture.zip"
+    }
+    elseif (-not $Runtime) {
+        $PayloadURL = "$AzureFeed/Sdk/$SpecificVersion/dotnet-sdk-$SpecificVersion-win-$CLIArchitecture.zip"
     }
     else {
-        $PayloadURL = "$AzureFeed/Sdk/$SpecificVersion/dotnet-sdk-$SpecificVersion-win-$CLIArchitecture.zip"
+        throw "Invalid value for `$Runtime"
     }
 
     Say-Verbose "Constructed primary payload URL: $PayloadURL"
@@ -503,11 +512,14 @@ if ($Runtime -eq "dotnet") {
 }
 elseif ($Runtime -eq "aspnetcore") {
     $assetName = "ASP.NET Core Runtime"
-    $dotnetPackageRelativePath = "shared\Microsoft.AspNetCore.All"
+    $dotnetPackageRelativePath = "shared\Microsoft.AspNetCore.App"
 }
-else {
+elseif (-not $Runtime) {
     $assetName = ".NET Core SDK"
     $dotnetPackageRelativePath = "sdk"
+}
+else {
+    throw "Invalid value for `$Runtime"
 }
 
 $isAssetInstalled = Is-Dotnet-Package-Installed -InstallRoot $InstallRoot -RelativePathToPackage $dotnetPackageRelativePath -SpecificVersion $SpecificVersion

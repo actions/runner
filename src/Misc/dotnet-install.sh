@@ -390,14 +390,17 @@ get_latest_version_info() {
     local version_file_url=null
     if [[ "$runtime" == "dotnet" ]]; then
         version_file_url="$uncached_feed/Runtime/$channel/latest.version"
-    elif [ ! -z "$runtime" ]; then
-        version_file_url="$uncached_feed/Runtime/$channel/latest.$runtime.version"
-    else
+    elif [[ "$runtime" == "aspnetcore" ]]; then
+        version_file_url="$uncached_feed/aspnetcore/Runtime/$channel/latest.version"
+    elif [ -z "$runtime" ]; then
         if [ "$coherent" = true ]; then
             version_file_url="$uncached_feed/Sdk/$channel/latest.coherent.version"
         else
             version_file_url="$uncached_feed/Sdk/$channel/latest.version"
         fi
+    else
+        say_err "Invalid value for \$runtime"
+        return 1
     fi
     say_verbose "get_latest_version_info: latest url: $version_file_url"
 
@@ -457,10 +460,14 @@ construct_download_link() {
     osname="$(get_current_os_name)" || return 1
 
     local download_link=null
-    if [ ! -z "$runtime" ]; then
-        download_link="$azure_feed/Runtime/$specific_version/$runtime-runtime-$specific_version-$osname-$normalized_architecture.tar.gz"
-    else
+    if [[ "$runtime" == "dotnet" ]]; then
+        download_link="$azure_feed/Runtime/$specific_version/dotnet-runtime-$specific_version-$osname-$normalized_architecture.tar.gz"
+    elif [[ "$runtime" == "aspnetcore" ]]; then
+        download_link="$azure_feed/aspnetcore/Runtime/$specific_version/aspnetcore-runtime-$specific_version-$osname-$normalized_architecture.tar.gz"
+    elif [ -z "$runtime" ]; then
         download_link="$azure_feed/Sdk/$specific_version/dotnet-sdk-$specific_version-$osname-$normalized_architecture.tar.gz"
+    else
+        return 1
     fi
 
     echo "$download_link"
@@ -706,11 +713,14 @@ install_dotnet() {
         asset_relative_path="shared/Microsoft.NETCore.App"
         asset_name=".NET Core Runtime"
     elif [[ "$runtime" == "aspnetcore" ]]; then
-        asset_relative_path="shared/Microsoft.AspNetCore.All"
+        asset_relative_path="shared/Microsoft.AspNetCore.App"
         asset_name="ASP.NET Core Runtime"
-    else
+    elif [ -z "$runtime" ]; then
         asset_relative_path="sdk"
         asset_name=".NET Core SDK"
+    else
+        say_err "Invalid value for \$runtime"
+        return 1
     fi
 
     if is_dotnet_package_installed "$install_root" "$asset_relative_path" "$specific_version"; then
@@ -866,8 +876,8 @@ do
             echo "  --runtime <RUNTIME>                Installs a shared runtime only, without the SDK."
             echo "      -Runtime"
             echo "          Possible values:"
-            echo "          - dotnet     - the Microsoft.NETCore.App shared framework"
-            echo "          - aspnetcore - the Microsoft.AspNetCore.All shared framework"
+            echo "          - dotnet     - the Microsoft.NETCore.App shared runtime"
+            echo "          - aspnetcore - the Microsoft.AspNetCore.App shared runtime"
             echo "  --skip-non-versioned-files         Skips non-versioned files if they already exist, such as the dotnet executable."
             echo "      -SkipNonVersionedFiles"
             echo "  --dry-run,-DryRun                  Do not perform installation. Display download link."
