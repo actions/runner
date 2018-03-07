@@ -1,11 +1,9 @@
 ## Features
   N/A
 ## Bugs
-  - fix process cleanup when multiple agents on same machine
-  - increase github client timeout to 100 seconds (#1403)
-  - stop redirect TMP to agent.tempdirectory by default
-## Misc
   N/A
+## Misc
+  - Loc handback for TFS 2018 QU2
 
 ## Agent Downloads  
 
