@@ -223,5 +223,6 @@ phases:
         ContentType = 'application/json';
         Body = (ConvertTo-Json $releaseData -Compress)
       }
+      [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
       Invoke-RestMethod @releaseParams
     displayName: Create agent release on Github
