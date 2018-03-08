@@ -184,82 +184,90 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             while (_fileUploadQueue.TryDequeue(out fileToUpload))
             {
                 token.ThrowIfCancellationRequested();
-                using (FileStream fs = File.Open(fileToUpload, FileMode.Open, FileAccess.Read, FileShare.Read))
+                try 
                 {
-                    string itemPath = (_containerPath.TrimEnd('/') + "/" + fileToUpload.Remove(0, _sourceParentDirectory.Length + 1)).Replace('\\', '/');
-                    uploadTimer.Restart();
-                    bool catchExceptionDuringUpload = false;
-                    HttpResponseMessage response = null;
-                    try
+                    using (FileStream fs = File.Open(fileToUpload, FileMode.Open, FileAccess.Read, FileShare.Read))
                     {
-                        response = await _fileContainerHttpClient.UploadFileAsync(_containerId, itemPath, fs, _projectId, cancellationToken: token, chunkSize: 4 * 1024 * 1024);
-                    }
-                    catch (OperationCanceledException) when (token.IsCancellationRequested)
-                    {
-                        context.Output(StringUtil.Loc("FileUploadCancelled", fileToUpload));
+                        string itemPath = (_containerPath.TrimEnd('/') + "/" + fileToUpload.Remove(0, _sourceParentDirectory.Length + 1)).Replace('\\', '/');
+                        uploadTimer.Restart();
+                        bool catchExceptionDuringUpload = false;
+                        HttpResponseMessage response = null;
+                        try
+                        {
+                            response = await _fileContainerHttpClient.UploadFileAsync(_containerId, itemPath, fs, _projectId, cancellationToken: token, chunkSize: 4 * 1024 * 1024);
+                        }
+                        catch (OperationCanceledException) when (token.IsCancellationRequested)
+                        {
+                            context.Output(StringUtil.Loc("FileUploadCancelled", fileToUpload));
+                            if (response != null)
+                            {
+                                response.Dispose();
+                                response = null;
+                            }
+
+                            throw;
+                        }
+                        catch (Exception ex)
+                        {
+                            catchExceptionDuringUpload = true;
+                            context.Output(StringUtil.Loc("FileUploadFailed", fileToUpload, ex.Message));
+                            context.Output(ex.ToString());
+                        }
+
+                        uploadTimer.Stop();
+                        if (catchExceptionDuringUpload || (response != null && response.StatusCode != HttpStatusCode.Created))
+                        {
+                            if (response != null)
+                            {
+                                context.Output(StringUtil.Loc("FileContainerUploadFailed", response.StatusCode, response.ReasonPhrase, fileToUpload, itemPath));
+                            }
+
+                            // output detail upload trace for the file.
+                            ConcurrentQueue<string> logQueue;
+                            if (_fileUploadTraceLog.TryGetValue(itemPath, out logQueue))
+                            {
+                                context.Output(StringUtil.Loc("FileUploadDetailTrace", itemPath));
+                                string message;
+                                while (logQueue.TryDequeue(out message))
+                                {
+                                    context.Output(message);
+                                }
+                            }
+
+                            // tracking file that failed to upload.
+                            failedFiles.Add(fileToUpload);
+                        }
+                        else
+                        {
+                            context.Debug(StringUtil.Loc("FileUploadFinish", fileToUpload, uploadTimer.ElapsedMilliseconds));
+
+                            // debug detail upload trace for the file.
+                            ConcurrentQueue<string> logQueue;
+                            if (_fileUploadTraceLog.TryGetValue(itemPath, out logQueue))
+                            {
+                                context.Debug($"Detail upload trace for file: {itemPath}");
+                                string message;
+                                while (logQueue.TryDequeue(out message))
+                                {
+                                    context.Debug(message);
+                                }
+                            }
+                        }
+
                         if (response != null)
                         {
                             response.Dispose();
                             response = null;
                         }
-
-                        throw;
-                    }
-                    catch (Exception ex)
-                    {
-                        catchExceptionDuringUpload = true;
-                        context.Output(StringUtil.Loc("FileUploadFailed", fileToUpload, ex.Message));
-                        context.Output(ex.ToString());
                     }
 
-                    uploadTimer.Stop();
-                    if (catchExceptionDuringUpload || (response != null && response.StatusCode != HttpStatusCode.Created))
-                    {
-                        if (response != null)
-                        {
-                            context.Output(StringUtil.Loc("FileContainerUploadFailed", response.StatusCode, response.ReasonPhrase, fileToUpload, itemPath));
-                        }
-
-                        // output detail upload trace for the file.
-                        ConcurrentQueue<string> logQueue;
-                        if (_fileUploadTraceLog.TryGetValue(itemPath, out logQueue))
-                        {
-                            context.Output(StringUtil.Loc("FileUploadDetailTrace", itemPath));
-                            string message;
-                            while (logQueue.TryDequeue(out message))
-                            {
-                                context.Output(message);
-                            }
-                        }
-
-                        // tracking file that failed to upload.
-                        failedFiles.Add(fileToUpload);
-                    }
-                    else
-                    {
-                        context.Debug(StringUtil.Loc("FileUploadFinish", fileToUpload, uploadTimer.ElapsedMilliseconds));
-
-                        // debug detail upload trace for the file.
-                        ConcurrentQueue<string> logQueue;
-                        if (_fileUploadTraceLog.TryGetValue(itemPath, out logQueue))
-                        {
-                            context.Debug($"Detail upload trace for file: {itemPath}");
-                            string message;
-                            while (logQueue.TryDequeue(out message))
-                            {
-                                context.Debug(message);
-                            }
-                        }
-                    }
-
-                    if (response != null)
-                    {
-                        response.Dispose();
-                        response = null;
-                    }
-                }
-
-                Interlocked.Increment(ref _filesProcessed);
+                    Interlocked.Increment(ref _filesProcessed);
+                } 
+                catch (Exception ex)
+                {
+                    context.Output(StringUtil.Loc("FileUploadFileOpenFailed", ex.Message, fileToUpload));
+                    throw ex;
+                } 
             }
 
             return failedFiles;

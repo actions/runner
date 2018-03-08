@@ -284,6 +284,7 @@
   "FileUploadFailed": "Fail to upload '{0}' due to '{1}'.",
   "FileUploadFailedAfterRetry": "File upload failed even after retry.",
   "FileUploadFailedRetryLater": "{0} files failed to upload, retry these files after a minute.",
+  "FileUploadFileOpenFailed": "File error '{0}' when uploading file '{1}'.",
   "FileUploadFinish": "File: '{0}' took {1} milliseconds to finish upload",
   "FileUploadProgress": "Total file: {0} ---- Processed file: {1} ({2}%)",
   "FileUploadProgressDetail": "Uploading '{0}' ({1}%)",
