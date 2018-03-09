@@ -17,7 +17,7 @@ steps:
 
   enabled: true | false
 
-  continueOnError: true | false # On failure, flips result to SucceededWithIssues
+  continueOnError: true | false # On failure, flips the result to SucceededWithIssues
 
   condition: string # Defaults to succeeded(). https://go.microsoft.com/fwlink/?linkid=842996
 
