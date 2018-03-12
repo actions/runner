@@ -474,6 +474,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 Boolean.TryParse(isOutputValue, out isOutput);
             }
 
+            bool? allowMultilineSecret = context.Variables.GetBoolean("SYSTEM_UNSAFEALLOWMULTILINESECRET");
+            if (allowMultilineSecret == null)
+            {
+                allowMultilineSecret = StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("SYSTEM_UNSAFEALLOWMULTILINESECRET"), false);
+            }
+
+            if (!string.IsNullOrEmpty(data) &&
+                data.Contains(Environment.NewLine) &&
+                !allowMultilineSecret.Value)
+            {
+                throw new InvalidOperationException(StringUtil.Loc("MultilineSecret"));
+            }
+
             context.SetVariable(name, data, isSecret, isOutput);
         }
 
@@ -495,6 +508,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             if (eventProperties.TryGetValue(TaskSetTaskVariableEventProperties.IsSecret, out isSecretValue))
             {
                 Boolean.TryParse(isSecretValue, out isSecret);
+            }
+
+            bool? allowMultilineSecret = context.Variables.GetBoolean("SYSTEM_UNSAFEALLOWMULTILINESECRET");
+            if (allowMultilineSecret == null)
+            {
+                allowMultilineSecret = StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("SYSTEM_UNSAFEALLOWMULTILINESECRET"), false);
+            }
+
+            if (!string.IsNullOrEmpty(data) &&
+                data.Contains(Environment.NewLine) &&
+                !allowMultilineSecret.Value)
+            {
+                throw new InvalidOperationException(StringUtil.Loc("MultilineSecret"));
             }
 
             context.TaskVariables.Set(name, data, isSecret);
@@ -524,7 +550,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     _secretMasker.AddValue(Uri.EscapeDataString(data));
                 }
             }
-            
+
             String endpointIdInput;
             if (!eventProperties.TryGetValue(TaskSetEndpointEventProperties.EndpointId, out endpointIdInput) || String.IsNullOrEmpty(endpointIdInput))
             {
@@ -542,7 +568,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             {
                 throw new Exception(StringUtil.Loc("InvalidEndpointId"));
             }
-            
+
             if (String.Equals(field, "url", StringComparison.OrdinalIgnoreCase))
             {
                 Uri uri;
@@ -572,7 +598,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             else
             {
                 throw new Exception(StringUtil.Loc("InvalidEndpointField"));
-            }            
+            }
         }
 
         private void ProcessTaskPrepandPathCommand(IExecutionContext context, string data)

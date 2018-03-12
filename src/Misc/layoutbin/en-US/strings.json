@@ -356,6 +356,7 @@
   "MissingTimelineRecordId": "Can't update timeline record, timeline record id is not provided.",
   "MissingVariableName": "Required field 'variable' is missing in ##vso[task.setvariable] command.",
   "ModifyingCoberturaIndexFile": "Modifying Cobertura Index file",
+  "MultilineSecret": "Secrets cannot contain multiple lines",
   "N": "N",
   "NameRequiredForTimelineRecord": "Name is required for this new timeline record.",
   "NeedAdminForAutologonCapability": "Needs Administrator privileges for configuring agent with autologon.",
