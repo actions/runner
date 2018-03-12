@@ -86,6 +86,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         // git repack -adfl
         Task<int> GitRepack(IExecutionContext context, string repositoryPath);
 
+        // git prune
+        Task<int> GitPrune(IExecutionContext context, string repositoryPath);
+
         // git count-objects -v -H
         Task<int> GitCountObjects(IExecutionContext context, string repositoryPath);
 
@@ -412,6 +415,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         {
             context.Debug("Compress .git directory.");
             return await ExecuteGitCommandAsync(context, repositoryPath, "repack", "-adfl");
+        }
+
+        // git prune
+        public async Task<int> GitPrune(IExecutionContext context, string repositoryPath)
+        {
+            context.Debug("Delete unreachable objects under .git directory.");
+            return await ExecuteGitCommandAsync(context, repositoryPath, "prune", "-v");
         }
 
         // git count-objects -v -H

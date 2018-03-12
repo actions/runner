@@ -1067,6 +1067,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                     throw new InvalidOperationException($"Git repack failed with exit code: {exitCode_repack}");
                 }
 
+                // git prune
+                int exitCode_prune = await _gitCommandManager.GitPrune(executionContext, repositoryPath);
+                if (exitCode_prune != 0)
+                {
+                    throw new InvalidOperationException($"Git prune failed with exit code: {exitCode_prune}");
+                }
+
                 // git count-objects after git repack
                 executionContext.Output("Repository status after executing 'git repack'");
                 int exitCode_countobjectsafter = await _gitCommandManager.GitCountObjects(executionContext, repositoryPath);
