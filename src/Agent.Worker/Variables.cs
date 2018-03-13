@@ -147,6 +147,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         public string Release_ReleaseEnvironmentUri => Get(Constants.Variables.Release.ReleaseEnvironmentUri);
 
+        public string Release_ReleaseId => Get(Constants.Variables.Release.ReleaseId);
+
+        public string Release_ReleaseName => Get(Constants.Variables.Release.ReleaseName);
+
         public string Release_ReleaseUri => Get(Constants.Variables.Release.ReleaseUri);
 
         public int? Release_Download_BufferSize => GetInt(Constants.Variables.Release.ReleaseDownloadBufferSize);
