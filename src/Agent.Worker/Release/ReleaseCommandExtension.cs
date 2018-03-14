@@ -28,7 +28,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
             }
             else
             {
-                throw new Exception(StringUtil.Loc("ReleaseCommandNotFound", command.Event));
+                throw new Exception(StringUtil.Loc("RMCommandNotFound", command.Event));
             }
         }
 
@@ -48,7 +48,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
                 // queue async command task to update release name.
                 context.Debug($"Update release name for release: {releaseId} to: {data} at backend.");
                 var commandContext = HostContext.CreateService<IAsyncCommandContext>();
-                commandContext.InitializeCommandContext(context, StringUtil.Loc("UpdateReleaseName"));
+                commandContext.InitializeCommandContext(context, StringUtil.Loc("RMUpdateReleaseName"));
                 commandContext.Task = UpdateReleaseNameAsync(commandContext,
                                                              context,
                                                              WorkerUtilities.GetVssConnection(context),
@@ -60,7 +60,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
             }
             else
             {
-                throw new Exception(StringUtil.Loc("ReleaseNameRequired"));
+                throw new Exception(StringUtil.Loc("RMReleaseNameRequired"));
             }
         }
 
@@ -75,7 +75,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
         {
             ReleaseServer releaseServer = new ReleaseServer(connection, projectId);
             var release = await releaseServer.UpdateReleaseName(releaseId, releaseName, cancellationToken);
-            commandContext.Output(StringUtil.Loc("UpdateReleaseNameForRelease", release.Name, release.Id));
+            commandContext.Output(StringUtil.Loc("RMUpdateReleaseNameForRelease", release.Name, release.Id));
             context.Variables.Set("release.releaseName", release.Name);
         }
     }    
