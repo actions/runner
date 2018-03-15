@@ -54,7 +54,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
                 var artifactProperties = new Dictionary<string, string> {
                     { ArtifactUploadEventProperties.ContainerFolder, file.Item2},
                     { ArtifactUploadEventProperties.ArtifactName, file.Item2 },
-                    { ArtifactAssociateEventProperties.ArtifactType, WellKnownArtifactResourceTypes.Container },
+                    { ArtifactAssociateEventProperties.ArtifactType, ArtifactResourceTypes.Container },
                     { ArtifactAssociateEventProperties.Browsable, browsableProperty },
                 };
 
@@ -63,7 +63,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
                 string fileContainerFullPath = StringUtil.Format($"#/{containerId}/{file.Item2}");
 
                 Build.BuildServer buildHelper = new Build.BuildServer(_connection, projectId);
-                var artifact = await buildHelper.AssociateArtifact(_buildId, file.Item2, WellKnownArtifactResourceTypes.Container, fileContainerFullPath, artifactProperties, cancellationToken);
+                var artifact = await buildHelper.AssociateArtifact(_buildId, file.Item2, ArtifactResourceTypes.Container, fileContainerFullPath, artifactProperties, cancellationToken);
                 context.Output(StringUtil.Loc("PublishedCodeCoverageArtifact", file.Item1, file.Item2));
             });
 

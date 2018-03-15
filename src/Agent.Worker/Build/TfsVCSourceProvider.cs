@@ -16,7 +16,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
     {
         private bool _undoShelvesetPendingChanges = false;
 
-        public override string RepositoryType => WellKnownRepositoryTypes.TfsVersionControl;
+        public override string RepositoryType => RepositoryTypes.TfsVersionControl;
 
         public async Task GetSourceAsync(
             IExecutionContext executionContext,
@@ -130,7 +130,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
             // Get the definition mappings.
             DefinitionWorkspaceMapping[] definitionMappings =
-                JsonConvert.DeserializeObject<DefinitionWorkspaceMappings>(endpoint.Data[WellKnownEndpointData.TfvcWorkspaceMapping])?.Mappings;
+                JsonConvert.DeserializeObject<DefinitionWorkspaceMappings>(endpoint.Data[EndpointData.TfvcWorkspaceMapping])?.Mappings;
 
             // Determine the sources directory.
             string sourcesDirectory = GetEndpointData(endpoint, Constants.EndpointData.SourcesDirectory);
@@ -139,8 +139,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             // Attempt to re-use an existing workspace if the command manager supports scorch
             // or if clean is not specified.
             ITfsVCWorkspace existingTFWorkspace = null;
-            bool clean = endpoint.Data.ContainsKey(WellKnownEndpointData.Clean) &&
-                StringUtil.ConvertToBoolean(endpoint.Data[WellKnownEndpointData.Clean], defaultValue: false);
+            bool clean = endpoint.Data.ContainsKey(EndpointData.Clean) &&
+                StringUtil.ConvertToBoolean(endpoint.Data[EndpointData.Clean], defaultValue: false);
             if (tf.Features.HasFlag(TfsVCFeatures.Scorch) || !clean)
             {
                 existingTFWorkspace = WorkspaceUtil.MatchExactWorkspace(
@@ -429,7 +429,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
                 // Get the definition mappings.
                 DefinitionWorkspaceMapping[] definitionMappings =
-                    JsonConvert.DeserializeObject<DefinitionWorkspaceMappings>(endpoint.Data[WellKnownEndpointData.TfvcWorkspaceMapping])?.Mappings;
+                    JsonConvert.DeserializeObject<DefinitionWorkspaceMappings>(endpoint.Data[EndpointData.TfvcWorkspaceMapping])?.Mappings;
 
                 // Determine the sources directory.
                 string sourcesDirectory = GetEndpointData(endpoint, Constants.EndpointData.SourcesDirectory);

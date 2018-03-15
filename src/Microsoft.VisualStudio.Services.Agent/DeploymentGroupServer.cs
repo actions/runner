@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.Services.WebApi;
+using System.Linq;
 
 namespace Microsoft.VisualStudio.Services.Agent
 {
@@ -111,7 +112,10 @@ namespace Microsoft.VisualStudio.Services.Agent
         public Task<List<DeploymentMachine>> UpdateDeploymentTargetsAsync(Guid projectId, int deploymentGroupId, List<DeploymentMachine> deploymentMachine)
         {
             CheckConnection();
-            return _taskAgentClient.UpdateDeploymentTargetsAsync(projectId, deploymentGroupId, deploymentMachine);
+
+            var deploymentTargetUpdateParameter = deploymentMachine.Select(machine => new DeploymentTargetUpdateParameter { Id = machine.Id, Tags = machine.Tags }).ToList();
+
+            return _taskAgentClient.UpdateDeploymentTargetsAsync(projectId, deploymentGroupId, deploymentTargetUpdateParameter);
         }
     }
 }

@@ -40,7 +40,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.ContainerProvider
         {
             switch (containerType)
             {
-                case WellKnownArtifactResourceTypes.Container:
+                case ArtifactResourceTypes.Container:
 
                     var fileContainerItemCache = new FileContainerProvider(
                         this._containerId,

@@ -95,7 +95,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Release
                 _sourceProvider.Verify(
                     x => x.GetSourceAsync(
                         It.IsAny<IExecutionContext>(),
-                        It.Is<ServiceEndpoint>(y => y.Data.ContainsKey(WellKnownEndpointData.TfvcWorkspaceMapping) && y.Data.ContainsKey(WellKnownEndpointData.Clean)
+                        It.Is<ServiceEndpoint>(y => y.Data.ContainsKey(EndpointData.TfvcWorkspaceMapping) && y.Data.ContainsKey(EndpointData.Clean)
                         && y.Data.ContainsKey(Constants.EndpointData.SourcesDirectory) && y.Data.ContainsKey(Constants.EndpointData.SourceVersion)),
                         It.IsAny<CancellationToken>()));
             }
@@ -127,7 +127,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Release
             _ec.Setup(x => x.Variables).Returns(_variables);
             _extensionManager.Setup(x => x.GetExtensions<ISourceProvider>())
                 .Returns(new List<ISourceProvider> { _sourceProvider.Object });
-            _sourceProvider.Setup(x => x.RepositoryType).Returns(WellKnownRepositoryTypes.TfsVersionControl);
+            _sourceProvider.Setup(x => x.RepositoryType).Returns(RepositoryTypes.TfsVersionControl);
 
             return hc;
         }

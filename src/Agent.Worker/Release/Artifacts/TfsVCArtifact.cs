@@ -41,11 +41,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
             var tfsVCEndpoint = endpoint.Clone();
             PrepareTfsVCEndpoint(tfsVCEndpoint, tfsVcArtifactDetails);
             var extensionManager = HostContext.GetService<IExtensionManager>();
-            ISourceProvider sourceProvider = (extensionManager.GetExtensions<ISourceProvider>()).FirstOrDefault(x => x.RepositoryType == WellKnownRepositoryTypes.TfsVersionControl);
+            ISourceProvider sourceProvider = (extensionManager.GetExtensions<ISourceProvider>()).FirstOrDefault(x => x.RepositoryType == RepositoryTypes.TfsVersionControl);
 
             if (sourceProvider == null)
             {
-                throw new InvalidOperationException(StringUtil.Loc("SourceArtifactProviderNotFound", WellKnownRepositoryTypes.TfsVersionControl));
+                throw new InvalidOperationException(StringUtil.Loc("SourceArtifactProviderNotFound", RepositoryTypes.TfsVersionControl));
             }
 
             var rootDirectory = Directory.GetParent(downloadFolderPath).Name;
@@ -146,8 +146,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
                 Mappings = distinctMapping.Values.ToArray()
             };
 
-            endpoint.Data.Add(WellKnownEndpointData.TfvcWorkspaceMapping, JsonConvert.SerializeObject(definitionWorkspaceMappings));
-            endpoint.Data.Add(WellKnownEndpointData.Clean, "true");
+            endpoint.Data.Add(EndpointData.TfvcWorkspaceMapping, JsonConvert.SerializeObject(definitionWorkspaceMappings));
+            endpoint.Data.Add(EndpointData.Clean, "true");
         }
     }
 }

@@ -113,11 +113,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             endpoint.Authorization.Parameters.TryGetValue(EndpointAuthorizationParameters.Username, out _username);
             endpoint.Authorization.Parameters.TryGetValue(EndpointAuthorizationParameters.Password, out _password);
 
-            // TODO: replace explicit string literals with WellKnownEndpointData constants 
-            // as soon as the latters are available thru the Microsoft.TeamFoundation.Build.WebApi package
-
-            _acceptUntrusted = endpoint.Data.ContainsKey(/* WellKnownEndpointData.SvnAcceptUntrustedCertificates */ "acceptUntrustedCerts") &&
-            StringUtil.ConvertToBoolean(endpoint.Data[/* WellKnownEndpointData.SvnAcceptUntrustedCertificates */ "acceptUntrustedCerts"], defaultValue: false);
+            _acceptUntrusted = endpoint.Data.ContainsKey(EndpointData.SvnAcceptUntrustedCertificates) &&
+            StringUtil.ConvertToBoolean(endpoint.Data[EndpointData.SvnAcceptUntrustedCertificates], defaultValue: false);
         }
 
         public async Task<string> UpdateWorkspace(

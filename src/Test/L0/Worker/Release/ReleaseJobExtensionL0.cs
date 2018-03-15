@@ -141,7 +141,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Release
             _ec.Setup(x => x.Variables).Returns(_variables);
             _extensionManager.Setup(x => x.GetExtensions<ISourceProvider>())
                 .Returns(new List<ISourceProvider> { _sourceProvider.Object });
-            _sourceProvider.Setup(x => x.RepositoryType).Returns(WellKnownRepositoryTypes.TfsGit);
+            _sourceProvider.Setup(x => x.RepositoryType).Returns(RepositoryTypes.TfsGit);
 
             releaseJobExtension = new ReleaseJobExtension();
             releaseJobExtension.Initialize(hc);

@@ -351,9 +351,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             foreach (ServiceEndpoint endpoint in ExecutionContext.Endpoints)
             {
                 string partialKey = null;
-                if (string.Equals(endpoint.Name, ServiceEndpoints.SystemVssConnection, StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(endpoint.Name, "SystemVssConnection", StringComparison.OrdinalIgnoreCase))
                 {
-                    partialKey = ServiceEndpoints.SystemVssConnection.ToUpperInvariant();
+                    partialKey = "SystemVssConnection".ToUpperInvariant();
                     AddEnvironmentVariable("VSTSPSHOSTSYSTEMENDPOINT_URL", endpoint.Url.ToString());
                     AddEnvironmentVariable("VSTSPSHOSTSYSTEMENDPOINT_AUTH", JsonUtility.ToString(endpoint.Authorization));
                 }

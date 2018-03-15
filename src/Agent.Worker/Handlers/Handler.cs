@@ -69,12 +69,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
                 {
                     partialKey = endpoint.Id.ToString();
                 }
-                else if (string.Equals(endpoint.Name, ServiceEndpoints.SystemVssConnection, StringComparison.OrdinalIgnoreCase))
+                else if (string.Equals(endpoint.Name, "SystemVssConnection", StringComparison.OrdinalIgnoreCase))
                 {
-                    partialKey = ServiceEndpoints.SystemVssConnection.ToUpperInvariant();
+                    partialKey = "SystemVssConnection".ToUpperInvariant();
                 }
                 else if (endpoint.Data == null ||
-                    !endpoint.Data.TryGetValue(WellKnownEndpointData.RepositoryId, out partialKey) ||
+                    !endpoint.Data.TryGetValue(EndpointData.RepositoryId, out partialKey) ||
                     string.IsNullOrEmpty(partialKey))
                 {
                     continue; // This should never happen.

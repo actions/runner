@@ -192,7 +192,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             // Add the system endpoint.
             foreach (ServiceEndpoint endpoint in (ExecutionContext.Endpoints ?? new List<ServiceEndpoint>(0)))
             {
-                if (string.Equals(endpoint.Name, ServiceEndpoints.SystemVssConnection, StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(endpoint.Name, "SystemVssConnection", StringComparison.OrdinalIgnoreCase))
                 {
                     endpoints.Add(endpoint);
                     break;

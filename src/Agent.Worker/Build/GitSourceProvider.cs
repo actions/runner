@@ -14,7 +14,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 {
     public class ExternalGitSourceProvider : GitSourceProvider
     {
-        public override string RepositoryType => WellKnownRepositoryTypes.Git;
+        public override string RepositoryType => RepositoryTypes.Git;
 
         // external git repository won't use auth header cmdline arg, since we don't know the auth scheme.
         public override bool GitUseAuthHeaderCmdlineArg => false;
@@ -88,22 +88,22 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
     public sealed class GitHubSourceProvider : AuthenticatedGitSourceProvider
     {
-        public override string RepositoryType => WellKnownRepositoryTypes.GitHub;
+        public override string RepositoryType => RepositoryTypes.GitHub;
     }
 
     public sealed class GitHubEnterpriseSourceProvider : AuthenticatedGitSourceProvider
     {
-        public override string RepositoryType => WellKnownRepositoryTypes.GitHubEnterprise;
+        public override string RepositoryType => RepositoryTypes.GitHubEnterprise;
     }
 
     public sealed class BitbucketSourceProvider : AuthenticatedGitSourceProvider
     {
-        public override string RepositoryType => WellKnownRepositoryTypes.Bitbucket;
+        public override string RepositoryType => RepositoryTypes.Bitbucket;
     }
 
     public sealed class TfsGitSourceProvider : GitSourceProvider
     {
-        public override string RepositoryType => WellKnownRepositoryTypes.TfsGit;
+        public override string RepositoryType => RepositoryTypes.TfsGit;
 
         public override bool GitUseAuthHeaderCmdlineArg
         {
@@ -142,7 +142,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             // Old TFS AT will not send this variable to build agent, and VSTS will always send it to build agent.
             bool? onPremTfsGit = true;
             string onPremTfsGitString;
-            if (endpoint.Data.TryGetValue(WellKnownEndpointData.OnPremTfsGit, out onPremTfsGitString))
+            if (endpoint.Data.TryGetValue(EndpointData.OnPremTfsGit, out onPremTfsGitString))
             {
                 onPremTfsGit = StringUtil.ConvertToBoolean(onPremTfsGitString);
             }
@@ -244,34 +244,34 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             string sourceVersion = GetEndpointData(endpoint, Constants.EndpointData.SourceVersion);
 
             bool clean = false;
-            if (endpoint.Data.ContainsKey(WellKnownEndpointData.Clean))
+            if (endpoint.Data.ContainsKey(EndpointData.Clean))
             {
-                clean = StringUtil.ConvertToBoolean(endpoint.Data[WellKnownEndpointData.Clean]);
+                clean = StringUtil.ConvertToBoolean(endpoint.Data[EndpointData.Clean]);
             }
 
             bool checkoutSubmodules = false;
-            if (endpoint.Data.ContainsKey(WellKnownEndpointData.CheckoutSubmodules))
+            if (endpoint.Data.ContainsKey(EndpointData.CheckoutSubmodules))
             {
-                checkoutSubmodules = StringUtil.ConvertToBoolean(endpoint.Data[WellKnownEndpointData.CheckoutSubmodules]);
+                checkoutSubmodules = StringUtil.ConvertToBoolean(endpoint.Data[EndpointData.CheckoutSubmodules]);
             }
 
             bool checkoutNestedSubmodules = false;
-            if (endpoint.Data.ContainsKey(WellKnownEndpointData.CheckoutNestedSubmodules))
+            if (endpoint.Data.ContainsKey(EndpointData.CheckoutNestedSubmodules))
             {
-                checkoutNestedSubmodules = StringUtil.ConvertToBoolean(endpoint.Data[WellKnownEndpointData.CheckoutNestedSubmodules]);
+                checkoutNestedSubmodules = StringUtil.ConvertToBoolean(endpoint.Data[EndpointData.CheckoutNestedSubmodules]);
             }
 
             bool acceptUntrustedCerts = false;
-            if (endpoint.Data.ContainsKey(WellKnownEndpointData.AcceptUntrustedCertificates))
+            if (endpoint.Data.ContainsKey(EndpointData.AcceptUntrustedCertificates))
             {
-                acceptUntrustedCerts = StringUtil.ConvertToBoolean(endpoint.Data[WellKnownEndpointData.AcceptUntrustedCertificates]);
+                acceptUntrustedCerts = StringUtil.ConvertToBoolean(endpoint.Data[EndpointData.AcceptUntrustedCertificates]);
             }
 
             acceptUntrustedCerts = acceptUntrustedCerts || agentCert.SkipServerCertificateValidation;
 
             int fetchDepth = 0;
-            if (endpoint.Data.ContainsKey(WellKnownEndpointData.FetchDepth) &&
-                (!int.TryParse(endpoint.Data[WellKnownEndpointData.FetchDepth], out fetchDepth) || fetchDepth < 0))
+            if (endpoint.Data.ContainsKey(EndpointData.FetchDepth) &&
+                (!int.TryParse(endpoint.Data[EndpointData.FetchDepth], out fetchDepth) || fetchDepth < 0))
             {
                 fetchDepth = 0;
             }
@@ -279,9 +279,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             fetchDepth = executionContext.Variables.GetInt(Constants.Variables.Features.GitShallowDepth) ?? fetchDepth;
 
             bool gitLfsSupport = false;
-            if (endpoint.Data.ContainsKey(WellKnownEndpointData.GitLfsSupport))
+            if (endpoint.Data.ContainsKey(EndpointData.GitLfsSupport))
             {
-                gitLfsSupport = StringUtil.ConvertToBoolean(endpoint.Data[WellKnownEndpointData.GitLfsSupport]);
+                gitLfsSupport = StringUtil.ConvertToBoolean(endpoint.Data[EndpointData.GitLfsSupport]);
             }
             // prefer feature variable over endpoint data
             gitLfsSupport = executionContext.Variables.GetBoolean(Constants.Variables.Features.GitLfsSupport) ?? gitLfsSupport;

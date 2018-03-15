@@ -103,8 +103,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
             int fetchDepth = 0)
         {
             var endpoint = new ServiceEndpoint();
-            endpoint.Data[WellKnownEndpointData.Clean] = clean.ToString();
-            endpoint.Data[WellKnownEndpointData.CheckoutSubmodules] = checkoutSubmodules.ToString();
+            endpoint.Data[EndpointData.Clean] = clean.ToString();
+            endpoint.Data[EndpointData.CheckoutSubmodules] = checkoutSubmodules.ToString();
             endpoint.Url = new Uri(url);
             endpoint.Authorization = new EndpointAuthorization()
             {

@@ -33,17 +33,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
             }
 
             var extensionManager = HostContext.GetService<IExtensionManager>();
-            ISourceProvider sourceProvider = (extensionManager.GetExtensions<ISourceProvider>()).FirstOrDefault(x => x.RepositoryType == WellKnownRepositoryTypes.TfsGit);
+            ISourceProvider sourceProvider = (extensionManager.GetExtensions<ISourceProvider>()).FirstOrDefault(x => x.RepositoryType == RepositoryTypes.TfsGit);
             if (sourceProvider == null)
             {
-                throw new InvalidOperationException(StringUtil.Loc("SourceArtifactProviderNotFound", WellKnownRepositoryTypes.TfsGit));
+                throw new InvalidOperationException(StringUtil.Loc("SourceArtifactProviderNotFound", RepositoryTypes.TfsGit));
             }
 
             var tfsGitEndpoint = endpoint.Clone();
             tfsGitEndpoint.Data.Add(Constants.EndpointData.SourcesDirectory, downloadFolderPath);
             tfsGitEndpoint.Data.Add(Constants.EndpointData.SourceBranch, gitArtifactDetails.Branch);
             tfsGitEndpoint.Data.Add(Constants.EndpointData.SourceVersion, artifactDefinition.Version);
-            tfsGitEndpoint.Data.Add(WellKnownEndpointData.CheckoutSubmodules, gitArtifactDetails.CheckoutSubmodules);
+            tfsGitEndpoint.Data.Add(EndpointData.CheckoutSubmodules, gitArtifactDetails.CheckoutSubmodules);
             tfsGitEndpoint.Data.Add("fetchDepth", gitArtifactDetails.FetchDepth);
             tfsGitEndpoint.Data.Add("GitLfsSupport", gitArtifactDetails.GitLfsSupport);
 			

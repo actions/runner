@@ -147,7 +147,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             executionContext.Variables.Set(Constants.Variables.Build.RepoUri, SourceEndpoint.Url?.AbsoluteUri);
 
             string checkoutSubmoduleText;
-            if (SourceEndpoint.Data.TryGetValue(WellKnownEndpointData.CheckoutSubmodules, out checkoutSubmoduleText))
+            if (SourceEndpoint.Data.TryGetValue(EndpointData.CheckoutSubmodules, out checkoutSubmoduleText))
             {
                 executionContext.Variables.Set(Constants.Variables.Build.RepoGitSubmoduleCheckout, checkoutSubmoduleText);
             }
@@ -156,12 +156,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             bool? repoClean = executionContext.Variables.GetBoolean(Constants.Variables.Build.RepoClean);
             if (repoClean != null)
             {
-                SourceEndpoint.Data[WellKnownEndpointData.Clean] = repoClean.Value.ToString();
+                SourceEndpoint.Data[EndpointData.Clean] = repoClean.Value.ToString();
             }
             else
             {
                 string cleanRepoText;
-                if (SourceEndpoint.Data.TryGetValue(WellKnownEndpointData.Clean, out cleanRepoText))
+                if (SourceEndpoint.Data.TryGetValue(EndpointData.Clean, out cleanRepoText))
                 {
                     executionContext.Variables.Set(Constants.Variables.Build.RepoClean, cleanRepoText);
                 }

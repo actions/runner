@@ -376,9 +376,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             }
 
             bool clean = false;
-            if (endpoint.Data.ContainsKey(WellKnownEndpointData.Clean))
+            if (endpoint.Data.ContainsKey(EndpointData.Clean))
             {
-                clean = StringUtil.ConvertToBoolean(endpoint.Data[WellKnownEndpointData.Clean]);
+                clean = StringUtil.ConvertToBoolean(endpoint.Data[EndpointData.Clean]);
             }
 
             if (clean && endpoint.Data.ContainsKey("cleanOptions"))

@@ -83,7 +83,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             if (!String.IsNullOrEmpty(data))
             {
                 // update build number within Context.
-                context.Variables.Set(WellKnownBuildVariables.BuildNumber, data);
+                context.Variables.Set(BuildVariables.BuildNumber, data);
 
                 // queue async command task to update build number.
                 context.Debug($"Update build number for build: {buildId.Value} to: {data} at backend.");

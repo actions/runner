@@ -53,7 +53,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
         private string _expectedWorkFolder = "_work";
         private int _expectedPoolId = 1;
         private int _expectedDeploymentMachineId = 81;
-        private RSA rsa = null;
+        private RSACryptoServiceProvider rsa = null;
         private AgentSettings _configMgrAgentSettings = new AgentSettings();
 
         public ConfigurationManagerL0()
@@ -128,8 +128,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
             _agentServer.Setup(x => x.AddAgentAsync(It.IsAny<int>(), It.IsAny<TaskAgent>())).Returns(Task.FromResult(expectedAgent));
             _agentServer.Setup(x => x.UpdateAgentAsync(It.IsAny<int>(), It.IsAny<TaskAgent>())).Returns(Task.FromResult(expectedAgent));
 
-            rsa = RSA.Create();
-            rsa.KeySize = 2048;
+            rsa = new RSACryptoServiceProvider(2048);
 
             _rsaKeyManager.Setup(x => x.CreateKey()).Returns(rsa);
         }

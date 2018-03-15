@@ -42,17 +42,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
 
             ServiceEndpoint gitHubEndpoint = PrepareGitHubTaskEndpoint(endpoint, gitHubDetails.CloneUrl);
             var extensionManager = HostContext.GetService<IExtensionManager>();
-            ISourceProvider sourceProvider = (extensionManager.GetExtensions<ISourceProvider>()).FirstOrDefault(x => x.RepositoryType == WellKnownRepositoryTypes.GitHub);
+            ISourceProvider sourceProvider = (extensionManager.GetExtensions<ISourceProvider>()).FirstOrDefault(x => x.RepositoryType == RepositoryTypes.GitHub);
 
             if (sourceProvider == null)
             {
-                throw new InvalidOperationException(StringUtil.Loc("SourceArtifactProviderNotFound", WellKnownRepositoryTypes.GitHub));
+                throw new InvalidOperationException(StringUtil.Loc("SourceArtifactProviderNotFound", RepositoryTypes.GitHub));
             }
 
             gitHubEndpoint.Data.Add(Constants.EndpointData.SourcesDirectory, localFolderPath);
             gitHubEndpoint.Data.Add(Constants.EndpointData.SourceBranch, gitHubDetails.Branch);
             gitHubEndpoint.Data.Add(Constants.EndpointData.SourceVersion, artifactDefinition.Version);
-            gitHubEndpoint.Data.Add(WellKnownEndpointData.CheckoutSubmodules, gitHubDetails.CheckoutSubmodules);
+            gitHubEndpoint.Data.Add(EndpointData.CheckoutSubmodules, gitHubDetails.CheckoutSubmodules);
             gitHubEndpoint.Data.Add("fetchDepth", gitHubDetails.FetchDepth);
             gitHubEndpoint.Data.Add("GitLfsSupport", gitHubDetails.GitLfsSupport);
 

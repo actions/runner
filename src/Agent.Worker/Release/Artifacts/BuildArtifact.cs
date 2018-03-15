@@ -96,7 +96,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
         {
             Trace.Entering();
 
-            ServiceEndpoint vssEndpoint = context.Endpoints.FirstOrDefault(e => string.Equals(e.Name, ServiceEndpoints.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
+            ServiceEndpoint vssEndpoint = context.Endpoints.FirstOrDefault(e => string.Equals(e.Name, "SystemVssConnection", StringComparison.OrdinalIgnoreCase));
             ArgUtil.NotNull(vssEndpoint, nameof(vssEndpoint));
             ArgUtil.NotNull(vssEndpoint.Url, nameof(vssEndpoint.Url));
 
@@ -171,7 +171,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
             var buildArtifactDetails = artifactDefinition.Details as BuildArtifactDetails;
 
             if ((buildArtifact.Resource.Type == null && buildArtifact.Id == 0) // bug on build API Bug 378900
-                || string.Equals(buildArtifact.Resource.Type, WellKnownArtifactResourceTypes.FilePath, StringComparison.OrdinalIgnoreCase))
+                || string.Equals(buildArtifact.Resource.Type, ArtifactResourceTypes.FilePath, StringComparison.OrdinalIgnoreCase))
             {
                 executionContext.Output(StringUtil.Loc("RMArtifactTypeFileShare"));
 #if !OS_WINDOWS
@@ -207,7 +207,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
 #endif
             }
             else if (buildArtifactDetails != null
-                     && string.Equals(buildArtifact.Resource.Type, WellKnownArtifactResourceTypes.Container, StringComparison.OrdinalIgnoreCase))
+                     && string.Equals(buildArtifact.Resource.Type, ArtifactResourceTypes.Container, StringComparison.OrdinalIgnoreCase))
             {
                 executionContext.Output(StringUtil.Loc("RMArtifactTypeServerDrop"));
 
@@ -241,7 +241,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
 
                 IContainerProvider containerProvider =
                     new ContainerProviderFactory(buildArtifactDetails, rootLocation, containerId, executionContext).GetContainerProvider(
-                        WellKnownArtifactResourceTypes.Container);
+                        ArtifactResourceTypes.Container);
 
                 using (var engine = new ContainerFetchEngine.ContainerFetchEngine(containerProvider, rootLocation, rootDestinationDir))
                 {

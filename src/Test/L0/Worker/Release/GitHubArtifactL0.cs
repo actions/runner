@@ -86,7 +86,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Release
                         It.IsAny<IExecutionContext>(), 
                         It.Is<ServiceEndpoint>(y => y.Url.Equals(new Uri(_expectedGitHubUrl)) && y.Authorization.Scheme.Equals(EndpointAuthorizationSchemes.OAuth)
                         && y.Data.ContainsKey(Constants.EndpointData.SourcesDirectory) && y.Data.ContainsKey(Constants.EndpointData.SourceBranch)
-                        && y.Data.ContainsKey(Constants.EndpointData.SourceVersion) && y.Data.ContainsKey("fetchDepth") && y.Data.ContainsKey("GitLfsSupport") && y.Data.ContainsKey(WellKnownEndpointData.CheckoutSubmodules)), 
+                        && y.Data.ContainsKey(Constants.EndpointData.SourceVersion) && y.Data.ContainsKey("fetchDepth") && y.Data.ContainsKey("GitLfsSupport") && y.Data.ContainsKey(EndpointData.CheckoutSubmodules)), 
                         It.IsAny<CancellationToken>()));
             }
         }
@@ -148,7 +148,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Release
             _ec.Setup(x => x.Variables).Returns(_variables);
             _extensionManager.Setup(x => x.GetExtensions<ISourceProvider>())
                 .Returns(new List<ISourceProvider> { _sourceProvider.Object });
-            _sourceProvider.Setup(x => x.RepositoryType).Returns(WellKnownRepositoryTypes.GitHub);
+            _sourceProvider.Setup(x => x.RepositoryType).Returns(RepositoryTypes.GitHub);
 
             return hc;
         }

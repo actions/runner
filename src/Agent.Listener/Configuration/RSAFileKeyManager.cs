@@ -12,15 +12,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         private string _keyFile;
         private IHostContext _context;
 
-        public RSA CreateKey()
+        public RSACryptoServiceProvider CreateKey()
         {
-            RSA rsa = null;
+            RSACryptoServiceProvider rsa = null;
             if (!File.Exists(_keyFile))
             {
                 Trace.Info("Creating new RSA key using 2048-bit key length");
 
-                rsa = RSA.Create();
-                rsa.KeySize = 2048;
+                rsa = new RSACryptoServiceProvider(2048);
 
                 // Now write the parameters to disk
                 IOUtil.SaveObject(rsa.ExportParameters(true), _keyFile);
@@ -54,7 +53,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             {
                 Trace.Info("Found existing RSA key parameters file {0}", _keyFile);
 
-                rsa = RSA.Create();
+                rsa = new RSACryptoServiceProvider();
                 rsa.ImportParameters(IOUtil.LoadObject<RSAParameters>(_keyFile));
             }
 
@@ -70,7 +69,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             }
         }
 
-        public RSA GetKey()
+        public RSACryptoServiceProvider GetKey()
         {
             if (!File.Exists(_keyFile))
             {
@@ -80,7 +79,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             Trace.Info("Loading RSA key parameters from file {0}", _keyFile);
 
             var parameters = IOUtil.LoadObject<RSAParameters>(_keyFile);
-            var rsa = RSA.Create();
+            var rsa = new RSACryptoServiceProvider();
             rsa.ImportParameters(parameters);
             return rsa;
         }

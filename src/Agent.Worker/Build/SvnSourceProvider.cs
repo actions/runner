@@ -12,7 +12,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 {
     public sealed class SvnSourceProvider : SourceProvider, ISourceProvider
     {
-        public override string RepositoryType => WellKnownRepositoryTypes.Svn;
+        public override string RepositoryType => RepositoryTypes.Svn;
 
         public async Task GetSourceAsync(
             IExecutionContext executionContext, 
@@ -44,13 +44,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
             executionContext.Debug($"revision={revision}");
 
-            bool clean = endpoint.Data.ContainsKey(WellKnownEndpointData.Clean) &&
-                StringUtil.ConvertToBoolean(endpoint.Data[WellKnownEndpointData.Clean], defaultValue: false);
+            bool clean = endpoint.Data.ContainsKey(EndpointData.Clean) &&
+                StringUtil.ConvertToBoolean(endpoint.Data[EndpointData.Clean], defaultValue: false);
             executionContext.Debug($"clean={clean}");
 
             // Get the definition mappings.
             List<SvnMappingDetails> allMappings = JsonConvert.DeserializeObject<SvnWorkspace>
-                (endpoint.Data[WellKnownEndpointData.SvnWorkspaceMapping]).Mappings;
+                (endpoint.Data[EndpointData.SvnWorkspaceMapping]).Mappings;
 
             if (executionContext.Variables.System_Debug.HasValue && executionContext.Variables.System_Debug.Value)
             {
