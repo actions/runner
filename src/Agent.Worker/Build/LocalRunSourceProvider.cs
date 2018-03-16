@@ -25,9 +25,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
             bool preferGitFromPath;
 #if OS_WINDOWS
-            bool overrideGitFromPath;
-            bool.TryParse(Environment.GetEnvironmentVariable(Constants.Variables.System.PreferGitFromPath), out overrideGitFromPath);
-            preferGitFromPath = overrideGitFromPath || (executionContext.Variables.GetBoolean(Constants.Variables.System.PreferGitFromPath) ?? false);
+            preferGitFromPath = false;
 #else
             preferGitFromPath = true;
 #endif

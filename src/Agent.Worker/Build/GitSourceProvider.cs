@@ -304,15 +304,21 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 #if OS_WINDOWS
             bool schannelSslBackend = HostContext.GetService<IConfigurationStore>().GetAgentRuntimeOptions()?.GitUseSecureChannel ?? false;
             Trace.Info($"schannelSslBackend={schannelSslBackend}");
-            
+
             // Determine which git will be use
-            // On windows, we prefer the built-in portable git within the agent's externals folder, set system.prefergitfrompath=true can change the behavior, 
-            // agent will find git.exe from %PATH%
-            // On Linux, we will always use git find in %PATH% regardless of system.prefergitfrompath
-            bool overrideGitFromPath;
-            bool.TryParse(Environment.GetEnvironmentVariable(Constants.Variables.System.PreferGitFromPath), out overrideGitFromPath);
-            preferGitFromPath = overrideGitFromPath || (executionContext.Variables.GetBoolean(Constants.Variables.System.PreferGitFromPath) ?? false);
+            // On windows, we prefer the built-in portable git within the agent's externals folder, 
+            // set system.prefergitfrompath=true can change the behavior, agent will find git.exe from %PATH%
+            var definitionSetting = executionContext.Variables.GetBoolean(Constants.Variables.System.PreferGitFromPath);
+            if (definitionSetting != null)
+            {
+                preferGitFromPath = definitionSetting.Value;
+            }
+            else
+            {
+                bool.TryParse(Environment.GetEnvironmentVariable(Constants.Variables.System.PreferGitFromPath), out preferGitFromPath);
+            }
 #else
+            // On Linux, we will always use git find in %PATH% regardless of system.prefergitfrompath
             preferGitFromPath = true;
 #endif
 
