@@ -61,17 +61,17 @@ Example phases that build in parallel (no dependencies).
 ```yaml
 phases:
 - phase: Windows
-  target:
+  queue:
     demands: agent.os -eq Windows_NT
   steps:
   - script: echo hello from Windows
 - phase: macOS
-  target:
+  queue:
     demands: agent.os -eq Darwin
   steps:
   - script: echo hello from macOS
 - phase: Linux
-  target:
+  queue:
     demands: agent.os -eq Linux
   steps:
   - script: echo hello from Linux
