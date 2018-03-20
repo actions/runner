@@ -139,19 +139,19 @@ get_linux_platform_name() {
         fi
     fi
 
-    say_verbose "Linux specific platform name and version could not be detected: $ID.$VERSION_ID"
+    say_verbose "Linux specific platform name and version could not be detected: UName = $uname"
     return 1
 }
 
 get_current_os_name() {
     eval $invocation
+    linux_platform_name="unknown"
 
     local uname=$(uname)
     if [ "$uname" = "Darwin" ]; then
         echo "osx"
         return 0
     elif [ "$uname" = "Linux" ]; then
-        local linux_platform_name
         linux_platform_name="$(get_linux_platform_name)" || { echo "linux" && return 0 ; }
 
         if [[ $linux_platform_name == "rhel.6" || $linux_platform_name == "alpine.3.6" ]]; then
@@ -163,7 +163,7 @@ get_current_os_name() {
         fi
     fi
 
-    say_err "OS name could not be detected: $ID.$VERSION_ID"
+    say_err "OS name could not be detected: UName = $uname"
     return 1
 }
 
@@ -188,7 +188,7 @@ get_legacy_os_name() {
         fi
     fi
 
-    say_verbose "Distribution specific OS name and version could not be detected: $ID.$VERSION_ID"
+    say_verbose "Distribution specific OS name and version could not be detected: UName = $uname"
     return 1
 }
 
@@ -570,7 +570,14 @@ copy_files_or_dirs_from_list() {
     local root_path="$(remove_trailing_slash "$1")"
     local out_path="$(remove_trailing_slash "$2")"
     local override="$3"
-    local override_switch=$(if [ "$override" = false ]; then printf -- "-n"; fi)
+    local override_switch=$(
+        if [ "$override" = false ]; then
+            if [[ $linux_platform_name == 'alpine'* ]]; then 
+                printf -- "-u";
+            else
+                printf -- "-n";
+            fi
+        fi)
 
     cat | uniq | while read -r file_path; do
         local path="$(remove_beginning_slash "${file_path#$root_path}")"
