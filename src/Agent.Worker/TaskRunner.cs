@@ -5,8 +5,10 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressions;
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
+using Pipelines = Microsoft.TeamFoundation.DistributedTask.Pipelines;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using Microsoft.VisualStudio.Services.Agent.Worker.Handlers;
+using Microsoft.VisualStudio.Services.Agent.Worker.Container;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
@@ -21,7 +23,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
     public interface ITaskRunner : IStep, IAgentService
     {
         JobRunStage Stage { get; set; }
-        TaskInstance TaskInstance { get; set; }
+        Pipelines.TaskStep Task { get; set; }
     }
 
     public sealed class TaskRunner : AgentService, ITaskRunner
@@ -30,17 +32,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         public INode Condition { get; set; }
 
-        public bool ContinueOnError => TaskInstance?.ContinueOnError ?? default(bool);
+        public bool ContinueOnError => Task?.ContinueOnError ?? default(bool);
 
-        public string DisplayName => TaskInstance?.DisplayName;
+        public string DisplayName => Task?.DisplayName;
 
-        public bool Enabled => TaskInstance?.Enabled ?? default(bool);
+        public bool Enabled => Task?.Enabled ?? default(bool);
 
         public IExecutionContext ExecutionContext { get; set; }
 
-        public TaskInstance TaskInstance { get; set; }
+        public Pipelines.TaskStep Task { get; set; }
 
-        public TimeSpan? Timeout => (TaskInstance?.TimeoutInMinutes ?? 0) > 0 ? (TimeSpan?)TimeSpan.FromMinutes(TaskInstance.TimeoutInMinutes) : null;
+        public TimeSpan? Timeout => (Task?.TimeoutInMinutes ?? 0) > 0 ? (TimeSpan?)TimeSpan.FromMinutes(Task.TimeoutInMinutes) : null;
 
         public async Task RunAsync()
         {
@@ -48,7 +50,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             Trace.Entering();
             ArgUtil.NotNull(ExecutionContext, nameof(ExecutionContext));
             ArgUtil.NotNull(ExecutionContext.Variables, nameof(ExecutionContext.Variables));
-            ArgUtil.NotNull(TaskInstance, nameof(TaskInstance));
+            ArgUtil.NotNull(Task, nameof(Task));
             var taskManager = HostContext.GetService<ITaskManager>();
             var handlerFactory = HostContext.GetService<IHandlerFactory>();
 
@@ -57,7 +59,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
             // Load the task definition and choose the handler.
             // TODO: Add a try catch here to give a better error message.
-            Definition definition = taskManager.Load(TaskInstance);
+            Definition definition = taskManager.Load(Task);
             ArgUtil.NotNull(definition, nameof(definition));
 
             // Print out task metadata
@@ -110,7 +112,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
             // Merge the instance inputs.
             Trace.Verbose("Loading instance inputs.");
-            foreach (var input in (TaskInstance.Inputs as IEnumerable<KeyValuePair<string, string>> ?? new KeyValuePair<string, string>[0]))
+            foreach (var input in (Task.Inputs as IEnumerable<KeyValuePair<string, string>> ?? new KeyValuePair<string, string>[0]))
             {
                 string key = input.Key?.Trim() ?? string.Empty;
                 if (!string.IsNullOrEmpty(key))
@@ -138,7 +140,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             // Load the task environment.
             Trace.Verbose("Loading task environment.");
             var environment = new Dictionary<string, string>(VarUtil.EnvironmentVariableKeyComparer);
-            foreach (var env in (TaskInstance.Environment ?? new Dictionary<string, string>(0)))
+            foreach (var env in (Task.Environment ?? new Dictionary<string, string>(0)))
             {
                 string key = env.Key?.Trim() ?? string.Empty;
                 if (!string.IsNullOrEmpty(key))
@@ -192,7 +194,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             // Add the system endpoint.
             foreach (ServiceEndpoint endpoint in (ExecutionContext.Endpoints ?? new List<ServiceEndpoint>(0)))
             {
-                if (string.Equals(endpoint.Name, "SystemVssConnection", StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(endpoint.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase))
                 {
                     endpoints.Add(endpoint);
                     break;
@@ -240,9 +242,32 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 }
             }
 
+            IStepHost stepHost;
+            // Get the container this task is going to use
+            if (ExecutionContext.Container != null)
+            {
+                // Make sure required container is already created.
+                ArgUtil.NotNullOrEmpty(ExecutionContext.Container.ContainerId, nameof(ExecutionContext.Container.ContainerId));
+                var containerStepHost = HostContext.CreateService<IContainerStepHost>();
+                containerStepHost.Container = ExecutionContext.Container;
+                stepHost = containerStepHost;
+
+                // Only node handler and powershell3 handler support running inside container.
+                if (!(handlerData is NodeHandlerData) &&
+                    !(handlerData is PowerShell3HandlerData))
+                {
+                    throw new NotSupportedException(String.Format("Task '{0}' is using legacy execution handler '{1}' which is not supported in container execution flow.", definition.Data.FriendlyName, handlerData.GetType().ToString()));
+                }
+            }
+            else
+            {
+                stepHost = HostContext.CreateService<IDefaultStepHost>();
+            }
+
             // Create the handler.
             IHandler handler = handlerFactory.Create(
                 ExecutionContext,
+                stepHost,
                 endpoints,
                 secureFiles,
                 handlerData,
@@ -313,12 +338,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         private void PrintTaskMetaData(Definition taskDefinition)
         {
-            ArgUtil.NotNull(TaskInstance, nameof(TaskInstance));
+            ArgUtil.NotNull(Task, nameof(Task));
+            ArgUtil.NotNull(Task.Reference, nameof(Task.Reference));
             ArgUtil.NotNull(taskDefinition.Data, nameof(taskDefinition.Data));
             ExecutionContext.Output("==============================================================================");
             ExecutionContext.Output($"Task         : {taskDefinition.Data.FriendlyName}");
             ExecutionContext.Output($"Description  : {taskDefinition.Data.Description}");
-            ExecutionContext.Output($"Version      : {TaskInstance.Version}");
+            ExecutionContext.Output($"Version      : {Task.Reference.Version}");
             ExecutionContext.Output($"Author       : {taskDefinition.Data.Author}");
             ExecutionContext.Output($"Help         : {taskDefinition.Data.HelpMarkDown}");
             ExecutionContext.Output("==============================================================================");

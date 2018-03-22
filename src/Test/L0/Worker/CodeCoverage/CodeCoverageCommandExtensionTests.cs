@@ -149,7 +149,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
             }
         }
 
-         [Fact]
+        [Fact]
         [Trait("Level", "L0")]
         public void Publish_WithIndexHtmAndHtmlFileInReportDirectory()
         {
@@ -309,7 +309,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
             _hc = new TestHostContext(this, name);
             _codeCoverageStatistics = new List<CodeCoverageStatistics> { new CodeCoverageStatistics { Label = "label", Covered = 10, Total = 10, Position = 1 } };
             _mocksummaryReader = new Mock<ICodeCoverageSummaryReader>();
-            if (String.Equals(name,"Publish_CoberturaNewIndexFile"))
+            if (String.Equals(name, "Publish_CoberturaNewIndexFile"))
             {
                 _mocksummaryReader.Setup(x => x.Name).Returns("cobertura");
             }
@@ -333,7 +333,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
                 Scheme = EndpointAuthorizationSchemes.OAuth
             };
             List<string> warnings;
-            _variables = new Variables(_hc, new Dictionary<string, string>(), new List<MaskHint>(), out warnings);
+            _variables = new Variables(_hc, new Dictionary<string, VariableValue>(), out warnings);
             _variables.Set("build.buildId", "1");
             _variables.Set("build.containerId", "1");
             _variables.Set("system.teamProjectId", "46075F24-A6B9-447E-BEF0-E1D5592D9E39");
@@ -341,7 +341,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.CodeCoverage
             endpointAuthorization.Parameters[EndpointAuthorizationParameters.AccessToken] = "accesstoken";
 
             _ec = new Mock<IExecutionContext>();
-            _ec.Setup(x => x.Endpoints).Returns(new List<ServiceEndpoint> { new ServiceEndpoint { Url = new Uri("http://dummyurl"), Name = "SystemVssConnection", Authorization = endpointAuthorization } });
+            _ec.Setup(x => x.Endpoints).Returns(new List<ServiceEndpoint> { new ServiceEndpoint { Url = new Uri("http://dummyurl"), Name = WellKnownServiceEndpointNames.SystemVssConnection, Authorization = endpointAuthorization } });
             _ec.Setup(x => x.Variables).Returns(_variables);
             var asyncCommands = new List<IAsyncCommandContext>();
             _ec.Setup(x => x.AsyncCommands).Returns(asyncCommands);

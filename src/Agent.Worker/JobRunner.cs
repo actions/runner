@@ -1,4 +1,5 @@
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
+using Pipelines = Microsoft.TeamFoundation.DistributedTask.Pipelines;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using Microsoft.VisualStudio.Services.Common;
 using Microsoft.VisualStudio.Services.WebApi;
@@ -20,7 +21,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
     [ServiceLocator(Default = typeof(JobRunner))]
     public interface IJobRunner : IAgentService
     {
-        Task<TaskResult> RunAsync(AgentJobRequestMessage message, CancellationToken jobRequestCancellationToken);
+        Task<TaskResult> RunAsync(Pipelines.AgentJobRequestMessage message, CancellationToken jobRequestCancellationToken);
     }
 
     public sealed class JobRunner : AgentService, IJobRunner
@@ -28,33 +29,34 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         private IJobServerQueue _jobServerQueue;
         private ITempDirectoryManager _tempDirectoryManager;
 
-        public async Task<TaskResult> RunAsync(AgentJobRequestMessage message, CancellationToken jobRequestCancellationToken)
+        public async Task<TaskResult> RunAsync(Pipelines.AgentJobRequestMessage message, CancellationToken jobRequestCancellationToken)
         {
             // Validate parameters.
             Trace.Entering();
             ArgUtil.NotNull(message, nameof(message));
-            ArgUtil.NotNull(message.Environment, nameof(message.Environment));
-            ArgUtil.NotNull(message.Environment.Variables, nameof(message.Environment.Variables));
-            ArgUtil.NotNull(message.Tasks, nameof(message.Tasks));
+            ArgUtil.NotNull(message.Resources, nameof(message.Resources));
+            ArgUtil.NotNull(message.Variables, nameof(message.Variables));
+            ArgUtil.NotNull(message.Steps, nameof(message.Steps));
             Trace.Info("Job ID {0}", message.JobId);
 
             DateTime jobStartTimeUtc = DateTime.UtcNow;
 
             // Agent.RunMode
             RunMode runMode;
-            if (message.Environment.Variables.ContainsKey(Constants.Variables.Agent.RunMode) &&
-                Enum.TryParse(message.Environment.Variables[Constants.Variables.Agent.RunMode], ignoreCase: true, result: out runMode) &&
+            if (message.Variables.ContainsKey(Constants.Variables.Agent.RunMode) &&
+                Enum.TryParse(message.Variables[Constants.Variables.Agent.RunMode].Value, ignoreCase: true, result: out runMode) &&
                 runMode == RunMode.Local)
             {
                 HostContext.RunMode = runMode;
             }
 
+            ServiceEndpoint systemConnection = message.Resources.Endpoints.Single(x => string.Equals(x.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
+
             // System.AccessToken
-            if (message.Environment.Variables.ContainsKey(Constants.Variables.System.EnableAccessToken) &&
-                StringUtil.ConvertToBoolean(message.Environment.Variables[Constants.Variables.System.EnableAccessToken]))
+            if (message.Variables.ContainsKey(Constants.Variables.System.EnableAccessToken) &&
+                StringUtil.ConvertToBoolean(message.Variables[Constants.Variables.System.EnableAccessToken].Value))
             {
-                // TODO: get access token use Util Method
-                message.Environment.Variables[Constants.Variables.System.AccessToken] = message.Environment.SystemConnection.Authorization.Parameters["AccessToken"];
+                message.Variables[Constants.Variables.System.AccessToken] = new VariableValue(systemConnection.Authorization.Parameters["AccessToken"], false);
             }
 
             // Make sure SystemConnection Url and Endpoint Url match Config Url base
@@ -62,8 +64,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
             // Setup the job server and job server queue.
             var jobServer = HostContext.GetService<IJobServer>();
-            VssCredentials jobServerCredential = ApiUtil.GetVssCredential(message.Environment.SystemConnection);
-            Uri jobServerUrl = message.Environment.SystemConnection.Url;
+            VssCredentials jobServerCredential = ApiUtil.GetVssCredential(systemConnection);
+            Uri jobServerUrl = systemConnection.Url;
 
             Trace.Info($"Creating job server with URL: {jobServerUrl}");
             // jobServerQueue is the throttling reporter.
@@ -144,12 +146,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 jobContext.Variables.Set(Constants.Variables.Agent.WorkFolder, IOUtil.GetWorkPath(HostContext));
                 jobContext.Variables.Set(Constants.Variables.System.WorkFolder, IOUtil.GetWorkPath(HostContext));
 
-                if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("AGENT_TOOLSDIRECTORY")))
+                string toolsDirectory = Environment.GetEnvironmentVariable("AGENT_TOOLSDIRECTORY") ?? Environment.GetEnvironmentVariable(Constants.Variables.Agent.ToolsDirectory);
+                if (string.IsNullOrEmpty(toolsDirectory))
                 {
-                    string toolsDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), Constants.Path.ToolDirectory);
+                    toolsDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), Constants.Path.ToolDirectory);
                     Directory.CreateDirectory(toolsDirectory);
-                    jobContext.Variables.Set(Constants.Variables.Agent.ToolsDirectory, toolsDirectory);
                 }
+                else
+                {
+                    Trace.Info($"Set tool cache directory base on environment: '{toolsDirectory}'");
+                    Directory.CreateDirectory(toolsDirectory);
+                }
+                jobContext.Variables.Set(Constants.Variables.Agent.ToolsDirectory, toolsDirectory);
 
                 // Setup TEMP directories
                 _tempDirectoryManager = HostContext.GetService<ITempDirectoryManager>();
@@ -168,7 +176,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     taskServerUri = new Uri(jobContext.Variables.System_TFCollectionUrl);
                 }
 
-                var taskServerCredential = ApiUtil.GetVssCredential(message.Environment.SystemConnection);
+                var taskServerCredential = ApiUtil.GetVssCredential(systemConnection);
                 if (taskServerUri != null)
                 {
                     Trace.Info($"Creating task server with {taskServerUri}");
@@ -202,17 +210,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     .FirstOrDefault();
                 ArgUtil.NotNull(jobExtension, nameof(jobExtension));
 
-                List<IStep> preJobSteps = new List<IStep>();
                 List<IStep> jobSteps = new List<IStep>();
-                List<IStep> postJobSteps = new List<IStep>();
-
                 try
                 {
                     Trace.Info("Initialize job. Getting all job steps.");
                     var initializeResult = await jobExtension.InitializeJob(jobContext, message);
-                    preJobSteps = initializeResult.PreJobSteps;
-                    jobSteps = initializeResult.JobSteps;
-                    postJobSteps = initializeResult.PostJobStep;
+                    jobSteps.AddRange(initializeResult.PreJobSteps);
+                    jobSteps.AddRange(initializeResult.JobSteps);
+                    jobSteps.AddRange(initializeResult.PostJobStep);
                 }
                 catch (OperationCanceledException ex) when (jobContext.CancellationToken.IsCancellationRequested)
                 {
@@ -232,14 +237,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 }
 
                 // trace out all steps
-                Trace.Info($"Total pre-job steps: {preJobSteps.Count}.");
-                Trace.Verbose($"Pre-job steps: '{string.Join(", ", preJobSteps.Select(x => x.DisplayName))}'");
-
                 Trace.Info($"Total job steps: {jobSteps.Count}.");
                 Trace.Verbose($"Job steps: '{string.Join(", ", jobSteps.Select(x => x.DisplayName))}'");
-
-                Trace.Info($"Total post-job steps: {postJobSteps.Count}.");
-                Trace.Verbose($"Post-job steps: '{string.Join(", ", postJobSteps.Select(x => x.DisplayName))}'");
 
                 bool processCleanup = jobContext.Variables.GetBoolean("process.clean") ?? true;
                 HashSet<string> existingProcesses = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -260,78 +259,21 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     }
                 }
 
-                // Run all pre job steps
-                // All pre job steps are critical to the job
-                // Stop execution on any step failure or cancelled
-                Trace.Info("Run all pre-job steps.");
+                // Run all job steps
+                Trace.Info("Run all job steps.");
+                var stepsRunner = HostContext.GetService<IStepsRunner>();
                 try
                 {
-                    var stepsRunner = HostContext.GetService<IStepsRunner>();
-                    try
-                    {
-                        await stepsRunner.RunAsync(jobContext, preJobSteps, JobRunStage.PreJob);
-                    }
-                    catch (Exception ex)
-                    {
-                        // StepRunner should never throw exception out.
-                        // End up here mean there is a bug in StepRunner
-                        // Log the error and fail the job.
-                        Trace.Error($"Caught exception from pre-job steps {nameof(StepsRunner)}: {ex}");
-                        jobContext.Error(ex);
-                        return await CompleteJobAsync(jobServer, jobContext, message, TaskResult.Failed);
-                    }
-
-                    Trace.Info($"Job result after all pre-job steps finish: {jobContext.Result}");
-
-                    // Base on the Job result after all pre-job steps finish.
-                    // Run all job steps only if the job result is still Succeeded or SucceededWithIssues
-                    if (jobContext.Result == null ||
-                        jobContext.Result == TaskResult.Succeeded ||
-                        jobContext.Result == TaskResult.SucceededWithIssues)
-                    {
-                        Trace.Info("Run all job steps.");
-                        try
-                        {
-                            await stepsRunner.RunAsync(jobContext, jobSteps, JobRunStage.Main);
-                        }
-                        catch (Exception ex)
-                        {
-                            // StepRunner should never throw exception out.
-                            // End up here mean there is a bug in StepRunner
-                            // Log the error and fail the job.
-                            Trace.Error($"Caught exception from job steps {nameof(StepsRunner)}: {ex}");
-                            jobContext.Error(ex);
-                            return await CompleteJobAsync(jobServer, jobContext, message, TaskResult.Failed);
-                        }
-                    }
-                    else
-                    {
-                        Trace.Info("Skip all job steps due to pre-job step failure.");
-                        foreach (var step in jobSteps)
-                        {
-                            step.ExecutionContext.Start();
-                            step.ExecutionContext.Complete(TaskResult.Skipped);
-                        }
-                    }
-
-                    Trace.Info($"Job result after all job steps finish: {jobContext.Result}");
-
-                    // Always run all post job steps
-                    // step might not run base on it's own condition.
-                    Trace.Info("Run all post-job steps.");
-                    try
-                    {
-                        await stepsRunner.RunAsync(jobContext, postJobSteps, JobRunStage.PostJob);
-                    }
-                    catch (Exception ex)
-                    {
-                        // StepRunner should never throw exception out.
-                        // End up here mean there is a bug in StepRunner
-                        // Log the error and fail the job.
-                        Trace.Error($"Caught exception from post-job steps {nameof(StepsRunner)}: {ex}");
-                        jobContext.Error(ex);
-                        return await CompleteJobAsync(jobServer, jobContext, message, TaskResult.Failed);
-                    }
+                    await stepsRunner.RunAsync(jobContext, jobSteps);
+                }
+                catch (Exception ex)
+                {
+                    // StepRunner should never throw exception out.
+                    // End up here mean there is a bug in StepRunner
+                    // Log the error and fail the job.
+                    Trace.Error($"Caught exception from job steps {nameof(StepsRunner)}: {ex}");
+                    jobContext.Error(ex);
+                    return await CompleteJobAsync(jobServer, jobContext, message, TaskResult.Failed);
                 }
                 finally
                 {
@@ -383,7 +325,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     }
                 }
 
-                Trace.Info($"Job result after all post-job steps finish: {jobContext.Result}");
+                Trace.Info($"Job result after all job steps finish: {jobContext.Result ?? TaskResult.Succeeded}");
 
                 if (jobContext.Variables.GetBoolean(Constants.Variables.Agent.Diagnostic) ?? false)
                 {
@@ -420,9 +362,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             }
         }
 
-        private async Task<TaskResult> CompleteJobAsync(IJobServer jobServer, IExecutionContext jobContext, AgentJobRequestMessage message, TaskResult? taskResult = null)
+        private async Task<TaskResult> CompleteJobAsync(IJobServer jobServer, IExecutionContext jobContext, Pipelines.AgentJobRequestMessage message, TaskResult? taskResult = null)
         {
-            jobContext.Section(StringUtil.Loc("StepFinishing", message.JobName));
+            jobContext.Section(StringUtil.Loc("StepFinishing", message.JobDisplayName));
             TaskResult result = jobContext.Complete(taskResult);
 
             try
@@ -545,12 +487,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             return messageUri;
         }
 
-        private void ReplaceConfigUriBaseInJobRequestMessage(AgentJobRequestMessage message)
+        private void ReplaceConfigUriBaseInJobRequestMessage(Pipelines.AgentJobRequestMessage message)
         {
+            ServiceEndpoint systemConnection = message.Resources.Endpoints.Single(x => string.Equals(x.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
+            Uri systemConnectionUrl = systemConnection.Url;
+
             // fixup any endpoint Url that match SystemConnect server.
-            foreach (var endpoint in message.Environment.Endpoints)
+            foreach (var endpoint in message.Resources.Endpoints)
             {
-                if (Uri.Compare(endpoint.Url, message.Environment.SystemConnection.Url, UriComponents.SchemeAndServer, UriFormat.Unescaped, StringComparison.OrdinalIgnoreCase) == 0)
+                if (Uri.Compare(endpoint.Url, systemConnectionUrl, UriComponents.SchemeAndServer, UriFormat.Unescaped, StringComparison.OrdinalIgnoreCase) == 0)
                 {
                     endpoint.Url = ReplaceWithConfigUriBase(endpoint.Url);
                     Trace.Info($"Ensure endpoint url match config url base. {endpoint.Url}");
@@ -558,27 +503,23 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             }
 
             // fixup well known variables. (taskDefinitionsUrl, tfsServerUrl, tfsCollectionUrl)
-            if (message.Environment.Variables.ContainsKey(WellKnownDistributedTaskVariables.TaskDefinitionsUrl))
+            if (message.Variables.ContainsKey(WellKnownDistributedTaskVariables.TaskDefinitionsUrl))
             {
-                string taskDefinitionsUrl = message.Environment.Variables[WellKnownDistributedTaskVariables.TaskDefinitionsUrl];
-                message.Environment.Variables[WellKnownDistributedTaskVariables.TaskDefinitionsUrl] = ReplaceWithConfigUriBase(new Uri(taskDefinitionsUrl)).AbsoluteUri;
-                Trace.Info($"Ensure System.TaskDefinitionsUrl match config url base. {message.Environment.Variables[WellKnownDistributedTaskVariables.TaskDefinitionsUrl]}");
+                string taskDefinitionsUrl = message.Variables[WellKnownDistributedTaskVariables.TaskDefinitionsUrl].Value;
+                message.Variables[WellKnownDistributedTaskVariables.TaskDefinitionsUrl] = ReplaceWithConfigUriBase(new Uri(taskDefinitionsUrl)).AbsoluteUri;
+                Trace.Info($"Ensure System.TaskDefinitionsUrl match config url base. {message.Variables[WellKnownDistributedTaskVariables.TaskDefinitionsUrl].Value}");
             }
 
-            if (message.Environment.Variables.ContainsKey(WellKnownDistributedTaskVariables.TFCollectionUrl))
+            if (message.Variables.ContainsKey(WellKnownDistributedTaskVariables.TFCollectionUrl))
             {
-                string tfsCollectionUrl = message.Environment.Variables[WellKnownDistributedTaskVariables.TFCollectionUrl];
-                message.Environment.Variables[WellKnownDistributedTaskVariables.TFCollectionUrl] = ReplaceWithConfigUriBase(new Uri(tfsCollectionUrl)).AbsoluteUri;
-                Trace.Info($"Ensure System.TFCollectionUrl match config url base. {message.Environment.Variables[WellKnownDistributedTaskVariables.TFCollectionUrl]}");
+                string tfsCollectionUrl = message.Variables[WellKnownDistributedTaskVariables.TFCollectionUrl].Value;
+                message.Variables[WellKnownDistributedTaskVariables.TFCollectionUrl] = ReplaceWithConfigUriBase(new Uri(tfsCollectionUrl)).AbsoluteUri;
+                Trace.Info($"Ensure System.TFCollectionUrl match config url base. {message.Variables[WellKnownDistributedTaskVariables.TFCollectionUrl].Value}");
             }
-
-            // fixup SystemConnection Url
-            message.Environment.SystemConnection.Url = ReplaceWithConfigUriBase(message.Environment.SystemConnection.Url);
-            Trace.Info($"Ensure SystemConnection url match config url base. {message.Environment.SystemConnection.Url}");
 
             // back compat server url
-            message.Environment.Variables[Constants.Variables.System.TFServerUrl] = message.Environment.SystemConnection.Url.AbsoluteUri;
-            Trace.Info($"Ensure System.TFServerUrl match config url base. {message.Environment.SystemConnection.Url.AbsoluteUri}");
+            message.Variables[Constants.Variables.System.TFServerUrl] = systemConnection.Url.AbsoluteUri;
+            Trace.Info($"Ensure System.TFServerUrl match config url base. {systemConnection.Url.AbsoluteUri}");
         }
 
         private Dictionary<int, Process> SnapshotProcesses()

@@ -41,7 +41,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             ArgUtil.NotNull(context, nameof(context));
             ArgUtil.NotNull(context.Endpoints, nameof(context.Endpoints));
 
-            ServiceEndpoint systemConnection = context.Endpoints.FirstOrDefault(e => string.Equals(e.Name, "SystemVssConnection", StringComparison.OrdinalIgnoreCase));
+            ServiceEndpoint systemConnection = context.Endpoints.FirstOrDefault(e => string.Equals(e.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
             ArgUtil.NotNull(systemConnection, nameof(systemConnection));
             ArgUtil.NotNull(systemConnection.Url, nameof(systemConnection.Url));
 
@@ -151,6 +151,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             var propertyDictionary = ExtractArtifactProperties(eventProperties);
 
             string localPath = data;
+            if (context.Container != null)
+            {
+                // Translate file path back from container path
+                localPath = context.Container.TranslateToHostPath(localPath);
+            }
+
             if (string.IsNullOrEmpty(localPath))
             {
                 throw new Exception(StringUtil.Loc("ArtifactLocationRequired"));

@@ -135,7 +135,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
                                   "</assemblies>";
             WriteXUnitFile(xunitResults);
             XUnitResultReader reader = new XUnitResultReader();
-            TestRunData runData = reader.ReadResults(_ec.Object, _xUnitResultFile, new TestRunContext("Owner", "any cpu", "debug", 1, "", "releaseUri", "releaseEnvironmentUri"));   
+            TestRunData runData = reader.ReadResults(_ec.Object, _xUnitResultFile, new TestRunContext("Owner", "any cpu", "debug", 1, "", "releaseUri", "releaseEnvironmentUri"));
             Assert.NotNull(runData);
             Assert.Equal(0, runData.Results.Length);
         }
@@ -556,7 +556,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
             TestHostContext hc = new TestHostContext(this, name);
             _ec = new Mock<IExecutionContext>();
             List<string> warnings;
-            var variables = new Variables(hc, new Dictionary<string, string>(), new List<MaskHint>(), out warnings);
+            var variables = new Variables(hc, new Dictionary<string, VariableValue>(), out warnings);
             _ec.Setup(x => x.Variables).Returns(variables);
         }
 

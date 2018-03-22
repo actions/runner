@@ -18,17 +18,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             using (TestHostContext hc = new TestHostContext(this))
             {
                 // Arrange.
-                var copy = new Dictionary<string, string>
+                var copy = new Dictionary<string, VariableValue>
                 {
-                    { "MySecretName", "My secret value" },
+                    { "MySecretName", new VariableValue("My secret value", true) },
                     { "MyPublicVariable", "My public value" },
                 };
-                var maskHints = new List<MaskHint>
-                {
-                    new MaskHint() { Type = MaskType.Variable, Value = "MySecretName" },
-                };
                 List<string> warnings;
-                var variables = new Variables(hc, copy, maskHints, out warnings);
+                var variables = new Variables(hc, copy, out warnings);
 
                 // Act.
                 KeyValuePair<string, string>[] publicVariables = variables.Public.ToArray();
@@ -50,7 +46,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             using (TestHostContext hc = new TestHostContext(this))
             {
                 // Arrange.
-                var copy = new Dictionary<string, string>
+                var copy = new Dictionary<string, VariableValue>
                 {
                     { "variable1", "1_$(variable2)" },
                     { "variable2", "2_$(variable3)" },
@@ -59,7 +55,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
 
                 // Act.
                 List<string> warnings;
-                var variables = new Variables(hc, copy, new List<MaskHint>(), out warnings);
+                var variables = new Variables(hc, copy, out warnings);
 
                 // Assert.
                 Assert.Equal(3, warnings.Count);
@@ -81,7 +77,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             {
                 // Arrange.
                 const int MaxDepth = 50;
-                var copy = new Dictionary<string, string>();
+                var copy = new Dictionary<string, VariableValue>();
                 copy[$"variable{MaxDepth + 1}"] = "Final value"; // Variable 51.
                 for (int i = 1; i <= MaxDepth; i++)
                 {
@@ -90,7 +86,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
 
                 // Act.
                 List<string> warnings;
-                var variables = new Variables(hc, copy, new List<MaskHint>(), out warnings);
+                var variables = new Variables(hc, copy, out warnings);
 
                 // Assert.
                 Assert.Equal(1, warnings.Count);
@@ -111,7 +107,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             using (TestHostContext hc = new TestHostContext(this))
             {
                 // Arrange.
-                var copy = new Dictionary<string, string>
+                var copy = new Dictionary<string, VariableValue>
                 {
                     { "variable1", "1_$(variable2)" },
                     { "variable2", "2_$(variable3)" },
@@ -120,7 +116,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
 
                 // Act.
                 List<string> warnings;
-                var variables = new Variables(hc, copy, new List<MaskHint>(), out warnings);
+                var variables = new Variables(hc, copy, out warnings);
 
                 // Assert.
                 Assert.Equal(3, warnings.Count);
@@ -136,56 +132,21 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public void Constructor_DoesNotApplyNonVariableMaskHintTypes()
-        {
-            using (TestHostContext hc = new TestHostContext(this))
-            {
-                // Arrange.
-                const string Name = "MyVar";
-                const string Value = "some value";
-                var copy = new Dictionary<string, string>
-                {
-                    { Name, Value }
-                };
-                var maskHints = new List<MaskHint>
-                {
-                    new MaskHint() { Type = MaskType.Regex, Value = Name },
-                };
-                List<string> warnings;
-                var variables = new Variables(hc, copy, maskHints, out warnings);
-
-                // Act.
-                KeyValuePair<string, string>[] publicVariables = variables.Public.ToArray();
-
-                // Assert.
-                Assert.Equal(1, publicVariables.Length);
-                Assert.Equal(Name, publicVariables[0].Key);
-                Assert.Equal(Value, publicVariables[0].Value);
-            }
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Worker")]
         public void Constructor_InheritsSecretFlagFromDeepRecursion()
         {
             using (TestHostContext hc = new TestHostContext(this))
             {
                 // Arrange.
-                var copy = new Dictionary<string, string>
+                var copy = new Dictionary<string, VariableValue>
                 {
                     { "variable1", "before $(variable2) after" },
                     { "variable2", "before2 $(variable3) after2" },
-                    { "variable3", "some variable 3 value" },
-                };
-                var maskHints = new List<MaskHint>
-                {
-                    new MaskHint() { Type = MaskType.Variable, Value = "variable3" },
+                    { "variable3", new VariableValue("some variable 3 value", true) },
                 };
 
                 // Act.
                 List<string> warnings;
-                var variables = new Variables(hc, copy, maskHints, out warnings);
+                var variables = new Variables(hc, copy, out warnings);
 
                 // Assert.
                 Assert.Equal(0, warnings.Count);
@@ -204,19 +165,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             using (TestHostContext hc = new TestHostContext(this))
             {
                 // Arrange.
-                var copy = new Dictionary<string, string>
+                var copy = new Dictionary<string, VariableValue>
                 {
                     { "variable1", "before $(variable2) after" },
-                    { "variable2", "some variable 2 value" },
-                };
-                var maskHints = new List<MaskHint>
-                {
-                    new MaskHint() { Type = MaskType.Variable, Value = "variable2" },
+                    { "variable2", new VariableValue("some variable 2 value", true) },
                 };
 
                 // Act.
                 List<string> warnings;
-                var variables = new Variables(hc, copy, maskHints, out warnings);
+                var variables = new Variables(hc, copy, out warnings);
 
                 // Assert.
                 Assert.Equal(0, warnings.Count);
@@ -234,7 +191,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             using (TestHostContext hc = new TestHostContext(this))
             {
                 // Arrange.
-                var copy = new Dictionary<string, string>
+                var copy = new Dictionary<string, VariableValue>
                 {
                     { "variable1", "before$(variable2)$(variable2)after" },
                     { "variable2", "some variable 2 value" },
@@ -242,7 +199,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
 
                 // Act.
                 List<string> warnings;
-                var variables = new Variables(hc, copy, new List<MaskHint>(), out warnings);
+                var variables = new Variables(hc, copy, out warnings);
 
                 // Assert.
                 Assert.Equal(0, warnings.Count);
@@ -259,7 +216,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             using (TestHostContext hc = new TestHostContext(this))
             {
                 // Arrange.
-                var copy = new Dictionary<string, string>
+                var copy = new Dictionary<string, VariableValue>
                 {
                     { "variable1", "before$(variable2)after" },
                     { "variable2", "$(variable3)world" },
@@ -268,7 +225,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
 
                 // Act.
                 List<string> warnings;
-                var variables = new Variables(hc, copy, new List<MaskHint>(), out warnings);
+                var variables = new Variables(hc, copy, out warnings);
 
                 // Assert.
                 Assert.Equal(0, warnings.Count);
@@ -286,7 +243,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             using (TestHostContext hc = new TestHostContext(this))
             {
                 // Arrange.
-                var copy = new Dictionary<string, string>
+                var copy = new Dictionary<string, VariableValue>
                 {
                     { "variable1", "before$($(variable2)after" },
                     { "variable2", "hello" },
@@ -294,7 +251,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
 
                 // Act.
                 List<string> warnings;
-                var variables = new Variables(hc, copy, new List<MaskHint>(), out warnings);
+                var variables = new Variables(hc, copy, out warnings);
 
                 // Assert.
                 Assert.Equal(0, warnings.Count);
@@ -311,15 +268,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             using (TestHostContext hc = new TestHostContext(this))
             {
                 // Arrange.
-                var copy = new Dictionary<string, string>
+                var copy = new Dictionary<string, VariableValue>
                 {
                     { "variable1", "before $(variable2) after" },
-                    { "variable2", null },
+                    { "variable2", new VariableValue(null, false) },
                 };
 
                 // Act.
                 List<string> warnings;
-                var variables = new Variables(hc, copy, new List<MaskHint>(), out warnings);
+                var variables = new Variables(hc, copy, out warnings);
 
                 // Assert.
                 Assert.Equal(0, warnings.Count);
@@ -336,15 +293,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             using (TestHostContext hc = new TestHostContext(this))
             {
                 // Arrange.
-                var copy = new Dictionary<string, string>
+                var copy = new Dictionary<string, VariableValue>
                 {
-                    { "variable1", null },
+                    { "variable1",  new VariableValue(null, false) },
                     { "variable2", "some variable 2 value" },
                 };
 
                 // Act.
                 List<string> warnings;
-                var variables = new Variables(hc, copy, new List<MaskHint>(), out warnings);
+                var variables = new Variables(hc, copy, out warnings);
 
                 // Assert.
                 Assert.Equal(0, warnings.Count);
@@ -362,13 +319,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             {
                 // Arrange.
                 List<string> warnings;
-                var copy = new Dictionary<string, string>
+                var copy = new Dictionary<string, VariableValue>
                 {
-                    { "variable1", null },
+                    { "variable1", new VariableValue(null, false) },
                 };
 
                 // Act.
-                var variables = new Variables(hc, copy, new List<MaskHint>(), out warnings);
+                var variables = new Variables(hc, copy, out warnings);
 
                 // Assert.
                 Assert.Equal(0, warnings.Count);
@@ -390,7 +347,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                 {
                     CultureInfo.CurrentCulture = new CultureInfo("tr-TR");
                     CultureInfo.CurrentUICulture = new CultureInfo("tr-TR");
-                    var copy = new Dictionary<string, string>
+                    var copy = new Dictionary<string, VariableValue>
                     {
                         { "i", "foo" },
                         { "I", "foo" },
@@ -398,7 +355,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
 
                     // Act.
                     List<string> warnings;
-                    var variables = new Variables(hc, copy, new List<MaskHint>(), out warnings);
+                    var variables = new Variables(hc, copy, out warnings);
 
                     // Assert.
                     Assert.Equal(1, variables.Public.Count());
@@ -420,15 +377,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             using (TestHostContext hc = new TestHostContext(this))
             {
                 // Arrange.
-                var copy = new Dictionary<string, string>
+                var copy = new Dictionary<string, VariableValue>
                 {
                     { "", "" },
                     { "   ", "" },
                     { "MyPublicVariable", "My public value" },
                 };
-                var maskHints = new List<MaskHint>();
+
                 List<string> warnings;
-                var variables = new Variables(hc, copy, maskHints, out warnings);
+                var variables = new Variables(hc, copy, out warnings);
 
                 // Act.
                 KeyValuePair<string, string>[] publicVariables = variables.Public.ToArray();
@@ -452,11 +409,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                 // should not get expanded since variable2 does not exist when the
                 // variables class is initialized (and therefore would never get expanded).
                 List<string> warnings;
-                var variableDictionary = new Dictionary<string, string>
+                var variableDictionary = new Dictionary<string, VariableValue>
                 {
                     { "variable1", "$(variable2)" },
                 };
-                var variables = new Variables(hc, variableDictionary, new List<MaskHint>(), out warnings);
+                var variables = new Variables(hc, variableDictionary, out warnings);
                 variables.Set("variable2", "some variable 2 value");
 
                 // Arrange: Setup the target dictionary.
@@ -480,12 +437,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             {
                 // Arrange: Setup the variables.
                 List<string> warnings;
-                var variableDictionary = new Dictionary<string, string>
+                var variableDictionary = new Dictionary<string, VariableValue>
                 {
                     { "variable1", "some variable 1 value " },
                     { "variable2", "some variable 2 value" },
                 };
-                var variables = new Variables(hc, variableDictionary, new List<MaskHint>(), out warnings);
+                var variables = new Variables(hc, variableDictionary, out warnings);
 
                 // Arrange: Setup the target dictionary.
                 var targetDictionary = new Dictionary<string, string>();
@@ -508,11 +465,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             {
                 // Arrange: Setup the variables.
                 List<string> warnings;
-                var variableDictionary = new Dictionary<string, string>
+                var variableDictionary = new Dictionary<string, VariableValue>
                 {
                     { "variable1", "some variable 1 value " },
                 };
-                var variables = new Variables(hc, variableDictionary, new List<MaskHint>(), out warnings);
+                var variables = new Variables(hc, variableDictionary, out warnings);
 
                 // Arrange: Setup the target dictionary.
                 var targetDictionary = new Dictionary<string, string>
@@ -537,11 +494,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             {
                 // Arrange: Setup the variables.
                 List<string> warnings;
-                var variableDictionary = new Dictionary<string, string>
+                var variableDictionary = new Dictionary<string, VariableValue>
                 {
                     { "variable1", "some variable 1 value" },
                 };
-                var variables = new Variables(hc, variableDictionary, new List<MaskHint>(), out warnings);
+                var variables = new Variables(hc, variableDictionary, out warnings);
 
                 // Arrange: Setup the target dictionary.
                 var targetDictionary = new Dictionary<string, string>();
@@ -564,7 +521,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             {
                 // Arrange.
                 List<string> warnings;
-                var variables = new Variables(hc, new Dictionary<string, string>(), new List<MaskHint>(), out warnings);
+                var variables = new Variables(hc, new Dictionary<string, VariableValue>(), out warnings);
 
                 // Act.
                 string actual = variables.Get("no such");
@@ -583,7 +540,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             {
                 // Arrange.
                 List<string> warnings;
-                var variables = new Variables(hc, new Dictionary<string, string>(), new List<MaskHint>(), out warnings);
+                var variables = new Variables(hc, new Dictionary<string, VariableValue>(), out warnings);
 
                 // Act.
                 bool? actual = variables.GetBoolean("no such");
@@ -602,7 +559,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             {
                 // Arrange.
                 List<string> warnings;
-                var variables = new Variables(hc, new Dictionary<string, string>(), new List<MaskHint>(), out warnings);
+                var variables = new Variables(hc, new Dictionary<string, VariableValue>(), out warnings);
 
                 // Act.
                 System.IO.FileShare? actual = variables.GetEnum<System.IO.FileShare>("no such");
@@ -621,12 +578,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             {
                 // Arrange.
                 List<string> warnings;
-                var original = new Dictionary<string, string>
+                var original = new Dictionary<string, VariableValue>
                 {
                     { "topLevelVariable", "$(nestedVariable1) $(nestedVariable2)" },
                     { "nestedVariable1", "Some nested value 1" },
                 };
-                var variables = new Variables(hc, original, new List<MaskHint>(), out warnings);
+                var variables = new Variables(hc, original, out warnings);
                 Assert.Equal(0, warnings.Count);
                 Assert.Equal(2, variables.Public.Count());
                 Assert.Equal("Some nested value 1 $(nestedVariable2)", variables.Get("topLevelVariable"));
@@ -654,7 +611,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             {
                 // Arrange.
                 List<string> warnings;
-                var variables = new Variables(hc, new Dictionary<string, string>(), new List<MaskHint>(), out warnings);
+                var variables = new Variables(hc, new Dictionary<string, VariableValue>(), out warnings);
                 Assert.Equal(0, warnings.Count);
                 variables.Set("foo", "bar");
                 Assert.Equal(1, variables.Public.Count());
@@ -679,7 +636,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             {
                 // Arrange.
                 List<string> warnings;
-                var variables = new Variables(hc, new Dictionary<string, string>(), new List<MaskHint>(), out warnings);
+                var variables = new Variables(hc, new Dictionary<string, VariableValue>(), out warnings);
                 variables.Set("foo", "bar");
                 Assert.Equal(1, variables.Public.Count());
 
@@ -701,7 +658,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             {
                 // Arrange.
                 List<string> warnings;
-                var variables = new Variables(hc, new Dictionary<string, string>(), new List<MaskHint>(), out warnings);
+                var variables = new Variables(hc, new Dictionary<string, VariableValue>(), out warnings);
                 variables.Set("foo", "bar", secret: true);
                 Assert.Equal(0, variables.Public.Count());
                 Assert.Equal("bar", variables.Get("foo"));
@@ -724,7 +681,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             {
                 // Arrange.
                 List<string> warnings;
-                var variables = new Variables(hc, new Dictionary<string, string>(), new List<MaskHint>(), out warnings);
+                var variables = new Variables(hc, new Dictionary<string, VariableValue>(), out warnings);
 
                 // Act.
                 variables.Set("foo", "bar", secret: true);
@@ -744,7 +701,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             {
                 // Arrange.
                 List<string> warnings;
-                var variables = new Variables(hc, new Dictionary<string, string>(), new List<MaskHint>(), out warnings);
+                var variables = new Variables(hc, new Dictionary<string, VariableValue>(), out warnings);
 
                 // Act.
                 variables.Set("foo", "bar", secret: true);
@@ -765,7 +722,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             {
                 // Arrange.
                 List<string> warnings;
-                var variables = new Variables(hc, new Dictionary<string, string>(), new List<MaskHint>(), out warnings);
+                var variables = new Variables(hc, new Dictionary<string, VariableValue>(), out warnings);
 
                 // Act.
                 variables.Set("variable1", null);
@@ -785,7 +742,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             {
                 // Arrange.
                 List<string> warnings;
-                var variables = new Variables(hc, new Dictionary<string, string>(), new List<MaskHint>(), out warnings);
+                var variables = new Variables(hc, new Dictionary<string, VariableValue>(), out warnings);
 
                 // Act.
                 variables.Set("foo", "bar");

@@ -10,6 +10,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
     {
         IHandler Create(
             IExecutionContext executionContext,
+            IStepHost stepHost,
             List<ServiceEndpoint> endpoints,
             List<SecureFile> secureFiles,
             HandlerData data,
@@ -23,6 +24,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
     {
         public IHandler Create(
             IExecutionContext executionContext,
+            IStepHost stepHost,
             List<ServiceEndpoint> endpoints,
             List<SecureFile> secureFiles,
             HandlerData data,
@@ -34,6 +36,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             // Validate args.
             Trace.Entering();
             ArgUtil.NotNull(executionContext, nameof(executionContext));
+            ArgUtil.NotNull(stepHost, nameof(stepHost));
             ArgUtil.NotNull(endpoints, nameof(endpoints));
             ArgUtil.NotNull(secureFiles, nameof(secureFiles));
             ArgUtil.NotNull(data, nameof(data));
@@ -88,6 +91,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             handler.Endpoints = endpoints;
             handler.Environment = environment;
             handler.ExecutionContext = executionContext;
+            handler.StepHost = stepHost;
             handler.FilePathInputRootDirectory = filePathInputRootDirectory;
             handler.Inputs = inputs;
             handler.SecureFiles = secureFiles;

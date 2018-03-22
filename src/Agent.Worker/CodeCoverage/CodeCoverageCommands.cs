@@ -63,7 +63,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
                 return;
             }
 
-            LoadPublishCodeCoverageInputs(eventProperties);
+            LoadPublishCodeCoverageInputs(context, eventProperties);
 
             string project = context.Variables.System_TeamProject;
 
@@ -214,7 +214,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
             return false;
         }
 
-        private void LoadPublishCodeCoverageInputs(Dictionary<string, string> eventProperties)
+        private void LoadPublishCodeCoverageInputs(IExecutionContext context, Dictionary<string, string> eventProperties)
         {
             //validate codecoverage tool input
             eventProperties.TryGetValue(PublishCodeCoverageEventProperties.CodeCoverageTool, out _codeCoverageTool);
@@ -229,14 +229,31 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
             {
                 throw new ArgumentException(StringUtil.Loc("ArgumentNeeded", "SummaryFile"));
             }
+            if (context.Container != null)
+            {
+                // Translate file path back from container path
+                _summaryFileLocation = context.Container.TranslateToHostPath(_summaryFileLocation);
+            }
 
             eventProperties.TryGetValue(PublishCodeCoverageEventProperties.ReportDirectory, out _reportDirectory);
+            if (context.Container != null)
+            {
+                // Translate file path back from container path
+                _reportDirectory = context.Container.TranslateToHostPath(_reportDirectory);
+            }
 
             string additionalFilesInput;
             eventProperties.TryGetValue(PublishCodeCoverageEventProperties.AdditionalCodeCoverageFiles, out additionalFilesInput);
             if (!string.IsNullOrEmpty(additionalFilesInput) && additionalFilesInput.Split(',').Count() > 0)
             {
-                _additionalCodeCoverageFiles = additionalFilesInput.Split(',').ToList<string>();
+                if (context.Container != null)
+                {
+                    _additionalCodeCoverageFiles = additionalFilesInput.Split(',').Select(x => context.Container.TranslateToHostPath(x)).ToList<string>();
+                }
+                else
+                {
+                    _additionalCodeCoverageFiles = additionalFilesInput.Split(',').ToList<string>();
+                }
             }
         }
 

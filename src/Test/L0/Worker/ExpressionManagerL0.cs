@@ -214,8 +214,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             List<string> warnings;
             _variables = new Variables(
                 hostContext: hc,
-                copy: new Dictionary<string, string>(),
-                maskHints: new List<MaskHint>(),
+                copy: new Dictionary<string, VariableValue>(),
                 warnings: out warnings);
             _ec = new Mock<IExecutionContext>();
             _ec.SetupAllProperties();

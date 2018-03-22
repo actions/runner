@@ -296,6 +296,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             }
 
             string filePath = data;
+            if (context.Container != null)
+            {
+                // Translate file path back from container path
+                filePath = context.Container.TranslateToHostPath(filePath);
+            }
+
             if (!String.IsNullOrEmpty(filePath) && File.Exists(filePath))
             {
                 // Upload attachment
@@ -360,6 +366,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
                 if (extension != null)
                 {
+                    if (context.Container != null)
+                    {
+                        // Translate file path back from container path
+                        sourcePath = context.Container.TranslateToHostPath(sourcePath);
+                        properties[ProjectIssueProperties.SourcePath] = sourcePath;
+                    }
+
                     // Get the values that represent the server path given a local path
                     string repoName;
                     string relativeSourcePath;

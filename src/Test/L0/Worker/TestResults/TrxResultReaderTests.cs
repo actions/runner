@@ -59,8 +59,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
                    "<OrderedTest name=\"OrderedTest1\" storage=\"c:\\users\\random\\source\\repos\\codeduitestproject1\\codeduitestproject1\\bin\\debug\\orderedtest1.orderedtest\" id=\"4eb63268-af79-48f1-b625-05ef09b0301a\"><Execution id=\"20927d24-2eb4-473f-b5b2-f52667b88f6f\" /><TestLinks><TestLink id=\"fd846020-c6f8-3c49-3ed0-fbe1e1fd340b\" name=\"CodedUITestMethod1\" storage=\"c:\\users\\random\\source\\repos\\codeduitestproject1\\codeduitestproject1\\bin\\debug\\codeduitestproject1.dll\" /><TestLink id=\"1c7ece84-d949-bed1-0a4c-dfad4f9c953e\" name=\"CodedUITestMethod2\" storage=\"c:\\users\\random\\source\\repos\\codeduitestproject1\\codeduitestproject1\\bin\\debug\\codeduitestproject1.dll\" /></TestLinks></OrderedTest>" +
                    "<UnitTest name=\"CodedUITestMethod1\" storage=\"c:\\users\\random\\source\\repos\\codeduitestproject1\\codeduitestproject1\\bin\\debug\\codeduitestproject1.dll\" id=\"fd846020-c6f8-3c49-3ed0-fbe1e1fd340b\"><Execution id=\"4f82d822-cd28-4bcc-b091-b08a66cf92e7\" parentId=\"20927d24-2eb4-473f-b5b2-f52667b88f6f\" /><TestMethod codeBase=\"c:\\users\\random\\source\\repos\\codeduitestproject1\\codeduitestproject1\\bin\\debug\\codeduitestproject1.dll\" adapterTypeName=\"executor://orderedtestadapter/v1\" className=\"CodedUITestProject1.CodedUITest1\" name=\"CodedUITestMethod1\" /></UnitTest>" +
                    "<UnitTest name=\"CodedUITestMethod2\" storage=\"c:\\users\\random\\source\\repos\\codeduitestproject1\\codeduitestproject1\\bin\\debug\\codeduitestproject1.dll\" priority=\"1\" id=\"1c7ece84-d949-bed1-0a4c-dfad4f9c953e\"><Execution id=\"5918f7d4-4619-4869-b777-71628227c62a\" parentId=\"20927d24-2eb4-473f-b5b2-f52667b88f6f\" /><TestMethod codeBase=\"c:\\users\\random\\source\\repos\\codeduitestproject1\\codeduitestproject1\\bin\\debug\\codeduitestproject1.dll\" adapterTypeName=\"executor://orderedtestadapter/v1\" className=\"CodedUITestProject1.CodedUITest1\" name=\"CodedUITestMethod2\" /></UnitTest>" +
-                 "</TestDefinitions>" +    
-                             
+                 "</TestDefinitions>" +
+
                  "<Results>" +
                    "<UnitTestResult executionId = \"48ec1e47-b9df-43b9-aef2-a2cc8742353d\" testId = \"f0d6b58f-dc08-9c0b-aab7-0a1411d4a346\" testName = \"TestMethod2\" computerName = \"SOMERANDOMCOMPUTERNAME\" duration = \"00:00:00.0834563\" startTime = \"2015-03-20T16:53:32.3099353+05:30\" endTime = \"2015-03-20T16:53:32.3939623+05:30\" testType = \"13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b\" outcome = \"Pending\" testListId = \"8c84fa94-04c1-424b-9868-57a2d4851a1d\" relativeResultsDirectory = \"48ec1e47-b9df-43b9-aef2-a2cc8742353d\" ><Output><StdOut>Show console log output.</StdOut><ErrorInfo><Message>Assert.Fail failed.</Message><StackTrace>at UnitTestProject4.UnitTest1.TestMethod2() in C:\\Users\\somerandomusername\\Source\\Repos\\Projectx\\UnitTestProject4\\UnitTestProject4\\UnitTest1.cs:line 21</StackTrace></ErrorInfo></Output>" +
                      "<ResultFiles><ResultFile path=\"DIGANR-DEV4\\x.txt\" /></ResultFiles>" +
@@ -84,11 +84,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
                "</TestRun>";
 
             var runData = GetTestRunData(trxContents, null, new TestRunContext("Owner", "any cpu", "debug", 1, "", "releaseUri", "releaseEnvironmentUri"));
-          
+
             Assert.Equal(runData.Results.Length, 3);
 
             Assert.Equal(runData.Results[0].Outcome, "NotExecuted");
-            Assert.Equal(runData.Results[0].TestCaseTitle, "TestMethod2");           
+            Assert.Equal(runData.Results[0].TestCaseTitle, "TestMethod2");
             Assert.Equal(runData.Results[1].Outcome, "Passed");
             Assert.Equal(runData.Results[1].TestCaseTitle, "PSD_Startseite");
             Assert.Equal(runData.Results[2].Outcome, "Passed");
@@ -637,7 +637,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
         }
         [Fact]
         [Trait("Level", "L0")]
-        [Trait("Category","PublishTestResults")]
+        [Trait("Category", "PublishTestResults")]
         public void VerifyReadResultsReturnsCorrectTestStartAndEndDateTime()
         {
             SetupMocks();
@@ -789,7 +789,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
                     "<ResultFile path=\"DIGANR-DEV4\\mstest.static.data.coverage\" />";
 
             var part3 = "<Deployment runDeploymentRoot=\"results\"></Deployment>";
-                      
+
 
             switch (val)
             {
@@ -821,7 +821,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
             TestHostContext hc = new TestHostContext(this, name);
             _ec = new Mock<IExecutionContext>();
             List<string> warnings;
-            var variables = new Variables(hc, new Dictionary<string, string>(), new List<MaskHint>(), out warnings);
+            var variables = new Variables(hc, new Dictionary<string, VariableValue>(), out warnings);
             _ec.Setup(x => x.Variables).Returns(variables);
         }
 

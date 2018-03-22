@@ -5,6 +5,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.Services.WebApi;
+using Pipelines = Microsoft.TeamFoundation.DistributedTask.Pipelines;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener
 {
@@ -156,7 +157,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 #if OS_WINDOWS
                 if (store.IsAutoLogonConfigured())
                 {
-                    if(HostContext.StartupType != StartupType.Service)
+                    if (HostContext.StartupType != StartupType.Service)
                     {
                         Trace.Info($"Autologon is configured on the machine, dumping all the autologon related registry settings");
                         var autoLogonRegManager = HostContext.GetService<IAutoLogonRegistryManager>();
@@ -315,7 +316,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                                 }
                             }
                         }
-                        else if (string.Equals(message.MessageType, JobRequestMessageTypes.AgentJobRequest, StringComparison.OrdinalIgnoreCase))
+                        else if (string.Equals(message.MessageType, JobRequestMessageTypes.AgentJobRequest, StringComparison.OrdinalIgnoreCase) ||
+                                 string.Equals(message.MessageType, JobRequestMessageTypes.PipelineAgentJobRequest, StringComparison.OrdinalIgnoreCase))
                         {
                             if (autoUpdateInProgress)
                             {
@@ -323,8 +325,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                             }
                             else
                             {
-                                var newJobMessage = JsonUtility.FromString<AgentJobRequestMessage>(message.Body);
-                                jobDispatcher.Run(newJobMessage);
+                                Pipelines.AgentJobRequestMessage pipelineJobMessage = null;
+                                switch (message.MessageType)
+                                {
+                                    case JobRequestMessageTypes.AgentJobRequest:
+                                        var legacyJobMessage = JsonUtility.FromString<AgentJobRequestMessage>(message.Body);
+                                        pipelineJobMessage = Pipelines.AgentJobRequestMessageUtil.Convert(legacyJobMessage);
+                                        break;
+                                    case JobRequestMessageTypes.PipelineAgentJobRequest:
+                                        pipelineJobMessage = JsonUtility.FromString<Pipelines.AgentJobRequestMessage>(message.Body);
+                                        break;
+                                }
+
+                                jobDispatcher.Run(pipelineJobMessage);
                             }
                         }
                         else if (string.Equals(message.MessageType, JobCancelMessage.MessageType, StringComparison.OrdinalIgnoreCase))

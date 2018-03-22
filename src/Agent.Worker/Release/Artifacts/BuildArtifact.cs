@@ -96,7 +96,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
         {
             Trace.Entering();
 
-            ServiceEndpoint vssEndpoint = context.Endpoints.FirstOrDefault(e => string.Equals(e.Name, "SystemVssConnection", StringComparison.OrdinalIgnoreCase));
+            ServiceEndpoint vssEndpoint = context.Endpoints.FirstOrDefault(e => string.Equals(e.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
             ArgUtil.NotNull(vssEndpoint, nameof(vssEndpoint));
             ArgUtil.NotNull(vssEndpoint.Url, nameof(vssEndpoint.Url));
 

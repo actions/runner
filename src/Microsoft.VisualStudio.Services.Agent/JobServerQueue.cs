@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Pipelines = Microsoft.TeamFoundation.DistributedTask.Pipelines;
 
 namespace Microsoft.VisualStudio.Services.Agent
 {
@@ -15,7 +16,7 @@ namespace Microsoft.VisualStudio.Services.Agent
     {
         event EventHandler<ThrottlingEventArgs> JobServerQueueThrottling;
         Task ShutdownAsync();
-        void Start(JobRequestMessage jobRequest);
+        void Start(Pipelines.AgentJobRequestMessage jobRequest);
         void QueueWebConsoleLine(string line);
         void QueueFileUpload(Guid timelineId, Guid timelineRecordId, string type, string name, string path, bool deleteSource);
         void QueueTimelineRecordUpdate(Guid timelineId, TimelineRecord timelineRecord);
@@ -79,7 +80,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             _jobServer = hostContext.GetService<IJobServer>();
         }
 
-        public void Start(JobRequestMessage jobRequest)
+        public void Start(Pipelines.AgentJobRequestMessage jobRequest)
         {
             Trace.Entering();
             if (HostContext.RunMode == RunMode.Local)

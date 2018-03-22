@@ -49,7 +49,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
             ArgUtil.NotNull(context, nameof(context));
             _executionContext = context;
 
-            LoadPublishTestResultsInputs(eventProperties, data);
+            LoadPublishTestResultsInputs(context, eventProperties, data);
 
             string teamProject = context.Variables.System_TeamProject;
             string owner = context.Variables.Build_RequestedFor;
@@ -165,7 +165,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                     {
                         _executionContext.Warning(StringUtil.Loc("InvalidResultFiles", resultFile, resultReader));
                     }
-                }                
+                }
 
                 //publish run if there are results.
                 if (runResults.Count > 0)
@@ -214,10 +214,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
         /// <summary>
         /// Publish separate test run for each result file that has results.
         /// </summary>
-        private async Task PublishToNewTestRunPerTestResultFileAsync(List<string> resultFiles, 
-            ITestRunPublisher publisher, 
-            TestRunContext runContext, 
-            string resultReader, 
+        private async Task PublishToNewTestRunPerTestResultFileAsync(List<string> resultFiles,
+            ITestRunPublisher publisher,
+            TestRunContext runContext,
+            string resultReader,
             int batchSize,
             CancellationToken cancellationToken)
         {
@@ -229,7 +229,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                     .Select(bucket => bucket.Select(pair => pair.file).ToList())
                     .ToList();
 
-                foreach(var files in groupedFiles)
+                foreach (var files in groupedFiles)
                 {
                     // Publish separate test run for each result file that has results.
                     var publishTasks = files.Select(async resultFile =>
@@ -289,7 +289,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
             return reader;
         }
 
-        private void LoadPublishTestResultsInputs(Dictionary<string, string> eventProperties, string data)
+        private void LoadPublishTestResultsInputs(IExecutionContext context, Dictionary<string, string> eventProperties, string data)
         {
             // Validate input test results files
             string resultFilesInput;
@@ -297,7 +297,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
             // To support compat we parse data first. If data is empty parse 'TestResults' parameter
             if (!string.IsNullOrWhiteSpace(data) && data.Split(',').Count() != 0)
             {
-                _testResultFiles = data.Split(',').ToList();
+                if (context.Container != null)
+                {
+                    _testResultFiles = data.Split(',').Select(x => context.Container.TranslateToHostPath(x)).ToList();
+                }
+                else
+                {
+                    _testResultFiles = data.Split(',').ToList();
+                }
             }
             else
             {
@@ -305,7 +312,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                 {
                     throw new ArgumentException(StringUtil.Loc("ArgumentNeeded", "TestResults"));
                 }
-                _testResultFiles = resultFilesInput.Split(',').ToList();
+
+                if (context.Container != null)
+                {
+                    _testResultFiles = resultFilesInput.Split(',').Select(x => context.Container.TranslateToHostPath(x)).ToList();
+                }
+                else
+                {
+                    _testResultFiles = resultFilesInput.Split(',').ToList();
+                }
             }
 
             //validate testrunner input

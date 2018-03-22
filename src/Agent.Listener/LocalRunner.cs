@@ -18,6 +18,7 @@ using Microsoft.VisualStudio.Services.WebApi;
 using Newtonsoft.Json;
 using Yaml = Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Pipelines.Yaml;
 using YamlContracts = Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Pipelines.Yaml.Contracts;
+using Pipelines = Microsoft.TeamFoundation.DistributedTask.Pipelines;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener
 {
@@ -200,7 +201,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             {
                 jobDispatcher = HostContext.CreateService<IJobDispatcher>();
                 job.RequestMessage.Environment.Variables[Constants.Variables.Agent.RunMode] = RunMode.Local.ToString();
-                jobDispatcher.Run(job.RequestMessage);
+                jobDispatcher.Run(Pipelines.AgentJobRequestMessageUtil.Convert(job.RequestMessage));
                 Task jobDispatch = jobDispatcher.WaitAsync(token);
                 if (!Task.WaitAll(new[] { jobDispatch }, job.Timeout))
                 {

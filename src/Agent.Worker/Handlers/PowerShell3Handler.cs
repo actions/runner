@@ -44,32 +44,30 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             // Craft the args to pass to PowerShell.exe.
             string powerShellExeArgs = StringUtil.Format(
                 @"-NoLogo -Sta -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -Command "". ([scriptblock]::Create('if (!$PSHOME) {{ $null = Get-Item -LiteralPath ''variable:PSHOME'' }} else {{ Import-Module -Name ([System.IO.Path]::Combine($PSHOME, ''Modules\Microsoft.PowerShell.Management\Microsoft.PowerShell.Management.psd1'')) ; Import-Module -Name ([System.IO.Path]::Combine($PSHOME, ''Modules\Microsoft.PowerShell.Utility\Microsoft.PowerShell.Utility.psd1'')) }}')) 2>&1 | ForEach-Object {{ Write-Verbose $_.Exception.Message -Verbose }} ; Import-Module -Name '{0}' -ArgumentList @{{ NonInteractive = $true }} -ErrorAction Stop ; $VerbosePreference = '{1}' ; $DebugPreference = '{1}' ; Invoke-VstsTaskScript -ScriptBlock ([scriptblock]::Create('. ''{2}'''))""",
-                moduleFile.Replace("'", "''"), // nested within a single-quoted string
+                StepHost.ResolvePathForStepHost(moduleFile).Replace("'", "''"), // nested within a single-quoted string
                 ExecutionContext.Variables.System_Debug == true ? "Continue" : "SilentlyContinue",
-                scriptFile.Replace("'", "''''")); // nested within a single-quoted string within a single-quoted string
+                StepHost.ResolvePathForStepHost(scriptFile).Replace("'", "''''")); // nested within a single-quoted string within a single-quoted string
 
             // Resolve powershell.exe.
-            string powerShellExe = HostContext.GetService<IPowerShellExeUtil>().GetPath();
+            string powerShellExe = HostContext.GetService<IPowerShellExeUtil>().GetPath(); // The location of powershell.exe might be wrong when running inside container
             ArgUtil.NotNullOrEmpty(powerShellExe, nameof(powerShellExe));
 
             // Invoke the process.
-            using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
-            {
-                processInvoker.OutputDataReceived += OnDataReceived;
-                processInvoker.ErrorDataReceived += OnDataReceived;
+            StepHost.OutputDataReceived += OnDataReceived;
+            StepHost.ErrorDataReceived += OnDataReceived;
 
-                // Execute the process. Exit code 0 should always be returned.
-                // A non-zero exit code indicates infrastructural failure.
-                // Task failure should be communicated over STDOUT using ## commands.
-                await processInvoker.ExecuteAsync(workingDirectory: scriptDirectory,
-                                                  fileName: powerShellExe,
-                                                  arguments: powerShellExeArgs,
-                                                  environment: Environment,
-                                                  requireExitCodeZero: true,
-                                                  outputEncoding: null,
-                                                  killProcessOnCancel: false,
-                                                  cancellationToken: ExecutionContext.CancellationToken);
-            }
+            // Execute the process. Exit code 0 should always be returned.
+            // A non-zero exit code indicates infrastructural failure.
+            // Task failure should be communicated over STDOUT using ## commands.
+            await StepHost.ExecuteAsync(workingDirectory: StepHost.ResolvePathForStepHost(scriptDirectory),
+                                              fileName: powerShellExe,
+                                              arguments: powerShellExeArgs,
+                                              environment: Environment,
+                                              requireExitCodeZero: true,
+                                              outputEncoding: null,
+                                              killProcessOnCancel: false,
+                                              cancellationToken: ExecutionContext.CancellationToken);
+
         }
 
         private void OnDataReceived(object sender, ProcessDataReceivedEventArgs e)

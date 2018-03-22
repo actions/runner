@@ -102,49 +102,35 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             Trace.Info("Inspect node_modules folder, make sure vsts-task-lib doesn't overwrite String.startsWith/endsWith.");
             FixVstsTaskLibModule();
 
+            StepHost.OutputDataReceived += OnDataReceived;
+            StepHost.ErrorDataReceived += OnDataReceived;
 
-            // Setup the process invoker.
-            using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
-            {
-                processInvoker.OutputDataReceived += OnDataReceived;
-                processInvoker.ErrorDataReceived += OnDataReceived;
-
-                string file;
-                string arguments;
-                file = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), "node", "bin", $"node{IOUtil.ExeExtension}");
-                // Format the arguments passed to node.
-                // 1) Wrap the script file path in double quotes.
-                // 2) Escape double quotes within the script file path. Double-quote is a valid
-                // file name character on Linux.
-                arguments = StringUtil.Format(@"""{0}""", target.Replace(@"""", @"\"""));
-
-                if (!string.IsNullOrEmpty(ExecutionContext.Container.ContainerId))
-                {
-                    var containerProvider = HostContext.GetService<IContainerOperationProvider>();
-                    containerProvider.GetHandlerContainerExecutionCommandline(ExecutionContext, file, arguments, workingDirectory, Environment, out file, out arguments);
-                    Environment.Clear();
-                }
+            string file = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), "node", "bin", $"node{IOUtil.ExeExtension}");
+            // Format the arguments passed to node.
+            // 1) Wrap the script file path in double quotes.
+            // 2) Escape double quotes within the script file path. Double-quote is a valid
+            // file name character on Linux.
+            string arguments = StepHost.ResolvePathForStepHost(StringUtil.Format(@"""{0}""", target.Replace(@"""", @"\""")));
 
 #if OS_WINDOWS
-                // It appears that node.exe outputs UTF8 when not in TTY mode.
-                Encoding outputEncoding = Encoding.UTF8;
+            // It appears that node.exe outputs UTF8 when not in TTY mode.
+            Encoding outputEncoding = Encoding.UTF8;
 #else
                 // Let .NET choose the default.
-                Encoding outputEncoding = null;
+            Encoding outputEncoding = null;
 #endif
 
-                // Execute the process. Exit code 0 should always be returned.
-                // A non-zero exit code indicates infrastructural failure.
-                // Task failure should be communicated over STDOUT using ## commands.
-                await processInvoker.ExecuteAsync(workingDirectory: workingDirectory,
-                                                  fileName: file,
-                                                  arguments: arguments,
-                                                  environment: Environment,
-                                                  requireExitCodeZero: true,
-                                                  outputEncoding: outputEncoding,
-                                                  killProcessOnCancel: false,
-                                                  cancellationToken: ExecutionContext.CancellationToken);
-            }
+            // Execute the process. Exit code 0 should always be returned.
+            // A non-zero exit code indicates infrastructural failure.
+            // Task failure should be communicated over STDOUT using ## commands.
+            await StepHost.ExecuteAsync(workingDirectory: StepHost.ResolvePathForStepHost(workingDirectory),
+                                        fileName: StepHost.ResolvePathForStepHost(file),
+                                        arguments: arguments,
+                                        environment: Environment,
+                                        requireExitCodeZero: true,
+                                        outputEncoding: outputEncoding,
+                                        killProcessOnCancel: false,
+                                        cancellationToken: ExecutionContext.CancellationToken);
         }
 
         private void OnDataReceived(object sender, ProcessDataReceivedEventArgs e)

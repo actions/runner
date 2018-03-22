@@ -1,4 +1,5 @@
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
+using Pipelines = Microsoft.TeamFoundation.DistributedTask.Pipelines;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using Newtonsoft.Json;
 using System;
@@ -49,7 +50,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 Trace.Info("Message received.");
                 ArgUtil.Equal(MessageType.NewJobRequest, channelMessage.MessageType, nameof(channelMessage.MessageType));
                 ArgUtil.NotNullOrEmpty(channelMessage.Body, nameof(channelMessage.Body));
-                var jobMessage = JsonUtility.FromString<AgentJobRequestMessage>(channelMessage.Body);
+                var jobMessage = JsonUtility.FromString<Pipelines.AgentJobRequestMessage>(channelMessage.Body);
                 ArgUtil.NotNull(jobMessage, nameof(jobMessage));
 
                 // Initialize the secret masker and set the thread culture.
@@ -99,16 +100,27 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             }
         }
 
-        private void InitializeSecretMasker(JobRequestMessage message)
+        private void InitializeSecretMasker(Pipelines.AgentJobRequestMessage message)
         {
             Trace.Entering();
             ArgUtil.NotNull(message, nameof(message));
-            ArgUtil.NotNull(message.Environment, nameof(message.Environment));
+            ArgUtil.NotNull(message.Resources, nameof(message.Resources));
             var secretMasker = HostContext.GetService<ISecretMasker>();
 
+            // Add mask hints for secret variables
+            foreach (var variable in (message.Variables ?? new Dictionary<string, VariableValue>()))
+            {
+                if (variable.Value.IsSecret)
+                {
+                    secretMasker.AddValue(variable.Value.Value);
+
+                    // Also add the JSON escaped string since the job message is traced in the diag log.
+                    secretMasker.AddValue(JsonConvert.ToString(variable.Value.Value));
+                }
+            }
+
             // Add mask hints
-            var variables = message?.Environment?.Variables ?? new Dictionary<string, string>();
-            foreach (MaskHint maskHint in (message.Environment.MaskHints ?? new List<MaskHint>()))
+            foreach (MaskHint maskHint in (message.MaskHints ?? new List<MaskHint>()))
             {
                 if (maskHint.Type == MaskType.Regex)
                 {
@@ -116,18 +128,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
                     // Also add the JSON escaped string since the job message is traced in the diag log.
                     secretMasker.AddValue(JsonConvert.ToString(maskHint.Value ?? string.Empty));
-                }
-                else if (maskHint.Type == MaskType.Variable)
-                {
-                    string value;
-                    if (variables.TryGetValue(maskHint.Value, out value) &&
-                        !string.IsNullOrEmpty(value))
-                    {
-                        secretMasker.AddValue(value);
-
-                        // Also add the JSON escaped string since the job message is traced in the diag log.
-                        secretMasker.AddValue(JsonConvert.ToString(value));
-                    }
                 }
                 else
                 {
@@ -139,7 +139,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             // TODO: Avoid adding redundant secrets. If the endpoint auth matches the system connection, then it's added as a value secret and as a regex secret. Once as a value secret b/c of the following code that iterates over each endpoint. Once as a regex secret due to the hint sent down in the job message.
 
             // Add masks for service endpoints
-            foreach (ServiceEndpoint endpoint in message.Environment.Endpoints ?? new List<ServiceEndpoint>())
+            foreach (ServiceEndpoint endpoint in message.Resources.Endpoints ?? new List<ServiceEndpoint>())
             {
                 foreach (string value in endpoint.Authorization?.Parameters?.Values ?? new string[0])
                 {
@@ -157,20 +157,32 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     }
                 }
             }
+
+            // Add masks for secure file download tickets
+            foreach (SecureFile file in message.Resources.SecureFiles ?? new List<SecureFile>())
+            {
+                if (!string.IsNullOrEmpty(file.Ticket))
+                {
+                    secretMasker.AddRegex(file.Ticket);
+
+                    // Also add the JSON escaped string since the job message is traced in the diag log.
+                    secretMasker.AddValue(JsonConvert.ToString(file.Ticket));
+                }
+            }
         }
 
-        private void SetCulture(JobRequestMessage message)
+        private void SetCulture(Pipelines.AgentJobRequestMessage message)
         {
             // Extract the culture name from the job's variable dictionary.
             // The variable does not exist for TFS 2015 RTM and Update 1.
             // It was introduced in Update 2.
-            string culture;
-            ArgUtil.NotNull(message.Environment, nameof(message.Environment));
-            ArgUtil.NotNull(message.Environment.Variables, nameof(message.Environment.Variables));
-            if (message.Environment.Variables.TryGetValue(Constants.Variables.System.Culture, out culture))
+            VariableValue culture;
+            ArgUtil.NotNull(message, nameof(message));
+            ArgUtil.NotNull(message.Variables, nameof(message.Variables));
+            if (message.Variables.TryGetValue(Constants.Variables.System.Culture, out culture))
             {
                 // Set the default thread culture.
-                HostContext.SetDefaultCulture(culture);
+                HostContext.SetDefaultCulture(culture.Value);
             }
         }
     }

@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Xunit;
 using System.Threading;
 using System.Collections.ObjectModel;
+using Pipelines = Microsoft.TeamFoundation.DistributedTask.Pipelines;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
 {
@@ -17,7 +18,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
         private IExecutionContext _jobEc;
         private JobRunner _jobRunner;
         private JobInitializeResult _initResult = new JobInitializeResult();
-        private AgentJobRequestMessage _message;
+        private Pipelines.AgentJobRequestMessage _message;
         private CancellationTokenSource _tokenSource;
         private Mock<IJobServer> _jobServer;
         private Mock<IJobServerQueue> _jobServerQueue;
@@ -31,7 +32,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
         private Mock<IJobExtension> _jobExtension;
         private Mock<IPagingLogger> _logger;
         private Mock<ITempDirectoryManager> _temp;
-        private Mock<IDiagnosticLogManager> _diagnosticLogManager;        
+        private Mock<IDiagnosticLogManager> _diagnosticLogManager;
 
         private TestHostContext CreateTestContext([CallerMemberName] String testName = "")
         {
@@ -71,6 +72,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             environment.Variables[Constants.Variables.System.Culture] = "en-US";
             environment.SystemConnection = new ServiceEndpoint()
             {
+                Name = WellKnownServiceEndpointNames.SystemVssConnection,
                 Url = new Uri("https://test.visualstudio.com"),
                 Authorization = new EndpointAuthorization()
                 {
@@ -81,7 +83,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
 
             List<TaskInstance> tasks = new List<TaskInstance>();
             Guid JobId = Guid.NewGuid();
-            _message = new AgentJobRequestMessage(plan, timeline, JobId, testName, testName, environment, tasks);
+            _message = Pipelines.AgentJobRequestMessageUtil.Convert(new AgentJobRequestMessage(plan, timeline, JobId, testName, testName, environment, tasks));
 
             _extensions.Setup(x => x.GetExtensions<IJobExtension>()).
                 Returns(new[] { _jobExtension.Object }.ToList());
@@ -90,7 +92,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             _initResult.JobSteps.Clear();
             _initResult.PostJobStep.Clear();
 
-            _jobExtension.Setup(x => x.InitializeJob(It.IsAny<IExecutionContext>(), It.IsAny<AgentJobRequestMessage>())).
+            _jobExtension.Setup(x => x.InitializeJob(It.IsAny<IExecutionContext>(), It.IsAny<Pipelines.AgentJobRequestMessage>())).
                 Returns(Task.FromResult(_initResult));
             _jobExtension.Setup(x => x.HostType)
                 .Returns<string>(null);
@@ -133,13 +135,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
         {
             using (TestHostContext hc = CreateTestContext())
             {
-                _jobExtension.Setup(x => x.InitializeJob(It.IsAny<IExecutionContext>(), It.IsAny<AgentJobRequestMessage>()))
+                _jobExtension.Setup(x => x.InitializeJob(It.IsAny<IExecutionContext>(), It.IsAny<Pipelines.AgentJobRequestMessage>()))
                     .Throws(new Exception());
 
                 await _jobRunner.RunAsync(_message, _tokenSource.Token);
 
                 Assert.Equal(TaskResult.Failed, _jobEc.Result);
-                _stepRunner.Verify(x => x.RunAsync(It.IsAny<IExecutionContext>(), It.IsAny<IList<IStep>>(), JobRunStage.PreJob), Times.Never);
+                _stepRunner.Verify(x => x.RunAsync(It.IsAny<IExecutionContext>(), It.IsAny<IList<IStep>>()), Times.Never);
             }
         }
 
@@ -150,136 +152,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
         {
             using (TestHostContext hc = CreateTestContext())
             {
-                _jobExtension.Setup(x => x.InitializeJob(It.IsAny<IExecutionContext>(), It.IsAny<AgentJobRequestMessage>()))
+                _jobExtension.Setup(x => x.InitializeJob(It.IsAny<IExecutionContext>(), It.IsAny<Pipelines.AgentJobRequestMessage>()))
                     .Throws(new OperationCanceledException());
                 _tokenSource.Cancel();
 
                 await _jobRunner.RunAsync(_message, _tokenSource.Token);
 
                 Assert.Equal(TaskResult.Canceled, _jobEc.Result);
-                _stepRunner.Verify(x => x.RunAsync(It.IsAny<IExecutionContext>(), It.IsAny<IList<IStep>>(), JobRunStage.PreJob), Times.Never);
-            }
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Worker")]
-        public async Task SkipJobStepsWhenPreJobStepsFail()
-        {
-            using (TestHostContext hc = CreateTestContext())
-            {
-                _stepRunner.Setup(x => x.RunAsync(_jobEc, _initResult.PreJobSteps, JobRunStage.PreJob))
-                    .Callback(() => { _jobEc.Result = TaskResult.Failed; })
-                    .Returns(Task.CompletedTask);
-
-                await _jobRunner.RunAsync(_message, _tokenSource.Token);
-
-                Assert.Equal(TaskResult.Failed, _jobEc.Result);
-                _stepRunner.Verify(x => x.RunAsync(It.IsAny<IExecutionContext>(), It.Is<IList<IStep>>(s => s.Equals(_initResult.PreJobSteps)), JobRunStage.PreJob), Times.Once);
-                _stepRunner.Verify(x => x.RunAsync(It.IsAny<IExecutionContext>(), It.Is<IList<IStep>>(s => s.Equals(_initResult.JobSteps)), JobRunStage.Main), Times.Never);
-            }
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Worker")]
-        public async Task SkipJobStepsWhenPreJobStepsCancelled()
-        {
-            using (TestHostContext hc = CreateTestContext())
-            {
-                _stepRunner.Setup(x => x.RunAsync(_jobEc, _initResult.PreJobSteps, JobRunStage.PreJob))
-                    .Callback(() => { _jobEc.Result = TaskResult.Canceled; })
-                    .Returns(Task.CompletedTask);
-
-                await _jobRunner.RunAsync(_message, _tokenSource.Token);
-
-                Assert.Equal(TaskResult.Canceled, _jobEc.Result);
-                _stepRunner.Verify(x => x.RunAsync(It.IsAny<IExecutionContext>(), It.Is<IList<IStep>>(s => s.Equals(_initResult.PreJobSteps)), JobRunStage.PreJob), Times.Once);
-                _stepRunner.Verify(x => x.RunAsync(It.IsAny<IExecutionContext>(), It.Is<IList<IStep>>(s => s.Equals(_initResult.JobSteps)), JobRunStage.Main), Times.Never);
-            }
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Worker")]
-        public async Task RunPostJobStepsEvenPreJobStepsFail()
-        {
-            using (TestHostContext hc = CreateTestContext())
-            {
-                _stepRunner.Setup(x => x.RunAsync(_jobEc, _initResult.PreJobSteps, JobRunStage.PreJob))
-                    .Callback(() => { _jobEc.Result = TaskResult.Failed; })
-                    .Returns(Task.CompletedTask); ;
-
-                await _jobRunner.RunAsync(_message, _tokenSource.Token);
-
-                Assert.Equal(TaskResult.Failed, _jobEc.Result);
-                _stepRunner.Verify(x => x.RunAsync(It.IsAny<IExecutionContext>(), It.Is<IList<IStep>>(s => s.Equals(_initResult.PreJobSteps)), JobRunStage.PreJob), Times.Once);
-                _stepRunner.Verify(x => x.RunAsync(It.IsAny<IExecutionContext>(), It.Is<IList<IStep>>(s => s.Equals(_initResult.PostJobStep)), JobRunStage.PostJob), Times.Once);
-            }
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Worker")]
-        public async Task RunPostJobStepsEvenPreJobStepsCancelled()
-        {
-            using (TestHostContext hc = CreateTestContext())
-            {
-                _stepRunner.Setup(x => x.RunAsync(_jobEc, _initResult.PreJobSteps, JobRunStage.PreJob))
-                    .Callback(() => { _jobEc.Result = TaskResult.Canceled; })
-                    .Returns(Task.CompletedTask); ;
-
-                await _jobRunner.RunAsync(_message, _tokenSource.Token);
-
-                Assert.Equal(TaskResult.Canceled, _jobEc.Result);
-                _stepRunner.Verify(x => x.RunAsync(It.IsAny<IExecutionContext>(), It.Is<IList<IStep>>(s => s.Equals(_initResult.PreJobSteps)), JobRunStage.PreJob), Times.Once);
-                _stepRunner.Verify(x => x.RunAsync(It.IsAny<IExecutionContext>(), It.Is<IList<IStep>>(s => s.Equals(_initResult.PostJobStep)), JobRunStage.PostJob), Times.Once);
-            }
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Worker")]
-        public async Task RunPostJobStepsEvenJobStepsFail()
-        {
-            using (TestHostContext hc = CreateTestContext())
-            {
-                _stepRunner.Setup(x => x.RunAsync(_jobEc, _initResult.PreJobSteps, JobRunStage.PreJob))
-                    .Returns(Task.CompletedTask);
-
-                _stepRunner.Setup(x => x.RunAsync(_jobEc, _initResult.JobSteps, JobRunStage.Main))
-                    .Callback(() => { _jobEc.Result = TaskResult.Failed; })
-                    .Returns(Task.CompletedTask); ;
-
-                await _jobRunner.RunAsync(_message, _tokenSource.Token);
-
-                Assert.Equal(TaskResult.Failed, _jobEc.Result);
-                _stepRunner.Verify(x => x.RunAsync(It.IsAny<IExecutionContext>(), It.Is<IList<IStep>>(s => s.Equals(_initResult.PreJobSteps)), JobRunStage.PreJob), Times.Once);
-                _stepRunner.Verify(x => x.RunAsync(It.IsAny<IExecutionContext>(), It.Is<IList<IStep>>(s => s.Equals(_initResult.JobSteps)), JobRunStage.Main), Times.Once);
-                _stepRunner.Verify(x => x.RunAsync(It.IsAny<IExecutionContext>(), It.Is<IList<IStep>>(s => s.Equals(_initResult.PostJobStep)), JobRunStage.PostJob), Times.Once);
-            }
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Worker")]
-        public async Task RunPostJobStepsEvenJobStepsCancelled()
-        {
-            using (TestHostContext hc = CreateTestContext())
-            {
-                _stepRunner.Setup(x => x.RunAsync(_jobEc, _initResult.PreJobSteps, JobRunStage.PreJob))
-                    .Returns(Task.CompletedTask);
-
-                _stepRunner.Setup(x => x.RunAsync(_jobEc, _initResult.JobSteps, JobRunStage.Main))
-                    .Callback(() => { _jobEc.Result = TaskResult.Canceled; })
-                    .Returns(Task.CompletedTask); ;
-
-                await _jobRunner.RunAsync(_message, _tokenSource.Token);
-
-                Assert.Equal(TaskResult.Canceled, _jobEc.Result);
-                _stepRunner.Verify(x => x.RunAsync(It.IsAny<IExecutionContext>(), It.Is<IList<IStep>>(s => s.Equals(_initResult.PreJobSteps)), JobRunStage.PreJob), Times.Once);
-                _stepRunner.Verify(x => x.RunAsync(It.IsAny<IExecutionContext>(), It.Is<IList<IStep>>(s => s.Equals(_initResult.JobSteps)), JobRunStage.Main), Times.Once);
-                _stepRunner.Verify(x => x.RunAsync(It.IsAny<IExecutionContext>(), It.Is<IList<IStep>>(s => s.Equals(_initResult.PostJobStep)), JobRunStage.PostJob), Times.Once);
+                _stepRunner.Verify(x => x.RunAsync(It.IsAny<IExecutionContext>(), It.IsAny<IList<IStep>>()), Times.Never);
             }
         }
 
@@ -290,13 +170,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
         {
             using (TestHostContext hc = CreateTestContext())
             {
-                _message.Environment.Variables[Constants.Variables.Agent.Diagnostic] = "true";
+                _message.Variables[Constants.Variables.Agent.Diagnostic] = "true";
 
                 await _jobRunner.RunAsync(_message, _tokenSource.Token);
 
-                _diagnosticLogManager.Verify(x => x.UploadDiagnosticLogsAsync(It.IsAny<IExecutionContext>(), 
-                                                                         It.IsAny<AgentJobRequestMessage>(), 
-                                                                         It.IsAny<DateTime>()), 
+                _diagnosticLogManager.Verify(x => x.UploadDiagnosticLogsAsync(It.IsAny<IExecutionContext>(),
+                                                                         It.IsAny<Pipelines.AgentJobRequestMessage>(),
+                                                                         It.IsAny<DateTime>()),
                                              Times.Once);
             }
         }
@@ -308,15 +188,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
         {
             using (TestHostContext hc = CreateTestContext())
             {
-                _message.Environment.Variables[Constants.Variables.Agent.Diagnostic] = "false";
+                _message.Variables[Constants.Variables.Agent.Diagnostic] = "false";
 
                 await _jobRunner.RunAsync(_message, _tokenSource.Token);
 
-                _diagnosticLogManager.Verify(x => x.UploadDiagnosticLogsAsync(It.IsAny<IExecutionContext>(), 
-                                                                         It.IsAny<AgentJobRequestMessage>(), 
-                                                                         It.IsAny<DateTime>()), 
+                _diagnosticLogManager.Verify(x => x.UploadDiagnosticLogsAsync(It.IsAny<IExecutionContext>(),
+                                                                         It.IsAny<Pipelines.AgentJobRequestMessage>(),
+                                                                         It.IsAny<DateTime>()),
                                              Times.Never);
-            }            
+            }
         }
 
         [Fact]
@@ -328,11 +208,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             {
                 await _jobRunner.RunAsync(_message, _tokenSource.Token);
 
-                _diagnosticLogManager.Verify(x => x.UploadDiagnosticLogsAsync(It.IsAny<IExecutionContext>(), 
-                                                                         It.IsAny<AgentJobRequestMessage>(), 
-                                                                         It.IsAny<DateTime>()), 
+                _diagnosticLogManager.Verify(x => x.UploadDiagnosticLogsAsync(It.IsAny<IExecutionContext>(),
+                                                                         It.IsAny<Pipelines.AgentJobRequestMessage>(),
+                                                                         It.IsAny<DateTime>()),
                                              Times.Never);
-            }  
+            }
         }
     }
 }

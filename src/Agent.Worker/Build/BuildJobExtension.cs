@@ -20,19 +20,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         public override IStep GetExtensionPreJobStep(IExecutionContext jobContext)
         {
             return new JobExtensionRunner(
-                context: jobContext.CreateChild(Guid.NewGuid(), StringUtil.Loc("GetSources"), nameof(BuildJobExtension)),
                 runAsync: GetSourceAsync,
                 condition: ExpressionManager.Succeeded,
-                displayName: StringUtil.Loc("GetSources"));
+                displayName: StringUtil.Loc("GetSources"),
+                data: null);
         }
 
         public override IStep GetExtensionPostJobStep(IExecutionContext jobContext)
         {
             return new JobExtensionRunner(
-                context: jobContext.CreateChild(Guid.NewGuid(), StringUtil.Loc("Cleanup"), nameof(BuildJobExtension)),
                 runAsync: PostJobCleanupAsync,
                 condition: ExpressionManager.Always,
-                displayName: StringUtil.Loc("Cleanup"));
+                displayName: StringUtil.Loc("Cleanup"),
+                data: null);
         }
 
         // 1. use source provide to solve path, if solved result is rooted, return full path.
@@ -191,7 +191,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             SourceProvider.SetVariablesInEndpoint(executionContext, SourceEndpoint);
         }
 
-        private async Task GetSourceAsync(IExecutionContext executionContext)
+        private async Task GetSourceAsync(IExecutionContext executionContext, object data)
         {
             // Validate args.
             Trace.Entering();
@@ -230,7 +230,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             }
         }
 
-        private async Task PostJobCleanupAsync(IExecutionContext executionContext)
+        private async Task PostJobCleanupAsync(IExecutionContext executionContext, object data)
         {
             // Validate args.
             Trace.Entering();

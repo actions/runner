@@ -145,7 +145,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Release
             _sourceProvider = new Mock<ISourceProvider>();
 
             List<string> warnings;
-            _variables = new Variables(hc, new Dictionary<string, string>(), new List<MaskHint>(), out warnings);
+            _variables = new Variables(hc, new Dictionary<string, VariableValue>(), out warnings);
 
             hc.SetSingleton<IExtensionManager>(_extensionManager.Object);
             _ec.Setup(x => x.Variables).Returns(_variables);

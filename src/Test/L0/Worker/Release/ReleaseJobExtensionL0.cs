@@ -133,7 +133,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Release
             var releaseVariables = useReleaseDefinitionId
                 ? GetReleaseVariables(id.ToString(), bool.TrueString)
                 : GetReleaseVariables(null, bool.TrueString);
-            _variables = new Variables(hc, releaseVariables, new List<MaskHint>(), out warnings);
+            _variables = new Variables(hc, releaseVariables, out warnings);
 
             hc.SetSingleton(_releaseDirectoryManager.Object);
             hc.SetSingleton(_extensionManager.Object);
@@ -148,9 +148,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Release
             return hc;
         }
 
-        private Dictionary<string, string> GetReleaseVariables(string releaseDefinitionId, string skipArtifactDownload)
+        private Dictionary<string, VariableValue> GetReleaseVariables(string releaseDefinitionId, string skipArtifactDownload)
         {
-            var releaseVariables = new Dictionary<string, string>();
+            var releaseVariables = new Dictionary<string, VariableValue>();
             releaseVariables.Add(Constants.Variables.Release.ArtifactsDirectory, this.stubWorkFolder);
             releaseVariables.Add(Constants.Variables.Release.ReleaseDefinitionName, releaseDefinitionName);
             releaseVariables.Add(Constants.Variables.System.TeamProjectId, projectId.ToString());

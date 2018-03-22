@@ -6,18 +6,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
     public sealed class JobExtensionRunner : IStep
     {
-        private readonly Func<IExecutionContext, Task> _runAsync;
+        private readonly object _data;
+        private readonly Func<IExecutionContext, object, Task> _runAsync;
 
         public JobExtensionRunner(
-            IExecutionContext context,
-            Func<IExecutionContext, Task> runAsync,
+            Func<IExecutionContext, object, Task> runAsync,
             INode condition,
-            string displayName)
+            string displayName,
+            object data)
         {
-            ExecutionContext = context;
             _runAsync = runAsync;
             Condition = condition;
             DisplayName = displayName;
+            _data = data;
         }
 
         public INode Condition { get; set; }
@@ -29,7 +30,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         public async Task RunAsync()
         {
-            await _runAsync(ExecutionContext);
+            await _runAsync(ExecutionContext, _data);
         }
     }
 }

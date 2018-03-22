@@ -27,8 +27,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             List<string> warnings;
             _variables = new Variables(
                 hostContext: hc,
-                copy: new Dictionary<string, string>(),
-                maskHints: new List<MaskHint>(),
+                copy: new Dictionary<string, VariableValue>(),
                 warnings: out warnings);
             _ec = new Mock<IExecutionContext>();
             _ec.SetupAllProperties();
@@ -36,141 +35,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             _stepsRunner = new StepsRunner();
             _stepsRunner.Initialize(hc);
             return hc;
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Worker")]
-        public async Task RunCritialStepsAllStepPass()
-        {
-            using (TestHostContext hc = CreateTestContext())
-            {
-                // Arrange.
-                var variableSets = new[]
-                {
-                    new[] { CreateStep(TaskResult.Succeeded, ExpressionManager.Succeeded), CreateStep(TaskResult.Succeeded, ExpressionManager.Succeeded)  },
-                    new[] { CreateStep(TaskResult.Succeeded, ExpressionManager.Succeeded), CreateStep(TaskResult.Succeeded, ExpressionManager.SucceededOrFailed) },
-                    new[] { CreateStep(TaskResult.Succeeded, ExpressionManager.Succeeded), CreateStep(TaskResult.Succeeded, ExpressionManager.Always) }
-                };
-                foreach (var variableSet in variableSets)
-                {
-                    _ec.Object.Result = null;
-
-                    // Act.
-                    await _stepsRunner.RunAsync(
-                        jobContext: _ec.Object,
-                        steps: variableSet.Select(x => x.Object).ToList(),
-                        stage: JobRunStage.PreJob);
-
-                    // Assert.
-                    Assert.Equal(TaskResult.Succeeded, _ec.Object.Result ?? TaskResult.Succeeded);
-                    Assert.Equal(2, variableSet.Length);
-                    variableSet[0].Verify(x => x.RunAsync());
-                    variableSet[1].Verify(x => x.RunAsync());
-                }
-            }
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Worker")]
-        public async Task RunCritialStepsStopOnStepFailure()
-        {
-            using (TestHostContext hc = CreateTestContext())
-            {
-                // Arrange.
-                var variableSets = new[]
-                {
-                    new[] { CreateStep(TaskResult.Failed, ExpressionManager.Succeeded), CreateStep(TaskResult.Succeeded, ExpressionManager.Succeeded) },
-                    new[] { CreateStep(TaskResult.Failed, ExpressionManager.Succeeded), CreateStep(TaskResult.Succeeded, ExpressionManager.SucceededOrFailed) },
-                    new[] { CreateStep(TaskResult.Failed, ExpressionManager.Succeeded), CreateStep(TaskResult.Succeeded, ExpressionManager.Always) },
-                };
-                foreach (var variableSet in variableSets)
-                {
-                    _ec.Object.Result = null;
-
-                    // Act.
-                    await _stepsRunner.RunAsync(
-                        jobContext: _ec.Object,
-                        steps: variableSet.Select(x => x.Object).ToList(),
-                        stage: JobRunStage.PreJob);
-
-                    // Assert.
-                    Assert.Equal(TaskResult.Failed, _ec.Object.Result);
-                    Assert.Equal(2, variableSet.Length);
-                    variableSet[0].Verify(x => x.RunAsync());
-                    variableSet[1].Verify(x => x.RunAsync(), Times.Never);
-                }
-            }
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Worker")]
-        public async Task RunCritialStepsContinueOnError()
-        {
-            using (TestHostContext hc = CreateTestContext())
-            {
-                // Arrange.
-                var variableSets = new[]
-                {
-                    new[] { CreateStep(TaskResult.Failed, ExpressionManager.Succeeded, true), CreateStep(TaskResult.Succeeded, ExpressionManager.Succeeded)  },
-                    new[] { CreateStep(TaskResult.Failed, ExpressionManager.Succeeded, true), CreateStep(TaskResult.Succeeded, ExpressionManager.SucceededOrFailed) },
-                    new[] { CreateStep(TaskResult.Failed, ExpressionManager.Succeeded, true), CreateStep(TaskResult.Succeeded, ExpressionManager.Always) },
-                    new[] { CreateStep(TaskResult.Failed, ExpressionManager.Succeeded, true), CreateStep(TaskResult.Failed, ExpressionManager.Succeeded, true)  },
-                    new[] { CreateStep(TaskResult.Failed, ExpressionManager.Succeeded, true), CreateStep(TaskResult.Failed, ExpressionManager.SucceededOrFailed, true) },
-                    new[] { CreateStep(TaskResult.Failed, ExpressionManager.Succeeded, true), CreateStep(TaskResult.Failed, ExpressionManager.Always, true) }
-                };
-                foreach (var variableSet in variableSets)
-                {
-                    _ec.Object.Result = null;
-
-                    // Act.
-                    await _stepsRunner.RunAsync(
-                        jobContext: _ec.Object,
-                        steps: variableSet.Select(x => x.Object).ToList(),
-                        stage: JobRunStage.PreJob);
-
-                    // Assert.
-                    Assert.Equal(TaskResult.SucceededWithIssues, _ec.Object.Result);
-                    Assert.Equal(2, variableSet.Length);
-                    variableSet[0].Verify(x => x.RunAsync());
-                    variableSet[1].Verify(x => x.RunAsync());
-                }
-            }
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Worker")]
-        public async Task RunPostJobStepsIgnoreCondition()
-        {
-            using (TestHostContext hc = CreateTestContext())
-            {
-                // Arrange.
-                var variableSets = new[]
-                {
-                    new[] { CreateStep(TaskResult.Failed, ExpressionManager.Succeeded), CreateStep(TaskResult.Succeeded, ExpressionManager.Succeeded) },
-                    new[] { CreateStep(TaskResult.Failed, ExpressionManager.Succeeded), CreateStep(TaskResult.Succeeded, ExpressionManager.SucceededOrFailed) },
-                    new[] { CreateStep(TaskResult.Failed, ExpressionManager.Succeeded), CreateStep(TaskResult.Succeeded, ExpressionManager.Always) },
-                };
-                foreach (var variableSet in variableSets)
-                {
-                    _ec.Object.Result = null;
-
-                    // Act.
-                    await _stepsRunner.RunAsync(
-                        jobContext: _ec.Object,
-                        steps: variableSet.Select(x => x.Object).ToList(),
-                        stage: JobRunStage.PostJob);
-
-                    // Assert.
-                    Assert.Equal(TaskResult.Failed, _ec.Object.Result);
-                    Assert.Equal(2, variableSet.Length);
-                    variableSet[0].Verify(x => x.RunAsync());
-                    variableSet[1].Verify(x => x.RunAsync());
-                }
-            }
         }
 
         [Fact]
@@ -194,8 +58,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                     // Act.
                     await _stepsRunner.RunAsync(
                         jobContext: _ec.Object,
-                        steps: variableSet.Select(x => x.Object).ToList(),
-                        stage: JobRunStage.Main);
+                        steps: variableSet.Select(x => x.Object).ToList());
 
                     // Assert.
                     Assert.Equal(TaskResult.Succeeded, _ec.Object.Result ?? TaskResult.Succeeded);
@@ -230,8 +93,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                     // Act.
                     await _stepsRunner.RunAsync(
                         jobContext: _ec.Object,
-                        steps: variableSet.Select(x => x.Object).ToList(),
-                        stage: JobRunStage.Main);
+                        steps: variableSet.Select(x => x.Object).ToList());
 
                     // Assert.
                     Assert.Equal(TaskResult.SucceededWithIssues, _ec.Object.Result);
@@ -270,8 +132,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                     // Act.
                     await _stepsRunner.RunAsync(
                         jobContext: _ec.Object,
-                        steps: variableSet.Steps.Select(x => x.Object).ToList(),
-                        stage: JobRunStage.Main);
+                        steps: variableSet.Steps.Select(x => x.Object).ToList());
 
                     // Assert.
                     Assert.Equal(TaskResult.Failed, _ec.Object.Result ?? TaskResult.Succeeded);
@@ -325,8 +186,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                     // Act.
                     await _stepsRunner.RunAsync(
                         jobContext: _ec.Object,
-                        steps: variableSet.Steps.Select(x => x.Object).ToList(),
-                        stage: JobRunStage.Main);
+                        steps: variableSet.Steps.Select(x => x.Object).ToList());
 
                     // Assert.
                     Assert.Equal(variableSet.Expected, _ec.Object.Result ?? TaskResult.Succeeded);
@@ -416,8 +276,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                     // Act.
                     await _stepsRunner.RunAsync(
                         jobContext: _ec.Object,
-                        steps: variableSet.Steps.Select(x => x.Object).ToList(),
-                        stage: JobRunStage.Main);
+                        steps: variableSet.Steps.Select(x => x.Object).ToList());
 
                     // Assert.
                     Assert.True(
@@ -460,8 +319,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                     // Act.
                     await _stepsRunner.RunAsync(
                         jobContext: _ec.Object,
-                        steps: variableSet.Step.Select(x => x.Object).ToList(),
-                        stage: JobRunStage.Main);
+                        steps: variableSet.Step.Select(x => x.Object).ToList());
 
                     // Assert.                    
                     Assert.Equal(2, variableSet.Step.Length);
@@ -493,8 +351,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                     // Act.
                     await _stepsRunner.RunAsync(
                         jobContext: _ec.Object,
-                        steps: variableSet.Select(x => x.Object).ToList(),
-                        stage: JobRunStage.Main);
+                        steps: variableSet.Select(x => x.Object).ToList());
 
                     // Assert.
                     Assert.Equal(2, variableSet.Length);
@@ -529,8 +386,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                     // Act.
                     await _stepsRunner.RunAsync(
                         jobContext: _ec.Object,
-                        steps: variableSet.Select(x => x.Object).ToList(),
-                        stage: JobRunStage.Main);
+                        steps: variableSet.Select(x => x.Object).ToList());
 
                     // Assert.
                     Assert.Equal(TaskResult.Failed, _ec.Object.Result ?? TaskResult.Succeeded);

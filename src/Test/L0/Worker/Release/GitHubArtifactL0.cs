@@ -83,10 +83,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Release
                 // verify github endpoint is set correctly
                 _sourceProvider.Verify(
                     x => x.GetSourceAsync(
-                        It.IsAny<IExecutionContext>(), 
+                        It.IsAny<IExecutionContext>(),
                         It.Is<ServiceEndpoint>(y => y.Url.Equals(new Uri(_expectedGitHubUrl)) && y.Authorization.Scheme.Equals(EndpointAuthorizationSchemes.OAuth)
                         && y.Data.ContainsKey(Constants.EndpointData.SourcesDirectory) && y.Data.ContainsKey(Constants.EndpointData.SourceBranch)
-                        && y.Data.ContainsKey(Constants.EndpointData.SourceVersion) && y.Data.ContainsKey("fetchDepth") && y.Data.ContainsKey("GitLfsSupport") && y.Data.ContainsKey(EndpointData.CheckoutSubmodules)), 
+                        && y.Data.ContainsKey(Constants.EndpointData.SourceVersion) && y.Data.ContainsKey("fetchDepth") && y.Data.ContainsKey("GitLfsSupport") && y.Data.ContainsKey(EndpointData.CheckoutSubmodules)),
                         It.IsAny<CancellationToken>()));
             }
         }
@@ -128,21 +128,21 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Release
             _ec = new Mock<IExecutionContext>();
 
             _artifactDefinition = new ArtifactDefinition
-                                      {
-                                          Version = _expectedVersion,
-                                          Details = new GitHubArtifactDetails
-                                          {
-                                              ConnectionName = _githubConnectionName,
-                                              CloneUrl = new Uri(_expectedGitHubUrl),
-                                              Branch = _expectedBranchName
-                                          }
-                                      };
+            {
+                Version = _expectedVersion,
+                Details = new GitHubArtifactDetails
+                {
+                    ConnectionName = _githubConnectionName,
+                    CloneUrl = new Uri(_expectedGitHubUrl),
+                    Branch = _expectedBranchName
+                }
+            };
 
             _extensionManager = new Mock<IExtensionManager>();
             _sourceProvider = new Mock<ISourceProvider>();
 
             List<string> warnings;
-            _variables = new Variables(hc, new Dictionary<string, string>(), new List<MaskHint>(), out warnings);
+            _variables = new Variables(hc, new Dictionary<string, VariableValue>(), out warnings);
 
             hc.SetSingleton<IExtensionManager>(_extensionManager.Object);
             _ec.Setup(x => x.Variables).Returns(_variables);

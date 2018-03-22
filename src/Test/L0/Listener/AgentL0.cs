@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 using Microsoft.VisualStudio.Services.WebApi;
+using Pipelines = Microsoft.TeamFoundation.DistributedTask.Pipelines;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
 {
@@ -110,7 +111,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                     .Returns(Task.CompletedTask);
                 _messageListener.Setup(x => x.DeleteMessageAsync(It.IsAny<TaskAgentMessage>()))
                     .Returns(Task.CompletedTask);
-                _jobDispatcher.Setup(x => x.Run(It.IsAny<AgentJobRequestMessage>()))
+                _jobDispatcher.Setup(x => x.Run(It.IsAny<Pipelines.AgentJobRequestMessage>()))
                     .Callback(() =>
                     {
 
@@ -153,7 +154,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                     Assert.True(!agentTask.IsFaulted, agentTask.Exception?.ToString());
                     Assert.True(agentTask.IsCanceled);
 
-                    _jobDispatcher.Verify(x => x.Run(It.IsAny<AgentJobRequestMessage>()), Times.Once(),
+                    _jobDispatcher.Verify(x => x.Run(It.IsAny<Pipelines.AgentJobRequestMessage>()), Times.Once(),
                          $"{nameof(_jobDispatcher.Object.Run)} was not invoked.");
                     _messageListener.Verify(x => x.GetNextMessageAsync(It.IsAny<CancellationToken>()), Times.AtLeastOnce());
                     _messageListener.Verify(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()), Times.Once());
@@ -190,7 +191,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                 _configurationManager.Setup(x => x.IsConfigured()).Returns(true);
                 _configurationManager.Setup(x => x.LoadSettings())
                     .Returns(new AgentSettings { });
-                
+
                 _configStore.Setup(x => x.IsServiceConfigured()).Returns(configureAsService);
 
                 _messageListener.Setup(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()))
@@ -225,7 +226,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                     Returns(true);
                 _configurationManager.Setup(x => x.LoadSettings())
                     .Returns(new AgentSettings { });
-                    
+
                 _configStore.Setup(x => x.IsServiceConfigured())
                     .Returns(false);
 
@@ -261,7 +262,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                     Returns(true);
                 _configurationManager.Setup(x => x.LoadSettings())
                     .Returns(new AgentSettings { });
-                
+
                 _configStore.Setup(x => x.IsServiceConfigured())
                     .Returns(false);
 

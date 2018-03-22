@@ -271,12 +271,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
                 Scheme = EndpointAuthorizationSchemes.OAuth
             };
             List<string> warnings;
-            _variables = new Variables(_hc, new Dictionary<string, string>(), new List<MaskHint>(), out warnings);
+            _variables = new Variables(_hc, new Dictionary<string, VariableValue>(), out warnings);
             _variables.Set("build.buildId", "1");
             endpointAuthorization.Parameters[EndpointAuthorizationParameters.AccessToken] = "accesstoken";
 
             _ec = new Mock<IExecutionContext>();
-            _ec.Setup(x => x.Endpoints).Returns(new List<ServiceEndpoint> { new ServiceEndpoint { Url = new Uri("http://dummyurl"), Name = "SystemVssConnection", Authorization = endpointAuthorization } });
+            _ec.Setup(x => x.Endpoints).Returns(new List<ServiceEndpoint> { new ServiceEndpoint { Url = new Uri("http://dummyurl"), Name = WellKnownServiceEndpointNames.SystemVssConnection, Authorization = endpointAuthorization } });
             _ec.Setup(x => x.Variables).Returns(_variables);
             var asyncCommands = new List<IAsyncCommandContext>();
             _ec.Setup(x => x.AsyncCommands).Returns(asyncCommands);

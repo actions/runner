@@ -1,4 +1,5 @@
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
+using Pipelines = Microsoft.TeamFoundation.DistributedTask.Pipelines;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
 using System.Collections.Generic;
@@ -33,7 +34,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         ContainerInfo Container { get; }
 
         // Initialize
-        void InitializeJob(JobRequestMessage message, CancellationToken token);
+        void InitializeJob(Pipelines.AgentJobRequestMessage message, CancellationToken token);
         void CancelToken();
         IExecutionContext CreateChild(Guid recordId, string displayName, string refName, Variables taskVariables = null);
 
@@ -337,15 +338,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             }
         }
 
-        public void InitializeJob(JobRequestMessage message, CancellationToken token)
+        public void InitializeJob(Pipelines.AgentJobRequestMessage message, CancellationToken token)
         {
             // Validation
             Trace.Entering();
             ArgUtil.NotNull(message, nameof(message));
-            ArgUtil.NotNull(message.Environment, nameof(message.Environment));
-            ArgUtil.NotNull(message.Environment.SystemConnection, nameof(message.Environment.SystemConnection));
-            ArgUtil.NotNull(message.Environment.Endpoints, nameof(message.Environment.Endpoints));
-            ArgUtil.NotNull(message.Environment.Variables, nameof(message.Environment.Variables));
+            ArgUtil.NotNull(message.Resources, nameof(message.Resources));
+            ArgUtil.NotNull(message.Variables, nameof(message.Variables));
             ArgUtil.NotNull(message.Plan, nameof(message.Plan));
 
             _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(token);
@@ -354,15 +353,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             Features = ApiUtil.GetFeatures(message.Plan);
 
             // Endpoints
-            Endpoints = message.Environment.Endpoints;
-            Endpoints.Add(message.Environment.SystemConnection);
+            Endpoints = message.Resources.Endpoints;
 
             // SecureFiles
-            SecureFiles = message.Environment.SecureFiles;
+            SecureFiles = message.Resources.SecureFiles;
 
             // Variables (constructor performs initial recursive expansion)
             List<string> warnings;
-            Variables = new Variables(HostContext, message.Environment.Variables, message.Environment.MaskHints, out warnings);
+            Variables = new Variables(HostContext, message.Variables, out warnings);
 
             // Prepend Path
             PrependPath = new List<string>();
@@ -374,11 +372,24 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 imageName = Environment.GetEnvironmentVariable("_PREVIEW_VSTS_DOCKER_IMAGE");
             }
 
-            Container = new ContainerInfo()
+            if (!string.IsNullOrEmpty(imageName) &&
+                string.IsNullOrEmpty(message.JobContainer))
             {
-                ContainerImage = imageName,
-                ContainerName = $"VSTS_{Variables.System_HostType.ToString()}_{message.JobId.ToString("D")}",
-            };
+                var dockerContainer = new Pipelines.ContainerReference()
+                {
+                    Name = "vsts_container_preview"
+                };
+                dockerContainer.Data["image"] = imageName;
+                Container = new ContainerInfo(dockerContainer);
+            }
+            else if (!string.IsNullOrEmpty(message.JobContainer))
+            {
+                Container = new ContainerInfo(message.Resources.Containers.Single(x => string.Equals(x.Name, message.JobContainer, StringComparison.OrdinalIgnoreCase)));
+            }
+            else
+            {
+                Container = null;
+            }
 
             // Proxy variables
             var agentWebProxy = HostContext.GetService<IVstsAgentWebProxy>();
@@ -437,8 +448,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 timelineRecordId: message.JobId,
                 parentTimelineRecordId: null,
                 recordType: ExecutionContextType.Job,
-                displayName: message.JobName,
-                refName: message.JobRefName,
+                displayName: message.JobDisplayName,
+                refName: message.JobName,
                 order: null); // The job timeline record's order is set by server.
 
             // Logger (must be initialized before writing warnings).

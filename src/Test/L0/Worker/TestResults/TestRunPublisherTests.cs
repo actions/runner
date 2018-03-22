@@ -459,7 +459,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
             TestHostContext hc = new TestHostContext(this, name);
             _ec = new Mock<IExecutionContext>();
             List<string> warnings;
-            var variables = new Variables(hc, new Dictionary<string, string>(), new List<MaskHint>(), out warnings);
+            var variables = new Variables(hc, new Dictionary<string, VariableValue>(), out warnings);
             _ec.Setup(x => x.Variables).Returns(variables);
 
             hc.SetSingleton<ITestResultsServer>(_testResultServer.Object);

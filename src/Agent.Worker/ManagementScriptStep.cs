@@ -49,10 +49,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 FailOnStandardError = "false"
             };
 
+            // Create the handler invoker
+            var stepHost = HostContext.CreateService<IDefaultStepHost>();
+
             // Create the handler.
             var handlerFactory = HostContext.GetService<IHandlerFactory>();
             var handler = (PowerShellExeHandler)handlerFactory.Create(
                 ExecutionContext,
+                stepHost,
                 ExecutionContext.Endpoints,
                 new List<SecureFile>(0),
                 handlerData,

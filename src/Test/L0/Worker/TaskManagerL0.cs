@@ -10,9 +10,10 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
+using Pipelines = Microsoft.TeamFoundation.DistributedTask.Pipelines;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
-{    
+{
     public sealed class TaskManagerL0
     {
         private const string TestDataFolderName = "TestData";
@@ -35,23 +36,29 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             {
                 //Arrange
                 Setup();
-                var bingTask = new TaskInstance()
+                var bingTask = new Pipelines.TaskStep()
                 {
                     Enabled = true,
-                    Name = "Bing",
-                    Version = "0.1.2",
-                    Id = Guid.NewGuid()
+                    Reference = new Pipelines.TaskStepDefinitionReference()
+                    {
+                        Name = "Bing",
+                        Version = "0.1.2",
+                        Id = Guid.NewGuid()
+                    }
                 };
-                var pingTask = new TaskInstance()
+                var pingTask = new Pipelines.TaskStep()
                 {
                     Enabled = true,
-                    Name = "Ping",
-                    Version = "0.1.1",
-                    Id = Guid.NewGuid()
+                    Reference = new Pipelines.TaskStepDefinitionReference()
+                    {
+                        Name = "Ping",
+                        Version = "0.1.1",
+                        Id = Guid.NewGuid()
+                    }
                 };
 
-                var bingVersion = new TaskVersion(bingTask.Version);
-                var pingVersion = new TaskVersion(pingTask.Version);
+                var bingVersion = new TaskVersion(bingTask.Reference.Version);
+                var pingVersion = new TaskVersion(pingTask.Reference.Version);
 
                 _taskServer
                     .Setup(x => x.GetTaskContentZipAsync(It.IsAny<Guid>(), It.IsAny<TaskVersion>(), _ec.Object.CancellationToken))
@@ -61,7 +68,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                         return Task.FromResult<Stream>(GetZipStream());
                     });
 
-                var tasks = new List<TaskInstance>(new TaskInstance[] { bingTask, pingTask });
+                var tasks = new List<Pipelines.TaskStep>(new Pipelines.TaskStep[] { bingTask, pingTask });
 
                 //Act
                 //should initiate a download with a mocked IJobServer, which sets a cancellation token and
@@ -100,15 +107,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             {
                 // Arrange.
                 Setup();
-                var pingTask = new TaskInstance()
+                var pingTask = new Pipelines.TaskStep()
                 {
                     Enabled = true,
-                    Name = "Ping",
-                    Version = "0.1.1",
-                    Id = Guid.NewGuid()
+                    Reference = new Pipelines.TaskStepDefinitionReference()
+                    {
+                        Name = "Ping",
+                        Version = "0.1.1",
+                        Id = Guid.NewGuid()
+                    }
                 };
 
-                var pingVersion = new TaskVersion(pingTask.Version);
+                var pingVersion = new TaskVersion(pingTask.Reference.Version);
                 Exception expectedException = new System.Net.Http.HttpRequestException("simulated network error");
                 _taskServer
                     .Setup(x => x.GetTaskContentZipAsync(It.IsAny<Guid>(), It.IsAny<TaskVersion>(), _ec.Object.CancellationToken))
@@ -117,7 +127,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                         throw expectedException;
                     });
 
-                var tasks = new List<TaskInstance>(new TaskInstance[] { pingTask });
+                var tasks = new List<Pipelines.TaskStep>(new Pipelines.TaskStep[] { pingTask });
 
                 //Act
                 Exception actualException = null;
@@ -162,7 +172,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
     }
 }";
                 // Write the task.json to disk.
-                TaskInstance instance;
+                Pipelines.TaskStep instance;
                 string directory;
                 CreateTask(jsonContent: Content, instance: out instance, directory: out directory);
 
@@ -196,32 +206,30 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             {
                 //Arrange
                 Setup();
-                //pass 3 tasks: one disabled task and two duplicate tasks named "Bing"
                 var bingGuid = Guid.NewGuid();
                 string bingTaskName = "Bing";
                 string bingVersion = "1.21.2";
-                var tasks = new List<TaskInstance>
+                var tasks = new List<Pipelines.TaskStep>
                 {
-                    new TaskInstance()
-                    {
-                        Enabled = false,
-                        Name = "Ping",
-                        Version = "0.1.2",
-                        Id = Guid.NewGuid()
-                    },
-                    new TaskInstance()
+                    new Pipelines.TaskStep()
                     {
                         Enabled = true,
-                        Name = bingTaskName,
-                        Version = bingVersion,
-                        Id = bingGuid
+                        Reference = new Pipelines.TaskStepDefinitionReference()
+                        {
+                            Name = bingTaskName,
+                            Version = bingVersion,
+                            Id = bingGuid
+                        }
                     },
-                    new TaskInstance()
+                    new Pipelines.TaskStep()
                     {
                         Enabled = true,
-                        Name = bingTaskName,
-                        Version = bingVersion,
-                        Id = bingGuid
+                        Reference = new Pipelines.TaskStepDefinitionReference()
+                        {
+                            Name = bingTaskName,
+                            Version = bingVersion,
+                            Id = bingGuid
+                        }
                     }
                 };
                 _taskServer
@@ -335,7 +343,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
     }
 }";
                 // Write the task.json to disk.
-                TaskInstance instance;
+                Pipelines.TaskStep instance;
                 string directory;
                 CreateTask(jsonContent: Content, instance: out instance, directory: out directory);
 
@@ -511,7 +519,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             }
         }
 
-        private void CreateTask(string jsonContent, out TaskInstance instance, out string directory)
+        private void CreateTask(string jsonContent, out Pipelines.TaskStep instance, out string directory)
         {
             const string TaskName = "SomeTask";
             const string TaskVersion = "1.2.3";
@@ -520,11 +528,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             string file = Path.Combine(directory, Constants.Path.TaskJsonFile);
             Directory.CreateDirectory(Path.GetDirectoryName(file));
             File.WriteAllText(file, jsonContent);
-            instance = new TaskInstance()
+            instance = new Pipelines.TaskStep()
             {
-                Id = taskGuid,
-                Name = TaskName,
-                Version = TaskVersion,
+                Reference = new Pipelines.TaskStepDefinitionReference()
+                {
+                    Id = taskGuid,
+                    Name = TaskName,
+                    Version = TaskVersion,
+                }
             };
         }
 

@@ -8,6 +8,7 @@ using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Xunit;
 using System.Threading;
+using Pipelines = Microsoft.TeamFoundation.DistributedTask.Pipelines;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
 {
@@ -48,7 +49,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
 
         private IExecutionContext _jobEc;
         private JobInitializeResult _initResult = new JobInitializeResult();
-        private AgentJobRequestMessage _message;
+        private Pipelines.AgentJobRequestMessage _message;
         private Mock<ITaskManager> _taskManager;
 
         private Mock<IJobServerQueue> _jobServerQueue;
@@ -115,6 +116,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             environment.Variables[Constants.Variables.System.Culture] = "en-US";
             environment.SystemConnection = new ServiceEndpoint()
             {
+                Name = WellKnownServiceEndpointNames.SystemVssConnection,
                 Url = new Uri("https://test.visualstudio.com"),
                 Authorization = new EndpointAuthorization()
                 {
@@ -163,16 +165,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             };
 
             Guid JobId = Guid.NewGuid();
-            _message = new AgentJobRequestMessage(plan, timeline, JobId, testName, testName, environment, tasks);
+            _message = Pipelines.AgentJobRequestMessageUtil.Convert(new AgentJobRequestMessage(plan, timeline, JobId, testName, testName, environment, tasks));
 
             _initResult.PreJobSteps.Clear();
             _initResult.JobSteps.Clear();
             _initResult.PostJobStep.Clear();
 
-            _taskManager.Setup(x => x.DownloadAsync(It.IsAny<IExecutionContext>(), It.IsAny<IEnumerable<TaskInstance>>()))
+            _taskManager.Setup(x => x.DownloadAsync(It.IsAny<IExecutionContext>(), It.IsAny<IEnumerable<Pipelines.TaskStep>>()))
                 .Returns(Task.CompletedTask);
 
-            _taskManager.Setup(x => x.Load(It.Is<TaskInstance>(t => t.DisplayName == "task1")))
+            _taskManager.Setup(x => x.Load(It.Is<Pipelines.TaskStep>(t => t.DisplayName == "task1")))
                 .Returns(new Definition()
                 {
                     Data = new DefinitionData()
@@ -182,7 +184,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                         PostJobExecution = null,
                     },
                 });
-            _taskManager.Setup(x => x.Load(It.Is<TaskInstance>(t => t.DisplayName == "task2")))
+            _taskManager.Setup(x => x.Load(It.Is<Pipelines.TaskStep>(t => t.DisplayName == "task2")))
                 .Returns(new Definition()
                 {
                     Data = new DefinitionData()
@@ -192,7 +194,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                         PostJobExecution = new ExecutionData(),
                     },
                 });
-            _taskManager.Setup(x => x.Load(It.Is<TaskInstance>(t => t.DisplayName == "task3")))
+            _taskManager.Setup(x => x.Load(It.Is<Pipelines.TaskStep>(t => t.DisplayName == "task3")))
                 .Returns(new Definition()
                 {
                     Data = new DefinitionData()
@@ -202,7 +204,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                         PostJobExecution = new ExecutionData(),
                     },
                 });
-            _taskManager.Setup(x => x.Load(It.Is<TaskInstance>(t => t.DisplayName == "task4")))
+            _taskManager.Setup(x => x.Load(It.Is<Pipelines.TaskStep>(t => t.DisplayName == "task4")))
                 .Returns(new Definition()
                 {
                     Data = new DefinitionData()
@@ -212,7 +214,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                         PostJobExecution = null,
                     },
                 });
-            _taskManager.Setup(x => x.Load(It.Is<TaskInstance>(t => t.DisplayName == "task5")))
+            _taskManager.Setup(x => x.Load(It.Is<Pipelines.TaskStep>(t => t.DisplayName == "task5")))
                 .Returns(new Definition()
                 {
                     Data = new DefinitionData()
@@ -222,7 +224,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                         PostJobExecution = new ExecutionData(),
                     },
                 });
-            _taskManager.Setup(x => x.Load(It.Is<TaskInstance>(t => t.DisplayName == "task6")))
+            _taskManager.Setup(x => x.Load(It.Is<Pipelines.TaskStep>(t => t.DisplayName == "task6")))
                 .Returns(new Definition()
                 {
                     Data = new DefinitionData()
@@ -232,7 +234,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                         PostJobExecution = null,
                     },
                 });
-            _taskManager.Setup(x => x.Load(It.Is<TaskInstance>(t => t.DisplayName == "task7")))
+            _taskManager.Setup(x => x.Load(It.Is<Pipelines.TaskStep>(t => t.DisplayName == "task7")))
                 .Returns(new Definition()
                 {
                     Data = new DefinitionData()
