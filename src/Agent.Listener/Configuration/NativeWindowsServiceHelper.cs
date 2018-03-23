@@ -55,11 +55,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         void CreateVstsAgentRegistryKey();
 
         void DeleteVstsAgentRegistryKey();
-        
+
         string GetSecurityId(string domainName, string userName);
-        
+
         void SetAutoLogonPassword(string password);
-        
+
         void ResetAutoLogonPassword();
 
         bool IsRunningInElevatedMode();
@@ -383,7 +383,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
         public bool IsValidAutoLogonCredential(string domain, string userName, string logonPassword)
         {
-            return IsValidCredentialInternal(domain, userName, logonPassword, LOGON32_LOGON_INTERACTIVE);            
+            return IsValidCredentialInternal(domain, userName, logonPassword, LOGON32_LOGON_INTERACTIVE);
         }
 
         public NTAccount GetDefaultServiceAccount()
@@ -468,7 +468,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                     processInvoker.ExecuteAsync(workingDirectory: string.Empty,
                                                 fileName: agentServiceExecutable,
                                                 arguments: "init",
-                                                environment:  null,
+                                                environment: null,
                                                 requireExitCodeZero: true,
                                                 cancellationToken: CancellationToken.None).GetAwaiter().GetResult();
                 }
@@ -498,7 +498,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 {
                     throw new InvalidOperationException(StringUtil.Loc("OperationFailed", nameof(CreateService), GetLastError()));
                 }
-                
+
                 _term.WriteLine(StringUtil.Loc("ServiceInstalled", serviceName));
 
                 //set recovery option to restart on failure.
@@ -531,6 +531,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 // Move array into marshallable pointer
                 Marshal.Copy(actions, 0, tmpBuf, failureActions.Count * 2);
 
+                // Change service error actions
                 // Set the SERVICE_FAILURE_ACTIONS struct
                 SERVICE_FAILURE_ACTIONS sfa = new SERVICE_FAILURE_ACTIONS();
                 sfa.cActions = failureActions.Count;
@@ -540,9 +541,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 sfa.lpsaActions = tmpBuf.ToInt64();
 
                 // Call the ChangeServiceFailureActions() abstraction of ChangeServiceConfig2()
-                bool result = ChangeServiceFailureActions(svcHndl, SERVICE_CONFIG_FAILURE_ACTIONS, ref sfa);
+                bool falureActionsResult = ChangeServiceFailureActions(svcHndl, SERVICE_CONFIG_FAILURE_ACTIONS, ref sfa);
                 //Check the return
-                if (!result)
+                if (!falureActionsResult)
                 {
                     int lastErrorCode = (int)GetLastError();
                     Exception win32exception = new Win32Exception(lastErrorCode);
@@ -558,6 +559,31 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 else
                 {
                     _term.WriteLine(StringUtil.Loc("ServiceRecoveryOptionSet", serviceName));
+                }
+
+                // Change service to delayed auto start
+                SERVICE_DELAYED_AUTO_START_INFO sdasi = new SERVICE_DELAYED_AUTO_START_INFO();
+                sdasi.fDelayedAutostart = true;
+
+                // Call the ChangeServiceDelayedAutoStart() abstraction of ChangeServiceConfig2()
+                bool delayedStartResult = ChangeServiceDelayedAutoStart(svcHndl, SERVICE_CONFIG_DELAYED_AUTO_START_INFO, ref sdasi);
+                //Check the return
+                if (!delayedStartResult)
+                {
+                    int lastErrorCode = (int)GetLastError();
+                    Exception win32exception = new Win32Exception(lastErrorCode);
+                    if (lastErrorCode == ReturnCode.ERROR_ACCESS_DENIED)
+                    {
+                        throw new SecurityException(StringUtil.Loc("AccessDeniedSettingDelayedStartOption"), win32exception);
+                    }
+                    else
+                    {
+                        throw win32exception;
+                    }
+                }
+                else
+                {
+                    _term.WriteLine(StringUtil.Loc("ServiceDelayedStartOptionSet", serviceName));
                 }
 
                 _term.WriteLine(StringUtil.Loc("ServiceConfigured", serviceName));
@@ -801,7 +827,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             tokenHandle = IntPtr.Zero;
 
             ArgUtil.NotNullOrEmpty(userName, nameof(userName));
-            if(LogonUser(userName, domain, logonPassword, LOGON32_LOGON_INTERACTIVE, LOGON32_PROVIDER_DEFAULT, out tokenHandle) == 0)
+            if (LogonUser(userName, domain, logonPassword, LOGON32_LOGON_INTERACTIVE, LOGON32_PROVIDER_DEFAULT, out tokenHandle) == 0)
             {
                 throw new Win32Exception(Marshal.GetLastWin32Error());
             }
@@ -813,24 +839,24 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             {
                 throw new Win32Exception(Marshal.GetLastWin32Error());
             }
-            
+
             Trace.Info($"Successfully loaded the profile for {domain}\\{userName}.");
         }
 
         public void UnloadUserProfile(IntPtr tokenHandle, PROFILEINFO userProfile)
         {
             Trace.Entering();
-            
-            if(tokenHandle == IntPtr.Zero)
+
+            if (tokenHandle == IntPtr.Zero)
             {
                 Trace.Verbose("The handle to unload user profile is not set. Returning.");
             }
-            
+
             if (!UnloadUserProfile(tokenHandle, userProfile.hProfile))
             {
                 throw new Win32Exception(Marshal.GetLastWin32Error());
             }
-            
+
             Trace.Info($"Successfully unloaded the profile for {userProfile.lpUserName}.");
         }
 
@@ -885,7 +911,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         {
             public IntPtr Handle { get; set; }
 
-            public LsaPolicy() 
+            public LsaPolicy()
                 : this(LSA_AccessPolicy.POLICY_ALL_ACCESS)
             {
             }
@@ -917,8 +943,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 LSA_UNICODE_STRING secretData = new LSA_UNICODE_STRING();
                 LSA_UNICODE_STRING secretName = new LSA_UNICODE_STRING();
 
-                secretName.Buffer = Marshal.StringToHGlobalUni(key);                
-                
+                secretName.Buffer = Marshal.StringToHGlobalUni(key);
+
                 var charSize = sizeof(char);
 
                 secretName.Length = (UInt16)(key.Length * charSize);
@@ -991,13 +1017,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         private const UInt32 LOGON32_LOGON_NETWORK = 3;
 
         // Declaration of external pinvoke functions
-        private static readonly string s_logonAsServiceName = "SeServiceLogonRight";        
+        private static readonly string s_logonAsServiceName = "SeServiceLogonRight";
 
         private const UInt32 LOGON32_PROVIDER_DEFAULT = 0;
 
         private const int SERVICE_WIN32_OWN_PROCESS = 0x00000010;
         private const int SERVICE_NO_CHANGE = -1;
         private const int SERVICE_CONFIG_FAILURE_ACTIONS = 0x2;
+        private const int SERVICE_CONFIG_DELAYED_AUTO_START_INFO = 0x3;
 
         // TODO Fix this. This is not yet available in coreclr (newer version?)
         private const int UnicodeCharSize = 2;
@@ -1033,7 +1060,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             public const int NERR_GroupExists = 2223;
             public const int NERR_UserInGroup = 2236;
             public const uint STATUS_ACCESS_DENIED = 0XC0000022; //NTSTATUS error code: Access Denied
-        }     
+        }
 
         [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
         public struct LocalGroupInfo
@@ -1080,6 +1107,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             public string lpCommand;
             public int cActions;
             public long lpsaActions;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct SERVICE_DELAYED_AUTO_START_INFO
+        {
+            public bool fDelayedAutostart;
         }
 
         // Class to represent a failure action which consists of a recovery
@@ -1260,6 +1293,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
         [DllImport("advapi32.dll", EntryPoint = "ChangeServiceConfig2")]
         public static extern bool ChangeServiceFailureActions(IntPtr hService, int dwInfoLevel, ref SERVICE_FAILURE_ACTIONS lpInfo);
+
+        [DllImport("advapi32.dll", EntryPoint = "ChangeServiceConfig2")]
+        public static extern bool ChangeServiceDelayedAutoStart(IntPtr hService, int dwInfoLevel, ref SERVICE_DELAYED_AUTO_START_INFO lpInfo);
 
         [DllImport("kernel32.dll")]
         static extern uint GetLastError();

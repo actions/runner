@@ -1,6 +1,7 @@
 ﻿{
   "AcceptTeeEula": "(Y/N) Accept the Team Explorer Everywhere license agreement now?",
   "AccessDenied": "Access Denied",
+  "AccessDeniedSettingDelayedStartOption": "Access Denied while setting service delayed auto start options.",
   "AccessDeniedSettingRecoveryOption": "Access Denied while setting service recovery options.",
   "AddAgentFailed": "Failed to add the agent.  Try again or ctrl-c to quit",
   "AddBuildTag": "Add Build Tag",
@@ -501,6 +502,7 @@
   "ServerUrl": "server URL",
   "ServiceAlreadyExists": "The service already exists: {0}, it will be replaced",
   "ServiceConfigured": "Service {0} successfully configured",
+  "ServiceDelayedStartOptionSet": "Service {0} successfully set to delayed auto start",
   "ServiceInstalled": "Service {0} successfully installed",
   "ServiceRecoveryOptionSet": "Service {0} successfully set recovery option",
   "ServiceStartedSuccessfully": "Service {0} started successfully",
