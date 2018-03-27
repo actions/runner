@@ -8,6 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Globalization;
+using Microsoft.Data.Edm.Library;
 using Xunit;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
@@ -175,6 +176,38 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
             Assert.Equal(default(DateTime), _testRunData.Results[4].StartedDate);
             Assert.Equal(default(DateTime), _testRunData.Results[4].CompletedDate);
             Assert.Equal(0f, _testRunData.Results[4].DurationInMs);
+            // Platform is honored when BuildId is present.
+            Assert.True(String.Equals(_testRunData.BuildPlatform, "Win32NT", StringComparison.OrdinalIgnoreCase));
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
+        public void PublishNUnit3ResultsWhenThereIsNoBuild()
+        {
+            SetupMocks();
+            _nunitResultsToBeRead = _nUnit3ResultsXml;
+            ReadResults(new TestRunContext("owner", String.Empty, string.Empty, 0, "buildUri", "releaseUri", "releaseEnvironmentUri"));
+
+            Assert.NotNull(_testRunData);
+            Assert.Equal(5, _testRunData.Results.Length);
+            Assert.Equal(2, _testRunData.Results.Count(r => r.Outcome.Equals("Passed")));
+            Assert.Equal(1, _testRunData.Results.Count(r => r.Outcome.Equals("Failed")));
+            var failedTestResult = _testRunData.Results.Where(r => r.Outcome.Equals("Failed")).First();
+            Assert.Equal("System.ArgumentException : Value does not fall within the expected range.", failedTestResult.ErrorMessage);
+            Assert.Equal("   at ExpectedExceptionExample.ExpectedExceptionTests.SomeFailingTest()", failedTestResult.StackTrace);
+            Assert.Equal("This is standard console output.", failedTestResult.ConsoleLog);
+            Assert.Equal(1, _testRunData.Results.Count(r => r.Outcome.Equals("NotExecuted")));
+            Assert.Equal(1, _testRunData.Results.Count(r => r.Outcome.Equals("Inconclusive")));
+            Assert.Equal(1, _testRunData.Attachments.Length);
+            Assert.Equal("NUnit Test Run", _testRunData.Name);
+            Assert.Equal(default(DateTime), _testRunData.Results[4].StartedDate);
+            Assert.Equal(default(DateTime), _testRunData.Results[4].CompletedDate);
+            Assert.Equal(0f, _testRunData.Results[4].DurationInMs);
+
+            // When Build Id is 0, BuildPlatform and BuildFlavour shouldn't be set as the server makes validation and throws exception if these values are present without the build id specified.
+            Assert.True(String.IsNullOrEmpty(_testRunData.BuildPlatform));
+            Assert.True(String.IsNullOrEmpty(_testRunData.BuildFlavor));
         }
 
         [Fact]

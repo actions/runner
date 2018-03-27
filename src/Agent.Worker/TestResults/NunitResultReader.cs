@@ -372,9 +372,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                             {
                                 hostname = environmentNode.Attributes["machine-name"].Value;
                             }
-                            if (environmentNode.Attributes["platform"] != null)
+                            if (environmentNode.Attributes["platform"] != null && runContext?.BuildId > 0)
                             {
-                                // override platform
+                                // override platform only if there's valid build
+                                // We cannot publish platform information without a valid build id.
                                 _platform = environmentNode.Attributes["platform"].Value;
                             }
                         }
