@@ -119,6 +119,13 @@ namespace Microsoft.VisualStudio.Services.Agent
                 IOUtil.DeleteFile(proxyCredFile);
             }
 
+            string proxyBypassFile = IOUtil.GetProxyBypassFilePath();
+            if (proxyBypassFile.Exists(proxyBypassFile))
+            {
+                Trace.Info($"Delete .proxybypass file: {proxyBypassFile}");
+                IOUtil.DeleteFile(proxyBypassFile);
+            }
+
             string proxyConfigFile = IOUtil.GetProxyConfigFilePath();
             Trace.Info($"Delete .proxy file: {proxyConfigFile}");
             IOUtil.DeleteFile(proxyConfigFile);
