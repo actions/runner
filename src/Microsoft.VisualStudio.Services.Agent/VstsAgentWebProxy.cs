@@ -120,7 +120,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             }
 
             string proxyBypassFile = IOUtil.GetProxyBypassFilePath();
-            if (proxyBypassFile.Exists(proxyBypassFile))
+            if (File.Exists(proxyBypassFile))
             {
                 Trace.Info($"Delete .proxybypass file: {proxyBypassFile}");
                 IOUtil.DeleteFile(proxyBypassFile);
