@@ -109,6 +109,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                 // Worker maintenance service provider extensions.
                 case "Microsoft.VisualStudio.Services.Agent.Worker.Maintenance.IMaintenanceServiceProvider":
                     Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.Build.BuildDirectoryManager, Agent.Worker");
+                    Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.Release.ReleaseDirectoryManager, Agent.Worker");
                     break;
                 default:
                     // This should never happen.

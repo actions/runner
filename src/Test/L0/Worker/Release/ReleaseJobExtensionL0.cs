@@ -27,7 +27,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Release
         private const int releaseId = 100;
         private const string releaseDefinitionName = "stubRd";
         private readonly Guid projectId = new Guid("B152FEAA-7E65-43C9-BCC4-07F6883EE794");
-        private readonly ReleaseDefinitionToFolderMap map = new ReleaseDefinitionToFolderMap
+        private readonly ReleaseTrackingConfig map = new ReleaseTrackingConfig
         {
             ReleaseDirectory = "r1"
         };

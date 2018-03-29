@@ -231,6 +231,8 @@ namespace Microsoft.VisualStudio.Services.Agent
                 public static readonly string ReleaseDirectoryPrefix = "r";
                 public static readonly string ReleaseTempDirectoryPrefix = "t";
                 public static readonly string RootMappingDirectory = "ReleaseRootMapping";
+                public static readonly string TrackingConfigFile = "DefinitionMapping.json";
+                public static readonly string GarbageCollectionDirectory = "GC";
             }
         }
 

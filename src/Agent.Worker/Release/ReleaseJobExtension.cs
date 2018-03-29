@@ -305,16 +305,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
                 releaseDefinition = regex.Replace(releaseDefinitionName, string.Empty);
             }
 
-            var releaseDefinitionToFolderMap = directoryManager.PrepareArtifactsDirectory(
+            var releaseTrackingConfig = directoryManager.PrepareArtifactsDirectory(
                 IOUtil.GetWorkPath(HostContext),
                 executionContext.Variables.System_CollectionId,
                 executionContext.Variables.System_TeamProjectId.ToString(),
                 releaseDefinition);
 
-            ReleaseWorkingFolder = releaseDefinitionToFolderMap.ReleaseDirectory;
+            ReleaseWorkingFolder = releaseTrackingConfig.ReleaseDirectory;
             ArtifactsWorkingFolder = Path.Combine(
                 IOUtil.GetWorkPath(HostContext),
-                releaseDefinitionToFolderMap.ReleaseDirectory,
+                releaseTrackingConfig.ReleaseDirectory,
                 Constants.Release.Path.ArtifactsDirectory);
             executionContext.Output($"Release folder: {ArtifactsWorkingFolder}");
 
