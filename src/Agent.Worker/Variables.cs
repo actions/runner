@@ -6,6 +6,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using BuildWebApi = Microsoft.TeamFoundation.Build.WebApi;
+using Microsoft.TeamFoundation.DistributedTask.Logging;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
@@ -42,7 +43,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         {
             // Store/Validate args.
             _hostContext = hostContext;
-            _secretMasker = _hostContext.GetService<ISecretMasker>();
+            _secretMasker = _hostContext.SecretMasker;
             _trace = _hostContext.GetTrace(nameof(Variables));
             ArgUtil.NotNull(hostContext, nameof(hostContext));
 

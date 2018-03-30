@@ -54,12 +54,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             configurationStore.Setup(x => x.GetSettings()).Returns(new AgentSettings());
             hc.SetSingleton(configurationStore.Object);
 
-            // Arrange: Setup the secret masker.
-            var secretMasker = new Mock<ISecretMasker>();
-            secretMasker.Setup(x => x.MaskSecrets(It.IsAny<string>()))
-                .Returns((string x) => x);
-            hc.SetSingleton(secretMasker.Object);
-
             // Arrange: Setup the proxy configation.
             var proxy = new Mock<IVstsAgentWebProxy>();
             hc.SetSingleton(proxy.Object);

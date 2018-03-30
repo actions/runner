@@ -6,8 +6,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
 {
     public sealed class CommandLineParserL0
     {
-        private readonly Mock<ISecretMasker> _secretMasker = new Mock<ISecretMasker>();
-
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
@@ -20,7 +18,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 CommandLineParser clp = new CommandLineParser(hc, secretArgNames: new string[0]);
                 trace.Info("Constructed");
 
-                Assert.NotNull(clp); 
+                Assert.NotNull(clp);
             }
         }
 
@@ -49,9 +47,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 });
 
                 // Assert.
-                _secretMasker.Verify(x => x.AddValue("secret value 1"));
-                _secretMasker.Verify(x => x.AddValue("secret value 2"));
-                _secretMasker.Verify(x => x.AddValue(It.IsAny<string>()), Times.Exactly(2));
+                Assert.Equal(hc.SecretMasker.MaskSecrets("secret value 1"), "***");
+                Assert.Equal(hc.SecretMasker.MaskSecrets("secret value 2"), "***");
             }
         }
 
@@ -67,7 +64,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 CommandLineParser clp = new CommandLineParser(hc, secretArgNames: new string[0]);
                 trace.Info("Constructed.");
 
-                clp.Parse(new string[]{"cmd1", "cmd2", "--arg1", "arg1val", "badcmd"});
+                clp.Parse(new string[] { "cmd1", "cmd2", "--arg1", "arg1val", "badcmd" });
                 trace.Info("Parsed");
 
                 trace.Info("Commands: {0}", clp.Commands.Count);
@@ -87,7 +84,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 CommandLineParser clp = new CommandLineParser(hc, secretArgNames: new string[0]);
                 trace.Info("Constructed.");
 
-                clp.Parse(new string[]{"cmd1", "--arg1", "arg1val", "--arg2", "arg2val"});
+                clp.Parse(new string[] { "cmd1", "--arg1", "arg1val", "--arg2", "arg2val" });
                 trace.Info("Parsed");
 
                 trace.Info("Args: {0}", clp.Args.Count);
@@ -111,7 +108,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 CommandLineParser clp = new CommandLineParser(hc, secretArgNames: new string[0]);
                 trace.Info("Constructed.");
 
-                clp.Parse(new string[]{"cmd1", "--flag1", "--arg1", "arg1val", "--flag2"});
+                clp.Parse(new string[] { "cmd1", "--flag1", "--arg1", "arg1val", "--flag2" });
                 trace.Info("Parsed");
 
                 trace.Info("Args: {0}", clp.Flags.Count);
@@ -124,7 +121,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         private TestHostContext CreateTestContext([CallerMemberName] string testName = "")
         {
             TestHostContext hc = new TestHostContext(this, testName);
-            hc.SetSingleton<ISecretMasker>(_secretMasker.Object);
             return hc;
         }
     }

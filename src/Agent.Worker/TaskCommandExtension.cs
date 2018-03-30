@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
@@ -460,8 +461,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         {
             if (!string.IsNullOrEmpty(data))
             {
-                var _secretMasker = HostContext.GetService<ISecretMasker>();
-                _secretMasker.AddRegex(data);
+                HostContext.SecretMasker.AddValue(data);
             }
         }
 
@@ -555,13 +555,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             // Mask auth parameter data upfront to avoid accidental secret exposure by invalid endpoint/key/data 
             if (String.Equals(field, "authParameter", StringComparison.OrdinalIgnoreCase))
             {
-                var _secretMasker = HostContext.GetService<ISecretMasker>();
-                _secretMasker.AddValue(data);
-
-                if (!Uri.EscapeDataString(data).Equals(data, StringComparison.OrdinalIgnoreCase))
-                {
-                    _secretMasker.AddValue(Uri.EscapeDataString(data));
-                }
+                HostContext.SecretMasker.AddValue(data);
             }
 
             String endpointIdInput;

@@ -50,7 +50,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 typeof(ICredentialProvider),
                 typeof(IExtension),
                 typeof(IHostContext),
-                typeof(ISecret),
                 typeof(ITraceManager),
                 typeof(IThrottlingReporter),
                 typeof(ICapabilitiesProvider),

@@ -105,17 +105,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             Trace.Entering();
             ArgUtil.NotNull(message, nameof(message));
             ArgUtil.NotNull(message.Resources, nameof(message.Resources));
-            var secretMasker = HostContext.GetService<ISecretMasker>();
 
             // Add mask hints for secret variables
             foreach (var variable in (message.Variables ?? new Dictionary<string, VariableValue>()))
             {
                 if (variable.Value.IsSecret)
                 {
-                    secretMasker.AddValue(variable.Value.Value);
-
-                    // Also add the JSON escaped string since the job message is traced in the diag log.
-                    secretMasker.AddValue(JsonConvert.ToString(variable.Value.Value));
+                    HostContext.SecretMasker.AddValue(variable.Value.Value);
                 }
             }
 
@@ -124,10 +120,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             {
                 if (maskHint.Type == MaskType.Regex)
                 {
-                    secretMasker.AddRegex(maskHint.Value);
+                    HostContext.SecretMasker.AddRegex(maskHint.Value);
 
-                    // Also add the JSON escaped string since the job message is traced in the diag log.
-                    secretMasker.AddValue(JsonConvert.ToString(maskHint.Value ?? string.Empty));
+                    // We need this because the worker will print out the job message JSON to diag log
+                    // and SecretMasker has JsonEscapeEncoder hook up
+                    HostContext.SecretMasker.AddValue(maskHint.Value);
                 }
                 else
                 {
@@ -145,15 +142,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 {
                     if (!string.IsNullOrEmpty(value))
                     {
-                        secretMasker.AddValue(value);
-
-                        // This is precautionary if the secret is used in an URL. For example, if "allow scripts
-                        // access to OAuth token" is checked, then the repository auth key is injected into the
-                        // URL for a Git repository's remote configuration.
-                        if (!Uri.EscapeDataString(value).Equals(value, StringComparison.OrdinalIgnoreCase))
-                        {
-                            secretMasker.AddValue(Uri.EscapeDataString(value));
-                        }
+                        HostContext.SecretMasker.AddValue(value);
                     }
                 }
             }
@@ -163,10 +152,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             {
                 if (!string.IsNullOrEmpty(file.Ticket))
                 {
-                    secretMasker.AddRegex(file.Ticket);
-
-                    // Also add the JSON escaped string since the job message is traced in the diag log.
-                    secretMasker.AddValue(JsonConvert.ToString(file.Ticket));
+                    HostContext.SecretMasker.AddValue(file.Ticket);
                 }
             }
         }

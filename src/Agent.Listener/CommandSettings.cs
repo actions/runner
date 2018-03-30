@@ -4,16 +4,15 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.TeamFoundation.DistributedTask.Logging;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener
 {
     public sealed class CommandSettings
     {
-        private readonly IHostContext _context;
         private readonly Dictionary<string, string> _envArgs = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         private readonly CommandLineParser _parser;
         private readonly IPromptManager _promptManager;
-        private ISecretMasker _secretMasker;
         private readonly Tracing _trace;
 
         private readonly string[] validCommands =
@@ -103,9 +102,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         public CommandSettings(IHostContext context, string[] args)
         {
             ArgUtil.NotNull(context, nameof(context));
-            _context = context;
             _promptManager = context.GetService<IPromptManager>();
-            _secretMasker = context.GetService<ISecretMasker>();
             _trace = context.GetTrace(nameof(CommandSettings));
 
             // Parse the command line args.
@@ -133,7 +130,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                         bool secret = Constants.Agent.CommandLine.Args.Secrets.Any(x => string.Equals(x, name, StringComparison.OrdinalIgnoreCase));
                         if (secret)
                         {
-                            _secretMasker.AddValue(val);
+                            context.SecretMasker.AddValue(val);
                         }
 
                         // Store the value.

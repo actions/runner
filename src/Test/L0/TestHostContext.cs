@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using System.Runtime.Loader;
 using System.Reflection;
 using System.Collections.Generic;
+using Microsoft.TeamFoundation.DistributedTask.Logging;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests
 {
@@ -29,6 +30,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         public event EventHandler Unloading;
         public CancellationToken AgentShutdownToken => _agentShutdownTokenSource.Token;
         public ShutdownReason AgentShutdownReason { get; private set; }
+        public ISecretMasker SecretMasker => _secretMasker;
         public TestHostContext(object testClass, [CallerMemberName] string testName = "")
         {
             ArgUtil.NotNull(testClass, nameof(testClass));
@@ -43,8 +45,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             _suiteName = _suiteName.Replace(".", "_");
 
             // Setup the trace manager.
-            TraceFileName = Path.Combine( 
-                Path.Combine(TestUtil.GetSrcPath(), "Test", "TestLogs"), 
+            TraceFileName = Path.Combine(
+                Path.Combine(TestUtil.GetSrcPath(), "Test", "TestLogs"),
                 $"trace_{_suiteName}_{_testName}.log");
             if (File.Exists(TraceFileName))
             {
@@ -53,9 +55,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
 
             var traceListener = new HostTraceListener(TraceFileName);
             _secretMasker = new SecretMasker();
+            _secretMasker.AddValueEncoder(ValueEncoders.JsonStringEscape);
+            _secretMasker.AddValueEncoder(ValueEncoders.UriDataEscape);
             _traceManager = new TraceManager(traceListener, _secretMasker);
             _trace = GetTrace(nameof(TestHostContext));
-            SetSingleton<ISecretMasker>(_secretMasker);
 
             // inject a terminal in silent mode so all console output
             // goes to the test trace file
@@ -72,15 +75,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         public string TraceFileName { get; private set; }
 
         public StartupType StartupType
-        { 
-            get 
+        {
+            get
             {
                 return _startupType;
             }
             set
             {
                 _startupType = value;
-            } 
+            }
         }
 
         public async Task Delay(TimeSpan delay, CancellationToken token)

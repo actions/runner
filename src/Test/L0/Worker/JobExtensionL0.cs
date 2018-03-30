@@ -53,7 +53,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
         private Mock<ITaskManager> _taskManager;
 
         private Mock<IJobServerQueue> _jobServerQueue;
-        private Mock<ISecretMasker> _secretMasker;
         private Mock<IVstsAgentWebProxy> _proxy;
         private Mock<IAgentCertificateManager> _cert;
         private Mock<IConfigurationStore> _config;
@@ -67,7 +66,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             _jobEc = new Agent.Worker.ExecutionContext();
             _taskManager = new Mock<ITaskManager>();
             _jobServerQueue = new Mock<IJobServerQueue>();
-            _secretMasker = new Mock<ISecretMasker>();
             _config = new Mock<IConfigurationStore>();
             _logger = new Mock<IPagingLogger>();
             _proxy = new Mock<IVstsAgentWebProxy>();
@@ -247,7 +245,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
 
             hc.SetSingleton(_taskManager.Object);
             hc.SetSingleton(_config.Object);
-            hc.SetSingleton(_secretMasker.Object);
             hc.SetSingleton(_jobServerQueue.Object);
             hc.SetSingleton(_proxy.Object);
             hc.SetSingleton(_cert.Object);

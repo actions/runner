@@ -64,7 +64,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         private readonly HashSet<string> _outputvariables = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         private IPagingLogger _logger;
-        private ISecretMasker _secretMasker;
         private IJobServerQueue _jobServerQueue;
         private IExecutionContext _parentExecutionContext;
 
@@ -126,7 +125,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             base.Initialize(hostContext);
 
             _jobServerQueue = HostContext.GetService<IJobServerQueue>();
-            _secretMasker = HostContext.GetService<ISecretMasker>();
         }
 
         public void CancelToken()
@@ -256,7 +254,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         public void AddIssue(Issue issue)
         {
             ArgUtil.NotNull(issue, nameof(issue));
-            issue.Message = _secretMasker.MaskSecrets(issue.Message);
+            issue.Message = HostContext.SecretMasker.MaskSecrets(issue.Message);
 
             if (issue.Type == IssueType.Error)
             {
@@ -471,7 +469,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         // the rule is command messages - which should be crafted using strongly typed wrapper methods.
         public long Write(string tag, string message)
         {
-            string msg = _secretMasker.MaskSecrets($"{tag}{message}");
+            string msg = HostContext.SecretMasker.MaskSecrets($"{tag}{message}");
             long totalLines;
             lock (_loggerLock)
             {

@@ -12,12 +12,17 @@ using System.Threading.Tasks;
 using System.Diagnostics;
 using System.Net.Http;
 using System.Diagnostics.Tracing;
+using Microsoft.TeamFoundation.DistributedTask.Logging;
 
 namespace Microsoft.VisualStudio.Services.Agent
 {
     public interface IHostContext : IDisposable
     {
         RunMode RunMode { get; set; }
+        StartupType StartupType { get; set; }
+        CancellationToken AgentShutdownToken { get; }
+        ShutdownReason AgentShutdownReason { get; }
+        ISecretMasker SecretMasker { get; }
         string GetDirectory(WellKnownDirectory directory);
         Tracing GetTrace(string name);
         Task Delay(TimeSpan delay, CancellationToken cancellationToken);
@@ -25,9 +30,6 @@ namespace Microsoft.VisualStudio.Services.Agent
         T GetService<T>() where T : class, IAgentService;
         void SetDefaultCulture(string name);
         event EventHandler Unloading;
-        StartupType StartupType { get; set; }
-        CancellationToken AgentShutdownToken { get; }
-        ShutdownReason AgentShutdownReason { get; }
         void ShutdownAgent(ShutdownReason reason);
     }
 
@@ -46,7 +48,9 @@ namespace Microsoft.VisualStudio.Services.Agent
         private static int[] _vssHttpCredentialEventIds = new int[] { 11, 13, 14, 15, 16, 17, 18, 20, 21, 22, 27, 29 };
         private readonly ConcurrentDictionary<Type, object> _serviceInstances = new ConcurrentDictionary<Type, object>();
         private readonly ConcurrentDictionary<Type, Type> _serviceTypes = new ConcurrentDictionary<Type, Type>();
+        private readonly ISecretMasker _secretMasker = new SecretMasker();
         private CancellationTokenSource _agentShutdownTokenSource = new CancellationTokenSource();
+
         private RunMode _runMode = RunMode.Normal;
         private Tracing _trace;
         private Tracing _vssTrace;
@@ -61,6 +65,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         public event EventHandler Unloading;
         public CancellationToken AgentShutdownToken => _agentShutdownTokenSource.Token;
         public ShutdownReason AgentShutdownReason { get; private set; }
+        public ISecretMasker SecretMasker => _secretMasker;
         public HostContext(string hostType, string logFile = null)
         {
             // Validate args.
@@ -68,6 +73,9 @@ namespace Microsoft.VisualStudio.Services.Agent
 
             _loadContext = AssemblyLoadContext.GetLoadContext(typeof(HostContext).GetTypeInfo().Assembly);
             _loadContext.Unloading += LoadContext_Unloading;
+
+            this.SecretMasker.AddValueEncoder(ValueEncoders.JsonStringEscape);
+            this.SecretMasker.AddValueEncoder(ValueEncoders.UriDataEscape);
 
             // Create the trace manager.
             if (string.IsNullOrEmpty(logFile))
@@ -86,11 +94,11 @@ namespace Microsoft.VisualStudio.Services.Agent
                     logRetentionDays = _defaultLogRetentionDays;
                 }
 
-                _traceManager = new TraceManager(new HostTraceListener(hostType, logPageSize, logRetentionDays), GetService<ISecretMasker>());
+                _traceManager = new TraceManager(new HostTraceListener(hostType, logPageSize, logRetentionDays), this.SecretMasker);
             }
             else
             {
-                _traceManager = new TraceManager(new HostTraceListener(logFile), GetService<ISecretMasker>());
+                _traceManager = new TraceManager(new HostTraceListener(logFile), this.SecretMasker);
             }
 
             _trace = GetTrace(nameof(HostContext));

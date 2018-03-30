@@ -188,9 +188,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                     {
                         var cerdStore = HostContext.GetService<IAgentCredentialStore>();
                         ClientCertificatePassword = cerdStore.Read($"VSTS_AGENT_CLIENT_CERT_PASSWORD_{certSetting.ClientCertPasswordLookupKey}").Password;
-
-                        var secretMasker = HostContext.GetService<ISecretMasker>();
-                        secretMasker.AddValue(ClientCertificatePassword);
+                        HostContext.SecretMasker.AddValue(ClientCertificatePassword);
                     }
 
                     _clientCertificates.Clear();

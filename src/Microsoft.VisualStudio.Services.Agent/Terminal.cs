@@ -25,8 +25,6 @@ namespace Microsoft.VisualStudio.Services.Agent
 
     public sealed class Terminal : AgentService, ITerminal
     {
-        private ISecretMasker _secretMasker;
-
         public bool Silent { get; set; }
 
         public event EventHandler CancelKeyPress;
@@ -34,7 +32,6 @@ namespace Microsoft.VisualStudio.Services.Agent
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
-            _secretMasker = hostContext.GetService<ISecretMasker>();
             Console.CancelKeyPress += Console_CancelKeyPress;
         }
 
@@ -85,7 +82,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             string val = new String(chars.ToArray());
             if (!string.IsNullOrEmpty(val))
             {
-                _secretMasker.AddValue(val);
+                HostContext.SecretMasker.AddValue(val);
             }
 
             Trace.Info($"Read value: '{val}'");

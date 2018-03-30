@@ -30,7 +30,6 @@ namespace Microsoft.VisualStudio.Services.Agent
 #else
         public static readonly string PathVariable = "PATH";
 #endif
-        public static string SecretMask = "********";
         public static string TFBuild = "TF_BUILD";
         public static string ProcessLookupId = "VSTS_PROCESS_LOOKUP_ID";
 
