@@ -57,7 +57,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
             return trackingConfig;
         }
 
-        public async Task RunMaintenanceOperation(IExecutionContext executionContext)
+        public Task RunMaintenanceOperation(IExecutionContext executionContext)
         {
             Trace.Entering();
             ArgUtil.NotNull(executionContext, nameof(executionContext));
@@ -73,13 +73,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
             else
             {
                 executionContext.Output(StringUtil.Loc("GCReleaseDirNotEnabled"));
-                return;
+                return Task.CompletedTask;
             }
 
             executionContext.Output(StringUtil.Loc("GCReleaseDir"));
 
             // delete unused Release directories
             trackingManager.DisposeCollectedGarbage(executionContext);
+
+            return Task.CompletedTask;
         }
 
         private int ComputeFolderInteger(string workingDirectory)
