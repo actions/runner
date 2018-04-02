@@ -51,7 +51,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             string tempDirectory = executionContext.Variables.Agent_TempDirectory;
             ArgUtil.Directory(tempDirectory, nameof(tempDirectory));
 
-            string supportRootFolder = Path.Combine(tempDirectory, message.JobName + "-support"); // TODO: Is JobName safe to use as a path? We could just generate a GUID as the name of our scoped folder?
+            string supportRootFolder = Path.Combine(tempDirectory, message.JobName + "-support");
             Directory.CreateDirectory(supportRootFolder);
 
             // \_layout\_work\_temp\[jobname-support]\files

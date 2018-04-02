@@ -84,7 +84,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 jobContext.InitializeJob(message, jobRequestCancellationToken);
                 Trace.Info("Starting the job execution context.");
                 jobContext.Start();
-                jobContext.Section(StringUtil.Loc("StepStarting", message.JobName));
+                jobContext.Section(StringUtil.Loc("StepStarting", message.JobDisplayName));
 
                 agentShutdownRegistration = HostContext.AgentShutdownToken.Register(() =>
                 {
@@ -135,7 +135,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 AgentSettings settings = HostContext.GetService<IConfigurationStore>().GetSettings();
                 jobContext.Variables.Set(Constants.Variables.Agent.Id, settings.AgentId.ToString(CultureInfo.InvariantCulture));
                 jobContext.Variables.Set(Constants.Variables.Agent.HomeDirectory, HostContext.GetDirectory(WellKnownDirectory.Root));
-                jobContext.Variables.Set(Constants.Variables.Agent.JobName, message.JobName);
+                jobContext.Variables.Set(Constants.Variables.Agent.JobName, message.JobDisplayName);
                 jobContext.Variables.Set(Constants.Variables.Agent.MachineName, Environment.MachineName);
                 jobContext.Variables.Set(Constants.Variables.Agent.Name, settings.AgentName);
                 jobContext.Variables.Set(Constants.Variables.Agent.OS, VarUtil.OS);

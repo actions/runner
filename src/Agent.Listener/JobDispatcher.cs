@@ -282,7 +282,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             }
 
             var term = HostContext.GetService<ITerminal>();
-            term.WriteLine(StringUtil.Loc("RunningJob", DateTime.UtcNow, message.JobName));
+            term.WriteLine(StringUtil.Loc("RunningJob", DateTime.UtcNow, message.JobDisplayName));
 
             // first job request renew succeed.
             TaskCompletionSource<int> firstJobRequestRenewed = new TaskCompletionSource<int>();
@@ -449,7 +449,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
                             TaskResult result = TaskResultUtil.TranslateFromReturnCode(returnCode);
                             Trace.Info($"finish job request for job {message.JobId} with result: {result}");
-                            term.WriteLine(StringUtil.Loc("JobCompleted", DateTime.UtcNow, message.JobName, result));
+                            term.WriteLine(StringUtil.Loc("JobCompleted", DateTime.UtcNow, message.JobDisplayName, result));
 
                             Trace.Info($"Stop renew job request for job {message.JobId}.");
                             // stop renew lock
@@ -541,7 +541,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                         }
 
                         Trace.Info($"finish job request for job {message.JobId} with result: {resultOnAbandonOrCancel}");
-                        term.WriteLine(StringUtil.Loc("JobCompleted", DateTime.UtcNow, message.JobName, resultOnAbandonOrCancel));
+                        term.WriteLine(StringUtil.Loc("JobCompleted", DateTime.UtcNow, message.JobDisplayName, resultOnAbandonOrCancel));
                         // complete job request with cancel result, stop renew lock, job has finished.
 
                         Trace.Info($"Stop renew job request for job {message.JobId}.");
