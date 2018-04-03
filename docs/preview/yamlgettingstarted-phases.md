@@ -62,17 +62,17 @@ Example phases that build in parallel (no dependencies).
 phases:
 - phase: Windows
   queue:
-    demands: agent.os -eq Windows_NT
+    demands: agent.os -equals Windows_NT
   steps:
   - script: echo hello from Windows
 - phase: macOS
   queue:
-    demands: agent.os -eq Darwin
+    demands: agent.os -equals Darwin
   steps:
   - script: echo hello from macOS
 - phase: Linux
   queue:
-    demands: agent.os -eq Linux
+    demands: agent.os -equals Linux
   steps:
   - script: echo hello from Linux
 ```
