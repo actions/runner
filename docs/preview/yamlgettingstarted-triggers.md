@@ -23,12 +23,25 @@ For more control, an alternative trigger syntax is available:
 ```yaml
 trigger:
   branches:
-    include: [string] # todo: examples
+    include: [string]
     exclude: [string]
   paths:
     include: [string]
     exclude: [string]
 ```
+
+For example:
+
+```yaml
+trigger:
+  branches:
+    include:
+    - master
+    - releases/*
+    exclude:
+    - releases/old*
+```
+
 
 Note, path filters are only supported for Git repositories in VSTS.
 
