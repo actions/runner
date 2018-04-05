@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressions;
+using Microsoft.TeamFoundation.DistributedTask.Expressions;
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Pipelines = Microsoft.TeamFoundation.DistributedTask.Pipelines;
 using Microsoft.VisualStudio.Services.Agent.Util;
@@ -79,10 +79,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     // Parse all Task conditions.
                     Trace.Info("Parsing all task's condition inputs.");
                     var expression = HostContext.GetService<IExpressionManager>();
-                    Dictionary<Guid, INode> taskConditionMap = new Dictionary<Guid, INode>();
+                    Dictionary<Guid, IExpressionNode> taskConditionMap = new Dictionary<Guid, IExpressionNode>();
                     foreach (var task in message.Steps.OfType<Pipelines.TaskStep>())
                     {
-                        INode condition;
+                        IExpressionNode condition;
                         if (!string.IsNullOrEmpty(task.Condition))
                         {
                             context.Debug($"Task '{task.DisplayName}' has following condition: '{task.Condition}'.");

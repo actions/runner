@@ -8,7 +8,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Xunit;
-using Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressions;
+using Microsoft.TeamFoundation.DistributedTask.Expressions;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
 {
@@ -371,7 +371,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                 var expressionManager = new Mock<IExpressionManager>();
                 expressionManager.Object.Initialize(hc);
                 hc.SetSingleton<IExpressionManager>(expressionManager.Object);
-                expressionManager.Setup(x => x.Evaluate(It.IsAny<IExecutionContext>(), It.IsAny<INode>(), It.IsAny<bool>())).Throws(new Exception());
+                expressionManager.Setup(x => x.Evaluate(It.IsAny<IExecutionContext>(), It.IsAny<IExpressionNode>(), It.IsAny<bool>())).Throws(new Exception());
 
                 // Arrange.
                 var variableSets = new[]
@@ -394,7 +394,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             }
         }
 
-        private Mock<IStep> CreateStep(TaskResult result, INode condition, Boolean continueOnError = false)
+        private Mock<IStep> CreateStep(TaskResult result, IExpressionNode condition, Boolean continueOnError = false)
         {
             // Setup the step.
             var step = new Mock<IStep>();
@@ -407,8 +407,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             var stepContext = new Mock<IExecutionContext>();
             stepContext.SetupAllProperties();
             stepContext.Setup(x => x.Variables).Returns(_variables);
-            stepContext.Setup(x => x.Complete(It.IsAny<TaskResult?>(), It.IsAny<string>()))
-                .Callback((TaskResult? r, string currentOperation) =>
+            stepContext.Setup(x => x.Complete(It.IsAny<TaskResult?>(), It.IsAny<string>(), It.IsAny<string>()))
+                .Callback((TaskResult? r, string currentOperation, string resultCode) =>
                 {
                     if (r != null)
                     {

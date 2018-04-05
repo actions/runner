@@ -1,6 +1,6 @@
 using System;
 using System.Threading.Tasks;
-using Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressions;
+using Microsoft.TeamFoundation.DistributedTask.Expressions;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
@@ -11,7 +11,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         public JobExtensionRunner(
             Func<IExecutionContext, object, Task> runAsync,
-            INode condition,
+            IExpressionNode condition,
             string displayName,
             object data)
         {
@@ -21,7 +21,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             _data = data;
         }
 
-        public INode Condition { get; set; }
+        public IExpressionNode Condition { get; set; }
         public bool ContinueOnError => false;
         public string DisplayName { get; private set; }
         public bool Enabled => true;

@@ -45,7 +45,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         // timeline record update methods
         void Start(string currentOperation = null);
-        TaskResult Complete(TaskResult? result = null, string currentOperation = null);
+        TaskResult Complete(TaskResult? result = null, string currentOperation = null, string resultCode = null);
         void SetVariable(string name, string value, bool isSecret, bool isOutput);
         void SetTimeout(TimeSpan? timeout);
         void AddIssue(Issue issue);
@@ -104,8 +104,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         private string ContextType => _record.RecordType;
 
-        // might remove this.
-        // TODO: figure out how do we actually use the result code.
         public string ResultCode
         {
             get
@@ -166,7 +164,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             _jobServerQueue.QueueTimelineRecordUpdate(_mainTimelineId, _record);
         }
 
-        public TaskResult Complete(TaskResult? result = null, string currentOperation = null)
+        public TaskResult Complete(TaskResult? result = null, string currentOperation = null, string resultCode = null)
         {
             if (result != null)
             {
@@ -180,6 +178,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             }
 
             _record.CurrentOperation = currentOperation ?? _record.CurrentOperation;
+            _record.ResultCode = resultCode ?? _record.ResultCode;
             _record.FinishTime = DateTime.UtcNow;
             _record.PercentComplete = 100;
             _record.Result = _record.Result ?? TaskResult.Succeeded;

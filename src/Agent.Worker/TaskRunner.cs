@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressions;
+using Microsoft.TeamFoundation.DistributedTask.Expressions;
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Pipelines = Microsoft.TeamFoundation.DistributedTask.Pipelines;
 using Microsoft.VisualStudio.Services.Agent.Util;
@@ -30,7 +30,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
     {
         public JobRunStage Stage { get; set; }
 
-        public INode Condition { get; set; }
+        public IExpressionNode Condition { get; set; }
 
         public bool ContinueOnError => Task?.ContinueOnError ?? default(bool);
 

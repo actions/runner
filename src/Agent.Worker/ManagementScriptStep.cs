@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
-using Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressions;
+using Microsoft.TeamFoundation.DistributedTask.Expressions;
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using Microsoft.VisualStudio.Services.Agent.Worker.Handlers;
@@ -14,7 +14,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
     {
         public ManagementScriptStep(
             string scriptPath,
-            INode condition,
+            IExpressionNode condition,
             string displayName)
         {
             ScriptPath = scriptPath;
@@ -23,7 +23,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         }
 
         public string ScriptPath { get; private set; }
-        public INode Condition { get; set; }
+        public IExpressionNode Condition { get; set; }
         public string DisplayName { get; private set; }
         public bool ContinueOnError => false;
         public bool Enabled => true;

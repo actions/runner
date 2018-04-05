@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using Pipelines = Microsoft.TeamFoundation.DistributedTask.Pipelines;
-using Expressions = Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Expressions;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using Microsoft.VisualStudio.Services.Agent.Worker.Handlers;
 using Microsoft.VisualStudio.Services.Agent.Worker.Container;
