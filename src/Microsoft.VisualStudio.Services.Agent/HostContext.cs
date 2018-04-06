@@ -59,7 +59,6 @@ namespace Microsoft.VisualStudio.Services.Agent
         private AssemblyLoadContext _loadContext;
         private IDisposable _httpTraceSubscription;
         private IDisposable _diagListenerSubscription;
-
         private StartupType _startupType;
 
         public event EventHandler Unloading;

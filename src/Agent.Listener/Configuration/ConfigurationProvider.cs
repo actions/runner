@@ -16,7 +16,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
         void GetServerUrl(AgentSettings agentSettings, CommandSettings command);
 
-        Task TestConnectionAsync(AgentSettings agentSettings, VssCredentials creds);
+        void GetCollectionName(AgentSettings agentSettings, CommandSettings command, bool isHosted);
+
+        Task TestConnectionAsync(AgentSettings agentSettings, VssCredentials creds, bool isHosted);
 
         Task GetPoolId(AgentSettings agentSettings, CommandSettings command);
 
@@ -52,6 +54,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         public void GetServerUrl(AgentSettings agentSettings, CommandSettings command)
         {
             agentSettings.ServerUrl = command.GetUrl();
+        }
+
+        public void GetCollectionName(AgentSettings agentSettings, CommandSettings command, bool isHosted)
+        {
+            // Collection name is not required for Build/Release agent
         }
 
         public virtual async Task GetPoolId(AgentSettings agentSettings, CommandSettings command)
@@ -92,7 +99,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             return _agentServer.DeleteAgentAsync(agentSettings.PoolId, agentSettings.AgentId);
         }
 
-        public async Task TestConnectionAsync(AgentSettings agentSettings, VssCredentials creds)
+        public async Task TestConnectionAsync(AgentSettings agentSettings, VssCredentials creds, bool isHosted)
         {
             _term.WriteLine(StringUtil.Loc("ConnectingToServer"));
             VssConnection connection = ApiUtil.CreateConnection(new Uri(agentSettings.ServerUrl), creds);
@@ -129,9 +136,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         {
             agentSettings.ServerUrl = command.GetUrl();
             Trace.Info("url - {0}", agentSettings.ServerUrl);
+        }
 
-            var isHosted = UrlUtil.IsHosted(agentSettings.ServerUrl);
-
+        public void GetCollectionName(AgentSettings agentSettings, CommandSettings command, bool isHosted)
+        {
             // for onprem tfs, collection is required for deploymentGroup
             if (!isHosted)
             {
@@ -200,10 +208,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             }
         }
 
-        public async Task TestConnectionAsync(AgentSettings agentSettings, VssCredentials creds)
+        public async Task TestConnectionAsync(AgentSettings agentSettings, VssCredentials creds, bool isHosted)
         {
             var url = agentSettings.ServerUrl;  // Ensure not to update back the url with agentSettings !!!
-            var isHosted = UrlUtil.IsHosted(url);
             _term.WriteLine(StringUtil.Loc("ConnectingToServer"));
 
             // Create the connection for deployment group 

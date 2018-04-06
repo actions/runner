@@ -39,7 +39,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
             Trace.Info($"Container name: {container.ContainerName}");
             Trace.Info($"Container image: {container.ContainerImage}");
-            Trace.Info($"Container registry: {container.ContainerRegistryEndpoint}");
+            Trace.Info($"Container registry: {container.ContainerRegistryEndpoint.ToString()}");
             Trace.Info($"Container options: {container.ContainerCreateOptions}");
             Trace.Info($"Skip container image pull: {container.SkipContainerImagePull}");
 
@@ -65,9 +65,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
             // Login to private docker registry
             string registryServer = string.Empty;
-            if (!string.IsNullOrEmpty(container.ContainerRegistryEndpoint))
+            if (container.ContainerRegistryEndpoint != Guid.Empty)
             {
-                var registryEndpoint = executionContext.Endpoints.FirstOrDefault(x => x.Type == "dockerregistry" && String.Equals(x.Id.ToString(), container.ContainerRegistryEndpoint, StringComparison.OrdinalIgnoreCase));
+                var registryEndpoint = executionContext.Endpoints.FirstOrDefault(x => x.Type == "dockerregistry" && x.Id == container.ContainerRegistryEndpoint);
                 ArgUtil.NotNull(registryEndpoint, nameof(registryEndpoint));
 
                 string username = string.Empty;
@@ -158,7 +158,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                                                                          image: container.ContainerImage,
                                                                          mountVolumes: container.MountVolumes,
                                                                          network: container.ContainerNetwork,
-                                                                         options: container.ContainerCreateOptions);
+                                                                         options: container.ContainerCreateOptions,
+                                                                         environment: container.ContainerEnvironmentVariables);
                 ArgUtil.NotNullOrEmpty(container.ContainerId, nameof(container.ContainerId));
                 executionContext.Variables.Set(Constants.Variables.Agent.ContainerId, container.ContainerId);
 

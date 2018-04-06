@@ -193,6 +193,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 .FirstOrDefault(x => x.ConfigurationProviderType == agentType);
             ArgUtil.NotNull(agentProvider, agentType);
 
+            bool isHostedServer = false;
             // Loop getting url and creds until you can connect
             ICredentialProvider credProvider = null;
             VssCredentials creds = null;
@@ -208,8 +209,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 Trace.Info("cred retrieved");
                 try
                 {
+                    // Determine the service deployment type based on connection data. (Hosted/OnPremises)
+                    isHostedServer = await IsHostedServer(agentSettings.ServerUrl, creds);
+
+                    // Get the collection name for deployment group
+                    agentProvider.GetCollectionName(agentSettings, command, isHostedServer);
+
                     // Validate can connect.
-                    await agentProvider.TestConnectionAsync(agentSettings, creds);
+                    await agentProvider.TestConnectionAsync(agentSettings, creds, isHostedServer);
                     Trace.Info("Test Connection complete.");
                     break;
                 }
@@ -339,8 +346,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 // We can't do this for VSTS, since its SPS/TFS urls are different.
                 UriBuilder configServerUrl = new UriBuilder(agentSettings.ServerUrl);
                 UriBuilder oauthEndpointUrlBuilder = new UriBuilder(agent.Authorization.AuthorizationUrl);
-                if (!UrlUtil.IsHosted(configServerUrl.Uri.AbsoluteUri) &&
-                    Uri.Compare(configServerUrl.Uri, oauthEndpointUrlBuilder.Uri, UriComponents.SchemeAndServer, UriFormat.Unescaped, StringComparison.OrdinalIgnoreCase) != 0)
+                if (!isHostedServer && Uri.Compare(configServerUrl.Uri, oauthEndpointUrlBuilder.Uri, UriComponents.SchemeAndServer, UriFormat.Unescaped, StringComparison.OrdinalIgnoreCase) != 0)
                 {
                     oauthEndpointUrlBuilder.Scheme = configServerUrl.Scheme;
                     oauthEndpointUrlBuilder.Host = configServerUrl.Host;
@@ -534,7 +540,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                     IConfigurationProvider agentProvider = (extensionManager.GetExtensions<IConfigurationProvider>()).FirstOrDefault(x => x.ConfigurationProviderType == agentType);
                     ArgUtil.NotNull(agentProvider, agentType);
 
-                    await agentProvider.TestConnectionAsync(settings, creds);
+                    // Determine the service deployment type based on connection data. (Hosted/OnPremises)
+                    bool isHostedServer = await IsHostedServer(settings.ServerUrl, creds);
+                    await agentProvider.TestConnectionAsync(settings, creds, isHostedServer);
 
                     TaskAgent agent = await agentProvider.GetAgentAsync(settings);
                     if (agent == null)
@@ -601,10 +609,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             Trace.Info(nameof(GetCredentialProvider));
 
             var credentialManager = HostContext.GetService<ICredentialManager>();
-            // Get the auth type. On premise defaults to negotiate (Kerberos with fallback to NTLM).
-            // Hosted defaults to PAT authentication.
-            string defaultAuth = UrlUtil.IsHosted(serverUrl) ? Constants.Configuration.PAT :
-                (Constants.Agent.Platform == Constants.OSPlatform.Windows ? Constants.Configuration.Integrated : Constants.Configuration.Negotiate);
+            // Get the default auth type. 
+            // Use PAT as long as the server uri scheme is Https and looks like a FQDN
+            // Otherwise windows use Integrated, linux/mac use negotiate.
+            string defaultAuth = string.Empty;
+            Uri server = new Uri(serverUrl);
+            if (server.Scheme == Uri.UriSchemeHttps && server.Host.Contains('.'))
+            {
+                defaultAuth = Constants.Configuration.PAT;
+            }
+            else
+            {
+                defaultAuth = Constants.Agent.Platform == Constants.OSPlatform.Windows ? Constants.Configuration.Integrated : Constants.Configuration.Negotiate;
+            }
+
             string authType = command.GetAuth(defaultValue: defaultAuth);
 
             // Create the credential.
@@ -660,6 +678,27 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             _term.WriteLine();
             _term.WriteLine($">> {message}:");
             _term.WriteLine();
+        }
+
+        private async Task<bool> IsHostedServer(string serverUrl, VssCredentials credentials)
+        {
+            // Determine the service deployment type based on connection data. (Hosted/OnPremises)
+            var locationServer = HostContext.GetService<ILocationServer>();
+            VssConnection connection = ApiUtil.CreateConnection(new Uri(serverUrl), credentials);
+            await locationServer.ConnectAsync(connection);
+            try
+            {
+                var connectionData = await locationServer.GetConnectionDataAsync();
+                Trace.Info($"Server deployment type: {connectionData.DeploymentType}");
+                return connectionData.DeploymentType.HasFlag(DeploymentFlags.Hosted);
+            }
+            catch (Exception ex)
+            {
+                // Since the DeploymentType is Enum, deserialization exception means there is a new Enum member been added.
+                // It's more likely to be Hosted since OnPremises is always behind and customer can update their agent if are on-prem
+                Trace.Error(ex);
+                return true;
+            }
         }
     }
 }

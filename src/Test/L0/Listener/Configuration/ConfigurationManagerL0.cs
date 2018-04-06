@@ -14,12 +14,14 @@ using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
 using Xunit;
+using Microsoft.VisualStudio.Services.Location;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
 {
     public class ConfigurationManagerL0
     {
         private Mock<IAgentServer> _agentServer;
+        private Mock<ILocationServer> _locationServer;
         private Mock<ICredentialManager> _credMgr;
         private Mock<IPromptManager> _promptManager;
         private Mock<IConfigurationStore> _store;
@@ -59,6 +61,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
         public ConfigurationManagerL0()
         {
             _agentServer = new Mock<IAgentServer>();
+            _locationServer = new Mock<ILocationServer>();
             _credMgr = new Mock<ICredentialManager>();
             _promptManager = new Mock<IPromptManager>();
             _store = new Mock<IConfigurationStore>();
@@ -94,7 +97,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
                 AuthorizationUrl = new Uri("http://localhost:8080/tfs"),
             };
 
+            var connectionData = new ConnectionData()
+            {
+                InstanceId = Guid.NewGuid(),
+                DeploymentType = DeploymentFlags.Hosted,
+                DeploymentId = Guid.NewGuid()
+            };
             _agentServer.Setup(x => x.ConnectAsync(It.IsAny<VssConnection>())).Returns(Task.FromResult<object>(null));
+            _locationServer.Setup(x => x.ConnectAsync(It.IsAny<VssConnection>())).Returns(Task.FromResult<object>(null));
+            _locationServer.Setup(x => x.GetConnectionDataAsync()).Returns(Task.FromResult<ConnectionData>(connectionData));
             _machineGroupServer.Setup(x => x.ConnectAsync(It.IsAny<VssConnection>())).Returns(Task.FromResult<object>(null));
             _machineGroupServer.Setup(x => x.UpdateDeploymentTargetsAsync(It.IsAny<Guid>(), It.IsAny<int>(), It.IsAny<List<DeploymentMachine>>()));
             _machineGroupServer.Setup(x => x.AddDeploymentTargetAsync(It.IsAny<Guid>(), It.IsAny<int>(), It.IsAny<DeploymentMachine>())).Returns(Task.FromResult(expectedDeploymentMachine));
@@ -120,7 +131,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
 #endif
 
             var expectedPools = new List<TaskAgentPool>() { new TaskAgentPool(_expectedPoolName) { Id = _expectedPoolId } };
-            _agentServer.Setup(x => x.GetAgentPoolsAsync(It.IsAny<string>(),It.IsAny<TaskAgentPoolType>())).Returns(Task.FromResult(expectedPools));
+            _agentServer.Setup(x => x.GetAgentPoolsAsync(It.IsAny<string>(), It.IsAny<TaskAgentPoolType>())).Returns(Task.FromResult(expectedPools));
 
             var expectedAgents = new List<TaskAgent>();
             _agentServer.Setup(x => x.GetAgentsAsync(It.IsAny<int>(), It.IsAny<string>())).Returns(Task.FromResult(expectedAgents));
@@ -141,6 +152,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
             tc.SetSingleton<IConfigurationStore>(_store.Object);
             tc.SetSingleton<IExtensionManager>(_extnMgr.Object);
             tc.SetSingleton<IAgentServer>(_agentServer.Object);
+            tc.SetSingleton<ILocationServer>(_locationServer.Object);
             tc.SetSingleton<IDeploymentGroupServer>(_machineGroupServer.Object);
             tc.SetSingleton<INetFrameworkUtil>(_netFrameworkUtil.Object);
             tc.SetSingleton<ICapabilitiesManager>(_capabilitiesManager);
@@ -154,8 +166,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
 #endif
 
             tc.SetSingleton<IRSAKeyManager>(_rsaKeyManager.Object);
-            tc.EnqueueInstance<IAgentServer>(_agentServer.Object);
-            tc.EnqueueInstance<IDeploymentGroupServer>(_machineGroupServer.Object);
 
             return tc;
         }

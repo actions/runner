@@ -11,40 +11,30 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Container
         private List<MountVolume> _mountVolumes;
         private Dictionary<string, string> _pathMappings;
 
-        public ContainerInfo(Pipelines.ContainerReference container)
+        public ContainerInfo(Pipelines.ContainerResource container)
         {
             this.ContainerName = container.Name;
 
-            container.Data.TryGetValue("image", out string containerImage);
+            string containerImage = container.Properties.Get<string>("image");
             ArgUtil.NotNullOrEmpty(containerImage, nameof(containerImage));
+
             this.ContainerImage = containerImage;
-
             this.ContainerDisplayName = $"{container.Name}_{Pipelines.Validation.NameValidation.Sanitize(containerImage)}";
-
-            if (container.Data.TryGetValue("registry", out string containerRegistry))
-            {
-                this.ContainerRegistryEndpoint = containerRegistry;
-            }
-
-            if (container.Data.TryGetValue("options", out string containerCreateOptions))
-            {
-                this.ContainerCreateOptions = containerCreateOptions;
-            }
-
-            if (container.Data.TryGetValue("localimage", out string localImage))
-            {
-                this.SkipContainerImagePull = StringUtil.ConvertToBoolean(localImage);
-            }
+            this.ContainerRegistryEndpoint = container.Endpoint.Id;
+            this.ContainerCreateOptions = container.Properties.Get<string>("options");
+            this.SkipContainerImagePull = container.Properties.Get<bool>("localimage");
+            this.ContainerEnvironmentVariables = container.Environment;
         }
 
         public string ContainerId { get; set; }
-        public string ContainerDisplayName { get; set; }
+        public string ContainerDisplayName { get; private set; }
         public string ContainerNetwork { get; set; }
-        public string ContainerImage { get; set; }
+        public string ContainerImage { get; private set; }
         public string ContainerName { get; set; }
-        public string ContainerRegistryEndpoint { get; set; }
-        public string ContainerCreateOptions { get; set; }
-        public bool SkipContainerImagePull { get; set; }
+        public Guid ContainerRegistryEndpoint { get; private set; }
+        public string ContainerCreateOptions { get; private set; }
+        public bool SkipContainerImagePull { get; private set; }
+        public IDictionary<string, string> ContainerEnvironmentVariables { get; private set; }
 #if !OS_WINDOWS
         public string CurrentUserName { get; set; }
         public string CurrentUserId { get; set; }

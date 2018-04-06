@@ -17,7 +17,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Container
         Task<int> DockerLogin(IExecutionContext context, string server, string username, string password);
         Task<int> DockerLogout(IExecutionContext context, string server);
         Task<int> DockerPull(IExecutionContext context, string image);
-        Task<string> DockerCreate(IExecutionContext context, string displayName, string image, List<MountVolume> mountVolumes, string network, string options);
+        Task<string> DockerCreate(IExecutionContext context, string displayName, string image, List<MountVolume> mountVolumes, string network, string options, IDictionary<string, string> environment);
         Task<int> DockerStart(IExecutionContext context, string containerId);
         Task<int> DockerStop(IExecutionContext context, string containerId);
         Task<int> DockerNetworkCreate(IExecutionContext context, string network);
@@ -94,7 +94,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Container
             return await ExecuteDockerCommandAsync(context, "pull", image, context.CancellationToken);
         }
 
-        public async Task<string> DockerCreate(IExecutionContext context, string displayName, string image, List<MountVolume> mountVolumes, string network, string options)
+        public async Task<string> DockerCreate(IExecutionContext context, string displayName, string image, List<MountVolume> mountVolumes, string network, string options, IDictionary<string, string> environment)
         {
             string dockerMountVolumesArgs = string.Empty;
             if (mountVolumes?.Count > 0)
@@ -110,6 +110,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Container
                 }
             }
 
+            string dockerEnvArgs = string.Empty;
+            if (environment?.Count > 0)
+            {
+                foreach (var env in environment)
+                {
+                    dockerEnvArgs += $" -e \"{env.Key}={env.Value.Replace("\"", "\\\"")}\"";
+                }
+            }
+
 #if OS_WINDOWS
             string node = Path.Combine("C:\\_a\\externals", "node", "bin", $"node{IOUtil.ExeExtension}"); // Windows container always map externals folder to C:\_a\externals
 #else
@@ -117,9 +126,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Container
 #endif
             string sleepCommand = $"\"{node}\" -e \"setInterval(function(){{}}, 24 * 60 * 60 * 1000);\"";
 #if OS_WINDOWS
-            string dockerArgs = $"--name {displayName} --rm {options} {dockerMountVolumesArgs} {image} {sleepCommand}";  // add --network={network} and -v '\\.\pipe\docker_engine:\\.\pipe\docker_engine' when they are available (17.09)
+            string dockerArgs = $"--name {displayName} --rm {options} {dockerEnvArgs} {dockerMountVolumesArgs} {image} {sleepCommand}";  // add --network={network} and -v '\\.\pipe\docker_engine:\\.\pipe\docker_engine' when they are available (17.09)
 #else
-            string dockerArgs = $"--name {displayName} --rm --network={network} -v /var/run/docker.sock:/var/run/docker.sock {options} {dockerMountVolumesArgs} {image} {sleepCommand}";
+            string dockerArgs = $"--name {displayName} --rm --network={network} -v /var/run/docker.sock:/var/run/docker.sock {options} {dockerEnvArgs} {dockerMountVolumesArgs} {image} {sleepCommand}";
 #endif
             List<string> outputStrings = await ExecuteDockerCommandAsync(context, "create", dockerArgs);
             return outputStrings.FirstOrDefault();

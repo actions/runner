@@ -372,11 +372,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             if (!string.IsNullOrEmpty(imageName) &&
                 string.IsNullOrEmpty(message.JobContainer))
             {
-                var dockerContainer = new Pipelines.ContainerReference()
+                var dockerContainer = new Pipelines.ContainerResource()
                 {
                     Name = "vsts_container_preview"
                 };
-                dockerContainer.Data["image"] = imageName;
+                dockerContainer.Properties.Set("image", imageName);
                 Container = new ContainerInfo(dockerContainer);
             }
             else if (!string.IsNullOrEmpty(message.JobContainer))

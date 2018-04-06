@@ -181,10 +181,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 // Initialize and store the HTTP client.
                 var credentialManager = HostContext.GetService<ICredentialManager>();
 
-                // Get the auth type. On premise defaults to negotiate (Kerberos with fallback to NTLM).
-                // Hosted defaults to PAT authentication.
-                string defaultAuthType = UrlUtil.IsHosted(url) ? Constants.Configuration.PAT :
-                    (Constants.Agent.Platform == Constants.OSPlatform.Windows ? Constants.Configuration.Integrated : Constants.Configuration.Negotiate);
+                // Defaults to PAT authentication.
+                string defaultAuthType = Constants.Configuration.PAT;
                 string authType = command.GetAuth(defaultValue: defaultAuthType);
                 ICredentialProvider provider = credentialManager.GetCredentialProvider(authType);
                 provider.EnsureCredential(HostContext, command, url);

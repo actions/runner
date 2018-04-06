@@ -59,8 +59,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 message.Variables[Constants.Variables.System.AccessToken] = new VariableValue(systemConnection.Authorization.Parameters["AccessToken"], false);
             }
 
-            // Make sure SystemConnection Url and Endpoint Url match Config Url base
-            ReplaceConfigUriBaseInJobRequestMessage(message);
+            // Make sure SystemConnection Url and Endpoint Url match Config Url base for OnPremises server
+            if (!message.Variables.ContainsKey(Constants.Variables.System.ServerType) ||
+                string.Equals(message.Variables[Constants.Variables.System.ServerType]?.Value, "OnPremises", StringComparison.OrdinalIgnoreCase))
+            {
+                ReplaceConfigUriBaseInJobRequestMessage(message);
+            }
 
             // Setup the job server and job server queue.
             var jobServer = HostContext.GetService<IJobServer>();
@@ -458,12 +462,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             AgentSettings settings = HostContext.GetService<IConfigurationStore>().GetSettings();
             try
             {
-                if (UrlUtil.IsHosted(messageUri.AbsoluteUri))
-                {
-                    // If messageUri is hosted service URL, return the messageUri as it is.
-                    return messageUri;
-                }
-
                 Uri result = null;
                 Uri configUri = new Uri(settings.ServerUrl);
                 if (Uri.TryCreate(new Uri(configUri.GetComponents(UriComponents.SchemeAndServer, UriFormat.Unescaped)), messageUri.PathAndQuery, out result))

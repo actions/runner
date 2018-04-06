@@ -13,7 +13,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="vss-api-netcore" Version="0.5.59-private" />
+    <PackageReference Include="vss-api-netcore" Version="0.5.61-private" />
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="4.4.0" />
   </ItemGroup>
 
