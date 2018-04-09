@@ -39,7 +39,7 @@ $ sudo apt-get install git
 
 The agent distributes team explorer everywhere.
 
-But, if you are using Tfvc, install Oracle Java 1.6+ as TEE uses Java.
+But, if you are using Tfvc, install Oracle Java 1.8+ as TEE uses Java.
 
 ## Etc
 
