@@ -34,6 +34,7 @@ queue:
   parallel: number
   timeoutInMinutes: number
   cancelTimeoutInMinutes: number
+  container: string
   demands: string | [ string ]
   matrix: { string: { string: string } }
 ```
@@ -138,6 +139,62 @@ When `parallel` is specified and `matrix` is not defined, the setting indicates 
 <!-- ### Continue on error (applies to: queue, deployment, server)
 
 When `continueOnError` is `true` and the job fails, the result will be \"Succeeded with issues\" instead of "Failed\". -->
+
+### Container (applies to: queue)
+
+The `container` allows an agent phase declare which container instance the phase will use at runtime. For example:
+
+```yaml
+resources:
+  containers:
+  - container: dev1
+    image: ubuntu:16.04
+phases:
+- phase: phase_container
+  queue:
+    name: default
+    container: dev1
+  steps:
+  - script: printenv
+```
+
+Or apply `matrix` on `container`:
+
+```yaml
+resources:
+  containers:
+  - container: dev1
+    image: ubuntu:14.04
+  - container: dev2
+    image: private:ubuntu14
+    endpoint: privatedockerhub
+  - container: dev3
+    image: ubuntu:16.04
+    options: --cpu-count 4
+  - container: dev4
+    image: ubuntu:16.04
+    options: --hostname container-test --ip 192.168.0.1
+    localImage: true
+    env:
+      envVariable1: envValue1
+      envVariable2: envValue2
+phases:
+- phase: phase_container
+  queue:
+    name: default
+    container: $[variables['runtimeContainer']]
+    matrix:
+      container_1:
+        runtimeContainer: dev1
+      container_2:
+        runtimeContainer: dev2
+      container_3:
+        runtimeContainer: dev3
+      container_4:
+        runtimeContainer: dev4
+  steps:
+  - script: printenv
+```
 
 ## Variables
 
