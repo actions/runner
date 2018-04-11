@@ -59,6 +59,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 message.Variables[Constants.Variables.System.AccessToken] = new VariableValue(systemConnection.Authorization.Parameters["AccessToken"], false);
             }
 
+            // back compat TfsServerUrl
+            message.Variables[Constants.Variables.System.TFServerUrl] = systemConnection.Url.AbsoluteUri;
+
             // Make sure SystemConnection Url and Endpoint Url match Config Url base for OnPremises server
             if (!message.Variables.ContainsKey(Constants.Variables.System.ServerType) ||
                 string.Equals(message.Variables[Constants.Variables.System.ServerType]?.Value, "OnPremises", StringComparison.OrdinalIgnoreCase))
@@ -515,9 +518,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 Trace.Info($"Ensure System.TFCollectionUrl match config url base. {message.Variables[WellKnownDistributedTaskVariables.TFCollectionUrl].Value}");
             }
 
-            // back compat server url
-            message.Variables[Constants.Variables.System.TFServerUrl] = systemConnection.Url.AbsoluteUri;
-            Trace.Info($"Ensure System.TFServerUrl match config url base. {systemConnection.Url.AbsoluteUri}");
+            if (message.Variables.ContainsKey(Constants.Variables.System.TFServerUrl))
+            {
+                string tfsServerUrl = message.Variables[Constants.Variables.System.TFServerUrl].Value;
+                message.Variables[Constants.Variables.System.TFServerUrl] = ReplaceWithConfigUriBase(new Uri(tfsServerUrl)).AbsoluteUri;
+                Trace.Info($"Ensure System.TFServerUrl match config url base. {message.Variables[Constants.Variables.System.TFServerUrl].Value}");
+            }
         }
 
         private Dictionary<int, Process> SnapshotProcesses()
