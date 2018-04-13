@@ -362,6 +362,11 @@ namespace Microsoft.VisualStudio.Services.Agent
 
                 if (filesToUpload.Count > 0)
                 {
+                    if (runOnce)
+                    {
+                        Trace.Info($"Uploading {filesToUpload.Count} files in one shot.");
+                    }
+
                     // TODO: upload all file in parallel
                     int errorCount = 0;
                     foreach (var file in filesToUpload)
