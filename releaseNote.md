@@ -1,17 +1,9 @@
 ## Features
-  - Run git prune as part of repository maintenance job #1447
-  - Added support for update release name command #1432
-  - Define container per job (YAML). #1444
-  - Added release maintenance job #1460
+  N/A
 ## Bugs
-  - Throw error on multi-line secret. #1446
-  - Set service to delayed auto start on Windows. #1461
-  - Fixing Nunit3Result reader: Added missing Check to update platform only when there's valid Build. #1473
+  - Fix compat break between 2.133.0 agent and ReleaseManagement in VSTS.
 ## Misc
-  - Added debugging log line for file upload failure #1445
-  - Override prefergitfrompath-Value by env-var #1424
-  - Read additional environment variable from .env #1462
-  - Detect server type base on connection data. #1491
+  N/A
 
 ## Agent Downloads  
 
