@@ -482,6 +482,21 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                         executionContext.Debug(ex.ToString());
                     }
                 }
+                
+                // delete the shallow.lock file left by previous canceled build or any operation cause git.exe crash last time.
+                string shallowLockFile = Path.Combine(targetPath, ".git\\shallow.lock");
+                if (File.Exists(shallowLockFile))
+                {
+                    try
+                    {
+                        File.Delete(shallowLockFile);
+                    }
+                    catch (Exception ex)
+                    {
+                        executionContext.Debug($"Unable to delete the shallow.lock file: {shallowLockFile}");
+                        executionContext.Debug(ex.ToString());
+                    }
+                }
 
                 // When repo.clean is selected for a git repo, execute git clean -fdx and git reset --hard HEAD on the current repo.
                 // This will help us save the time to reclone the entire repo.
