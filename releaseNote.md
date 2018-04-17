@@ -1,9 +1,9 @@
 ## Features
   N/A
 ## Bugs
-  - Fix compat break between 2.133.0 agent and ReleaseManagement in VSTS.
+  - Only validate multi-line value for secret variable. #1511
 ## Misc
-  N/A
+  - Log unhandled worker process exception back to server. #1512
 
 ## Agent Downloads  
 
