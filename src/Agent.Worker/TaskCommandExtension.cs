@@ -487,17 +487,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 Boolean.TryParse(isOutputValue, out isOutput);
             }
 
-            bool? allowMultilineSecret = context.Variables.GetBoolean("SYSTEM_UNSAFEALLOWMULTILINESECRET");
-            if (allowMultilineSecret == null)
+            if (isSecret)
             {
-                allowMultilineSecret = StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("SYSTEM_UNSAFEALLOWMULTILINESECRET"), false);
-            }
+                bool? allowMultilineSecret = context.Variables.GetBoolean("SYSTEM_UNSAFEALLOWMULTILINESECRET");
+                if (allowMultilineSecret == null)
+                {
+                    allowMultilineSecret = StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("SYSTEM_UNSAFEALLOWMULTILINESECRET"), false);
+                }
 
-            if (!string.IsNullOrEmpty(data) &&
-                data.Contains(Environment.NewLine) &&
-                !allowMultilineSecret.Value)
-            {
-                throw new InvalidOperationException(StringUtil.Loc("MultilineSecret"));
+                if (!string.IsNullOrEmpty(data) &&
+                    data.Contains(Environment.NewLine) &&
+                    !allowMultilineSecret.Value)
+                {
+                    throw new InvalidOperationException(StringUtil.Loc("MultilineSecret"));
+                }
             }
 
             context.SetVariable(name, data, isSecret, isOutput);
@@ -523,17 +526,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 Boolean.TryParse(isSecretValue, out isSecret);
             }
 
-            bool? allowMultilineSecret = context.Variables.GetBoolean("SYSTEM_UNSAFEALLOWMULTILINESECRET");
-            if (allowMultilineSecret == null)
+            if (isSecret)
             {
-                allowMultilineSecret = StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("SYSTEM_UNSAFEALLOWMULTILINESECRET"), false);
-            }
+                bool? allowMultilineSecret = context.Variables.GetBoolean("SYSTEM_UNSAFEALLOWMULTILINESECRET");
+                if (allowMultilineSecret == null)
+                {
+                    allowMultilineSecret = StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("SYSTEM_UNSAFEALLOWMULTILINESECRET"), false);
+                }
 
-            if (!string.IsNullOrEmpty(data) &&
-                data.Contains(Environment.NewLine) &&
-                !allowMultilineSecret.Value)
-            {
-                throw new InvalidOperationException(StringUtil.Loc("MultilineSecret"));
+                if (!string.IsNullOrEmpty(data) &&
+                    data.Contains(Environment.NewLine) &&
+                    !allowMultilineSecret.Value)
+                {
+                    throw new InvalidOperationException(StringUtil.Loc("MultilineSecret"));
+                }
             }
 
             context.TaskVariables.Set(name, data, isSecret);
