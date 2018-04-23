@@ -1,4 +1,4 @@
-# (DRAFT) Agent Authentication and Authorization
+# Agent Authentication and Authorization
 
 ## Goals
 
