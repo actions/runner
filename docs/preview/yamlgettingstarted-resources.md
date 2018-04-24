@@ -43,20 +43,20 @@ resources:
   - repository: string
   
     # Required: Specifies the type of repository
-    type: tfsgit | github
+    type: git | github
 ```
 
 ### Git Repositories
 
-#### TfsGit
+#### Git
 
-Initially only repositories located within the same project as the entry file are allowed. 
+Git refers to git repositories built into the product. Initially only repositories located within the same project as the entry file are allowed. 
 
 ```yaml
 resources:
   repositories:
   - repository: alias
-    type: tfsgit
+    type: git
 
     # Required: Specifies the name of the repository in the project
     name: string
