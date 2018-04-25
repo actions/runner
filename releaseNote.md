@@ -1,9 +1,9 @@
 ## Features
   N/A
 ## Bugs
-  - Only validate multi-line value for secret variable. #1511
+  - Fix NullReferenceException when use preview container feature. #1527
 ## Misc
-  - Log unhandled worker process exception back to server. #1512
+  N/A
 
 ## Agent Downloads  
 
