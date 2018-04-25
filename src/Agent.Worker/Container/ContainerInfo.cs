@@ -20,7 +20,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Container
 
             this.ContainerImage = containerImage;
             this.ContainerDisplayName = $"{container.Name}_{Pipelines.Validation.NameValidation.Sanitize(containerImage)}";
-            this.ContainerRegistryEndpoint = container.Endpoint.Id;
+            this.ContainerRegistryEndpoint = container.Endpoint?.Id ?? Guid.Empty;
             this.ContainerCreateOptions = container.Properties.Get<string>("options");
             this.SkipContainerImagePull = container.Properties.Get<bool>("localimage");
             this.ContainerEnvironmentVariables = container.Environment;
