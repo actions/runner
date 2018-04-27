@@ -22,7 +22,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 rsa = new RSACryptoServiceProvider(2048);
 
                 // Now write the parameters to disk
-                IOUtil.SaveObject(rsa.ExportParameters(true), _keyFile);
+                IOUtil.SaveObject(new RSAParametersSerializable(rsa.ExportParameters(true)), _keyFile);
                 Trace.Info("Successfully saved RSA key parameters to file {0}", _keyFile);
 
                 // Try to lock down the credentials_key file to the owner/group
@@ -54,7 +54,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 Trace.Info("Found existing RSA key parameters file {0}", _keyFile);
 
                 rsa = new RSACryptoServiceProvider();
-                rsa.ImportParameters(IOUtil.LoadObject<RSAParameters>(_keyFile));
+                rsa.ImportParameters(IOUtil.LoadObject<RSAParametersSerializable>(_keyFile).RSAParameters);
             }
 
             return rsa;
@@ -78,7 +78,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
             Trace.Info("Loading RSA key parameters from file {0}", _keyFile);
 
-            var parameters = IOUtil.LoadObject<RSAParameters>(_keyFile);
+            var parameters = IOUtil.LoadObject<RSAParametersSerializable>(_keyFile).RSAParameters;
             var rsa = new RSACryptoServiceProvider();
             rsa.ImportParameters(parameters);
             return rsa;

@@ -374,14 +374,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             {
                 var dockerContainer = new Pipelines.ContainerResource()
                 {
-                    Name = "vsts_container_preview"
+                    Alias = "vsts_container_preview"
                 };
                 dockerContainer.Properties.Set("image", imageName);
                 Container = new ContainerInfo(dockerContainer);
             }
             else if (!string.IsNullOrEmpty(message.JobContainer))
             {
-                Container = new ContainerInfo(message.Resources.Containers.Single(x => string.Equals(x.Name, message.JobContainer, StringComparison.OrdinalIgnoreCase)));
+                Container = new ContainerInfo(message.Resources.Containers.Single(x => string.Equals(x.Alias, message.JobContainer, StringComparison.OrdinalIgnoreCase)));
             }
             else
             {
