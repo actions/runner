@@ -196,13 +196,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     await taskServer.ConnectAsync(ApiUtil.CreateConnection(taskServerUri, taskServerCredential));
                 }
 
-                if (taskServerUri == null || !await taskServer.TaskDefinitionEndpointExist())
+                // for back compat TFS 2015 RTM/QU1, we may need to switch the task server url to agent config url
+                if (!string.Equals(message.Variables.GetValueOrDefault(Constants.Variables.System.ServerType)?.Value, "Hosted", StringComparison.OrdinalIgnoreCase))
                 {
-                    Trace.Info($"Can't determine task download url from JobMessage or the endpoint doesn't exist.");
-                    var configStore = HostContext.GetService<IConfigurationStore>();
-                    taskServerUri = new Uri(configStore.GetSettings().ServerUrl);
-                    Trace.Info($"Recreate task server with configuration server url: {taskServerUri}");
-                    await taskServer.ConnectAsync(ApiUtil.CreateConnection(taskServerUri, taskServerCredential));
+                    if (taskServerUri == null || !await taskServer.TaskDefinitionEndpointExist())
+                    {
+                        Trace.Info($"Can't determine task download url from JobMessage or the endpoint doesn't exist.");
+                        var configStore = HostContext.GetService<IConfigurationStore>();
+                        taskServerUri = new Uri(configStore.GetSettings().ServerUrl);
+                        Trace.Info($"Recreate task server with configuration server url: {taskServerUri}");
+                        await taskServer.ConnectAsync(ApiUtil.CreateConnection(taskServerUri, taskServerCredential));
+                    }
                 }
 
                 // Expand the endpoint data values.
