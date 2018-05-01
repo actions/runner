@@ -1,0 +1,261 @@
+phases:
+
+################################################################################
+- phase: build_windows_agent
+################################################################################
+  displayName: Windows Agent
+  queue:
+    name: Hosted VS2017
+  steps:
+
+  # Steps template for windows platform
+  - template: .vsts.template.windows.yml
+  
+  # Package dotnet core windows dependency (VC++ Redistributable)
+  - powershell: |
+      Write-Host "Downloading 'VC++ Redistributable' package."
+      $outDir = Join-Path -Path $env:TMP -ChildPath ([Guid]::NewGuid())
+      New-Item -Path $outDir -ItemType directory 
+      $outFile = Join-Path -Path $outDir -ChildPath "ucrt.zip"
+      Invoke-WebRequest -Uri https://vstsagenttools.blob.core.windows.net/tools/ucrt/ucrt.zip -OutFile $outFile
+      Write-Host "Unzipping 'VC++ Redistributable' package to agent layout."
+      $unzipDir = Join-Path -Path $outDir -ChildPath "unzip"
+      Add-Type -AssemblyName System.IO.Compression.FileSystem
+      [System.IO.Compression.ZipFile]::ExtractToDirectory($outFile, $unzipDir)
+      $agentLayoutBin = Join-Path -Path $(Build.SourcesDirectory) -ChildPath "_layout\bin"
+      Copy-Item -Path $unzipDir -Destination $agentLayoutBin -Force
+    displayName: Package UCRT
+
+
+  # Signing steps
+  - task: SFP.build-tasks.custom-build-task-1.EsrpCodeSigning@1
+    inputs:
+      ConnectedServiceName: VSTSAgentESRP
+      FolderPath: '_layout\bin'
+      Pattern: AgentService.exe
+      signConfigType: inlineSignParams
+      inlineOperation: |
+        [{
+        "keyCode": "CP-235845-SN",
+        "operationSetCode": "StrongNameSign",
+        "parameters": [],
+        "toolName": "sign",
+        "toolVersion": "1.0"
+        },
+        {
+        "keyCode": "CP-235845-SN",
+        "operationSetCode": "StrongNameVerify",
+        "parameters": [],
+        "toolName": "sign",
+        "toolVersion": "1.0"
+        }
+        ]
+    displayName: Sign Agent Assemblies (Strong Name Signing)
+
+  - task: SFP.build-tasks.custom-build-task-1.EsrpCodeSigning@1
+    inputs:
+      ConnectedServiceName: VSTSAgentESRP
+      FolderPath: '_layout\bin'
+      Pattern: 'Agent.*.dll,Agent.*.exe,Microsoft.VisualStudio.Services.Agent.dll,AgentService.exe'
+      signConfigType: inlineSignParams
+      inlineOperation: |
+        [{
+        "keyCode": "CP-229803",
+        "operationSetCode": "SigntoolSign",
+        "parameters": [{
+        "parameterName": "OpusName",
+        "parameterValue": "Microsoft"
+        },
+        {
+        "parameterName": "OpusInfo",
+        "parameterValue": "http://www.microsoft.com"
+        },
+        {
+        "parameterName": "PageHash",
+        "parameterValue": "/NPH"
+        },
+        {
+        "parameterName": "TimeStamp",
+        "parameterValue": "/t \"http://ts4096.gtm.microsoft.com/TSS/AuthenticodeTS\""
+        }
+        ],
+        "toolName": "sign",
+        "toolVersion": "1.0"
+        },
+        {
+        "keyCode": "CP-230012",
+        "operationSetCode": "SigntoolSign",
+        "parameters": [{
+        "parameterName": "OpusName",
+        "parameterValue": "Microsoft"
+        },
+        {
+        "parameterName": "OpusInfo",
+        "parameterValue": "http://www.microsoft.com"
+        },
+        {
+        "parameterName": "Append",
+        "parameterValue": "/as"
+        },
+        {
+        "parameterName": "FileDigest",
+        "parameterValue": "/fd \"SHA256\""
+        },
+        {
+        "parameterName": "PageHash",
+        "parameterValue": "/NPH"
+        },
+        {
+        "parameterName": "TimeStamp",
+        "parameterValue": "/tr \"http://rfc3161.gtm.corp.microsoft.com/TSS/HttpTspServer\" /td sha256"
+        }
+        ],
+        "toolName": "sign",
+        "toolVersion": "1.0"
+        },
+        {
+        "keyCode": "CP-230012",
+        "operationSetCode": "SigntoolVerify",
+        "parameters": [{
+        "parameterName": "VerifyAll",
+        "parameterValue": "/all"
+        }],
+        "toolName": "sign",
+        "toolVersion": "1.0"
+        }
+        ]
+    displayName: Sign Agent Assemblies (Authenticode Signing)
+  
+  # Create agent package zip
+  - script: dev.cmd package Release
+    workingDirectory: src
+    displayName: Package Release
+
+  # Upload agent package zip as build artifact
+  - task: PublishBuildArtifacts@1
+    displayName: Publish Artifact (Windows)
+    inputs:
+      pathToPublish: _package
+      artifactName: agent
+      artifactType: container
+
+################################################################################
+- phase: build_linux_agent
+################################################################################
+  displayName: Linux Agent
+  queue:
+    name: Hosted Linux Preview
+  steps:
+
+  # Steps template for non-windows platform
+  - template: .vsts.template.nonwindows.yml
+
+  # Create agent package zip
+  - script: ./dev.sh package Release
+    workingDirectory: src
+    displayName: Package Release    
+
+  # Upload agent package zip as build artifact
+  - task: PublishBuildArtifacts@1
+    displayName: Publish Artifact (Linux)    
+    inputs:
+      pathToPublish: _package
+      artifactName: agent
+      artifactType: container
+
+################################################################################
+- phase: build_osx_agent
+################################################################################
+  displayName: OSX Agent
+  queue:
+    name: Hosted macOS Preview
+  steps:
+
+  # Steps template for windows platform
+  - template: .vsts.template.nonwindows.yml
+  
+  # Create agent package zip
+  - script: ./dev.sh package Release
+    workingDirectory: src
+    displayName: Package Release    
+
+  # Upload agent package zip as build artifact
+  - task: PublishBuildArtifacts@1
+    displayName: Publish Artifact (OSX)    
+    inputs:
+      pathToPublish: _package
+      artifactName: agent
+      artifactType: container
+
+################################################################################
+- phase: publish_agent_packages
+################################################################################
+  displayName: Publish Agents (Windows/Linux/OSX)
+  queue:
+    name: ProductionRMAgents
+  dependsOn: 
+  - build_windows_agent
+  - build_osx_agent
+  - build_linux_agent
+  steps:
+  
+  # Clean
+  - checkout: self
+    clean: true
+  
+  # Download all agent packages from all previous phases
+  - task: DownloadBuildArtifacts@0
+    displayName: Download Agent Packages
+    inputs:
+      artifactName: agent
+
+  # Upload agent packages to Azure blob storage and refresh Azure CDN
+  - powershell: |
+      Write-Host "Preloading Azure modules." # This is for better performance, to avoid module-autoloading.
+      Import-Module AzureRM, AzureRM.profile, AzureRM.Storage, Azure.Storage, AzureRM.Cdn -ErrorAction Ignore -PassThru
+      $uploadFiles = New-Object System.Collections.ArrayList
+      $certificateThumbprint = (Get-ItemProperty -Path "$(ServicePrincipalReg)").ServicePrincipalCertThumbprint
+      $clientId = (Get-ItemProperty -Path "$(ServicePrincipalReg)").ServicePrincipalClientId
+      Write-Host "##vso[task.setsecret]$certificateThumbprint"
+      Write-Host "##vso[task.setsecret]$clientId"
+      Login-AzureRmAccount -ServicePrincipal -CertificateThumbprint $certificateThumbprint -ApplicationId $clientId -TenantId $(TenantId)
+      Select-AzureRmSubscription -SubscriptionId $(SubscriptionId)
+      $storage = Get-AzureRmStorageAccount -ResourceGroupName vstsagentpackage -AccountName vstsagentpackage
+      Get-ChildItem -LiteralPath "$(System.ArtifactsDirectory)/agent" | ForEach-Object {
+        $versionDir = $_.Name.Trim('.zip').Trim('.tar.gz')
+        $versionDir = $versionDir.SubString($versionDir.LastIndexOf('-') + 1)
+        Write-Host "##vso[task.setvariable variable=ReleaseAgentVersion;]$versionDir"
+        Write-Host "Uploading $_ to BlobStorage vstsagentpackage/agent/$versionDir"
+        Set-AzureStorageBlobContent -Context $storage.Context -Container agent -File "$(System.ArtifactsDirectory)/agent/$_" -Blob "$versionDir/$_" -Force
+        $uploadFiles.Add("/agent/$versionDir/$_")
+      }
+      Write-Host "Purge Azure CDN Cache"
+      Unpublish-AzureRmCdnEndpointContent -EndpointName vstsagentpackage -ProfileName vstsagentpackage -ResourceGroupName vstsagentpackage -PurgeContent $uploadFiles
+      Write-Host "Force Refresh Azure CDN Cache"
+      Publish-AzureRmCdnEndpointContent -EndpointName vstsagentpackage -ProfileName vstsagentpackage -ResourceGroupName vstsagentpackage -LoadContent $uploadFiles
+    displayName: Upload to Azure Blob
+
+  # Create agent release on Github
+  - powershell: |
+      Write-Host "Creating github release."
+      $releaseNotes = [System.IO.File]::ReadAllText("$(Build.SourcesDirectory)\releaseNote.md").Replace("<AGENT_VERSION>","$(ReleaseAgentVersion)")
+      $releaseData = @{
+        tag_name = "v$(ReleaseAgentVersion)";
+        target_commitish = "$(Build.SourceVersion)";
+        name = "v$(ReleaseAgentVersion)";
+        body = $releaseNotes;
+        draft = $false;
+        prerelease = $true;
+      }
+      $releaseParams = @{
+        Uri = "https://api.github.com/repos/Microsoft/vsts-agent/releases";
+        Method = 'POST';
+        Headers = @{
+          Authorization = 'Basic ' + [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("vsts:$(GithubToken)"));
+        }
+        ContentType = 'application/json';
+        Body = (ConvertTo-Json $releaseData -Compress)
+      }
+      [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+      Invoke-RestMethod @releaseParams
+    displayName: Create agent release on Github

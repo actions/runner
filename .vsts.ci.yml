@@ -9,19 +9,8 @@ phases:
   condition: eq(false, variables.skip_windows)
   steps:
 
-  # Clean
-  - checkout: self
-    clean: true
-  
-  # Build agent layout
-  - script: dev.cmd layout Release
-    workingDirectory: src
-    displayName: Build & Layout Release
-  
-  # Run test
-  - script: dev.cmd test
-    workingDirectory: src
-    displayName: Test
+  # Steps template for windows platform
+  - template: .vsts.template.windows.yml
   
   # Package dotnet core windows dependency (VC++ Redistributable)
   - powershell: |
@@ -39,27 +28,6 @@ phases:
     displayName: Package UCRT
     condition: and(succeeded(), ne(variables['build.reason'], 'PullRequest'))
 
-  # Signing steps
-  - task: CodeSign@1
-    inputs:
-      ConnectedServiceName: VSTSAgentCodeSignCloudConnector
-      RootFolder: _layout\bin
-      SearchPattern: AgentService.exe
-      CertificateId: 67
-      ProductName: Visual Studio Team Services Build and Release Agent
-    displayName: Sign Agent Assemblies (Strong Name Signing)
-    condition: and(succeeded(), ne(variables['build.reason'], 'PullRequest'))
-
-  - task: CodeSign@1
-    inputs:
-      ConnectedServiceName: VSTSAgentCodeSignCloudConnector
-      RootFolder: _layout\bin
-      SearchPattern: Agent.*.dll,Agent.*.exe,Microsoft.VisualStudio.Services.Agent.dll,AgentService.exe
-      CertificateId: 401
-      ProductName: Visual Studio Team Services Build and Release Agent
-    displayName: Sign Agent Assemblies (Authenticode Signing)
-    condition: and(succeeded(), ne(variables['build.reason'], 'PullRequest'))
-  
   # Create agent package zip
   - script: dev.cmd package Release
     workingDirectory: src
@@ -84,19 +52,8 @@ phases:
   condition: eq(false, variables.skip_linux)
   steps:
 
-  # Clean
-  - checkout: self
-    clean: true
-
-  # Build agent layout
-  - script: ./dev.sh layout Release
-    workingDirectory: src
-    displayName: Build & Layout Release
-
-  # Run test
-  - script: ./dev.sh test
-    workingDirectory: src
-    displayName: Test
+  # Steps template for windows platform
+  - template: .vsts.template.nonwindows.yml
 
   # Create agent package zip
   - script: ./dev.sh package Release
@@ -122,19 +79,8 @@ phases:
   condition: eq(false, variables.skip_macos)
   steps:
 
-  # Clean
-  - checkout: self
-    clean: true
-
-  # Build agent layout
-  - script: ./dev.sh layout Release
-    workingDirectory: src
-    displayName: Build & Layout Release
-
-  # Run test
-  - script: ./dev.sh test
-    workingDirectory: src
-    displayName: Test    
+  # Steps template for windows platform
+  - template: .vsts.template.nonwindows.yml
   
   # Create agent package zip
   - script: ./dev.sh package Release
@@ -150,77 +96,3 @@ phases:
       pathToPublish: _package
       artifactName: agent
       artifactType: container
-
-################################################################################
-- phase: publish_agent_packages
-################################################################################
-  displayName: Publish Agents (Windows/Linux/OSX)
-  queue:
-    name: ProductionRMAgents
-  dependsOn: 
-  - build_windows_agent
-  - build_osx_agent
-  - build_linux_agent
-  condition: and(succeeded(), eq(true, variables.publish))
-  steps:
-  
-  # Clean
-  - checkout: self
-    clean: true
-  
-  # Download all agent packages from all previous phases
-  - task: DownloadBuildArtifacts@0
-    displayName: Download Agent Packages
-    inputs:
-      artifactName: agent
-
-  # Upload agent packages to Azure blob storage and refresh Azure CDN
-  - powershell: |
-      Write-Host "Preloading Azure modules." # This is for better performance, to avoid module-autoloading.
-      Import-Module AzureRM, AzureRM.profile, AzureRM.Storage, Azure.Storage, AzureRM.Cdn -ErrorAction Ignore -PassThru
-      $uploadFiles = New-Object System.Collections.ArrayList
-      $certificateThumbprint = (Get-ItemProperty -Path "$(ServicePrincipalReg)").ServicePrincipalCertThumbprint
-      $clientId = (Get-ItemProperty -Path "$(ServicePrincipalReg)").ServicePrincipalClientId
-      Write-Host "##vso[task.setsecret]$certificateThumbprint"
-      Write-Host "##vso[task.setsecret]$clientId"
-      Login-AzureRmAccount -ServicePrincipal -CertificateThumbprint $certificateThumbprint -ApplicationId $clientId -TenantId $(TenantId)
-      Select-AzureRmSubscription -SubscriptionId $(SubscriptionId)
-      $storage = Get-AzureRmStorageAccount -ResourceGroupName vstsagentpackage -AccountName vstsagentpackage
-      Get-ChildItem -LiteralPath "$(System.ArtifactsDirectory)/agent" | ForEach-Object {
-        $versionDir = $_.Name.Trim('.zip').Trim('.tar.gz')
-        $versionDir = $versionDir.SubString($versionDir.LastIndexOf('-') + 1)
-        Write-Host "##vso[task.setvariable variable=ReleaseAgentVersion;]$versionDir"
-        Write-Host "Uploading $_ to BlobStorage vstsagentpackage/agent/$versionDir"
-        Set-AzureStorageBlobContent -Context $storage.Context -Container agent -File "$(System.ArtifactsDirectory)/agent/$_" -Blob "$versionDir/$_" -Force
-        $uploadFiles.Add("/agent/$versionDir/$_")
-      }
-      Write-Host "Purge Azure CDN Cache"
-      Unpublish-AzureRmCdnEndpointContent -EndpointName vstsagentpackage -ProfileName vstsagentpackage -ResourceGroupName vstsagentpackage -PurgeContent $uploadFiles
-      Write-Host "Force Refresh Azure CDN Cache"
-      Publish-AzureRmCdnEndpointContent -EndpointName vstsagentpackage -ProfileName vstsagentpackage -ResourceGroupName vstsagentpackage -LoadContent $uploadFiles
-    displayName: Upload to Azure Blob
-
-  # Create agent release on Github
-  - powershell: |
-      Write-Host "Creating github release."
-      $releaseNotes = [System.IO.File]::ReadAllText("$(Build.SourcesDirectory)\releaseNote.md").Replace("<AGENT_VERSION>","$(ReleaseAgentVersion)")
-      $releaseData = @{
-        tag_name = "v$(ReleaseAgentVersion)";
-        target_commitish = "$(Build.SourceVersion)";
-        name = "v$(ReleaseAgentVersion)";
-        body = $releaseNotes;
-        draft = $false;
-        prerelease = $true;
-      }
-      $releaseParams = @{
-        Uri = "https://api.github.com/repos/Microsoft/vsts-agent/releases";
-        Method = 'POST';
-        Headers = @{
-          Authorization = 'Basic ' + [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("vsts:$(GithubToken)"));
-        }
-        ContentType = 'application/json';
-        Body = (ConvertTo-Json $releaseData -Compress)
-      }
-      [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-      Invoke-RestMethod @releaseParams
-    displayName: Create agent release on Github
