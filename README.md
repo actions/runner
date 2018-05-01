@@ -16,13 +16,13 @@ Supported on Windows, OSX, Ubuntu and Red Hat.  Written for the .NET Core CLR as
 |![Linux](docs/res/linux_med.png) **Linux**|[![Build & Test][linux-build-badge]][linux-build]|
 
 [win-build-badge]: https://mseng.visualstudio.com/_apis/public/build/definitions/c86767d8-af79-4303-a7e6-21da0ba435e2/6916/badge?branch=master
-[win-build]: https://mseng.visualstudio.com/c86767d8-af79-4303-a7e6-21da0ba435e2/_build?_a=completed&definitionId=6916
+[win-build]: https://mseng.visualstudio.com/PipelineTools/_build?_a=completed&definitionId=6916
 
 [macOS-build-badge]: https://mseng.visualstudio.com/_apis/public/build/definitions/c86767d8-af79-4303-a7e6-21da0ba435e2/6917/badge?branch=master
-[macOS-build]: https://mseng.visualstudio.com/c86767d8-af79-4303-a7e6-21da0ba435e2/_build?_a=completed&definitionId=6917
+[macOS-build]: https://mseng.visualstudio.com/PipelineTools/_build?_a=completed&definitionId=6917
 
 [linux-build-badge]: https://mseng.visualstudio.com/_apis/public/build/definitions/c86767d8-af79-4303-a7e6-21da0ba435e2/6915/badge?branch=master
-[linux-build]: https://mseng.visualstudio.com/c86767d8-af79-4303-a7e6-21da0ba435e2/_build?_a=completed&definitionId=6915
+[linux-build]: https://mseng.visualstudio.com/PipelineTools/_build?_a=completed&definitionId=6915
 
 ## System Pre-Requisites
 
