@@ -11,9 +11,9 @@ Supported on Windows, OSX, Ubuntu and Red Hat.  Written for the .NET Core CLR as
 
 |   | Build & Test |
 |---|:-----:|
-|![Win](docs/res/win_med.png) **Windows**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/b924d696-3eae-4116-8443-9a18392d8544/3531/badge?branch=master)| 
-|![macOS](docs/res/apple_med.png) **macOS**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/b924d696-3eae-4116-8443-9a18392d8544/3080/badge?branch=master)| 
-|![Linux](docs/res/linux_med.png) **Linux**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/b924d696-3eae-4116-8443-9a18392d8544/4411/badge?branch=master)|
+|![Win](docs/res/win_med.png) **Windows**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/c86767d8-af79-4303-a7e6-21da0ba435e2/6916/badge?branch=master)| 
+|![macOS](docs/res/apple_med.png) **macOS**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/c86767d8-af79-4303-a7e6-21da0ba435e2/6917/badge?branch=master)| 
+|![Linux](docs/res/linux_med.png) **Linux**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/c86767d8-af79-4303-a7e6-21da0ba435e2/6915/badge?branch=master)|
 
 
 ## System Pre-Requisites
