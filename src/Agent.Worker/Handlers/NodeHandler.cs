@@ -1,4 +1,4 @@
-﻿using Microsoft.VisualStudio.Services.Agent.Util;
+using Microsoft.VisualStudio.Services.Agent.Util;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;

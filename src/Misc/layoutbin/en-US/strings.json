@@ -258,6 +258,7 @@
   "EnsureJobFinished": "Waiting for current job finish running.",
   "EnsureTasksExist": "Download all required tasks.",
   "EnterValidValueFor0": "Enter a valid value for {0}.",
+  "EnvironmentVariableExceedsMaximumLength": "Environment variable '{0}' exceeds the maximum supported length. Environment variable length: {1} , Maximum supported length: {2}",
   "ErrorDuringBuildGC": "Unable discover garbage based on '{0}'. Try it next time.",
   "ErrorDuringBuildGCDelete": "Unable finish GC based on '{0}'. Try it next time.",
   "ErrorDuringReleaseGC": "Unable discover garbage based on '{0}'. Try it next time.",
