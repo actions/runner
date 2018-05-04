@@ -34,6 +34,9 @@
     <Exec Command="dotnet publish Microsoft.VisualStudio.Services.Agent/Microsoft.VisualStudio.Services.Agent.csproj --output %22$(MSBuildProjectDirectory)/../_layout/bin%22 --runtime $(PackageRuntime) -c $(BUILDCONFIG)" ConsoleToMSBuild="true" />
     <Exec Command="dotnet publish Agent.Listener/Agent.Listener.csproj --output %22$(MSBuildProjectDirectory)/../_layout/bin%22 --runtime $(PackageRuntime) -c $(BUILDCONFIG)" ConsoleToMSBuild="true" />
     <Exec Command="dotnet publish Agent.Worker/Agent.Worker.csproj --output %22$(MSBuildProjectDirectory)/../_layout/bin%22 --runtime $(PackageRuntime) -c $(BUILDCONFIG)" ConsoleToMSBuild="true" />
+    <Exec Command="dotnet publish Agent.PluginHost/Agent.PluginHost.csproj --output %22$(MSBuildProjectDirectory)/../_layout/bin%22 --runtime $(PackageRuntime) -c $(BUILDCONFIG)" ConsoleToMSBuild="true" />
+    <Exec Command="dotnet publish Agent.Sdk/Agent.Sdk.csproj --output %22$(MSBuildProjectDirectory)/../_layout/bin%22 --runtime $(PackageRuntime) -c $(BUILDCONFIG)" ConsoleToMSBuild="true" />
+    <Exec Command="dotnet publish Agent.Plugins/Agent.Plugins.csproj --output %22$(MSBuildProjectDirectory)/../_layout/bin%22 --runtime $(PackageRuntime) -c $(BUILDCONFIG)" ConsoleToMSBuild="true" />
     <Exec Command="%22$(DesktopMSBuild)%22 Agent.Service/Windows/AgentService.csproj /p:Configuration=$(BUILDCONFIG) /p:OutputPath=%22$(MSBuildProjectDirectory)/../_layout/bin%22" ConsoleToMSBuild="true" Condition="'$(PackageRuntime)' == 'win-x64'" />
   </Target>
    
@@ -67,6 +70,12 @@
     <RemoveDir  Directories="Agent.Listener/obj" />
     <RemoveDir  Directories="Agent.Worker/bin" />
     <RemoveDir  Directories="Agent.Worker/obj" />
+    <RemoveDir  Directories="Agent.PluginHost/bin" />
+    <RemoveDir  Directories="Agent.PluginHost/obj" />
+    <RemoveDir  Directories="Agent.Sdk/bin" />
+    <RemoveDir  Directories="Agent.Sdk/obj" />
+    <RemoveDir  Directories="Agent.Plugins/bin" />
+    <RemoveDir  Directories="Agent.Plugins/obj" />
     <RemoveDir  Directories="Test/bin" />
     <RemoveDir  Directories="Test/obj" />
   </Target>

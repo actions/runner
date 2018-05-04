@@ -82,6 +82,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
                 handler = HostContext.CreateService<IAzurePowerShellHandler>();
                 (handler as IAzurePowerShellHandler).Data = data as AzurePowerShellHandlerData;
             }
+            else if (data is AgentPluginHandlerData)
+            {
+                // Agent plugin
+                handler = HostContext.CreateService<IAgentPluginHandler>();
+                (handler as IAgentPluginHandler).Data = data as AgentPluginHandlerData;
+            }
             else
             {
                 // This should never happen.

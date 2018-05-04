@@ -25,6 +25,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         CancellationToken CancellationToken { get; }
         List<ServiceEndpoint> Endpoints { get; }
         List<SecureFile> SecureFiles { get; }
+        List<Pipelines.RepositoryResource> Repositories { get; }
+
         PlanFeatures Features { get; }
         Variables Variables { get; }
         Variables TaskVariables { get; }
@@ -79,6 +81,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         public CancellationToken CancellationToken => _cancellationTokenSource.Token;
         public List<ServiceEndpoint> Endpoints { get; private set; }
         public List<SecureFile> SecureFiles { get; private set; }
+        public List<Pipelines.RepositoryResource> Repositories { get; private set; }
         public Variables Variables { get; private set; }
         public Variables TaskVariables { get; private set; }
         public HashSet<string> OutputVariables => _outputvariables;
@@ -139,6 +142,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             child.Features = Features;
             child.Variables = Variables;
             child.Endpoints = Endpoints;
+            child.Repositories = Repositories;
             child.SecureFiles = SecureFiles;
             child.TaskVariables = taskVariables;
             child._cancellationTokenSource = new CancellationTokenSource();
@@ -355,6 +359,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             // SecureFiles
             SecureFiles = message.Resources.SecureFiles;
 
+            // Repositories
+            Repositories = message.Resources.Repositories;
+
             // Variables (constructor performs initial recursive expansion)
             List<string> warnings;
             Variables = new Variables(HostContext, message.Variables, out warnings);
@@ -437,6 +444,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 {
                     Variables.Set(Constants.Variables.Agent.SslClientCertPassword, agentCert.ClientCertificatePassword, true);
                 }
+            }
+
+            // Runtime option variables
+            var runtimeOptions = HostContext.GetService<IConfigurationStore>().GetAgentRuntimeOptions();
+            if (runtimeOptions != null)
+            {
+#if OS_WINDOWS
+                if (runtimeOptions.GitUseSecureChannel)
+                {
+                    Variables.Set(Constants.Variables.Agent.GitUseSChannel, runtimeOptions.GitUseSecureChannel.ToString());
+                }
+#endif                
             }
 
             // Job timeline record.

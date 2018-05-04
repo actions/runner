@@ -64,27 +64,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             return connection;
         }
 
-        // The server only send down OAuth token in Job Request message.
-        public static VssConnection GetVssConnection(JobRequestMessage jobRequest)
-        {
-            ArgUtil.NotNull(jobRequest, nameof(jobRequest));
-            ArgUtil.NotNull(jobRequest.Environment, nameof(jobRequest.Environment));
-            ArgUtil.NotNull(jobRequest.Environment.SystemConnection, nameof(jobRequest.Environment.SystemConnection));
-            ArgUtil.NotNull(jobRequest.Environment.SystemConnection.Url, nameof(jobRequest.Environment.SystemConnection.Url));
-
-            Uri serverUrl = jobRequest.Environment.SystemConnection.Url;
-            var credentials = GetVssCredential(jobRequest.Environment.SystemConnection);
-
-            if (credentials == null)
-            {
-                throw new ArgumentNullException(nameof(credentials));
-            }
-            else
-            {
-                return CreateConnection(serverUrl, credentials);
-            }
-        }
-
         public static VssCredentials GetVssCredential(ServiceEndpoint serviceEndpoint)
         {
             ArgUtil.NotNull(serviceEndpoint, nameof(serviceEndpoint));

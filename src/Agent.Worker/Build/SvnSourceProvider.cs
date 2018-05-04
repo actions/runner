@@ -15,13 +15,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         public override string RepositoryType => RepositoryTypes.Svn;
 
         public async Task GetSourceAsync(
-            IExecutionContext executionContext, 
-            ServiceEndpoint endpoint, 
+            IExecutionContext executionContext,
+            ServiceEndpoint endpoint,
             CancellationToken cancellationToken)
         {
             Trace.Entering();
 
-// Validate args.
+            // Validate args.
             ArgUtil.NotNull(executionContext, nameof(executionContext));
             ArgUtil.NotNull(endpoint, nameof(endpoint));
 

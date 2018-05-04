@@ -155,6 +155,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 jobContext.Variables.Set(Constants.Variables.Agent.RootDirectory, IOUtil.GetWorkPath(HostContext));
 #if OS_WINDOWS
                 jobContext.Variables.Set(Constants.Variables.Agent.ServerOMDirectory, Path.Combine(IOUtil.GetExternalsPath(), Constants.Path.ServerOMDirectory));
+#else
+                jobContext.Variables.Set(Constants.Variables.Agent.AcceptTeeEula, settings.AcceptTeeEula.ToString());
 #endif
                 jobContext.Variables.Set(Constants.Variables.Agent.WorkFolder, IOUtil.GetWorkPath(HostContext));
                 jobContext.Variables.Set(Constants.Variables.System.WorkFolder, IOUtil.GetWorkPath(HostContext));
@@ -503,13 +505,23 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             ServiceEndpoint systemConnection = message.Resources.Endpoints.Single(x => string.Equals(x.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
             Uri systemConnectionUrl = systemConnection.Url;
 
-            // fixup any endpoint Url that match SystemConnect server.
+            // fixup any endpoint Url that match SystemConnection Url.
             foreach (var endpoint in message.Resources.Endpoints)
             {
                 if (Uri.Compare(endpoint.Url, systemConnectionUrl, UriComponents.SchemeAndServer, UriFormat.Unescaped, StringComparison.OrdinalIgnoreCase) == 0)
                 {
                     endpoint.Url = ReplaceWithConfigUriBase(endpoint.Url);
                     Trace.Info($"Ensure endpoint url match config url base. {endpoint.Url}");
+                }
+            }
+
+            // fixup any repository Url that match SystemConnection Url.
+            foreach (var repo in message.Resources.Repositories)
+            {
+                if (Uri.Compare(repo.Url, systemConnectionUrl, UriComponents.SchemeAndServer, UriFormat.Unescaped, StringComparison.OrdinalIgnoreCase) == 0)
+                {
+                    repo.Url = ReplaceWithConfigUriBase(repo.Url);
+                    Trace.Info($"Ensure repository url match config url base. {repo.Url}");
                 }
             }
 

@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
-        [ServiceLocator(Default = typeof(TaskManager))]
+    [ServiceLocator(Default = typeof(TaskManager))]
     public interface ITaskManager : IAgentService
     {
         Task DownloadAsync(IExecutionContext executionContext, IEnumerable<Pipelines.JobStep> steps);
@@ -48,8 +48,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 return;
             }
 
+            var agentPlugin = HostContext.GetService<IAgentPluginManager>();
             foreach (var task in uniqueTasks.Select(x => x.Reference))
             {
+                if (agentPlugin.GetPluginTask(task.Id, task.Version) != null)
+                {
+                    continue;
+                }
+
                 await DownloadAsync(executionContext, task);
             }
         }
@@ -59,6 +65,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             // Validate args.
             Trace.Entering();
             ArgUtil.NotNull(task, nameof(task));
+
+            // return task definition from agent plugin.
+            var agentPlugin = HostContext.GetService<IAgentPluginManager>();
+            var pluginTask = agentPlugin.GetPluginTask(task.Reference.Id, task.Reference.Version);
+            if (pluginTask != null)
+            {
+                return pluginTask;
+            }
 
             // Initialize the definition wrapper object.
             var definition = new Definition() { Directory = GetDirectory(task.Reference) };
@@ -198,6 +212,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         private PowerShell3HandlerData _powerShell3;
         private PowerShellExeHandlerData _powerShellExe;
         private ProcessHandlerData _process;
+        private AgentPluginHandlerData _agentPlugin;
 
         [JsonIgnore]
         public List<HandlerData> All => _all;
@@ -297,6 +312,21 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             set
             {
                 _process = value;
+                Add(value);
+            }
+        }
+
+        [JsonIgnore]
+        public AgentPluginHandlerData AgentPlugin
+        {
+            get
+            {
+                return _agentPlugin;
+            }
+
+            set
+            {
+                _agentPlugin = value;
                 Add(value);
             }
         }
@@ -566,6 +596,24 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             set
             {
                 SetInput(nameof(WorkingDirectory), value);
+            }
+        }
+    }
+
+    public sealed class AgentPluginHandlerData : HandlerData
+    {
+        public override int Priority => 0;
+
+        public string Stage
+        {
+            get
+            {
+                return GetInput(nameof(Stage));
+            }
+
+            set
+            {
+                SetInput(nameof(Stage), value);
             }
         }
     }
