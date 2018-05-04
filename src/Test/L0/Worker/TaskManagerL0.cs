@@ -22,7 +22,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
         private Mock<ITaskServer> _taskServer;
         private Mock<IConfigurationStore> _configurationStore;
         private Mock<IExecutionContext> _ec;
-        private Mock<IAgentPluginManager> _agentPlugin;
         private TestHostContext _hc;
         private TaskManager _taskManager;
         private string _workFolder;
@@ -582,15 +581,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                         WorkFolder = _workFolder
                     });
             _hc.SetSingleton<IConfigurationStore>(_configurationStore.Object);
-
-            _agentPlugin = new Mock<IAgentPluginManager>();
-            _agentPlugin
-                .Setup(x => x.GetPluginTask(It.IsAny<Guid>(), It.IsAny<string>()))
-                .Returns<Definition>(null);
-            _agentPlugin
-                .Setup(x => x.GetPluginCommad(It.IsAny<string>(), It.IsAny<string>()))
-                .Returns<AgentPluginInfo>(null);
-            _hc.SetSingleton<IAgentPluginManager>(_agentPlugin.Object);
 
             // Instance to test.
             _taskManager = new TaskManager();

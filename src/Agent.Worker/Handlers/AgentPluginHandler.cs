@@ -36,8 +36,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             // Update the env dictionary.
             AddPrependPathToEnvironment();
 
+            // Make sure only particular task get run as agent plugin.
             var agentPlugin = HostContext.GetService<IAgentPluginManager>();
-            await agentPlugin.RunPluginTaskAsync(ExecutionContext, Data.Target, Inputs, Environment, Data.Stage, OnDataReceived);
+            var pluginTask = agentPlugin.GetPluginTask(Task.Id, Task.Version);
+            ArgUtil.NotNull(pluginTask, $"{Task.Name} ({Task.Id}/{Task.Version})");
+            if (!string.Equals(pluginTask.TaskPluginPreJobTypeName, Data.Target, StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(pluginTask.TaskPluginTypeName, Data.Target, StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(pluginTask.TaskPluginPostJobTypeName, Data.Target, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new NotSupportedException(Data.Target);
+            }
+
+            await agentPlugin.RunPluginTaskAsync(ExecutionContext, Data.Target, Inputs, Environment, OnDataReceived);
         }
 
         private void OnDataReceived(object sender, ProcessDataReceivedEventArgs e)

@@ -16,33 +16,26 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
     [ServiceLocator(Default = typeof(AgentPluginManager))]
     public interface IAgentPluginManager : IAgentService
     {
-        Definition GetPluginTask(Guid taskId, string taskVersion);
+        AgentTaskPluginInfo GetPluginTask(Guid taskId, string taskVersion);
         AgentCommandPluginInfo GetPluginCommad(string commandArea, string commandEvent);
-        Task RunPluginTaskAsync(IExecutionContext context, string plugin, Dictionary<string, string> inputs, Dictionary<string, string> environment, string stage, EventHandler<ProcessDataReceivedEventArgs> outputHandler);
+        Task RunPluginTaskAsync(IExecutionContext context, string plugin, Dictionary<string, string> inputs, Dictionary<string, string> environment, EventHandler<ProcessDataReceivedEventArgs> outputHandler);
         void ProcessCommand(IExecutionContext context, Command command);
     }
 
     public sealed class AgentPluginManager : AgentService, IAgentPluginManager
     {
         private readonly Dictionary<string, Dictionary<string, AgentCommandPluginInfo>> _supportedLoggingCommands = new Dictionary<string, Dictionary<string, AgentCommandPluginInfo>>(StringComparer.OrdinalIgnoreCase);
-        private readonly Dictionary<Guid, Dictionary<string, Definition>> _supportedTasks = new Dictionary<Guid, Dictionary<string, Definition>>();
+        private readonly Dictionary<Guid, Dictionary<string, AgentTaskPluginInfo>> _supportedTasks = new Dictionary<Guid, Dictionary<string, AgentTaskPluginInfo>>();
 
-        private readonly List<AgentPluginInfo> _taskPlugins = new List<AgentPluginInfo>()
+        private readonly HashSet<string> _taskPlugins = new HashSet<string>()
         {
-            new AgentPluginInfo()
-            {
-                AgentPluginAssembly = "Agent.Plugins",
-                AgentPluginEntryPoint = "Agent.Plugins.Repository.CheckoutTask"
-            }
+            "Agent.Plugins.Repository.CheckoutTask, Agent.Plugins",
+            "Agent.Plugins.Repository.CleanupTask, Agent.Plugins"
         };
 
-        private readonly List<AgentPluginInfo> _commandPlugins = new List<AgentPluginInfo>()
+        private readonly HashSet<string> _commandPlugins = new HashSet<string>()
         {
-            new AgentPluginInfo()
-            {
-                AgentPluginAssembly = "Agent.Plugins",
-                AgentPluginEntryPoint = "Agent.Plugins.Drop.ArtifactUploadCommand"
-            }
+            "Agent.Plugins.Drop.ArtifactUploadCommand, Agent.Plugins"
         };
 
         public override void Initialize(IHostContext hostContext)
@@ -50,15 +43,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             base.Initialize(hostContext);
 
             // Load task plugins
-            foreach (var plugin in _taskPlugins)
+            foreach (var pluginTypeName in _taskPlugins)
             {
                 IAgentTaskPlugin taskPlugin = null;
-                string typeName = $"{plugin.AgentPluginEntryPoint}, {plugin.AgentPluginAssembly}";
                 AssemblyLoadContext.Default.Resolving += ResolveAssembly;
                 try
                 {
-                    Trace.Info($"Load task plugin from '{typeName}'.");
-                    Type type = Type.GetType(typeName, throwOnError: true);
+                    Trace.Info($"Load task plugin from '{pluginTypeName}'.");
+                    Type type = Type.GetType(pluginTypeName, throwOnError: true);
                     taskPlugin = Activator.CreateInstance(type) as IAgentTaskPlugin;
                 }
                 finally
@@ -69,69 +61,41 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 ArgUtil.NotNull(taskPlugin, nameof(taskPlugin));
                 ArgUtil.NotNull(taskPlugin.Id, nameof(taskPlugin.Id));
                 ArgUtil.NotNullOrEmpty(taskPlugin.Version, nameof(taskPlugin.Version));
+                ArgUtil.NotNullOrEmpty(taskPlugin.Stage, nameof(taskPlugin.Stage));
                 if (!_supportedTasks.ContainsKey(taskPlugin.Id))
                 {
-                    _supportedTasks[taskPlugin.Id] = new Dictionary<string, Definition>(StringComparer.OrdinalIgnoreCase);
+                    _supportedTasks[taskPlugin.Id] = new Dictionary<string, AgentTaskPluginInfo>(StringComparer.OrdinalIgnoreCase);
                 }
 
-                Trace.Info($"Loaded task plugin id '{taskPlugin.Id}' ({taskPlugin.Version}).");
-                _supportedTasks[taskPlugin.Id][taskPlugin.Version] = new Definition() { Directory = HostContext.GetDirectory(WellKnownDirectory.Work) };
-                _supportedTasks[taskPlugin.Id][taskPlugin.Version].Data = new DefinitionData()
+                if (!_supportedTasks[taskPlugin.Id].ContainsKey(taskPlugin.Version))
                 {
-                    Author = taskPlugin.Author,
-                    Description = taskPlugin.Description,
-                    HelpMarkDown = taskPlugin.HelpMarkDown,
-                    FriendlyName = taskPlugin.FriendlyName,
-                    Inputs = taskPlugin.Inputs
-                };
-
-                if (taskPlugin.Stages.Contains("pre"))
-                {
-                    _supportedTasks[taskPlugin.Id][taskPlugin.Version].Data.PreJobExecution = new ExecutionData()
-                    {
-                        AgentPlugin = new AgentPluginHandlerData()
-                        {
-                            Target = typeName,
-                            Stage = "pre"
-                        }
-                    };
+                    _supportedTasks[taskPlugin.Id][taskPlugin.Version] = new AgentTaskPluginInfo();
                 }
 
-                if (taskPlugin.Stages.Contains("main"))
+                Trace.Info($"Loaded task plugin id '{taskPlugin.Id}' ({taskPlugin.Version}) ({taskPlugin.Stage}).");
+                if (taskPlugin.Stage == "pre")
                 {
-                    _supportedTasks[taskPlugin.Id][taskPlugin.Version].Data.Execution = new ExecutionData()
-                    {
-                        AgentPlugin = new AgentPluginHandlerData()
-                        {
-                            Target = typeName,
-                            Stage = "main"
-                        }
-                    };
+                    _supportedTasks[taskPlugin.Id][taskPlugin.Version].TaskPluginPreJobTypeName = pluginTypeName;
                 }
-
-                if (taskPlugin.Stages.Contains("post"))
+                else if (taskPlugin.Stage == "main")
                 {
-                    _supportedTasks[taskPlugin.Id][taskPlugin.Version].Data.PostJobExecution = new ExecutionData()
-                    {
-                        AgentPlugin = new AgentPluginHandlerData()
-                        {
-                            Target = typeName,
-                            Stage = "post"
-                        }
-                    };
+                    _supportedTasks[taskPlugin.Id][taskPlugin.Version].TaskPluginTypeName = pluginTypeName;
+                }
+                else if (taskPlugin.Stage == "post")
+                {
+                    _supportedTasks[taskPlugin.Id][taskPlugin.Version].TaskPluginPostJobTypeName = pluginTypeName;
                 }
             }
 
             // Load command plugin
-            foreach (var plugin in _commandPlugins)
+            foreach (var pluginTypeName in _commandPlugins)
             {
                 IAgentCommandPlugin commandPlugin = null;
-                string typeName = $"{plugin.AgentPluginEntryPoint}, {plugin.AgentPluginAssembly}";
                 AssemblyLoadContext.Default.Resolving += ResolveAssembly;
                 try
                 {
-                    Trace.Info($"Load command plugin from '{typeName}'.");
-                    Type type = Type.GetType(typeName, throwOnError: true);
+                    Trace.Info($"Load command plugin from '{pluginTypeName}'.");
+                    Type type = Type.GetType(pluginTypeName, throwOnError: true);
                     commandPlugin = Activator.CreateInstance(type) as IAgentCommandPlugin;
                 }
                 finally
@@ -150,12 +114,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 }
 
                 Trace.Info($"Loaded command plugin to handle '##vso[{commandPlugin.Area}.{commandPlugin.Event}]'.");
-                _supportedLoggingCommands[commandPlugin.Area][commandPlugin.Event] = new AgentCommandPluginInfo() { CommandPluginTypeName = typeName, DisplayName = commandPlugin.DisplayName };
+                _supportedLoggingCommands[commandPlugin.Area][commandPlugin.Event] = new AgentCommandPluginInfo() { CommandPluginTypeName = pluginTypeName, DisplayName = commandPlugin.DisplayName };
             }
         }
 
-
-        public Definition GetPluginTask(Guid taskId, string taskVersion)
+        public AgentTaskPluginInfo GetPluginTask(Guid taskId, string taskVersion)
         {
             if (_supportedTasks.ContainsKey(taskId) && _supportedTasks[taskId].ContainsKey(taskVersion))
             {
@@ -179,9 +142,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             }
         }
 
-        public async Task RunPluginTaskAsync(IExecutionContext context, string plugin, Dictionary<string, string> inputs, Dictionary<string, string> environment, string stage, EventHandler<ProcessDataReceivedEventArgs> outputHandler)
+        public async Task RunPluginTaskAsync(IExecutionContext context, string plugin, Dictionary<string, string> inputs, Dictionary<string, string> environment, EventHandler<ProcessDataReceivedEventArgs> outputHandler)
         {
             ArgUtil.NotNullOrEmpty(plugin, nameof(plugin));
+
+            // Only allow plugins we defined
+            if (!_taskPlugins.Contains(plugin))
+            {
+                throw new NotSupportedException(plugin);
+            }
 
             // Resolve the working directory.
             string workingDirectory = HostContext.GetDirectory(WellKnownDirectory.Work);
@@ -198,7 +167,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             AgentTaskPluginExecutionContext pluginContext = new AgentTaskPluginExecutionContext
             {
                 Inputs = inputs,
-                Stage = stage,
                 Repositories = context.Repositories,
                 Endpoints = context.Endpoints
             };
@@ -345,15 +313,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         }
     }
 
-    public class AgentPluginInfo
-    {
-        public string AgentPluginAssembly { get; set; }
-        public string AgentPluginEntryPoint { get; set; }
-    }
-
     public class AgentCommandPluginInfo
     {
         public string CommandPluginTypeName { get; set; }
         public string DisplayName { get; set; }
+    }
+
+    public class AgentTaskPluginInfo
+    {
+        public string TaskPluginPreJobTypeName { get; set; }
+        public string TaskPluginTypeName { get; set; }
+        public string TaskPluginPostJobTypeName { get; set; }
     }
 }

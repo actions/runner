@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using System.Linq;
 using System.IO;
 using Microsoft.VisualStudio.Services.WebApi;
+using Pipelines = Microsoft.TeamFoundation.DistributedTask.Pipelines;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
 {
@@ -20,7 +21,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
         Dictionary<string, string> Inputs { get; set; }
         List<SecureFile> SecureFiles { get; set; }
         string TaskDirectory { get; set; }
-
+        Pipelines.TaskStepDefinitionReference Task { get; set; }
         Task RunAsync();
     }
 
@@ -31,7 +32,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
         // You can set environment variable greater then 32K, but that variable will not be able to read in node.exe.
         private const int _environmentVariableMaximumSize = 32766;
 #endif
-    
+
         protected IWorkerCommandManager CommandManager { get; private set; }
 
         public List<ServiceEndpoint> Endpoints { get; set; }
@@ -42,6 +43,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
         public Dictionary<string, string> Inputs { get; set; }
         public List<SecureFile> SecureFiles { get; set; }
         public string TaskDirectory { get; set; }
+        public Pipelines.TaskStepDefinitionReference Task { get; set; }
 
         public override void Initialize(IHostContext hostContext)
         {
@@ -234,7 +236,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
         {
             ArgUtil.NotNullOrEmpty(key, nameof(key));
             Trace.Verbose($"Setting env '{key}' to '{value}'.");
-            
+
             Environment[key] = value ?? string.Empty;
 
 #if OS_WINDOWS

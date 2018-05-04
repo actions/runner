@@ -19,35 +19,19 @@ namespace Agent.Plugins.Repository
         Task PostJobCleanupAsync(AgentTaskPluginExecutionContext executionContext, Pipelines.RepositoryResource repository);
     }
 
-    public class CheckoutTask : IAgentTaskPlugin
+    public abstract class RepositoryTask : IAgentTaskPlugin
     {
-        public string FriendlyName => "Get Sources";
         public Guid Id => new Guid("c61807ba-5e20-4b70-bd8c-3683c9f74003");
         public string Version => "1.0.0";
-        public string Description => "Get Sources";
-        public string HelpMarkDown => "";
-        public string Author => "Microsoft";
 
-        public TaskInputDefinition[] Inputs => new TaskInputDefinition[] {
-            new TaskInputDefinition()
-            {
-                Name="repository",
-                InputType = TaskInputType.String,
-                DefaultValue="self",
-                Required=true
-            }
-        };
+        public abstract string Stage { get; }
 
-        public HashSet<string> Stages => new HashSet<string>() { "main", "post" };
+        public abstract Task RunAsync(AgentTaskPluginExecutionContext executionContext, CancellationToken token);
 
-        public async Task RunAsync(AgentTaskPluginExecutionContext executionContext, CancellationToken token)
+        protected ISourceProvider GetSourceProvider(string repositoryType)
         {
-            var repoAlias = executionContext.GetInput("repository", true);
-            var repo = executionContext.Repositories.Single(x => string.Equals(x.Alias, repoAlias, StringComparison.OrdinalIgnoreCase));
-            MergeInputs(executionContext, repo);
-
             ISourceProvider sourceProvider = null;
-            switch (repo.Type)
+            switch (repositoryType)
             {
                 case RepositoryTypes.Bitbucket:
                 case RepositoryTypes.GitHub:
@@ -67,20 +51,12 @@ namespace Agent.Plugins.Repository
                     sourceProvider = new SvnSourceProvider();
                     break;
                 default:
-                    throw new NotSupportedException(repo.Type);
+                    throw new NotSupportedException(repositoryType);
             }
 
-            if (executionContext.Stage == "main")
-            {
-                await sourceProvider.GetSourceAsync(executionContext, repo, token);
-            }
-            else if (executionContext.Stage == "post")
-            {
-                await sourceProvider.PostJobCleanupAsync(executionContext, repo);
-            }
+            return sourceProvider;
         }
-
-        private void MergeInputs(AgentTaskPluginExecutionContext executionContext, Pipelines.RepositoryResource repository)
+        protected void MergeInputs(AgentTaskPluginExecutionContext executionContext, Pipelines.RepositoryResource repository)
         {
             string clean = executionContext.GetInput("clean");
             if (!string.IsNullOrEmpty(clean))
@@ -131,6 +107,36 @@ namespace Agent.Plugins.Repository
                     repository.Properties.Set<string>("fetchDepth", fetchDepth);
                 }
             }
+        }
+    }
+
+    public class CheckoutTask : RepositoryTask
+    {
+        public override string Stage => "main";
+
+        public override async Task RunAsync(AgentTaskPluginExecutionContext executionContext, CancellationToken token)
+        {
+            var repoAlias = executionContext.GetInput("repository", true);
+            var repo = executionContext.Repositories.Single(x => string.Equals(x.Alias, repoAlias, StringComparison.OrdinalIgnoreCase));
+            MergeInputs(executionContext, repo);
+
+            ISourceProvider sourceProvider = GetSourceProvider(repo.Type);
+            await sourceProvider.GetSourceAsync(executionContext, repo, token);
+        }
+    }
+
+    public class CleanupTask : RepositoryTask
+    {
+        public override string Stage => "post";
+
+        public override async Task RunAsync(AgentTaskPluginExecutionContext executionContext, CancellationToken token)
+        {
+            var repoAlias = executionContext.GetInput("repository", true);
+            var repo = executionContext.Repositories.Single(x => string.Equals(x.Alias, repoAlias, StringComparison.OrdinalIgnoreCase));
+            MergeInputs(executionContext, repo);
+
+            ISourceProvider sourceProvider = GetSourceProvider(repo.Type);
+            await sourceProvider.PostJobCleanupAsync(executionContext, repo);
         }
     }
 }

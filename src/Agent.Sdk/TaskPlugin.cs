@@ -31,12 +31,7 @@ namespace Agent.Sdk
     {
         Guid Id { get; }
         string Version { get; }
-        string FriendlyName { get; }
-        string Description { get; }
-        string HelpMarkDown { get; }
-        string Author { get; }
-        TaskInputDefinition[] Inputs { get; }
-        HashSet<string> Stages { get; }
+        string Stage { get; }
         Task RunAsync(AgentTaskPluginExecutionContext executionContext, CancellationToken token);
     }
 
@@ -53,7 +48,6 @@ namespace Agent.Sdk
             this.Variables = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
         }
 
-        public string Stage { get; set; }
         public List<ServiceEndpoint> Endpoints { get; set; }
         public List<Pipelines.RepositoryResource> Repositories { get; set; }
         public Dictionary<string, VariableValue> Variables { get; set; }

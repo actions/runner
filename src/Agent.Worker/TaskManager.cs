@@ -48,14 +48,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 return;
             }
 
-            var agentPlugin = HostContext.GetService<IAgentPluginManager>();
             foreach (var task in uniqueTasks.Select(x => x.Reference))
             {
-                if (agentPlugin.GetPluginTask(task.Id, task.Version) != null)
-                {
-                    continue;
-                }
-
                 await DownloadAsync(executionContext, task);
             }
         }
@@ -65,14 +59,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             // Validate args.
             Trace.Entering();
             ArgUtil.NotNull(task, nameof(task));
-
-            // return task definition from agent plugin.
-            var agentPlugin = HostContext.GetService<IAgentPluginManager>();
-            var pluginTask = agentPlugin.GetPluginTask(task.Reference.Id, task.Reference.Version);
-            if (pluginTask != null)
-            {
-                return pluginTask;
-            }
 
             // Initialize the definition wrapper object.
             var definition = new Definition() { Directory = GetDirectory(task.Reference) };
@@ -316,7 +302,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             }
         }
 
-        [JsonIgnore]
         public AgentPluginHandlerData AgentPlugin
         {
             get
@@ -603,18 +588,5 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
     public sealed class AgentPluginHandlerData : HandlerData
     {
         public override int Priority => 0;
-
-        public string Stage
-        {
-            get
-            {
-                return GetInput(nameof(Stage));
-            }
-
-            set
-            {
-                SetInput(nameof(Stage), value);
-            }
-        }
     }
 }

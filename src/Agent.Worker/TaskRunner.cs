@@ -267,6 +267,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             // Create the handler.
             IHandler handler = handlerFactory.Create(
                 ExecutionContext,
+                Task.Reference,
                 stepHost,
                 endpoints,
                 secureFiles,
