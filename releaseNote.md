@@ -1,9 +1,10 @@
 ## Features
   N/A
 ## Bugs
-  - Fix NullReferenceException when use preview container feature. #1527
+  - Avoid extra rest call to TaskDefinition endpoint. #1533
 ## Misc
-  N/A
+  - Consume latest vss-api package, update newtonsoft to 10.0.3. #1535
+  - Displaying a warning when the environment variable's size exceeds 32K characters (Windows). #1508
 
 ## Agent Downloads  
 
