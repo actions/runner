@@ -1,4 +1,4 @@
-# YAML getting started - Templates (coming in April)
+# YAML getting started - Templates (coming in May)
 
 Templates enable steps to be defined once, and used from multiple places.
 
@@ -37,7 +37,7 @@ phases:
 
 For advanced template syntax, see the sections below describing template parameters.
 
-## Phase reuse (coming in May)
+## Phase reuse
 
 In the following example, a phase template is used to build across multiple platforms
 
