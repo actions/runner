@@ -37,7 +37,50 @@ phases:
 
 For advanced template syntax, see the sections below describing template parameters.
 
-## Phase reuse (coming soon)
+## Phase reuse (coming in May)
+
+In the following example, a phase template is used to build across multiple platforms
+
+```yaml
+# File: phases/build.yml
+
+parameters:
+  name: ''
+  queue: ''
+  sign: false
+
+phases:
+- phase: ${{ parameters.name }}
+  queue: ${{ parameters.queue }}
+  steps:
+  - script: npm install
+  - script: npm test
+  - ${{ if eq(parameters.sign, 'true') }}:
+    - script: sign
+```
+
+```yaml
+# File: .vsts-ci.yml
+
+phases:
+- template: phases/build.yml  # Template reference
+  parameters:
+    name: macOS
+    queue: Hosted macOS Preview
+
+- template: phases/build.yml  # Template reference
+  parameters:
+    name: Linux
+    queue: Hosted Linux Preview
+
+- template: phases/build.yml  # Template reference
+  parameters:
+    name: Windows
+    queue: Hosted VS2017
+    sign: true  # Extra step on Windows only
+```
+
+For more details, see the sections below describing template parameters.
 
 ## Reuse from other repositories
 
