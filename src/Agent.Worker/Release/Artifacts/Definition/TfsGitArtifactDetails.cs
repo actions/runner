@@ -10,6 +10,8 @@
 
         public string Branch { get; set; }
 
+        public string CheckoutNestedSubmodules { get; set; }
+
         public string CheckoutSubmodules { get; set; }
 
         public string GitLfsSupport { get; set; }

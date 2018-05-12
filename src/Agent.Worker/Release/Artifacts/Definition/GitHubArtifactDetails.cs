@@ -12,6 +12,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts.Definit
 
         public string ConnectionName { get; set; }
 
+        public string CheckoutNestedSubmodules { get; set; }
+
         public string CheckoutSubmodules { get; set; }
 
         public string GitLfsSupport { get; set; }
