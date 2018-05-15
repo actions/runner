@@ -33,4 +33,8 @@ $null = Add-CapabilityFromRegistry -Name 'jdk_8_x64' -Hive 'LocalMachine' -View 
 if ($latestJdk) {
     # Favor x64.
     Write-Capability -Name 'jdk' -Value $latestJdk
+
+    if (!($latestJre)) {
+        Write-Capability -Name 'java' -Value $latestJdk
+    }
 }
