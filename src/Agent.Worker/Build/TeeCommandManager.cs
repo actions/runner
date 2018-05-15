@@ -44,7 +44,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         public string ResolvePath(string serverPath)
         {
             ArgUtil.NotNullOrEmpty(serverPath, nameof(serverPath));
-            string localPath = RunPorcelainCommandAsync("resolvePath", $"-workspace:{WorkspaceName}", serverPath).GetAwaiter().GetResult();
+            string localPath = RunPorcelainCommandAsync(true, "resolvePath", $"-workspace:{WorkspaceName}", serverPath).GetAwaiter().GetResult();
             localPath = localPath?.Trim();
 
             // Paths outside of the root mapping return empty.
@@ -283,7 +283,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             args.Add("-format:xml");
 
             // Run the command.
-            TfsVCPorcelainCommandResult result = await TryRunPorcelainCommandAsync(FormatFlags.None, args.ToArray());
+            TfsVCPorcelainCommandResult result = await TryRunPorcelainCommandAsync(FormatFlags.None, false, args.ToArray());
             ArgUtil.NotNull(result, nameof(result));
             if (result.Exception != null)
             {
