@@ -8,6 +8,8 @@ No known system prerequisites are known at this time.
 
 [PowerShell 3.0 or higher](https://msdn.microsoft.com/en-us/powershell/scripting/setup/installing-windows-powershell)
 
+[.NET Framework x64 4.5 or higher](https://docs.microsoft.com/en-us/dotnet/framework/install/)
+
 ## Visual Studio
 
 Even though not technically required by the agent, many build scenarios require Visual Studio installed to get all the tools.  We recommend Visual Studio 2015 or later.
