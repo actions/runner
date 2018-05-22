@@ -147,7 +147,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
         protected Task<string> RunPorcelainCommandAsync(FormatFlags formatFlags, params string[] args)
         {
-            return RunPorcelainCommandAsync(FormatFlags.None, false, args);
+            return RunPorcelainCommandAsync(formatFlags, false, args);
         }
 
         protected async Task<string> RunPorcelainCommandAsync(FormatFlags formatFlags, bool ignoreStderr, params string[] args)
