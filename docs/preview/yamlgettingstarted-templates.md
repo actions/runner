@@ -1,4 +1,4 @@
-# YAML getting started - Templates (coming in May)
+# YAML getting started - Templates
 
 Templates enable steps to be defined once, and used from multiple places.
 

@@ -1,4 +1,4 @@
-# YAML getting started - Resources (coming in April)
+# YAML getting started - Resources
 
 Resources enable the definition of various items which are to be produced or consumed
 by the defining pipeline. Every resource must specify an `alias`, which is how the resource
@@ -50,7 +50,7 @@ resources:
 
 #### Git
 
-Git refers to git repositories built into the product. Initially only repositories located within the same project as the entry file are allowed. 
+`git` refers to Git repositories in VSTS. Currently only repositories located within the same project are allowed.
 
 ```yaml
 resources:
@@ -63,7 +63,7 @@ resources:
     
     # Optional: Specifies the default ref used to resolve the version 
     # Default: refs/heads/master
-    ref: string    
+    ref: string
 ```
 
 #### GitHub
