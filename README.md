@@ -1,4 +1,4 @@
-# Visual Studio Team Services Agent M134
+# Visual Studio Team Services Agent
 
 ## Overview
 

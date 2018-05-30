@@ -628,7 +628,7 @@ extract_dotnet_package() {
     tar -xzf "$zip_path" -C "$temp_out_path" > /dev/null || failed=true
 
     local folders_with_version_regex='^.*/[0-9]+\.[0-9]+[^/]+/'
-    find "$temp_out_path" -type f | grep -Eo "$folders_with_version_regex" | copy_files_or_dirs_from_list "$temp_out_path" "$out_path" false
+    find "$temp_out_path" -type f | grep -Eo "$folders_with_version_regex" | sort | copy_files_or_dirs_from_list "$temp_out_path" "$out_path" false
     find "$temp_out_path" -type f | grep -Ev "$folders_with_version_regex" | copy_files_or_dirs_from_list "$temp_out_path" "$out_path" "$override_non_versioned_files"
 
     rm -rf "$temp_out_path"
