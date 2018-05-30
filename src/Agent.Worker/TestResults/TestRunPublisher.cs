@@ -78,21 +78,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                 for (int j = 0; j < noOfResultsToBePublished; j++)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    // Do not upload duplicate entries
+                    // Remove duplicate entries
                     string[] attachments = testResults[i + j].Attachments;
-                    if (attachments != null)
+                    HashSet<string> attachedFiles = GetUniqueTestRunFiles(attachments);
+
+                    if (attachedFiles != null)
                     {
-                        Hashtable attachedFiles = new Hashtable(StringComparer.CurrentCultureIgnoreCase);
-                        var createAttachmentsTasks = attachments.Select(async attachment =>
+                        var createAttachmentsTasks = attachedFiles.Select(async attachment =>
                         {
-                            if (!attachedFiles.ContainsKey(attachment))
+                            TestAttachmentRequestModel reqModel = GetAttachmentRequestModel(attachment);
+                            if (reqModel != null)
                             {
-                                TestAttachmentRequestModel reqModel = GetAttachmentRequestModel(attachment);
-                                if (reqModel != null)
-                                {
-                                    await _testResultsServer.CreateTestResultAttachmentAsync(reqModel, _projectName, testRun.Id, testresults[j].Id, cancellationToken);
-                                }
-                                attachedFiles.Add(attachment, null);
+                                await _testResultsServer.CreateTestResultAttachmentAsync(reqModel, _projectName, testRun.Id, testresults[j].Id, cancellationToken);
                             }
                         });
                         await Task.WhenAll(createAttachmentsTasks);
