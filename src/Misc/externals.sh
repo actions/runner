@@ -147,7 +147,7 @@ fi
 
 # Download the external tools common across OSX and Linux platforms.
 if [[ "$PLATFORM" == "linux" || "$PLATFORM" == "darwin" ]]; then
-    acquireExternalTool "$CONTAINER_URL/tee/14_0_4_20160606/TEE-CLC-14.0.4.zip" tee fix_nested_dir
+    acquireExternalTool "$CONTAINER_URL/tee/14_134_0/TEE-CLC-14.134.0.zip" tee fix_nested_dir
     acquireExternalTool "$CONTAINER_URL/vso-task-lib/0.5.5/vso-task-lib.tar.gz" vso-task-lib
 fi
 
