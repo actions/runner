@@ -235,6 +235,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                         resultCreateModel.AutomatedTestStorage = testCaseNode.Attributes["classname"].Value;
                     }
 
+                    if (testCaseNode.Attributes["owner"]?.Value != null)
+                    {
+                        var ownerName = testCaseNode.Attributes["owner"].Value;
+                        resultCreateModel.Owner = new IdentityRef { DisplayName = ownerName, DirectoryAlias = ownerName };
+                    }
+
                     //test case duration
                     bool TestCaseTimeDataAvailable = false;
                     var testCaseDuration = GetTimeSpan(testCaseNode, out TestCaseTimeDataAvailable);
@@ -280,7 +286,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                     if (runUserIdRef != null)
                     {
                         resultCreateModel.RunBy = runUserIdRef;
-                        resultCreateModel.Owner = runUserIdRef;
                     }
 
                     if (!string.IsNullOrEmpty(resultCreateModel.AutomatedTestName) && !string.IsNullOrEmpty(resultCreateModel.TestCaseTitle))

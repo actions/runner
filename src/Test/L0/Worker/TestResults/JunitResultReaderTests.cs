@@ -39,6 +39,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
             + "<system-err><![CDATA[]]></system-err>"
             + "</testsuite>";
 
+        private const string _sampleJunitResultXmlWithOwner = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>"
+            + "<testsuite errors = \"0\" failures=\"0\" hostname=\"achalla-dev\" name=\"test.AllTests\" skipped=\"0\" tests=\"1\" time=\"0.03\" timestamp=\"2015-09-01T10:19:04\">"
+            + "<properties>"
+            + "<property name = \"java.vendor\" value=\"Oracle Corporation\" />"
+            + "<property name = \"lib.dir\" value=\"lib\" />"
+            + "<property name = \"sun.java.launcher\" value=\"SUN_STANDARD\" />"
+            + "</properties>"
+            + "<testcase classname = \"test.ExampleTest\" name=\"Fact\" time=\"0.001\" owner=\"TestAuthorName\"/>"
+            + "<system-out><![CDATA[Set Up Complete."
+            + "Sample test Successful"
+            + "]]></system-out>"
+            + "<system-err><![CDATA[]]></system-err>"
+            + "</testsuite>";
+
         private const string _jUnitBasicResultsWithLogsXml =
             "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" +
             "<testsuite errors=\"0\" failures=\"1\" hostname=\"mghost\" name=\"com.contoso.billingservice.ConsoleMessageRendererTest\" skipped=\"0\" tests=\"2\" time=\"0.006\" timestamp=\"2015-04-06T21:56:24\">" +
@@ -139,6 +153,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
             Assert.NotNull(_testRunData);
             Assert.Equal(0, _testRunData.Results.Length);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
+        public void VerifyTestRunContextOwnerShouldNotBeUsedForTestCaseOwner()
+        {
+            SetupMocks();
+            _junitResultsToBeRead = _sampleJunitResultXml;
+            ReadResults(new TestRunContext("owner", "platform", "configuration", 1, "buildUri", "releaseUri", "releaseEnvironmentUri"));
+
+            Assert.Null(_testRunData.Results[0].Owner);
+            Assert.True(_testRunData.Results[0].RunBy.DisplayName.Equals("owner", StringComparison.OrdinalIgnoreCase));
         }
 
 
@@ -436,6 +463,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
             _junitResultsToBeRead = _sampleJunitResultXmlWithDtd;
             ReadResults();
             Assert.NotNull(_testRunData);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
+        public void Junit_ShouldReadOwnerIfPresent()
+        {
+            string expectedOwnerName = "TestAuthorName";
+            SetupMocks();
+            _junitResultsToBeRead = _sampleJunitResultXmlWithOwner;
+            ReadResults();
+
+            Assert.NotNull(_testRunData);
+            Assert.True(expectedOwnerName.Equals(_testRunData.Results[0].Owner.DisplayName, StringComparison.OrdinalIgnoreCase));
         }
 
         private void SetupMocks([CallerMemberName] string name = "")
