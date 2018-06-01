@@ -522,6 +522,7 @@ else {
     throw "Invalid value for `$Runtime"
 }
 
+#  Check if the SDK version is already installed.
 $isAssetInstalled = Is-Dotnet-Package-Installed -InstallRoot $InstallRoot -RelativePathToPackage $dotnetPackageRelativePath -SpecificVersion $SpecificVersion
 if ($isAssetInstalled) {
     Say "$assetName version $SpecificVersion is already installed."
@@ -560,6 +561,12 @@ catch {
 
 Say "Extracting zip from $DownloadLink"
 Extract-Dotnet-Package -ZipPath $ZipPath -OutPath $InstallRoot
+
+#  Check if the SDK version is now installed; if not, fail the installation.
+$isAssetInstalled = Is-Dotnet-Package-Installed -InstallRoot $InstallRoot -RelativePathToPackage $dotnetPackageRelativePath -SpecificVersion $SpecificVersion
+if (!$isAssetInstalled) {
+    throw "$assetName version $SpecificVersion failed to install with an unknown error."
+}
 
 Remove-Item $ZipPath
 

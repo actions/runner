@@ -754,6 +754,7 @@ install_dotnet() {
         return 1
     fi
 
+    #  Check if the SDK version is already installed.
     if is_dotnet_package_installed "$install_root" "$asset_relative_path" "$specific_version"; then
         say "$asset_name version $specific_version is already installed."
         return 0
@@ -790,6 +791,12 @@ install_dotnet() {
 
     say "Extracting zip from $download_link"
     extract_dotnet_package "$zip_path" "$install_root"
+
+    #  Check if the SDK version is now installed; if not, fail the installation.
+    if ! is_dotnet_package_installed "$install_root" "$asset_relative_path" "$specific_version"; then
+        say_err "$asset_name version $specific_version failed to install with an unknown error."
+        return 1
+    fi
 
     return 0
 }
