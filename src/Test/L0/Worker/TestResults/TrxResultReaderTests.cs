@@ -455,7 +455,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
             string trxContents = "<?xml version =\"1.0\" encoding=\"UTF-8\"?>" +
                 "<TestRun>" +
                 "<Results>" +
-                "<UnitTestResult testId=\"fd1a9d66-d059-cd84-23d7-f655dce255f5\" testName=\"TestMethod1\" outcome=\"Passed\" />" +
+                "<UnitTestResult testId=\"fd1a9d66-d059-cd84-23d7-f655dce255f5\" testName=\"TestMethod1\" outcome=\"Inconclusive\" />" +
                 "</Results>" +
                 "<TestDefinitions>" +
                 "<UnitTest id=\"fd1a9d66-d059-cd84-23d7-f655dce255f5\">" +
@@ -469,7 +469,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
             TestRunData runData = reader.ReadResults(_ec.Object, _trxResultFile, new TestRunContext(null, null, null, 1, null, null, null));
 
             Assert.Equal(runData.Results.Length, 1);
-
+            Assert.Equal(runData.Results[0].Outcome, "Inconclusive");
         }
 
         [Fact]

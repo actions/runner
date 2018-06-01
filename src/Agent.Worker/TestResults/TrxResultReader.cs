@@ -310,6 +310,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                 {
                     resultCreateModel.Outcome = TestOutcome.Passed.ToString();
                 }
+                else if (string.Equals(resultNode.Attributes["outcome"].Value, "inconclusive", StringComparison.OrdinalIgnoreCase))
+                {
+                    resultCreateModel.Outcome = TestOutcome.Inconclusive.ToString();
+                }
                 else
                 {                    
                     resultCreateModel.Outcome = TestOutcome.NotExecuted.ToString();
