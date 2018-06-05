@@ -15,13 +15,13 @@ Supported on Windows, OSX, Ubuntu and Red Hat.  Written for the .NET Core CLR as
 |![macOS](docs/res/apple_med.png) **macOS**|[![Build & Test][macOS-build-badge]][macOS-build]| 
 |![Linux](docs/res/linux_med.png) **Linux**|[![Build & Test][linux-build-badge]][linux-build]|
 
-[win-build-badge]: https://mseng.visualstudio.com/_apis/public/build/definitions/c86767d8-af79-4303-a7e6-21da0ba435e2/6916/badge?branch=master
+[win-build-badge]: https://mseng.visualstudio.com/pipelinetools/_apis/build/status/VSTS.Agent.CI-Windows?branchName=master
 [win-build]: https://mseng.visualstudio.com/PipelineTools/_build?_a=completed&definitionId=6916
 
-[macOS-build-badge]: https://mseng.visualstudio.com/_apis/public/build/definitions/c86767d8-af79-4303-a7e6-21da0ba435e2/6917/badge?branch=master
+[macOS-build-badge]: https://mseng.visualstudio.com/pipelinetools/_apis/build/status/VSTS.Agent.CI-MacOS?branchName=master
 [macOS-build]: https://mseng.visualstudio.com/PipelineTools/_build?_a=completed&definitionId=6917
 
-[linux-build-badge]: https://mseng.visualstudio.com/_apis/public/build/definitions/c86767d8-af79-4303-a7e6-21da0ba435e2/6915/badge?branch=master
+[linux-build-badge]: https://mseng.visualstudio.com/pipelinetools/_apis/build/status/VSTS.Agent.CI-Linux?branchName=master
 [linux-build]: https://mseng.visualstudio.com/PipelineTools/_build?_a=completed&definitionId=6915
 
 ## System Pre-Requisites
