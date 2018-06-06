@@ -344,6 +344,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                 testCaseResultData.RunBy = _runUserIdRef;
                 testCaseResultData.Owner = _runUserIdRef;
             }
+
+            // Adding test-case result level attachments
+            testCaseResultData.Attachments = this.GetTestCaseResultLevelAttachments(testCaseResultNode).ToArray();
+
             return testCaseResultData;
         }
         public TestRunData GetTestRunData(string filePath, XmlDocument doc, XmlNode testResultsNode, TestRunContext runContext, bool addResultsAsAttachments)
@@ -352,6 +356,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
             var testRunStartedOn = DateTime.MinValue;
             var testRunEndedOn = DateTime.MinValue;
             var testCaseResults = new List<TestCaseResultData>();
+            List<string> runLevelAttachments = new List<string>();
             _runUserIdRef = runContext != null ? new IdentityRef() { DisplayName = runContext.Owner } : null;
             _platform = runContext != null ? runContext.Platform : string.Empty;
             if (testRunNode.Attributes["start-time"] != null)
@@ -389,6 +394,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                         }
                     }
                 }
+
+                // Adding run level attachments.
+                runLevelAttachments = this.GetTestRunLevelAttachments(testRunNode);
+                // Adding results file itself as run level attachment.
+                runLevelAttachments.Add(filePath);
             }
             TestRunData testRunData = new TestRunData(
                 name: runContext != null && !string.IsNullOrWhiteSpace(runContext.RunName) ? runContext.RunName : _defaultRunName,
@@ -403,8 +413,35 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                 releaseEnvironmentUri: runContext != null ? runContext.ReleaseEnvironmentUri : null
             );
             testRunData.Results = testCaseResults.ToArray();
-            testRunData.Attachments = addResultsAsAttachments ? new string[] { filePath } : new string[0];
+            testRunData.Attachments = addResultsAsAttachments ? runLevelAttachments.ToArray() : new string[0];
             return testRunData;
+        }
+
+        private List<string> GetTestRunLevelAttachments(XmlNode testAssemblyNode)
+        {
+            var attachmentNodes = testAssemblyNode.SelectNodes("//test-suite/attachments/attachment");
+            return this.GetFilePathsFromAttachmentNodes(attachmentNodes);
+        }
+
+        private List<string> GetTestCaseResultLevelAttachments(XmlNode testCaseResultNode)
+        {
+            var attachmentNodes = testCaseResultNode.SelectNodes("./attachments/attachment");
+            return this.GetFilePathsFromAttachmentNodes(attachmentNodes);
+        }
+
+        private List<string> GetFilePathsFromAttachmentNodes(XmlNodeList attachmentNodes)
+        {
+            List<string> listOfFilePaths = new List<string>();
+            foreach (XmlNode attachment in attachmentNodes)
+            {
+                XmlNode filePathNode = attachment.SelectSingleNode("filePath");
+                if (filePathNode != null)
+                {
+                    listOfFilePaths.Add(filePathNode.InnerText);
+                }
+            }
+
+            return listOfFilePaths;
         }
     }
 
