@@ -73,6 +73,8 @@
 .PARAMETER SkipNonVersionedFiles
     Default: false
     Skips installing non-versioned files if they already exist, such as dotnet.exe.
+.PARAMETER NoCdn
+    Disable downloading from the Azure CDN, and use the uncached feed directly.
 #>
 [cmdletbinding()]
 param(
@@ -91,12 +93,17 @@ param(
    [string]$FeedCredential,
    [string]$ProxyAddress,
    [switch]$ProxyUseDefaultCredentials,
-   [switch]$SkipNonVersionedFiles
+   [switch]$SkipNonVersionedFiles,
+   [switch]$NoCdn
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference="Stop"
 $ProgressPreference="SilentlyContinue"
+
+if ($NoCdn) {
+    $AzureFeed = $UncachedFeed
+}
 
 $BinFolderRelativePath=""
 
@@ -461,6 +468,12 @@ function Extract-Dotnet-Package([string]$ZipPath, [string]$OutPath) {
 }
 
 function DownloadFile([Uri]$Uri, [string]$OutPath) {
+    if ($Uri -notlike "http*") {
+        Say-Verbose "Copying file from $Uri to $OutPath"
+        Copy-Item $Uri.AbsolutePath $OutPath
+        return
+    }
+
     $Stream = $null
 
     try {
