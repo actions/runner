@@ -482,7 +482,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                         executionContext.Debug(ex.ToString());
                     }
                 }
-                
+
                 // delete the shallow.lock file left by previous canceled build or any operation cause git.exe crash last time.
                 string shallowLockFile = Path.Combine(targetPath, ".git\\shallow.lock");
                 if (File.Exists(shallowLockFile))
@@ -856,7 +856,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 #endif                    
                 }
 
-                int exitCode_submoduleUpdate = await _gitCommandManager.GitSubmoduleUpdate(executionContext, targetPath, string.Join(" ", additionalSubmoduleUpdateArgs), checkoutNestedSubmodules, cancellationToken);
+                int exitCode_submoduleUpdate = await _gitCommandManager.GitSubmoduleUpdate(executionContext, targetPath, fetchDepth, string.Join(" ", additionalSubmoduleUpdateArgs), checkoutNestedSubmodules, cancellationToken);
                 if (exitCode_submoduleUpdate != 0)
                 {
                     throw new InvalidOperationException($"Git submodule update failed with exit code: {exitCode_submoduleUpdate}");

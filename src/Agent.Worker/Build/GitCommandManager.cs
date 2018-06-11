@@ -53,8 +53,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         // git submodule foreach git reset --hard HEAD
         Task<int> GitSubmoduleReset(IExecutionContext context, string repositoryPath);
 
-        // git submodule update --init --force [--recursive]
-        Task<int> GitSubmoduleUpdate(IExecutionContext context, string repositoryPath, string additionalCommandLine, bool recursive, CancellationToken cancellationToken);
+        // git submodule update --init --force [--depth=15] [--recursive]
+        Task<int> GitSubmoduleUpdate(IExecutionContext context, string repositoryPath, int fetchDepth, string additionalCommandLine, bool recursive, CancellationToken cancellationToken);
 
         // git submodule sync [--recursive]
         Task<int> GitSubmoduleSync(IExecutionContext context, string repositoryPath, bool recursive, CancellationToken cancellationToken);
@@ -311,11 +311,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             return await ExecuteGitCommandAsync(context, repositoryPath, "submodule", "foreach git reset --hard HEAD");
         }
 
-        // git submodule update --init --force [--recursive]
-        public async Task<int> GitSubmoduleUpdate(IExecutionContext context, string repositoryPath, string additionalCommandLine, bool recursive, CancellationToken cancellationToken)
+        // git submodule update --init --force [--depth=15] [--recursive]
+        public async Task<int> GitSubmoduleUpdate(IExecutionContext context, string repositoryPath, int fetchDepth, string additionalCommandLine, bool recursive, CancellationToken cancellationToken)
         {
             context.Debug("Update the registered git submodules.");
             string options = "update --init --force";
+            if (fetchDepth > 0)
+            {
+                options = options + $" --depth={fetchDepth}";
+            }
             if (recursive)
             {
                 options = options + " --recursive";
