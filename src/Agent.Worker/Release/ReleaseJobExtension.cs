@@ -306,14 +306,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
             }
 
             var releaseTrackingConfig = directoryManager.PrepareArtifactsDirectory(
-                IOUtil.GetWorkPath(HostContext),
+                HostContext.GetDirectory(WellKnownDirectory.Work),
                 executionContext.Variables.System_CollectionId,
                 executionContext.Variables.System_TeamProjectId.ToString(),
                 releaseDefinition);
 
             ReleaseWorkingFolder = releaseTrackingConfig.ReleaseDirectory;
             ArtifactsWorkingFolder = Path.Combine(
-                IOUtil.GetWorkPath(HostContext),
+                HostContext.GetDirectory(WellKnownDirectory.Work),
                 releaseTrackingConfig.ReleaseDirectory,
                 Constants.Release.Path.ArtifactsDirectory);
             executionContext.Output($"Release folder: {ArtifactsWorkingFolder}");

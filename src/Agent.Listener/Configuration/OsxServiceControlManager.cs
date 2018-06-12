@@ -25,11 +25,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
             try
             {
-                string svcShPath = Path.Combine(IOUtil.GetRootPath(), _svcShName);
+                string svcShPath = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), _svcShName);
 
                 // TODO: encoding?
                 // TODO: Loc strings formatted into MSG_xxx vars in shellscript
-                string svcShContent = File.ReadAllText(Path.Combine(IOUtil.GetBinPath(), _shTemplate));
+                string svcShContent = File.ReadAllText(Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Bin), _shTemplate));
                 var tokensToReplace = new Dictionary<string, string>
                                           {
                                               { "{{SvcDescription}}", serviceDisplayName },
@@ -52,6 +52,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 throw;
             }
         }
-        }
-        }        
+    }
+}
 #endif

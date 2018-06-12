@@ -46,7 +46,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             ArgUtil.NotNull(systemConnection.Url, nameof(systemConnection.Url));
 
             Uri projectUrl = systemConnection.Url;
-            VssCredentials projectCredential = ApiUtil.GetVssCredential(systemConnection);
+            VssCredentials projectCredential = VssUtil.GetVssCredential(systemConnection);
 
             Guid projectId = context.Variables.System_TeamProjectId ?? Guid.Empty;
             ArgUtil.NotEmpty(projectId, nameof(projectId));

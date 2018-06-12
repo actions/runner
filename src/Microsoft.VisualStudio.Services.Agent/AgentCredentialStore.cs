@@ -57,7 +57,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         {
             base.Initialize(hostContext);
 
-            _credStoreFile = IOUtil.GetAgentCredStoreFilePath();
+            _credStoreFile = hostContext.GetConfigFile(WellKnownConfigFile.CredentialStore);
             if (File.Exists(_credStoreFile))
             {
                 _credStore = IOUtil.LoadObject<Dictionary<string, string>>(_credStoreFile);
@@ -307,10 +307,9 @@ namespace Microsoft.VisualStudio.Services.Agent
         {
             base.Initialize(hostContext);
 
-            var whichUtil = HostContext.GetService<IWhichUtil>();
-            _securityUtil = whichUtil.Which("security", true);
+            _securityUtil = WhichUtil.Which("security", true, Trace);
 
-            _agentCredStoreKeyChain = IOUtil.GetAgentCredStoreFilePath();
+            _agentCredStoreKeyChain = hostContext.GetConfigFile(WellKnownConfigFile.CredentialStore);
 
             // Create osx key chain if it doesn't exists.
             if (!File.Exists(_agentCredStoreKeyChain))
@@ -343,7 +342,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                     };
 
                     // make sure the 'security' has access to the key so we won't get prompt at runtime.
-                    int exitCode = p.ExecuteAsync(workingDirectory: IOUtil.GetRootPath(),
+                    int exitCode = p.ExecuteAsync(workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Root),
                                                   fileName: _securityUtil,
                                                   arguments: $"create-keychain -p {_osxAgentCredStoreKeyChainPassword} \"{_agentCredStoreKeyChain}\"",
                                                   environment: null,
@@ -421,7 +420,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                     };
 
                     // make sure the 'security' has access to the key so we won't get prompt at runtime.
-                    int exitCode = p.ExecuteAsync(workingDirectory: IOUtil.GetRootPath(),
+                    int exitCode = p.ExecuteAsync(workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Root),
                                                 fileName: _securityUtil,
                                                 arguments: $"add-generic-password -s {target} -a VSTSAGENT -w {secretForKeyChain} -T \"{_securityUtil}\" \"{_agentCredStoreKeyChain}\"",
                                                 environment: null,
@@ -492,7 +491,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                         }
                     };
 
-                    int exitCode = p.ExecuteAsync(workingDirectory: IOUtil.GetRootPath(),
+                    int exitCode = p.ExecuteAsync(workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Root),
                                                   fileName: _securityUtil,
                                                   arguments: $"find-generic-password -s {target} -a VSTSAGENT -w -g \"{_agentCredStoreKeyChain}\"",
                                                   environment: null,
@@ -571,7 +570,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                         }
                     };
 
-                    int exitCode = p.ExecuteAsync(workingDirectory: IOUtil.GetRootPath(),
+                    int exitCode = p.ExecuteAsync(workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Root),
                                                   fileName: _securityUtil,
                                                   arguments: $"delete-generic-password -s {target} -a VSTSAGENT \"{_agentCredStoreKeyChain}\"",
                                                   environment: null,
@@ -635,7 +634,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                 };
 
                 // make sure the 'security' has access to the key so we won't get prompt at runtime.
-                int exitCode = p.ExecuteAsync(workingDirectory: IOUtil.GetRootPath(),
+                int exitCode = p.ExecuteAsync(workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Root),
                                               fileName: _securityUtil,
                                               arguments: $"unlock-keychain -p {_osxAgentCredStoreKeyChainPassword} \"{_agentCredStoreKeyChain}\"",
                                               environment: null,
@@ -694,7 +693,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                 };
 
                 // make sure the 'security' has access to the key so we won't get prompt at runtime.
-                int exitCode = p.ExecuteAsync(workingDirectory: IOUtil.GetRootPath(),
+                int exitCode = p.ExecuteAsync(workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Root),
                                               fileName: _securityUtil,
                                               arguments: $"lock-keychain \"{_agentCredStoreKeyChain}\"",
                                               environment: null,
@@ -734,7 +733,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         {
             base.Initialize(hostContext);
 
-            _credStoreFile = IOUtil.GetAgentCredStoreFilePath();
+            _credStoreFile = hostContext.GetConfigFile(WellKnownConfigFile.CredentialStore);
             if (File.Exists(_credStoreFile))
             {
                 _credStore = IOUtil.LoadObject<Dictionary<string, Credential>>(_credStoreFile);
@@ -900,14 +899,13 @@ namespace Microsoft.VisualStudio.Services.Agent
             File.SetAttributes(_credStoreFile, File.GetAttributes(_credStoreFile) | FileAttributes.Hidden);
 
             // Try to lock down the .credentials_store file to the owner/group
-            var whichUtil = HostContext.GetService<IWhichUtil>();
-            var chmodPath = whichUtil.Which("chmod");
+            var chmodPath = WhichUtil.Which("chmod", trace: Trace);
             if (!String.IsNullOrEmpty(chmodPath))
             {
                 var arguments = $"600 {new FileInfo(_credStoreFile).FullName}";
                 using (var invoker = HostContext.CreateService<IProcessInvoker>())
                 {
-                    var exitCode = invoker.ExecuteAsync(IOUtil.GetRootPath(), chmodPath, arguments, null, default(CancellationToken)).GetAwaiter().GetResult();
+                    var exitCode = invoker.ExecuteAsync(HostContext.GetDirectory(WellKnownDirectory.Root), chmodPath, arguments, null, default(CancellationToken)).GetAwaiter().GetResult();
                     if (exitCode == 0)
                     {
                         Trace.Info("Successfully set permissions for credentials store file {0}", _credStoreFile);

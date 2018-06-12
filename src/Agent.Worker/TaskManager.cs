@@ -107,7 +107,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             var version = new TaskVersion(task.Version);
 
             //download and extract task in a temp folder and rename it on success
-            string tempDirectory = Path.Combine(IOUtil.GetTasksPath(HostContext), "_temp_" + Guid.NewGuid());
+            string tempDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Tasks), "_temp_" + Guid.NewGuid());
             try
             {
                 Directory.CreateDirectory(tempDirectory);
@@ -158,7 +158,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             ArgUtil.NotNull(task.Name, nameof(task.Name));
             ArgUtil.NotNullOrEmpty(task.Version, nameof(task.Version));
             return Path.Combine(
-                IOUtil.GetTasksPath(HostContext),
+                HostContext.GetDirectory(WellKnownDirectory.Tasks),
                 $"{task.Name}_{task.Id}",
                 task.Version);
         }

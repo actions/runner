@@ -137,18 +137,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
         public async Task LoadGitExecutionInfo(IExecutionContext context, bool useBuiltInGit)
         {
-            var whichUtil = HostContext.GetService<IWhichUtil>();
-
             // Resolve the location of git.
             if (useBuiltInGit)
             {
 #if OS_WINDOWS
-                _gitPath = Path.Combine(IOUtil.GetExternalsPath(), "git", "cmd", $"git{IOUtil.ExeExtension}");
+                _gitPath = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), "git", "cmd", $"git{IOUtil.ExeExtension}");
 
                 // Prepend the PATH.
                 context.Output(StringUtil.Loc("Prepending0WithDirectoryContaining1", Constants.PathVariable, Path.GetFileName(_gitPath)));
-                var varUtil = HostContext.GetService<IVarUtil>();
-                varUtil.PrependPath(Path.GetDirectoryName(_gitPath));
+                PathUtil.PrependPath(Path.GetDirectoryName(_gitPath));
                 context.Debug($"{Constants.PathVariable}: '{Environment.GetEnvironmentVariable(Constants.PathVariable)}'");
 #else
                 // There is no built-in git for OSX/Linux
@@ -157,7 +154,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             }
             else
             {
-                _gitPath = whichUtil.Which("git", require: true);
+                _gitPath = WhichUtil.Which("git", require: true, trace: Trace);
             }
 
             ArgUtil.File(_gitPath, nameof(_gitPath));
@@ -170,7 +167,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             // Resolve the location of git-lfs.
             // This should be best effort since checkout lfs objects is an option.
             // We will check and ensure git-lfs version later
-            _gitLfsPath = whichUtil.Which("git-lfs", require: false);
+            _gitLfsPath = WhichUtil.Which("git-lfs", require: false, trace: Trace);
 
             // Get the Git-LFS version if git-lfs exist in %PATH%.
             if (!string.IsNullOrEmpty(_gitLfsPath))
@@ -455,7 +452,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             context.Debug("Get git version.");
             Version version = null;
             List<string> outputStrings = new List<string>();
-            int exitCode = await ExecuteGitCommandAsync(context, IOUtil.GetWorkPath(HostContext), "version", null, outputStrings);
+            int exitCode = await ExecuteGitCommandAsync(context, HostContext.GetDirectory(WellKnownDirectory.Work), "version", null, outputStrings);
             context.Output($"{string.Join(Environment.NewLine, outputStrings)}");
             if (exitCode == 0)
             {
@@ -486,7 +483,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             context.Debug("Get git-lfs version.");
             Version version = null;
             List<string> outputStrings = new List<string>();
-            int exitCode = await ExecuteGitCommandAsync(context, IOUtil.GetWorkPath(HostContext), "lfs version", null, outputStrings);
+            int exitCode = await ExecuteGitCommandAsync(context, HostContext.GetDirectory(WellKnownDirectory.Work), "lfs version", null, outputStrings);
             context.Output($"{string.Join(Environment.NewLine, outputStrings)}");
             if (exitCode == 0)
             {

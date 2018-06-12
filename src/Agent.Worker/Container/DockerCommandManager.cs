@@ -33,9 +33,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Container
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
-
-            var whichUtil = HostContext.GetService<IWhichUtil>();
-            DockerPath = whichUtil.Which("docker", true);
+            DockerPath = WhichUtil.Which("docker", true, Trace);
         }
 
         public async Task<DockerVersion> DockerVersion(IExecutionContext context)

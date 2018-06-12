@@ -86,7 +86,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                 //check if the task.json was not downloaded for ping and bing tasks
                 Assert.Equal(
                     0,
-                    Directory.GetFiles(IOUtil.GetTasksPath(_hc), "*", SearchOption.AllDirectories).Length);
+                    Directory.GetFiles(_hc.GetDirectory(WellKnownDirectory.Tasks), "*", SearchOption.AllDirectories).Length);
                 //assert download was invoked only once, because the first task cancelled the second task download
                 _taskServer
                     .Verify(x => x.GetTaskContentZipAsync(It.IsAny<Guid>(), It.IsAny<TaskVersion>(), _ec.Object.CancellationToken), Times.Once());
@@ -146,7 +146,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                 //see if the task.json was not downloaded
                 Assert.Equal(
                     0,
-                    Directory.GetFiles(IOUtil.GetTasksPath(_hc), "*", SearchOption.AllDirectories).Length);
+                    Directory.GetFiles(_hc.GetDirectory(WellKnownDirectory.Tasks), "*", SearchOption.AllDirectories).Length);
             }
             finally
             {
@@ -249,7 +249,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                 //Assert
                 //see if the task.json was downloaded
                 string destDirectory = Path.Combine(
-                    IOUtil.GetTasksPath(_hc),
+                    _hc.GetDirectory(WellKnownDirectory.Tasks),
                     $"{bingTaskName}_{bingGuid}",
                     bingVersion);
                 Assert.True(File.Exists(Path.Combine(destDirectory, Constants.Path.TaskJsonFile)));
@@ -567,7 +567,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             _hc = new TestHostContext(this, name);
 
             // Random work folder.
-            _workFolder = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Bin), $"_work_{Path.GetRandomFileName()}");
+            _workFolder = _hc.GetDirectory(WellKnownDirectory.Work);
 
             _hc.SetSingleton<IJobServer>(_jobServer.Object);
             _hc.SetSingleton<ITaskServer>(_taskServer.Object);

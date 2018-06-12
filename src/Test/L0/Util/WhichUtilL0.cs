@@ -16,11 +16,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Util
             {
                 //Arrange
                 Tracing trace = hc.GetTrace();
-                var whichTool = new WhichUtil();
-                whichTool.Initialize(hc);
 
                 // Act.
-                string gitPath = whichTool.Which("git");
+                string gitPath = WhichUtil.Which("git", trace: trace);
 
                 trace.Info($"Which(\"git\") returns: {gitPath ?? string.Empty}");
 
@@ -38,11 +36,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Util
             {
                 //Arrange
                 Tracing trace = hc.GetTrace();
-                var whichUtil = new WhichUtil();
-                whichUtil.Initialize(hc);
 
                 // Act.
-                string nosuch = whichUtil.Which("no-such-file-cf7e351f");
+                string nosuch = WhichUtil.Which("no-such-file-cf7e351f", trace: trace);
 
                 trace.Info($"result: {nosuch ?? string.Empty}");
 
@@ -60,13 +56,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Util
             {
                 //Arrange
                 Tracing trace = hc.GetTrace();
-                var whichUtil = new WhichUtil();
-                whichUtil.Initialize(hc);
 
                 // Act.
                 try
                 {
-                    whichUtil.Which("no-such-file-cf7e351f", require: true);
+                    WhichUtil.Which("no-such-file-cf7e351f", require: true, trace: trace);
                     throw new Exception("which should have thrown");
                 }
                 catch (FileNotFoundException ex)

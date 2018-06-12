@@ -18,6 +18,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
+using Microsoft.VisualStudio.Services.Agent.Util;
 using Microsoft.VisualStudio.Services.Common;
 using Microsoft.VisualStudio.Services.OAuth;
 using Microsoft.VisualStudio.Services.WebApi;
@@ -35,7 +36,7 @@ namespace Agent.Sdk
         Task ProcessCommandAsync(AgentCommandPluginExecutionContext executionContext, CancellationToken token);
     }
 
-    public class AgentCommandPluginExecutionContext
+    public class AgentCommandPluginExecutionContext : ITraceWriter
     {
         private VssConnection _connection;
         private readonly object _stdoutLock = new object();
@@ -73,9 +74,27 @@ namespace Agent.Sdk
             }
         }
 
+        public void Info(string message)
+        {
+            Debug(message);
+        }
+
+        public void Verbose(string message)
+        {
+#if DEBUG
+            Debug(message);
+#else
+            string vstsAgentTrace = Environment.GetEnvironmentVariable("VSTSAGENT_TRACE");
+            if (!string.IsNullOrEmpty(vstsAgentTrace))
+            {
+                Debug(message);
+            }
+#endif
+        }
+
         public void Debug(string message)
         {
-            if (PluginUtil.ConvertToBoolean(this.Variables.GetValueOrDefault("system.debug")?.Value))
+            if (StringUtil.ConvertToBoolean(this.Variables.GetValueOrDefault("system.debug")?.Value))
             {
                 Output($"##[debug]{message}");
             }
@@ -115,7 +134,7 @@ namespace Agent.Sdk
             {
                 if (!string.IsNullOrEmpty(certSetting.ClientCertificateArchiveFile))
                 {
-                    VssClientHttpRequestSettings.Default.ClientCertificateManager = new CommandPluginClientCertificateManager(certSetting.ClientCertificateArchiveFile, certSetting.ClientCertificatePassword);
+                    VssClientHttpRequestSettings.Default.ClientCertificateManager = new AgentClientCertificateManager(certSetting.ClientCertificateArchiveFile, certSetting.ClientCertificatePassword);
                 }
 
                 if (certSetting.SkipServerCertificateValidation)
@@ -129,17 +148,17 @@ namespace Agent.Sdk
             {
                 if (!string.IsNullOrEmpty(proxySetting.ProxyAddress))
                 {
-                    VssHttpMessageHandler.DefaultWebProxy = new CommandPluginWebProxy(proxySetting.ProxyAddress, proxySetting.ProxyUsername, proxySetting.ProxyPassword, proxySetting.ProxyBypassList);
+                    VssHttpMessageHandler.DefaultWebProxy = new AgentWebProxy(proxySetting.ProxyAddress, proxySetting.ProxyUsername, proxySetting.ProxyPassword, proxySetting.ProxyBypassList);
                 }
             }
 
             ServiceEndpoint systemConnection = this.Endpoints.FirstOrDefault(e => string.Equals(e.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
-            PluginUtil.NotNull(systemConnection, nameof(systemConnection));
-            PluginUtil.NotNull(systemConnection.Url, nameof(systemConnection.Url));
+            ArgUtil.NotNull(systemConnection, nameof(systemConnection));
+            ArgUtil.NotNull(systemConnection.Url, nameof(systemConnection.Url));
 
-            VssCredentials credentials = PluginUtil.GetVssCredential(systemConnection);
-            PluginUtil.NotNull(credentials, nameof(credentials));
-            return PluginUtil.CreateConnection(systemConnection.Url, credentials);
+            VssCredentials credentials = VssUtil.GetVssCredential(systemConnection);
+            ArgUtil.NotNull(credentials, nameof(credentials));
+            return VssUtil.CreateConnection(systemConnection.Url, credentials);
         }
 
         public string TranslateContainerPathToHostPath(string path)
@@ -176,101 +195,9 @@ namespace Agent.Sdk
             return path;
         }
 
-        private sealed class CommandPluginWebProxy : IWebProxy
-        {
-            private string _proxyAddress;
-            private readonly List<Regex> _regExBypassList = new List<Regex>();
-
-            public ICredentials Credentials { get; set; }
-
-            public CommandPluginWebProxy(string proxyAddress, string proxyUsername, string proxyPassword, List<string> proxyBypassList)
-            {
-                _proxyAddress = proxyAddress?.Trim();
-
-                if (string.IsNullOrEmpty(proxyUsername) || string.IsNullOrEmpty(proxyPassword))
-                {
-                    Credentials = CredentialCache.DefaultNetworkCredentials;
-                }
-                else
-                {
-                    Credentials = new NetworkCredential(proxyUsername, proxyPassword);
-                }
-
-                if (proxyBypassList != null)
-                {
-                    foreach (string bypass in proxyBypassList)
-                    {
-                        if (string.IsNullOrWhiteSpace(bypass))
-                        {
-                            continue;
-                        }
-                        else
-                        {
-                            try
-                            {
-                                Regex bypassRegex = new Regex(bypass.Trim(), RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.ECMAScript);
-                                _regExBypassList.Add(bypassRegex);
-                            }
-                            catch (Exception)
-                            {
-                                // eat all exceptions
-                            }
-                        }
-                    }
-                }
-            }
-
-            public Uri GetProxy(Uri destination)
-            {
-                if (IsBypassed(destination))
-                {
-                    return destination;
-                }
-                else
-                {
-                    return new Uri(_proxyAddress);
-                }
-            }
-
-            public bool IsBypassed(Uri uri)
-            {
-                return string.IsNullOrEmpty(_proxyAddress) || uri.IsLoopback || IsMatchInBypassList(uri);
-            }
-
-            private bool IsMatchInBypassList(Uri input)
-            {
-                string matchUriString = input.IsDefaultPort ?
-                    input.Scheme + "://" + input.Host :
-                    input.Scheme + "://" + input.Host + ":" + input.Port.ToString();
-
-                foreach (Regex r in _regExBypassList)
-                {
-                    if (r.IsMatch(matchUriString))
-                    {
-                        return true;
-                    }
-                }
-
-                return false;
-            }
-        }
-
-        private class CommandPluginClientCertificateManager : IVssClientCertificateManager
-        {
-            private readonly X509Certificate2Collection _clientCertificates = new X509Certificate2Collection();
-            public X509Certificate2Collection ClientCertificates => _clientCertificates;
-            public CommandPluginClientCertificateManager(string clientCertificateArchiveFile, string clientCertificatePassword)
-            {
-                if (!string.IsNullOrEmpty(clientCertificateArchiveFile))
-                {
-                    _clientCertificates.Add(new X509Certificate2(clientCertificateArchiveFile, clientCertificatePassword));
-                }
-            }
-        }
-
         private AgentCertificateSettings GetCertConfiguration()
         {
-            bool skipCertValidation = PluginUtil.ConvertToBoolean(this.Variables.GetValueOrDefault("Agent.SkipCertValidation")?.Value);
+            bool skipCertValidation = StringUtil.ConvertToBoolean(this.Variables.GetValueOrDefault("Agent.SkipCertValidation")?.Value);
             string caFile = this.Variables.GetValueOrDefault("Agent.CAInfo")?.Value;
             string clientCertFile = this.Variables.GetValueOrDefault("Agent.ClientCert")?.Value;
 
@@ -307,7 +234,7 @@ namespace Agent.Sdk
             {
                 string proxyUsername = this.Variables.GetValueOrDefault("Agent.ProxyUsername")?.Value;
                 string proxyPassword = this.Variables.GetValueOrDefault("Agent.ProxyPassword")?.Value;
-                List<string> proxyBypassHosts = PluginUtil.ConvertFromJson<List<string>>(this.Variables.GetValueOrDefault("Agent.ProxyBypassList")?.Value ?? "[]");
+                List<string> proxyBypassHosts = StringUtil.ConvertFromJson<List<string>>(this.Variables.GetValueOrDefault("Agent.ProxyBypassList")?.Value ?? "[]");
                 return new AgentWebProxySettings()
                 {
                     ProxyAddress = proxyUrl,

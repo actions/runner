@@ -53,7 +53,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
             // Get the list of available artifacts from build. 
             executionContext.Output(StringUtil.Loc("RMPreparingToGetBuildArtifactList"));
 
-            var vssConnection = ApiUtil.CreateConnection(buildArtifactDetails.TfsUrl, buildArtifactDetails.Credentials);
+            var vssConnection = VssUtil.CreateConnection(buildArtifactDetails.TfsUrl, buildArtifactDetails.Credentials);
             var buildClient = vssConnection.GetClient<BuildHttpClient>();
             var xamlBuildClient = vssConnection.GetClient<XamlBuildHttpClient>();
             List<ServerBuildArtifact> buildArtifacts = null;
@@ -101,7 +101,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
             ArgUtil.NotNull(vssEndpoint.Url, nameof(vssEndpoint.Url));
 
             var artifactDetails = JsonConvert.DeserializeObject<Dictionary<string, string>>(agentArtifactDefinition.Details);
-            VssCredentials vssCredentials = ApiUtil.GetVssCredential(vssEndpoint);
+            VssCredentials vssCredentials = VssUtil.GetVssCredential(vssEndpoint);
             var tfsUrl = context.Variables.Get(WellKnownDistributedTaskVariables.TFCollectionUrl);
 
             Guid projectId = context.Variables.System_TeamProjectId ?? Guid.Empty;

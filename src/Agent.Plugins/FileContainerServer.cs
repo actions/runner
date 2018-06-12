@@ -11,6 +11,7 @@ using System.Diagnostics;
 using Microsoft.VisualStudio.Services.WebApi;
 using System.Net.Http;
 using System.Net;
+using Microsoft.VisualStudio.Services.Agent.Util;
 
 namespace Agent.Plugins.Drop
 {
@@ -68,7 +69,7 @@ namespace Agent.Plugins.Drop
                 _sourceParentDirectory = source.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
             }
 
-            context.Output(PluginUtil.Loc("TotalUploadFiles", files.Count()));
+            context.Output(StringUtil.Loc("TotalUploadFiles", files.Count()));
             using (_uploadCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken))
             {
                 // hook up reporting event from file container client.
@@ -83,34 +84,34 @@ namespace Agent.Plugins.Drop
                     if (failedFiles.Count == 0)
                     {
                         // all files have been upload succeed.
-                        context.Output(PluginUtil.Loc("FileUploadSucceed"));
+                        context.Output(StringUtil.Loc("FileUploadSucceed"));
                         return;
                     }
                     else
                     {
-                        context.Output(PluginUtil.Loc("FileUploadFailedRetryLater", failedFiles.Count));
+                        context.Output(StringUtil.Loc("FileUploadFailedRetryLater", failedFiles.Count));
                     }
 
                     // Delay 1 min then retry failed files.
                     for (int timer = 60; timer > 0; timer -= 5)
                     {
-                        context.Output(PluginUtil.Loc("FileUploadRetryInSecond", timer));
+                        context.Output(StringUtil.Loc("FileUploadRetryInSecond", timer));
                         await Task.Delay(TimeSpan.FromSeconds(5), _uploadCancellationTokenSource.Token);
                     }
 
                     // Retry upload all failed files.
-                    context.Output(PluginUtil.Loc("FileUploadRetry", failedFiles.Count));
+                    context.Output(StringUtil.Loc("FileUploadRetry", failedFiles.Count));
                     failedFiles = await ParallelUploadAsync(context, failedFiles, maxConcurrentUploads, _uploadCancellationTokenSource.Token);
 
                     if (failedFiles.Count == 0)
                     {
                         // all files have been upload succeed after retry.
-                        context.Output(PluginUtil.Loc("FileUploadRetrySucceed"));
+                        context.Output(StringUtil.Loc("FileUploadRetrySucceed"));
                         return;
                     }
                     else
                     {
-                        throw new Exception(PluginUtil.Loc("FileUploadFailedAfterRetry"));
+                        throw new Exception(StringUtil.Loc("FileUploadFailedAfterRetry"));
                     }
                 }
                 finally
@@ -195,7 +196,7 @@ namespace Agent.Plugins.Drop
                         }
                         catch (OperationCanceledException) when (token.IsCancellationRequested)
                         {
-                            context.Output(PluginUtil.Loc("FileUploadCancelled", fileToUpload));
+                            context.Output(StringUtil.Loc("FileUploadCancelled", fileToUpload));
                             if (response != null)
                             {
                                 response.Dispose();
@@ -207,7 +208,7 @@ namespace Agent.Plugins.Drop
                         catch (Exception ex)
                         {
                             catchExceptionDuringUpload = true;
-                            context.Output(PluginUtil.Loc("FileUploadFailed", fileToUpload, ex.Message));
+                            context.Output(StringUtil.Loc("FileUploadFailed", fileToUpload, ex.Message));
                             context.Output(ex.ToString());
                         }
 
@@ -216,14 +217,14 @@ namespace Agent.Plugins.Drop
                         {
                             if (response != null)
                             {
-                                context.Output(PluginUtil.Loc("FileContainerUploadFailed", response.StatusCode, response.ReasonPhrase, fileToUpload, itemPath));
+                                context.Output(StringUtil.Loc("FileContainerUploadFailed", response.StatusCode, response.ReasonPhrase, fileToUpload, itemPath));
                             }
 
                             // output detail upload trace for the file.
                             ConcurrentQueue<string> logQueue;
                             if (_fileUploadTraceLog.TryGetValue(itemPath, out logQueue))
                             {
-                                context.Output(PluginUtil.Loc("FileUploadDetailTrace", itemPath));
+                                context.Output(StringUtil.Loc("FileUploadDetailTrace", itemPath));
                                 string message;
                                 while (logQueue.TryDequeue(out message))
                                 {
@@ -236,7 +237,7 @@ namespace Agent.Plugins.Drop
                         }
                         else
                         {
-                            context.Debug(PluginUtil.Loc("FileUploadFinish", fileToUpload, uploadTimer.ElapsedMilliseconds));
+                            context.Debug(StringUtil.Loc("FileUploadFinish", fileToUpload, uploadTimer.ElapsedMilliseconds));
 
                             // debug detail upload trace for the file.
                             ConcurrentQueue<string> logQueue;
@@ -262,7 +263,7 @@ namespace Agent.Plugins.Drop
                 }
                 catch (Exception ex)
                 {
-                    context.Output(PluginUtil.Loc("FileUploadFileOpenFailed", ex.Message, fileToUpload));
+                    context.Output(StringUtil.Loc("FileUploadFileOpenFailed", ex.Message, fileToUpload));
                     throw ex;
                 }
             }
@@ -289,7 +290,7 @@ namespace Agent.Plugins.Drop
                 // trace total file progress every 25 seconds when there is no file level detail progress
                 if (++traceInterval % 2 == 0 && !hasDetailProgress)
                 {
-                    context.Output(PluginUtil.Loc("FileUploadProgress", totalFiles, _filesProcessed, (_filesProcessed * 100) / totalFiles));
+                    context.Output(StringUtil.Loc("FileUploadProgress", totalFiles, _filesProcessed, (_filesProcessed * 100) / totalFiles));
                 }
 
                 await Task.WhenAny(_uploadFinished.Task, Task.Delay(5000, token));
@@ -305,7 +306,7 @@ namespace Agent.Plugins.Drop
         private void UploadFileProgressReportReceived(object sender, ReportProgressEventArgs e)
         {
             ConcurrentQueue<string> progressQueue = _fileUploadProgressLog.GetOrAdd(e.File, new ConcurrentQueue<string>());
-            progressQueue.Enqueue(PluginUtil.Loc("FileUploadProgressDetail", e.File, (e.CurrentChunk * 100) / e.TotalChunks));
+            progressQueue.Enqueue(StringUtil.Loc("FileUploadProgressDetail", e.File, (e.CurrentChunk * 100) / e.TotalChunks));
         }
     }
 }

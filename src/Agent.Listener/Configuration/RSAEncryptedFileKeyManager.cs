@@ -78,7 +78,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             base.Initialize(context);
 
             _context = context;
-            _keyFile = IOUtil.GetRSACredFilePath();
+            _keyFile = context.GetConfigFile(WellKnownConfigFile.RSACredentials);
         }
     }
 }

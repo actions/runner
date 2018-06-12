@@ -1,3 +1,4 @@
+using Agent.Sdk;
 using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
@@ -7,26 +8,19 @@ using System.Threading;
 
 namespace Microsoft.VisualStudio.Services.Agent.Util
 {
-    [ServiceLocator(Default = typeof(NetFrameworkUtil))]
-    public interface INetFrameworkUtil : IAgentService
+    public static class NetFrameworkUtil
     {
-        bool Test(Version minVersion);
-    }
+        private static List<Version> _versions;
 
-    public sealed class NetFrameworkUtil : AgentService, INetFrameworkUtil
-    {
-        private List<Version> _versions;
-
-        public bool Test(Version minVersion)
+        public static bool Test(Version minVersion, ITraceWriter trace)
         {
-            Trace.Entering();
             ArgUtil.NotNull(minVersion, nameof(minVersion));
-            InitVersions();
-            Trace.Info($"Testing for min NET Framework version: '{minVersion}'");
+            InitVersions(trace);
+            trace?.Info($"Testing for min NET Framework version: '{minVersion}'");
             return _versions.Any(x => x >= minVersion);
         }
 
-        private void InitVersions()
+        private static void InitVersions(ITraceWriter trace)
         {
             // See http://msdn.microsoft.com/en-us/library/hh925568(v=vs.110).aspx for details on how to detect framework versions
             // Also see http://support.microsoft.com/kb/318785
@@ -39,12 +33,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             var versions = new List<Version>();
 
             // Check for install root.
-            string installRoot = GetHklmValue(@"SOFTWARE\Microsoft\.NETFramework", "InstallRoot") as string;
+            string installRoot = GetHklmValue(@"SOFTWARE\Microsoft\.NETFramework", "InstallRoot", trace) as string;
             if (!string.IsNullOrEmpty(installRoot))
             {
                 // Get the version sub key names.
                 string ndpKeyName = @"SOFTWARE\Microsoft\NET Framework Setup\NDP";
-                string[] versionSubKeyNames = GetHklmSubKeyNames(ndpKeyName)
+                string[] versionSubKeyNames = GetHklmSubKeyNames(ndpKeyName, trace)
                     .Where(x => x.StartsWith("v", StringComparison.OrdinalIgnoreCase))
                     .ToArray();
                 foreach (string versionSubKeyName in versionSubKeyNames)
@@ -52,11 +46,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
                     string versionKeyName = $@"{ndpKeyName}\{versionSubKeyName}";
 
                     // Test for the version value.
-                    string version = GetHklmValue(versionKeyName, "Version") as string;
+                    string version = GetHklmValue(versionKeyName, "Version", trace) as string;
                     if (!string.IsNullOrEmpty(version))
                     {
                         // Test for the install flag.
-                        object install = GetHklmValue(versionKeyName, "Install");
+                        object install = GetHklmValue(versionKeyName, "Install", trace);
                         if (!(install is int) || (int)install != 1)
                         {
                             continue;
@@ -64,7 +58,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
 
                         // Test for the install path.
                         string installPath = Path.Combine(installRoot, versionSubKeyName);
-                        Trace.Info($"Testing directory: '{installPath}'");
+                        trace?.Info($"Testing directory: '{installPath}'");
                         if (!Directory.Exists(installPath))
                         {
                             continue;
@@ -74,43 +68,43 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
                         Version versionObject;
                         if (!Version.TryParse(versionSubKeyName.Substring(1), out versionObject)) // skip over the leading "v".
                         {
-                            Trace.Info($"Unable to parse version from sub key name: '{versionSubKeyName}'");
+                            trace?.Info($"Unable to parse version from sub key name: '{versionSubKeyName}'");
                             continue;
                         }
 
-                        Trace.Info($"Found version: {versionObject}");
+                        trace?.Info($"Found version: {versionObject}");
                         versions.Add(versionObject);
                         continue;
                     }
 
                     // Test if deprecated.
-                    if (string.Equals(GetHklmValue(versionKeyName, string.Empty) as string, "deprecated", StringComparison.OrdinalIgnoreCase))
+                    if (string.Equals(GetHklmValue(versionKeyName, string.Empty, trace) as string, "deprecated", StringComparison.OrdinalIgnoreCase))
                     {
                         continue;
                     }
 
                     // Get the profile key names.
-                    string[] profileKeyNames = GetHklmSubKeyNames(versionKeyName)
+                    string[] profileKeyNames = GetHklmSubKeyNames(versionKeyName, trace)
                         .Select(x => $@"{versionKeyName}\{x}")
                         .ToArray();
                     foreach (string profileKeyName in profileKeyNames)
                     {
                         // Test for the version value.
-                        version = GetHklmValue(profileKeyName, "Version") as string;
+                        version = GetHklmValue(profileKeyName, "Version", trace) as string;
                         if (string.IsNullOrEmpty(version))
                         {
                             continue;
                         }
 
                         // Test for the install flag.
-                        object install = GetHklmValue(profileKeyName, "Install");
+                        object install = GetHklmValue(profileKeyName, "Install", trace);
                         if (!(install is int) || (int)install != 1)
                         {
                             continue;
                         }
 
                         // Test for the install path.
-                        string installPath = (GetHklmValue(profileKeyName, "InstallPath") as string ?? string.Empty)
+                        string installPath = (GetHklmValue(profileKeyName, "InstallPath", trace) as string ?? string.Empty)
                             .TrimEnd(Path.DirectorySeparatorChar);
                         if (string.IsNullOrEmpty(installPath))
                         {
@@ -121,10 +115,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
                         //
                         // Use a range since customer might install beta/preview .NET Framework.
                         string versionString = null;
-                        object releaseObject = GetHklmValue(profileKeyName, "Release");
+                        object releaseObject = GetHklmValue(profileKeyName, "Release", trace);
                         if (releaseObject != null)
                         {
-                            Trace.Info("Type is " + releaseObject.GetType().FullName);
+                            trace?.Info("Type is " + releaseObject.GetType().FullName);
                         }
 
                         if (releaseObject is int)
@@ -164,7 +158,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
                             }
                             else
                             {
-                                Trace.Info($"Release '{release}' did not fall into an expected range.");
+                                trace?.Info($"Release '{release}' did not fall into an expected range.");
                             }
                         }
 
@@ -173,37 +167,37 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
                             continue;
                         }
 
-                        Trace.Info($"Interpreted version: {versionString}");
+                        trace?.Info($"Interpreted version: {versionString}");
                         versions.Add(new Version(versionString));
                     }
                 }
             }
 
-            Trace.Info($"Found {versions.Count} versions:");
+            trace?.Info($"Found {versions.Count} versions:");
             foreach (Version versionObject in versions)
             {
-                Trace.Info($" {versionObject}");
+                trace?.Info($" {versionObject}");
             }
 
             Interlocked.CompareExchange(ref _versions, versions, null);
         }
 
-        private string[] GetHklmSubKeyNames(string keyName)
+        private static string[] GetHklmSubKeyNames(string keyName, ITraceWriter trace)
         {
             RegistryKey key = Registry.LocalMachine.OpenSubKey(keyName);
             if (key == null)
             {
-                Trace.Info($"Key name '{keyName}' is null.");
+                trace?.Info($"Key name '{keyName}' is null.");
                 return new string[0];
             }
 
             try
             {
                 string[] subKeyNames = key.GetSubKeyNames() ?? new string[0];
-                Trace.Info($"Key name '{keyName}' contains sub keys:");
+                trace?.Info($"Key name '{keyName}' contains sub keys:");
                 foreach (string subKeyName in subKeyNames)
                 {
-                    Trace.Info($" '{subKeyName}'");
+                    trace?.Info($" '{subKeyName}'");
                 }
 
                 return subKeyNames;
@@ -214,17 +208,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             }
         }
 
-        private object GetHklmValue(string keyName, string valueName)
+        private static object GetHklmValue(string keyName, string valueName, ITraceWriter trace)
         {
             keyName = $@"HKEY_LOCAL_MACHINE\{keyName}";
             object value = Registry.GetValue(keyName, valueName, defaultValue: null);
             if (object.ReferenceEquals(value, null))
             {
-                Trace.Info($"Key name '{keyName}', value name '{valueName}' is null.");
+                trace?.Info($"Key name '{keyName}', value name '{valueName}' is null.");
                 return null;
             }
 
-            Trace.Info($"Key name '{keyName}', value name '{valueName}': '{value}'");
+            trace?.Info($"Key name '{keyName}', value name '{valueName}': '{value}'");
             return value;
         }
     }

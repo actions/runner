@@ -113,14 +113,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Release
 
         private TestHostContext Setup([CallerMemberName] string name = "", bool createWorkDirectory = true, bool useReleaseDefinitionId = true)
         {
-            this.stubWorkFolder = Path.Combine(
-                Path.GetDirectoryName(Assembly.GetEntryAssembly().Location),
-                $"_work_{Path.GetRandomFileName()}");
+            TestHostContext hc = new TestHostContext(this, name);
+            this.stubWorkFolder =hc.GetDirectory(WellKnownDirectory.Work);
             if (createWorkDirectory)
             {
                 Directory.CreateDirectory(this.stubWorkFolder);
             }
-            TestHostContext hc = new TestHostContext(this, name);
+            
             _ec = new Mock<IExecutionContext>();
 
             _extensionManager = new Mock<IExtensionManager>();

@@ -27,7 +27,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             ArgUtil.NotNullOrEmpty(pipeOut, nameof(pipeOut));
             var agentWebProxy = HostContext.GetService<IVstsAgentWebProxy>();
             var agentCertManager = HostContext.GetService<IAgentCertificateManager>();
-            ApiUtil.InitializeVssClientSettings(agentWebProxy, agentCertManager);
+            VssUtil.InitializeVssClientSettings(HostContext.UserAgent, agentWebProxy.WebProxy, agentCertManager.VssClientCertificateManager);
 
             var jobRunner = HostContext.CreateService<IJobRunner>();
 

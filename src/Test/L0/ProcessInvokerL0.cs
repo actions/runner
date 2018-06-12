@@ -64,7 +64,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 Tracing trace = hc.GetTrace();
 
                 Int32 exitCode = -1;
-                var processInvoker = new ProcessInvoker();
+                var processInvoker = new ProcessInvokerWrapper();
                 processInvoker.Initialize(hc);
 #if OS_WINDOWS
                 exitCode = await processInvoker.ExecuteAsync("", "cmd.exe", "/c \"dir >nul\"", null, CancellationToken.None);
@@ -90,7 +90,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             using (var tokenSource = new CancellationTokenSource())
             {
                 Tracing trace = hc.GetTrace();
-                var processInvoker = new ProcessInvoker();
+                var processInvoker = new ProcessInvokerWrapper();
                 processInvoker.Initialize(hc);
                 Stopwatch watch = Stopwatch.StartNew();
 #if OS_WINDOWS

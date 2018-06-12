@@ -95,8 +95,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 }
 
                 // Validate .NET Framework 4.5 or higher is installed.
-                var netFrameworkUtil = context.GetService<INetFrameworkUtil>();
-                if (!netFrameworkUtil.Test(new Version(4, 5)))
+                if (!NetFrameworkUtil.Test(new Version(4, 5), trace))
                 {
                     terminal.WriteError(StringUtil.Loc("MinimumNetFramework"));
                     return Constants.Agent.ReturnCode.TerminatedError;

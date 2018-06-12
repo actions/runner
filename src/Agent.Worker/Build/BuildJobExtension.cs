@@ -177,7 +177,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
             // Set the directory variables.
             executionContext.Output(StringUtil.Loc("SetBuildVars"));
-            string _workDirectory = IOUtil.GetWorkPath(HostContext);
+            string _workDirectory = HostContext.GetDirectory(WellKnownDirectory.Work);
             executionContext.Variables.Set(Constants.Variables.Agent.BuildDirectory, Path.Combine(_workDirectory, trackingConfig.BuildDirectory));
             executionContext.Variables.Set(Constants.Variables.System.ArtifactsDirectory, Path.Combine(_workDirectory, trackingConfig.ArtifactsDirectory));
             executionContext.Variables.Set(Constants.Variables.System.DefaultWorkingDirectory, Path.Combine(_workDirectory, trackingConfig.SourcesDirectory));

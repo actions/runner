@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.TeamFoundation.Build.WebApi;
 using Agent.Sdk;
+using Microsoft.VisualStudio.Services.Agent.Util;
 
 namespace Agent.Plugins.Drop
 {
@@ -15,14 +16,14 @@ namespace Agent.Plugins.Drop
 
         public string Event => "upload";
 
-        public string DisplayName => PluginUtil.Loc("UploadArtifact");
+        public string DisplayName => StringUtil.Loc("UploadArtifact");
 
         public async Task ProcessCommandAsync(AgentCommandPluginExecutionContext context, CancellationToken token)
         {
-            PluginUtil.NotNull(context, nameof(context));
+            ArgUtil.NotNull(context, nameof(context));
 
             Guid projectId = new Guid(context.Variables.GetValueOrDefault(BuildVariables.TeamProjectId)?.Value ?? Guid.Empty.ToString());
-            PluginUtil.NotEmpty(projectId, nameof(projectId));
+            ArgUtil.NotEmpty(projectId, nameof(projectId));
 
             string buildIdStr = context.Variables.GetValueOrDefault(BuildVariables.BuildId)?.Value ?? string.Empty;
             if (!int.TryParse(buildIdStr, out int buildId))
@@ -40,7 +41,7 @@ namespace Agent.Plugins.Drop
             if (!context.Properties.TryGetValue(ArtifactUploadEventProperties.ArtifactName, out artifactName) ||
                 string.IsNullOrEmpty(artifactName))
             {
-                throw new Exception(PluginUtil.Loc("ArtifactNameRequired"));
+                throw new Exception(StringUtil.Loc("ArtifactNameRequired"));
             }
 
             string containerFolder;
@@ -61,39 +62,39 @@ namespace Agent.Plugins.Drop
 
             if (string.IsNullOrEmpty(localPath))
             {
-                throw new Exception(PluginUtil.Loc("ArtifactLocationRequired"));
+                throw new Exception(StringUtil.Loc("ArtifactLocationRequired"));
             }
 
             string hostType = context.Variables.GetValueOrDefault("system.hosttype")?.Value;
             if (!IsUncSharePath(context, localPath) && !string.Equals(hostType, "Build", StringComparison.OrdinalIgnoreCase))
             {
-                throw new Exception(PluginUtil.Loc("UploadArtifactCommandNotSupported", hostType ?? string.Empty));
+                throw new Exception(StringUtil.Loc("UploadArtifactCommandNotSupported", hostType ?? string.Empty));
             }
 
             string fullPath = Path.GetFullPath(localPath);
             if (!File.Exists(fullPath) && !Directory.Exists(fullPath))
             {
                 // if localPath is not a file or folder on disk
-                throw new FileNotFoundException(PluginUtil.Loc("PathNotExist", localPath));
+                throw new FileNotFoundException(StringUtil.Loc("PathNotExist", localPath));
             }
             else if (Directory.Exists(fullPath) && Directory.EnumerateFiles(fullPath, "*", SearchOption.AllDirectories).FirstOrDefault() == null)
             {
                 // if localPath is a folder but the folder contains nothing
-                context.Output(PluginUtil.Loc("DirectoryIsEmptyForArtifact", fullPath, artifactName));
+                context.Output(StringUtil.Loc("DirectoryIsEmptyForArtifact", fullPath, artifactName));
                 return;
             }
 
             // Upload to file container
-            context.Output(PluginUtil.Loc("UploadArtifact"));
+            context.Output(StringUtil.Loc("UploadArtifact"));
             FileContainerServer fileContainerHelper = new FileContainerServer(context.VssConnection, projectId, containerId, containerFolder);
             await fileContainerHelper.CopyToContainerAsync(context, fullPath, token);
-            string fileContainerFullPath = PluginUtil.Format($"#/{containerId}/{containerFolder}");
-            context.Output(PluginUtil.Loc("UploadToFileContainer", fullPath, fileContainerFullPath));
+            string fileContainerFullPath = StringUtil.Format($"#/{containerId}/{containerFolder}");
+            context.Output(StringUtil.Loc("UploadToFileContainer", fullPath, fileContainerFullPath));
 
             // Associate build artifact
             BuildServer buildHelper = new BuildServer(context.VssConnection);
             var artifact = await buildHelper.AssociateArtifact(projectId, buildId, artifactName, ArtifactResourceTypes.Container, fileContainerFullPath, propertyDictionary, token);
-            context.Output(PluginUtil.Loc("AssociateArtifactWithBuild", artifact.Id, buildId));
+            context.Output(StringUtil.Loc("AssociateArtifactWithBuild", artifact.Id, buildId));
         }
 
 

@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.IO;
 using Agent.Sdk;
+using Microsoft.VisualStudio.Services.Agent.Util;
 
 namespace Agent.Plugins.Repository
 {
@@ -25,12 +26,12 @@ namespace Agent.Plugins.Repository
 
         public bool EnsureGitVersion(Version requiredVersion, bool throwOnNotMatch)
         {
-            PluginUtil.NotNull(gitPath, nameof(gitPath));
-            PluginUtil.NotNull(gitVersion, nameof(gitVersion));
+            ArgUtil.NotNull(gitPath, nameof(gitPath));
+            ArgUtil.NotNull(gitVersion, nameof(gitVersion));
 
             if (gitVersion < requiredVersion && throwOnNotMatch)
             {
-                throw new NotSupportedException(PluginUtil.Loc("MinRequiredGitVersion", requiredVersion, gitPath, gitVersion));
+                throw new NotSupportedException(StringUtil.Loc("MinRequiredGitVersion", requiredVersion, gitPath, gitVersion));
             }
 
             return gitVersion >= requiredVersion;
@@ -38,12 +39,12 @@ namespace Agent.Plugins.Repository
 
         public bool EnsureGitLFSVersion(Version requiredVersion, bool throwOnNotMatch)
         {
-            PluginUtil.NotNull(gitLfsPath, nameof(gitLfsPath));
-            PluginUtil.NotNull(gitLfsVersion, nameof(gitLfsVersion));
+            ArgUtil.NotNull(gitLfsPath, nameof(gitLfsPath));
+            ArgUtil.NotNull(gitLfsVersion, nameof(gitLfsVersion));
 
             if (gitLfsVersion < requiredVersion && throwOnNotMatch)
             {
-                throw new NotSupportedException(PluginUtil.Loc("MinRequiredGitLfsVersion", requiredVersion, gitLfsPath, gitLfsVersion));
+                throw new NotSupportedException(StringUtil.Loc("MinRequiredGitLfsVersion", requiredVersion, gitLfsPath, gitLfsVersion));
             }
 
             return gitLfsVersion >= requiredVersion;
@@ -56,11 +57,11 @@ namespace Agent.Plugins.Repository
             {
 #if OS_WINDOWS
                 string agentHomeDir = context.Variables.GetValueOrDefault("agent.homedirectory")?.Value;
-                PluginUtil.NotNullOrEmpty(agentHomeDir, nameof(agentHomeDir));
+                ArgUtil.NotNullOrEmpty(agentHomeDir, nameof(agentHomeDir));
                 gitPath = Path.Combine(agentHomeDir, "externals", "git", "cmd", $"git.exe");
 
                 // Prepend the PATH.
-                context.Output(PluginUtil.Loc("Prepending0WithDirectoryContaining1", "Path", Path.GetFileName(gitPath)));
+                context.Output(StringUtil.Loc("Prepending0WithDirectoryContaining1", "Path", Path.GetFileName(gitPath)));
                 context.PrependPath(Path.GetDirectoryName(gitPath));
                 context.Debug($"PATH: '{Environment.GetEnvironmentVariable("PATH")}'");
 #else
@@ -70,20 +71,20 @@ namespace Agent.Plugins.Repository
             }
             else
             {
-                gitPath = PluginUtil.Which("git", require: true);
+                gitPath = WhichUtil.Which("git", require: true, trace: context);
             }
 
-            PluginUtil.FileExists(gitPath, nameof(gitPath));
+            ArgUtil.File(gitPath, nameof(gitPath));
 
             // Get the Git version.    
             gitVersion = await GitVersion(context);
-            PluginUtil.NotNull(gitVersion, nameof(gitVersion));
+            ArgUtil.NotNull(gitVersion, nameof(gitVersion));
             context.Debug($"Detect git version: {gitVersion.ToString()}.");
 
             // Resolve the location of git-lfs.
             // This should be best effort since checkout lfs objects is an option.
             // We will check and ensure git-lfs version later
-            gitLfsPath = PluginUtil.Which("git-lfs", require: false);
+            gitLfsPath = WhichUtil.Which("git-lfs", require: false, trace: context);
 
             // Get the Git-LFS version if git-lfs exist in %PATH%.
             if (!string.IsNullOrEmpty(gitLfsPath))
@@ -100,7 +101,7 @@ namespace Agent.Plugins.Repository
             Version recommendGitVersion = new Version(2, 9);
             if (!EnsureGitVersion(recommendGitVersion, throwOnNotMatch: false))
             {
-                context.Output(PluginUtil.Loc("UpgradeToLatestGit", recommendGitVersion, gitVersion));
+                context.Output(StringUtil.Loc("UpgradeToLatestGit", recommendGitVersion, gitVersion));
             }
 
             // Set the user agent.
@@ -112,8 +113,8 @@ namespace Agent.Plugins.Repository
         public async Task<int> GitInit(AgentTaskPluginExecutionContext context, string repositoryPath)
         {
             context.Debug($"Init git repository at: {repositoryPath}.");
-            string repoRootEscapeSpace = PluginUtil.Format(@"""{0}""", repositoryPath.Replace(@"""", @"\"""));
-            return await ExecuteGitCommandAsync(context, repositoryPath, "init", PluginUtil.Format($"{repoRootEscapeSpace}"));
+            string repoRootEscapeSpace = StringUtil.Format(@"""{0}""", repositoryPath.Replace(@"""", @"\"""));
+            return await ExecuteGitCommandAsync(context, repositoryPath, "init", StringUtil.Format($"{repoRootEscapeSpace}"));
         }
 
         // git fetch --tags --prune --progress --no-recurse-submodules [--depth=15] origin [+refs/pull/*:refs/remote/pull/*]
@@ -126,20 +127,20 @@ namespace Agent.Plugins.Repository
             }
 
             // default options for git fetch.
-            string options = PluginUtil.Format($"--tags --prune --progress --no-recurse-submodules {remoteName} {string.Join(" ", refSpec)}");
+            string options = StringUtil.Format($"--tags --prune --progress --no-recurse-submodules {remoteName} {string.Join(" ", refSpec)}");
 
             // If shallow fetch add --depth arg
             // If the local repository is shallowed but there is no fetch depth provide for this build,
             // add --unshallow to convert the shallow repository to a complete repository
             if (fetchDepth > 0)
             {
-                options = PluginUtil.Format($"--tags --prune --progress --no-recurse-submodules --depth={fetchDepth} {remoteName} {string.Join(" ", refSpec)}");
+                options = StringUtil.Format($"--tags --prune --progress --no-recurse-submodules --depth={fetchDepth} {remoteName} {string.Join(" ", refSpec)}");
             }
             else
             {
                 if (File.Exists(Path.Combine(repositoryPath, ".git", "shallow")))
                 {
-                    options = PluginUtil.Format($"--tags --prune --progress --no-recurse-submodules --unshallow {remoteName} {string.Join(" ", refSpec)}");
+                    options = StringUtil.Format($"--tags --prune --progress --no-recurse-submodules --unshallow {remoteName} {string.Join(" ", refSpec)}");
                 }
             }
 
@@ -152,7 +153,7 @@ namespace Agent.Plugins.Repository
             context.Debug($"Fetch LFS objects for git repository at: {repositoryPath} remote: {remoteName}.");
 
             // default options for git lfs fetch.
-            string options = PluginUtil.Format($"fetch origin {refSpec}");
+            string options = StringUtil.Format($"fetch origin {refSpec}");
             return await ExecuteGitCommandAsync(context, repositoryPath, "lfs", options, additionalCommandLine, cancellationToken);
         }
 
@@ -165,11 +166,11 @@ namespace Agent.Plugins.Repository
             string options;
             if (gitVersion >= new Version(2, 7))
             {
-                options = PluginUtil.Format("--progress --force {0}", committishOrBranchSpec);
+                options = StringUtil.Format("--progress --force {0}", committishOrBranchSpec);
             }
             else
             {
-                options = PluginUtil.Format("--force {0}", committishOrBranchSpec);
+                options = StringUtil.Format("--force {0}", committishOrBranchSpec);
             }
 
             return await ExecuteGitCommandAsync(context, repositoryPath, "checkout", options, cancellationToken);
@@ -193,21 +194,21 @@ namespace Agent.Plugins.Repository
         public async Task<int> GitRemoteAdd(AgentTaskPluginExecutionContext context, string repositoryPath, string remoteName, string remoteUrl)
         {
             context.Debug($"Add git remote: {remoteName} to url: {remoteUrl} for repository under: {repositoryPath}.");
-            return await ExecuteGitCommandAsync(context, repositoryPath, "remote", PluginUtil.Format($"add {remoteName} {remoteUrl}"));
+            return await ExecuteGitCommandAsync(context, repositoryPath, "remote", StringUtil.Format($"add {remoteName} {remoteUrl}"));
         }
 
         // get remote set-url <origin> <url>
         public async Task<int> GitRemoteSetUrl(AgentTaskPluginExecutionContext context, string repositoryPath, string remoteName, string remoteUrl)
         {
             context.Debug($"Set git fetch url to: {remoteUrl} for remote: {remoteName}.");
-            return await ExecuteGitCommandAsync(context, repositoryPath, "remote", PluginUtil.Format($"set-url {remoteName} {remoteUrl}"));
+            return await ExecuteGitCommandAsync(context, repositoryPath, "remote", StringUtil.Format($"set-url {remoteName} {remoteUrl}"));
         }
 
         // get remote set-url --push <origin> <url>
         public async Task<int> GitRemoteSetPushUrl(AgentTaskPluginExecutionContext context, string repositoryPath, string remoteName, string remoteUrl)
         {
             context.Debug($"Set git push url to: {remoteUrl} for remote: {remoteName}.");
-            return await ExecuteGitCommandAsync(context, repositoryPath, "remote", PluginUtil.Format($"set-url --push {remoteName} {remoteUrl}"));
+            return await ExecuteGitCommandAsync(context, repositoryPath, "remote", StringUtil.Format($"set-url --push {remoteName} {remoteUrl}"));
         }
 
         // git submodule foreach git clean -fdx
@@ -297,7 +298,7 @@ namespace Agent.Plugins.Repository
         public async Task<int> GitConfig(AgentTaskPluginExecutionContext context, string repositoryPath, string configKey, string configValue)
         {
             context.Debug($"Set git config {configKey} {configValue}");
-            return await ExecuteGitCommandAsync(context, repositoryPath, "config", PluginUtil.Format($"{configKey} {configValue}"));
+            return await ExecuteGitCommandAsync(context, repositoryPath, "config", StringUtil.Format($"{configKey} {configValue}"));
         }
 
         // git config --get-all <key>
@@ -308,7 +309,7 @@ namespace Agent.Plugins.Repository
 
             // ignore any outputs by redirect them into a string list, since the output might contains secrets.
             List<string> outputStrings = new List<string>();
-            int exitcode = await ExecuteGitCommandAsync(context, repositoryPath, "config", PluginUtil.Format($"--get-all {configKey}"), outputStrings);
+            int exitcode = await ExecuteGitCommandAsync(context, repositoryPath, "config", StringUtil.Format($"--get-all {configKey}"), outputStrings);
 
             return exitcode == 0;
         }
@@ -317,7 +318,7 @@ namespace Agent.Plugins.Repository
         public async Task<int> GitConfigUnset(AgentTaskPluginExecutionContext context, string repositoryPath, string configKey)
         {
             context.Debug($"Unset git config --unset-all {configKey}");
-            return await ExecuteGitCommandAsync(context, repositoryPath, "config", PluginUtil.Format($"--unset-all {configKey}"));
+            return await ExecuteGitCommandAsync(context, repositoryPath, "config", StringUtil.Format($"--unset-all {configKey}"));
         }
 
         // git config gc.auto 0
@@ -367,7 +368,7 @@ namespace Agent.Plugins.Repository
         {
             context.Debug("Get git version.");
             string workingDir = context.Variables.GetValueOrDefault("agent.workfolder")?.Value;
-            PluginUtil.DirectoryExists(workingDir, "agent.workfolder");
+            ArgUtil.Directory(workingDir, "agent.workfolder");
             Version version = null;
             List<string> outputStrings = new List<string>();
             int exitCode = await ExecuteGitCommandAsync(context, workingDir, "version", null, outputStrings);
@@ -400,7 +401,7 @@ namespace Agent.Plugins.Repository
         {
             context.Debug("Get git-lfs version.");
             string workingDir = context.Variables.GetValueOrDefault("agent.workfolder")?.Value;
-            PluginUtil.DirectoryExists(workingDir, "agent.workfolder");
+            ArgUtil.Directory(workingDir, "agent.workfolder");
             Version version = null;
             List<string> outputStrings = new List<string>();
             int exitCode = await ExecuteGitCommandAsync(context, workingDir, "lfs version", null, outputStrings);
@@ -429,7 +430,7 @@ namespace Agent.Plugins.Repository
         }
         private async Task<int> ExecuteGitCommandAsync(AgentTaskPluginExecutionContext context, string repoRoot, string command, string options, CancellationToken cancellationToken = default(CancellationToken))
         {
-            string arg = PluginUtil.Format($"{command} {options}").Trim();
+            string arg = StringUtil.Format($"{command} {options}").Trim();
             context.Command($"git {arg}");
 
             var processInvoker = new ProcessInvoker(context);
@@ -455,7 +456,7 @@ namespace Agent.Plugins.Repository
 
         private async Task<int> ExecuteGitCommandAsync(AgentTaskPluginExecutionContext context, string repoRoot, string command, string options, IList<string> output)
         {
-            string arg = PluginUtil.Format($"{command} {options}").Trim();
+            string arg = StringUtil.Format($"{command} {options}").Trim();
             context.Command($"git {arg}");
 
             if (output == null)
@@ -493,7 +494,7 @@ namespace Agent.Plugins.Repository
 
         private async Task<int> ExecuteGitCommandAsync(AgentTaskPluginExecutionContext context, string repoRoot, string command, string options, string additionalCommandLine, CancellationToken cancellationToken)
         {
-            string arg = PluginUtil.Format($"{additionalCommandLine} {command} {options}").Trim();
+            string arg = StringUtil.Format($"{additionalCommandLine} {command} {options}").Trim();
             context.Command($"git {arg}");
 
             var processInvoker = new ProcessInvoker(context);

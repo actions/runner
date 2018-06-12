@@ -8,6 +8,7 @@ using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Newtonsoft.Json;
 using Agent.Sdk;
 using Pipelines = Microsoft.TeamFoundation.DistributedTask.Pipelines;
+using Microsoft.VisualStudio.Services.Agent.Util;
 
 namespace Agent.Plugins.Repository
 {
@@ -19,8 +20,8 @@ namespace Agent.Plugins.Repository
             CancellationToken cancellationToken)
         {
             // Validate args.
-            PluginUtil.NotNull(executionContext, nameof(executionContext));
-            PluginUtil.NotNull(repository, nameof(repository));
+            ArgUtil.NotNull(executionContext, nameof(executionContext));
+            ArgUtil.NotNull(repository, nameof(repository));
 
             SvnCliManager svn = new SvnCliManager();
             svn.Init(executionContext, repository, cancellationToken);
@@ -28,7 +29,7 @@ namespace Agent.Plugins.Repository
             // Determine the sources directory.
             string sourcesDirectory = repository.Properties.Get<string>("sourcedirecotry");
             executionContext.Debug($"sourcesDirectory={sourcesDirectory}");
-            PluginUtil.NotNullOrEmpty(sourcesDirectory, nameof(sourcesDirectory));
+            ArgUtil.NotNullOrEmpty(sourcesDirectory, nameof(sourcesDirectory));
 
             string sourceBranch = repository.Properties.Get<string>("sourcebranch");
             executionContext.Debug($"sourceBranch={sourceBranch}");
@@ -41,19 +42,19 @@ namespace Agent.Plugins.Repository
 
             executionContext.Debug($"revision={revision}");
 
-            bool clean = PluginUtil.ConvertToBoolean(repository.Properties.Get<string>(EndpointData.Clean));
+            bool clean = StringUtil.ConvertToBoolean(repository.Properties.Get<string>(EndpointData.Clean));
             executionContext.Debug($"clean={clean}");
 
             // Get the definition mappings.
             List<SvnMappingDetails> allMappings = JsonConvert.DeserializeObject<SvnWorkspace>(repository.Properties.Get<string>(EndpointData.SvnWorkspaceMapping)).Mappings;
 
-            if (PluginUtil.ConvertToBoolean(executionContext.Variables.GetValueOrDefault("system.debug")?.Value))
+            if (StringUtil.ConvertToBoolean(executionContext.Variables.GetValueOrDefault("system.debug")?.Value))
             {
                 allMappings.ForEach(m => executionContext.Debug($"ServerPath: {m.ServerPath}, LocalPath: {m.LocalPath}, Depth: {m.Depth}, Revision: {m.Revision}, IgnoreExternals: {m.IgnoreExternals}"));
             }
 
             Dictionary<string, SvnMappingDetails> normalizedMappings = svn.NormalizeMappings(allMappings);
-            if (PluginUtil.ConvertToBoolean(executionContext.Variables.GetValueOrDefault("system.debug")?.Value))
+            if (StringUtil.ConvertToBoolean(executionContext.Variables.GetValueOrDefault("system.debug")?.Value))
             {
                 executionContext.Debug($"Normalized mappings count: {normalizedMappings.Count}");
                 normalizedMappings.ToList().ForEach(p => executionContext.Debug($"    [{p.Key}] ServerPath: {p.Value.ServerPath}, LocalPath: {p.Value.LocalPath}, Depth: {p.Value.Depth}, Revision: {p.Value.Revision}, IgnoreExternals: {p.Value.IgnoreExternals}"));
@@ -61,7 +62,7 @@ namespace Agent.Plugins.Repository
 
             string normalizedBranch = svn.NormalizeRelativePath(sourceBranch, '/', '\\');
 
-            executionContext.Output(PluginUtil.Loc("SvnSyncingRepo", repository.Properties.Get<string>("name")));
+            executionContext.Output(StringUtil.Loc("SvnSyncingRepo", repository.Properties.Get<string>("name")));
 
             string effectiveRevision = await svn.UpdateWorkspace(
                 sourcesDirectory,
@@ -70,7 +71,7 @@ namespace Agent.Plugins.Repository
                 normalizedBranch,
                 revision);
 
-            executionContext.Output(PluginUtil.Loc("SvnBranchCheckedOut", normalizedBranch, repository.Properties.Get<string>("name"), effectiveRevision));
+            executionContext.Output(StringUtil.Loc("SvnBranchCheckedOut", normalizedBranch, repository.Properties.Get<string>("name"), effectiveRevision));
         }
 
         public Task PostJobCleanupAsync(AgentTaskPluginExecutionContext executionContext, Pipelines.RepositoryResource repository)

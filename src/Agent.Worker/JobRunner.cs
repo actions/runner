@@ -77,13 +77,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
             // Setup the job server and job server queue.
             var jobServer = HostContext.GetService<IJobServer>();
-            VssCredentials jobServerCredential = ApiUtil.GetVssCredential(systemConnection);
+            VssCredentials jobServerCredential = VssUtil.GetVssCredential(systemConnection);
             Uri jobServerUrl = systemConnection.Url;
 
             Trace.Info($"Creating job server with URL: {jobServerUrl}");
             // jobServerQueue is the throttling reporter.
             _jobServerQueue = HostContext.GetService<IJobServerQueue>();
-            VssConnection jobConnection = ApiUtil.CreateConnection(jobServerUrl, jobServerCredential, new DelegatingHandler[] { new ThrottlingReportHandler(_jobServerQueue) });
+            VssConnection jobConnection = VssUtil.CreateConnection(jobServerUrl, jobServerCredential, new DelegatingHandler[] { new ThrottlingReportHandler(_jobServerQueue) });
             await jobServer.ConnectAsync(jobConnection);
 
             _jobServerQueue.Start(message);
@@ -152,14 +152,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 jobContext.Variables.Set(Constants.Variables.Agent.MachineName, Environment.MachineName);
                 jobContext.Variables.Set(Constants.Variables.Agent.Name, settings.AgentName);
                 jobContext.Variables.Set(Constants.Variables.Agent.OS, VarUtil.OS);
-                jobContext.Variables.Set(Constants.Variables.Agent.RootDirectory, IOUtil.GetWorkPath(HostContext));
+                jobContext.Variables.Set(Constants.Variables.Agent.RootDirectory, HostContext.GetDirectory(WellKnownDirectory.Work));
 #if OS_WINDOWS
-                jobContext.Variables.Set(Constants.Variables.Agent.ServerOMDirectory, Path.Combine(IOUtil.GetExternalsPath(), Constants.Path.ServerOMDirectory));
+                jobContext.Variables.Set(Constants.Variables.Agent.ServerOMDirectory, Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), Constants.Path.ServerOMDirectory));
 #else
                 jobContext.Variables.Set(Constants.Variables.Agent.AcceptTeeEula, settings.AcceptTeeEula.ToString());
 #endif
-                jobContext.Variables.Set(Constants.Variables.Agent.WorkFolder, IOUtil.GetWorkPath(HostContext));
-                jobContext.Variables.Set(Constants.Variables.System.WorkFolder, IOUtil.GetWorkPath(HostContext));
+                jobContext.Variables.Set(Constants.Variables.Agent.WorkFolder, HostContext.GetDirectory(WellKnownDirectory.Work));
+                jobContext.Variables.Set(Constants.Variables.System.WorkFolder, HostContext.GetDirectory(WellKnownDirectory.Work));
 
                 string toolsDirectory = Environment.GetEnvironmentVariable("AGENT_TOOLSDIRECTORY") ?? Environment.GetEnvironmentVariable(Constants.Variables.Agent.ToolsDirectory);
                 if (string.IsNullOrEmpty(toolsDirectory))
@@ -191,11 +191,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     taskServerUri = new Uri(jobContext.Variables.System_TFCollectionUrl);
                 }
 
-                var taskServerCredential = ApiUtil.GetVssCredential(systemConnection);
+                var taskServerCredential = VssUtil.GetVssCredential(systemConnection);
                 if (taskServerUri != null)
                 {
                     Trace.Info($"Creating task server with {taskServerUri}");
-                    await taskServer.ConnectAsync(ApiUtil.CreateConnection(taskServerUri, taskServerCredential));
+                    await taskServer.ConnectAsync(VssUtil.CreateConnection(taskServerUri, taskServerCredential));
                 }
 
                 // for back compat TFS 2015 RTM/QU1, we may need to switch the task server url to agent config url
@@ -207,7 +207,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                         var configStore = HostContext.GetService<IConfigurationStore>();
                         taskServerUri = new Uri(configStore.GetSettings().ServerUrl);
                         Trace.Info($"Recreate task server with configuration server url: {taskServerUri}");
-                        await taskServer.ConnectAsync(ApiUtil.CreateConnection(taskServerUri, taskServerCredential));
+                        await taskServer.ConnectAsync(VssUtil.CreateConnection(taskServerUri, taskServerCredential));
                     }
                 }
 

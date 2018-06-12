@@ -102,7 +102,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         public async Task TestConnectionAsync(AgentSettings agentSettings, VssCredentials creds, bool isHosted)
         {
             _term.WriteLine(StringUtil.Loc("ConnectingToServer"));
-            VssConnection connection = ApiUtil.CreateConnection(new Uri(agentSettings.ServerUrl), creds);
+            VssConnection connection = VssUtil.CreateConnection(new Uri(agentSettings.ServerUrl), creds);
 
             await _agentServer.ConnectAsync(connection);
         }
@@ -222,7 +222,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 Trace.Info("Tfs Collection level url to connect - {0}", uriBuilder.Uri.AbsoluteUri);
                 url = uriBuilder.Uri.AbsoluteUri;
             }
-            VssConnection deploymentGroupconnection = ApiUtil.CreateConnection(new Uri(url), creds);
+            VssConnection deploymentGroupconnection = VssUtil.CreateConnection(new Uri(url), creds);
 
             await _deploymentGroupServer.ConnectAsync(deploymentGroupconnection);
             Trace.Info("Connect complete for deployment group");

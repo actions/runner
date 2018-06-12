@@ -42,7 +42,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
 
             // Write a copy of the tracking config to the GC folder.
             string gcDirectory = Path.Combine(
-                IOUtil.GetWorkPath(HostContext),
+                HostContext.GetDirectory(WellKnownDirectory.Work),
                 Constants.Release.Path.RootMappingDirectory,
                 Constants.Release.Path.GarbageCollectionDirectory);
             string file = Path.Combine(

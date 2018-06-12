@@ -6,14 +6,7 @@ using System.Linq;
 
 namespace Microsoft.VisualStudio.Services.Agent.Util
 {
-    [ServiceLocator(Default = typeof(VarUtil))]
-    public interface IVarUtil : IAgentService
-    {
-        void PrependPath(string directory);
-        void SetEnvironmentVariable(string name, string value);
-    }
-
-    public sealed class VarUtil : AgentService, IVarUtil
+    public static class VarUtil
     {
         public static StringComparer EnvironmentVariableKeyComparer
         {
@@ -48,38 +41,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
                         throw new NotSupportedException(); // Should never reach here.
                 }
             }
-        }
-
-        public static string PrependPath(string path, string currentPath)
-        {
-            ArgUtil.NotNullOrEmpty(path, nameof(path));
-            if (string.IsNullOrEmpty(currentPath))
-            {
-                // Careful not to add a trailing separator if the PATH is empty.
-                // On OSX/Linux, a trailing separator indicates that "current directory"
-                // is added to the PATH, which is considered a security risk.
-                return path;
-            }
-
-            return path + Path.PathSeparator + currentPath;
-        }
-
-        public void PrependPath(string directory)
-        {
-            ArgUtil.Directory(directory, nameof(directory));
-
-            // Build the new value.
-            string currentPath = Environment.GetEnvironmentVariable(Constants.PathVariable);
-            string path = PrependPath(directory, currentPath);
-
-            // Update the PATH environment variable.
-            Environment.SetEnvironmentVariable(Constants.PathVariable, path);
-        }
-
-        public void SetEnvironmentVariable(string name, string value)
-        {
-            ArgUtil.NotNullOrEmpty(name, nameof(name));
-            Environment.SetEnvironmentVariable(name, value);
         }
 
         public static void ExpandEnvironmentVariables(IHostContext context, IDictionary<string, string> target)
@@ -158,7 +119,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             }
         }
 
-        public static bool TryGetValue(Tracing trace, IDictionary<string, string> source, string name, out string val)
+        private static bool TryGetValue(Tracing trace, IDictionary<string, string> source, string name, out string val)
         {
             if (source.TryGetValue(name, out val))
             {

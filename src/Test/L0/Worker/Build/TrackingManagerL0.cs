@@ -35,16 +35,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
             TestHostContext hc = new TestHostContext(this, name);
 
             // Create a random work path.
-            var configStore = new Mock<IConfigurationStore>();
-            _workFolder = Path.Combine(
-                Path.GetDirectoryName(Assembly.GetEntryAssembly().Location),
-                $"_work_{Path.GetRandomFileName()}");
-            var settings = new AgentSettings()
-            {
-                WorkFolder = _workFolder,
-            };
-            configStore.Setup(x => x.GetSettings()).Returns(settings);
-            hc.SetSingleton<IConfigurationStore>(configStore.Object);
+            _workFolder = hc.GetDirectory(WellKnownDirectory.Work);
 
             // Setup the execution context.
             _ec = new Mock<IExecutionContext>();

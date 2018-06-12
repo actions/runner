@@ -50,7 +50,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
             // Load the existing tracking file if one already exists.
             string trackingFile = Path.Combine(
-                IOUtil.GetWorkPath(HostContext),
+                HostContext.GetDirectory(WellKnownDirectory.Work),
                 Constants.Build.Path.SourceRootMappingDirectory,
                 executionContext.Variables.System_CollectionId,
                 executionContext.Variables.System_DefinitionId,
@@ -118,27 +118,27 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             CreateDirectory(
                 executionContext,
                 description: "build directory",
-                path: Path.Combine(IOUtil.GetWorkPath(HostContext), newConfig.BuildDirectory),
+                path: Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), newConfig.BuildDirectory),
                 deleteExisting: cleanOption == BuildCleanOption.All);
             CreateDirectory(
                 executionContext,
                 description: "artifacts directory",
-                path: Path.Combine(IOUtil.GetWorkPath(HostContext), newConfig.ArtifactsDirectory),
+                path: Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), newConfig.ArtifactsDirectory),
                 deleteExisting: true);
             CreateDirectory(
                 executionContext,
                 description: "test results directory",
-                path: Path.Combine(IOUtil.GetWorkPath(HostContext), newConfig.TestResultsDirectory),
+                path: Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), newConfig.TestResultsDirectory),
                 deleteExisting: true);
             CreateDirectory(
                 executionContext,
                 description: "binaries directory",
-                path: Path.Combine(IOUtil.GetWorkPath(HostContext), newConfig.BuildDirectory, Constants.Build.Path.BinariesDirectory),
+                path: Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), newConfig.BuildDirectory, Constants.Build.Path.BinariesDirectory),
                 deleteExisting: cleanOption == BuildCleanOption.Binary);
             CreateDirectory(
                 executionContext,
                 description: "source directory",
-                path: Path.Combine(IOUtil.GetWorkPath(HostContext), newConfig.BuildDirectory, Constants.Build.Path.SourcesDirectory),
+                path: Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), newConfig.BuildDirectory, Constants.Build.Path.SourcesDirectory),
                 deleteExisting: cleanOption == BuildCleanOption.Source);
 
             return newConfig;

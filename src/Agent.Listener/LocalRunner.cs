@@ -414,7 +414,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
       }}
     ],
     ""variables"": {{");
-                        builder.Append($@"
+                    builder.Append($@"
       ""system"": ""build"",
       ""system.collectionId"": ""00000000-0000-0000-0000-000000000000"",
       ""system.culture"": ""en-US"",
@@ -500,11 +500,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             if (_gitPath == null)
             {
 #if OS_WINDOWS
-                _gitPath = Path.Combine(IOUtil.GetExternalsPath(), "git", "cmd", $"git{IOUtil.ExeExtension}");
+                _gitPath = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), "git", "cmd", $"git{IOUtil.ExeExtension}");
                 ArgUtil.File(_gitPath, nameof(_gitPath));
 #else
-                var whichUtil = HostContext.GetService<IWhichUtil>();
-                _gitPath = whichUtil.Which("git", require: true);
+                _gitPath = WhichUtil.Which("git", require: true);
 #endif
             }
 

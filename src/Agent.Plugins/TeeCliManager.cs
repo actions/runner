@@ -8,6 +8,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
+using Microsoft.VisualStudio.Services.Agent.Util;
 
 namespace Agent.Plugins.Repository
 {
@@ -22,7 +23,7 @@ namespace Agent.Plugins.Repository
         // TODO: Remove AddAsync after last-saved-checkin-metadata problem is fixed properly.
         public async Task AddAsync(string localPath)
         {
-            PluginUtil.NotNullOrEmpty(localPath, nameof(localPath));
+            ArgUtil.NotNullOrEmpty(localPath, nameof(localPath));
             await RunPorcelainCommandAsync(FormatFlags.OmitCollectionUrl, "add", localPath);
         }
 
@@ -38,13 +39,13 @@ namespace Agent.Plugins.Repository
 
         public async Task GetAsync(string localPath)
         {
-            PluginUtil.NotNullOrEmpty(localPath, nameof(localPath));
+            ArgUtil.NotNullOrEmpty(localPath, nameof(localPath));
             await RunCommandAsync(FormatFlags.OmitCollectionUrl, "get", $"-version:{SourceVersion}", "-recursive", "-overwrite", localPath);
         }
 
         public string ResolvePath(string serverPath)
         {
-            PluginUtil.NotNullOrEmpty(serverPath, nameof(serverPath));
+            ArgUtil.NotNullOrEmpty(serverPath, nameof(serverPath));
             string localPath = RunPorcelainCommandAsync("resolvePath", $"-workspace:{WorkspaceName}", serverPath).GetAwaiter().GetResult();
             localPath = localPath?.Trim();
 
@@ -68,7 +69,7 @@ namespace Agent.Plugins.Repository
         {
             if (!string.IsNullOrEmpty(proxyUrl))
             {
-                Uri proxy = PluginUtil.GetCredentialEmbeddedUrl(new Uri(proxyUrl), proxyUsername, proxyPassword);
+                Uri proxy = UrlUtil.GetCredentialEmbeddedUrl(new Uri(proxyUrl), proxyUsername, proxyPassword);
                 AdditionalEnvironmentVariables["http_proxy"] = proxy.AbsoluteUri;
             }
         }
@@ -76,7 +77,7 @@ namespace Agent.Plugins.Repository
         public void SetupClientCertificate(string clientCert, string clientCertKey, string clientCertArchive, string clientCertPassword)
         {
             ExecutionContext.Debug("Convert client certificate from 'pkcs' format to 'jks' format.");
-            string toolPath = PluginUtil.Which("keytool", true);
+            string toolPath = WhichUtil.Which("keytool", true, ExecutionContext);
             string jksFile = Path.Combine(ExecutionContext.Variables.GetValueOrDefault("agent.tempdirectory")?.Value, $"{Guid.NewGuid()}.jks");
             string argLine;
             if (!string.IsNullOrEmpty(clientCertPassword))
@@ -122,8 +123,8 @@ namespace Agent.Plugins.Repository
 
         public async Task ShelveAsync(string shelveset, string commentFile, bool move)
         {
-            PluginUtil.NotNullOrEmpty(shelveset, nameof(shelveset));
-            PluginUtil.NotNullOrEmpty(commentFile, nameof(commentFile));
+            ArgUtil.NotNullOrEmpty(shelveset, nameof(shelveset));
+            ArgUtil.NotNullOrEmpty(commentFile, nameof(commentFile));
 
             // TODO: Remove parameter move after last-saved-checkin-metadata problem is fixed properly.
             if (move)
@@ -137,7 +138,7 @@ namespace Agent.Plugins.Repository
 
         public async Task<ITfsVCShelveset> ShelvesetsAsync(string shelveset)
         {
-            PluginUtil.NotNullOrEmpty(shelveset, nameof(shelveset));
+            ArgUtil.NotNullOrEmpty(shelveset, nameof(shelveset));
             string output = await RunPorcelainCommandAsync("shelvesets", "-format:xml", $"-workspace:{WorkspaceName}", shelveset);
             string xml = ExtractXml(output);
 
@@ -145,20 +146,20 @@ namespace Agent.Plugins.Repository
             // The command returns a non-zero exit code if the shelveset is not found.
             // The assertions performed here should never fail.
             var serializer = new XmlSerializer(typeof(TeeShelvesets));
-            PluginUtil.NotNullOrEmpty(xml, nameof(xml));
+            ArgUtil.NotNullOrEmpty(xml, nameof(xml));
             using (var reader = new StringReader(xml))
             {
                 var teeShelvesets = serializer.Deserialize(reader) as TeeShelvesets;
-                PluginUtil.NotNull(teeShelvesets, nameof(teeShelvesets));
-                PluginUtil.NotNull(teeShelvesets.Shelvesets, nameof(teeShelvesets.Shelvesets));
-                PluginUtil.Equal(1, teeShelvesets.Shelvesets.Length, nameof(teeShelvesets.Shelvesets.Length));
+                ArgUtil.NotNull(teeShelvesets, nameof(teeShelvesets));
+                ArgUtil.NotNull(teeShelvesets.Shelvesets, nameof(teeShelvesets.Shelvesets));
+                ArgUtil.Equal(1, teeShelvesets.Shelvesets.Length, nameof(teeShelvesets.Shelvesets.Length));
                 return teeShelvesets.Shelvesets[0];
             }
         }
 
         public async Task<ITfsVCStatus> StatusAsync(string localPath)
         {
-            PluginUtil.NotNullOrEmpty(localPath, nameof(localPath));
+            ArgUtil.NotNullOrEmpty(localPath, nameof(localPath));
             string output = await RunPorcelainCommandAsync(FormatFlags.OmitCollectionUrl, "status", "-recursive", "-nodetect", "-format:xml", localPath);
             string xml = ExtractXml(output);
             var serializer = new XmlSerializer(typeof(TeeStatus));
@@ -213,7 +214,7 @@ namespace Agent.Plugins.Repository
 
         public override async Task<bool> TryWorkspaceDeleteAsync(ITfsVCWorkspace workspace)
         {
-            PluginUtil.NotNull(workspace, nameof(workspace));
+            ArgUtil.NotNull(workspace, nameof(workspace));
             try
             {
                 await RunCommandAsync("workspace", "-delete", $"{workspace.Name};{workspace.Owner}");
@@ -228,26 +229,26 @@ namespace Agent.Plugins.Repository
 
         public async Task UndoAsync(string localPath)
         {
-            PluginUtil.NotNullOrEmpty(localPath, nameof(localPath));
+            ArgUtil.NotNullOrEmpty(localPath, nameof(localPath));
             await RunCommandAsync(FormatFlags.OmitCollectionUrl, "undo", "-recursive", localPath);
         }
 
         public async Task UnshelveAsync(string shelveset)
         {
-            PluginUtil.NotNullOrEmpty(shelveset, nameof(shelveset));
+            ArgUtil.NotNullOrEmpty(shelveset, nameof(shelveset));
             await RunCommandAsync("unshelve", "-format:detailed", $"-workspace:{WorkspaceName}", shelveset);
         }
 
         public async Task WorkfoldCloakAsync(string serverPath)
         {
-            PluginUtil.NotNullOrEmpty(serverPath, nameof(serverPath));
+            ArgUtil.NotNullOrEmpty(serverPath, nameof(serverPath));
             await RunCommandAsync("workfold", "-cloak", $"-workspace:{WorkspaceName}", serverPath);
         }
 
         public async Task WorkfoldMapAsync(string serverPath, string localPath)
         {
-            PluginUtil.NotNullOrEmpty(serverPath, nameof(serverPath));
-            PluginUtil.NotNullOrEmpty(localPath, nameof(localPath));
+            ArgUtil.NotNullOrEmpty(serverPath, nameof(serverPath));
+            ArgUtil.NotNullOrEmpty(localPath, nameof(localPath));
             await RunCommandAsync("workfold", "-map", $"-workspace:{WorkspaceName}", serverPath, localPath);
         }
 
@@ -258,7 +259,7 @@ namespace Agent.Plugins.Repository
 
         public async Task WorkspaceDeleteAsync(ITfsVCWorkspace workspace)
         {
-            PluginUtil.NotNull(workspace, nameof(workspace));
+            ArgUtil.NotNull(workspace, nameof(workspace));
             await RunCommandAsync("workspace", "-delete", $"{workspace.Name};{workspace.Owner}");
         }
 
@@ -282,7 +283,7 @@ namespace Agent.Plugins.Repository
 
             // Run the command.
             TfsVCPorcelainCommandResult result = await TryRunPorcelainCommandAsync(FormatFlags.None, args.ToArray());
-            PluginUtil.NotNull(result, nameof(result));
+            ArgUtil.NotNull(result, nameof(result));
             if (result.Exception != null)
             {
                 // Check if the workspace name was specified and the command returned exit code 1.
@@ -314,7 +315,7 @@ namespace Agent.Plugins.Repository
 
         public override async Task WorkspacesRemoveAsync(ITfsVCWorkspace workspace)
         {
-            PluginUtil.NotNull(workspace, nameof(workspace));
+            ArgUtil.NotNull(workspace, nameof(workspace));
             await RunCommandAsync("workspace", $"-remove:{workspace.Name};{workspace.Owner}");
         }
 

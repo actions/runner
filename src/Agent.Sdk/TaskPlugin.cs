@@ -1,28 +1,16 @@
 ﻿using System;
-using System.Collections;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Diagnostics;
-using System.Globalization;
-using System.IO;
 using System.Linq;
-using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
-using System.Reflection;
 using System.Runtime.InteropServices;
-using System.Security.Cryptography.X509Certificates;
-using System.Text;
-using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
+using Microsoft.VisualStudio.Services.Agent.Util;
 using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.OAuth;
 using Microsoft.VisualStudio.Services.WebApi;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using Pipelines = Microsoft.TeamFoundation.DistributedTask.Pipelines;
 
 namespace Agent.Sdk
@@ -35,8 +23,9 @@ namespace Agent.Sdk
         Task RunAsync(AgentTaskPluginExecutionContext executionContext, CancellationToken token);
     }
 
-    public class AgentTaskPluginExecutionContext
+    public class AgentTaskPluginExecutionContext : ITraceWriter
     {
+        private VssConnection _connection;
         private readonly object _stdoutLock = new object();
 
         public AgentTaskPluginExecutionContext()
@@ -54,6 +43,63 @@ namespace Agent.Sdk
         public Dictionary<string, VariableValue> TaskVariables { get; set; }
         public Dictionary<string, string> Inputs { get; set; }
 
+        [JsonIgnore]
+        public VssConnection VssConnection
+        {
+            get
+            {
+                if (_connection == null)
+                {
+                    _connection = InitializeVssConnection();
+                }
+                return _connection;
+            }
+        }
+
+        public VssConnection InitializeVssConnection()
+        {
+            var headerValues = new List<ProductInfoHeaderValue>();
+            headerValues.Add(new ProductInfoHeaderValue($"VstsAgentCore-Plugin", Variables.GetValueOrDefault("agent.version")?.Value ?? "Unknown"));
+            headerValues.Add(new ProductInfoHeaderValue($"({RuntimeInformation.OSDescription.Trim()})"));
+
+            if (VssClientHttpRequestSettings.Default.UserAgent != null && VssClientHttpRequestSettings.Default.UserAgent.Count > 0)
+            {
+                headerValues.AddRange(VssClientHttpRequestSettings.Default.UserAgent);
+            }
+
+            VssClientHttpRequestSettings.Default.UserAgent = headerValues;
+
+            var certSetting = GetCertConfiguration();
+            if (certSetting != null)
+            {
+                if (!string.IsNullOrEmpty(certSetting.ClientCertificateArchiveFile))
+                {
+                    VssClientHttpRequestSettings.Default.ClientCertificateManager = new AgentClientCertificateManager(certSetting.ClientCertificateArchiveFile, certSetting.ClientCertificatePassword);
+                }
+
+                if (certSetting.SkipServerCertificateValidation)
+                {
+                    VssClientHttpRequestSettings.Default.ServerCertificateValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
+                }
+            }
+
+            var proxySetting = GetProxyConfiguration();
+            if (proxySetting != null)
+            {
+                if (!string.IsNullOrEmpty(proxySetting.ProxyAddress))
+                {
+                    VssHttpMessageHandler.DefaultWebProxy = new AgentWebProxy(proxySetting.ProxyAddress, proxySetting.ProxyUsername, proxySetting.ProxyPassword, proxySetting.ProxyBypassList);
+                }
+            }
+
+            ServiceEndpoint systemConnection = this.Endpoints.FirstOrDefault(e => string.Equals(e.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
+            ArgUtil.NotNull(systemConnection, nameof(systemConnection));
+            ArgUtil.NotNull(systemConnection.Url, nameof(systemConnection.Url));
+
+            VssCredentials credentials = VssUtil.GetVssCredential(systemConnection);
+            ArgUtil.NotNull(credentials, nameof(credentials));
+            return VssUtil.CreateConnection(systemConnection.Url, credentials);
+        }
         public string GetInput(string name, bool required = false)
         {
             string value = null;
@@ -68,6 +114,24 @@ namespace Agent.Sdk
             }
 
             return value;
+        }
+
+        public void Info(string message)
+        {
+            Debug(message);
+        }
+
+        public void Verbose(string message)
+        {
+#if DEBUG
+            Debug(message);
+#else
+            string vstsAgentTrace = Environment.GetEnvironmentVariable("VSTSAGENT_TRACE");
+            if (!string.IsNullOrEmpty(vstsAgentTrace))
+            {
+                Debug(message);
+            }
+#endif
         }
 
         public void Error(string message)
@@ -96,7 +160,7 @@ namespace Agent.Sdk
 
         public void PrependPath(string directory)
         {
-            PluginUtil.PrependPath(directory);
+            PathUtil.PrependPath(directory);
             Output($"##vso[task.prependpath]{Escape(directory)}");
         }
 
@@ -134,7 +198,7 @@ namespace Agent.Sdk
 
         public AgentCertificateSettings GetCertConfiguration()
         {
-            bool skipCertValidation = PluginUtil.ConvertToBoolean(this.Variables.GetValueOrDefault("Agent.SkipCertValidation")?.Value);
+            bool skipCertValidation = StringUtil.ConvertToBoolean(this.Variables.GetValueOrDefault("Agent.SkipCertValidation")?.Value);
             string caFile = this.Variables.GetValueOrDefault("Agent.CAInfo")?.Value;
             string clientCertFile = this.Variables.GetValueOrDefault("Agent.ClientCert")?.Value;
 
@@ -154,6 +218,8 @@ namespace Agent.Sdk
                     certConfig.ClientCertificatePrivateKeyFile = clientCertKey;
                     certConfig.ClientCertificateArchiveFile = clientCertArchive;
                     certConfig.ClientCertificatePassword = clientCertPassword;
+
+                    certConfig.VssClientCertificateManager = new AgentClientCertificateManager(clientCertArchive, clientCertPassword);
                 }
 
                 return certConfig;
@@ -171,13 +237,14 @@ namespace Agent.Sdk
             {
                 string proxyUsername = this.Variables.GetValueOrDefault("Agent.ProxyUsername")?.Value;
                 string proxyPassword = this.Variables.GetValueOrDefault("Agent.ProxyPassword")?.Value;
-                List<string> proxyBypassHosts = PluginUtil.ConvertFromJson<List<string>>(this.Variables.GetValueOrDefault("Agent.ProxyBypassList")?.Value ?? "[]");
+                List<string> proxyBypassHosts = StringUtil.ConvertFromJson<List<string>>(this.Variables.GetValueOrDefault("Agent.ProxyBypassList")?.Value ?? "[]");
                 return new AgentWebProxySettings()
                 {
                     ProxyAddress = proxyUrl,
                     ProxyUsername = proxyUsername,
                     ProxyPassword = proxyPassword,
                     ProxyBypassList = proxyBypassHosts,
+                    WebProxy = new AgentWebProxy(proxyUrl, proxyUsername, proxyPassword, proxyBypassHosts)
                 };
             }
             else

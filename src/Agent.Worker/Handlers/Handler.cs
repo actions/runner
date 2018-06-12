@@ -286,7 +286,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
                 taskEnvPATH ?? // Then a task-environment variable.
                 System.Environment.GetEnvironmentVariable(Constants.PathVariable) ?? // Then an environment variable.
                 string.Empty;
-            string newPath = VarUtil.PrependPath(prepend, originalPath);
+            string newPath = PathUtil.PrependPath(prepend, originalPath);
             AddEnvironmentVariable(Constants.PathVariable, newPath);
         }
     }

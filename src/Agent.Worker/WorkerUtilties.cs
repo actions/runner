@@ -18,9 +18,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             ArgUtil.NotNull(systemConnection, nameof(systemConnection));
             ArgUtil.NotNull(systemConnection.Url, nameof(systemConnection.Url));
 
-            VssCredentials credentials = ApiUtil.GetVssCredential(systemConnection);
+            VssCredentials credentials = VssUtil.GetVssCredential(systemConnection);
             ArgUtil.NotNull(credentials, nameof(credentials));
-            VssConnection connection = ApiUtil.CreateConnection(systemConnection.Url, credentials);
+            VssConnection connection = VssUtil.CreateConnection(systemConnection.Url, credentials);
             return connection;
         }
     }

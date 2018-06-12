@@ -13,6 +13,7 @@ using System.Diagnostics;
 using System.Net.Http;
 using System.Diagnostics.Tracing;
 using Microsoft.TeamFoundation.DistributedTask.Logging;
+using System.Net.Http.Headers;
 
 namespace Microsoft.VisualStudio.Services.Agent
 {
@@ -23,7 +24,9 @@ namespace Microsoft.VisualStudio.Services.Agent
         CancellationToken AgentShutdownToken { get; }
         ShutdownReason AgentShutdownReason { get; }
         ISecretMasker SecretMasker { get; }
+        ProductInfoHeaderValue UserAgent { get; }
         string GetDirectory(WellKnownDirectory directory);
+        string GetConfigFile(WellKnownConfigFile configFile);
         Tracing GetTrace(string name);
         Task Delay(TimeSpan delay, CancellationToken cancellationToken);
         T CreateService<T>() where T : class, IAgentService;
@@ -49,6 +52,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         private readonly ConcurrentDictionary<Type, object> _serviceInstances = new ConcurrentDictionary<Type, object>();
         private readonly ConcurrentDictionary<Type, Type> _serviceTypes = new ConcurrentDictionary<Type, Type>();
         private readonly ISecretMasker _secretMasker = new SecretMasker();
+        private readonly ProductInfoHeaderValue _userAgent = new ProductInfoHeaderValue($"VstsAgentCore-{BuildConstants.AgentPackage.PackageName}", Constants.Agent.Version);
         private CancellationTokenSource _agentShutdownTokenSource = new CancellationTokenSource();
 
         private RunMode _runMode = RunMode.Normal;
@@ -65,6 +69,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         public CancellationToken AgentShutdownToken => _agentShutdownTokenSource.Token;
         public ShutdownReason AgentShutdownReason { get; private set; }
         public ISecretMasker SecretMasker => _secretMasker;
+        public ProductInfoHeaderValue UserAgent => _userAgent;
         public HostContext(string hostType, string logFile = null)
         {
             // Validate args.
@@ -93,7 +98,9 @@ namespace Microsoft.VisualStudio.Services.Agent
                     logRetentionDays = _defaultLogRetentionDays;
                 }
 
-                _traceManager = new TraceManager(new HostTraceListener(hostType, logPageSize, logRetentionDays), this.SecretMasker);
+                // this should give us _diag folder under agent root directory
+                string diagLogDirectory = Path.Combine(new DirectoryInfo(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)).Parent.FullName, Constants.Path.DiagDirectory);
+                _traceManager = new TraceManager(new HostTraceListener(diagLogDirectory, hostType, logPageSize, logRetentionDays), this.SecretMasker);
             }
             else
             {
@@ -193,9 +200,9 @@ namespace Microsoft.VisualStudio.Services.Agent
                     AgentSettings settings = configurationStore.GetSettings();
                     ArgUtil.NotNull(settings, nameof(settings));
                     ArgUtil.NotNullOrEmpty(settings.WorkFolder, nameof(settings.WorkFolder));
-                    path = Path.Combine(
+                    path = Path.GetFullPath(Path.Combine(
                         GetDirectory(WellKnownDirectory.Root),
-                        settings.WorkFolder);
+                        settings.WorkFolder));
                     break;
 
                 default:
@@ -203,6 +210,90 @@ namespace Microsoft.VisualStudio.Services.Agent
             }
 
             _trace.Info($"Well known directory '{directory}': '{path}'");
+            return path;
+        }
+
+        public string GetConfigFile(WellKnownConfigFile configFile)
+        {
+            string path;
+            switch (configFile)
+            {
+                case WellKnownConfigFile.Agent:
+                    path = Path.Combine(
+                        GetDirectory(WellKnownDirectory.Root),
+                        ".agent");
+                    break;
+
+                case WellKnownConfigFile.Credentials:
+                    path = Path.Combine(
+                        GetDirectory(WellKnownDirectory.Root),
+                        ".credentials");
+                    break;
+
+                case WellKnownConfigFile.RSACredentials:
+                    path = Path.Combine(
+                        GetDirectory(WellKnownDirectory.Root),
+                        ".credentials_rsaparams");
+                    break;
+
+                case WellKnownConfigFile.Service:
+                    path = Path.Combine(
+                        GetDirectory(WellKnownDirectory.Root),
+                        ".service");
+                    break;
+
+                case WellKnownConfigFile.CredentialStore:
+#if OS_OSX
+                    path = Path.Combine(
+                        GetDirectory(WellKnownDirectory.Root),
+                        ".credential_store.keychain");
+#else
+                    path = Path.Combine(
+                        GetDirectory(WellKnownDirectory.Root),
+                        ".credential_store");
+#endif
+                    break;
+
+                case WellKnownConfigFile.Certificates:
+                    path = Path.Combine(
+                        GetDirectory(WellKnownDirectory.Root),
+                        ".certificates");
+                    break;
+
+                case WellKnownConfigFile.Proxy:
+                    path = Path.Combine(
+                        GetDirectory(WellKnownDirectory.Root),
+                        ".proxy");
+                    break;
+
+                case WellKnownConfigFile.ProxyCredentials:
+                    path = Path.Combine(
+                        GetDirectory(WellKnownDirectory.Root),
+                        ".proxycredentials");
+                    break;
+
+                case WellKnownConfigFile.ProxyBypass:
+                    path = Path.Combine(
+                        GetDirectory(WellKnownDirectory.Root),
+                        ".proxybypass");
+                    break;
+
+                case WellKnownConfigFile.Autologon:
+                    path = Path.Combine(
+                        GetDirectory(WellKnownDirectory.Root),
+                        ".autologon");
+                    break;
+
+                case WellKnownConfigFile.Options:
+                    path = Path.Combine(
+                        GetDirectory(WellKnownDirectory.Root),
+                        ".options");
+                    break;
+                default:
+                    throw new NotSupportedException($"Unexpected well known config file: '{configFile}'");
+            }
+
+            _trace.Info($"Well known config file '{configFile}': '{path}'");
             return path;
         }
 
@@ -455,7 +546,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         {
             HttpClientHandler clientHandler = new HttpClientHandler();
             var agentWebProxy = context.GetService<IVstsAgentWebProxy>();
-            clientHandler.Proxy = agentWebProxy;
+            clientHandler.Proxy = agentWebProxy.WebProxy;
             return clientHandler;
         }
     }

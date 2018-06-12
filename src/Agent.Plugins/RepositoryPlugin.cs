@@ -9,6 +9,7 @@ using Microsoft.TeamFoundation.Build.WebApi;
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Agent.Sdk;
 using Pipelines = Microsoft.TeamFoundation.DistributedTask.Pipelines;
+using Microsoft.VisualStudio.Services.Agent.Util;
 
 namespace Agent.Plugins.Repository
 {
@@ -61,7 +62,7 @@ namespace Agent.Plugins.Repository
             string clean = executionContext.GetInput("clean");
             if (!string.IsNullOrEmpty(clean))
             {
-                repository.Properties.Set<bool>("clean", PluginUtil.ConvertToBoolean(clean));
+                repository.Properties.Set<bool>("clean", StringUtil.ConvertToBoolean(clean));
             }
 
             // there is no addition inputs for TFVC and SVN
@@ -74,31 +75,31 @@ namespace Agent.Plugins.Repository
                 string checkoutSubmodules = executionContext.GetInput("checkoutSubmodules");
                 if (!string.IsNullOrEmpty(checkoutSubmodules))
                 {
-                    repository.Properties.Set<bool>("checkoutSubmodules", PluginUtil.ConvertToBoolean(checkoutSubmodules));
+                    repository.Properties.Set<bool>("checkoutSubmodules", StringUtil.ConvertToBoolean(checkoutSubmodules));
                 }
 
                 string checkoutNestedSubmodules = executionContext.GetInput("checkoutNestedSubmodules");
                 if (!string.IsNullOrEmpty(checkoutNestedSubmodules))
                 {
-                    repository.Properties.Set<bool>("checkoutNestedSubmodules", PluginUtil.ConvertToBoolean(checkoutNestedSubmodules));
+                    repository.Properties.Set<bool>("checkoutNestedSubmodules", StringUtil.ConvertToBoolean(checkoutNestedSubmodules));
                 }
 
                 string preserveCredential = executionContext.GetInput("preserveCredential");
                 if (!string.IsNullOrEmpty(preserveCredential))
                 {
-                    repository.Properties.Set<bool>("preserveCredential", PluginUtil.ConvertToBoolean(preserveCredential));
+                    repository.Properties.Set<bool>("preserveCredential", StringUtil.ConvertToBoolean(preserveCredential));
                 }
 
                 string gitLfsSupport = executionContext.GetInput("gitLfsSupport");
                 if (!string.IsNullOrEmpty(gitLfsSupport))
                 {
-                    repository.Properties.Set<bool>("gitLfsSupport", PluginUtil.ConvertToBoolean(gitLfsSupport));
+                    repository.Properties.Set<bool>("gitLfsSupport", StringUtil.ConvertToBoolean(gitLfsSupport));
                 }
 
                 string acceptUntrustedCerts = executionContext.GetInput("acceptUntrustedCerts");
                 if (!string.IsNullOrEmpty(acceptUntrustedCerts))
                 {
-                    repository.Properties.Set<bool>("acceptUntrustedCerts", PluginUtil.ConvertToBoolean(acceptUntrustedCerts));
+                    repository.Properties.Set<bool>("acceptUntrustedCerts", StringUtil.ConvertToBoolean(acceptUntrustedCerts));
                 }
 
                 string fetchDepth = executionContext.GetInput("fetchDepth");

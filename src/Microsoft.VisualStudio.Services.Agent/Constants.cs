@@ -22,6 +22,21 @@ namespace Microsoft.VisualStudio.Services.Agent
         Work,
     }
 
+    public enum WellKnownConfigFile
+    {
+        Agent,
+        Credentials,
+        RSACredentials,
+        Service,
+        CredentialStore,
+        Certificates,
+        Proxy,
+        ProxyCredentials,
+        ProxyBypass,
+        Autologon,
+        Options,
+    }
+
     public static class Constants
     {
         /// <summary>Path environment varible name.</summary>
@@ -44,7 +59,7 @@ namespace Microsoft.VisualStudio.Services.Agent
 
         public static class Agent
         {
-            public static readonly string Version = "2.134.0";
+            public static readonly string Version = "2.134.3";
 
 #if OS_LINUX
             public static readonly OSPlatform Platform = OSPlatform.Linux;

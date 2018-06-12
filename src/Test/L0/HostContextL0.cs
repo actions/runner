@@ -1,5 +1,6 @@
 using Microsoft.VisualStudio.Services.Agent.Util;
 using System.IO;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using Xunit;
@@ -71,7 +72,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             _tokenSource = new CancellationTokenSource();
             _hc = new HostContext(
                 hostType: "L0Test",
-                logFile: Path.Combine(IOUtil.GetBinPath(), $"trace_{nameof(HostContextL0)}_{testName}.log"));
+                logFile: Path.Combine(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location), $"trace_{nameof(HostContextL0)}_{testName}.log"));
         }
 
         public void Teardown()

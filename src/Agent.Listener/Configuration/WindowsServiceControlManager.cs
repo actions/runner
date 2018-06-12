@@ -136,12 +136,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             _windowsServiceHelper.AddMemberToLocalGroup(accountName, groupName);
 
             // grant permssion for agent root folder
-            string agentRoot = IOUtil.GetRootPath();
+            string agentRoot = HostContext.GetDirectory(WellKnownDirectory.Root);
             Trace.Info(StringUtil.Format("Set full access control to group for the folder {0}", agentRoot));
             _windowsServiceHelper.GrantFullControlToGroup(agentRoot, groupName);
 
             // grant permssion for work folder
-            string workFolder = IOUtil.GetWorkPath(HostContext);
+            string workFolder = HostContext.GetDirectory(WellKnownDirectory.Work);
             Directory.CreateDirectory(workFolder);
             Trace.Info(StringUtil.Format("Set full access control to group for the folder {0}", workFolder));
             _term.WriteLine(StringUtil.Loc("GrantingFilePermissions", accountName));
@@ -155,7 +155,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             Trace.Info(StringUtil.Format("Calculated unique group name {0}", groupName));
 
             // remove the group from the work folder
-            string workFolder = IOUtil.GetWorkPath(HostContext);
+            string workFolder = HostContext.GetDirectory(WellKnownDirectory.Work);
             if (Directory.Exists(workFolder))
             {
                 Trace.Info(StringUtil.Format($"Remove the group {groupName} for the folder {workFolder}."));
@@ -163,7 +163,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             }
 
             //remove group from agent root folder
-            string agentRoot = IOUtil.GetRootPath();
+            string agentRoot = HostContext.GetDirectory(WellKnownDirectory.Root);
             if (Directory.Exists(agentRoot))
             {
                 Trace.Info(StringUtil.Format($"Remove the group {groupName} for the folder {agentRoot}."));
@@ -183,7 +183,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 throw new SecurityException(StringUtil.Loc("NeedAdminForUnconfigWinServiceAgent"));
             }
 
-            string serviceConfigPath = IOUtil.GetServiceConfigFilePath();
+            string serviceConfigPath = HostContext.GetConfigFile(WellKnownConfigFile.Service);
             string serviceName = File.ReadAllText(serviceConfigPath);
             if (_windowsServiceHelper.IsServiceExists(serviceName))
             {
@@ -202,7 +202,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
         private void SaveServiceSettings(string serviceName)
         {
-            string serviceConfigPath = IOUtil.GetServiceConfigFilePath();
+            string serviceConfigPath = HostContext.GetConfigFile(WellKnownConfigFile.Service);
             if (File.Exists(serviceConfigPath))
             {
                 IOUtil.DeleteFile(serviceConfigPath);

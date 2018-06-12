@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using System.Text;
 using Agent.Sdk;
 using Pipelines = Microsoft.TeamFoundation.DistributedTask.Pipelines;
+using Microsoft.VisualStudio.Services.Agent.Util;
 
 namespace Agent.Plugins.Repository
 {
@@ -33,7 +34,7 @@ namespace Agent.Plugins.Repository
             get
             {
                 string version = Repository.Version;
-                PluginUtil.NotNullOrEmpty(version, nameof(version));
+                ArgUtil.NotNullOrEmpty(version, nameof(version));
                 return version;
             }
         }
@@ -43,7 +44,7 @@ namespace Agent.Plugins.Repository
             get
             {
                 string sourcesDirectory = Repository.Properties.Get<string>("sourcedirectory");
-                PluginUtil.NotNullOrEmpty(sourcesDirectory, nameof(sourcesDirectory));
+                ArgUtil.NotNullOrEmpty(sourcesDirectory, nameof(sourcesDirectory));
                 return sourcesDirectory;
             }
         }
@@ -55,7 +56,7 @@ namespace Agent.Plugins.Repository
             get
             {
                 string workspace = ExecutionContext.Variables.GetValueOrDefault("build.repository.tfvc.workspace")?.Value;
-                PluginUtil.NotNullOrEmpty(workspace, nameof(workspace));
+                ArgUtil.NotNullOrEmpty(workspace, nameof(workspace));
                 return workspace;
             }
         }
@@ -68,8 +69,8 @@ namespace Agent.Plugins.Repository
         protected async Task RunCommandAsync(FormatFlags formatFlags, params string[] args)
         {
             // Validation.
-            PluginUtil.NotNull(args, nameof(args));
-            PluginUtil.NotNull(ExecutionContext, nameof(ExecutionContext));
+            ArgUtil.NotNull(args, nameof(args));
+            ArgUtil.NotNull(ExecutionContext, nameof(ExecutionContext));
 
             // Invoke tf.
             var processInvoker = new ProcessInvoker(ExecutionContext);
@@ -110,7 +111,7 @@ namespace Agent.Plugins.Repository
         {
             // Run the command.
             TfsVCPorcelainCommandResult result = await TryRunPorcelainCommandAsync(formatFlags, args);
-            PluginUtil.NotNull(result, nameof(result));
+            ArgUtil.NotNull(result, nameof(result));
             if (result.Exception != null)
             {
                 // The command failed. Dump the output and throw.
@@ -126,8 +127,8 @@ namespace Agent.Plugins.Repository
         protected async Task<TfsVCPorcelainCommandResult> TryRunPorcelainCommandAsync(FormatFlags formatFlags, params string[] args)
         {
             // Validation.
-            PluginUtil.NotNull(args, nameof(args));
-            PluginUtil.NotNull(ExecutionContext, nameof(ExecutionContext));
+            ArgUtil.NotNull(args, nameof(args));
+            ArgUtil.NotNull(ExecutionContext, nameof(ExecutionContext));
 
             // Invoke tf.
             var processInvoker = new ProcessInvoker(ExecutionContext);
@@ -175,14 +176,14 @@ namespace Agent.Plugins.Repository
         private string FormatArguments(FormatFlags formatFlags, params string[] args)
         {
             // Validation.
-            PluginUtil.NotNull(args, nameof(args));
-            PluginUtil.NotNull(Endpoint, nameof(Endpoint));
-            PluginUtil.NotNull(Endpoint.Authorization, nameof(Endpoint.Authorization));
-            PluginUtil.NotNull(Endpoint.Authorization.Parameters, nameof(Endpoint.Authorization.Parameters));
-            PluginUtil.Equal(EndpointAuthorizationSchemes.OAuth, Endpoint.Authorization.Scheme, nameof(Endpoint.Authorization.Scheme));
+            ArgUtil.NotNull(args, nameof(args));
+            ArgUtil.NotNull(Endpoint, nameof(Endpoint));
+            ArgUtil.NotNull(Endpoint.Authorization, nameof(Endpoint.Authorization));
+            ArgUtil.NotNull(Endpoint.Authorization.Parameters, nameof(Endpoint.Authorization.Parameters));
+            ArgUtil.Equal(EndpointAuthorizationSchemes.OAuth, Endpoint.Authorization.Scheme, nameof(Endpoint.Authorization.Scheme));
             string accessToken = Endpoint.Authorization.Parameters.TryGetValue(EndpointAuthorizationParameters.AccessToken, out accessToken) ? accessToken : null;
-            PluginUtil.NotNullOrEmpty(accessToken, EndpointAuthorizationParameters.AccessToken);
-            PluginUtil.NotNull(Repository.Url, nameof(Repository.Url));
+            ArgUtil.NotNullOrEmpty(accessToken, EndpointAuthorizationParameters.AccessToken);
+            ArgUtil.NotNull(Repository.Url, nameof(Repository.Url));
 
             // Format each arg.
             var formattedArgs = new List<string>();
@@ -191,7 +192,7 @@ namespace Agent.Plugins.Repository
                 // Validate the arg.
                 if (!string.IsNullOrEmpty(arg) && arg.IndexOfAny(new char[] { '"', '\r', '\n' }) >= 0)
                 {
-                    throw new Exception(PluginUtil.Loc("InvalidCommandArg", arg));
+                    throw new Exception(StringUtil.Loc("InvalidCommandArg", arg));
                 }
 
                 // Add the arg.

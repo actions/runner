@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Reflection;
 using System.Text;
 
 namespace Microsoft.VisualStudio.Services.Agent.Util
@@ -108,7 +109,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
                     {
                         string[] lines = (item as JArray).ToObject<string[]>();
                         var sb = new StringBuilder();
-                        for (int i = 0 ; i < lines.Length ; i++)
+                        for (int i = 0; i < lines.Length; i++)
                         {
                             if (i > 0)
                             {
@@ -130,7 +131,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             {
                 // loc strings shouldn't take down agent.  any failures returns loc key
             }
-            
+
             return locStr;
         }
 
@@ -189,7 +190,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
                 foreach (string cultureName in cultureNames)
                 {
                     // Merge the strings from the file into the instance dictionary.
-                    string file = Path.Combine(IOUtil.GetBinPath(), cultureName, "strings.json");
+                    string assemblyLocation = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
+                    string file = Path.Combine(assemblyLocation, cultureName, "strings.json");
                     if (File.Exists(file))
                     {
                         foreach (KeyValuePair<string, object> pair in IOUtil.LoadObject<Dictionary<string, object>>(file))

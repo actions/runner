@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.TeamFoundation.Build.WebApi;
 using Microsoft.VisualStudio.Services.WebApi;
+using Microsoft.VisualStudio.Services.Agent.Util;
 
 namespace Agent.Plugins.Drop
 {
@@ -15,7 +16,7 @@ namespace Agent.Plugins.Drop
 
         public BuildServer(VssConnection connection)
         {
-            PluginUtil.NotNull(connection, nameof(connection));
+            ArgUtil.NotNull(connection, nameof(connection));
             _buildHttpClient = connection.GetClient<BuildHttpClient>();
         }
 

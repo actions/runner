@@ -6,6 +6,7 @@ using System.Runtime.Loader;
 using System.Threading;
 using Agent.Sdk;
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
+using Microsoft.VisualStudio.Services.Agent.Util;
 
 namespace Agent.PluginHost
 {
@@ -20,27 +21,27 @@ namespace Agent.PluginHost
 
             try
             {
-                PluginUtil.NotNull(args, nameof(args));
-                PluginUtil.Equal(2, args.Length, nameof(args.Length));
+                ArgUtil.NotNull(args, nameof(args));
+                ArgUtil.Equal(2, args.Length, nameof(args.Length));
 
                 string pluginType = args[0];
                 if (string.Equals("task", pluginType, StringComparison.OrdinalIgnoreCase))
                 {
                     string assemblyQualifiedName = args[1];
-                    PluginUtil.NotNullOrEmpty(assemblyQualifiedName, nameof(assemblyQualifiedName));
+                    ArgUtil.NotNullOrEmpty(assemblyQualifiedName, nameof(assemblyQualifiedName));
 
                     string serializedContext = Console.ReadLine();
-                    PluginUtil.NotNullOrEmpty(serializedContext, nameof(serializedContext));
+                    ArgUtil.NotNullOrEmpty(serializedContext, nameof(serializedContext));
 
-                    AgentTaskPluginExecutionContext executionContext = PluginUtil.ConvertFromJson<AgentTaskPluginExecutionContext>(serializedContext);
-                    PluginUtil.NotNull(executionContext, nameof(executionContext));
+                    AgentTaskPluginExecutionContext executionContext = StringUtil.ConvertFromJson<AgentTaskPluginExecutionContext>(serializedContext);
+                    ArgUtil.NotNull(executionContext, nameof(executionContext));
 
                     AssemblyLoadContext.Default.Resolving += ResolveAssembly;
                     try
                     {
                         Type type = Type.GetType(assemblyQualifiedName, throwOnError: true);
                         var taskPlugin = Activator.CreateInstance(type) as IAgentTaskPlugin;
-                        PluginUtil.NotNull(taskPlugin, nameof(taskPlugin));
+                        ArgUtil.NotNull(taskPlugin, nameof(taskPlugin));
                         taskPlugin.RunAsync(executionContext, tokenSource.Token).GetAwaiter().GetResult();
                     }
                     catch (Exception ex)
@@ -58,20 +59,20 @@ namespace Agent.PluginHost
                 else if (string.Equals("command", pluginType, StringComparison.OrdinalIgnoreCase))
                 {
                     string assemblyQualifiedName = args[1];
-                    PluginUtil.NotNullOrEmpty(assemblyQualifiedName, nameof(assemblyQualifiedName));
+                    ArgUtil.NotNullOrEmpty(assemblyQualifiedName, nameof(assemblyQualifiedName));
 
                     string serializedContext = Console.ReadLine();
-                    PluginUtil.NotNullOrEmpty(serializedContext, nameof(serializedContext));
+                    ArgUtil.NotNullOrEmpty(serializedContext, nameof(serializedContext));
 
-                    AgentCommandPluginExecutionContext executionContext = PluginUtil.ConvertFromJson<AgentCommandPluginExecutionContext>(serializedContext);
-                    PluginUtil.NotNull(executionContext, nameof(executionContext));
+                    AgentCommandPluginExecutionContext executionContext = StringUtil.ConvertFromJson<AgentCommandPluginExecutionContext>(serializedContext);
+                    ArgUtil.NotNull(executionContext, nameof(executionContext));
 
                     AssemblyLoadContext.Default.Resolving += ResolveAssembly;
                     try
                     {
                         Type type = Type.GetType(assemblyQualifiedName, throwOnError: true);
                         var commandPlugin = Activator.CreateInstance(type) as IAgentCommandPlugin;
-                        PluginUtil.NotNull(commandPlugin, nameof(commandPlugin));
+                        ArgUtil.NotNull(commandPlugin, nameof(commandPlugin));
                         commandPlugin.ProcessCommandAsync(executionContext, tokenSource.Token).GetAwaiter().GetResult();
                     }
                     catch (Exception ex)

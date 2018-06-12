@@ -8,15 +8,16 @@ using Microsoft.VisualStudio.Services.WebApi;
 using Microsoft.VisualStudio.Services.OAuth;
 using System.Net.Http.Headers;
 using System.Runtime.InteropServices;
+using System.Net;
 
 namespace Microsoft.VisualStudio.Services.Agent.Util
 {
-    public static class ApiUtil
+    public static class VssUtil
     {
-        public static void InitializeVssClientSettings(IVstsAgentWebProxy proxySetting, IAgentCertificateManager certSetting)
+        public static void InitializeVssClientSettings(ProductInfoHeaderValue additionalUserAgent, IWebProxy proxy, IVssClientCertificateManager clientCert)
         {
             var headerValues = new List<ProductInfoHeaderValue>();
-            headerValues.Add(new ProductInfoHeaderValue($"VstsAgentCore-{BuildConstants.AgentPackage.PackageName}", Constants.Agent.Version));
+            headerValues.Add(additionalUserAgent);
             headerValues.Add(new ProductInfoHeaderValue($"({RuntimeInformation.OSDescription.Trim()})"));
 
             if (VssClientHttpRequestSettings.Default.UserAgent != null && VssClientHttpRequestSettings.Default.UserAgent.Count > 0)
@@ -25,8 +26,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             }
 
             VssClientHttpRequestSettings.Default.UserAgent = headerValues;
-            VssClientHttpRequestSettings.Default.ClientCertificateManager = certSetting;
-            VssHttpMessageHandler.DefaultWebProxy = proxySetting;
+            VssClientHttpRequestSettings.Default.ClientCertificateManager = clientCert;
+            VssHttpMessageHandler.DefaultWebProxy = proxy;
         }
 
         public static VssConnection CreateConnection(Uri serverUri, VssCredentials credentials, IEnumerable<DelegatingHandler> additionalDelegatingHandler = null)
@@ -85,24 +86,5 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
 
             return credentials;
         }
-
-        public static PlanFeatures GetFeatures(TaskOrchestrationPlanReference plan)
-        {
-            ArgUtil.NotNull(plan, nameof(plan));
-            PlanFeatures features = PlanFeatures.None;
-            if (plan.Version >= 8)
-            {
-                features |= PlanFeatures.JobCompletedPlanEvent;
-            }
-
-            return features;
-        }
-    }
-
-    [Flags]
-    public enum PlanFeatures
-    {
-        None = 0,
-        JobCompletedPlanEvent = 1,
     }
 }

@@ -1,30 +1,20 @@
 using System;
 using System.IO;
 using System.Linq;
+using Agent.Sdk;
 
 namespace Microsoft.VisualStudio.Services.Agent.Util
 {
-    [ServiceLocator(Default = typeof(WhichUtil))]
-    public interface IWhichUtil : IAgentService
+    public static class WhichUtil
     {
-        string Which(string command, bool require = false);
-    }
-
-    // TODO: Should also search for a file with the exact file name match regardless of extension. For example, should be able to resolve a PowerShell script from the PATH even though ps1 is not included in PATHEXT.
-    public sealed class WhichUtil : AgentService, IWhichUtil
-    {
-        public string Which(string command, bool require = false)
+        public static string Which(string command, bool require = false, ITraceWriter trace = null)
         {
             ArgUtil.NotNullOrEmpty(command, nameof(command));
-            Trace.Info($"Which: '{command}'");
-#if OS_WINDOWS
-            string path = Environment.GetEnvironmentVariable("Path");
-#else
-            string path = Environment.GetEnvironmentVariable("PATH");
-#endif
+            trace?.Info($"Which: '{command}'");
+            string path = Environment.GetEnvironmentVariable(PathUtil.PathVariable);
             if (string.IsNullOrEmpty(path))
             {
-                Trace.Info("PATH environment variable not defined.");
+                trace?.Info("PATH environment variable not defined.");
                 path = path ?? string.Empty;
             }
 
@@ -38,7 +28,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             {
                 if (!string.IsNullOrEmpty(pathSegment) && Directory.Exists(pathSegment))
                 {
-                    string[] matches;
+                    string[] matches = null;
 #if OS_WINDOWS
                     string pathExt = Environment.GetEnvironmentVariable("PATHEXT");
                     if (string.IsNullOrEmpty(pathExt))
@@ -52,10 +42,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
                     // if command already has an extension.
                     if (pathExtSegments.Any(ext => command.EndsWith(ext, StringComparison.OrdinalIgnoreCase)))
                     {
-                        matches = Directory.GetFiles(pathSegment, command);
+                        try
+                        {
+                            matches = Directory.GetFiles(pathSegment, command);
+                        }
+                        catch (UnauthorizedAccessException ex)
+                        {
+                            trace?.Info("Ignore UnauthorizedAccess exception during Which.");
+                            trace?.Verbose(ex.ToString());
+                        }
+
                         if (matches != null && matches.Length > 0)
                         {
-                            Trace.Info("Location: '{0}'", matches.First());
+                            trace?.Info($"Location: '{matches.First()}'");
                             return matches.First();
                         }
                     }
@@ -63,7 +62,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
                     {
                         string searchPattern;
                         searchPattern = StringUtil.Format($"{command}.*");
-                        matches = Directory.GetFiles(pathSegment, searchPattern);
+                        try
+                        {
+                            matches = Directory.GetFiles(pathSegment, searchPattern);
+                        }
+                        catch (UnauthorizedAccessException ex)
+                        {
+                            trace?.Info("Ignore UnauthorizedAccess exception during Which.");
+                            trace?.Verbose(ex.ToString());
+                        }
+
                         if (matches != null && matches.Length > 0)
                         {
                             // add extension.
@@ -72,24 +80,33 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
                                 string fullPath = Path.Combine(pathSegment, $"{command}{pathExtSegments[i]}");
                                 if (matches.Any(p => p.Equals(fullPath, StringComparison.OrdinalIgnoreCase)))
                                 {
-                                    Trace.Info($"Location: '{fullPath}'");
+                                    trace?.Info($"Location: '{fullPath}'");
                                     return fullPath;
                                 }
                             }
                         }
                     }
 #else
-                    matches = Directory.GetFiles(pathSegment, command);
+                    try
+                    {
+                        matches = Directory.GetFiles(pathSegment, command);
+                    }
+                    catch (UnauthorizedAccessException ex)
+                    {
+                        trace?.Info("Ignore UnauthorizedAccess exception during Which.");
+                        trace?.Verbose(ex.ToString());
+                    }
+
                     if (matches != null && matches.Length > 0)
                     {
-                        Trace.Info("Location: '{0}'", matches.First());
+                        trace?.Info("Location: '{matches.First()}'");
                         return matches.First();
                     }
 #endif
                 }
             }
 
-            Trace.Info("Not found.");
+            trace?.Info("Not found.");
             if (require)
             {
                 throw new FileNotFoundException(

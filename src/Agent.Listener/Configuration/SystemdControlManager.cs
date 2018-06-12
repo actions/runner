@@ -27,9 +27,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 string serviceDisplayName;
                 CalculateServiceName(settings, _svcNamePattern, _svcDisplayPattern, out serviceName, out serviceDisplayName);
 
-                string svcShPath = Path.Combine(IOUtil.GetRootPath(), _shName);
+                string svcShPath = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), _shName);
 
-                string svcShContent = File.ReadAllText(Path.Combine(IOUtil.GetBinPath(), _shTemplate));
+                string svcShContent = File.ReadAllText(Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Bin), _shTemplate));
                 var tokensToReplace = new Dictionary<string, string>
                                           {
                                               { "{{SvcDescription}}", serviceDisplayName },

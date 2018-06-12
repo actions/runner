@@ -82,6 +82,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 Directory.GetFiles(TestUtil.GetProjectPath("Microsoft.VisualStudio.Services.Agent"), "*.cs", SearchOption.AllDirectories)
                 .Concat(Directory.GetFiles(TestUtil.GetProjectPath("Agent.Listener"), "*.cs", SearchOption.AllDirectories))
                 .Concat(Directory.GetFiles(TestUtil.GetProjectPath("Agent.Worker"), "*.cs", SearchOption.AllDirectories))
+                .Concat(Directory.GetFiles(TestUtil.GetProjectPath("Agent.Plugins"), "*.cs", SearchOption.AllDirectories))
+                .Concat(Directory.GetFiles(TestUtil.GetProjectPath("Agent.Sdk"), "*.cs", SearchOption.AllDirectories))
                 .ToArray();
             foreach (string sourceFile in sourceFiles)
             {

@@ -28,16 +28,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
         {
             get
             {
-                switch (Constants.Agent.Platform)
-                {
-                    case Constants.OSPlatform.Linux:
-                        return StringComparison.Ordinal;
-                    case Constants.OSPlatform.OSX:
-                    case Constants.OSPlatform.Windows:
-                        return StringComparison.OrdinalIgnoreCase;
-                    default:
-                        throw new NotSupportedException(); // Should never reach here.
-                }
+#if OS_LINUX
+                return StringComparison.Ordinal;
+#else
+                return StringComparison.OrdinalIgnoreCase;
+#endif
             }
         }
 
@@ -52,15 +47,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             return StringUtil.ConvertFromJson<T>(json);
         }
 
-        // TODO: Remove all of these directory functions from IOUtil and use IHostContext.GetDirectory(WellKnownDirectory) instead.
-        public static string GetBinPath()
+        public static string GetPathHash(string path)
         {
-            return Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
-        }
-
-        public static string GetBinPathHash()
-        {
-            string hashString = GetBinPath().ToLowerInvariant();
+            string hashString = path.ToLowerInvariant();
             using (SHA256 sha256hash = SHA256.Create())
             {
                 byte[] data = sha256hash.ComputeHash(Encoding.UTF8.GetBytes(hashString));
@@ -75,113 +64,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             }
         }
 
-        // TODO: Get rid of this too, use host context. Last reference to this is HostTraceContext, not sure how to remove there.
-        public static string GetDiagPath()
-        {
-            return Path.Combine(
-                Path.GetDirectoryName(GetBinPath()),
-                Constants.Path.DiagDirectory);
-        }
-
-        // TODO: Get rid of this too, use host context.
-        public static string GetExternalsPath()
-        {
-            return Path.Combine(
-                GetRootPath(),
-                Constants.Path.ExternalsDirectory);
-        }
-
-        public static string GetRootPath()
-        {
-            return new DirectoryInfo(GetBinPath()).Parent.FullName;
-        }
-
-        public static string GetConfigFilePath()
-        {
-            return Path.Combine(GetRootPath(), ".agent");
-        }
-
-        public static string GetCredFilePath()
-        {
-            return Path.Combine(GetRootPath(), ".credentials");
-        }
-
-        public static string GetServiceConfigFilePath()
-        {
-            return Path.Combine(GetRootPath(), ".service");
-        }
-
-        public static string GetRSACredFilePath()
-        {
-            return Path.Combine(GetRootPath(), ".credentials_rsaparams");
-        }
-
-        public static string GetAgentCredStoreFilePath()
-        {
-#if OS_OSX
-            return Path.Combine(GetRootPath(), ".credential_store.keychain");
-#else
-            return Path.Combine(GetRootPath(), ".credential_store");
-#endif
-        }
-
-        public static string GetAgentCertificateSettingFilePath()
-        {
-            return Path.Combine(GetRootPath(), ".certificates");
-        }
-
-        public static string GetProxyConfigFilePath()
-        {
-            return Path.Combine(GetRootPath(), ".proxy");
-        }
-
-        public static string GetProxyCredentialsFilePath()
-        {
-            return Path.Combine(GetRootPath(), ".proxycredentials");
-        }
-
-        public static string GetProxyBypassFilePath()
-        {
-            return Path.Combine(GetRootPath(), ".proxybypass");
-        }
-
-        public static string GetAutoLogonSettingsFilePath()
-        {
-            return Path.Combine(GetRootPath(), ".autologon");
-        }
-
-        public static string GetRuntimeOptionsFilePath()
-        {
-            return Path.Combine(GetRootPath(), ".options");
-        }
-
-        public static string GetWorkPath(IHostContext hostContext)
-        {
-            var configurationStore = hostContext.GetService<IConfigurationStore>();
-            AgentSettings settings = configurationStore.GetSettings();
-            return Path.Combine(
-                Path.GetDirectoryName(GetBinPath()),
-                settings.WorkFolder);
-        }
-
-        public static string GetTasksPath(IHostContext hostContext)
-        {
-            return Path.Combine(
-                GetWorkPath(hostContext),
-                Constants.Path.TasksDirectory);
-        }
-
         public static void Delete(string path, CancellationToken cancellationToken)
         {
             DeleteDirectory(path, cancellationToken);
             DeleteFile(path);
-        }
-
-        public static string GetUpdatePath(IHostContext hostContext)
-        {
-            return Path.Combine(
-                GetWorkPath(hostContext),
-                Constants.Path.UpdateDirectory);
         }
 
         public static void DeleteDirectory(string path, CancellationToken cancellationToken)

@@ -27,7 +27,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
         private Mock<IConfigurationStore> _store;
         private Mock<IExtensionManager> _extnMgr;
         private Mock<IDeploymentGroupServer> _machineGroupServer;
-        private Mock<INetFrameworkUtil> _netFrameworkUtil;
         private Mock<IVstsAgentWebProxy> _vstsAgentWebProxy;
         private Mock<IAgentCertificateManager> _cert;
 
@@ -68,7 +67,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
             _extnMgr = new Mock<IExtensionManager>();
             _rsaKeyManager = new Mock<IRSAKeyManager>();
             _machineGroupServer = new Mock<IDeploymentGroupServer>();
-            _netFrameworkUtil = new Mock<INetFrameworkUtil>();
             _vstsAgentWebProxy = new Mock<IVstsAgentWebProxy>();
             _cert = new Mock<IAgentCertificateManager>();
 
@@ -78,13 +76,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
 
 #if !OS_WINDOWS
             _serviceControlManager = new Mock<ILinuxServiceControlManager>();
-#endif
-
-#if !OS_WINDOWS
-            string eulaFile = Path.Combine(IOUtil.GetExternalsPath(), Constants.Path.TeeDirectory, "license.html");
-            Directory.CreateDirectory(IOUtil.GetExternalsPath());
-            Directory.CreateDirectory(Path.Combine(IOUtil.GetExternalsPath(), Constants.Path.TeeDirectory));
-            File.WriteAllText(eulaFile, "testeulafile");
 #endif
 
             _capabilitiesManager = new CapabilitiesManager();
@@ -112,7 +103,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
             _machineGroupServer.Setup(x => x.ReplaceDeploymentTargetAsync(It.IsAny<Guid>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<DeploymentMachine>())).Returns(Task.FromResult(expectedDeploymentMachine));
             _machineGroupServer.Setup(x => x.GetDeploymentTargetsAsync(It.IsAny<Guid>(), It.IsAny<int>(), It.IsAny<string>())).Returns(Task.FromResult(new List<DeploymentMachine>() { }));
             _machineGroupServer.Setup(x => x.DeleteDeploymentTargetAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>())).Returns(Task.FromResult<object>(null));
-            _netFrameworkUtil.Setup(x => x.Test(It.IsAny<Version>())).Returns(true);
 
             _store.Setup(x => x.IsConfigured()).Returns(false);
             _store.Setup(x => x.HasCredentials()).Returns(false);
@@ -154,7 +144,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
             tc.SetSingleton<IAgentServer>(_agentServer.Object);
             tc.SetSingleton<ILocationServer>(_locationServer.Object);
             tc.SetSingleton<IDeploymentGroupServer>(_machineGroupServer.Object);
-            tc.SetSingleton<INetFrameworkUtil>(_netFrameworkUtil.Object);
             tc.SetSingleton<ICapabilitiesManager>(_capabilitiesManager);
             tc.SetSingleton<IVstsAgentWebProxy>(_vstsAgentWebProxy.Object);
             tc.SetSingleton<IAgentCertificateManager>(_cert.Object);

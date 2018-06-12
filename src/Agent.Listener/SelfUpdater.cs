@@ -76,12 +76,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
             // kick off update script
             Process invokeScript = new Process();
-            var whichUtil = HostContext.GetService<IWhichUtil>();
 #if OS_WINDOWS
-            invokeScript.StartInfo.FileName = whichUtil.Which("cmd.exe");
+            invokeScript.StartInfo.FileName = WhichUtil.Which("cmd.exe", trace: Trace);
             invokeScript.StartInfo.Arguments = $"/c \"{updateScript}\"";
 #elif (OS_OSX || OS_LINUX)
-            invokeScript.StartInfo.FileName = whichUtil.Which("bash");
+            invokeScript.StartInfo.FileName = WhichUtil.Which("bash", trace: Trace);
             invokeScript.StartInfo.Arguments = $"\"{updateScript}\"";
 #endif
             invokeScript.Start();
@@ -138,7 +137,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         /// <returns></returns>
         private async Task DownloadLatestAgent(CancellationToken token)
         {
-            string latestAgentDirectory = IOUtil.GetUpdatePath(HostContext);
+            string latestAgentDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), Constants.Path.UpdateDirectory);
             IOUtil.DeleteDirectory(latestAgentDirectory, token);
             Directory.CreateDirectory(latestAgentDirectory);
 
@@ -175,8 +174,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 }
                 else if (archiveFile.EndsWith(".tar.gz", StringComparison.OrdinalIgnoreCase))
                 {
-                    var whichUtil = HostContext.GetService<IWhichUtil>();
-                    string tar = whichUtil.Which("tar");
+                    string tar = WhichUtil.Which("tar", trace: Trace);
                     if (string.IsNullOrEmpty(tar))
                     {
                         throw new NotSupportedException($"tar -xzf");
@@ -257,7 +255,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             // for windows service back compat with old windows agent, we need make sure the servicehost.exe is still the old name
             // if the current bin folder has VsoAgentService.exe, then the new agent bin folder needs VsoAgentService.exe as well
 #if OS_WINDOWS
-            if (File.Exists(Path.Combine(IOUtil.GetBinPath(), "VsoAgentService.exe")))
+            if (File.Exists(Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Bin), "VsoAgentService.exe")))
             {
                 Trace.Info($"Make a copy of AgentService.exe, name it VsoAgentService.exe");
                 File.Copy(Path.Combine(binVersionDir, "AgentService.exe"), Path.Combine(binVersionDir, "VsoAgentService.exe"), true);
@@ -388,7 +386,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             string scriptName = "_update.sh";
 #endif
 
-            string updateScript = Path.Combine(IOUtil.GetWorkPath(HostContext), scriptName);
+            string updateScript = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), scriptName);
             if (File.Exists(updateScript))
             {
                 IOUtil.DeleteFile(updateScript);

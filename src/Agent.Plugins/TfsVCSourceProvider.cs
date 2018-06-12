@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using Agent.Sdk;
 using Pipelines = Microsoft.TeamFoundation.DistributedTask.Pipelines;
 using Microsoft.Win32;
+using Microsoft.VisualStudio.Services.Agent.Util;
 
 namespace Agent.Plugins.Repository
 {
@@ -24,14 +25,14 @@ namespace Agent.Plugins.Repository
             CancellationToken cancellationToken)
         {
             // Validate args.
-            PluginUtil.NotNull(executionContext, nameof(executionContext));
-            PluginUtil.NotNull(repository, nameof(repository));
+            ArgUtil.NotNull(executionContext, nameof(executionContext));
+            ArgUtil.NotNull(repository, nameof(repository));
 
 #if OS_WINDOWS
             // Validate .NET Framework 4.6 or higher is installed.
-            if (!PluginUtil.TestNetFrameworkVersion(executionContext, new Version(4, 6)))
+            if (!NetFrameworkUtil.Test(new Version(4, 6), executionContext))
             {
-                throw new Exception(PluginUtil.Loc("MinimumNetFramework46"));
+                throw new Exception(StringUtil.Loc("MinimumNetFramework46"));
             }
 #endif
 
@@ -49,13 +50,13 @@ namespace Agent.Plugins.Repository
                 // the endpoint should either be the SystemVssConnection (id = guild.empty, name = SystemVssConnection)
                 // or a real service endpoint to external service which has a real id
                 var endpoint = executionContext.Endpoints.Single(x => (x.Id == Guid.Empty && x.Name == repository.Endpoint.Name) || (x.Id != Guid.Empty && x.Id == repository.Endpoint.Id));
-                PluginUtil.NotNull(endpoint, nameof(endpoint));
+                ArgUtil.NotNull(endpoint, nameof(endpoint));
                 tf.Endpoint = endpoint;
             }
 
             // Setup proxy.
             var agentProxy = executionContext.GetProxyConfiguration();
-            if (agentProxy != null && !string.IsNullOrEmpty(agentProxy.ProxyAddress) && !agentProxy.IsBypassed(repository.Url))
+            if (agentProxy != null && !string.IsNullOrEmpty(agentProxy.ProxyAddress) && !agentProxy.WebProxy.IsBypassed(repository.Url))
             {
                 executionContext.Debug($"Configure '{tf.FilePath}' to work through proxy server '{agentProxy.ProxyAddress}'.");
                 tf.SetupProxy(agentProxy.ProxyAddress, agentProxy.ProxyUsername, agentProxy.ProxyPassword);
@@ -83,26 +84,22 @@ namespace Agent.Plugins.Repository
 
             // Add TF to the PATH.
             string tfPath = tf.FilePath;
-            PluginUtil.FileExists(tfPath, nameof(tfPath));
-#if OS_WINDOWS
-            executionContext.Output(PluginUtil.Loc("Prepending0WithDirectoryContaining1", "Path", Path.GetFileName(tfPath)));
-#else
-            executionContext.Output(PluginUtil.Loc("Prepending0WithDirectoryContaining1", "PATH", Path.GetFileName(tfPath)));
-#endif
+            ArgUtil.File(tfPath, nameof(tfPath));
+            executionContext.Output(StringUtil.Loc("Prepending0WithDirectoryContaining1", PathUtil.PathVariable, Path.GetFileName(tfPath)));
             executionContext.PrependPath(Path.GetDirectoryName(tfPath));
             executionContext.Debug($"PATH: '{Environment.GetEnvironmentVariable("PATH")}'");
 
 #if OS_WINDOWS
             // Set TFVC_BUILDAGENT_POLICYPATH
             string policyDllPath = Path.Combine(executionContext.Variables.GetValueOrDefault("Agent.ServerOMDirectory")?.Value, "Microsoft.TeamFoundation.VersionControl.Controls.dll");
-            PluginUtil.FileExists(policyDllPath, nameof(policyDllPath));
+            ArgUtil.File(policyDllPath, nameof(policyDllPath));
             const string policyPathEnvKey = "TFVC_BUILDAGENT_POLICYPATH";
-            executionContext.Output(PluginUtil.Loc("SetEnvVar", policyPathEnvKey));
+            executionContext.Output(StringUtil.Loc("SetEnvVar", policyPathEnvKey));
             Environment.SetEnvironmentVariable(policyPathEnvKey, policyDllPath);
 #endif
 
             // Check if the administrator accepted the license terms of the TEE EULA when configuring the agent.
-            if (tf.Features.HasFlag(TfsVCFeatures.Eula) && PluginUtil.ConvertToBoolean(executionContext.Variables.GetValueOrDefault("Agent.AcceptTeeEula")?.Value))
+            if (tf.Features.HasFlag(TfsVCFeatures.Eula) && StringUtil.ConvertToBoolean(executionContext.Variables.GetValueOrDefault("Agent.AcceptTeeEula")?.Value))
             {
                 // Check if the "tf eula -accept" command needs to be run for the current user.
                 bool skipEula = false;
@@ -132,12 +129,12 @@ namespace Agent.Plugins.Repository
             }
 
             // Get the workspaces.
-            executionContext.Output(PluginUtil.Loc("QueryingWorkspaceInfo"));
+            executionContext.Output(StringUtil.Loc("QueryingWorkspaceInfo"));
             ITfsVCWorkspace[] tfWorkspaces = await tf.WorkspacesAsync();
 
             // Determine the workspace name.
             string buildDirectory = executionContext.Variables.GetValueOrDefault("agent.builddirectory")?.Value;
-            PluginUtil.NotNullOrEmpty(buildDirectory, nameof(buildDirectory));
+            ArgUtil.NotNullOrEmpty(buildDirectory, nameof(buildDirectory));
             string workspaceName = $"ws_{Path.GetFileName(buildDirectory)}_{executionContext.Variables.GetValueOrDefault("agent.id")?.Value}";
             executionContext.SetVariable("build.repository.tfvc.workspace", workspaceName);
 
@@ -147,12 +144,12 @@ namespace Agent.Plugins.Repository
 
             // Determine the sources directory.
             string sourcesDirectory = repository.Properties.Get<string>("sourcedirectory");
-            PluginUtil.NotNullOrEmpty(sourcesDirectory, nameof(sourcesDirectory));
+            ArgUtil.NotNullOrEmpty(sourcesDirectory, nameof(sourcesDirectory));
 
             // Attempt to re-use an existing workspace if the command manager supports scorch
             // or if clean is not specified.
             ITfsVCWorkspace existingTFWorkspace = null;
-            bool clean = PluginUtil.ConvertToBoolean(repository.Properties.Get<string>(EndpointData.Clean));
+            bool clean = StringUtil.ConvertToBoolean(repository.Properties.Get<string>(EndpointData.Clean));
             if (tf.Features.HasFlag(TfsVCFeatures.Scorch) || !clean)
             {
                 existingTFWorkspace = WorkspaceUtil.MatchExactWorkspace(
@@ -177,8 +174,8 @@ namespace Agent.Plugins.Repository
                                 .ToList()
                                 .ForEach(x =>
                                 {
-                                    executionContext.Output(PluginUtil.Loc("Deleting", x.LocalItem));
-                                    PluginUtil.Delete(x.LocalItem, cancellationToken);
+                                    executionContext.Output(StringUtil.Loc("Deleting", x.LocalItem));
+                                    IOUtil.Delete(x.LocalItem, cancellationToken);
                                 });
                         }
                     }
@@ -203,8 +200,8 @@ namespace Agent.Plugins.Repository
                                         .ToList()
                                         .ForEach(x =>
                                         {
-                                            executionContext.Output(PluginUtil.Loc("Deleting", x.LocalItem));
-                                            PluginUtil.Delete(x.LocalItem, cancellationToken);
+                                            executionContext.Output(StringUtil.Loc("Deleting", x.LocalItem));
+                                            IOUtil.Delete(x.LocalItem, cancellationToken);
                                         });
                                 }
                             }
@@ -251,7 +248,7 @@ namespace Agent.Plugins.Repository
 
                 // Recreate the sources directory.
                 executionContext.Debug($"Deleting: '{sourcesDirectory}'.");
-                PluginUtil.DeleteDirectory(sourcesDirectory, cancellationToken);
+                IOUtil.DeleteDirectory(sourcesDirectory, cancellationToken);
                 Directory.CreateDirectory(sourcesDirectory);
 
                 // Create the workspace.
@@ -364,7 +361,7 @@ namespace Agent.Plugins.Repository
                             }
                             finally
                             {
-                                PluginUtil.DeleteFile(tempCleanFile);
+                                IOUtil.DeleteFile(tempCleanFile);
                             }
                         }
                     }
@@ -373,7 +370,7 @@ namespace Agent.Plugins.Repository
                     tfShelveset = await tf.ShelvesetsAsync(shelveset: shelvesetName);
                     // The above command throws if the shelveset is not found,
                     // so the following assertion should never fail.
-                    PluginUtil.NotNull(tfShelveset, nameof(tfShelveset));
+                    ArgUtil.NotNull(tfShelveset, nameof(tfShelveset));
                 }
 
                 // Unshelve.
@@ -387,7 +384,7 @@ namespace Agent.Plugins.Repository
                     // Create the comment file for reshelve.
                     StringBuilder comment = new StringBuilder(tfShelveset.Comment ?? string.Empty);
                     string runCi = repository.Properties.Get<string>("GatedRunCI");
-                    bool gatedRunCi = PluginUtil.ConvertToBoolean(runCi, true);
+                    bool gatedRunCi = StringUtil.ConvertToBoolean(runCi, true);
                     if (!gatedRunCi)
                     {
                         if (comment.Length > 0)
@@ -419,7 +416,7 @@ namespace Agent.Plugins.Repository
             }
 
             // Cleanup proxy settings.
-            if (agentProxy != null && !string.IsNullOrEmpty(agentProxy.ProxyAddress) && !agentProxy.IsBypassed(repository.Url))
+            if (agentProxy != null && !string.IsNullOrEmpty(agentProxy.ProxyAddress) && !agentProxy.WebProxy.IsBypassed(repository.Url))
             {
                 executionContext.Debug($"Remove proxy setting for '{tf.FilePath}' to work through proxy server '{agentProxy.ProxyAddress}'.");
                 tf.CleanupProxySetting();
@@ -447,7 +444,7 @@ namespace Agent.Plugins.Repository
                     // the endpoint should either be the SystemVssConnection (id = guild.empty, name = SystemVssConnection)
                     // or a real service endpoint to external service which has a real id
                     var endpoint = executionContext.Endpoints.Single(x => (x.Id == Guid.Empty && x.Name == repository.Endpoint.Name) || (x.Id != Guid.Empty && x.Id == repository.Endpoint.Id));
-                    PluginUtil.NotNull(endpoint, nameof(endpoint));
+                    ArgUtil.NotNull(endpoint, nameof(endpoint));
                     tf.Endpoint = endpoint;
                 }
 
@@ -457,7 +454,7 @@ namespace Agent.Plugins.Repository
 
                 // Determine the sources directory.
                 string sourcesDirectory = repository.Properties.Get<string>("sourcedirectory");
-                PluginUtil.NotNullOrEmpty(sourcesDirectory, nameof(sourcesDirectory));
+                ArgUtil.NotNullOrEmpty(sourcesDirectory, nameof(sourcesDirectory));
 
                 try
                 {
@@ -475,8 +472,8 @@ namespace Agent.Plugins.Repository
                                 .ToList()
                                 .ForEach(x =>
                                 {
-                                    executionContext.Output(PluginUtil.Loc("Deleting", x.LocalItem));
-                                    PluginUtil.Delete(x.LocalItem, CancellationToken.None);
+                                    executionContext.Output(StringUtil.Loc("Deleting", x.LocalItem));
+                                    IOUtil.Delete(x.LocalItem, CancellationToken.None);
                                 });
                         }
                     }
@@ -501,8 +498,8 @@ namespace Agent.Plugins.Repository
                                         .ToList()
                                         .ForEach(x =>
                                         {
-                                            executionContext.Output(PluginUtil.Loc("Deleting", x.LocalItem));
-                                            PluginUtil.Delete(x.LocalItem, CancellationToken.None);
+                                            executionContext.Output(StringUtil.Loc("Deleting", x.LocalItem));
+                                            IOUtil.Delete(x.LocalItem, CancellationToken.None);
                                         });
                                 }
                             }
@@ -521,12 +518,12 @@ namespace Agent.Plugins.Repository
         private async Task RemoveConflictingWorkspacesAsync(TfsVCCliManager tf, ITfsVCWorkspace[] tfWorkspaces, string name, string directory)
         {
             // Validate the args.
-            PluginUtil.NotNullOrEmpty(name, nameof(name));
-            PluginUtil.NotNullOrEmpty(directory, nameof(directory));
+            ArgUtil.NotNullOrEmpty(name, nameof(name));
+            ArgUtil.NotNullOrEmpty(directory, nameof(directory));
 
             // Fixup the directory.
             directory = directory.TrimEnd('/', '\\');
-            PluginUtil.NotNullOrEmpty(directory, nameof(directory));
+            ArgUtil.NotNullOrEmpty(directory, nameof(directory));
             string directorySlash = $"{directory}{Path.DirectorySeparatorChar}";
 
             foreach (ITfsVCWorkspace tfWorkspace in tfWorkspaces ?? new ITfsVCWorkspace[0])
@@ -581,8 +578,8 @@ namespace Agent.Plugins.Repository
                 DefinitionWorkspaceMapping[] definitionMappings,
                 string sourcesDirectory)
             {
-                PluginUtil.NotNullOrEmpty(name, nameof(name));
-                PluginUtil.NotNullOrEmpty(sourcesDirectory, nameof(sourcesDirectory));
+                ArgUtil.NotNullOrEmpty(name, nameof(name));
+                ArgUtil.NotNullOrEmpty(sourcesDirectory, nameof(sourcesDirectory));
 
                 // Short-circuit early if the sources directory is empty.
                 //

@@ -92,7 +92,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Capabilities
             private readonly CancellationToken _cancellationToken;
             private readonly IHostContext _hostContext;
             private readonly Tracing _trace;
-            private readonly IWhichUtil _whichUtil;
 
             public CapabilitiesBuilder(IHostContext hostContext, CancellationToken cancellationToken)
             {
@@ -100,7 +99,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Capabilities
                 _hostContext = hostContext;
                 _cancellationToken = cancellationToken;
                 _trace = _hostContext.GetTrace(this.GetType().Name);
-                _whichUtil = _hostContext.GetService<IWhichUtil>();
             }
 
             public void Check(string name, string fileName = null, string[] filePaths = null)
@@ -111,7 +109,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Capabilities
                 try
                 {
                     // Which the file.
-                    string filePath = _whichUtil.Which(fileName ?? name);
+                    string filePath = WhichUtil.Which(fileName ?? name, trace: _trace);
                     if (string.IsNullOrEmpty(filePath))
                     {
                         // Fallback to the well-known locations.
@@ -146,7 +144,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Capabilities
                 try
                 {
                     // Attempt to locate the tool.
-                    string filePath = _whichUtil.Which(fileName);
+                    string filePath = WhichUtil.Which(fileName, trace: _trace);
                     if (string.IsNullOrEmpty(filePath))
                     {
                         return;

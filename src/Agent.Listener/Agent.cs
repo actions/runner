@@ -34,7 +34,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             {
                 var agentWebProxy = HostContext.GetService<IVstsAgentWebProxy>();
                 var agentCertManager = HostContext.GetService<IAgentCertificateManager>();
-                ApiUtil.InitializeVssClientSettings(agentWebProxy, agentCertManager);
+                VssUtil.InitializeVssClientSettings(HostContext.UserAgent, agentWebProxy.WebProxy, agentCertManager.VssClientCertificateManager);
 
                 _inConfigStage = true;
                 _completedCommand.Reset();

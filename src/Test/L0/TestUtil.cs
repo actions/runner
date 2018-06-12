@@ -23,16 +23,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         public static string GetSrcPath()
         {
             string srcDir = Environment.GetEnvironmentVariable("VSTS_AGENT_SRC_DIR");
-            if (String.IsNullOrEmpty(srcDir))
-            {
-                srcDir = Path.GetDirectoryName(
-                            Path.GetDirectoryName(
-                                Path.GetDirectoryName(
-                                    Path.GetDirectoryName(
-                                        Path.GetDirectoryName(
-                                            Path.GetDirectoryName(
-                                                IOUtil.GetBinPath()))))));
-            }
+            ArgUtil.Directory(srcDir, nameof(srcDir));
             Assert.Equal(Src, Path.GetFileName(srcDir));
             return srcDir;
         }

@@ -148,7 +148,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                     WriteSection(StringUtil.Loc("EulasSectionHeader"));
 
                     // Verify the EULA exists on disk in the expected location.
-                    string eulaFile = Path.Combine(IOUtil.GetExternalsPath(), Constants.Path.TeeDirectory, "license.html");
+                    string eulaFile = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), Constants.Path.TeeDirectory, "license.html");
                     ArgUtil.File(eulaFile, nameof(eulaFile));
 
                     // Write elaborate verbiage about the TEE EULA.
@@ -160,8 +160,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                     break;
                 case Constants.OSPlatform.Windows:
                     // Warn and continue if .NET 4.6 is not installed.
-                    var netFrameworkUtil = HostContext.GetService<INetFrameworkUtil>();
-                    if (!netFrameworkUtil.Test(new Version(4, 6)))
+                    if (!NetFrameworkUtil.Test(new Version(4, 6), Trace))
                     {
                         WriteSection(StringUtil.Loc("PrerequisitesSectionHeader")); // Section header.
                         _term.WriteLine(StringUtil.Loc("MinimumNetFrameworkTfvc")); // Warning.
@@ -390,7 +389,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             _term.WriteLine(StringUtil.Loc("TestAgentConnection"));
             var credMgr = HostContext.GetService<ICredentialManager>();
             VssCredentials credential = credMgr.LoadCredentials();
-            VssConnection conn = ApiUtil.CreateConnection(new Uri(agentSettings.ServerUrl), credential);
+            VssConnection conn = VssUtil.CreateConnection(new Uri(agentSettings.ServerUrl), credential);
             var agentSvr = HostContext.GetService<IAgentServer>();
             try
             {
@@ -684,7 +683,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         {
             // Determine the service deployment type based on connection data. (Hosted/OnPremises)
             var locationServer = HostContext.GetService<ILocationServer>();
-            VssConnection connection = ApiUtil.CreateConnection(new Uri(serverUrl), credentials);
+            VssConnection connection = VssUtil.CreateConnection(new Uri(serverUrl), credentials);
             await locationServer.ConnectAsync(connection);
             try
             {

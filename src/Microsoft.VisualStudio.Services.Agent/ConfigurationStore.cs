@@ -133,19 +133,19 @@ namespace Microsoft.VisualStudio.Services.Agent
             RootFolder = HostContext.GetDirectory(WellKnownDirectory.Root);
             Trace.Info("RootFolder: {0}", RootFolder);
 
-            _configFilePath = IOUtil.GetConfigFilePath();
+            _configFilePath = hostContext.GetConfigFile(WellKnownConfigFile.Agent);
             Trace.Info("ConfigFilePath: {0}", _configFilePath);
 
-            _credFilePath = IOUtil.GetCredFilePath();
+            _credFilePath = hostContext.GetConfigFile(WellKnownConfigFile.Credentials);
             Trace.Info("CredFilePath: {0}", _credFilePath);
 
-            _serviceConfigFilePath = IOUtil.GetServiceConfigFilePath();
+            _serviceConfigFilePath = hostContext.GetConfigFile(WellKnownConfigFile.Service);
             Trace.Info("ServiceConfigFilePath: {0}", _serviceConfigFilePath);
 
-            _autoLogonSettingsFilePath = IOUtil.GetAutoLogonSettingsFilePath();
+            _autoLogonSettingsFilePath = hostContext.GetConfigFile(WellKnownConfigFile.Autologon);
             Trace.Info("AutoLogonSettingsFilePath: {0}", _autoLogonSettingsFilePath);
 
-            _runtimeOptionsFilePath = IOUtil.GetRuntimeOptionsFilePath();
+            _runtimeOptionsFilePath = hostContext.GetConfigFile(WellKnownConfigFile.Options);
             Trace.Info("RuntimeOptionsFilePath: {0}", _runtimeOptionsFilePath);
         }
 

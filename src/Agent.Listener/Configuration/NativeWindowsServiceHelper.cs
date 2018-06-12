@@ -84,7 +84,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
         public string GetUniqueBuildGroupName()
         {
-            return AgentServiceLocalGroupPrefix + IOUtil.GetBinPathHash().Substring(0, 5);
+            return AgentServiceLocalGroupPrefix + IOUtil.GetPathHash(HostContext.GetDirectory(WellKnownDirectory.Bin)).Substring(0, 5);
         }
 
         // TODO: Make sure to remove Old agent's group and registry changes made during auto upgrade to vsts-agent.
@@ -445,7 +445,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         {
             Trace.Entering();
 
-            string agentServiceExecutable = "\"" + Path.Combine(IOUtil.GetBinPath(), WindowsServiceControlManager.WindowsServiceControllerName) + "\"";
+            string agentServiceExecutable = "\"" + Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Bin), WindowsServiceControlManager.WindowsServiceControllerName) + "\"";
             IntPtr scmHndl = IntPtr.Zero;
             IntPtr svcHndl = IntPtr.Zero;
             IntPtr tmpBuf = IntPtr.Zero;
@@ -752,10 +752,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             {
                 using (RegistryKey vstsAgentsKey = tfsKey.CreateSubKey("VstsAgents"))
                 {
-                    String hash = IOUtil.GetBinPathHash();
+                    String hash = IOUtil.GetPathHash(HostContext.GetDirectory(WellKnownDirectory.Bin));
                     using (RegistryKey agentKey = vstsAgentsKey.CreateSubKey(hash))
                     {
-                        agentKey.SetValue("InstallPath", Path.Combine(IOUtil.GetBinPath(), "Agent.Listener.exe"));
+                        agentKey.SetValue("InstallPath", Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Bin), "Agent.Listener.exe"));
                     }
                 }
             }
@@ -777,7 +777,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                     {
                         try
                         {
-                            String hash = IOUtil.GetBinPathHash();
+                            String hash = IOUtil.GetPathHash(HostContext.GetDirectory(WellKnownDirectory.Bin));
                             vstsAgentsKey.DeleteSubKeyTree(hash);
                         }
                         finally

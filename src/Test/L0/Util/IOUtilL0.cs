@@ -841,7 +841,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Util
             string arguments = $@"-s ""{target}"" ""{link}""";
 #endif
             ArgUtil.File(fileName, nameof(fileName));
-            using (var processInvoker = new ProcessInvoker())
+            using (var processInvoker = new ProcessInvokerWrapper())
             {
                 processInvoker.Initialize(context);
                 await processInvoker.ExecuteAsync(

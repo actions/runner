@@ -96,8 +96,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             _cancellationToken = cancellationToken;
 
             // Find svn in %Path%
-            IWhichUtil whichTool = HostContext.GetService<IWhichUtil>();
-            string svnPath = whichTool.Which("svn");
+            string svnPath = WhichUtil.Which("svn", trace: Trace);
 
             if (string.IsNullOrEmpty(svnPath))
             {
@@ -549,7 +548,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
             // Add proxy setting parameters
             var agentProxy = HostContext.GetService<IVstsAgentWebProxy>();
-            if (!string.IsNullOrEmpty(_context.Variables.Agent_ProxyUrl) && !agentProxy.IsBypassed(_endpoint.Url))
+            if (!string.IsNullOrEmpty(_context.Variables.Agent_ProxyUrl) && !agentProxy.WebProxy.IsBypassed(_endpoint.Url))
             {
                 _context.Debug($"Add proxy setting parameters to '{_svn}' for proxy server '{_context.Variables.Agent_ProxyUrl}'.");
 
@@ -631,7 +630,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 string arguments = FormatArgumentsWithDefaults(args);
                 _context.Command($@"{_svn} {arguments}");
                 await processInvoker.ExecuteAsync(
-                    workingDirectory: IOUtil.GetWorkPath(HostContext),
+                    workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Work),
                     fileName: _svn,
                     arguments: arguments,
                     environment: null,
@@ -673,7 +672,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 try
                 {
                     await processInvoker.ExecuteAsync(
-                        workingDirectory: IOUtil.GetWorkPath(HostContext),
+                        workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Work),
                         fileName: _svn,
                         arguments: arguments,
                         environment: null,

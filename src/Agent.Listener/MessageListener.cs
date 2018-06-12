@@ -66,7 +66,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             var credMgr = HostContext.GetService<ICredentialManager>();
             VssCredentials creds = credMgr.LoadCredentials();
             Uri uri = new Uri(serverUrl);
-            VssConnection conn = ApiUtil.CreateConnection(uri, creds);
+            VssConnection conn = VssUtil.CreateConnection(uri, creds);
 
             var agent = new TaskAgentReference
             {

@@ -49,7 +49,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             // Get or create the top-level tracking config.
             TopLevelTrackingConfig topLevelConfig;
             string topLevelFile = Path.Combine(
-                IOUtil.GetWorkPath(HostContext),
+                HostContext.GetDirectory(WellKnownDirectory.Work),
                 Constants.Build.Path.SourceRootMappingDirectory,
                 Constants.Build.Path.TopLevelTrackingConfigFile);
             Trace.Verbose($"Loading top-level tracking config if exists: {topLevelFile}");
@@ -174,7 +174,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
             // Write a copy of the tracking config to the GC folder.
             string gcDirectory = Path.Combine(
-                IOUtil.GetWorkPath(HostContext),
+                HostContext.GetDirectory(WellKnownDirectory.Work),
                 Constants.Build.Path.SourceRootMappingDirectory,
                 Constants.Build.Path.GarbageCollectionDirectory);
             string file = Path.Combine(

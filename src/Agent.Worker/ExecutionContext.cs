@@ -351,7 +351,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(token);
 
             // Features
-            Features = ApiUtil.GetFeatures(message.Plan);
+            Features = PlanUtil.GetFeatures(message.Plan);
 
             // Endpoints
             Endpoints = message.Resources.Endpoints;
