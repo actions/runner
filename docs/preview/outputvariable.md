@@ -26,7 +26,7 @@ Task author doesn't have to change their task script if the script already use `
 
 Agent will base on the `OutputVariables` section from task.json determine which variable needs to publish, and patch timeline record with the output variables.
 
-The `OutputVariables` section will also be used as intellisence hint in the definition editor.
+The `OutputVariables` section will also be used as intellisense hint in the definition editor.
 
 ### For Ad-hoc script:
 
