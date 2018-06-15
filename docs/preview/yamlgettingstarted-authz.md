@@ -9,10 +9,7 @@ be authorized to create a definition.
 
 For details about creating a definition on-push, refer [here](yamlgettingstarted-definition.md).
 
-## Resource authorization
-
-Build definitions commonly refer to resources within VSTS that have security restrictions -
-such as queues, endpoints, and secure files.
+## Resource authorization (queues, endpoints, secure files)
 
 When a definition is created or updated, any resources referenced by the YAML file are authorized
 for use. Authorization is performed based whether the person creating or updating the definition
@@ -33,3 +30,12 @@ person who pushed the branch update is considered to be the person updating the 
 Note, resource authorization is currently append only. Removing a resource from the YAML
 file will not remove it's authorized status. A future update will provide a way to
 remove authorization for a resource from the web UI or REST API.
+
+## Having trouble with resource authorization?
+
+We have a better experience in the web coming in the next couple sprints.
+
+A workaround that covers most cases is, navigate to the build definition in the web, switch the
+default branch to your branch that includes the service endpoint reference, save, revert back to
+your desired settings, save again.  The act of saving the definition loads the file (from the
+default branch) and authorizes discovered resources.
