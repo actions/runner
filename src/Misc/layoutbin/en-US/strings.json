@@ -591,5 +591,6 @@
   "WindowsLogonAccountNameDescription": "User account to use for the service",
   "WindowsLogonPasswordDescription": "Password for the account {0}",
   "WorkFolderDescription": "work folder",
-  "Y": "Y"
+  "Y": "Y",
+  "ZipSlipFailure": "Entry is outside of the target dir: {0}"
 }

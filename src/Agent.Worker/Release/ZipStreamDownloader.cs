@@ -52,7 +52,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
                     // Remove leading '/'s if any 
                     var path = stream.FullName.TrimStart(ForwardSlash);
 
-                    Trace.Verbose($"Downloading {path}");
+                    Trace.Verbose($"Downloading {path}, localFolderPath {localFolderPath}, folderWithinStream {folderWithinStream}, relativePathWithinStream {relativePathWithinStream}");
+
                     if (!string.IsNullOrWhiteSpace(folderWithinStream))
                     {
                         var normalizedFolderWithInStream = folderWithinStream.TrimStart(ForwardSlash).TrimEnd(ForwardSlash) + ForwardSlash;
@@ -84,7 +85,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
                     }
 
                     int bufferSize = executionContext.Variables.Release_Download_BufferSize ?? DefaultBufferSize;
-                    await fileSystemManager.WriteStreamToFile(stream.ZipStream, Path.Combine(localFolderPath, path), bufferSize, executionContext.CancellationToken);
+
+                    string destFileName = Path.GetFullPath(Path.Combine(localFolderPath, path));
+                    string destDirPath = Path.GetFullPath(localFolderPath + Path.DirectorySeparatorChar);
+                    if (!destFileName.StartsWith(destDirPath)) {
+                        throw new InvalidOperationException(StringUtil.Loc("ZipSlipFailure", destFileName));
+                    }
+
+                    Trace.Info($"Writing file to {destFileName}");
+                    await fileSystemManager.WriteStreamToFile(stream.ZipStream, destFileName, bufferSize, executionContext.CancellationToken);
 
                     streamsDownloaded++;
                 }
