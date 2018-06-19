@@ -65,7 +65,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
         public void Run(Pipelines.AgentJobRequestMessage jobRequestMessage)
         {
-            Trace.Info($"Job request {jobRequestMessage.JobId} received.");
+            Trace.Info($"Job request {jobRequestMessage.RequestId} for plan {jobRequestMessage.Plan.PlanId} job {jobRequestMessage.JobId} received.");
 
             WorkerDispatcher currentDispatch = null;
             if (_jobDispatchedQueue.Count > 0)

@@ -75,16 +75,24 @@ get_legacy_os_name_from_platform() {
             echo "debian"
             return 0
             ;;
+        "debian.9")
+            echo "debian.9"
+            return 0
+            ;;
         "fedora.23")
             echo "fedora.23"
+            return 0
+            ;;
+        "fedora.24")
+            echo "fedora.24"
             return 0
             ;;
         "fedora.27")
             echo "fedora.27"
             return 0
             ;;
-        "fedora.24")
-            echo "fedora.24"
+        "fedora.28")
+            echo "fedora.28"
             return 0
             ;;
         "opensuse.13.2")
