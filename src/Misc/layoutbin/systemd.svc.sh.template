@@ -113,7 +113,7 @@ function status()
         return
     fi
 
-    systemctl status ${SVC_NAME}
+    systemctl --no-pager status ${SVC_NAME}
 }
 
 function usage()
