@@ -2,14 +2,14 @@
 
 ## Checkout step
 
-The `checkout` step can be used to control the checkout options. The well-known \"self\" repo is the repo associated with the .yml entry file.
+The `checkout` step can be used to control the checkout options. The well-known \"self\" repo is the repo associated with the entry .yml file.
 
 For example, the clean setting can be specified on the checkout step:
 
 ```yaml
 steps:
 - checkout: self
-  clean: true
+  clean: false
 - script: echo hello world
 ```
 
@@ -23,7 +23,7 @@ steps:
 - script: echo hello world
 ```
 
-## Checkout/repo options reference
+## Supported checkout options
 
 ```yaml
 clean: true | false

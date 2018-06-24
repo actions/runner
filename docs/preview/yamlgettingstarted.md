@@ -8,7 +8,7 @@ YAML builds require the latest agent. When a YAML build is queued, your agent wi
 
 [Create a definition](yamlgettingstarted-definition.md)
 
-## Examples
+## Scripts and tasks
 
 [Run scripts](yamlgettingstarted-scripts.md)
 
@@ -16,13 +16,41 @@ YAML builds require the latest agent. When a YAML build is queued, your agent wi
 
 [Run bash scripts](yamlgettingstarted-bash.md)
 
+[Checkout repositories](yamlgettingstarted-checkout.md)
+
 [Run tasks](yamlgettingstarted-tasks.md)
 
-[Checkout options](yamlgettingstarted-checkout.md)
+## Variables
+
+[Variables](yamlgettingstarted-variables.md)
+
+[Custom variables](yamlgettingstarted-customvariables.md)
+
+[Secret variables](yamlgettingstarted-secretvariables.md)
+
+[Setting variables from a script](yamlgettingstarted-setvariable.md)
+
+[Output variables](yamlgettingstarted-outputvariables.md)
+
+[OAuth token for scripts](yamlgettingstarted-token.md)
+
+## Resources
+
+[Authorization](yamlgettingstarted-authz.md)
 
 [Queues](yamlgettingstarted-queues.md)
 
 [Endpoints](yamlgettingstarted-endpoints.md)
+
+[Secure files](yamlgettingstarted-securefiles.md)
+
+<!-- todo: [Variable groups](yamlgettingstarted-variablegroups.md) -->
+
+## Pipeline and phases
+
+<!-- todo: [Pipeline overview](yamlgettingstarted-pipeline.md) -->
+
+<!-- todo: Restructure the phase/phases docs -->
 
 [Phase options](yamlgettingstarted-phase.md)
 
@@ -30,16 +58,18 @@ YAML builds require the latest agent. When a YAML build is queued, your agent wi
 
 [Triggers](yamlgettingstarted-triggers.md)
 
+[Pipeline name format](yamlgettingstarted-name.md)
+
+## Templates
+
+<!-- todo: Restructure the template docs: 1) basics, 2) across repos, and 3) advanced syntax -->
+
 [Templates](yamlgettingstarted-templates.md)
 
 ## Misc
 
-[Resource authorization](yamlgettingstarted-authz.md)
-
-[Build number format](yamlgettingstarted-name.md)
-
-[Allow scripts to access OAuth token](yamlgettingstarted-token.md)
-
 [Schema reference](yamlgettingstarted-schema.md)
 
 [Feature gaps](yamlgettingstarted-features.md)
+
+<!-- todo: [Escaping](yamlgettingstarted-escaping.md) -->

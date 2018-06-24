@@ -2,7 +2,8 @@
 
 ## Simple script
 
-Run a PowerShell script on Windows, macOS, and Linux. `powershell` must be in your PATH.
+Run a PowerShell script on Windows, macOS, or Linux. On Windows, `powershell` must be in your PATH.
+On macOS and Linux, `pwsh` must be in your PATH.
 
 ```yaml
 steps:
@@ -14,7 +15,7 @@ The script contents are embedded in a temporary .ps1 file and cleaned up after y
 
 ## Multi-line script
 
-Because the contents you specify are embedded in a script, you can write multiple lines.
+The following syntax can be used to specify a multi-line script:
 
 ```yaml
 steps:
@@ -27,7 +28,7 @@ steps:
 ## Error action preference
 
 Unless specified, the task defaults the error action preference to Stop. The line
-`$ErrorActionPreference = '<VALUE>'` is prepended to the top of your script.
+`$ErrorActionPreference = 'stop'` is prepended to the top of your script.
 
 When the error action preference is set to `stop`, errors will be treated as terminating and
 powershell will return a non-zero exit code (task result will be Failed).
@@ -72,7 +73,7 @@ steps:
 
 ## Working directory
 
-You can specify a different working directory where your script is invoked. Otherwise the default is $(system.defaultWorkingDirectory).
+You can specify a different working directory where your script is invoked. Otherwise the default is `$(system.defaultWorkingDirectory)`.
 
 ```yaml
 steps:
@@ -85,11 +86,11 @@ steps:
 
 ## Environment variables
 
-Use env to map secrets variables into the environment for your script. Unless explicitly mapped,
-secret variables are not propagated to the environment for ad hoc scripts.
+Use `env` to map secrets variables into the process environment block for your script. Otherwise secret variables are not mapped for ad hoc scripts.
 
 ```yaml
 steps:
+
 # First, create a secret variable. Normally these would be persisted securely by the definition.
 - powershell: "Write-Host '##vso[task.setvariable variable=MySecret;isSecret=true]My secret value'"
   displayName: Create secret variable

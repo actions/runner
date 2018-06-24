@@ -2,7 +2,7 @@
 
 ## Simple script
 
-Run a command line script using cmd.exe on Windows and bash on macOS and Linux.
+Run a command line script using Bash on macOS and Linux and Command Prompt on Windows.
 
 ```yaml
 steps:
@@ -10,11 +10,11 @@ steps:
   displayName: Simple script
 ```
 
-The script contents are embedded in a temporary file and cleaned up after your script runs. On Windows a .cmd file is created. On macOS and Linux a .sh file is created.
+The script contents are embedded in a temporary file and cleaned up after your script runs. On macOS and Linux a .sh file is created. On Windows a .cmd file is created.
 
 ## Multi-line script
 
-Because the contents you specify are embedded in a script, you can write multiple lines.
+The following syntax can be used to specify a multi-line script:
 
 ```yaml
 steps:
@@ -26,18 +26,22 @@ steps:
 
 ## Working directory
 
-You can specify a different working directory where your script is invoked. Otherwise the default is $(system.defaultWorkingDirectory).
+You can specify a different working directory where your script is invoked. Otherwise the default is `$(system.defaultWorkingDirectory)`.
 
 ```yaml
 steps:
-- script: echo agent.homeDirectory is %CD%
-  displayName: Working directory
-  workingDirectory: $(agent.homeDirectory)
-  condition: and(succeeded(), eq(variables['agent.os'], 'windows_nt'))
+
+# Script for macOS and Linux
 - script: echo agent.homeDirectory is $PWD
   displayName: Working directory
   workingDirectory: $(agent.homeDirectory)
   condition: and(succeeded(), in(variables['agent.os'], 'darwin', 'linux'))
+
+# Script for Windows
+- script: echo agent.homeDirectory is %CD%
+  displayName: Working directory
+  workingDirectory: $(agent.homeDirectory)
+  condition: and(succeeded(), eq(variables['agent.os'], 'windows_nt'))
 ```
 
 ## Fail on STDERR
@@ -55,18 +59,36 @@ steps:
 
 ## Environment variables
 
-Use env to map secrets variables into the environment for your script. Unless explicitly mapped,
-secret variables are not propagated to the environment for ad hoc scripts.
+Use `env` to map secrets variables into the process environment block for your script. Otherwise secret variables are not mapped for ad hoc scripts.
 
 ```yaml
 steps:
+
+########################################
+# macOS and Linux
+########################################
+
+# First, create a secret variable. Normally these would be persisted securely by the definition.
+- script: "echo \"##vso[task.setvariable variable=MySecret;isSecret=true]My secret value\""
+  displayName: Create secret variable
+  condition: and(succeeded(), in(variables['agent.os'], 'darwin', 'linux'))
+
+# Next, map the secret into an environment variable and print it. Note, secrets are masked in the log
+# and appear as '********'.
+- script: echo The password is $MyPassword
+  displayName: Print secret variable
+  env:
+    MyPassword: $(MySecret)
+  condition: and(succeeded(), in(variables['agent.os'], 'darwin', 'linux'))
+
+########################################
+# Windows
+########################################
+
 # First, create a secret variable. Normally these would be persisted securely by the definition.
 - script: "echo ##vso[task.setvariable variable=MySecret;isSecret=true]My secret value"
   displayName: Create secret variable
   condition: and(succeeded(), eq(variables['agent.os'], 'windows_nt'))
-- script: "echo \"##vso[task.setvariable variable=MySecret;isSecret=true]My secret value\""
-  displayName: Create secret variable
-  condition: and(succeeded(), in(variables['agent.os'], 'darwin', 'linux'))
 
 # Next, map the secret into an environment variable and print it. Note, secrets are masked in the log
 # and appear as '********'.
@@ -75,11 +97,7 @@ steps:
   env:
     MyPassword: $(MySecret)
   condition: and(succeeded(), eq(variables['agent.os'], 'windows_nt'))
-- script: echo The password is $MyPassword
-  displayName: Print secret variable
-  env:
-    MyPassword: $(MySecret)
-  condition: and(succeeded(), in(variables['agent.os'], 'darwin', 'linux'))
+
 ```
 
 ## Control inputs

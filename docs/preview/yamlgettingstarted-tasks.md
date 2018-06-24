@@ -13,7 +13,8 @@ steps:
 
   name: string
 
-  inputs: { string: string } # Map of task inputs. Refer to the task.json. TODO export to YAML.
+  inputs: { string: string } # Map of task inputs. Refer to the task.json or use the View Yaml
+                             # functionality on a designer definition.
 
   enabled: true | false
 
@@ -32,10 +33,14 @@ A simple build definition may look like this:
 
 ```yaml
 steps:
+
+# npm install
 - task: Npm@1
   displayName: npm install
   inputs:
     command: install
+
+# npm test
 - task: Npm@1
   displayName: npm publish
   inputs:
@@ -50,9 +55,9 @@ if the name collides, in-the-box tasks take precedence.
 
 Alternatively, the task ID (a GUID) can be used instead of the task name.
 
-The detailed task metadata (contribution identifier and GUID) can be found from:
+The contribution identifier and GUID can be found from:
 `https://<YOUR_ACCOUNT>.visualstudio.com/_apis/distributedtask/tasks`
 
 ## Export to YAML
 
-Refer to View Yaml link at the top of the build definition editor.
+Designer definitions have a `View Yaml` link that will export the selected configuration to YAML.

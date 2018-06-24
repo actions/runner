@@ -2,7 +2,7 @@
 
 ## Simple script
 
-Run a Bash script on macOS, Linux, and Windows. `bash` must be in your PATH.
+Run a Bash script on macOS, Linux, or Windows. `bash` must be in your PATH.
 
 ```yaml
 steps:
@@ -14,7 +14,7 @@ The script contents are embedded in a temporary .sh file and cleaned up after yo
 
 ## Multi-line script
 
-Because the contents you specify are embedded in a script, you can write multiple lines.
+The following syntax can be used to specify a multi-line script:
 
 ```yaml
 steps:
@@ -26,7 +26,7 @@ steps:
 
 ## Working directory
 
-You can specify a different working directory where your script is invoked. Otherwise the default is $(system.defaultWorkingDirectory).
+You can specify a different working directory where your script is invoked. Otherwise the default is `$(system.defaultWorkingDirectory)`.
 
 ```yaml
 steps:
@@ -50,11 +50,11 @@ steps:
 
 ## Environment variables
 
-Use env to map secrets variables into the environment for your script. Unless explicitly mapped,
-secret variables are not propagated to the environment for ad hoc scripts.
+Use `env` to map secrets variables into the process environment block for your script. Otherwise secret variables are not mapped for ad hoc scripts.
 
 ```yaml
 steps:
+
 # First, create a secret variable. Normally these would be persisted securely by the definition.
 - bash: "echo \"##vso[task.setvariable variable=MySecret;isSecret=true]My secret value\""
   displayName: Create secret variable

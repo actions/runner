@@ -1,4 +1,4 @@
-# YAML getting started - YAML schema
+# YAML getting started - Schema reference
 
 ## Structural overview
 

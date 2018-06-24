@@ -1,4 +1,4 @@
-# YAML getting started - Run local (feature is in progress, removing docs for now since it is in flux)
+<!-- # YAML getting started - Run local (feature is in progress, removing docs for now since it is in flux)
 
 The agent supports locally testing YAML configuration without queuing a build against the server.
 
@@ -61,4 +61,4 @@ Refer to the command line help for additional options.
 
 # macOS and Linux:
 <PATH_TO_AGENT>/run.sh localRun --help
-```
+``` -->
