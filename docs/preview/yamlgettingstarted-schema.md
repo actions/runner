@@ -109,8 +109,9 @@ steps: [ script | powershell | bash | task | stepsPhase | stepsTemplateReference
 #### phase
 
 ```yaml
+phase: string # Required
+
 displayName: string
-name: string
 dependsOn: string | [ string ]
 condition: string
 continueOnError: true | false
