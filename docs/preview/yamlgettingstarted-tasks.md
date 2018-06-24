@@ -37,9 +37,9 @@ steps:
   inputs:
     command: install
 - task: Npm@1
-  displayName: npm test
+  displayName: npm publish
   inputs:
-    command: test
+    command: publish
 ```
 
 ## Resiliency
