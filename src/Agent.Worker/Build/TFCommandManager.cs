@@ -289,7 +289,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             args.Add("/format:xml");
 
             // Run the command.
-            string xml = await RunPorcelainCommandAsync(args.ToArray()) ?? string.Empty;
+            // Ignore STDERR from TF.exe, tf.exe use STDERR to report warning.
+            string xml = await RunPorcelainCommandAsync(true, args.ToArray()) ?? string.Empty;
 
             // Deserialize the XML.
             var serializer = new XmlSerializer(typeof(TFWorkspaces));
