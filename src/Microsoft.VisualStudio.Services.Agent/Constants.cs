@@ -59,7 +59,7 @@ namespace Microsoft.VisualStudio.Services.Agent
 
         public static class Agent
         {
-            public static readonly string Version = "2.134.3";
+            public static readonly string Version = "2.136.0";
 
 #if OS_LINUX
             public static readonly OSPlatform Platform = OSPlatform.Linux;
