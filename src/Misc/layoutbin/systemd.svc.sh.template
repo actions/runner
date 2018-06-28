@@ -121,6 +121,12 @@ function usage()
     echo
     echo Usage:
     echo "./svc.sh [install, start, stop, status, uninstall]"
+    echo "Commands:"
+    echo "   install [user]: Install agent service as Root or specified user."
+    echo "   start: Manually start the agent service."
+    echo "   stop: Manually stop the agent service."
+    echo "   status: Display status of agent service."
+    echo "   uninstall: Uninstall agent service."
     echo
 }
 
