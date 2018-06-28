@@ -23,6 +23,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
         private bool _publishRunLevelAttachments;
         private int _runCounter = 0;
         private readonly object _sync = new object();
+        private string _testRunSystem;
+        private const string _testRunSystemCustomFieldName = "TestRunSystem";
 
         public Type ExtensionType => typeof(IWorkerCommandExtension);
 
@@ -198,6 +200,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                     );
 
                     testRunData.Attachments = runAttachments.ToArray();
+                    testRunData.AddCustomField(_testRunSystemCustomFieldName, _testRunSystem);
 
                     TestRun testRun = await publisher.StartTestRunAsync(testRunData, _executionContext.CancellationToken);
                     await publisher.AddResultsAsync(testRun, runResults.ToArray(), _executionContext.CancellationToken);
@@ -229,14 +232,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                     .Select(bucket => bucket.Select(pair => pair.file).ToList())
                     .ToList();
 
+                bool changeTestRunTitle = resultFiles.Count > 1;
+
                 foreach (var files in groupedFiles)
                 {
                     // Publish separate test run for each result file that has results.
                     var publishTasks = files.Select(async resultFile =>
                     {
                         cancellationToken.ThrowIfCancellationRequested();
-                        string runName = null;
-                        if (!string.IsNullOrWhiteSpace(_runTitle))
+                        string runName = _runTitle;
+                        if (!string.IsNullOrWhiteSpace(_runTitle) && changeTestRunTitle)
                         {
                             runName = GetRunTitle();
                         }
@@ -248,6 +253,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
 
                         if (testRunData != null && testRunData.Results != null && testRunData.Results.Length > 0)
                         {
+                            testRunData.AddCustomField(_testRunSystemCustomFieldName, _testRunSystem);
                             TestRun testRun = await publisher.StartTestRunAsync(testRunData, _executionContext.CancellationToken);
                             await publisher.AddResultsAsync(testRun, testRunData.Results, _executionContext.CancellationToken);
                             await publisher.EndTestRunAsync(testRunData, testRun.Id, cancellationToken: _executionContext.CancellationToken);
@@ -356,6 +362,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                 _runTitle = string.Empty;
             }
 
+            eventProperties.TryGetValue(PublishTestResultsEventProperties.TestRunSystem, out _testRunSystem);
+            if (_testRunSystem == null)
+            {
+                _testRunSystem = string.Empty;
+            }
+
             string publishRunAttachmentsInput;
             eventProperties.TryGetValue(PublishTestResultsEventProperties.PublishRunAttachments, out publishRunAttachmentsInput);
             if (string.IsNullOrEmpty(publishRunAttachmentsInput) || !bool.TryParse(publishRunAttachmentsInput, out _publishRunLevelAttachments))
@@ -391,5 +403,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
         public static readonly string RunTitle = "runTitle";
         public static readonly string PublishRunAttachments = "publishRunAttachments";
         public static readonly string ResultFiles = "resultFiles";
+        public static readonly string TestRunSystem = "testRunSystem";
     }
 }
