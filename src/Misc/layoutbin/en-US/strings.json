@@ -270,6 +270,10 @@
   "EulasSectionHeader": "End User License Agreements",
   "EvaluateReleaseTrackingFile": "Evaluate ReleaseDirectory tracking file: {0}",
   "EvaluateTrackingFile": "Evaluate BuildDirectory tracking file: {0}",
+  "ExpectedMappingCloak": "Expected mapping[{0}] cloak: '{1}'. Actual: '{2}'",
+  "ExpectedMappingLocalPath": "Expected mapping[{0}] local path: '{1}'. Actual: '{2}'",
+  "ExpectedMappingRecursive": "Expected mapping[{0}] recursive: '{1}'. Actual: '{2}'",
+  "ExpectedMappingServerPath": "Expected mapping[{0}] server path: '{1}'. Actual: '{2}'",
   "Failed": "Failed: ",
   "FailedDeletingTempDirectory0Message1": "Failed to delete temporary directory '{0}'. {1}",
   "FailedToAddTags": "Failed to apply tags to agent. Try again or ctrl-c to quit. Alternatively you may go to deployment group web page to add tags",
@@ -592,6 +596,7 @@
   "WindowsLogonAccountNameDescription": "User account to use for the service",
   "WindowsLogonPasswordDescription": "Password for the account {0}",
   "WorkFolderDescription": "work folder",
+  "WorkspaceMappingNotMatched": "Workspace mappings are not matched for workspace {0}",
   "Y": "Y",
   "ZipSlipFailure": "Entry is outside of the target dir: {0}"
 }

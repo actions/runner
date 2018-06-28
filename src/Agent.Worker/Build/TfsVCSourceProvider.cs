@@ -668,6 +668,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
                     // Compare the mappings.
                     bool allMatch = true;
+                    List<string> matchTrace = new List<string>();
                     for (int i = 0; i < sortedTFMappings.Count; i++)
                     {
                         ITfsVCMapping tfMapping = sortedTFMappings[i];
@@ -677,7 +678,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                         bool expectedCloak = definitionMapping.MappingType == DefinitionMappingType.Cloak;
                         if (tfMapping.Cloak != expectedCloak)
                         {
-                            executionContext.Debug($"Expected mapping[{i}] cloak: '{expectedCloak}'. Actual: '{tfMapping.Cloak}'");
+                            matchTrace.Add(StringUtil.Loc("ExpectedMappingCloak", i, expectedCloak, tfMapping.Cloak));
                             allMatch = false;
                             break;
                         }
@@ -685,7 +686,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                         // Compare the recursive flag.
                         if (!expectedCloak && tfMapping.Recursive != definitionMapping.Recursive)
                         {
-                            executionContext.Debug($"Expected mapping[{i}] recursive: '{definitionMapping.Recursive}'. Actual: '{tfMapping.Recursive}'");
+                            matchTrace.Add(StringUtil.Loc("ExpectedMappingRecursive", i, definitionMapping.Recursive, tfMapping.Recursive));
                             allMatch = false;
                             break;
                         }
@@ -694,7 +695,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                         string expectedServerPath = definitionMapping.NormalizedServerPath;
                         if (!string.Equals(tfMapping.ServerPath, expectedServerPath, StringComparison.Ordinal))
                         {
-                            executionContext.Debug($"Expected mapping[{i}] server path: '{expectedServerPath}'. Actual: '{tfMapping.ServerPath}'");
+                            matchTrace.Add(StringUtil.Loc("ExpectedMappingServerPath", i, expectedServerPath, tfMapping.ServerPath));
                             allMatch = false;
                             break;
                         }
@@ -705,7 +706,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                             string expectedLocalPath = definitionMapping.GetRootedLocalPath(sourcesDirectory);
                             if (!string.Equals(tfMapping.LocalPath, expectedLocalPath, StringComparison.Ordinal))
                             {
-                                executionContext.Debug($"Expected mapping[{i}] local path: '{expectedLocalPath}'. Actual: '{tfMapping.LocalPath}'");
+                                matchTrace.Add(StringUtil.Loc("ExpectedMappingLocalPath", i, expectedLocalPath, tfMapping.LocalPath));
                                 allMatch = false;
                                 break;
                             }
@@ -716,6 +717,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                     {
                         executionContext.Debug("Matching workspace found.");
                         return tfWorkspace;
+                    }
+                    else
+                    {
+                        executionContext.Output(StringUtil.Loc("WorkspaceMappingNotMatched", tfWorkspace.Name));
+                        foreach (var trace in matchTrace)
+                        {
+                            executionContext.Output(trace);
+                        }
                     }
                 }
 
