@@ -21,6 +21,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
     public interface IExecutionContext : IAgentService
     {
         TaskResult? Result { get; set; }
+        string ResultCode { get; set; }
         TaskResult? CommandResult { get; set; }
         CancellationToken CancellationToken { get; }
         List<ServiceEndpoint> Endpoints { get; }

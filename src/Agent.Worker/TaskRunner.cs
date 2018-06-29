@@ -187,6 +187,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 }
             }
 
+            if (endpointIds.Count > 0 && 
+                (ExecutionContext.Variables.GetBoolean(WellKnownDistributedTaskVariables.RestrictSecrets) ?? false) &&
+                (ExecutionContext.Variables.GetBoolean(Microsoft.TeamFoundation.Build.WebApi.BuildVariables.IsFork) ?? false))
+            {
+                ExecutionContext.Result = TaskResult.Skipped;
+                ExecutionContext.ResultCode = $"References service endpoint. PRs from repository forks are not allowed to access secrets in the pipeline. For more information see https://go.microsoft.com/fwlink/?linkid=862029 ";
+                return;
+            }
+
             // Get the endpoints referenced by the task.
             var endpoints = (ExecutionContext.Endpoints ?? new List<ServiceEndpoint>(0))
                 .Join(inner: endpointIds,
@@ -227,6 +236,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                         }
                     }
                 }
+            }
+
+            if (secureFileIds.Count > 0 &&
+                (ExecutionContext.Variables.GetBoolean(WellKnownDistributedTaskVariables.RestrictSecrets) ?? false) &&
+                (ExecutionContext.Variables.GetBoolean(Microsoft.TeamFoundation.Build.WebApi.BuildVariables.IsFork) ?? false))
+            {
+                ExecutionContext.Result = TaskResult.Skipped;
+                ExecutionContext.ResultCode = $"References secure file. PRs from repository forks are not allowed to access secrets in the pipeline. For more information see https://go.microsoft.com/fwlink/?linkid=862029";
+                return;
             }
 
             // Get the endpoints referenced by the task.

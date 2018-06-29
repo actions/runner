@@ -50,7 +50,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                 }
             });
             Guid JobId = Guid.NewGuid();
-            var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, JobId, jobName, jobName, "ubuntu", variables, new List<MaskHint>(), resources, tasks);
+            var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, JobId, jobName, jobName, "ubuntu", variables, new List<MaskHint>(), resources, null, tasks);
             return jobRequest;
         }
 
