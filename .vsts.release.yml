@@ -144,7 +144,7 @@ phases:
 ################################################################################
   displayName: Linux Agent
   queue:
-    name: Hosted Linux Preview
+    name: Hosted Ubuntu 1604
   steps:
 
   # Steps template for non-windows platform

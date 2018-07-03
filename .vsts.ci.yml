@@ -48,7 +48,7 @@ phases:
 ################################################################################
   displayName: Linux Agent
   queue:
-    name: Hosted Linux Preview
+    name: Hosted Ubuntu 1604
   condition: eq(false, variables.skip_linux)
   steps:
 
