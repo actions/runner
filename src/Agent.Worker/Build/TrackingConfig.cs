@@ -1,4 +1,5 @@
-﻿using Microsoft.TeamFoundation.DistributedTask.WebApi;
+﻿using Microsoft.TeamFoundation.DistributedTask.Pipelines;
+using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Newtonsoft.Json;
 using System;
 using System.ComponentModel;
@@ -41,7 +42,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             System = copy.System;
         }
 
-        public TrackingConfig(IExecutionContext executionContext, ServiceEndpoint endpoint, int buildDirectory, string hashKey)
+        public TrackingConfig(
+            IExecutionContext executionContext,
+            RepositoryResource repository,
+            int buildDirectory,
+            string hashKey)
         {
             // Set the directories.
             BuildDirectory = buildDirectory.ToString(CultureInfo.InvariantCulture);
@@ -53,8 +58,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             CollectionId = executionContext.Variables.System_CollectionId;
             DefinitionId = executionContext.Variables.System_DefinitionId;
             HashKey = hashKey;
-            RepositoryUrl = endpoint.Url.AbsoluteUri;
-            RepositoryType = endpoint.Type;
+            RepositoryUrl = repository.Url.AbsoluteUri;
+            RepositoryType = repository.Type;
             System = BuildSystem;
             UpdateJobRunProperties(executionContext);
         }

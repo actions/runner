@@ -64,7 +64,12 @@ namespace Agent.Plugins.Repository
             endpoint.Authorization.Parameters.TryGetValue(EndpointAuthorizationParameters.Username, out _username);
             endpoint.Authorization.Parameters.TryGetValue(EndpointAuthorizationParameters.Password, out _password);
 
-            _acceptUntrusted = StringUtil.ConvertToBoolean(repository.Properties.Get<string>(EndpointData.SvnAcceptUntrustedCertificates));
+            if (endpoint.Data.TryGetValue(EndpointData.AcceptUntrustedCertificates, out string endpointAcceptUntrustedCerts))
+            {
+                _acceptUntrusted = StringUtil.ConvertToBoolean(endpointAcceptUntrustedCerts);
+            }
+
+            _acceptUntrusted = _acceptUntrusted || (context.GetCertConfiguration()?.SkipServerCertificateValidation ?? false);
         }
 
         /// <summary>

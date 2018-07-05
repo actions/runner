@@ -15,6 +15,7 @@ using System.Text;
 using System.IO.Compression;
 using Microsoft.VisualStudio.Services.Agent.Worker.Build;
 using System.Diagnostics;
+using Newtonsoft.Json.Linq;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
@@ -118,17 +119,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     jobContext.AddIssue(new Issue() { Type = IssueType.Error, Message = errorMessage });
                 });
 
-                // Set agent version variable.
-                jobContext.Variables.Set(Constants.Variables.Agent.Version, Constants.Agent.Version);
-                jobContext.Output(StringUtil.Loc("AgentVersion", Constants.Agent.Version));
-
-                // Print proxy setting information for better diagnostic experience
-                var agentWebProxy = HostContext.GetService<IVstsAgentWebProxy>();
-                if (!string.IsNullOrEmpty(agentWebProxy.ProxyAddress))
-                {
-                    jobContext.Output(StringUtil.Loc("AgentRunningBehindProxy", agentWebProxy.ProxyAddress));
-                }
-
                 // Validate directory permissions.
                 string workDirectory = HostContext.GetDirectory(WellKnownDirectory.Work);
                 Trace.Info($"Validating directory permissions for: '{workDirectory}'");
@@ -216,6 +206,24 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 {
                     jobContext.Variables.ExpandValues(target: endpoint.Data);
                     VarUtil.ExpandEnvironmentVariables(HostContext, target: endpoint.Data);
+                }
+
+                // Expand the repository property values.
+                foreach (var repository in jobContext.Repositories)
+                {
+                    Dictionary<string, string> expandProperties = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                    foreach (var property in repository.Properties.GetItems())
+                    {
+                        expandProperties[property.Key] = JsonUtility.ToString(property.Value);
+                    }
+
+                    jobContext.Variables.ExpandValues(target: expandProperties);
+                    VarUtil.ExpandEnvironmentVariables(HostContext, target: expandProperties);
+
+                    foreach (var expandedProperty in expandProperties)
+                    {
+                        repository.Properties.Set<JToken>(expandedProperty.Key, JsonUtility.FromString<JToken>(expandedProperty.Value));
+                    }
                 }
 
                 // Get the job extension.

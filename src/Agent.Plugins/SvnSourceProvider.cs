@@ -27,11 +27,11 @@ namespace Agent.Plugins.Repository
             svn.Init(executionContext, repository, cancellationToken);
 
             // Determine the sources directory.
-            string sourcesDirectory = repository.Properties.Get<string>("sourcedirecotry");
-            executionContext.Debug($"sourcesDirectory={sourcesDirectory}");
-            ArgUtil.NotNullOrEmpty(sourcesDirectory, nameof(sourcesDirectory));
+            string sourceDirectory = repository.Properties.Get<string>("path");
+            executionContext.Debug($"sourceDirectory={sourceDirectory}");
+            ArgUtil.NotNullOrEmpty(sourceDirectory, nameof(sourceDirectory));
 
-            string sourceBranch = repository.Properties.Get<string>("sourcebranch");
+            string sourceBranch = repository.Properties.Get<string>(Pipelines.RepositoryPropertyNames.Ref);
             executionContext.Debug($"sourceBranch={sourceBranch}");
 
             string revision = repository.Version;
@@ -42,11 +42,12 @@ namespace Agent.Plugins.Repository
 
             executionContext.Debug($"revision={revision}");
 
-            bool clean = StringUtil.ConvertToBoolean(repository.Properties.Get<string>(EndpointData.Clean));
+            bool clean = StringUtil.ConvertToBoolean(executionContext.GetInput(Pipelines.PipelineConstants.CheckoutTaskInputs.Clean));
             executionContext.Debug($"clean={clean}");
 
             // Get the definition mappings.
-            List<SvnMappingDetails> allMappings = JsonConvert.DeserializeObject<SvnWorkspace>(repository.Properties.Get<string>(EndpointData.SvnWorkspaceMapping)).Mappings;
+            var mappings = repository.Properties.Get<IList<Pipelines.WorkspaceMapping>>(Pipelines.RepositoryPropertyNames.Mappings);
+            List<SvnMappingDetails> allMappings = mappings.Select(x => new SvnMappingDetails() { ServerPath = x.ServerPath, LocalPath = x.LocalPath, Revision = x.Revision, Depth = x.Depth, IgnoreExternals = x.IgnoreExternals }).ToList();
 
             if (StringUtil.ConvertToBoolean(executionContext.Variables.GetValueOrDefault("system.debug")?.Value))
             {
@@ -62,16 +63,16 @@ namespace Agent.Plugins.Repository
 
             string normalizedBranch = svn.NormalizeRelativePath(sourceBranch, '/', '\\');
 
-            executionContext.Output(StringUtil.Loc("SvnSyncingRepo", repository.Properties.Get<string>("name")));
+            executionContext.Output(StringUtil.Loc("SvnSyncingRepo", repository.Properties.Get<string>(Pipelines.RepositoryPropertyNames.Name)));
 
             string effectiveRevision = await svn.UpdateWorkspace(
-                sourcesDirectory,
+                sourceDirectory,
                 normalizedMappings,
                 clean,
                 normalizedBranch,
                 revision);
 
-            executionContext.Output(StringUtil.Loc("SvnBranchCheckedOut", normalizedBranch, repository.Properties.Get<string>("name"), effectiveRevision));
+            executionContext.Output(StringUtil.Loc("SvnBranchCheckedOut", normalizedBranch, repository.Properties.Get<string>(Pipelines.RepositoryPropertyNames.Name), effectiveRevision));
         }
 
         public Task PostJobCleanupAsync(AgentTaskPluginExecutionContext executionContext, Pipelines.RepositoryResource repository)

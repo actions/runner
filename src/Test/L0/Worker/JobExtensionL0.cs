@@ -41,7 +41,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                 return path;
             }
 
-            public override void InitializeJobExtension(IExecutionContext context)
+            public override void InitializeJobExtension(IExecutionContext context, IList<Pipelines.JobStep> steps, Pipelines.WorkspaceOptions workspace)
             {
                 return;
             }

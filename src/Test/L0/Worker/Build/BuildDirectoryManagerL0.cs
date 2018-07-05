@@ -1,4 +1,5 @@
 ﻿using Microsoft.TeamFoundation.DistributedTask.WebApi;
+using Pipelines = Microsoft.TeamFoundation.DistributedTask.Pipelines;
 using Microsoft.VisualStudio.Services.Agent.Worker;
 using Microsoft.VisualStudio.Services.Agent.Worker.Build;
 using Moq;
@@ -13,16 +14,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
 {
     public sealed class BuildDirectoryManagerL0
     {
-        private const string HashKey = "1234567890123456789012345678901234567890";
+        private const string HashKey = "4ee1398ce6c9874c8e9d08d09bc812546142f220";
         private const string NonmatchingHashKey = "0987654321098765432109876543210987654321";
         private const string CollectionId = "31ffacb8-b468-4e60-b2f9-c50ce437da92";
         private const string DefinitionId = "1234";
         private BuildDirectoryManager _buildDirectoryManager;
         private Mock<IExecutionContext> _ec;
-        private ServiceEndpoint _endpoint;
+        private Pipelines.RepositoryResource _repository;
+        private Pipelines.WorkspaceOptions _workspaceOptions;
         private TrackingConfig _existingConfig;
         private TrackingConfig _newConfig;
-        private Mock<ISourceProvider> _sourceProvider;
         private string _trackingFile;
         private Mock<ITrackingManager> _trackingManager;
         private Variables _variables;
@@ -37,7 +38,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
             using (TestHostContext hc = Setup())
             {
                 // Act.
-                _buildDirectoryManager.PrepareDirectory(_ec.Object, _endpoint, _sourceProvider.Object);
+                _buildDirectoryManager.PrepareDirectory(_ec.Object, _repository, _workspaceOptions);
 
                 // Assert.
                 Assert.True(Directory.Exists(Path.Combine(_workFolder, _newConfig.BuildDirectory, Constants.Build.Path.ArtifactsDirectory)));
@@ -55,10 +56,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
             using (TestHostContext hc = Setup())
             {
                 // Act.
-                _buildDirectoryManager.PrepareDirectory(_ec.Object, _endpoint, _sourceProvider.Object);
+                _buildDirectoryManager.PrepareDirectory(_ec.Object, _repository, _workspaceOptions);
 
                 // Assert.
-                _trackingManager.Verify(x => x.Create(_ec.Object, _endpoint, HashKey, _trackingFile, false));
+                _trackingManager.Verify(x => x.Create(_ec.Object, _repository, HashKey, _trackingFile, false));
             }
         }
 
@@ -71,11 +72,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
             using (TestHostContext hc = Setup(existingConfigKind: ExistingConfigKind.Nonmatching))
             {
                 // Act.
-                _buildDirectoryManager.PrepareDirectory(_ec.Object, _endpoint, _sourceProvider.Object);
+                _buildDirectoryManager.PrepareDirectory(_ec.Object, _repository, _workspaceOptions);
 
                 // Assert.
                 _trackingManager.Verify(x => x.LoadIfExists(_ec.Object, _trackingFile));
-                _trackingManager.Verify(x => x.Create(_ec.Object, _endpoint, HashKey, _trackingFile, false));
+                _trackingManager.Verify(x => x.Create(_ec.Object, _repository, HashKey, _trackingFile, false));
                 _trackingManager.Verify(x => x.MarkForGarbageCollection(_ec.Object, _existingConfig));
             }
         }
@@ -94,7 +95,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
                 File.WriteAllText(path: sourceFile, contents: "some source contents");
 
                 // Act.
-                _buildDirectoryManager.PrepareDirectory(_ec.Object, _endpoint, _sourceProvider.Object);
+                _buildDirectoryManager.PrepareDirectory(_ec.Object, _repository, _workspaceOptions);
 
                 // Assert.
                 Assert.True(Directory.Exists(sourcesDirectory));
@@ -121,7 +122,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
                 File.WriteAllText(path: testResultsFile, contents: "some test result contents");
 
                 // Act.
-                _buildDirectoryManager.PrepareDirectory(_ec.Object, _endpoint, _sourceProvider.Object);
+                _buildDirectoryManager.PrepareDirectory(_ec.Object, _repository, _workspaceOptions);
 
                 // Assert.
                 Assert.True(Directory.Exists(artifactsDirectory));
@@ -146,7 +147,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
                 File.WriteAllText(path: looseFile, contents: "some loose file contents");
 
                 // Act.
-                _buildDirectoryManager.PrepareDirectory(_ec.Object, _endpoint, _sourceProvider.Object);
+                _buildDirectoryManager.PrepareDirectory(_ec.Object, _repository, _workspaceOptions);
 
                 // Assert.
                 Assert.Equal(4, Directory.GetFileSystemEntries(buildDirectory, "*", SearchOption.AllDirectories).Length);
@@ -171,7 +172,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
                 File.WriteAllText(path: binaryFile, contents: "some binary contents");
 
                 // Act.
-                _buildDirectoryManager.PrepareDirectory(_ec.Object, _endpoint, _sourceProvider.Object);
+                _buildDirectoryManager.PrepareDirectory(_ec.Object, _repository, _workspaceOptions);
 
                 // Assert.
                 Assert.True(Directory.Exists(binariesDirectory));
@@ -188,7 +189,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
             using (TestHostContext hc = Setup(existingConfigKind: ExistingConfigKind.Matching))
             {
                 // Act.
-                _buildDirectoryManager.PrepareDirectory(_ec.Object, _endpoint, _sourceProvider.Object);
+                _buildDirectoryManager.PrepareDirectory(_ec.Object, _repository, _workspaceOptions);
 
                 // Assert.
                 _trackingManager.Verify(x => x.LoadIfExists(_ec.Object, _trackingFile));
@@ -231,28 +232,31 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
                 Constants.Build.Path.TrackingConfigFile);
 
             // Setup the endpoint.
-            _endpoint = new ServiceEndpoint()
+            _repository = new Pipelines.RepositoryResource()
             {
-                Name = "Some endpoint name",
+                Alias = "test",
+                Type = Pipelines.RepositoryTypes.Git,
                 Url = new Uri("http://contoso.visualstudio.com"),
             };
+            _repository.Properties.Set<String>(Pipelines.RepositoryPropertyNames.Name, "Some endpoint name");
 
-            // Setup the source provider.
-            _sourceProvider = new Mock<ISourceProvider>();
-            _sourceProvider
-                .Setup(x => x.GetBuildDirectoryHashKey(_ec.Object, _endpoint))
-                .Returns(HashKey);
-            hc.SetSingleton<ISourceProvider>(_sourceProvider.Object);
+            _workspaceOptions = new Pipelines.WorkspaceOptions();
+            // // Setup the source provider.
+            // _sourceProvider = new Mock<ISourceProvider>();
+            // _sourceProvider
+            //     .Setup(x => x.GetBuildDirectoryHashKey(_ec.Object, _repository))
+            //     .Returns(HashKey);
+            // hc.SetSingleton<ISourceProvider>(_sourceProvider.Object);
 
             // Store the existing config object.
             switch (existingConfigKind)
             {
                 case ExistingConfigKind.Matching:
-                    _existingConfig = new TrackingConfig(_ec.Object, _endpoint, 1, HashKey);
+                    _existingConfig = new TrackingConfig(_ec.Object, _repository, 1, HashKey);
                     Assert.Equal("1", _existingConfig.BuildDirectory);
                     break;
                 case ExistingConfigKind.Nonmatching:
-                    _existingConfig = new TrackingConfig(_ec.Object, _endpoint, 2, NonmatchingHashKey);
+                    _existingConfig = new TrackingConfig(_ec.Object, _repository, 2, NonmatchingHashKey);
                     Assert.Equal("2", _existingConfig.BuildDirectory);
                     break;
                 case ExistingConfigKind.None:
@@ -268,7 +272,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
             }
             else
             {
-                _newConfig = new TrackingConfig(_ec.Object, _endpoint, 3, HashKey);
+                _newConfig = new TrackingConfig(_ec.Object, _repository, 3, HashKey);
                 Assert.Equal("3", _newConfig.BuildDirectory);
             }
 
@@ -280,7 +284,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
             if (existingConfigKind == ExistingConfigKind.None || existingConfigKind == ExistingConfigKind.Nonmatching)
             {
                 _trackingManager
-                    .Setup(x => x.Create(_ec.Object, _endpoint, HashKey, _trackingFile, false))
+                    .Setup(x => x.Create(_ec.Object, _repository, HashKey, _trackingFile, false))
                     .Returns(_newConfig);
                 if (existingConfigKind == ExistingConfigKind.Nonmatching)
                 {

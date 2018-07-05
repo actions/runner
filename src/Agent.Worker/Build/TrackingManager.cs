@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Globalization;
+using Microsoft.TeamFoundation.DistributedTask.Pipelines;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 {
@@ -15,7 +16,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
     {
         TrackingConfig Create(
             IExecutionContext executionContext,
-            ServiceEndpoint endpoint,
+            RepositoryResource repository,
             string hashKey,
             string file,
             bool overrideBuildDirectory);
@@ -39,7 +40,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
     {
         public TrackingConfig Create(
             IExecutionContext executionContext,
-            ServiceEndpoint endpoint,
+            RepositoryResource repository,
             string hashKey,
             string file,
             bool overrideBuildDirectory)
@@ -111,7 +112,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             // Create the new tracking config.
             TrackingConfig config = new TrackingConfig(
                 executionContext,
-                endpoint,
+                repository,
                 topLevelConfig.LastBuildDirectoryNumber,
                 hashKey);
             WriteToFile(file, config);

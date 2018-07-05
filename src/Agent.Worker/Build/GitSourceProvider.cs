@@ -14,7 +14,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 {
     public class ExternalGitSourceProvider : GitSourceProvider
     {
-        public override string RepositoryType => RepositoryTypes.Git;
+        public override string RepositoryType => TeamFoundation.DistributedTask.Pipelines.RepositoryTypes.ExternalGit;
 
         // external git repository won't use auth header cmdline arg, since we don't know the auth scheme.
         public override bool GitUseAuthHeaderCmdlineArg => false;
@@ -87,22 +87,22 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
     public sealed class GitHubSourceProvider : AuthenticatedGitSourceProvider
     {
-        public override string RepositoryType => RepositoryTypes.GitHub;
+        public override string RepositoryType => TeamFoundation.DistributedTask.Pipelines.RepositoryTypes.GitHub;
     }
 
     public sealed class GitHubEnterpriseSourceProvider : AuthenticatedGitSourceProvider
     {
-        public override string RepositoryType => RepositoryTypes.GitHubEnterprise;
+        public override string RepositoryType => TeamFoundation.DistributedTask.Pipelines.RepositoryTypes.GitHubEnterprise;
     }
 
     public sealed class BitbucketSourceProvider : AuthenticatedGitSourceProvider
     {
-        public override string RepositoryType => RepositoryTypes.Bitbucket;
+        public override string RepositoryType => TeamFoundation.DistributedTask.Pipelines.RepositoryTypes.Bitbucket;
     }
 
     public sealed class TfsGitSourceProvider : GitSourceProvider
     {
-        public override string RepositoryType => RepositoryTypes.TfsGit;
+        public override string RepositoryType => TeamFoundation.DistributedTask.Pipelines.RepositoryTypes.Git;
 
         public override bool GitUseAuthHeaderCmdlineArg
         {

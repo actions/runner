@@ -22,7 +22,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
                 return path;
             }
 
-            return path + Path.PathSeparator + currentPath;
+            // Not prepend path if it is already the first path in %PATH%
+            if (currentPath.StartsWith(path + Path.PathSeparator, IOUtil.FilePathStringComparison))
+            {
+                return currentPath;
+            }
+            else
+            {
+                return path + Path.PathSeparator + currentPath;
+            }
         }
 
         public static void PrependPath(string directory)

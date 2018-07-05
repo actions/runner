@@ -35,7 +35,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         public abstract Type ExtensionType { get; }
 
         // Anything job extension want to do before building the steps list.
-        public abstract void InitializeJobExtension(IExecutionContext context);
+        public abstract void InitializeJobExtension(IExecutionContext context, IList<Pipelines.JobStep> steps, Pipelines.WorkspaceOptions workspace);
 
         // Anything job extension want to add to pre-job steps list. This will be deprecated when GetSource move to a task.
         public abstract IStep GetExtensionPreJobStep(IExecutionContext jobContext);
@@ -67,9 +67,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     context.Start();
                     context.Section(StringUtil.Loc("StepStarting", StringUtil.Loc("InitializeJob")));
 
+                    // Set agent version variable.
+                    context.Variables.Set(Constants.Variables.Agent.Version, Constants.Agent.Version);
+                    context.Output(StringUtil.Loc("AgentVersion", Constants.Agent.Version));
+
+                    // Print proxy setting information for better diagnostic experience
+                    var agentWebProxy = HostContext.GetService<IVstsAgentWebProxy>();
+                    if (!string.IsNullOrEmpty(agentWebProxy.ProxyAddress))
+                    {
+                        context.Output(StringUtil.Loc("AgentRunningBehindProxy", agentWebProxy.ProxyAddress));
+                    }
+
                     // Give job extension a chance to initialize
                     Trace.Info($"Run initial step from extension {this.GetType().Name}.");
-                    InitializeJobExtension(context);
+                    InitializeJobExtension(context, message.Steps, message.Workspace);
 
                     // Download tasks if not already in the cache
                     Trace.Info("Downloading task definitions.");

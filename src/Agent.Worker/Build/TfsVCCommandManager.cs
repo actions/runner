@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Text;
+using Microsoft.TeamFoundation.DistributedTask.Pipelines;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 {
@@ -17,6 +18,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
     {
         CancellationToken CancellationToken { set; }
         ServiceEndpoint Endpoint { set; }
+        RepositoryResource Repository { set; }
         IExecutionContext ExecutionContext { set; }
         TfsVCFeatures Features { get; }
         string FilePath { get; }
@@ -55,6 +57,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
         public ServiceEndpoint Endpoint { protected get; set; }
 
+        public RepositoryResource Repository { protected get; set; }
+
         public IExecutionContext ExecutionContext { protected get; set; }
 
         public abstract TfsVCFeatures Features { get; }
@@ -65,7 +69,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         {
             get
             {
-                string version = GetEndpointData(Endpoint, Constants.EndpointData.SourceVersion);
+                string version = Repository?.Version ?? GetEndpointData(Endpoint, Constants.EndpointData.SourceVersion);
                 ArgUtil.NotNullOrEmpty(version, nameof(version));
                 return version;
             }
@@ -75,7 +79,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         {
             get
             {
-                string sourcesDirectory = GetEndpointData(Endpoint, Constants.EndpointData.SourcesDirectory);
+                string sourcesDirectory = Repository?.Properties?.Get<string>("path") ?? GetEndpointData(Endpoint, Constants.EndpointData.SourcesDirectory);
                 ArgUtil.NotNullOrEmpty(sourcesDirectory, nameof(sourcesDirectory));
                 return sourcesDirectory;
             }
@@ -234,7 +238,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             ArgUtil.Equal(EndpointAuthorizationSchemes.OAuth, Endpoint.Authorization.Scheme, nameof(Endpoint.Authorization.Scheme));
             string accessToken = Endpoint.Authorization.Parameters.TryGetValue(EndpointAuthorizationParameters.AccessToken, out accessToken) ? accessToken : null;
             ArgUtil.NotNullOrEmpty(accessToken, EndpointAuthorizationParameters.AccessToken);
-            ArgUtil.NotNull(Endpoint.Url, nameof(Endpoint.Url));
+            ArgUtil.NotNull(Repository?.Url ?? Endpoint.Url, nameof(Endpoint.Url));
 
             // Format each arg.
             var formattedArgs = new List<string>();
@@ -255,7 +259,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             {
                 if (Features.HasFlag(TfsVCFeatures.EscapedUrl))
                 {
-                    formattedArgs.Add($"{Switch}collection:{Endpoint.Url.AbsoluteUri}");
+                    formattedArgs.Add($"{Switch}collection:{Repository?.Url?.AbsoluteUri ?? Endpoint.Url.AbsoluteUri}");
                 }
                 else
                 {
@@ -263,14 +267,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                     string url;
                     try
                     {
-                        url = Uri.UnescapeDataString(Endpoint.Url.AbsoluteUri);
+                        url = Uri.UnescapeDataString(Repository?.Url?.AbsoluteUri ?? Endpoint.Url.AbsoluteUri);
                     }
                     catch (Exception ex)
                     {
                         // Unlikely (impossible?), but don't fail if encountered. If we don't hear complaints
                         // about this warning then it is likely OK to remove the try/catch altogether and have
                         // faith that UnescapeDataString won't throw for this scenario.
-                        url = Endpoint.Url.AbsoluteUri;
+                        url = Repository?.Url?.AbsoluteUri ?? Endpoint.Url.AbsoluteUri;
                         ExecutionContext.Warning($"{ex.Message} ({url})");
                     }
 

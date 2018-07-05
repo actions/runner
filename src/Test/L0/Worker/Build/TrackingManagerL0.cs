@@ -1,4 +1,5 @@
 ﻿using Microsoft.TeamFoundation.DistributedTask.WebApi;
+using Pipelines = Microsoft.TeamFoundation.DistributedTask.Pipelines;
 using Microsoft.VisualStudio.Services.Agent.Worker;
 using Microsoft.VisualStudio.Services.Agent.Worker.Build;
 using Moq;
@@ -22,9 +23,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
         private const string CollectionUrl = "http://contoso:8080/tfs/DefaultCollection/";
         private const string DefinitionId = "1234";
         private const string DefinitionName = "Some definition name";
-        private const string EndpointUrl = "http://contoso:8080/tfs/DefaultCollection/_git/gitTest";
+        private const string RepositoryUrl = "http://contoso:8080/tfs/DefaultCollection/_git/gitTest";
         private Mock<IExecutionContext> _ec;
-        private ServiceEndpoint _endpoint;
+        private Pipelines.RepositoryResource _repository;
         private TrackingManager _trackingManager;
         private Variables _variables;
         private string _workFolder;
@@ -48,7 +49,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
             _ec.Setup(x => x.Variables).Returns(_variables);
 
             // Setup the endpoint.
-            _endpoint = new ServiceEndpoint() { Url = new Uri(EndpointUrl) };
+            _repository = new Pipelines.RepositoryResource() { Url = new Uri(RepositoryUrl) };
 
             // Setup the tracking manager.
             _trackingManager = new TrackingManager();
@@ -69,7 +70,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
                 DateTimeOffset testStartOn = DateTimeOffset.Now;
 
                 // Act.
-                _trackingManager.Create(_ec.Object, _endpoint, "some hash key", trackingFile, false);
+                _trackingManager.Create(_ec.Object, _repository, "some hash key", trackingFile, false);
 
                 // Assert.
                 string topLevelFile = Path.Combine(
@@ -99,7 +100,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
                 DateTimeOffset testStartOn = DateTimeOffset.Now;
 
                 // Act.
-                _trackingManager.Create(_ec.Object, _endpoint, HashKey, trackingFile, false);
+                _trackingManager.Create(_ec.Object, _repository, HashKey, trackingFile, false);
 
                 // Assert.
                 TrackingConfig config = _trackingManager.LoadIfExists(_ec.Object, trackingFile) as TrackingConfig;
@@ -117,7 +118,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
                 // date-time-offset is serialized in a friendly format.
                 Assert.True(testStartOn.AddSeconds(-1) <= config.LastRunOn);
                 Assert.True(DateTimeOffset.Now.AddSeconds(1) >= config.LastRunOn);
-                Assert.Equal(EndpointUrl, config.RepositoryUrl);
+                Assert.Equal(RepositoryUrl, config.RepositoryUrl);
                 Assert.Equal(
                     Path.Combine("1", Constants.Build.Path.SourcesDirectory),
                     config.SourcesDirectory);
@@ -470,11 +471,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
             {
                 // Arrange.
                 string trackingFile = Path.Combine(_workFolder, "trackingconfig.json");
-                _trackingManager.Create(_ec.Object, _endpoint, "some hash key", trackingFile, false);
+                _trackingManager.Create(_ec.Object, _repository, "some hash key", trackingFile, false);
                 DateTimeOffset testStartOn = DateTimeOffset.Now;
 
                 // Act.
-                _trackingManager.Create(_ec.Object, _endpoint, "some hash key", trackingFile, false);
+                _trackingManager.Create(_ec.Object, _repository, "some hash key", trackingFile, false);
 
                 // Assert.
                 string topLevelFile = Path.Combine(

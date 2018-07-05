@@ -1,4 +1,5 @@
 using Microsoft.TeamFoundation.Build.WebApi;
+using Microsoft.TeamFoundation.DistributedTask.Pipelines;
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using Newtonsoft.Json;
@@ -16,7 +17,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
     {
         private bool _undoShelvesetPendingChanges = false;
 
-        public override string RepositoryType => RepositoryTypes.TfsVersionControl;
+        public override string RepositoryType => TeamFoundation.DistributedTask.Pipelines.RepositoryTypes.Tfvc;
 
         public async Task GetSourceAsync(
             IExecutionContext executionContext,
@@ -492,18 +493,21 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             }
         }
 
-        public override string GetLocalPath(IExecutionContext executionContext, ServiceEndpoint endpoint, string path)
+        public override string GetLocalPath(IExecutionContext executionContext, RepositoryResource repository, string path)
         {
             ArgUtil.NotNull(executionContext, nameof(executionContext));
             ArgUtil.NotNull(executionContext.Variables, nameof(executionContext.Variables));
-            ArgUtil.NotNull(endpoint, nameof(endpoint));
+            ArgUtil.NotNull(repository, nameof(repository));
+            ArgUtil.NotNull(repository.Endpoint, nameof(repository.Endpoint));
+
             path = path ?? string.Empty;
             if (path.StartsWith("$/") || path.StartsWith(@"$\"))
             {
                 // Create the tf command manager.
                 var tf = HostContext.CreateService<ITfsVCCommandManager>();
                 tf.CancellationToken = CancellationToken.None;
-                tf.Endpoint = endpoint;
+                tf.Repository = repository;
+                tf.Endpoint = executionContext.Endpoints.Single(x => (repository.Endpoint.Id != Guid.Empty && x.Id == repository.Endpoint.Id) || (repository.Endpoint.Id == Guid.Empty && string.Equals(x.Name, repository.Endpoint.Name, StringComparison.OrdinalIgnoreCase)));
                 tf.ExecutionContext = executionContext;
 
                 // Attempt to resolve the path.
@@ -524,13 +528,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             endpoint.Data.Add(Constants.EndpointData.SourceTfvcShelveset, executionContext.Variables.Get(Constants.Variables.Build.SourceTfvcShelveset));
             endpoint.Data.Add(Constants.EndpointData.GatedShelvesetName, executionContext.Variables.Get(Constants.Variables.Build.GatedShelvesetName));
             endpoint.Data.Add(Constants.EndpointData.GatedRunCI, executionContext.Variables.Get(Constants.Variables.Build.GatedRunCI));
-        }
-
-        public sealed override bool TestOverrideBuildDirectory()
-        {
-            var configurationStore = HostContext.GetService<IConfigurationStore>();
-            AgentSettings settings = configurationStore.GetSettings();
-            return settings.IsHosted;
         }
 
         private async Task RemoveConflictingWorkspacesAsync(ITfsVCCommandManager tf, ITfsVCWorkspace[] tfWorkspaces, string name, string directory)

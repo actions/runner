@@ -189,47 +189,70 @@ namespace Agent.Plugins.Repository
             bool useSelfSignedCACert = false;
             bool useClientCert = false;
             string clientCertPrivateKeyAskPassFile = null;
+            bool acceptUntrustedCerts = false;
 
-            executionContext.Output($"Syncing repository: {repository.Properties.Get<string>("name")} ({repository.Type})");
+            executionContext.Output($"Syncing repository: {repository.Properties.Get<string>(Pipelines.RepositoryPropertyNames.Name)} ({repository.Type})");
             Uri repositoryUrl = repository.Url;
             if (!repositoryUrl.IsAbsoluteUri)
             {
                 throw new InvalidOperationException("Repository url need to be an absolute uri.");
             }
 
-            //string targetPath = repository.Properties.Get<string>("sourcedirectory");
-            string targetPath = executionContext.Variables.GetValueOrDefault("build.sourcesdirectory")?.Value;
-            string sourceBranch = repository.Properties.Get<string>("sourcebranch");
+            string targetPath = repository.Properties.Get<string>("path");
+            string sourceBranch = repository.Properties.Get<string>(Pipelines.RepositoryPropertyNames.Ref);
             string sourceVersion = repository.Version;
 
-            bool clean = StringUtil.ConvertToBoolean(repository.Properties.Get<string>(EndpointData.Clean));
-            bool checkoutSubmodules = StringUtil.ConvertToBoolean(repository.Properties.Get<string>(EndpointData.CheckoutSubmodules));
-            bool checkoutNestedSubmodules = StringUtil.ConvertToBoolean(repository.Properties.Get<string>(EndpointData.CheckoutNestedSubmodules));
-            bool acceptUntrustedCerts = StringUtil.ConvertToBoolean(repository.Properties.Get<string>(EndpointData.AcceptUntrustedCertificates));
+            bool clean = StringUtil.ConvertToBoolean(executionContext.GetInput(Pipelines.PipelineConstants.CheckoutTaskInputs.Clean));
+
+            bool checkoutSubmodules = false;
+            bool checkoutNestedSubmodules = false;
+            string submoduleInput = executionContext.GetInput(Pipelines.PipelineConstants.CheckoutTaskInputs.Submodules);
+            if (!string.IsNullOrEmpty(submoduleInput))
+            {
+                checkoutSubmodules = true;
+                if (string.Equals(submoduleInput, Pipelines.PipelineConstants.CheckoutTaskInputs.SubmodulesOptions.Recursive, StringComparison.OrdinalIgnoreCase))
+                {
+                    checkoutNestedSubmodules = true;
+                }
+            }
+
+            // retrieve credential from endpoint.
+            ServiceEndpoint endpoint = null;
+            if (repository.Endpoint != null)
+            {
+                // the endpoint should either be the SystemVssConnection (id = guild.empty, name = SystemVssConnection)
+                // or a real service endpoint to external service which has a real id
+                endpoint = executionContext.Endpoints.Single(x => (x.Id != Guid.Empty && x.Id == repository.Endpoint.Id) || (x.Id == Guid.Empty && x.Name == repository.Endpoint.Name));
+            }
+
+            if (endpoint.Data.TryGetValue(EndpointData.AcceptUntrustedCertificates, out string endpointAcceptUntrustedCerts))
+            {
+                acceptUntrustedCerts = StringUtil.ConvertToBoolean(endpointAcceptUntrustedCerts);
+            }
 
             var agentCert = executionContext.GetCertConfiguration();
             acceptUntrustedCerts = acceptUntrustedCerts || (agentCert?.SkipServerCertificateValidation ?? false);
 
             int fetchDepth = 0;
-            if (!int.TryParse(repository.Properties.Get<string>(EndpointData.FetchDepth), out fetchDepth) || fetchDepth < 0)
+            if (!int.TryParse(executionContext.GetInput(Pipelines.PipelineConstants.CheckoutTaskInputs.FetchDepth), out fetchDepth) || fetchDepth < 0)
             {
                 fetchDepth = 0;
             }
+
             // prefer feature variable over endpoint data
             if (int.TryParse(executionContext.Variables.GetValueOrDefault("agent.source.git.shallowFetchDepth")?.Value, out int fetchDepthOverwrite) && fetchDepthOverwrite >= 0)
             {
                 fetchDepth = fetchDepthOverwrite;
             }
 
-            bool gitLfsSupport = StringUtil.ConvertToBoolean(repository.Properties.Get<string>(EndpointData.GitLfsSupport));
+            bool gitLfsSupport = StringUtil.ConvertToBoolean(executionContext.GetInput(Pipelines.PipelineConstants.CheckoutTaskInputs.Lfs));
             // prefer feature variable over endpoint data
             if (executionContext.Variables.GetValueOrDefault("agent.source.git.lfs") != null)
             {
                 gitLfsSupport = StringUtil.ConvertToBoolean(executionContext.Variables.GetValueOrDefault("agent.source.git.lfs")?.Value);
             }
 
-            // TODO: Make sure server set this.
-            bool exposeCred = StringUtil.ConvertToBoolean(repository.Properties.Get<string>("preservecredential"));
+            bool exposeCred = StringUtil.ConvertToBoolean(executionContext.GetInput(Pipelines.PipelineConstants.CheckoutTaskInputs.PersistCredentials));
 
             executionContext.Debug($"repository url={repositoryUrl}");
             executionContext.Debug($"targetPath={targetPath}");
@@ -284,15 +307,6 @@ namespace Agent.Plugins.Repository
             // 1. git version greater than 2.9  and git-lfs version greater than 2.1 for on-prem tfsgit
             // 2. git version greater than 2.14.2 if use SChannel for SSL backend (Windows only)
             RequirementCheck(executionContext, repository, gitCommandManager);
-
-            // retrieve credential from endpoint.
-            ServiceEndpoint endpoint = null;
-            if (repository.Endpoint != null)
-            {
-                // the endpoint should either be the SystemVssConnection (id = guild.empty, name = SystemVssConnection)
-                // or a real service endpoint to external service which has a real id
-                endpoint = executionContext.Endpoints.Single(x => (x.Id == Guid.Empty && x.Name == repository.Endpoint.Name) || (x.Id != Guid.Empty && x.Id == repository.Endpoint.Id));
-            }
 
             string username = string.Empty;
             string password = string.Empty;
@@ -969,10 +983,16 @@ namespace Agent.Plugins.Repository
             }
 
             // Set intra-task variable for post job cleanup
+            executionContext.SetTaskVariable("repository", repository.Alias);
+
             if (selfManageGitCreds)
             {
                 // no needs to cleanup creds, since customer choose to manage creds themselves.
                 executionContext.SetTaskVariable("cleanupcreds", "false");
+            }
+            else if (exposeCred)
+            {
+                executionContext.SetTaskVariable("cleanupcreds", "true");
             }
 
             if (preferGitFromPath)
@@ -1002,11 +1022,10 @@ namespace Agent.Plugins.Repository
             ArgUtil.NotNull(executionContext, nameof(executionContext));
             ArgUtil.NotNull(repository, nameof(repository));
 
-            executionContext.Output($"Cleaning any cached credential from repository: {repository.Properties.Get<string>("name")} (Git)");
+            executionContext.Output($"Cleaning any cached credential from repository: {repository.Properties.Get<string>(Pipelines.RepositoryPropertyNames.Name)} ({repository.Type})");
 
             Uri repositoryUrl = repository.Url;
-            //string targetPath = repository.Properties.Get<string>("sourcedirectory");
-            string targetPath = executionContext.Variables.GetValueOrDefault("build.sourcesdirectory")?.Value;
+            string targetPath = repository.Properties.Get<string>("path");
 
             executionContext.Debug($"Repository url={repositoryUrl}");
             executionContext.Debug($"targetPath={targetPath}");

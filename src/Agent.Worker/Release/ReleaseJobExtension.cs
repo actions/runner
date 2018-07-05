@@ -12,6 +12,7 @@ using Microsoft.VisualStudio.Services.ReleaseManagement.WebApi.Contracts;
 using Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts;
 using Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts.Definition;
 using Newtonsoft.Json;
+using Microsoft.TeamFoundation.DistributedTask.Pipelines;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
 {
@@ -281,7 +282,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release
             executionContext.Output(StringUtil.Loc("RMCreatedArtifactsDirectory", artifactsWorkingFolder));
         }
 
-        public override void InitializeJobExtension(IExecutionContext executionContext)
+        public override void InitializeJobExtension(IExecutionContext executionContext, IList<JobStep> steps, WorkspaceOptions workspace)
         {
             Trace.Entering();
             ArgUtil.NotNull(executionContext, nameof(executionContext));

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.TeamFoundation.Build.WebApi;
+using Microsoft.TeamFoundation.DistributedTask.Pipelines;
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using Newtonsoft.Json;
@@ -12,7 +13,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 {
     public sealed class SvnSourceProvider : SourceProvider, ISourceProvider
     {
-        public override string RepositoryType => RepositoryTypes.Svn;
+        public override string RepositoryType => TeamFoundation.DistributedTask.Pipelines.RepositoryTypes.Svn;
 
         public async Task GetSourceAsync(
             IExecutionContext executionContext,
@@ -49,6 +50,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             executionContext.Debug($"clean={clean}");
 
             // Get the definition mappings.
+            executionContext.Debug(endpoint.Data[EndpointData.SvnWorkspaceMapping]);
             List<SvnMappingDetails> allMappings = JsonConvert.DeserializeObject<SvnWorkspace>
                 (endpoint.Data[EndpointData.SvnWorkspaceMapping]).Mappings;
 
@@ -79,12 +81,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             Trace.Verbose("Leaving SvnSourceProvider.GetSourceAsync");
         }
 
-        public override string GetLocalPath(IExecutionContext executionContext, ServiceEndpoint endpoint, string path)
+        public override string GetLocalPath(IExecutionContext executionContext, RepositoryResource repository, string path)
         {
             Trace.Verbose("Entering SvnSourceProvider.GetLocalPath");
 
             ISvnCommandManager svn = HostContext.CreateService<ISvnCommandManager>();
-            svn.Init(executionContext, endpoint, CancellationToken.None);
+            svn.Init(executionContext, repository, CancellationToken.None);
 
             // We assume that this is a server path first.
             string serverPath = svn.NormalizeRelativePath(path, '/', '\\').Trim();
@@ -93,7 +95,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             if (serverPath.StartsWith("^/"))
             {
                 // Convert the server path to the relative one using SVN work copy mappings
-                string sourcesDirectory = GetEndpointData(endpoint, Constants.EndpointData.SourcesDirectory);
+                string sourcesDirectory = repository.Properties.Get<string>("path");
                 localPath = svn.ResolveServerPath(serverPath, sourcesDirectory);
             }
             else

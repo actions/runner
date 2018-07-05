@@ -1,4 +1,5 @@
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
+using Pipelines = Microsoft.TeamFoundation.DistributedTask.Pipelines;
 using Microsoft.VisualStudio.Services.Agent.Worker;
 using Microsoft.VisualStudio.Services.Agent.Worker.Build;
 using Moq;
@@ -10,11 +11,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
 {
     public sealed class SourceProviderL0
     {
-        private sealed class ConcreteSourceProvider : SourceProvider
-        {
-            public override string RepositoryType => "Some repository type";
-        }
-
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
@@ -30,15 +26,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
                     .Returns(new Variables(tc, copy: new Dictionary<string, VariableValue>(), warnings: out warnings));
                 executionContext.Object.Variables.Set(Constants.Variables.System.CollectionId, "7aee6dde-6381-4098-93e7-50a8264cf066");
                 executionContext.Object.Variables.Set(Constants.Variables.System.DefinitionId, "7");
-                var endpoint = new ServiceEndpoint
-                {
-                    Url = new Uri("http://contoso:8080/tfs/DefaultCollection/gitTest/_git/gitTest"),
-                };
-                var sourceProvider = new ConcreteSourceProvider();
-                sourceProvider.Initialize(tc);
 
+                Pipelines.RepositoryResource repository = new Pipelines.RepositoryResource() { Url = new Uri("http://contoso:8080/tfs/DefaultCollection/gitTest/_git/gitTest") };
+                
                 // Act.
-                string hashKey = sourceProvider.GetBuildDirectoryHashKey(executionContext.Object, endpoint);
+                string hashKey = repository.GetSourceDirectoryHashKey(executionContext.Object);
 
                 // Assert.
                 Assert.Equal("5c5c3d7ac33cca6604736eb3af977f23f1cf1146", hashKey);

@@ -82,7 +82,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Release
             {
                 _releaseDirectoryManager.Setup(manager => manager.PrepareArtifactsDirectory(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.Is<string>(s => s.Equals(id.ToString())))).Returns(map);
 
-                releaseJobExtension.InitializeJobExtension(_ec.Object);
+                releaseJobExtension.InitializeJobExtension(_ec.Object, null, null);
 
                 Assert.Equal(Path.Combine(this.stubWorkFolder, "r1", Constants.Release.Path.ArtifactsDirectory), _ec.Object.Variables.Get(Constants.Variables.Release.AgentReleaseDirectory));
                 Assert.Equal(Path.Combine(this.stubWorkFolder, "r1", Constants.Release.Path.ArtifactsDirectory), _ec.Object.Variables.Get(Constants.Variables.Release.ArtifactsDirectory));
@@ -101,7 +101,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Release
             {
                 _releaseDirectoryManager.Setup(manager => manager.PrepareArtifactsDirectory(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.Is<string>(s => s.Equals(releaseDefinitionName)))).Returns(map);
 
-                releaseJobExtension.InitializeJobExtension(_ec.Object);
+                releaseJobExtension.InitializeJobExtension(_ec.Object, null, null);
 
                 Assert.Equal(Path.Combine(this.stubWorkFolder, "r1", Constants.Release.Path.ArtifactsDirectory), _ec.Object.Variables.Get(Constants.Variables.Release.AgentReleaseDirectory));
                 Assert.Equal(Path.Combine(this.stubWorkFolder, "r1", Constants.Release.Path.ArtifactsDirectory), _ec.Object.Variables.Get(Constants.Variables.Release.ArtifactsDirectory));

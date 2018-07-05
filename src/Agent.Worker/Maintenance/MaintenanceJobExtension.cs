@@ -1,5 +1,7 @@
+using Microsoft.TeamFoundation.DistributedTask.Pipelines;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Maintenance
@@ -66,7 +68,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Maintenance
             }
         }
 
-        public override void InitializeJobExtension(IExecutionContext context)
+        public override void InitializeJobExtension(IExecutionContext context, IList<JobStep> steps, WorkspaceOptions workspace)
         {
             return;
         }
