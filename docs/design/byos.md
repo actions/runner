@@ -11,12 +11,13 @@ This is in the early design phase and we are looking for feedback.  Feedback can
 ## Goals
 
 - **Fully automated dedicated agents with elasticity**: User configures contraints and we provision, start and stop the agents.
-- **Control of Image and Toolsets**: Pick the image to use.  Stay on it until you change the configuration.  Use our published images that we release monthly.
+- **Control of image and toolsets**: Pick the image to use.  Stay on it until you change the configuration.  Use our published images that we release monthly.
+- **Control machine configurations**: User can provide VM sku and other configuration options (provide ARM).
 - **Control agent lifetime**: Builds can be single use, or thrown away on a configured interval (nightly, etc).
-- **Incremental Sources and Packages**: Even if you choose single use.  Warm up yaml run when bringing VM online. 
-- **Control User COGs**: Stop agents when not in use to control azure charges
+- **Incremental sources and packages**: Even if you choose single use.  Warm up yaml run when bringing VM online. 
+- **Control azure COGs**: Stop agents when not in use to control azure charges
 - **Maintenance**: Schedule maintenance jobs for pruning repos, OS security updates, etc.
-- **Elastic Pools for VSTS and On-prem**:  Use elastic azure compute as build resources for VSTS but also on-prem TFS.
+- **Elastic pools for VSTS and On-prem**:  Use elastic azure compute as build resources for VSTS but also on-prem TFS.
 - **Allow domain joined and on-prem file shares**: Leverage AAD and express routes for elastic on-prem scenarios.
 - **Configure multiple pools of type BYOS**: Allows for budgeting of resources across larger enterprise teams.
 
