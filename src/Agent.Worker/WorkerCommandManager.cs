@@ -49,13 +49,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 return false;
             }
 
-            var disablePlugin = context.Variables.GetBoolean("VSTS_DISABLEPLUGINCOMMAND") ?? StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("VSTS_DISABLEPLUGINCOMMAND"));
-            var agentPlugins = HostContext.GetService<IAgentPluginManager>();
-            if (!disablePlugin && agentPlugins.GetPluginCommad(command.Area, command.Event) != null)
-            {
-                agentPlugins.ProcessCommand(context, command);
-            }
-            else if (_commandExtensions.TryGetValue(command.Area, out IWorkerCommandExtension extension))
+            if (_commandExtensions.TryGetValue(command.Area, out IWorkerCommandExtension extension))
             {
                 if (!extension.SupportedHostTypes.HasFlag(context.Variables.System_HostType))
                 {
