@@ -30,12 +30,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         private readonly HashSet<string> _taskPlugins = new HashSet<string>()
         {
             "Agent.Plugins.Repository.CheckoutTask, Agent.Plugins",
-            "Agent.Plugins.Repository.CleanupTask, Agent.Plugins"
+            "Agent.Plugins.Repository.CleanupTask, Agent.Plugins",
+            "Agent.Plugins.BuildDrop.DownloadBuildDropTask, Agent.Plugins",
+            "Agent.Plugins.BuildDrop.PublishBuildDropTask, Agent.Plugins"
         };
 
         private readonly HashSet<string> _commandPlugins = new HashSet<string>()
         {
-            "Agent.Plugins.Drop.ArtifactUploadCommand, Agent.Plugins"
         };
 
         public override void Initialize(IHostContext hostContext)
