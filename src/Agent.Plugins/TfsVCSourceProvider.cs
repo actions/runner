@@ -141,7 +141,7 @@ namespace Agent.Plugins.Repository
             DefinitionWorkspaceMapping[] definitionMappings = workspaceMappings.Select(x => new DefinitionWorkspaceMapping() { ServerPath = x.ServerPath, LocalPath = x.LocalPath, MappingType = x.Exclude ? DefinitionMappingType.Cloak : DefinitionMappingType.Map }).ToArray();
 
             // Determine the sources directory.
-            string sourcesDirectory = repository.Properties.Get<string>("path");
+            string sourcesDirectory = repository.Properties.Get<string>(Pipelines.RepositoryPropertyNames.Path);
             ArgUtil.NotNullOrEmpty(sourcesDirectory, nameof(sourcesDirectory));
 
             // Attempt to re-use an existing workspace if the command manager supports scorch
@@ -455,7 +455,7 @@ namespace Agent.Plugins.Repository
                 DefinitionWorkspaceMapping[] definitionMappings = workspaceMappings.Select(x => new DefinitionWorkspaceMapping() { ServerPath = x.ServerPath, LocalPath = x.LocalPath, MappingType = x.Exclude ? DefinitionMappingType.Cloak : DefinitionMappingType.Map }).ToArray();
 
                 // Determine the sources directory.
-                string sourcesDirectory = repository.Properties.Get<string>("path");
+                string sourcesDirectory = repository.Properties.Get<string>(Pipelines.RepositoryPropertyNames.Path);
                 ArgUtil.NotNullOrEmpty(sourcesDirectory, nameof(sourcesDirectory));
 
                 try

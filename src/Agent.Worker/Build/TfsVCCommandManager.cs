@@ -79,7 +79,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         {
             get
             {
-                string sourcesDirectory = Repository?.Properties?.Get<string>("path") ?? GetEndpointData(Endpoint, Constants.EndpointData.SourcesDirectory);
+                string sourcesDirectory = Repository?.Properties?.Get<string>(RepositoryPropertyNames.Path) ?? GetEndpointData(Endpoint, Constants.EndpointData.SourcesDirectory);
                 ArgUtil.NotNullOrEmpty(sourcesDirectory, nameof(sourcesDirectory));
                 return sourcesDirectory;
             }

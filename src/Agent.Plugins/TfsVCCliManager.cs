@@ -43,7 +43,7 @@ namespace Agent.Plugins.Repository
         {
             get
             {
-                string sourcesDirectory = Repository.Properties.Get<string>("path");
+                string sourcesDirectory = Repository.Properties.Get<string>(Pipelines.RepositoryPropertyNames.Path);
                 ArgUtil.NotNullOrEmpty(sourcesDirectory, nameof(sourcesDirectory));
                 return sourcesDirectory;
             }

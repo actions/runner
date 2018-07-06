@@ -221,6 +221,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             _stopWatch = Stopwatch.StartNew();
             _proc.Start();
 
+            // Start the standard error notifications, if appropriate.
+            if (_proc.StartInfo.RedirectStandardError)
+            {
+                StartReadStream(_proc.StandardError, _errorData);
+            }
+
+            // Start the standard output notifications, if appropriate.
+            if (_proc.StartInfo.RedirectStandardOutput)
+            {
+                StartReadStream(_proc.StandardOutput, _outputData);
+            }
+
             if (_proc.StartInfo.RedirectStandardInput)
             {
                 // Write contents to STDIN
@@ -234,18 +246,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
 
                 // Close the input stream. This is done to prevent commands from blocking the build waiting for input from the user.
                 _proc.StandardInput.Close();
-            }
-
-            // Start the standard error notifications, if appropriate.
-            if (_proc.StartInfo.RedirectStandardError)
-            {
-                StartReadStream(_proc.StandardError, _errorData);
-            }
-
-            // Start the standard output notifications, if appropriate.
-            if (_proc.StartInfo.RedirectStandardOutput)
-            {
-                StartReadStream(_proc.StandardOutput, _outputData);
             }
 
             using (var registration = cancellationToken.Register(async () => await CancelAndKillProcessTree(killProcessOnCancel)))
@@ -271,7 +271,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
                 // data buffers one last time before returning
                 ProcessOutput();
 
-                Trace.Info($"Finished process with exit code {_proc.ExitCode}, and elapsed time {_stopWatch.Elapsed}.");
+                Trace.Info($"Finished process {_proc.Id} with exit code {_proc.ExitCode}, and elapsed time {_stopWatch.Elapsed}.");
             }
 
             cancellationToken.ThrowIfCancellationRequested();
@@ -423,6 +423,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
                         _outputProcessEvent.Set();
                     }
                 }
+
+                Trace.Info("STDOUT/STDERR stream read finished.");
 
                 if (Interlocked.Decrement(ref _asyncStreamReaderCount) == 0 && _waitingOnStreams)
                 {

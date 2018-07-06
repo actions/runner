@@ -198,7 +198,7 @@ namespace Agent.Plugins.Repository
                 throw new InvalidOperationException("Repository url need to be an absolute uri.");
             }
 
-            string targetPath = repository.Properties.Get<string>("path");
+            string targetPath = repository.Properties.Get<string>(Pipelines.RepositoryPropertyNames.Path);
             string sourceBranch = repository.Properties.Get<string>(Pipelines.RepositoryPropertyNames.Ref);
             string sourceVersion = repository.Version;
 
@@ -1025,7 +1025,7 @@ namespace Agent.Plugins.Repository
             executionContext.Output($"Cleaning any cached credential from repository: {repository.Properties.Get<string>(Pipelines.RepositoryPropertyNames.Name)} ({repository.Type})");
 
             Uri repositoryUrl = repository.Url;
-            string targetPath = repository.Properties.Get<string>("path");
+            string targetPath = repository.Properties.Get<string>(Pipelines.RepositoryPropertyNames.Path);
 
             executionContext.Debug($"Repository url={repositoryUrl}");
             executionContext.Debug($"targetPath={targetPath}");
