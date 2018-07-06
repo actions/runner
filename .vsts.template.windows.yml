@@ -13,3 +13,11 @@ steps:
 - script: dev.cmd test
   workingDirectory: src
   displayName: Test
+
+# Publish test results
+- task: PublishTestResults@2
+  displayName: Publish Test Results **/*.trx
+  inputs:
+    testRunner: VSTest
+    testResultsFiles: '**/*.trx'
+    testRunTitle: 'Agent Tests'
