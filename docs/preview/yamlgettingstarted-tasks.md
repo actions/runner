@@ -11,7 +11,7 @@ steps:
 
   displayName: string
 
-  name: string
+  name: string # Reference name for output variables
 
   inputs: { string: string } # Map of task inputs. Refer to the task.json or use the View Yaml
                              # functionality on a designer definition.
@@ -26,9 +26,6 @@ steps:
 
   env: { string: string } # Mapping of additional environment variables to set for the scope of the task.
 ```
-
-## name and displayName
-A `name` value can be provided as a reference name for referring to the task and its output variables from other tasks. The `name` is also used as a friendly display name for the task if no `displayName` value is provided.
 
 ## Example
 

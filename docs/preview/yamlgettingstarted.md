@@ -22,13 +22,17 @@ YAML builds require the latest agent. When a YAML build is queued, your agent wi
 
 ## Variables
 
-[Variables](yamlgettingstarted-variables.md)
+[Predefined variables](https://docs.microsoft.com/en-us/vsts/pipelines/build/variables)
+
+[Macro syntax](yamlgettingstarted-macros.md)
+
+[Accessing variables from scripts](yamlgettingstarted-accessingvariables.md)
 
 [Custom variables](yamlgettingstarted-customvariables.md)
 
-[Secret variables](yamlgettingstarted-secretvariables.md)
-
 [Setting variables from a script](yamlgettingstarted-setvariable.md)
+
+[Secret variables](yamlgettingstarted-secretvariables.md)
 
 [Output variables](yamlgettingstarted-outputvariables.md)
 

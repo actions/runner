@@ -15,8 +15,9 @@ phases:
 
 # Set an output variable from phase A
 - phase: A
+  queue: Hosted VS2017
   steps: 
-  - script: "echo ##vso[task.setvariable variable=myOutputVar;isOutput=true]this is the value"
+  - powershell: echo "##vso[task.setvariable variable=myOutputVar;isOutput=true]this is the value"
     name: setvar
   - script: echo $(setvar.myOutputVar)
     name: echovar
@@ -24,10 +25,11 @@ phases:
 # Map the variable into phase B
 - phase: B
   dependsOn: A
+  queue: Hosted Linux Preview
   variables:
     myVarFromPhaseA: $[ dependencies.A.outputs['setvar.myOutputVar'] ]
   steps:
-  - script: "echo $(myVarFromPhaseA)"
+  - script: echo $(myVarFromPhaseA)
     name: echovar
 ```
 
@@ -39,6 +41,7 @@ phases:
 # Set an output variable from a phase with a matrix
 - phase: A
   queue:
+    name: Hosted Linux Preview
     parallel: 2
     matrix:
       debug:
@@ -48,7 +51,7 @@ phases:
         configuration: release
         platform: x64
   steps:
-  - script: "echo ##vso[task.setvariable variable=myOutputVar;isOutput=true]this is the $(configuration) value"
+  - script: echo "##vso[task.setvariable variable=myOutputVar;isOutput=true]this is the $(configuration) value"
     name: setvar
   - script: echo $(setvar.myOutputVar)
     name: echovar
@@ -56,10 +59,11 @@ phases:
 # Map the variable from the debug job
 - phase: B
   dependsOn: A
+  queue: Hosted Linux Preview
   variables:
     myVarFromPhaseADebug: $[ dependencies.A.outputs['debug.setvar.myOutputVar'] ]
   steps:
-  - script: "echo $(myVarFromPhaseADebug)"
+  - script: echo $(myVarFromPhaseADebug)
     name: echovar
 ```
 
@@ -71,9 +75,10 @@ phases:
 # Set an output variable from a phase with slicing
 - phase: A
   queue:
+    name: Hosted Linux Preview
     parallel: 2 # Two slices
   steps:
-  - script: "echo ##vso[task.setvariable variable=myOutputVar;isOutput=true]this is the slice $(system.jobPositionInPhase) value"
+  - script: echo "##vso[task.setvariable variable=myOutputVar;isOutput=true]this is the slice $(system.jobPositionInPhase) value"
     name: setvar
   - script: echo $(setvar.myOutputVar)
     name: echovar
@@ -81,6 +86,7 @@ phases:
 # Map the variable from the job for the first slice
 - phase: B
   dependsOn: A
+  queue: Hosted Linux Preview
   variables:
     myVarFromPhaseA1: $[ dependencies.A.outputs['job1.setvar.myOutputVar'] ]
   steps:

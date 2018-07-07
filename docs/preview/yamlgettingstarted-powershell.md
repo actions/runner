@@ -96,7 +96,7 @@ steps:
   displayName: Create secret variable
 
 # Next, map the secret into an environment variable and print it. Note, secrets are masked in the log
-# and appear as '********'.
+# and appear as '***'.
 - powershell: Write-Host "The password is $env:MyPassword"
   displayName: Print secret variable
   env:

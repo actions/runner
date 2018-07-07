@@ -60,7 +60,7 @@ steps:
   displayName: Create secret variable
 
 # Next, map the secret into an environment variable and print it. Note, secrets are masked in the log
-# and appear as '********'.
+# and appear as '***'.
 - bash: echo The password is $MyPassword
   displayName: Print secret variable
   env:

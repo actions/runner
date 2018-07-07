@@ -12,10 +12,12 @@ And different phases can target different queues.
 
 ```yaml
 phases:
+
 - phase: Windows
   queue: Hosted VS2017
   steps:
   - script: echo hello from Windows
+
 - phase: Linux
   queue: Hosted Linux Preview
   steps:
