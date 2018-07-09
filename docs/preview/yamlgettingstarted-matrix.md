@@ -1,8 +1,8 @@
-# YAML getting started - Matrix strategy
+# YAML getting started - Matrix execution
 
 ### Matrix
 
-The `matrix` strategy enables a phase to be dispatched multiple times, with different variable sets.
+A `matrix` execution enables a phase to be dispatched multiple times, with different variable sets.
 
 For example, a common scenario is to run the same build steps for varying permutations of architecture (x86/x64) and configuration (debug/release).
 

@@ -64,7 +64,9 @@ YAML builds require the latest agent. When a YAML build is queued, your agent wi
 
 [Containers](yamlgettingstarted-containers.md)
 
-[Strategies](yamlgettingstarted-strategies.md)
+[Matrix execution](yamlgettingstarted-matrix.md)
+
+[Slice execution](yamlgettingstarted-slice.md)
 
 [Multiple phases](yamlgettingstarted-jobs.md)
 

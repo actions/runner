@@ -1,8 +1,8 @@
-# YAML getting started - Slicing strategy
+# YAML getting started - Slice execution
 
-### Slicing
+### Slice
 
-The slicing strategy dispatches a phase N times, to dividing work among the jobs.
+A slice execution dispatches a phase N times, to enable dividing work among the jobs.
 
 The `parallel` setting indicates how many jobs to dispatch.
 
