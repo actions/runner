@@ -1,14 +1,30 @@
 # YAML getting started - Pipeline overview
 
-## The plan
+## Pipeline
 
-When a pipeline is started, the execution plan is created first.
+A pipeline contains phases. Phases contain steps.
 
-The plan contains stages. Stages contain jobs. Jobs contain steps.
+```
+-----------------------------------
+|            Pipeline             |
+|                                 |
+|    -------------------------    |
+|    |        Phases         |    |
+|    |                       |    |
+|    |    ---------------    |    |
+|    |    |    Steps    |    |    |
+|    |    ---------------    |    |
+|    |                       |    |
+|    -------------------------    |
+|                                 |
+-----------------------------------
+```
+
+<!-- A pipeline contains stages. Stages contain jobs. Jobs contain steps.
 
 ```
 ---------------------------------------------
-|                   Plan                    |
+|                 Pipeline                  |
 |                                           |
 |    -----------------------------------    |
 |    |             Stages              |    |
@@ -29,18 +45,18 @@ The plan contains stages. Stages contain jobs. Jobs contain steps.
 
 ## Stages
 
-Stages provide a logical boundary within the plan.
+Stages provide a logical boundary within the pipeline.
 
 The stage boundary allows:
 - Manual checkpoints or approvals between stages
-- Reporting on high level results (email notifications, build badges)
+- Reporting on high level results (email notifications, build badges) -->
 
-## Jobs
+## Phases
 
-Jobs are a grouping of steps, and are assigned to a specific target.
+A phase is a group of steps, and is assigned to a specific target.
 
-For example, when a job targets an agent pool, the job will be assigned to one of the agents running within the pool.
+For example, when a phase targets an agent pool, the phase will be assigned to one of the agents running within the pool.
 
 ## Steps
 
-Steps are the individual units of execution within a job. For example, run a script.
+Steps are the individual units of execution within a phase. For example, run a script.

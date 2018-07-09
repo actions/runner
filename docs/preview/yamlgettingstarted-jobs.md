@@ -2,21 +2,22 @@
 
 ## Phase dependencies
 
-Multiple phases can be defined in a pipeline. The order in which phases are started, can be controlled by defining dependencies. The start of one phase, can depend on another phase completing. And phases can have more than one dependency.
+Multiple phases can be defined within a pipeline. The order in which the phases are executed, can be controlled by defining dependencies. The start of one phase, can depend on another phase completing. And a phase can have more than one dependency.
 
 Phase dependencies enables four types of controls.
 
 ### Sequential phases
 
-Example phases that build sequentially.
+Example phases that execute sequentially.
 
 ```yaml
 phases:
 - phase: Debug
   steps:
   - script: echo hello from the Debug build
+
 - phase: Release
-  dependsOn: Debug
+  dependsOn: Debug # After Debug completes
   steps:
   - script: echo hello from the Release build
 ```
@@ -56,23 +57,22 @@ phases:
 
 ## Parallel phases
 
-Example phases that build in parallel (no dependencies).
+Example phases that execute in parallel (no dependencies).
 
 ```yaml
 phases:
 - phase: Windows
-  queue:
-    demands: agent.os -equals Windows_NT
+  queue: Hosted VS2017
   steps:
   - script: echo hello from Windows
+
 - phase: macOS
-  queue:
-    demands: agent.os -equals Darwin
+  queue: Hosted macOS Preview
   steps:
   - script: echo hello from macOS
+
 - phase: Linux
-  queue:
-    demands: agent.os -equals Linux
+  queue: Hosted Linux Preview
   steps:
   - script: echo hello from Linux
 ```
@@ -86,10 +86,12 @@ phases:
 - phase: InitialPhase
   steps:
   - script: echo hello from initial phase
+
 - phase: SubsequentA
   dependsOn: InitialPhase
   steps:
   - script: echo hello from subsequent A
+
 - phase: SubsequentB
   dependsOn: InitialPhase
   steps:
@@ -103,9 +105,11 @@ phases:
 - phase: InitialA
   steps:
   - script: echo hello from initial A
+
 - phase: InitialB
   steps:
   - script: echo hello from initial B
+
 - phase: Subsequent
   dependsOn:
   - InitialA
@@ -170,7 +174,7 @@ phases:
   - script: echo this only runs for master
 ```
 
-### Custom phase condition, with an output variable
+### Custom phase condition, using an output variable
 
 Output variables from previous phases can also be used within conditions.
 

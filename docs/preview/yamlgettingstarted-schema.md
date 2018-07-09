@@ -7,7 +7,7 @@ At a high level, the structure of the YAML document is:
 ```
 └───phases
     ├───phase
-    │   ├───queue|deployment|server
+    │   ├───queue|server
     │   ├───variables
     │   └───steps
     │       ├───step # e.g. script: echo hello world
@@ -30,292 +30,140 @@ steps:
 
 In short, at the top of the file, properties for a single phase can be specified without defining an array of phases.
 
-<!-- Commenting-out template schema for now
-The inference rules apply to templates as well. For details, see the schema reference section below.
--->
-
 ## Schema reference
 
-All YAML definitions start with \"pipeline\" schema.
+All YAML definitions start with the \"pipeline\" schema.
 
-### Pipeline schema
-
-#### pipeline
-
-```yaml
-# pipeline properties
-name: string
-phases: [ phase ]
-
-# phase properties - not allowed when "phases" is defined
-dependsOn: string | [ string ]
-condition: string
-continueOnError: true | false
-queue: string | queueTarget
-deployment: string | deploymentTarget
-server: true | serverTarget
-variables: { string: string }
-steps: [ script | powershell | bash | task | checkout ]
-```
-
-<!-- #### repoResource
-
-```yaml
-repo: string # e.g. repo: self
-clean: true | false
-fetchDepth: number
-lfs: true | false
-``` -->
-
-<!-- Commenting-out template schema for now
-#### processTemplateReference
-
-```yaml
-name: string # relative path to process template
-parameters: { string: any }
-phases: [ # phase specific step overrides
-  {
-    name: string
-    jobs: [ # phase and job specific step overrides
-      {
-        name: string
-        steps: { string: [ script | powershell | bash | task ] }
-      }
-    ]
-    steps: { string: [ script | powershell | bash | task ] }
-  }
-]
-jobs: [ # job specific step overrides
-  {
-    name: string
-    steps: { string: [ script | powershell | bash | task ] }
-  }
-]
-steps: { string: [ script | powershell | bash | task ] } # step overrides
-```
-
-#### processTemplate
-
-```yaml
-resources: [ resource ]
-phases: [ phase | phasesTemplateReference ]
-jobs: [ job | jobsTemplateReference ]
-steps: [ script | powershell | bash | task | stepsPhase | stepsTemplateReference ]
-```
--->
-
-### Phase schema
-
-#### phase
-
-```yaml
-phase: string # Required
-
-displayName: string
-dependsOn: string | [ string ]
-condition: string
-continueOnError: true | false
-queue: string | queueTarget
-deployment: string | deploymentTarget
-server: true | serverTarget
-variables: { string: string }
-steps: [ script | powershell | bash | task | checkout ]
-```
-
-#### queueTarget
+### pipeline
 
 ```yaml
 name: string
-continueOnError: true | false
-parallel: number
-timeoutInMinutes: number
-cancelTimeoutInMinutes: number
-demands: string | [ string ]
-matrix: { string: { string: string } }
+resources:
+  containers: [ container ]
+  repositories: [ repository ]
+variables: { string: string } | variable
+phases: [ phase | templateReference ]
 ```
 
-#### deploymentTarget
+### phase
 
 ```yaml
-group: string
-continueOnError: true | false
-healthOption: string
-percentage: string
-timeoutInMinutes: number
-cancelTimeoutInMinutes: number
-tags: string | [ string ]
+- phase: string # name
+  displayName: string
+  dependsOn: string | [ string ]
+  condition: string
+  continueOnError: true | false
+  queue: string | queue
+  server: true | server
+  strategy:
+    maxParallel: number
+    matrix: { string: { string: string } }
+    slice: number
+  timeoutInMinutes: number
+  cancelTimeoutInMinutes: number
+  variables: { string: string } | [ variable ]
+  steps: [ script | bash | powershell | checkout | task | templateReference ]
 ```
 
-#### serverTarget
+### script
 
 ```yaml
-continueOnError: true | false
-parallel: number
-timeoutInMinutes: number
-cancelTimeoutInMinutes: number
-matrix: { string: { string: string } }
+- script: string
+  displayName: string
+  name: string
+  workingDirectory: string
+  failOnStderr: true | false
+  condition: string
+  continueOnError: true | false
+  enabled: true | false
+  timeoutInMinutes: number
+  env: { string: string }
 ```
 
-<!-- Commenting-out template schema for now
-#### phasesTemplateReference
+### bash
 
 ```yaml
-template: string # relative path
-parameters: { string: any }
-phases: [ # phase specific step overrides
-  {
-    name: string
-    jobs: [ # phase and job specific step overrides
-      {
-        name: string
-        steps: { string: [ script | powershell | bash | task ] }
-      }
-    ]
-    steps: { string: [ script | powershell | bash | task ] }
-  }
-]
-jobs: [ # job specific step overrides
-  {
-    name: string
-    steps: { string: [ script | powershell | bash | task ] }
-  }
-]
-steps: { string: [ script | powershell | bash | task ] } # step overrides
+- bash: string
+  displayName: string
+  name: string
+  workingDirectory: string
+  failOnStderr: true | false
+  condition: string
+  continueOnError: true | false
+  enabled: true | false
+  timeoutInMinutes: number
+  env: { string: string }
 ```
 
-#### phasesTemplate
+### powershell
 
 ```yaml
-phases: [ phase ]
-jobs: [ job | jobsTemplateReference ]
-steps: [ script | powershell | bash | task | stepsPhase | stepsTemplateReference ]
-```
--->
-
-<!-- Commenting-out variable object syntax for now
-#### variable
-
-```yaml
-name: string
-value: string
-verbatim: bool # instructs agent not to uppercase/etc when setting env var
-```
--->
-
-<!-- Commenting-out template schema for now
-#### variablesTemplateReference
-
-```yaml
-template: string # relative path
-parameters: { string: any }
+- powershell: string
+  displayName: string
+  name: string
+  errorActionPreference: stop | continue | silentlyContinue
+  failOnStderr: true | false
+  ignoreLASTEXITCODE: true | false
+  workingDirectory: string
+  condition: string
+  continueOnError: true | false
+  enabled: true | false
+  timeoutInMinutes: number
+  env: { string: string }
 ```
 
-#### variablesTemplate
+### checkout
 
 ```yaml
-variables: [ variable ]
-```
--->
-
-### Step schema
-
-#### script
-
-```yaml
-script: string
-displayName: string
-name: string
-workingDirectory: string
-failOnStderr: true | false
-condition: string
-continueOnError: true | false
-enabled: true | false
-timeoutInMinutes: number
-env: { string: string }
-```
-
-#### powershell
-
-```yaml
-powershell: string
-displayName: string
-name: string
-errorActionPreference: stop | continue | silentlyContinue
-failOnStderr: true | false
-ignoreLASTEXITCODE: true | false
-workingDirectory: string
-condition: string
-continueOnError: true | false
-enabled: true | false
-timeoutInMinutes: number
-env: { string: string }
-```
-
-#### bash
-
-```yaml
-bash: string
-displayName: string
-name: string
-workingDirectory: string
-failOnStderr: true | false
-condition: string
-continueOnError: true | false
-enabled: true | false
-timeoutInMinutes: number
-env: { string: string }
-```
-
-#### task
-
-```yaml
-task: string # task reference, e.g. "VSBuild@1"
-displayName: string
-name: string
-condition: string
-continueOnError: true | false
-enabled: true | false
-timeoutInMinutes: number
-inputs: { string: string }
-env: { string: string }
-```
-
-#### checkout
-
-```yaml
-checkout: self # self represents the repo associated with the entry .yml file
-clean: true | false
-fetchDepth: number
-lfs: true | false
+- checkout: self # self represents the repo associated with the entry .yml file
+  clean: true | false
+  fetchDepth: number
+  lfs: true | false
 ```
 
 OR
 
 ```yaml
-checkout: none # skips checkout
+- checkout: none # skips checkout
 ```
 
-<!-- Commenting-out step group for now
-#### stepGroup
+### task
 
 ```yaml
-phase: string # name
-steps: [ script | powershell | bash | task ]
+- task: string # task reference, e.g. "VSBuild@1"
+  displayName: string
+  name: string
+  condition: string
+  continueOnError: true | false
+  enabled: true | false
+  timeoutInMinutes: number
+  inputs: { string: string }
+  env: { string: string }
 ```
--->
 
-<!-- Commenting-out template schema for now since it's main value comes with templates and docker
-#### stepsTemplateReference
+### queue
 
 ```yaml
-template: string # relative path
-parameters: { string: any }
-steps: { string: [ script | powershell | bash | task ] } # step overrides
+name: string
+demands: string | [ string ] # Supported by private pools
+timeoutInMinutes: number
+cancelTimeoutInMinutes: number
+parallel: number
+matrix: { string: { string: string } }
 ```
 
-#### stepsTemplate
+### server
 
 ```yaml
-steps: [ script | powershell | bash | task | stepsPhase ]
+timeoutInMinutes: number
+cancelTimeoutInMinutes: number
+parallel: number
+matrix: { string: { string: string } }
 ```
--->
+
+### templateReference
+
+```yaml
+- template: string
+  parameters: { string: any }
+```
