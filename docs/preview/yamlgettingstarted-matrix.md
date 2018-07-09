@@ -1,10 +1,12 @@
-# YAML getting started - Phase strategies
+# YAML getting started - Matrix strategy
 
 ### Matrix
 
 The `matrix` strategy enables a phase to be dispatched multiple times, with different variable sets.
 
 For example, a common scenario is to run the same build steps for varying permutations of architecture (x86/x64) and configuration (debug/release).
+
+In the following example, different variables `buildArch` and `buildConfig` are added for each job that is dispatched.
 
 ```yaml
 queue:
@@ -23,13 +25,4 @@ steps:
 - script: build arch=$(buildArch) config=$(buildConfig)
 ```
 
-### Slice
-
-The `parallel` setting indicates how many jobs to dispatch. Variables `system.sliceNumber` and `system.sliceCount` are added to each job. The variables can then be used within your scripts to divide work among the jobs.
-
-```yaml
-queue:
-  parallel: 5
-steps:
-- script: test slice=$(system.sliceNumber) sliceCount=$(system.sliceCount)
-```
+When combined with a matrix, the `parallel` property indicates the maximum number of jobs to run concurrently.
