@@ -353,6 +353,24 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                             password = string.Empty;
                         }
                         break;
+                    case EndpointAuthorizationSchemes.PersonalAccessToken:
+                        username = EndpointAuthorizationSchemes.PersonalAccessToken;
+                        if (!endpoint.Authorization.Parameters.TryGetValue(EndpointAuthorizationParameters.AccessToken, out password))
+                        {
+                            password = string.Empty;
+                        }
+                        break;
+                    case EndpointAuthorizationSchemes.Token:
+                        username = "x-access-token";
+                        if (!endpoint.Authorization.Parameters.TryGetValue(EndpointAuthorizationParameters.AccessToken, out password))
+                        {
+                            username = EndpointAuthorizationSchemes.Token;
+                            if (!endpoint.Authorization.Parameters.TryGetValue(EndpointAuthorizationParameters.ApiToken, out password))
+                            {
+                                password = string.Empty;
+                            }
+                        }
+                        break;
                     case EndpointAuthorizationSchemes.UsernamePassword:
                         if (!endpoint.Authorization.Parameters.TryGetValue(EndpointAuthorizationParameters.Username, out username))
                         {
