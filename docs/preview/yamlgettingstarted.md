@@ -74,9 +74,13 @@ YAML builds require the latest agent. When a YAML build is queued, your agent wi
 
 ## Templates
 
-<!-- todo: Restructure the template docs: 1) basics, 2) across repos, and 3) advanced syntax -->
+[Step reuse](yamlgettingstarted-reusestep.md)
 
-[Templates](yamlgettingstarted-templates.md)
+[Phase reuse](yamlgettingstarted-reusephase.md)
+
+[Reuse from other repositories](yamlgettingstarted-reusefromrepo.md)
+
+[Template expressions](yamlgettingstarted-templateexpressions.md)
 
 ## Misc
 
