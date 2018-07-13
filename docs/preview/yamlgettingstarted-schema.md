@@ -55,12 +55,6 @@ phases: [ phase | templateReference ]
   continueOnError: true | false
   queue: string | queue
   server: true | server
-  strategy:
-    maxParallel: number
-    matrix: { string: { string: string } }
-    slice: number
-  timeoutInMinutes: number
-  cancelTimeoutInMinutes: number
   variables: { string: string } | [ variable ]
   steps: [ script | bash | powershell | checkout | task | templateReference ]
 ```
