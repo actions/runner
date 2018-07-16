@@ -200,10 +200,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                         }
 
                         // console log
+                        resultCreateModel.AttachmentData = new AttachmentData();
                         XmlNode consoleLog = testCaseNode.SelectSingleNode("./output");
                         if (consoleLog != null && !string.IsNullOrWhiteSpace(consoleLog.InnerText))
                         {
-                            resultCreateModel.ConsoleLog = consoleLog.InnerText;
+                            resultCreateModel.AttachmentData.ConsoleLog = consoleLog.InnerText;
                         }
                     }
                     else
@@ -302,6 +303,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
             var testExecutionEndedOn = DateTime.MinValue;
             DateTime.TryParse(testCaseResultNode.Attributes["end-time"]?.Value, DateTimeFormatInfo.InvariantInfo,DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out testExecutionEndedOn);
             testCaseResultData.CompletedDate = testExecutionEndedOn; 
+            testCaseResultData.AttachmentData = new AttachmentData();
             if (testCaseResultNode.Attributes["result"] != null)
             {
                 if (string.Equals(testCaseResultNode.Attributes["result"].Value, "Passed", StringComparison.OrdinalIgnoreCase))
@@ -332,7 +334,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                     XmlNode consoleLog = testCaseResultNode.SelectSingleNode("output");
                     if (consoleLog != null && !string.IsNullOrWhiteSpace(consoleLog.InnerText))
                     {
-                        testCaseResultData.ConsoleLog = consoleLog.InnerText;
+                        testCaseResultData.AttachmentData.ConsoleLog = consoleLog.InnerText;
                     }
 
                 }
@@ -346,7 +348,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
             }
 
             // Adding test-case result level attachments
-            testCaseResultData.Attachments = this.GetTestCaseResultLevelAttachments(testCaseResultNode).ToArray();
+            testCaseResultData.AttachmentData.AttachmentsFilePathList = this.GetTestCaseResultLevelAttachments(testCaseResultNode).ToArray();
 
             return testCaseResultData;
         }

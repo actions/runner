@@ -326,8 +326,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
             Assert.NotNull(_testRunData);
             Assert.Equal(1, _testRunData.Results.Length);
-            Assert.Equal("system out...", _testRunData.Results[0].ConsoleLog);
-            Assert.Equal("system err...", _testRunData.Results[0].StandardError);
+            Assert.Equal("system out...", _testRunData.Results[0].AttachmentData.ConsoleLog);
+            Assert.Equal("system err...", _testRunData.Results[0].AttachmentData.StandardError);
         }
 
         [Fact]

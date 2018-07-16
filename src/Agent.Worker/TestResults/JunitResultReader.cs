@@ -343,16 +343,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
 
             // Standard output logs
             stdout = testCaseNode.SelectSingleNode("./system-out");
+
+            resultCreateModel.AttachmentData = new AttachmentData();
+            
             if (stdout != null && !string.IsNullOrWhiteSpace(stdout.InnerText))
             {
-                resultCreateModel.ConsoleLog = stdout.InnerText;
+                resultCreateModel.AttachmentData.ConsoleLog = stdout.InnerText;
             }
 
             // Standard error logs
             stderr = testCaseNode.SelectSingleNode("./system-err");
             if (stderr != null && !string.IsNullOrWhiteSpace(stderr.InnerText))
             {
-                resultCreateModel.StandardError = stderr.InnerText;
+                resultCreateModel.AttachmentData.StandardError = stderr.InnerText;
             }
         }
 

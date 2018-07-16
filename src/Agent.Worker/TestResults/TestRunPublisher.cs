@@ -71,15 +71,21 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                 _executionContext.Output(StringUtil.Loc("TestResultsRemaining", (testResults.Length - i), testRun.Id));
 
                 var currentBatch = new TestCaseResultData[noOfResultsToBePublished];
+                var testResultsBatch = new TestCaseResult[noOfResultsToBePublished];
                 Array.Copy(testResults, i, currentBatch, 0, noOfResultsToBePublished);
 
-                List<TestCaseResult> testresults = await _testResultsServer.AddTestResultsToTestRunAsync(currentBatch, _projectName, testRun.Id, cancellationToken);
+                for (int testResultsIndex = 0; testResultsIndex < noOfResultsToBePublished; testResultsIndex++){
+                    testResultsBatch[testResultsIndex] = new TestCaseResult();
+                    TestCaseResultDataConverter.Convert(currentBatch[testResultsIndex], testResultsBatch[testResultsIndex]);
+                }
+
+                List<TestCaseResult> testresults = await _testResultsServer.AddTestResultsToTestRunAsync(testResultsBatch, _projectName, testRun.Id, cancellationToken);
 
                 for (int j = 0; j < noOfResultsToBePublished; j++)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                     // Remove duplicate entries
-                    string[] attachments = testResults[i + j].Attachments;
+                    string[] attachments = (testResults[i + j].AttachmentData.AttachmentsFilePathList != null) ? testResults[i + j].AttachmentData.AttachmentsFilePathList.ToArray() : null;
                     HashSet<string> attachedFiles = GetUniqueTestRunFiles(attachments);
 
                     if (attachedFiles != null)
@@ -96,7 +102,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                     }
 
                     // Upload console log as attachment
-                    string consoleLog = testResults[i + j].ConsoleLog;
+                    string consoleLog = testResults[i + j].AttachmentData.ConsoleLog;
                     TestAttachmentRequestModel attachmentRequestModel = GetConsoleLogAttachmentRequestModel(consoleLog);
                     if (attachmentRequestModel != null)
                     {
@@ -104,7 +110,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                     }
 
                     // Upload standard error as attachment
-                    string standardError = testResults[i + j].StandardError;
+                    string standardError = testResults[i + j].AttachmentData.StandardError;
                     TestAttachmentRequestModel stdErrAttachmentRequestModel = GetStandardErrorAttachmentRequestModel(standardError);
                     if (stdErrAttachmentRequestModel != null)
                     {

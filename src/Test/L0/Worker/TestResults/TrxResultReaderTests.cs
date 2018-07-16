@@ -250,18 +250,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
             Assert.Equal(runData.Results[0].ErrorMessage, "Assert.Fail failed.");
             Assert.Equal(runData.Results[0].StackTrace, "at UnitTestProject4.UnitTest1.TestMethod2() in C:\\Users\\somerandomusername\\Source\\Repos\\Projectx\\UnitTestProject4\\UnitTestProject4\\UnitTest1.cs:line 21");
             Assert.Equal(runData.Results[0].Priority.ToString(), "1");
-            Assert.Equal(runData.Results[0].ConsoleLog, "Show console log output.");
-            Assert.Equal(runData.Results[0].StandardError, "This is standard error message.");
-            Assert.Equal(runData.Results[0].Attachments.Length, 1);
-            Assert.True(runData.Results[0].Attachments[0].Contains("x.txt"));
+            Assert.Equal(runData.Results[0].AttachmentData.ConsoleLog, "Show console log output.");
+            Assert.Equal(runData.Results[0].AttachmentData.StandardError, "This is standard error message.");
+            Assert.Equal(runData.Results[0].AttachmentData.AttachmentsFilePathList.Count, 1);
+            Assert.True(runData.Results[0].AttachmentData.AttachmentsFilePathList[0].Contains("x.txt"));
 
             Assert.Equal(runData.Results[1].Outcome, "Passed");
             Assert.Equal(runData.Results[1].TestCaseTitle, "PSD_Startseite");
             Assert.Equal(runData.Results[1].ComputerName, "LAB-BUILDVNEXT");
             Assert.Equal(runData.Results[1].AutomatedTestType, "WebTest");
-            Assert.Equal(runData.Results[1].ConsoleLog, null);
-            Assert.Equal(runData.Results[1].Attachments.Length, 1);
-            Assert.True(runData.Results[1].Attachments[0].Contains("PSD_Startseite.webtestResult"));
+            Assert.Equal(runData.Results[1].AttachmentData.ConsoleLog, null);
+            Assert.Equal(runData.Results[1].AttachmentData.AttachmentsFilePathList.Count, 1);
+            Assert.True(runData.Results[1].AttachmentData.AttachmentsFilePathList[0].Contains("PSD_Startseite.webtestResult"));
 
             Assert.Equal(runData.Results[2].Outcome, "Passed");
             Assert.Equal(runData.Results[2].TestCaseTitle, "OrderedTest1");
@@ -279,6 +279,138 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
             Assert.Equal(runData.ReleaseUri, "releaseUri");
             Assert.Equal(runData.ReleaseEnvironmentUri, "releaseEnvironmentUri");
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
+        public void ReadsResultsReturnsCorrectValuesForHierarchicalResults()
+        {
+            SetupMocks();
+            String trxContents = "<?xml version = \"1.0\" encoding = \"UTF-8\"?>"
+                + "<TestRun id = \"ee3d8b3b-1ac9-4a7e-abfa-3d3ed2008613\" name = \"somerandomusername@SOMERANDOMCOMPUTERNAME 2015-03-20 16:53:32\" runUser = \"FAREAST\\somerandomusername\" xmlns =\"http://microsoft.com/schemas/VisualStudio/TeamTest/2010\"><Times creation = \"2015-03-20T16:53:32.3309380+05:30\" queuing = \"2015-03-20T16:53:32.3319381+05:30\" start = \"2015-03-20T16:53:32.3349628+05:30\" finish = \"2015-03-20T16:53:32.9232329+05:30\" />"
+                + "<TestDefinitions>"
+                + "<UnitTest name = \"TestMethod2\" storage = \"c:/users/somerandomusername/source/repos/projectx/unittestproject4/unittestproject4/bin/debug/unittestproject4.dll\" priority = \"1\" id = \"f0d6b58f-dc08-9c0b-aab7-0a1411d4a346\"><Owners><Owner name = \"asdf2\" /></Owners><Execution id = \"48ec1e47-b9df-43b9-aef2-a2cc8742353d\" /><TestMethod codeBase = \"c:/users/somerandomusername/source/repos/projectx/unittestproject4/unittestproject4/bin/debug/unittestproject4.dll\" adapterTypeName = \"Microsoft.VisualStudio.TestTools.TestTypes.Unit.UnitTestAdapter\" className = \"UnitTestProject4.UnitTest1\" name = \"TestMethod2\" />"
+                + "</UnitTest>"
+                + "<WebTest name=\"PSD_Startseite\" storage=\"c:\\vsoagent\\a284d2cc\\vseqa1\\psd_startseite.webtest\" id=\"01da1a13-b160-4ee6-9d84-7a6dfe37b1d2\" persistedWebTest=\"7\"><TestCategory><TestCategoryItem TestCategory=\"PSD\" /></TestCategory><Execution id=\"eb421c16-4546-435a-9c24-0d2878ea76d4\" /></WebTest>"
+                + "<OrderedTest name=\"OrderedTest1\" storage=\"c:\\users\\random\\source\\repos\\codeduitestproject1\\codeduitestproject1\\bin\\debug\\orderedtest1.orderedtest\" id=\"4eb63268-af79-48f1-b625-05ef09b0301a\"><Execution id=\"20927d24-2eb4-473f-b5b2-f52667b88f6f\" /><TestLinks><TestLink id=\"fd846020-c6f8-3c49-3ed0-fbe1e1fd340b\" name=\"CodedUITestMethod1\" storage=\"c:\\users\\random\\source\\repos\\codeduitestproject1\\codeduitestproject1\\bin\\debug\\codeduitestproject1.dll\" /><TestLink id=\"1c7ece84-d949-bed1-0a4c-dfad4f9c953e\" name=\"CodedUITestMethod2\" storage=\"c:\\users\\random\\source\\repos\\codeduitestproject1\\codeduitestproject1\\bin\\debug\\codeduitestproject1.dll\" /></TestLinks></OrderedTest>"
+                + "<UnitTest name=\"CodedUITestMethod1\" storage=\"c:\\users\\random\\source\\repos\\codeduitestproject1\\codeduitestproject1\\bin\\debug\\codeduitestproject1.dll\" id=\"fd846020-c6f8-3c49-3ed0-fbe1e1fd340b\"><Execution id=\"4f82d822-cd28-4bcc-b091-b08a66cf92e7\" parentId=\"20927d24-2eb4-473f-b5b2-f52667b88f6f\" /><TestMethod codeBase=\"c:\\users\\random\\source\\repos\\codeduitestproject1\\codeduitestproject1\\bin\\debug\\codeduitestproject1.dll\" adapterTypeName=\"executor://orderedtestadapter/v1\" className=\"CodedUITestProject1.CodedUITest1\" name=\"CodedUITestMethod1\" /></UnitTest>"
+                + "<UnitTest name=\"CodedUITestMethod2\" storage=\"c:\\users\\random\\source\\repos\\codeduitestproject1\\codeduitestproject1\\bin\\debug\\codeduitestproject1.dll\" priority=\"1\" id=\"1c7ece84-d949-bed1-0a4c-dfad4f9c953e\"><Execution id=\"5918f7d4-4619-4869-b777-71628227c62a\" parentId=\"20927d24-2eb4-473f-b5b2-f52667b88f6f\" /><TestMethod codeBase=\"c:\\users\\random\\source\\repos\\codeduitestproject1\\codeduitestproject1\\bin\\debug\\codeduitestproject1.dll\" adapterTypeName=\"executor://orderedtestadapter/v1\" className=\"CodedUITestProject1.CodedUITest1\" name=\"CodedUITestMethod2\" /></UnitTest>"
+                + "</TestDefinitions>"
+                + "<TestSettings name=\"TestSettings1\" id=\"e9d264e9-30da-48df-aa95-c6b53f699464\"><Description>These are default test settings for a local test run.</Description>"
+                + "<Execution>"
+                + "<AgentRule name=\"LocalMachineDefaultRole\">"
+                + "<DataCollectors>"
+                + "<DataCollector uri=\"datacollector://microsoft/CodeCoverage/1.0\" assemblyQualifiedName=\"Microsoft.VisualStudio.TestTools.CodeCoverage.CoveragePlugIn, Microsoft.VisualStudio.QualityTools.Plugins.CodeCoverage, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a\" friendlyName=\"Code Coverage (Visual Studio 2010)\">"
+                + "<Configuration><CodeCoverage xmlns=\"\"><Regular>"
+                + "<CodeCoverageItem binaryFile=\"C:\\mstest.static.UnitTestProject3.dll\" pdbFile=\"C:\\mstest.static.UnitTestProject3.instr.pdb\" instrumentInPlace=\"true\" />"
+                + "</Regular></CodeCoverage></Configuration>"
+                + "</DataCollector>"
+                + "</DataCollectors>"
+                + "</AgentRule>"
+                + "</Execution>"
+                + "</TestSettings>"
+                + "<Results>"
+                + "<UnitTestResult executionId = \"48ec1e47-b9df-43b9-aef2-a2cc8742353d\" testId = \"f0d6b58f-dc08-9c0b-aab7-0a1411d4a346\" testName = \"TestMethod2\" computerName = \"SOMERANDOMCOMPUTERNAME\" duration = \"00:00:00.0834563\" startTime = \"2015-03-20T16:53:32.3099353+05:30\" endTime = \"2015-03-20T16:53:32.3939623+05:30\" testType = \"13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b\" outcome = \"Failed\" testListId = \"8c84fa94-04c1-424b-9868-57a2d4851a1d\" relativeResultsDirectory = \"48ec1e47-b9df-43b9-aef2-a2cc8742353d\" ><Output><StdOut>Show console log output.</StdOut><StdErr>This is standard error message.</StdErr><ErrorInfo><Message>Assert.Fail failed.</Message><StackTrace>at UnitTestProject4.UnitTest1.TestMethod2() in C:\\Users\\somerandomusername\\Source\\Repos\\Projectx\\UnitTestProject4\\UnitTestProject4\\UnitTest1.cs:line 21</StackTrace></ErrorInfo></Output>"
+                + "<ResultFiles><ResultFile path=\"DIGANR-DEV4\\x.txt\" /></ResultFiles>"
+                + "<InnerResults>"
+                + "<UnitTestResult executionId = \"48ec1e47-b9df-43b9-aef2-a2cc8742353d\" testId = \"f0d6b58f-dc08-9c0b-aab7-0a1411d4a346\" testName = \"SubResult 1 (TestMethod2)\" computerName = \"SOMERANDOMCOMPUTERNAME\" duration = \"00:00:00.0834563\" startTime = \"2015-03-20T16:53:32.3099353+05:30\" endTime = \"2015-03-20T16:53:32.3939623+05:30\" testType = \"13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b\" outcome = \"Failed\" testListId = \"8c84fa94-04c1-424b-9868-57a2d4851a1d\" relativeResultsDirectory = \"48ec1e47-b9df-43b9-aef2-a2cc8742353d\" ><Output><StdOut>Show console log output.</StdOut><StdErr>This is standard error message.</StdErr><ErrorInfo><Message>Assert.Fail failed.</Message><StackTrace>at UnitTestProject4.UnitTest1.TestMethod2() in C:\\Users\\somerandomusername\\Source\\Repos\\Projectx\\UnitTestProject4\\UnitTestProject4\\UnitTest1.cs:line 21</StackTrace></ErrorInfo></Output>"
+                + "<ResultFiles><ResultFile path=\"DIGANR-DEV4\\x.txt\" /></ResultFiles>"
+                + "</UnitTestResult>"
+                + "</InnerResults>"
+                + "</UnitTestResult>"
+                + "<WebTestResult executionId=\"eb421c16-4546-435a-9c24-0d2878ea76d4\" testId=\"01da1a13-b160-4ee6-9d84-7a6dfe37b1d2\" testName=\"PSD_Startseite\" computerName=\"LAB-BUILDVNEXT\" duration=\"00:00:01.6887389\" startTime=\"2015-05-20T18:53:51.1063165+00:00\" endTime=\"2015-05-20T18:54:03.9160742+00:00\" testType=\"4e7599fa-5ecb-43e9-a887-cd63cf72d207\" outcome=\"Passed\" testListId=\"8c84fa94-04c1-424b-9868-57a2d4851a1d\" relativeResultsDirectory=\"eb421c16-4546-435a-9c24-0d2878ea76d4\"><Output><StdOut>Do not show console log output.</StdOut></Output>"
+                + "<ResultFiles>"
+                + "<ResultFile path=\"PSD_Startseite.webtestResult\" />"
+                + "</ResultFiles>"
+                + "<WebTestResultFilePath>LOCAL SERVICE_LAB-BUILDVNEXT 2015-05-20 18_53_41\\In\\eb421c16-4546-435a-9c24-0d2878ea76d4\\PSD_Startseite.webtestResult</WebTestResultFilePath>"
+                + "</WebTestResult>"
+                + "<TestResultAggregation executionId=\"20927d24-2eb4-473f-b5b2-f52667b88f6f\" testId=\"4eb63268-af79-48f1-b625-05ef09b0301a\" testName=\"OrderedTest1\" computerName=\"random-DT\" duration=\"00:00:01.4031295\" startTime=\"2017-12-14T16:27:24.2216619+05:30\" endTime=\"2017-12-14T16:27:25.6423256+05:30\" testType=\"ec4800e8-40e5-4ab3-8510-b8bf29b1904d\" outcome=\"Passed\" testListId=\"8c84fa94-04c1-424b-9868-57a2d4851a1d\" relativeResultsDirectory=\"20927d24-2eb4-473f-b5b2-f52667b88f6f\">"
+                + "<InnerResults>"
+                + "<UnitTestResult executionId=\"4f82d822-cd28-4bcc-b091-b08a66cf92e7\" parentExecutionId=\"20927d24-2eb4-473f-b5b2-f52667b88f6f\" testId=\"fd846020-c6f8-3c49-3ed0-fbe1e1fd340b\" testName=\"01- CodedUITestMethod1 (OrderedTest1)\" computerName=\"random-DT\" duration=\"00:00:00.3658086\" startTime=\"2017-12-14T10:57:24.2386920+05:30\" endTime=\"2017-12-14T10:57:25.3440342+05:30\" testType=\"13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b\" outcome=\"Passed\" testListId=\"8c84fa94-04c1-424b-9868-57a2d4851a1d\" relativeResultsDirectory=\"4f82d822-cd28-4bcc-b091-b08a66cf92e7\" />"
+                + "<UnitTestResult executionId=\"5918f7d4-4619-4869-b777-71628227c62a\" parentExecutionId=\"20927d24-2eb4-473f-b5b2-f52667b88f6f\" testId=\"1c7ece84-d949-bed1-0a4c-dfad4f9c953e\" testName=\"02- CodedUITestMethod2 (OrderedTest1)\" computerName=\"random-DT\" duration=\"00:00:00.0448870\" startTime=\"2017-12-14T10:57:25.3480349+05:30\" endTime=\"2017-12-14T10:57:25.3950371+05:30\" testType=\"13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b\" outcome=\"Passed\" testListId=\"8c84fa94-04c1-424b-9868-57a2d4851a1d\" relativeResultsDirectory=\"5918f7d4-4619-4869-b777-71628227c62a\" />"
+                + "</InnerResults>"
+                + "</TestResultAggregation>"
+                + "</Results>"
+                + "<ResultSummary outcome=\"Failed\"><Counters total = \"3\" executed = \"3\" passed=\"2\" failed=\"1\" error=\"0\" timeout=\"0\" aborted=\"0\" inconclusive=\"0\" passedButRunAborted=\"0\" notRunnable=\"0\" notExecuted=\"0\" disconnected=\"0\" warning=\"0\" completed=\"0\" inProgress=\"0\" pending=\"0\" />"
+                + "<CollectorDataEntries>"
+                + "<Collector agentName=\"DIGANR-DEV4\" uri=\"datacollector://microsoft/CodeCoverage/2.0\" collectorDisplayName=\"Code Coverage\"><UriAttachments><UriAttachment>"
+                + "<A href=\"DIGANR-DEV4\\vstest_console.dynamic.data.coverage\"></A></UriAttachment></UriAttachments>"
+                + "</Collector>"
+                + "<Collector agentName=\"DIGANR-DEV4\" uri=\"datacollector://microsoft/CodeCoverage/1.0\" collectorDisplayName=\"MSTestAdapter\"><UriAttachments>"
+                + "<UriAttachment><A href=\"DIGANR-DEV4\\unittestproject3.dll\">c:\\vstest.static.unittestproject3.dll</A></UriAttachment>"
+                + "<UriAttachment><A href=\"DIGANR-DEV4\\UnitTestProject3.instr.pdb\">C:\\vstest.static.UnitTestProject3.instr.pdb</A></UriAttachment>"
+                + "</UriAttachments></Collector>"
+                + "</CollectorDataEntries>"
+                + "<ResultFiles>"
+                + "<ResultFile path=\"vstest_console.static.data.coverage\" /></ResultFiles>"
+                + "<ResultFile path=\"DIGANR-DEV4\\mstest.static.data.coverage\" />"
+                + "</ResultSummary>"
+                + "</TestRun>";
+
+            var testRunData = GetTestRunData(trxContents, null, new TestRunContext("Owner", "any cpu", "debug", 1, "", "releaseUri", "releaseEnvironmentUri"));
+
+            DateTime.TryParse("2015-03-20T16:53:32.3099353+05:30", DateTimeFormatInfo.InvariantInfo, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out DateTime StartedDate);
+            Assert.Equal(testRunData.Results[0].StartedDate, StartedDate);
+
+            TimeSpan.TryParse("00:00:00.0834563", out TimeSpan Duration);
+            Assert.Equal(testRunData.Results[0].DurationInMs, Duration.TotalMilliseconds);
+
+            DateTime CompletedDate = StartedDate.AddTicks(Duration.Ticks);
+            Assert.Equal(testRunData.Results[0].CompletedDate, CompletedDate);
+
+            Assert.Equal(testRunData.Results.Length, 3);
+
+            Assert.Equal(testRunData.Results[0].Outcome, "Failed");
+            Assert.Equal(testRunData.Results[0].TestCaseTitle, "TestMethod2");
+            Assert.Equal(testRunData.Results[0].ComputerName, "SOMERANDOMCOMPUTERNAME");
+            Assert.Equal(testRunData.Results[0].AutomatedTestType, "UnitTest");
+            Assert.Equal(testRunData.Results[0].AutomatedTestName, "UnitTestProject4.UnitTest1.TestMethod2");
+            Assert.Equal(testRunData.Results[0].AutomatedTestId, "f0d6b58f-dc08-9c0b-aab7-0a1411d4a346");
+            Assert.Equal(testRunData.Results[0].AutomatedTestStorage, "unittestproject4.dll");
+            Assert.Equal(testRunData.Results[0].AutomatedTestTypeId, "13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b");
+            Assert.Equal(testRunData.Results[0].ErrorMessage, "Assert.Fail failed.");
+            Assert.Equal(testRunData.Results[0].StackTrace, "at UnitTestProject4.UnitTest1.TestMethod2() in C:\\Users\\somerandomusername\\Source\\Repos\\Projectx\\UnitTestProject4\\UnitTestProject4\\UnitTest1.cs:line 21");
+            Assert.Equal(testRunData.Results[0].Priority.ToString(), "1");
+            Assert.Equal(testRunData.Results[0].AttachmentData.ConsoleLog, "Show console log output.");
+            Assert.Equal(testRunData.Results[0].AttachmentData.StandardError, "This is standard error message.");
+            Assert.Equal(testRunData.Results[0].AttachmentData.AttachmentsFilePathList.Count, 1);
+            Assert.True(testRunData.Results[0].AttachmentData.AttachmentsFilePathList[0].Contains("x.txt"));
+
+            // Testing subResult properties
+            Assert.Equal(testRunData.Results[0].TestCaseSubResultData.Count, 1);
+            Assert.Equal(testRunData.Results[0].TestCaseSubResultData[0].DisplayName, "SubResult 1 (TestMethod2)");
+            Assert.Equal(testRunData.Results[0].TestCaseSubResultData[0].ComputerName, "SOMERANDOMCOMPUTERNAME");
+            Assert.Equal(testRunData.Results[0].TestCaseSubResultData[0].Outcome, "Failed");
+            Assert.Equal(testRunData.Results[0].TestCaseSubResultData[0].ErrorMessage, "Assert.Fail failed.");
+            Assert.Equal(testRunData.Results[0].TestCaseSubResultData[0].StackTrace, "at UnitTestProject4.UnitTest1.TestMethod2() in C:\\Users\\somerandomusername\\Source\\Repos\\Projectx\\UnitTestProject4\\UnitTestProject4\\UnitTest1.cs:line 21");
+            Assert.Equal(testRunData.Results[0].TestCaseSubResultData[0].AttachmentData.ConsoleLog, "Show console log output.");
+            Assert.Equal(testRunData.Results[0].TestCaseSubResultData[0].AttachmentData.StandardError, "This is standard error message.");
+            Assert.Equal(testRunData.Results[0].TestCaseSubResultData[0].AttachmentData.AttachmentsFilePathList.Count, 1);
+            Assert.True(testRunData.Results[0].TestCaseSubResultData[0].AttachmentData.AttachmentsFilePathList[0].Contains("x.txt"));
+
+
+            Assert.Equal(testRunData.Results[1].Outcome, "Passed");
+            Assert.Equal(testRunData.Results[1].TestCaseTitle, "PSD_Startseite");
+            Assert.Equal(testRunData.Results[1].ComputerName, "LAB-BUILDVNEXT");
+            Assert.Equal(testRunData.Results[1].AutomatedTestType, "WebTest");
+            Assert.Equal(testRunData.Results[1].AttachmentData.ConsoleLog, null);
+            Assert.Equal(testRunData.Results[1].AttachmentData.AttachmentsFilePathList.Count, 1);
+            Assert.True(testRunData.Results[1].AttachmentData.AttachmentsFilePathList[0].Contains("PSD_Startseite.webtestResult"));
+
+            Assert.Equal(testRunData.Results[2].Outcome, "Passed");
+            Assert.Equal(testRunData.Results[2].TestCaseTitle, "OrderedTest1");
+            Assert.Equal(testRunData.Results[2].ComputerName, "random-DT");
+            Assert.Equal(testRunData.Results[2].AutomatedTestType, "OrderedTest");
+
+            // Testing subResult properties
+            Assert.Equal(testRunData.Results[2].TestCaseSubResultData.Count, 2);
+            Assert.Equal(testRunData.Results[2].TestCaseSubResultData[0].DisplayName, "01- CodedUITestMethod1 (OrderedTest1)");
+            Assert.Equal(testRunData.Results[2].TestCaseSubResultData[1].DisplayName, "02- CodedUITestMethod2 (OrderedTest1)");
+            Assert.Equal(testRunData.Results[2].TestCaseSubResultData[0].Outcome, "Passed");
+            Assert.Equal(testRunData.Results[2].TestCaseSubResultData[1].Outcome, "Passed");
+            // 3 files related mstest.static, 3 files related to vstest.static, and 1 file for vstest.dynamic 
+            Assert.Equal(testRunData.Attachments.Length, 7);
         }
 
         [Fact]
@@ -384,18 +516,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
                 Assert.Equal(runData.Results[0].ErrorMessage, "Assert.Fail failed.");
                 Assert.Equal(runData.Results[0].StackTrace, "at UnitTestProject4.UnitTest1.TestMethod2() in C:\\Users\\somerandomusername\\Source\\Repos\\Projectx\\UnitTestProject4\\UnitTestProject4\\UnitTest1.cs:line 21");
                 Assert.Equal(runData.Results[0].Priority.ToString(), "1");
-                Assert.Equal(runData.Results[0].ConsoleLog, "Show console log output.");
-                Assert.Equal(runData.Results[0].StandardError, "This is standard error message.");
-                Assert.Equal(runData.Results[0].Attachments.Length, 1);
-                Assert.True(runData.Results[0].Attachments[0].Contains("x.txt"));
+                Assert.Equal(runData.Results[0].AttachmentData.ConsoleLog, "Show console log output.");
+                Assert.Equal(runData.Results[0].AttachmentData.StandardError, "This is standard error message.");
+                Assert.Equal(runData.Results[0].AttachmentData.AttachmentsFilePathList.Count, 1);
+                Assert.True(runData.Results[0].AttachmentData.AttachmentsFilePathList[0].Contains("x.txt"));
 
                 Assert.Equal(runData.Results[1].Outcome, "Passed");
                 Assert.Equal(runData.Results[1].TestCaseTitle, "PSD_Startseite");
                 Assert.Equal(runData.Results[1].ComputerName, "LAB-BUILDVNEXT");
                 Assert.Equal(runData.Results[1].AutomatedTestType, "WebTest");
-                Assert.Equal(runData.Results[1].ConsoleLog, null);
-                Assert.Equal(runData.Results[1].Attachments.Length, 1);
-                Assert.True(runData.Results[1].Attachments[0].Contains("PSD_Startseite.webtestResult"));
+                Assert.Equal(runData.Results[1].AttachmentData.ConsoleLog, null);
+                Assert.Equal(runData.Results[1].AttachmentData.AttachmentsFilePathList.Count, 1);
+                Assert.True(runData.Results[1].AttachmentData.AttachmentsFilePathList[0].Contains("PSD_Startseite.webtestResult"));
 
                 Assert.Equal(runData.Results[2].Outcome, "Passed");
                 Assert.Equal(runData.Results[2].TestCaseTitle, "OrderedTest1");

@@ -191,10 +191,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                         }
 
                         // Console log
+                        resultCreateModel.AttachmentData = new AttachmentData();
                         XmlNode consoleLog = testCaseNode.SelectSingleNode("./output");
                         if (consoleLog != null && !string.IsNullOrWhiteSpace(consoleLog.InnerText))
                         {
-                            resultCreateModel.ConsoleLog = consoleLog.InnerText;
+                            resultCreateModel.AttachmentData.ConsoleLog = consoleLog.InnerText;
                         }
                     }
                     else if (testCaseNode.Attributes["result"] != null && string.Equals(testCaseNode.Attributes["result"].Value, "pass", StringComparison.OrdinalIgnoreCase))

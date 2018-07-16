@@ -168,7 +168,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
             var failedTestResult = _testRunData.Results.Where(r => r.Outcome.Equals("Failed")).First();
             Assert.Equal("System.ArgumentException : Value does not fall within the expected range.", failedTestResult.ErrorMessage);
             Assert.Equal("   at ExpectedExceptionExample.ExpectedExceptionTests.SomeFailingTest()", failedTestResult.StackTrace);
-            Assert.Equal("This is standard console output.", failedTestResult.ConsoleLog);
+            Assert.Equal("This is standard console output.", failedTestResult.AttachmentData.ConsoleLog);
             Assert.Equal(1, _testRunData.Results.Count(r => r.Outcome.Equals("NotExecuted")));
             Assert.Equal(1, _testRunData.Results.Count(r => r.Outcome.Equals("Inconclusive")));
             Assert.Equal(1, _testRunData.Attachments.Length);
@@ -196,7 +196,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
             var failedTestResult = _testRunData.Results.Where(r => r.Outcome.Equals("Failed")).First();
             Assert.Equal("System.ArgumentException : Value does not fall within the expected range.", failedTestResult.ErrorMessage);
             Assert.Equal("   at ExpectedExceptionExample.ExpectedExceptionTests.SomeFailingTest()", failedTestResult.StackTrace);
-            Assert.Equal("This is standard console output.", failedTestResult.ConsoleLog);
+            Assert.Equal("This is standard console output.", failedTestResult.AttachmentData.ConsoleLog);
             Assert.Equal(1, _testRunData.Results.Count(r => r.Outcome.Equals("NotExecuted")));
             Assert.Equal(1, _testRunData.Results.Count(r => r.Outcome.Equals("Inconclusive")));
             Assert.Equal(1, _testRunData.Attachments.Length);
@@ -528,8 +528,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
             ReadResults(new TestRunContext("owner", String.Empty, string.Empty, 0, "buildUri", "releaseUri", "releaseEnvironmentUri"));
 
             var failedTestWithAttachment = _testRunData.Results.Where(x => x.Outcome.Equals("Failed")).FirstOrDefault();
-            Assert.Equal(failedTestWithAttachment.Attachments.Count(), 1);
-            Assert.Collection(failedTestWithAttachment.Attachments.ToList(), x=>{x.Equals(@"C:\Users\navb\Pictures\dummy1.png");});
+            Assert.Equal(failedTestWithAttachment.AttachmentData.AttachmentsFilePathList.Count(), 1);
+            Assert.Collection(failedTestWithAttachment.AttachmentData.AttachmentsFilePathList.ToList(), x=>{x.Equals(@"C:\Users\navb\Pictures\dummy1.png");});
         }
 
         [Fact]
@@ -543,12 +543,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
             ReadResults(new TestRunContext("owner", String.Empty, string.Empty, 0, "buildUri", "releaseUri", "releaseEnvironmentUri"));
 
             var failedTestWithAttachment = _testRunData.Results.Where(x => x.Outcome.Equals("Failed")).FirstOrDefault();
-            Assert.Equal(failedTestWithAttachment.Attachments.Count(), 2);
-            Assert.Collection(failedTestWithAttachment.Attachments.ToList(), x=>{x.Equals(@"C:\Users\navb\Pictures\dummy1.png");}, y=>{y.Equals( @"C:\Users\navb\Pictures\dummy4.png");});
+            Assert.Equal(failedTestWithAttachment.AttachmentData.AttachmentsFilePathList.Count(), 2);
+            Assert.Collection(failedTestWithAttachment.AttachmentData.AttachmentsFilePathList.ToList(), x=>{x.Equals(@"C:\Users\navb\Pictures\dummy1.png");}, y=>{y.Equals( @"C:\Users\navb\Pictures\dummy4.png");});
 
             // checking other test cases should not have attachments.
             var passedTest = _testRunData.Results.Where(x => x.Outcome.Equals("Passed")).FirstOrDefault();
-            Assert.Equal(passedTest.Attachments.Count(), 0);
+            Assert.Equal(passedTest.AttachmentData.AttachmentsFilePathList.Count(), 0);
         }
 
         [Fact]
