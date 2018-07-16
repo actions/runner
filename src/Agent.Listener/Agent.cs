@@ -104,13 +104,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
                 _inConfigStage = false;
 
-                // Local run
-                if (command.LocalRun)
-                {
-                    var localManager = HostContext.GetService<ILocalRunner>();
-                    return await localManager.LocalRunAsync(command, HostContext.AgentShutdownToken);
-                }
-
                 AgentSettings settings = configManager.LoadSettings();
 
                 var store = HostContext.GetService<IConfigurationStore>();
@@ -405,10 +398,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             if (command.Configure)
             {
                 _term.WriteLine(StringUtil.Loc("CommandLineHelp_Configure", separator, ext, commonHelp, envHelp));
-            }
-            else if (command.LocalRun)
-            {
-                _term.WriteLine(StringUtil.Loc("CommandLineHelp_LocalRun", separator, ext, commonHelp, envHelp));
             }
             else if (command.Remove)
             {
