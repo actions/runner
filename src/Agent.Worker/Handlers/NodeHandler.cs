@@ -79,17 +79,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             string workingDirectory = Data.WorkingDirectory;
             if (string.IsNullOrEmpty(workingDirectory))
             {
-                if (!string.IsNullOrEmpty(ExecutionContext.Variables.System_DefaultWorkingDirectory))
+                workingDirectory = ExecutionContext.Variables.Get(Constants.Variables.System.DefaultWorkingDirectory);
+                if (string.IsNullOrEmpty(workingDirectory))
                 {
-                    workingDirectory = ExecutionContext.Variables.System_DefaultWorkingDirectory;
-                }
-                else
-                {
-                    workingDirectory = ExecutionContext.Variables.Agent_WorkFolder;
+                    workingDirectory = HostContext.GetDirectory(WellKnownDirectory.Work);
                 }
             }
-
-            ArgUtil.Directory(workingDirectory, nameof(workingDirectory));
 
             // fix vsts-task-lib for node 6.x
             // vsts-task-lib 0.6/0.7/0.8/0.9/2.0-preview implemented String.prototype.startsWith and String.prototype.endsWith since Node 5.x doesn't have them.

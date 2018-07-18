@@ -9,9 +9,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Container
     public class ContainerInfo
     {
         private List<MountVolume> _mountVolumes;
-        private Dictionary<string, string> _pathMappings;
 
-        public ContainerInfo(Pipelines.ContainerResource container)
+#if OS_WINDOWS
+        private Dictionary<string, string> _pathMappings = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+#else
+        private Dictionary<string, string> _pathMappings = new Dictionary<string, string>();
+#endif
+
+        public ContainerInfo(IHostContext hostContext, Pipelines.ContainerResource container)
         {
             this.ContainerName = container.Alias;
 
@@ -24,6 +29,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Container
             this.ContainerCreateOptions = container.Properties.Get<string>("options");
             this.SkipContainerImagePull = container.Properties.Get<bool>("localimage");
             this.ContainerEnvironmentVariables = container.Environment;
+
+#if OS_WINDOWS            
+            _pathMappings[hostContext.GetDirectory(WellKnownDirectory.Tools)] = "C:\\__t"; // Tool cache folder may come from ENV, so we need a unique folder to avoid collision
+            _pathMappings[hostContext.GetDirectory(WellKnownDirectory.Work)] = "C:\\__w";
+            _pathMappings[hostContext.GetDirectory(WellKnownDirectory.Root)] = "C:\\__a";
+#else
+            _pathMappings[hostContext.GetDirectory(WellKnownDirectory.Tools)] = "/__t"; // Tool cache folder may come from ENV, so we need a unique folder to avoid collision
+            _pathMappings[hostContext.GetDirectory(WellKnownDirectory.Work)] = "/__w";
+            _pathMappings[hostContext.GetDirectory(WellKnownDirectory.Root)] = "/__a";
+#endif            
         }
 
         public string ContainerId { get; set; }
@@ -52,28 +67,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Container
             }
         }
 
-        public Dictionary<string, string> PathMappings
-        {
-            get
-            {
-                if (_pathMappings == null)
-                {
-#if OS_WINDOWS
-                    _pathMappings = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-#else
-                    _pathMappings = new Dictionary<string, string>();
-#endif
-                }
-
-                return _pathMappings;
-            }
-        }
-
         public string TranslateToContainerPath(string path)
         {
             if (!string.IsNullOrEmpty(path))
             {
-                foreach (var mapping in PathMappings)
+                foreach (var mapping in _pathMappings)
                 {
 #if OS_WINDOWS
                     if (string.Equals(path, mapping.Key, StringComparison.OrdinalIgnoreCase))
@@ -107,7 +105,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Container
         {
             if (!string.IsNullOrEmpty(path))
             {
-                foreach (var mapping in PathMappings)
+                foreach (var mapping in _pathMappings)
                 {
 #if OS_WINDOWS
                     if (string.Equals(path, mapping.Value, StringComparison.OrdinalIgnoreCase))

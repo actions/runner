@@ -47,7 +47,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
                 throw new NotSupportedException(Data.Target);
             }
 
-            await agentPlugin.RunPluginTaskAsync(ExecutionContext, Data.Target, Inputs, Environment, OnDataReceived);
+            await agentPlugin.RunPluginTaskAsync(ExecutionContext, Data.Target, Inputs, Environment, RuntimeVariables, OnDataReceived);
         }
 
         private void OnDataReceived(object sender, ProcessDataReceivedEventArgs e)

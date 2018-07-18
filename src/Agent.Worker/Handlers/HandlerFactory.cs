@@ -18,8 +18,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             HandlerData data,
             Dictionary<string, string> inputs,
             Dictionary<string, string> environment,
-            string taskDirectory,
-            string filePathInputRootDirectory);
+            Variables runtimeVariables,
+            string taskDirectory);
     }
 
     public sealed class HandlerFactory : AgentService, IHandlerFactory
@@ -33,8 +33,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             HandlerData data,
             Dictionary<string, string> inputs,
             Dictionary<string, string> environment,
-            string taskDirectory,
-            string filePathInputRootDirectory)
+            Variables runtimeVariables,
+            string taskDirectory)
         {
             // Validate args.
             Trace.Entering();
@@ -45,6 +45,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             ArgUtil.NotNull(data, nameof(data));
             ArgUtil.NotNull(inputs, nameof(inputs));
             ArgUtil.NotNull(environment, nameof(environment));
+            ArgUtil.NotNull(runtimeVariables, nameof(runtimeVariables));
             ArgUtil.NotNull(taskDirectory, nameof(taskDirectory));
 
             // Create the handler.
@@ -100,9 +101,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             handler.Endpoints = endpoints;
             handler.Task = task;
             handler.Environment = environment;
+            handler.RuntimeVariables = runtimeVariables;
             handler.ExecutionContext = executionContext;
             handler.StepHost = stepHost;
-            handler.FilePathInputRootDirectory = filePathInputRootDirectory;
             handler.Inputs = inputs;
             handler.SecureFiles = secureFiles;
             handler.TaskDirectory = taskDirectory;

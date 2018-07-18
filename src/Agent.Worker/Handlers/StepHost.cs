@@ -101,6 +101,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             {
                 return Container.TranslateToContainerPath(path);
             }
+#if OS_WINDOWS
+            else if (Container.MountVolumes.Exists(x => path.StartsWith(x.TargetVolumePath, StringComparison.OrdinalIgnoreCase)))
+#else
+            else if (Container.MountVolumes.Exists(x => path.StartsWith(x.TargetVolumePath)))
+#endif
+            {
+                return path;
+            }
             else
             {
                 return Path.GetFileName(path);
@@ -128,18 +136,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
                 ExecutionHandler = fileName,
                 ExecutionHandlerWorkingDirectory = workingDirectory,
                 ExecutionHandlerArguments = arguments,
-#if OS_WINDOWS
-                ExecutionHandlerEnvironment = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
-#else
-                ExecutionHandlerEnvironment = new Dictionary<string, string>(),
-#endif
+                ExecutionHandlerEnvironment = environment,
             };
-
-            // replace any host path in environment variables to container path, this is about variables, like $(build.sourcesdirectory).
-            foreach (var env in environment)
-            {
-                payload.ExecutionHandlerEnvironment[env.Key] = Container.TranslateToContainerPath(env.Value);
-            }
 
             // copy the intermediate script (containerHandlerInvoker.js) into Agent_TempDirectory
             // Background:

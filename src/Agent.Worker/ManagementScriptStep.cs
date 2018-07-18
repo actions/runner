@@ -63,8 +63,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 data: handlerData,
                 inputs: new Dictionary<string, string>(),
                 environment: new Dictionary<string, string>(VarUtil.EnvironmentVariableKeyComparer),
-                taskDirectory: scriptDirectory,
-                filePathInputRootDirectory: string.Empty);
+                runtimeVariables: ExecutionContext.Variables,
+                taskDirectory: scriptDirectory);
 
             // Add the access token to the handler.
             handler.AccessToken = AccessToken;

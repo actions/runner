@@ -30,7 +30,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         public Type ExtensionType => typeof(ISourceProvider);
 
         public abstract string RepositoryType { get; }
-        
+
         public virtual string GetLocalPath(IExecutionContext executionContext, RepositoryResource repository, string path)
         {
             return path;
@@ -55,7 +55,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             trace.Info($"Get '{name}' (not found)");
             return null;
         }
-        
+
         public virtual Task RunMaintenanceOperations(IExecutionContext executionContext, string repositoryPath)
         {
             return Task.CompletedTask;

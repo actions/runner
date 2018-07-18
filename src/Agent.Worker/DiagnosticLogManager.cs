@@ -48,7 +48,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             // Setup folders
             // \_layout\_work\_temp\[jobname-support]
             executionContext.Debug("Setting up diagnostic log folders.");
-            string tempDirectory = executionContext.Variables.Agent_TempDirectory;
+            string tempDirectory = HostContext.GetDirectory(WellKnownDirectory.Temp);
             ArgUtil.Directory(tempDirectory, nameof(tempDirectory));
 
             string supportRootFolder = Path.Combine(tempDirectory, message.JobName + "-support");

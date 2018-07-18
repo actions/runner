@@ -58,8 +58,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 }
             }
 
-            string defaultPathRoot = context.Variables.Get(Constants.Variables.Build.SourcesDirectory) ?? string.Empty;
-            Trace.Info($"The Default Path Root of Build JobExtension is build.sourcesDirectory: {defaultPathRoot}");
+            string defaultPathRoot = null;
+            if (Repository != null)
+            {
+                defaultPathRoot = Repository.Properties.Get<string>(Pipelines.RepositoryPropertyNames.Path);
+                Trace.Info($"The Default Path Root of Build JobExtension is build.sourcesDirectory: {defaultPathRoot}");
+            }
 
             if (defaultPathRoot != null && defaultPathRoot.IndexOfAny(Path.GetInvalidPathChars()) < 0 &&
                 path != null && path.IndexOfAny(Path.GetInvalidPathChars()) < 0)
@@ -100,7 +104,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             {
                 // If we found a repo, calculate the relative path to the file
                 repoName = Repository.Properties.Get<string>(Pipelines.RepositoryPropertyNames.Name);
-                sourcePath = IOUtil.MakeRelative(localPath, context.Variables.Get(Constants.Variables.Build.SourcesDirectory));
+                var repoPath = Repository.Properties.Get<string>(Pipelines.RepositoryPropertyNames.Path);
+                sourcePath = IOUtil.MakeRelative(localPath, repoPath);
             }
         }
 
@@ -181,15 +186,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             // Set the directory variables.
             executionContext.Output(StringUtil.Loc("SetBuildVars"));
             string _workDirectory = HostContext.GetDirectory(WellKnownDirectory.Work);
-            executionContext.Variables.Set(Constants.Variables.Agent.BuildDirectory, Path.Combine(_workDirectory, trackingConfig.BuildDirectory));
-            executionContext.Variables.Set(Constants.Variables.System.ArtifactsDirectory, Path.Combine(_workDirectory, trackingConfig.ArtifactsDirectory));
-            executionContext.Variables.Set(Constants.Variables.System.DefaultWorkingDirectory, Path.Combine(_workDirectory, trackingConfig.SourcesDirectory));
-            executionContext.Variables.Set(Constants.Variables.Common.TestResultsDirectory, Path.Combine(_workDirectory, trackingConfig.TestResultsDirectory));
-            executionContext.Variables.Set(Constants.Variables.Build.BinariesDirectory, Path.Combine(_workDirectory, trackingConfig.BuildDirectory, Constants.Build.Path.BinariesDirectory));
-            executionContext.Variables.Set(Constants.Variables.Build.SourcesDirectory, Path.Combine(_workDirectory, trackingConfig.SourcesDirectory));
-            executionContext.Variables.Set(Constants.Variables.Build.StagingDirectory, Path.Combine(_workDirectory, trackingConfig.ArtifactsDirectory));
-            executionContext.Variables.Set(Constants.Variables.Build.ArtifactStagingDirectory, Path.Combine(_workDirectory, trackingConfig.ArtifactsDirectory));
-            executionContext.Variables.Set(Constants.Variables.Build.RepoLocalPath, Path.Combine(_workDirectory, trackingConfig.SourcesDirectory));
+            executionContext.SetVariable(Constants.Variables.Agent.BuildDirectory, Path.Combine(_workDirectory, trackingConfig.BuildDirectory), isFilePath: true);
+            executionContext.SetVariable(Constants.Variables.System.ArtifactsDirectory, Path.Combine(_workDirectory, trackingConfig.ArtifactsDirectory), isFilePath: true);
+            executionContext.SetVariable(Constants.Variables.System.DefaultWorkingDirectory, Path.Combine(_workDirectory, trackingConfig.SourcesDirectory), isFilePath: true);
+            executionContext.SetVariable(Constants.Variables.Common.TestResultsDirectory, Path.Combine(_workDirectory, trackingConfig.TestResultsDirectory), isFilePath: true);
+            executionContext.SetVariable(Constants.Variables.Build.BinariesDirectory, Path.Combine(_workDirectory, trackingConfig.BuildDirectory, Constants.Build.Path.BinariesDirectory), isFilePath: true);
+            executionContext.SetVariable(Constants.Variables.Build.SourcesDirectory, Path.Combine(_workDirectory, trackingConfig.SourcesDirectory), isFilePath: true);
+            executionContext.SetVariable(Constants.Variables.Build.StagingDirectory, Path.Combine(_workDirectory, trackingConfig.ArtifactsDirectory), isFilePath: true);
+            executionContext.SetVariable(Constants.Variables.Build.ArtifactStagingDirectory, Path.Combine(_workDirectory, trackingConfig.ArtifactsDirectory), isFilePath: true);
+            executionContext.SetVariable(Constants.Variables.Build.RepoLocalPath, Path.Combine(_workDirectory, trackingConfig.SourcesDirectory), isFilePath: true);
 
             Repository.Properties.Set<string>(Pipelines.RepositoryPropertyNames.Path, Path.Combine(_workDirectory, trackingConfig.SourcesDirectory));
         }

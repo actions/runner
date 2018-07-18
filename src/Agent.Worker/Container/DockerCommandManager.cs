@@ -117,11 +117,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Container
                 }
             }
 
-#if OS_WINDOWS
-            string node = Path.Combine("C:\\_a\\externals", "node", "bin", $"node{IOUtil.ExeExtension}"); // Windows container always map externals folder to C:\_a\externals
-#else
-            string node = Path.Combine("/_a/externals", "node", "bin", $"node{IOUtil.ExeExtension}"); // Linux container always map externals folder to /_a/externals
-#endif
+            string node = context.Container.TranslateToContainerPath(Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), "node", "bin", $"node{IOUtil.ExeExtension}"));
             string sleepCommand = $"\"{node}\" -e \"setInterval(function(){{}}, 24 * 60 * 60 * 1000);\"";
 #if OS_WINDOWS
             string dockerArgs = $"--name {displayName} --rm {options} {dockerEnvArgs} {dockerMountVolumesArgs} {image} {sleepCommand}";  // add --network={network} and -v '\\.\pipe\docker_engine:\\.\pipe\docker_engine' when they are available (17.09)

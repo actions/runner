@@ -16,8 +16,10 @@ namespace Microsoft.VisualStudio.Services.Agent
         LegacyPSHost,
         Root,
         ServerOM,
-        Tee,
         Tasks,
+        Tee,
+        Temp,
+        Tools,
         Update,
         Work,
     }

@@ -16,8 +16,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
         List<ServiceEndpoint> Endpoints { get; set; }
         Dictionary<string, string> Environment { get; set; }
         IExecutionContext ExecutionContext { get; set; }
+        Variables RuntimeVariables { get; set; }
         IStepHost StepHost { get; set; }
-        string FilePathInputRootDirectory { get; set; }
         Dictionary<string, string> Inputs { get; set; }
         List<SecureFile> SecureFiles { get; set; }
         string TaskDirectory { get; set; }
@@ -37,9 +37,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
 
         public List<ServiceEndpoint> Endpoints { get; set; }
         public Dictionary<string, string> Environment { get; set; }
+        public Variables RuntimeVariables { get; set; }
         public IExecutionContext ExecutionContext { get; set; }
         public IStepHost StepHost { get; set; }
-        public string FilePathInputRootDirectory { get; set; }
         public Dictionary<string, string> Inputs { get; set; }
         public List<SecureFile> SecureFiles { get; set; }
         public string TaskDirectory { get; set; }
@@ -59,7 +59,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             ArgUtil.NotNull(ExecutionContext.Endpoints, nameof(ExecutionContext.Endpoints));
 
             List<ServiceEndpoint> endpoints;
-            if ((ExecutionContext.Variables.GetBoolean(Constants.Variables.Agent.AllowAllEndpoints) ?? false) ||
+            if ((RuntimeVariables.GetBoolean(Constants.Variables.Agent.AllowAllEndpoints) ?? false) ||
                 string.Equals(System.Environment.GetEnvironmentVariable("AGENT_ALLOWALLENDPOINTS") ?? string.Empty, bool.TrueString, StringComparison.OrdinalIgnoreCase))
             {
                 endpoints = ExecutionContext.Endpoints; // todo: remove after sprint 120 or so
@@ -137,7 +137,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             ArgUtil.NotNull(SecureFiles, nameof(SecureFiles));
 
             List<SecureFile> secureFiles;
-            if ((ExecutionContext.Variables.GetBoolean(Constants.Variables.Agent.AllowAllSecureFiles) ?? false) ||
+            if ((RuntimeVariables.GetBoolean(Constants.Variables.Agent.AllowAllSecureFiles) ?? false) ||
                 string.Equals(System.Environment.GetEnvironmentVariable("AGENT_ALLOWALLSECUREFILES") ?? string.Empty, bool.TrueString, StringComparison.OrdinalIgnoreCase))
             {
                 secureFiles = ExecutionContext.SecureFiles ?? new List<SecureFile>(0); // todo: remove after sprint 121 or so
@@ -183,12 +183,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             // Validate args.
             Trace.Entering();
             ArgUtil.NotNull(Environment, nameof(Environment));
-            ArgUtil.NotNull(ExecutionContext, nameof(ExecutionContext));
-            ArgUtil.NotNull(ExecutionContext.Variables, nameof(ExecutionContext.Variables));
+            ArgUtil.NotNull(RuntimeVariables, nameof(RuntimeVariables));
 
             // Add the public variables.
             var names = new List<string>();
-            foreach (KeyValuePair<string, string> pair in ExecutionContext.Variables.Public)
+            foreach (KeyValuePair<string, string> pair in RuntimeVariables.Public)
             {
                 // Add "agent.jobstatus" using the unformatted name and formatted name.
                 if (string.Equals(pair.Key, Constants.Variables.Agent.JobStatus, StringComparison.OrdinalIgnoreCase))
@@ -214,7 +213,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             {
                 // Add the secret variables.
                 var secretNames = new List<string>();
-                foreach (KeyValuePair<string, string> pair in ExecutionContext.Variables.Private)
+                foreach (KeyValuePair<string, string> pair in RuntimeVariables.Private)
                 {
                     // Add the variable using the formatted name.
                     string formattedKey = (pair.Key ?? string.Empty).Replace('.', '_').Replace(' ', '_').ToUpperInvariant();
@@ -282,7 +281,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             string prepend = string.Join(Path.PathSeparator.ToString(), ExecutionContext.PrependPath.Reverse<string>());
             string taskEnvPATH;
             Environment.TryGetValue(Constants.PathVariable, out taskEnvPATH);
-            string originalPath = ExecutionContext.Variables.Get(Constants.PathVariable) ?? // Prefer a job variable.
+            string originalPath = RuntimeVariables.Get(Constants.PathVariable) ?? // Prefer a job variable.
                 taskEnvPATH ?? // Then a task-environment variable.
                 System.Environment.GetEnvironmentVariable(Constants.PathVariable) ?? // Then an environment variable.
                 string.Empty;

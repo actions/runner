@@ -183,10 +183,26 @@ namespace Microsoft.VisualStudio.Services.Agent
                         Constants.Path.TeeDirectory);
                     break;
 
+                case WellKnownDirectory.Temp:
+                    path = Path.Combine(
+                        GetDirectory(WellKnownDirectory.Work),
+                        Constants.Path.TempDirectory);
+                    break;
+
                 case WellKnownDirectory.Tasks:
                     path = Path.Combine(
                         GetDirectory(WellKnownDirectory.Work),
                         Constants.Path.TasksDirectory);
+                    break;
+
+                case WellKnownDirectory.Tools:
+                    path = Environment.GetEnvironmentVariable("AGENT_TOOLSDIRECTORY") ?? Environment.GetEnvironmentVariable(Constants.Variables.Agent.ToolsDirectory);
+                    if (string.IsNullOrEmpty(path))
+                    {
+                        path = Path.Combine(
+                            GetDirectory(WellKnownDirectory.Work),
+                            Constants.Path.ToolDirectory);
+                    }
                     break;
 
                 case WellKnownDirectory.Update:

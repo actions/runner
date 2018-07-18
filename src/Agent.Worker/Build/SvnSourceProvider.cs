@@ -111,7 +111,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         public override void SetVariablesInEndpoint(IExecutionContext executionContext, ServiceEndpoint endpoint)
         {
             base.SetVariablesInEndpoint(executionContext, endpoint);
-            endpoint.Data.Add(Constants.EndpointData.SourceBranch, executionContext.Variables.Get(Constants.Variables.Build.SourceBranch));
+            endpoint.Data.Add(Constants.EndpointData.SourceBranch, executionContext.Variables.Build_SourceBranch);
         }
 
         public Task PostJobCleanupAsync(IExecutionContext executionContext, ServiceEndpoint endpoint)

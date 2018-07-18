@@ -66,7 +66,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 #if OS_WINDOWS
             // Check OS version (Windows server 1803 is required)
             object windowsInstallationType = Registry.GetValue(@"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion", "InstallationType", defaultValue: null);
-            ArgUtil.NotNull(windowsInstallationType, nameof(windowsInstallationType));            
+            ArgUtil.NotNull(windowsInstallationType, nameof(windowsInstallationType));
             object windowsReleaseId = Registry.GetValue(@"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion", "ReleaseId", defaultValue: null);
             ArgUtil.NotNull(windowsReleaseId, nameof(windowsReleaseId));
             executionContext.Debug($"Current Windows version: '{windowsReleaseId} ({windowsInstallationType})'");
@@ -150,21 +150,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
                 // Mount folder into container
 #if OS_WINDOWS
-                container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Externals), "C:\\_a\\externals"));
-                container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Work), "C:\\_work"));
-                container.MountVolumes.Add(new MountVolume(executionContext.Variables.Agent_ToolsDirectory, "C:\\_work\\_tool"));
-
-                container.PathMappings[HostContext.GetDirectory(WellKnownDirectory.Externals)] = "C:\\_a\\externals";
-                container.PathMappings[HostContext.GetDirectory(WellKnownDirectory.Work)] = "C:\\_work";
-                container.PathMappings[executionContext.Variables.Agent_ToolsDirectory] = "C:\\_work\\_tool";
+                container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Externals), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Externals))));
+                container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Work), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Work))));
+                container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Tools), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Tools))));
 #else
-                string workingDirMountSource = Path.GetDirectoryName(executionContext.Variables.System_DefaultWorkingDirectory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
-                string workingDirMountTarget = workingDirMountSource.Replace(HostContext.GetDirectory(WellKnownDirectory.Work), "/_work");
-                container.MountVolumes.Add(new MountVolume(workingDirMountSource, workingDirMountTarget));
-                container.MountVolumes.Add(new MountVolume(executionContext.Variables.Agent_TempDirectory, "/_work/_temp"));
-                container.MountVolumes.Add(new MountVolume(executionContext.Variables.Agent_ToolsDirectory, "/_work/_tool"));
-                container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Tasks), "/_work/_tasks"));
-                container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Externals), "/_a/externals", true));
+                string workingDirectory = Path.GetDirectoryName(executionContext.Variables.Get(Constants.Variables.System.DefaultWorkingDirectory).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+                container.MountVolumes.Add(new MountVolume(container.TranslateToHostPath(workingDirectory),  workingDirectory));
+                container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Temp), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Temp))));
+                container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Tools), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Tools))));
+                container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Tasks), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Tasks))));
+                container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Externals), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Externals)), true));
 
                 // Ensure .taskkey file exist so we can mount it.
                 string taskKeyFile = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), ".taskkey");
@@ -172,11 +167,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 {
                     File.WriteAllText(taskKeyFile, string.Empty);
                 }
-                container.MountVolumes.Add(new MountVolume(taskKeyFile, "/_work/.taskkey"));
-
-                container.PathMappings[HostContext.GetDirectory(WellKnownDirectory.Externals)] = "/_a/externals";
-                container.PathMappings[HostContext.GetDirectory(WellKnownDirectory.Work)] = "/_work";
-                container.PathMappings[executionContext.Variables.Agent_ToolsDirectory] = "/_work/_tool";
+                container.MountVolumes.Add(new MountVolume(taskKeyFile, container.TranslateToContainerPath(taskKeyFile)));
 #endif
 
 #if !OS_WINDOWS
@@ -365,7 +356,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             };
 
             await processInvoker.ExecuteAsync(
-                            workingDirectory: context.Variables.Agent_WorkFolder,
+                            workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Work),
                             fileName: command,
                             arguments: arg,
                             environment: null,
