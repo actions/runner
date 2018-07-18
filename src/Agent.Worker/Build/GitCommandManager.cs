@@ -32,7 +32,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         // git checkout -f --progress <commitId/branch>
         Task<int> GitCheckout(IExecutionContext context, string repositoryPath, string committishOrBranchSpec, CancellationToken cancellationToken);
 
-        // git clean -fdx
+        // git clean -ffdx
         Task<int> GitClean(IExecutionContext context, string repositoryPath);
 
         // git reset --hard HEAD
@@ -47,7 +47,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         // get remote set-url --push <origin> <url>
         Task<int> GitRemoteSetPushUrl(IExecutionContext context, string repositoryPath, string remoteName, string remoteUrl);
 
-        // git submodule foreach git clean -fdx
+        // git submodule foreach git clean -ffdx
         Task<int> GitSubmoduleClean(IExecutionContext context, string repositoryPath);
 
         // git submodule foreach git reset --hard HEAD
@@ -259,11 +259,23 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             return await ExecuteGitCommandAsync(context, repositoryPath, "checkout", options, cancellationToken);
         }
 
-        // git clean -fdx
+        // git clean -ffdx
         public async Task<int> GitClean(IExecutionContext context, string repositoryPath)
         {
             context.Debug($"Delete untracked files/folders for repository at {repositoryPath}.");
-            return await ExecuteGitCommandAsync(context, repositoryPath, "clean", "-fdx");
+
+            // Git 2.4 support git clean -ffdx.
+            string options;
+            if (_gitVersion >= new Version(2, 4))
+            {
+                options = "-ffdx";
+            }
+            else
+            {
+                options = "-fdx";
+            }
+
+            return await ExecuteGitCommandAsync(context, repositoryPath, "clean", options);
         }
 
         // git reset --hard HEAD
@@ -294,11 +306,23 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             return await ExecuteGitCommandAsync(context, repositoryPath, "remote", StringUtil.Format($"set-url --push {remoteName} {remoteUrl}"));
         }
 
-        // git submodule foreach git clean -fdx
+        // git submodule foreach git clean -ffdx
         public async Task<int> GitSubmoduleClean(IExecutionContext context, string repositoryPath)
         {
             context.Debug($"Delete untracked files/folders for submodules at {repositoryPath}.");
-            return await ExecuteGitCommandAsync(context, repositoryPath, "submodule", "foreach git clean -fdx");
+            
+            // Git 2.4 support git clean -ffdx.
+            string options;
+            if (_gitVersion >= new Version(2, 4))
+            {
+                options = "-ffdx";
+            }
+            else
+            {
+                options = "-fdx";
+            }
+
+            return await ExecuteGitCommandAsync(context, repositoryPath, "submodule", $"foreach git clean {options}");
         }
 
         // git submodule foreach git reset --hard HEAD

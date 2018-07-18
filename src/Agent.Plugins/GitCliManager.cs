@@ -176,11 +176,23 @@ namespace Agent.Plugins.Repository
             return await ExecuteGitCommandAsync(context, repositoryPath, "checkout", options, cancellationToken);
         }
 
-        // git clean -fdx
+        // git clean -ffdx
         public async Task<int> GitClean(AgentTaskPluginExecutionContext context, string repositoryPath)
         {
             context.Debug($"Delete untracked files/folders for repository at {repositoryPath}.");
-            return await ExecuteGitCommandAsync(context, repositoryPath, "clean", "-fdx");
+            
+            // Git 2.4 support git clean -ffdx.
+            string options;
+            if (gitVersion >= new Version(2, 4))
+            {
+                options = "-ffdx";
+            }
+            else
+            {
+                options = "-fdx";
+            }
+
+            return await ExecuteGitCommandAsync(context, repositoryPath, "clean", options);
         }
 
         // git reset --hard HEAD
@@ -211,11 +223,23 @@ namespace Agent.Plugins.Repository
             return await ExecuteGitCommandAsync(context, repositoryPath, "remote", StringUtil.Format($"set-url --push {remoteName} {remoteUrl}"));
         }
 
-        // git submodule foreach git clean -fdx
+        // git submodule foreach git clean -ffdx
         public async Task<int> GitSubmoduleClean(AgentTaskPluginExecutionContext context, string repositoryPath)
         {
             context.Debug($"Delete untracked files/folders for submodules at {repositoryPath}.");
-            return await ExecuteGitCommandAsync(context, repositoryPath, "submodule", "foreach git clean -fdx");
+
+            // Git 2.4 support git clean -ffdx.
+            string options;
+            if (gitVersion >= new Version(2, 4))
+            {
+                options = "-ffdx";
+            }
+            else
+            {
+                options = "-fdx";
+            }
+
+            return await ExecuteGitCommandAsync(context, repositoryPath, "submodule", $"foreach git clean {options}");
         }
 
         // git submodule foreach git reset --hard HEAD
