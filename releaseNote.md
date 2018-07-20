@@ -1,13 +1,11 @@
 ## Features
-  - Implement Artifact Upload/Download tasks using plugin model. #1654
-  - Start using repository resource. #1623
+  - N/A
   
 ## Bugs
-  - Handle variables and file path for container. #1704
-  - Git clean -ffdx instead of -fdx. #1702
+  - Fix TFVC path resolve for file path type task input.
 
 ## Misc
-  - Skip task if system restrict secrets. #1653
+  - N/A
 
 ## Agent Downloads  
 
