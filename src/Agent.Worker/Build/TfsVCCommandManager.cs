@@ -62,6 +62,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         public IExecutionContext ExecutionContext { protected get; set; }
 
         public abstract TfsVCFeatures Features { get; }
+        public abstract string FilePath { get; }
 
         protected virtual Encoding OutputEncoding => null;
 
@@ -130,7 +131,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 ExecutionContext.Command($@"tf {arguments}");
                 await processInvoker.ExecuteAsync(
                     workingDirectory: SourcesDirectory,
-                    fileName: "tf",
+                    fileName: FilePath,
                     arguments: arguments,
                     environment: AdditionalEnvironmentVariables,
                     requireExitCodeZero: true,
@@ -212,7 +213,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 {
                     await processInvoker.ExecuteAsync(
                         workingDirectory: SourcesDirectory,
-                        fileName: "tf",
+                        fileName: FilePath,
                         arguments: arguments,
                         environment: AdditionalEnvironmentVariables,
                         requireExitCodeZero: true,

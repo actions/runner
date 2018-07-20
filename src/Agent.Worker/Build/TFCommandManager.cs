@@ -31,7 +31,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
         protected override string Switch => "/";
 
-        public string FilePath => Path.Combine(HostContext.GetDirectory(WellKnownDirectory.ServerOM), "tf.exe");
+        public override string FilePath => Path.Combine(HostContext.GetDirectory(WellKnownDirectory.ServerOM), "tf.exe");
 
         private string AppConfigFile => Path.Combine(HostContext.GetDirectory(WellKnownDirectory.ServerOM), "tf.exe.config");
 
