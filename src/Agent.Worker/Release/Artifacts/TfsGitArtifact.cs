@@ -33,10 +33,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
             }
 
             var extensionManager = HostContext.GetService<IExtensionManager>();
-            ISourceProvider sourceProvider = (extensionManager.GetExtensions<ISourceProvider>()).FirstOrDefault(x => x.RepositoryType == RepositoryTypes.TfsGit);
+            ISourceProvider sourceProvider = (extensionManager.GetExtensions<ISourceProvider>()).FirstOrDefault(x => x.RepositoryType == Microsoft.TeamFoundation.DistributedTask.Pipelines.RepositoryTypes.Git);
             if (sourceProvider == null)
             {
-                throw new InvalidOperationException(StringUtil.Loc("SourceArtifactProviderNotFound", RepositoryTypes.TfsGit));
+                throw new InvalidOperationException(StringUtil.Loc("SourceArtifactProviderNotFound", Microsoft.TeamFoundation.DistributedTask.Pipelines.RepositoryTypes.Git));
             }
 
             var tfsGitEndpoint = endpoint.Clone();

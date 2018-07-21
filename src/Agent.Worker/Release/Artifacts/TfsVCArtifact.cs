@@ -41,11 +41,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
             var tfsVCEndpoint = endpoint.Clone();
             PrepareTfsVCEndpoint(tfsVCEndpoint, tfsVcArtifactDetails);
             var extensionManager = HostContext.GetService<IExtensionManager>();
-            ISourceProvider sourceProvider = (extensionManager.GetExtensions<ISourceProvider>()).FirstOrDefault(x => x.RepositoryType == RepositoryTypes.TfsVersionControl);
+            ISourceProvider sourceProvider = (extensionManager.GetExtensions<ISourceProvider>()).FirstOrDefault(x => x.RepositoryType == Microsoft.TeamFoundation.DistributedTask.Pipelines.RepositoryTypes.Tfvc);
 
             if (sourceProvider == null)
             {
-                throw new InvalidOperationException(StringUtil.Loc("SourceArtifactProviderNotFound", RepositoryTypes.TfsVersionControl));
+                throw new InvalidOperationException(StringUtil.Loc("SourceArtifactProviderNotFound", Microsoft.TeamFoundation.DistributedTask.Pipelines.RepositoryTypes.Tfvc));
             }
 
             var rootDirectory = Directory.GetParent(downloadFolderPath).Name;

@@ -42,11 +42,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
 
             ServiceEndpoint gitHubEndpoint = PrepareGitHubTaskEndpoint(endpoint, gitHubDetails.CloneUrl);
             var extensionManager = HostContext.GetService<IExtensionManager>();
-            ISourceProvider sourceProvider = (extensionManager.GetExtensions<ISourceProvider>()).FirstOrDefault(x => x.RepositoryType == RepositoryTypes.GitHub);
+            ISourceProvider sourceProvider = (extensionManager.GetExtensions<ISourceProvider>()).FirstOrDefault(x => x.RepositoryType == Microsoft.TeamFoundation.DistributedTask.Pipelines.RepositoryTypes.GitHub);
 
             if (sourceProvider == null)
             {
-                throw new InvalidOperationException(StringUtil.Loc("SourceArtifactProviderNotFound", RepositoryTypes.GitHub));
+                throw new InvalidOperationException(StringUtil.Loc("SourceArtifactProviderNotFound", Microsoft.TeamFoundation.DistributedTask.Pipelines.RepositoryTypes.GitHub));
             }
 
             gitHubEndpoint.Data.Add(Constants.EndpointData.SourcesDirectory, localFolderPath);

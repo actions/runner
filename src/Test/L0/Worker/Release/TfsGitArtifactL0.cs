@@ -151,7 +151,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Release
             _ec.Setup(x => x.Variables).Returns(_variables);
             _extensionManager.Setup(x => x.GetExtensions<ISourceProvider>())
                 .Returns(new List<ISourceProvider> { _sourceProvider.Object });
-            _sourceProvider.Setup(x => x.RepositoryType).Returns(RepositoryTypes.TfsGit);
+            _sourceProvider.Setup(x => x.RepositoryType).Returns(Microsoft.TeamFoundation.DistributedTask.Pipelines.RepositoryTypes.Git);
 
             return hc;
         }
