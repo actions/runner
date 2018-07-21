@@ -2,7 +2,7 @@
   - N/A
   
 ## Bugs
-  - Fix TFVC path resolve for file path type task input.
+  - Fix download repository artifact in Release. #1722
 
 ## Misc
   - N/A
