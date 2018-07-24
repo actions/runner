@@ -2,7 +2,9 @@
   - N/A
   
 ## Bugs
-  - Fix download repository artifact in Release. #1722
+  - Fix git version requirment for VSTS build/release job. #1725
+  - Fix regression in configure agent using proxy and client certificate. #1725
+  - Handle '/proc' not exists when scan process environment variables. #1725
 
 ## Misc
   - N/A
