@@ -309,14 +309,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                             {
                                 Trace.Info($"Inspecting process environment variables. PID: {proc.Key} ({proc.Value.ProcessName})");
 
-                                Dictionary<string, string> env = new Dictionary<string, string>();
+                                string lookupId = null;
                                 try
                                 {
-                                    env = proc.Value.GetEnvironmentVariables();
-                                    foreach (var e in env)
-                                    {
-                                        Trace.Verbose($"PID:{proc.Key} ({e.Key}={e.Value})");
-                                    }
+                                    lookupId = proc.Value.GetEnvironmentVariable(HostContext, Constants.ProcessLookupId);
                                 }
                                 catch (Exception ex)
                                 {
@@ -324,8 +320,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                                     Trace.Verbose(ex.ToString());
                                 }
 
-                                if (env.TryGetValue(Constants.ProcessLookupId, out string lookupId) &&
-                                    lookupId.Equals(processLookupId, StringComparison.OrdinalIgnoreCase))
+                                if (string.Equals(lookupId, processLookupId, StringComparison.OrdinalIgnoreCase))
                                 {
                                     Trace.Info($"Terminate orphan process: pid ({proc.Key}) ({proc.Value.ProcessName})");
                                     try

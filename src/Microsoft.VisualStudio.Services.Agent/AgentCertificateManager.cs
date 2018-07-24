@@ -26,6 +26,16 @@ namespace Microsoft.VisualStudio.Services.Agent
 
     public class AgentCertificateManager : AgentService, IAgentCertificateManager
     {
+        private AgentClientCertificateManager _agentClientCertificateManager = new AgentClientCertificateManager();
+
+        public bool SkipServerCertificateValidation { private set; get; }
+        public string CACertificateFile { private set; get; }
+        public string ClientCertificateFile { private set; get; }
+        public string ClientCertificatePrivateKeyFile { private set; get; }
+        public string ClientCertificateArchiveFile { private set; get; }
+        public string ClientCertificatePassword { private set; get; }
+        public IVssClientCertificateManager VssClientCertificateManager => _agentClientCertificateManager;
+
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
@@ -67,7 +77,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             ClientCertificateArchiveFile = clientCertArchive;
             ClientCertificatePassword = clientCertPassword;
 
-            VssClientCertificateManager = new AgentClientCertificateManager(ClientCertificateArchiveFile, ClientCertificatePassword);
+            _agentClientCertificateManager.AddClientCertificate(ClientCertificateArchiveFile, ClientCertificatePassword);
         }
 
         // This should only be called from config
@@ -187,7 +197,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                         HostContext.SecretMasker.AddValue(ClientCertificatePassword);
                     }
 
-                    VssClientCertificateManager = new AgentClientCertificateManager(ClientCertificateArchiveFile, ClientCertificatePassword);
+                    _agentClientCertificateManager.AddClientCertificate(ClientCertificateArchiveFile, ClientCertificatePassword);
                 }
             }
             else
@@ -195,14 +205,6 @@ namespace Microsoft.VisualStudio.Services.Agent
                 Trace.Info("No certificate setting found.");
             }
         }
-
-        public bool SkipServerCertificateValidation { private set; get; }
-        public string CACertificateFile { private set; get; }
-        public string ClientCertificateFile { private set; get; }
-        public string ClientCertificatePrivateKeyFile { private set; get; }
-        public string ClientCertificateArchiveFile { private set; get; }
-        public string ClientCertificatePassword { private set; get; }
-        public IVssClientCertificateManager VssClientCertificateManager { private set; get; }
     }
 
     [DataContract]

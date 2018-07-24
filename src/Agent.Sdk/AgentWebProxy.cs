@@ -13,7 +13,7 @@ namespace Agent.Sdk
         public List<string> ProxyBypassList { get; set; }
         public IWebProxy WebProxy { get; set; }
     }
-    
+
     public class AgentWebProxy : IWebProxy
     {
         private string _proxyAddress;
@@ -21,7 +21,16 @@ namespace Agent.Sdk
 
         public ICredentials Credentials { get; set; }
 
+        public AgentWebProxy()
+        {
+        }
+
         public AgentWebProxy(string proxyAddress, string proxyUsername, string proxyPassword, List<string> proxyBypassList)
+        {
+            Update(proxyAddress, proxyUsername, proxyPassword, proxyBypassList);
+        }
+
+        public void Update(string proxyAddress, string proxyUsername, string proxyPassword, List<string> proxyBypassList)
         {
             _proxyAddress = proxyAddress?.Trim();
 

@@ -23,12 +23,13 @@ namespace Microsoft.VisualStudio.Services.Agent
     {
         private readonly List<Regex> _regExBypassList = new List<Regex>();
         private readonly List<string> _bypassList = new List<string>();
+        private AgentWebProxy _agentWebProxy = new AgentWebProxy();
 
         public string ProxyAddress { get; private set; }
         public string ProxyUsername { get; private set; }
         public string ProxyPassword { get; private set; }
         public List<string> ProxyBypassList => _bypassList;
-        public IWebProxy WebProxy { get; private set; }
+        public IWebProxy WebProxy => _agentWebProxy;
 
         public override void Initialize(IHostContext context)
         {
@@ -54,7 +55,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                 Trace.Info($"Config authentication proxy as: {ProxyUsername}.");
             }
 
-            WebProxy = new AgentWebProxy(ProxyAddress, ProxyUsername, ProxyPassword, ProxyBypassList);
+            _agentWebProxy.Update(ProxyAddress, ProxyUsername, ProxyPassword, ProxyBypassList);
         }
 
         // This should only be called from config
@@ -202,7 +203,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                     }
                 }
 
-                WebProxy = new AgentWebProxy(ProxyAddress, ProxyUsername, ProxyPassword, ProxyBypassList);
+                _agentWebProxy.Update(ProxyAddress, ProxyUsername, ProxyPassword, ProxyBypassList);
             }
             else
             {

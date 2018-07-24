@@ -18,8 +18,9 @@ namespace Microsoft.VisualStudio.Services.Agent
     {
         // Reference: https://blogs.msdn.microsoft.com/matt_pietrek/2004/08/25/reading-another-processs-environment/
         // Reference: http://blog.gapotchenko.com/eazfuscator.net/reading-environment-variables
-        public static Dictionary<string, string> GetEnvironmentVariables(this Process process)
+        public static string GetEnvironmentVariable(this Process process, IHostContext hostContext, string variable)
         {
+            var trace = hostContext.GetTrace(nameof(WindowsProcessExtensions));
             Dictionary<string, string> environmentVariables = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             IntPtr processHandle = process.SafeHandle.DangerousGetHandle();
 
@@ -147,10 +148,18 @@ namespace Microsoft.VisualStudio.Services.Agent
                 if (!string.IsNullOrEmpty(env[0]))
                 {
                     environmentVariables[env[0]] = env[1];
+                    trace.Verbose($"PID:{process.Id} ({env[0]}={env[1]})");
                 }
             }
 
-            return environmentVariables;
+            if (environmentVariables.TryGetValue(variable, out string envVariable))
+            {
+                return envVariable;
+            }
+            else
+            {
+                return null;
+            }
         }
 
         private static IntPtr ReadIntPtr32(IntPtr hProcess, IntPtr ptr)
@@ -254,28 +263,100 @@ namespace Microsoft.VisualStudio.Services.Agent
 #else
     public static class LinuxProcessExtensions
     {
-        public static Dictionary<string, string> GetEnvironmentVariables(this Process process)
+        public static string GetEnvironmentVariable(this Process process, IHostContext hostContext, string variable)
         {
+            var trace = hostContext.GetTrace(nameof(LinuxProcessExtensions));
             Dictionary<string, string> env = new Dictionary<string, string>();
 
-            string envFile = $"/proc/{process.Id}/environ";
-            string envContent = File.ReadAllText(envFile);
-            if (!string.IsNullOrEmpty(envContent))
+            if (Directory.Exists("/proc"))
             {
-                // on linux, environment variables are seprated by '\0'
-                var envList = envContent.Split('\0', StringSplitOptions.RemoveEmptyEntries);
-                foreach (var envStr in envList)
+                string envFile = $"/proc/{process.Id}/environ";
+                trace.Info($"Read env from {envFile}");
+                string envContent = File.ReadAllText(envFile);
+                if (!string.IsNullOrEmpty(envContent))
                 {
-                    // split on the first '='
-                    var keyValuePair = envStr.Split('=', 2);
-                    if (keyValuePair.Length == 2)
+                    // on linux, environment variables are seprated by '\0'
+                    var envList = envContent.Split('\0', StringSplitOptions.RemoveEmptyEntries);
+                    foreach (var envStr in envList)
                     {
-                        env[keyValuePair[0]] = keyValuePair[1];
+                        // split on the first '='
+                        var keyValuePair = envStr.Split('=', 2);
+                        if (keyValuePair.Length == 2)
+                        {
+                            env[keyValuePair[0]] = keyValuePair[1];
+                            trace.Verbose($"PID:{process.Id} ({keyValuePair[0]}={keyValuePair[1]})");
+                        }
+                    }
+                }
+            }
+            else
+            {
+                // On OSX, there is no /proc folder for us to read environment for given process,
+                // So we have call `ps e -p <pid> -o command` to print out env to STDOUT,
+                // However, the output env are not format in a parseable way, it's just a string that concatenate all envs with space,
+                // It doesn't escape '=' or ' ', so we can't parse the output into a dictionary of all envs.
+                // So we only look for the env you request, in the format of variable=value. (it won't work if you variable contains = or space)
+                trace.Info($"Read env from output of `ps e -p {process.Id} -o command`");
+                List<string> psOut = new List<string>();
+                object outputLock = new object();
+                using (var p = hostContext.CreateService<IProcessInvoker>())
+                {
+                    p.OutputDataReceived += delegate (object sender, ProcessDataReceivedEventArgs stdout)
+                    {
+                        if (!string.IsNullOrEmpty(stdout.Data))
+                        {
+                            lock (outputLock)
+                            {
+                                psOut.Add(stdout.Data);
+                            }
+                        }
+                    };
+
+                    p.ErrorDataReceived += delegate (object sender, ProcessDataReceivedEventArgs stderr)
+                    {
+                        if (!string.IsNullOrEmpty(stderr.Data))
+                        {
+                            lock (outputLock)
+                            {
+                                trace.Error(stderr.Data);
+                            }
+                        }
+                    };
+
+                    int exitCode = p.ExecuteAsync(workingDirectory: hostContext.GetDirectory(WellKnownDirectory.Root),
+                                                  fileName: "ps",
+                                                  arguments: $"e -p {process.Id} -o command",
+                                                  environment: null,
+                                                  cancellationToken: CancellationToken.None).GetAwaiter().GetResult();
+                    if (exitCode == 0)
+                    {
+                        trace.Info($"Successfully dump environment variables for {process.Id}");
+                        if (psOut.Count > 0)
+                        {
+                            string psOutputString = string.Join(" ", psOut);
+                            trace.Verbose($"ps output: '{psOutputString}'");
+
+                            int varStartIndex = psOutputString.IndexOf(variable, StringComparison.Ordinal);
+                            if (varStartIndex >= 0)
+                            {
+                                string rightPart = psOutputString.Substring(varStartIndex + variable.Length + 1);
+                                string value = rightPart.Substring(0, rightPart.IndexOf(' '));
+                                env[variable] = value;
+                                trace.Verbose($"PID:{process.Id} ({variable}={value})");
+                            }
+                        }
                     }
                 }
             }
 
-            return env;
+            if (env.TryGetValue(variable, out string envVariable))
+            {
+                return envVariable;
+            }
+            else
+            {
+                return null;
+            }
         }
     }
 #endif

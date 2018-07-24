@@ -114,14 +114,20 @@ namespace Agent.Plugins.Repository
 
             // Since that variable is added around TFS 2015 Qu2.
             // Old TFS AT will not send this variable to build agent, and VSTS will always send it to build agent.
-            bool onPremTfsGit = StringUtil.ConvertToBoolean(repository.Properties.Get<string>(EndpointData.OnPremTfsGit), true);
+            bool onPremTfsGit = !String.Equals(executionContext.Variables.GetValueOrDefault(WellKnownDistributedTaskVariables.ServerType)?.Value, "Hosted", StringComparison.OrdinalIgnoreCase);
 
             // ensure git version and git-lfs version for on-prem tfsgit.
             if (onPremTfsGit)
             {
                 gitCommandManager.EnsureGitVersion(_minGitVersionSupportAuthHeader, throwOnNotMatch: true);
 
-                bool gitLfsSupport = StringUtil.ConvertToBoolean(repository.Properties.Get<string>(EndpointData.GitLfsSupport));
+                bool gitLfsSupport = StringUtil.ConvertToBoolean(executionContext.GetInput(Pipelines.PipelineConstants.CheckoutTaskInputs.Lfs));
+                // prefer feature variable over endpoint data
+                if (executionContext.Variables.GetValueOrDefault("agent.source.git.lfs") != null)
+                {
+                    gitLfsSupport = StringUtil.ConvertToBoolean(executionContext.Variables.GetValueOrDefault("agent.source.git.lfs")?.Value);
+                }
+
                 if (gitLfsSupport)
                 {
                     gitCommandManager.EnsureGitLFSVersion(_minGitLfsVersionSupportAuthHeader, throwOnNotMatch: true);
