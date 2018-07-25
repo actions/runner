@@ -46,7 +46,7 @@
   "BuildTagsForBuild": "Build '{0}' has following tags now: {1}",
   "CannotChangeParentTimelineRecord": "Can't change parent timeline record of an existing timeline record.",
   "CannotDownloadFromCurrentEnvironment": "Cannot download a build drop from {0} environment.",
-  "CannotFindHostName": "Cannot find VSTS account name from server url: '{0}'",
+  "CannotFindHostName": "Cannot find VSTS organization name from server url: '{0}'",
   "CanNotFindService": "Cannot find service {0}",
   "CanNotGrantPermission": "Cannot grant LogonAsService permission to the user {0}",
   "CanNotStartService": "Cannot start the service. Check the logs for more details.",
