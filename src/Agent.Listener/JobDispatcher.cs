@@ -326,6 +326,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     return;
                 }
 
+                HostContext.WritePerfCounter($"JobRequestRenewed_{requestId.ToString()}");
+
                 Task<int> workerProcessTask = null;
                 object _outputLock = new object();
                 List<string> workerOutput = new List<string>();
@@ -431,6 +433,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     // we get first jobrequest renew succeed and start the worker process with the job message.
                     // send notification to machine provisioner.
                     await notification.JobStarted(message.JobId);
+                    HostContext.WritePerfCounter($"SentJobToWorker_{requestId.ToString()}");
 
                     try
                     {

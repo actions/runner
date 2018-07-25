@@ -88,6 +88,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             await jobServer.ConnectAsync(jobConnection);
 
             _jobServerQueue.Start(message);
+            HostContext.WritePerfCounter($"WorkerJobServerQueueStarted_{message.RequestId.ToString()}");
 
             IExecutionContext jobContext = null;
             CancellationTokenRegistration? agentShutdownRegistration = null;
@@ -257,6 +258,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 // trace out all steps
                 Trace.Info($"Total job steps: {jobSteps.Count}.");
                 Trace.Verbose($"Job steps: '{string.Join(", ", jobSteps.Select(x => x.DisplayName))}'");
+                HostContext.WritePerfCounter($"WorkerJobInitialized_{message.RequestId.ToString()}");
 
                 bool processCleanup = jobContext.Variables.GetBoolean("process.clean") ?? true;
                 HashSet<string> existingProcesses = new HashSet<string>(StringComparer.OrdinalIgnoreCase);

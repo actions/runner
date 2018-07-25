@@ -52,6 +52,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 ArgUtil.NotNullOrEmpty(channelMessage.Body, nameof(channelMessage.Body));
                 var jobMessage = JsonUtility.FromString<Pipelines.AgentJobRequestMessage>(channelMessage.Body);
                 ArgUtil.NotNull(jobMessage, nameof(jobMessage));
+                HostContext.WritePerfCounter($"WorkerJobMessageReceived_{jobMessage.RequestId.ToString()}");
 
                 // Initialize the secret masker and set the thread culture.
                 InitializeSecretMasker(jobMessage);

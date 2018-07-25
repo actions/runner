@@ -226,6 +226,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 return Constants.Agent.ReturnCode.TerminatedError;
             }
 
+            HostContext.WritePerfCounter("SessionCreated");
             _term.WriteLine(StringUtil.Loc("ListenForJobs", DateTime.UtcNow));
 
             IJobDispatcher jobDispatcher = null;
@@ -287,6 +288,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                         }
 
                         message = await getNextMessage; //get next message
+                        HostContext.WritePerfCounter($"MessageReceived_{message.MessageType}");
                         if (string.Equals(message.MessageType, AgentRefreshMessage.MessageType, StringComparison.OrdinalIgnoreCase))
                         {
                             if (disableAutoUpdate)

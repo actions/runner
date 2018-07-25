@@ -34,6 +34,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         void SetDefaultCulture(string name);
         event EventHandler Unloading;
         void ShutdownAgent(ShutdownReason reason);
+        void WritePerfCounter(string counter);
     }
 
     public enum StartupType
@@ -54,6 +55,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         private readonly ISecretMasker _secretMasker = new SecretMasker();
         private readonly ProductInfoHeaderValue _userAgent = new ProductInfoHeaderValue($"VstsAgentCore-{BuildConstants.AgentPackage.PackageName}", Constants.Agent.Version);
         private CancellationTokenSource _agentShutdownTokenSource = new CancellationTokenSource();
+        private object _perfLock = new object();
 
         private RunMode _runMode = RunMode.Normal;
         private Tracing _trace;
@@ -64,6 +66,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         private IDisposable _httpTraceSubscription;
         private IDisposable _diagListenerSubscription;
         private StartupType _startupType;
+        private string _perfFile;
 
         public event EventHandler Unloading;
         public CancellationToken AgentShutdownToken => _agentShutdownTokenSource.Token;
@@ -123,6 +126,21 @@ namespace Microsoft.VisualStudio.Services.Agent
 
                 _httpTrace = GetTrace("HttpTrace");
                 _diagListenerSubscription = DiagnosticListener.AllListeners.Subscribe(this);
+            }
+
+            // Enable perf counter trace
+            string perfCounterLocation = Environment.GetEnvironmentVariable("VSTS_AGENT_PERFLOG");
+            if (!string.IsNullOrEmpty(perfCounterLocation))
+            {
+                try
+                {
+                    Directory.CreateDirectory(perfCounterLocation);
+                    _perfFile = Path.Combine(perfCounterLocation, $"{hostType}.perf");
+                }
+                catch (Exception ex)
+                {
+                    _trace.Error(ex);
+                }
             }
         }
 
@@ -413,6 +431,25 @@ namespace Microsoft.VisualStudio.Services.Agent
             set
             {
                 _startupType = value;
+            }
+        }
+
+        public void WritePerfCounter(string counter)
+        {
+            if (!string.IsNullOrEmpty(_perfFile))
+            {
+                string normalizedCounter = counter.Replace(':', '_');
+                lock (_perfLock)
+                {
+                    try
+                    {
+                        File.AppendAllLines(_perfFile, new[] { $"{normalizedCounter}:{DateTime.UtcNow.ToString("O")}" });
+                    }
+                    catch (Exception ex)
+                    {
+                        _trace.Error(ex);
+                    }
+                }
             }
         }
 

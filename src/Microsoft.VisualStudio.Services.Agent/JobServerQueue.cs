@@ -73,6 +73,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         private int _webConsoleLineAggressiveDequeueCount = 0;
         private const int _webConsoleLineAggressiveDequeueLimit = 4 * 60;
         private bool _webConsoleLineAggressiveDequeue = true;
+        private bool _firstConsoleOutputs = true;
 
         public override void Initialize(IHostContext hostContext)
         {
@@ -320,6 +321,11 @@ namespace Microsoft.VisualStudio.Services.Agent
                             {
                                 // we will not requeue failed batch, since the web console lines are time sensitive.
                                 await _jobServer.AppendTimelineRecordFeedAsync(_scopeIdentifier, _hubName, _planId, _jobTimelineId, _jobTimelineRecordId, stepRecordId, batch, default(CancellationToken));
+                                if (_firstConsoleOutputs)
+                                {
+                                    HostContext.WritePerfCounter($"WorkerJobServerQueueAppendFirstConsoleOutput_{_planId.ToString()}");
+                                    _firstConsoleOutputs = false;
+                                }
                             }
                             catch (Exception ex)
                             {

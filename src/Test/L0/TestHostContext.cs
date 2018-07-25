@@ -354,6 +354,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             _agentShutdownTokenSource.Cancel();
         }
 
+        public void WritePerfCounter(string counter)
+        {
+        }
+
         public void Dispose()
         {
             Dispose(true);
