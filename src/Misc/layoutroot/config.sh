@@ -3,7 +3,7 @@
 user_id=`id -u`
 
 # we want to snapshot the environment of the config user
-if [ $user_id -eq 0 ]; then
+if [ $user_id -eq 0 -a -z "$AGENT_ALLOW_RUNASROOT" ]; then
     echo "Must not run with sudo"
     exit 1
 fi
