@@ -1,13 +1,11 @@
 ## Features
-  - N/A
+  - Changing to allow root to run config.sh #1514
   
 ## Bugs
-  - Fix git version requirment for VSTS build/release job. #1725
-  - Fix regression in configure agent using proxy and client certificate. #1725
-  - Handle '/proc' not exists when scan process environment variables. #1725
+  - Fixing NullRefExceptions: Adding null propagation in TestRunPublisher.cs #1736
 
 ## Misc
-  - N/A
+  - Support perf data collection inside agent/worker process. #1731
 
 ## Agent Downloads  
 
