@@ -85,7 +85,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                     // Remove duplicate entries
-                    string[] attachments = (testResults[i + j].AttachmentData.AttachmentsFilePathList != null) ? testResults[i + j].AttachmentData.AttachmentsFilePathList.ToArray() : null;
+                    string[] attachments = testResults[i + j]?.AttachmentData?.AttachmentsFilePathList?.ToArray();
                     HashSet<string> attachedFiles = GetUniqueTestRunFiles(attachments);
 
                     if (attachedFiles != null)
@@ -102,7 +102,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                     }
 
                     // Upload console log as attachment
-                    string consoleLog = testResults[i + j].AttachmentData.ConsoleLog;
+                    string consoleLog = testResults[i + j]?.AttachmentData?.ConsoleLog;
                     TestAttachmentRequestModel attachmentRequestModel = GetConsoleLogAttachmentRequestModel(consoleLog);
                     if (attachmentRequestModel != null)
                     {
@@ -110,7 +110,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                     }
 
                     // Upload standard error as attachment
-                    string standardError = testResults[i + j].AttachmentData.StandardError;
+                    string standardError = testResults[i + j]?.AttachmentData?.StandardError;
                     TestAttachmentRequestModel stdErrAttachmentRequestModel = GetStandardErrorAttachmentRequestModel(standardError);
                     if (stdErrAttachmentRequestModel != null)
                     {
