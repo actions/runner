@@ -1,11 +1,11 @@
 ## Features
-  - Changing to allow root to run config.sh #1514
+  - N/A
   
 ## Bugs
-  - Fixing NullRefExceptions: Adding null propagation in TestRunPublisher.cs #1736
+  - N/A
 
 ## Misc
-  - Support perf data collection inside agent/worker process. #1731
+  - Microsoft code signing policy compliance
 
 ## Agent Downloads  
 

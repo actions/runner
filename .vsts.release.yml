@@ -125,7 +125,63 @@ phases:
         }
         ]
     displayName: Sign Agent Assemblies (Authenticode Signing)
-  
+
+  - task: SFP.build-tasks.custom-build-task-1.EsrpCodeSigning@1
+    inputs:
+      ConnectedServiceName: VSTSAgentESRP
+      FolderPath: '_layout'
+      Pattern: |
+        bin\Newtonsoft.Json.dll
+        bin\YamlDotNet.dll
+        externals\git\**\*.dll
+        externals\git\**\*.exe
+        externals\node\bin\node.exe
+        externals\vstshost\Minimatch.dll
+        externals\vstsom\Newtonsoft.Json.dll
+      UseMinimatch: true
+      signConfigType: inlineSignParams
+      inlineOperation: |
+        [{
+        "keyCode": "CP-231522",
+        "operationSetCode": "SigntoolSign",
+        "parameters": [{
+        "parameterName": "OpusName",
+        "parameterValue": "Microsoft"
+        },
+        {
+        "parameterName": "OpusInfo",
+        "parameterValue": "http://www.microsoft.com"
+        },
+        {
+        "parameterName": "Append",
+        "parameterValue": "/as"
+        },
+        {
+        "parameterName": "FileDigest",
+        "parameterValue": "/fd \"SHA256\""
+        },
+        {
+        "parameterName": "PageHash",
+        "parameterValue": "/NPH"
+        },
+        {
+        "parameterName": "TimeStamp",
+        "parameterValue": "/tr \"http://rfc3161.gtm.corp.microsoft.com/TSS/HttpTspServer\" /td sha256"
+        }
+        ],
+        "toolName": "sign",
+        "toolVersion": "1.0"
+        },
+        {
+        "keyCode": "CP-231522",
+        "operationSetCode": "SigntoolVerify",
+        "parameters": [],
+        "toolName": "sign",
+        "toolVersion": "1.0"
+        }
+        ]
+    displayName: Sign Agent Assemblies (3rd Party Assemblies Signing)
+
   # Create agent package zip
   - script: dev.cmd package Release
     workingDirectory: src
