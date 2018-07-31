@@ -182,6 +182,12 @@ phases:
         ]
     displayName: Sign Agent Assemblies (3rd Party Assemblies Signing)
 
+  - task: DeleteFiles@1
+    inputs:
+      SourceFolder: '_layout'
+      Contents: '**\CodeSignSummary-*.md'
+    displayName: Delete CodeSignSummary.md
+
   # Create agent package zip
   - script: dev.cmd package Release
     workingDirectory: src
