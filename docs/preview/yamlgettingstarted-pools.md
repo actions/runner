@@ -41,6 +41,7 @@ queue:
   demands:
   - agent.os -equals Darwin
   - myCustomCapability -equals foo
+  - myOtherCapability # exists
 steps:
 - script: echo hello world
 ```
