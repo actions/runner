@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using System.IO;
 using Agent.Sdk;
 using Microsoft.VisualStudio.Services.Agent.Util;
+using Microsoft.VisualStudio.Services.Common;
 
 namespace Agent.Plugins.Repository
 {
@@ -144,7 +145,27 @@ namespace Agent.Plugins.Repository
                 }
             }
 
-            return await ExecuteGitCommandAsync(context, repositoryPath, "fetch", options, additionalCommandLine, cancellationToken);
+            int retryCount = 0;
+            int fetchExitCode = 0;
+            while (retryCount < 3)
+            {
+                fetchExitCode = await ExecuteGitCommandAsync(context, repositoryPath, "fetch", options, additionalCommandLine, cancellationToken);
+                if (fetchExitCode == 0)
+                {
+                    break;
+                }
+                else
+                {
+                    if (++retryCount < 3)
+                    {
+                        var backOff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(10));
+                        context.Warning($"Git fetch failed with exit code {fetchExitCode}, back off {backOff.TotalSeconds} seconds before retry.");
+                        await Task.Delay(backOff);
+                    }
+                }
+            }
+
+            return fetchExitCode;
         }
 
         // git lfs fetch origin [ref]
@@ -154,7 +175,28 @@ namespace Agent.Plugins.Repository
 
             // default options for git lfs fetch.
             string options = StringUtil.Format($"fetch origin {refSpec}");
-            return await ExecuteGitCommandAsync(context, repositoryPath, "lfs", options, additionalCommandLine, cancellationToken);
+
+            int retryCount = 0;
+            int fetchExitCode = 0;
+            while (retryCount < 3)
+            {
+                fetchExitCode = await ExecuteGitCommandAsync(context, repositoryPath, "lfs", options, additionalCommandLine, cancellationToken);
+                if (fetchExitCode == 0)
+                {
+                    break;
+                }
+                else
+                {
+                    if (++retryCount < 3)
+                    {
+                        var backOff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(10));
+                        context.Warning($"Git lfs fetch failed with exit code {fetchExitCode}, back off {backOff.TotalSeconds} seconds before retry.");
+                        await Task.Delay(backOff);
+                    }
+                }
+            }
+
+            return fetchExitCode;
         }
 
         // git checkout -f --progress <commitId/branch>
@@ -180,7 +222,7 @@ namespace Agent.Plugins.Repository
         public async Task<int> GitClean(AgentTaskPluginExecutionContext context, string repositoryPath)
         {
             context.Debug($"Delete untracked files/folders for repository at {repositoryPath}.");
-            
+
             // Git 2.4 support git clean -ffdx.
             string options;
             if (gitVersion >= new Version(2, 4))

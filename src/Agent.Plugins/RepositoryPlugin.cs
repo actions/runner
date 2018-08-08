@@ -70,7 +70,8 @@ namespace Agent.Plugins.Repository
 
         public override async Task RunAsync(AgentTaskPluginExecutionContext executionContext, CancellationToken token)
         {
-            var sourceSkipVar = StringUtil.ConvertToBoolean(executionContext.Variables.GetValueOrDefault("agent.source.skip")?.Value);
+            var sourceSkipVar = StringUtil.ConvertToBoolean(executionContext.Variables.GetValueOrDefault("agent.source.skip")?.Value) ||
+                                !StringUtil.ConvertToBoolean(executionContext.Variables.GetValueOrDefault("build.syncSources")?.Value ?? bool.TrueString);
             if (sourceSkipVar)
             {
                 executionContext.Output($"Skip sync source for repository.");

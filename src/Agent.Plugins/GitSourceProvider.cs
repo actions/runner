@@ -761,6 +761,13 @@ namespace Agent.Plugins.Repository
                 int exitCode_lfsFetch = await gitCommandManager.GitLFSFetch(executionContext, targetPath, "origin", sourcesToBuild, string.Join(" ", additionalLfsFetchArgs), cancellationToken);
                 if (exitCode_lfsFetch != 0)
                 {
+                    // local repository is shallow repository, lfs fetch may fail due to lack of commits history.
+                    // this will happen when the checkout commit is older than tip -> fetchDepth
+                    if (fetchDepth > 0)
+                    {
+                        executionContext.Warning(StringUtil.Loc("ShallowLfsFetchFail", fetchDepth, sourcesToBuild));
+                    }
+
                     // git lfs fetch failed, get lfs log, the log is critical for debug.
                     int exitCode_lfsLogs = await gitCommandManager.GitLFSLogs(executionContext, targetPath);
                     throw new InvalidOperationException($"Git lfs fetch failed with exit code: {exitCode_lfsFetch}. Git lfs logs returned with exit code: {exitCode_lfsLogs}.");
