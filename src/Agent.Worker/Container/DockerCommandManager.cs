@@ -20,6 +20,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Container
         Task<string> DockerCreate(IExecutionContext context, string displayName, string image, List<MountVolume> mountVolumes, string network, string options, IDictionary<string, string> environment);
         Task<int> DockerStart(IExecutionContext context, string containerId);
         Task<int> DockerStop(IExecutionContext context, string containerId);
+        Task<int> DockerLogs(IExecutionContext context, string containerId);
+        Task<List<string>> DockerPS(IExecutionContext context, string containerId, string filter);
+        Task<int> DockerRemove(IExecutionContext context, string containerId);
         Task<int> DockerNetworkCreate(IExecutionContext context, string network);
         Task<int> DockerNetworkRemove(IExecutionContext context, string network);
         Task<int> DockerExec(IExecutionContext context, string containerId, string options, string command);
@@ -120,9 +123,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Container
             string node = context.Container.TranslateToContainerPath(Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), "node", "bin", $"node{IOUtil.ExeExtension}"));
             string sleepCommand = $"\"{node}\" -e \"setInterval(function(){{}}, 24 * 60 * 60 * 1000);\"";
 #if OS_WINDOWS
-            string dockerArgs = $"--name {displayName} --rm {options} {dockerEnvArgs} {dockerMountVolumesArgs} {image} {sleepCommand}";  // add --network={network} and -v '\\.\pipe\docker_engine:\\.\pipe\docker_engine' when they are available (17.09)
+            string dockerArgs = $"--name {displayName} {options} {dockerEnvArgs} {dockerMountVolumesArgs} {image} {sleepCommand}";  // add --network={network} and -v '\\.\pipe\docker_engine:\\.\pipe\docker_engine' when they are available (17.09)
 #else
-            string dockerArgs = $"--name {displayName} --rm --network={network} -v /var/run/docker.sock:/var/run/docker.sock {options} {dockerEnvArgs} {dockerMountVolumesArgs} {image} {sleepCommand}";
+            string dockerArgs = $"--name {displayName} --network={network} -v /var/run/docker.sock:/var/run/docker.sock {options} {dockerEnvArgs} {dockerMountVolumesArgs} {image} {sleepCommand}";
 #endif
             List<string> outputStrings = await ExecuteDockerCommandAsync(context, "create", dockerArgs);
             return outputStrings.FirstOrDefault();
@@ -136,6 +139,21 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Container
         public async Task<int> DockerStop(IExecutionContext context, string containerId)
         {
             return await ExecuteDockerCommandAsync(context, "stop", containerId, context.CancellationToken);
+        }
+
+        public async Task<int> DockerRemove(IExecutionContext context, string containerId)
+        {
+            return await ExecuteDockerCommandAsync(context, "rm", containerId, context.CancellationToken);
+        }
+
+        public async Task<int> DockerLogs(IExecutionContext context, string containerId)
+        {
+            return await ExecuteDockerCommandAsync(context, "logs", $"--details {containerId}", context.CancellationToken);
+        }
+
+        public async Task<List<string>> DockerPS(IExecutionContext context, string containerId, string filter)
+        {
+            return await ExecuteDockerCommandAsync(context, "ps", $"--all --filter id={containerId} {filter} --no-trunc --format \"{{{{.ID}}}} {{{{.Status}}}}\"");
         }
 
         public async Task<int> DockerNetworkCreate(IExecutionContext context, string network)

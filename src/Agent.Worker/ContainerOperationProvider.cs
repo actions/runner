@@ -10,6 +10,7 @@ using Microsoft.VisualStudio.Services.Agent.Worker.Container;
 using System.Threading;
 using System.Linq;
 using Microsoft.Win32;
+using Microsoft.VisualStudio.Services.Common;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
@@ -140,9 +141,29 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                         imageName = $"{registryServer}/{imageName}";
                     }
 
-                    // Pull down docker image
-                    int pullExitCode = await _dockerManger.DockerPull(executionContext, imageName);
-                    if (pullExitCode != 0)
+                    // Pull down docker image with retry up to 3 times
+                    int retryCount = 0;
+                    int pullExitCode = 0;
+                    while (retryCount < 3)
+                    {
+                        pullExitCode = await _dockerManger.DockerPull(executionContext, imageName);
+                        if (pullExitCode == 0)
+                        {
+                            break;
+                        }
+                        else
+                        {
+                            retryCount++;
+                            if (retryCount < 3)
+                            {
+                                var backOff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(10));
+                                executionContext.Warning($"Docker pull failed with exit code {pullExitCode}, back off {backOff.TotalSeconds} seconds before retry.");
+                                await Task.Delay(backOff);
+                            }
+                        }
+                    }
+
+                    if (retryCount == 3 && pullExitCode != 0)
                     {
                         throw new InvalidOperationException($"Docker pull failed with exit code {pullExitCode}");
                     }
@@ -220,6 +241,30 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             int execWhichBashExitCode = await _dockerManger.DockerExec(executionContext, container.ContainerId, string.Empty, $"which bash");
             if (execWhichBashExitCode != 0)
             {
+                try
+                {
+                    // Make sure container is up and running
+                    var psOutputs = await _dockerManger.DockerPS(executionContext, container.ContainerId, "--filter status=running");
+                    if (psOutputs.FirstOrDefault(x => !string.IsNullOrEmpty(x))?.StartsWith(container.ContainerId) != true)
+                    {
+                        // container is not up and running, pull docker log for this container.
+                        await _dockerManger.DockerPS(executionContext, container.ContainerId, string.Empty);
+                        int logsExitCode = await _dockerManger.DockerLogs(executionContext, container.ContainerId);
+                        if (logsExitCode != 0)
+                        {
+                            executionContext.Warning($"Docker logs fail with exit code {logsExitCode}");
+                        }
+
+                        executionContext.Warning($"Docker container {container.ContainerId} is not in running state.");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // pull container log is best effort.
+                    Trace.Error("Catch exception when check container log and container status.");
+                    Trace.Error(ex);
+                }
+
                 throw new InvalidOperationException($"Docker exec fail with exit code {execWhichBashExitCode}");
             }
 
@@ -312,6 +357,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 if (stopExitCode != 0)
                 {
                     executionContext.Error($"Docker stop fail with exit code {stopExitCode}");
+                }
+
+                int rmExitCode = await _dockerManger.DockerRemove(executionContext, container.ContainerId);
+                if (rmExitCode != 0)
+                {
+                    executionContext.Error($"Docker rm fail with exit code {rmExitCode}");
                 }
 
                 if (!string.IsNullOrEmpty(container.ContainerNetwork))
