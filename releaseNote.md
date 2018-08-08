@@ -2,10 +2,11 @@
   - N/A
   
 ## Bugs
-  - N/A
+  - add retry to docker pull, detect crash container. #1745
+  - add retry to git fetch. #1747
 
 ## Misc
-  - Microsoft code signing policy compliance
+  - Consume latest vss-api package. #1750
 
 ## Agent Downloads  
 
