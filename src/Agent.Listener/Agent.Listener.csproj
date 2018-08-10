@@ -19,7 +19,7 @@
     <PackageReference Include="System.IO.FileSystem.AccessControl" Version="4.4.0" />
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="4.4.0" />
     <PackageReference Include="System.ServiceProcess.ServiceController" Version="4.4.0" />
-    <PackageReference Include="vss-api-netcore" Version="0.5.72-private" />
+    <PackageReference Include="vss-api-netcore" Version="0.5.73-private" />
   </ItemGroup>
 
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
