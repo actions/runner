@@ -42,6 +42,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             //  Succeeded
             //  SucceededWithIssues
             CancellationTokenRegistration? jobCancelRegister = null;
+            int stepIndex = 0;
             jobContext.Variables.Agent_JobStatus = jobContext.Result ?? TaskResult.Succeeded;
             foreach (IStep step in steps)
             {
@@ -49,9 +50,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 ArgUtil.Equal(true, step.Enabled, nameof(step.Enabled));
                 ArgUtil.NotNull(step.ExecutionContext, nameof(step.ExecutionContext));
                 ArgUtil.NotNull(step.ExecutionContext.Variables, nameof(step.ExecutionContext.Variables));
+                stepIndex++;
 
                 // Start.
                 step.ExecutionContext.Start();
+                var taskStep = step as ITaskRunner;
+                if (taskStep != null)
+                {
+                    HostContext.WritePerfCounter($"TaskStart_{taskStep.Task.Reference.Name}_{stepIndex}");
+                }
 
                 // Variable expansion.
                 List<string> expansionWarnings;
@@ -176,6 +183,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 else
                 {
                     Trace.Info($"No need for updating job result with current step result '{step.ExecutionContext.Result}'.");
+                }
+
+                if (taskStep != null)
+                {
+                    HostContext.WritePerfCounter($"TaskCompleted_{taskStep.Task.Reference.Name}_{stepIndex}");
                 }
 
                 Trace.Info($"Current state: job state = '{jobContext.Result}'");
