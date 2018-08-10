@@ -54,8 +54,8 @@ then
                 exit 1
             fi
 
-            # libicu version prefer: libicu52 -> libicu55 -> libicu57
-            apt install -y libicu52 || apt install -y libicu55 || apt install -y libicu57
+            # libicu version prefer: libicu52 -> libicu55 -> libicu57 -> libicu60
+            apt install -y libicu52 || apt install -y libicu55 || apt install -y libicu57 || apt install -y libicu60
             if [ $? -ne 0 ]
             then
                 echo "'apt' failed with exit code '$?'"
@@ -84,8 +84,8 @@ then
                     exit 1
                 fi
 
-                # libicu version prefer: libicu52 -> libicu55 -> libicu57
-                apt-get install -y libicu52 || apt install -y libicu55 || apt install -y libicu57
+                # libicu version prefer: libicu52 -> libicu55 -> libicu57 -> libicu60
+                apt-get install -y libicu52 || apt install -y libicu55 || apt install -y libicu57 || apt install -y libicu60
                 if [ $? -ne 0 ]
                 then
                     echo "'apt-get' failed with exit code '$?'"
@@ -112,10 +112,22 @@ then
             command -v dnf
             if [ $? -eq 0 ]
             then
-                grep -i 'fedora release 26' /etc/fedora-release
+                useCompatSsl=0
+                grep -i 'fedora release 27' /etc/fedora-release
                 if [ $? -eq 0 ]
                 then
-                    echo "Use compat-openssl10-devel instead of openssl-devel for Fedora 26 (dotnet core requires openssl 1.0.x)"                    
+                    useCompatSsl=1
+                else
+                    grep -i 'fedora release 26' /etc/fedora-release
+                    if [ $? -eq 0 ]
+                    then
+                        useCompatSsl=1
+                    fi
+                fi
+
+                if [ $useCompatSsl -eq 1 ]
+                then
+                    echo "Use compat-openssl10-devel instead of openssl-devel for Fedora 26/27 (dotnet core requires openssl 1.0.x)"                    
                     dnf install -y libunwind lttng-ust libcurl compat-openssl10 libuuid krb5-libs zlib libicu
                     if [ $? -ne 0 ]
                     then
