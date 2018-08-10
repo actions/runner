@@ -22,6 +22,7 @@ For more control, an alternative trigger syntax is available:
 
 ```yaml
 trigger:
+  batch: true | false  # note, support for batch is coming in August
   branches:
     include: [string]
     exclude: [string]
@@ -34,6 +35,7 @@ For example:
 
 ```yaml
 trigger:
+  batch: true
   branches:
     include:
     - master
