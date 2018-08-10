@@ -720,7 +720,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 Uri jobServerUrl = systemConnection.Url;
 
                 // Make sure SystemConnection Url match Config Url base for OnPremises server
-                if ((!message.Variables.ContainsKey(Constants.Variables.System.ServerType) && !UrlUtil.IsHosted(systemConnection.Url.AbsoluteUri)) ||
+                if (!message.Variables.ContainsKey(Constants.Variables.System.ServerType) ||
                     string.Equals(message.Variables[Constants.Variables.System.ServerType]?.Value, "OnPremises", StringComparison.OrdinalIgnoreCase))
                 {
                     try

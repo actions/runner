@@ -64,14 +64,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             message.Variables[Constants.Variables.System.TFServerUrl] = systemConnection.Url.AbsoluteUri;
 
             // Make sure SystemConnection Url and Endpoint Url match Config Url base for OnPremises server
-            if (!message.Variables.ContainsKey(Constants.Variables.System.ServerType))
-            {
-                if (!UrlUtil.IsHosted(systemConnection.Url.AbsoluteUri)) // TODO: remove this after TFS/RM move to M133
-                {
-                    ReplaceConfigUriBaseInJobRequestMessage(message);
-                }
-            }
-            else if (string.Equals(message.Variables[Constants.Variables.System.ServerType]?.Value, "OnPremises", StringComparison.OrdinalIgnoreCase))
+            // System.ServerType will always be there after M133
+            if (!message.Variables.ContainsKey(Constants.Variables.System.ServerType) ||
+                string.Equals(message.Variables[Constants.Variables.System.ServerType]?.Value, "OnPremises", StringComparison.OrdinalIgnoreCase))
             {
                 ReplaceConfigUriBaseInJobRequestMessage(message);
             }
