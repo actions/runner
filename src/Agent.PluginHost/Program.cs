@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.Loader;
+using System.Text;
 using System.Threading;
 using Agent.Sdk;
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
@@ -30,6 +31,8 @@ namespace Agent.PluginHost
                     string assemblyQualifiedName = args[1];
                     ArgUtil.NotNullOrEmpty(assemblyQualifiedName, nameof(assemblyQualifiedName));
 
+                    // Set encoding to UTF8, process invoker will use UTF8 write to STDIN
+                    Console.InputEncoding = Encoding.UTF8;
                     string serializedContext = Console.ReadLine();
                     ArgUtil.NotNullOrEmpty(serializedContext, nameof(serializedContext));
 
