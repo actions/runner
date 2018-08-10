@@ -105,6 +105,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
         "</assembly>" +
         "</assemblies>";
 
+        private const string _xunitResultsDefaultDateTime = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
+        "<assemblies>" +
+        "<assembly name = \"C:\\Users\\somerandomusername\\Source\\Workspaces\\p1\\ClassLibrary2\\ClassLibrary2\\bin\\Debug\\ClassLibrary2.DLL\" environment=\"64-bit .NET 4.0.30319.34014 [collection-per-class, parallel (4 threads)]\" test-framework=\"xUnit.net 2.1.0.3179\" run-date=\"0001-01-01\" run-time=\"00:00:00\" config-file=\"c:\\Users\\vimegh\\Documents\\Visual Studio 2013\\Projects\\ClassLibrary2\\packages\\xunit.runner.console.2.1.0\\tools\\xunit.console.exe.Config\" total=\"5\" passed=\"3\" failed=\"2\" skipped=\"0\" time=\"0.000\" errors=\"0\">" +
+        "<class name=\"MyFirstUnitTests.Class1\">" +
+        "<test name=\"MyFirstUnitTests.Class1.FailingTest\">" +
+        "</test>" +
+        "</class>" +
+        "</assembly>" +
+        "</assemblies>";
+
         private const string _xunitResultsWithDtd = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
         "<!DOCTYPE report PUBLIC '-//JACOCO//DTD Report 1.0//EN' 'report.dtd'>" +
         "<assemblies>" +
@@ -316,6 +326,24 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
             DateTime.TryParse(runData.CompleteDate, DateTimeFormatInfo.InvariantInfo, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out completeDate);
             Assert.Equal("2016-06-08T07:12:14.4330000Z", completeDate.ToString("o"));
             Assert.Equal((completeDate - startDate).TotalMilliseconds, 5433);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
+        public void VerifyReadResultsReturnsNullDurationWhenDefaultDateTimePassed()
+        {
+            SetupMocks();
+            //improper date format
+            string xunitResults = _xunitResultsDefaultDateTime;
+            XUnitResultReader reader = new XUnitResultReader();
+
+            _xUnitResultFile = "XUnitResults2.xml";
+            File.WriteAllText(_xUnitResultFile, xunitResults);
+            TestRunData runData = reader.ReadResults(_ec.Object, _xUnitResultFile, new TestRunContext("Owner", "any cpu", "debug", 1, "", "releaseUri", "releaseEnvironmentUri"));
+
+            Assert.Equal(null, runData.StartDate);
+            Assert.Equal(null, runData.CompleteDate);
         }
 
         [Fact]

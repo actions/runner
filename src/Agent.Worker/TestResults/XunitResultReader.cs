@@ -259,8 +259,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
             TestRunData testRunData = new TestRunData(
                 name: runName,
                 buildId: runContext != null ? runContext.BuildId : 0,
-                startedDate: minStartTime.ToString("o"),
-                completedDate: maxCompletedTime.ToString("o"),
+                startedDate: minStartTime != DateTime.MinValue ? minStartTime.ToString("o") : null,
+                completedDate: maxCompletedTime != DateTime.MinValue ? maxCompletedTime.ToString("o") : null,
                 state: TestRunState.InProgress.ToString(),
                 isAutomated: true,
                 buildFlavor: runContext != null ? runContext.Configuration : null,

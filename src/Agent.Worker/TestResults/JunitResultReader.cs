@@ -28,7 +28,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
         public TestRunData ReadResults(IExecutionContext executionContext, string filePath, TestRunContext runContext = null)
         {
             // http://windyroad.com.au/dl/Open%20Source/JUnit.xsd
-
+            
             XmlDocument doc = new XmlDocument();
             try
             {
@@ -145,8 +145,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
             //create test run data
             var testRunData = new TestRunData(
                 name: runSummary.Name,
-                startedDate: runSummary.TimeStamp.ToString("o"),
-                completedDate: maxCompletedTime.ToString("o"),
+                startedDate: runSummary.TimeStamp != DateTime.MinValue ? runSummary.TimeStamp.ToString("o") : null,
+                completedDate: maxCompletedTime != DateTime.MinValue ? maxCompletedTime.ToString("o") : null,
                 state: TestRunState.InProgress.ToString(),
                 isAutomated: true,
                 buildId: runContext != null ? runContext.BuildId : 0,

@@ -88,6 +88,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
             "</testsuite>" +
             "</testsuites>";
 
+        private const string _jUnitWithDefaultDateTime =
+            "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" +
+            "<testsuite errors=\"0\" failures=\"1\" hostname=\"mghost\" name=\"com.contoso.billingservice.ConsoleMessageRendererTest\" skipped=\"0\" tests=\"2\" time=\"0.000\" timestamp=\"0001-01-01T00:00:00\">" +
+              "<testcase classname=\"com.contoso.billingservice.ConsoleMessageRendererTest\" name=\"testRenderNullMessage\" time=\"1.001\" />" +
+            "</testsuite>";
+
         private const string c_jUnitMultiSuiteParallelXml =
             "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" +
             "<testsuites>" +
@@ -193,6 +199,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
             var time = TimeSpan.FromMilliseconds(_testRunData.Results[0].DurationInMs);
             Assert.Equal(0.001, time.TotalSeconds);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
+        public void VerifyBehaviorWhenDefaultDateTimePassed()
+        {
+            SetupMocks();
+            // case for duration = maxcompletedtime- minstarttime
+            _junitResultsToBeRead = _jUnitWithDefaultDateTime;
+            ReadResults();
+            Assert.Equal(null, _testRunData.StartDate);
+            Assert.Equal(null, _testRunData.CompleteDate);
         }
 
         [Fact]
