@@ -1,6 +1,6 @@
 # ![win](../res/win_med.png) Windows System Prerequisites
 
-## Windows 10 and Beyond (64-bit)
+## Windows 10 and Windows Server 2016 (64-bit)
 
 No known system prerequisites are known at this time.
 
