@@ -426,7 +426,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
         [Trait("Category", "ConfigurationManagement")]
         public async Task CanEnsureMachineGroupAgentConfigureVSTSScenarioWithTags()
         {
-            Guid receivedProjectId;
+            Guid receivedProjectId = Guid.Empty;
             string expectedProcessedTags = string.Empty;
             string tags = "Tag3, ,, Tag4  , , ,  Tag1,  , tag3 ";
             string expectedTags = "Tag3,Tag4,Tag1";

@@ -14,7 +14,7 @@ LAYOUT_DIR="$SCRIPT_DIR/../_layout"
 DOWNLOAD_DIR="$SCRIPT_DIR/../_downloads/netcore2x"
 PACKAGE_DIR="$SCRIPT_DIR/../_package"
 DOTNETSDK_ROOT="$SCRIPT_DIR/../_dotnetsdk"
-DOTNETSDK_VERSION="2.1.200"
+DOTNETSDK_VERSION="2.1.302"
 DOTNETSDK_INSTALLDIR="$DOTNETSDK_ROOT/$DOTNETSDK_VERSION"
 
 pushd $SCRIPT_DIR
@@ -29,15 +29,13 @@ if [[ (`uname` == "Linux") || (`uname` == "Darwin") ]]; then
     CURRENT_PLATFORM=`echo \`uname\` | awk '{print tolower($0)}'`
 fi
 
-RUNTIME_ID='win-x64'
-if [[ "$CURRENT_PLATFORM" == 'linux' ]]; then
-   RUNTIME_ID='linux-x64'
+if [[ "$CURRENT_PLATFORM" == 'windows' ]]; then
+   RUNTIME_ID='win-x64'
+elif [[ "$CURRENT_PLATFORM" == 'linux' ]]; then
+   RUNTIME_ID="linux-x64"
 elif [[ "$CURRENT_PLATFORM" == 'darwin' ]]; then
    RUNTIME_ID='osx-x64'
 fi
-
-WINDOWSAGENTSERVICE_PROJFILE="Agent.Service/Windows/AgentService.csproj"
-WINDOWSAGENTSERVICE_BIN="Agent.Service/Windows/bin/$BUILD_CONFIG"
 
 function failed()
 {
@@ -101,8 +99,8 @@ function layout ()
         chmod +x ${LAYOUT_DIR}/bin/installdependencies.sh
     fi
 
-    heading "Setup externals folder for $CURRENT_PLATFORM agent's layout"
-    bash ./Misc/externals.sh $CURRENT_PLATFORM || checkRC externals.sh
+    heading "Setup externals folder for $RUNTIME_ID  agent's layout"
+    bash ./Misc/externals.sh $RUNTIME_ID  || checkRC externals.sh
 }
 
 function runtest ()
@@ -186,8 +184,8 @@ export PATH=${DOTNETSDK_INSTALLDIR}:$PATH
 heading "Dotnet SDK Version"
 dotnet --version
 
-heading "Pre-cache external resources for $CURRENT_PLATFORM platform ..."
-bash ./Misc/externals.sh $CURRENT_PLATFORM "Pre-Cache" || checkRC "externals.sh Pre-Cache"
+heading "Pre-cache external resources for $RUNTIME_ID platform ..."
+bash ./Misc/externals.sh $RUNTIME_ID "Pre-Cache" || checkRC "externals.sh Pre-Cache"
 
 if [[ "$CURRENT_PLATFORM" == 'windows' ]]; then
     vswhere=`find $DOWNLOAD_DIR -name vswhere.exe | head -1`
