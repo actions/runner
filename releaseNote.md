@@ -1,16 +1,11 @@
 ## Features
-  - N/A
+  - Consume dotnet core 2.1 #1663
   
 ## Bugs
-  - Add retry to docker pull, detect crash container. #1745
-  - Add retry to git fetch. #1747
-  - Fixing invalid start date for test run being sent from Publish test results task #1752
-  - Use UTF8 for sending STDIN to agent plugin host. #1758
+  - N/A
 
 ## Misc
-  - Microsoft code signing policy compliance
-  - Consume latest vss-api package. #1756
-  - Update dependency install script to handle ubuntu 1804 and fedora 27. #1759
+  - Add more perf counter. #1769
 
 ## Agent Downloads  
 
