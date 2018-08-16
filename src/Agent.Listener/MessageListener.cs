@@ -62,11 +62,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             Dictionary<string, string> systemCapabilities = await HostContext.GetService<ICapabilitiesManager>().GetCapabilitiesAsync(_settings, token);
 
             // Create connection.
-            Trace.Verbose("Loading Credentials");
+            Trace.Info("Loading Credentials");
             var credMgr = HostContext.GetService<ICredentialManager>();
             VssCredentials creds = credMgr.LoadCredentials();
             Uri uri = new Uri(serverUrl);
             VssConnection conn = VssUtil.CreateConnection(uri, creds);
+            Trace.Info("VssConnection created");
 
             var agent = new TaskAgentReference
             {

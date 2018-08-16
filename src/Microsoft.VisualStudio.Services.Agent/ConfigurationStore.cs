@@ -1,6 +1,7 @@
 using Microsoft.VisualStudio.Services.Agent.Util;
 using System.IO;
 using System.Runtime.Serialization;
+using System.Text;
 using System.Threading;
 
 namespace Microsoft.VisualStudio.Services.Agent
@@ -203,7 +204,9 @@ namespace Microsoft.VisualStudio.Services.Agent
                 AgentSettings configuredSettings = null;
                 if (File.Exists(_configFilePath))
                 {
-                    configuredSettings = IOUtil.LoadObject<AgentSettings>(_configFilePath);
+                    string json = File.ReadAllText(_configFilePath, Encoding.UTF8);
+                    Trace.Info($"Read setting file: {json.Length} chars");
+                    configuredSettings = StringUtil.ConvertFromJson<AgentSettings>(json);
                 }
 
                 if (HostContext.RunMode == RunMode.Local)

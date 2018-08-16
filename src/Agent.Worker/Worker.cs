@@ -39,6 +39,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 channel.StartClient(pipeIn, pipeOut);
 
                 // Wait for up to 30 seconds for a message from the channel.
+                HostContext.WritePerfCounter("WorkerWaitingForJobMessage");
                 Trace.Info("Waiting to receive the job message from the channel.");
                 WorkerMessage channelMessage;
                 using (var csChannelMessage = new CancellationTokenSource(_workerStartTimeout))

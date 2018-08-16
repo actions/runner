@@ -378,6 +378,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                             }
 
                             // Start the child process.
+                            HostContext.WritePerfCounter("StartingWorkerProcess");
                             var assemblyDirectory = HostContext.GetDirectory(WellKnownDirectory.Bin);
                             string workerFileName = Path.Combine(assemblyDirectory, _workerProcessName);
                             workerProcessTask = processInvoker.ExecuteAsync(
@@ -397,6 +398,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     try
                     {
                         Trace.Info($"Send job request message to worker for job {message.JobId}.");
+                        HostContext.WritePerfCounter($"AgentSendingJobToWorker_{message.JobId}");
                         using (var csSendJobRequest = new CancellationTokenSource(_channelTimeout))
                         {
                             await processChannel.SendAsync(

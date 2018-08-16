@@ -27,6 +27,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 trace.Info($"Commit: {BuildConstants.Source.CommitHash}");
                 trace.Info($"Culture: {CultureInfo.CurrentCulture.Name}");
                 trace.Info($"UI Culture: {CultureInfo.CurrentUICulture.Name}");
+                context.WritePerfCounter("WorkerProcessStarted");
 
                 // Validate args.
                 ArgUtil.NotNull(args, nameof(args));

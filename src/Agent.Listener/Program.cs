@@ -28,6 +28,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             Tracing trace = context.GetTrace("AgentProcess");
             trace.Info($"Agent is built for {Constants.Agent.Platform} - {BuildConstants.AgentPackage.PackageName}.");
             trace.Info($"RuntimeInformation: {RuntimeInformation.OSDescription}.");
+            context.WritePerfCounter("AgentProcessStarted");
             var terminal = context.GetService<ITerminal>();
 
             // Validate the binaries intended for one OS are not running on a different OS.
