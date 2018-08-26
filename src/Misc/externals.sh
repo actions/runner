@@ -1,5 +1,5 @@
 #!/bin/bash
-PACKAGERUNTIME=$1
+PLATFORM=$1
 PRECACHE=$2
 
 CONTAINER_URL=https://vstsagenttools.blob.core.windows.net/tools
@@ -127,7 +127,7 @@ function acquireExternalTool() {
 }
 
 # Download the external tools only for Windows.
-if [[ "$PACKAGERUNTIME" == "win-x64" ]]; then
+if [[ "$PLATFORM" == "windows" ]]; then
     acquireExternalTool "$CONTAINER_URL/azcopy/1/azcopy.zip" azcopy
     acquireExternalTool "$CONTAINER_URL/pdbstr/1/pdbstr.zip" pdbstr
     acquireExternalTool "$CONTAINER_URL/mingit/2.17.1.2/MinGit-2.17.1.2-64-bit.zip" git
@@ -141,17 +141,17 @@ if [[ "$PACKAGERUNTIME" == "win-x64" ]]; then
 fi
 
 # Download the external tools only for OSX.
-if [[ "$PACKAGERUNTIME" == "osx-x64" ]]; then
+if [[ "$PLATFORM" == "darwin" ]]; then
     acquireExternalTool "$NODE_URL/v${NODE_VERSION}/node-v${NODE_VERSION}-darwin-x64.tar.gz" node fix_nested_dir
 fi
 
 # Download the external tools common across OSX and Linux platforms.
-if [[ "$PACKAGERUNTIME" == "linux-x64" || "$PACKAGERUNTIME" == "osx-x64" ]]; then
+if [[ "$PLATFORM" == "linux" || "$PLATFORM" == "darwin" ]]; then
     acquireExternalTool "$CONTAINER_URL/tee/14_134_0/TEE-CLC-14.134.0.zip" tee fix_nested_dir
     acquireExternalTool "$CONTAINER_URL/vso-task-lib/0.5.5/vso-task-lib.tar.gz" vso-task-lib
 fi
 
 # Download the external tools common across Linux platforms (excluding OSX).
-if [[ "$PACKAGERUNTIME" == "linux-x64" ]]; then
+if [[ "$PLATFORM" == "linux" ]]; then
     acquireExternalTool "$NODE_URL/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-x64.tar.gz" node fix_nested_dir
 fi
