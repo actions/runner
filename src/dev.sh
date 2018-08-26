@@ -96,6 +96,7 @@ function layout ()
     if [[ ("$CURRENT_PLATFORM" == "linux") || ("$CURRENT_PLATFORM" == "darwin") ]]; then
         chmod +x ${LAYOUT_DIR}/bin/Agent.Listener
         chmod +x ${LAYOUT_DIR}/bin/Agent.Worker
+        chmod +x ${LAYOUT_DIR}/bin/Agent.PluginHost
         chmod +x ${LAYOUT_DIR}/bin/installdependencies.sh
     fi
 
