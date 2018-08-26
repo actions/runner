@@ -93,7 +93,7 @@ namespace Agent.Plugins.Repository
             ArgUtil.File(policyDllPath, nameof(policyDllPath));
             const string policyPathEnvKey = "TFVC_BUILDAGENT_POLICYPATH";
             executionContext.Output(StringUtil.Loc("SetEnvVar", policyPathEnvKey));
-            Environment.SetEnvironmentVariable(policyPathEnvKey, policyDllPath);
+            executionContext.SetVariable(policyPathEnvKey, policyDllPath);
 #endif
 
             // Check if the administrator accepted the license terms of the TEE EULA when configuring the agent.
