@@ -554,6 +554,8 @@ if ($free.Freespace / 1MB -le 100 ) {
 
 $ZipPath = [System.IO.Path]::combine([System.IO.Path]::GetTempPath(), [System.IO.Path]::GetRandomFileName())
 Say-Verbose "Zip path: $ZipPath"
+
+$DownloadFailed = $false
 Say "Downloading link: $DownloadLink"
 try {
     DownloadFile -Uri $DownloadLink -OutPath $ZipPath
@@ -565,11 +567,21 @@ catch {
         $ZipPath = [System.IO.Path]::combine([System.IO.Path]::GetTempPath(), [System.IO.Path]::GetRandomFileName())
         Say-Verbose "Legacy zip path: $ZipPath"
         Say "Downloading legacy link: $DownloadLink"
-        DownloadFile -Uri $DownloadLink -OutPath $ZipPath
+        try {
+            DownloadFile -Uri $DownloadLink -OutPath $ZipPath
+        }
+        catch {
+            Say "Cannot download: $DownloadLink"
+            $DownloadFailed = $true
+        }
     }
     else {
-        throw "Could not download $assetName version $SpecificVersion"
+        $DownloadFailed = $true
     }
+}
+
+if ($DownloadFailed) {
+    throw "Could not find/download: `"$assetName`" with version = $SpecificVersion`nRefer to: https://aka.ms/dotnet-os-lifecycle for information on .NET Core support"
 }
 
 Say "Extracting zip from $DownloadLink"
@@ -578,7 +590,7 @@ Extract-Dotnet-Package -ZipPath $ZipPath -OutPath $InstallRoot
 #  Check if the SDK version is now installed; if not, fail the installation.
 $isAssetInstalled = Is-Dotnet-Package-Installed -InstallRoot $InstallRoot -RelativePathToPackage $dotnetPackageRelativePath -SpecificVersion $SpecificVersion
 if (!$isAssetInstalled) {
-    throw "$assetName version $SpecificVersion failed to install with an unknown error."
+    throw "`"$assetName`" with version = $SpecificVersion failed to install with an unknown error."
 }
 
 Remove-Item $ZipPath

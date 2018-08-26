@@ -794,11 +794,16 @@ install_dotnet() {
             say_verbose "Legacy zip path: $zip_path"
             say "Downloading legacy link: $download_link"
             download "$download_link" "$zip_path" 2>&1 || download_failed=true
+
+            if [ "$download_failed" = true ]; then
+                say "Cannot download: $download_link"
+            fi
         fi
     fi
 
     if [ "$download_failed" = true ]; then
-        say_err "Could not download $asset_name version $specific_version"
+        say_err "Could not find/download: \`$asset_name\` with version = $specific_version"
+        say_err "Refer to: https://aka.ms/dotnet-os-lifecycle for information on .NET Core support"
         return 1
     fi
 
@@ -807,7 +812,7 @@ install_dotnet() {
 
     #  Check if the SDK version is now installed; if not, fail the installation.
     if ! is_dotnet_package_installed "$install_root" "$asset_relative_path" "$specific_version"; then
-        say_err "$asset_name version $specific_version failed to install with an unknown error."
+        say_err "\`$asset_name\` with version = $specific_version failed to install with an unknown error."
         return 1
     fi
 
