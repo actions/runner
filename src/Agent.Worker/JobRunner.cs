@@ -198,18 +198,22 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 // Expand the repository property values.
                 foreach (var repository in jobContext.Repositories)
                 {
-                    Dictionary<string, string> expandProperties = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                    foreach (var property in repository.Properties.GetItems())
+                    // expand checkout option
+                    var checkoutOptions = repository.Properties.Get<JToken>(Pipelines.RepositoryPropertyNames.CheckoutOptions);
+                    if (checkoutOptions != null)
                     {
-                        expandProperties[property.Key] = JsonUtility.ToString(property.Value);
+                        checkoutOptions = jobContext.Variables.ExpandValues(target: checkoutOptions);
+                        checkoutOptions = VarUtil.ExpandEnvironmentVariables(HostContext, target: checkoutOptions);
+                        repository.Properties.Set<JToken>(Pipelines.RepositoryPropertyNames.CheckoutOptions, checkoutOptions); ;
                     }
 
-                    jobContext.Variables.ExpandValues(target: expandProperties);
-                    VarUtil.ExpandEnvironmentVariables(HostContext, target: expandProperties);
-
-                    foreach (var expandedProperty in expandProperties)
+                    // expand workspace mapping
+                    var mappings = repository.Properties.Get<JToken>(Pipelines.RepositoryPropertyNames.Mappings);
+                    if (mappings != null)
                     {
-                        repository.Properties.Set<JToken>(expandedProperty.Key, JsonUtility.FromString<JToken>(expandedProperty.Value));
+                        mappings = jobContext.Variables.ExpandValues(target: mappings);
+                        mappings = VarUtil.ExpandEnvironmentVariables(HostContext, target: mappings);
+                        repository.Properties.Set<JToken>(Pipelines.RepositoryPropertyNames.Mappings, mappings);
                     }
                 }
 

@@ -8,6 +8,7 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.Services.WebApi;
 using System.Xml;
+using Microsoft.TeamFoundation.DistributedTask.Pipelines;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
 {
@@ -386,6 +387,31 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
                     AddEnvironmentVariable("VSTSPSHOSTENDPOINT_TYPE_" + partialKey, endpoint.Type);
                     AddEnvironmentVariable("VSTSPSHOSTENDPOINT_AUTH_" + partialKey, JsonUtility.ToString(endpoint.Authorization));
                     AddEnvironmentVariable("VSTSPSHOSTENDPOINT_DATA_" + partialKey, JsonUtility.ToString(endpoint.Data));
+                }
+            }
+
+            var defaultRepoName = ExecutionContext.Variables.Get(Constants.Variables.Build.RepoName);
+            var defaultRepoType = ExecutionContext.Variables.Get(Constants.Variables.Build.RepoProvider);
+            if (!string.IsNullOrEmpty(defaultRepoName))
+            {
+                // TODO: use alias to find the trigger repo when we have the concept of triggering repo.
+                var defaultRepo = ExecutionContext.Repositories.FirstOrDefault(x => String.Equals(x.Properties.Get<string>(RepositoryPropertyNames.Name), defaultRepoName, StringComparison.OrdinalIgnoreCase));
+                if (defaultRepo != null && !ids.Exists(x => string.Equals(x, defaultRepo.Id, StringComparison.OrdinalIgnoreCase)))
+                {
+                    ids.Add(defaultRepo.Id);
+                    AddEnvironmentVariable("VSTSPSHOSTENDPOINT_URL_" + defaultRepo.Id, defaultRepo.Url.ToString());
+                    AddEnvironmentVariable("VSTSPSHOSTENDPOINT_NAME_" + defaultRepo.Id, defaultRepoName);
+                    AddEnvironmentVariable("VSTSPSHOSTENDPOINT_TYPE_" + defaultRepo.Id, defaultRepoType);
+
+                    if (defaultRepo.Endpoint != null)
+                    {
+                        var endpoint = ExecutionContext.Endpoints.FirstOrDefault(x => x.Id == defaultRepo.Endpoint.Id);
+                        if (endpoint != null)
+                        {
+                            AddEnvironmentVariable("VSTSPSHOSTENDPOINT_AUTH_" + defaultRepo.Id, JsonUtility.ToString(endpoint.Authorization));
+                            AddEnvironmentVariable("VSTSPSHOSTENDPOINT_DATA_" + defaultRepo.Id, JsonUtility.ToString(endpoint.Data));
+                        }
+                    }
                 }
             }
 

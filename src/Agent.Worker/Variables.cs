@@ -8,6 +8,8 @@ using System.Linq;
 using BuildWebApi = Microsoft.TeamFoundation.Build.WebApi;
 using Microsoft.TeamFoundation.DistributedTask.Logging;
 using Microsoft.VisualStudio.Services.Agent.Worker.Container;
+using Newtonsoft.Json.Linq;
+using Microsoft.VisualStudio.Services.WebApi;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
@@ -170,6 +172,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             }
 
             VarUtil.ExpandValues(_hostContext, source, target);
+        }
+
+        public JToken ExpandValues(JToken target)
+        {
+            _trace.Entering();
+            var source = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (Variable variable in _expanded.Values)
+            {
+                source[variable.Name] = variable.Value;
+            }
+
+            return VarUtil.ExpandValues(_hostContext, source, target);
         }
 
         public string Get(string name)
