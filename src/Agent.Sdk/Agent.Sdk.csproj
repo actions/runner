@@ -6,11 +6,11 @@
     <RuntimeIdentifiers>win-x64;linux-x64;osx-x64</RuntimeIdentifiers>
     <AssetTargetFallback>portable-net45+win8</AssetTargetFallback>
     <NoWarn>NU1701</NoWarn>
-    <Version>2.139.0</Version>
+    <Version>2.139.1</Version>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="vss-api-netcore" Version="0.5.74-private" />
+    <PackageReference Include="vss-api-netcore" Version="0.5.75-private" />
     <PackageReference Include="System.Text.Encoding.CodePages" Version="4.4.0" />
     <PackageReference Include="Microsoft.Win32.Registry" Version="4.4.0" />
   </ItemGroup>

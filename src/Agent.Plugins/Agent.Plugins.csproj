@@ -6,7 +6,7 @@
     <RuntimeIdentifiers>win-x64;linux-x64;osx-x64</RuntimeIdentifiers>
     <AssetTargetFallback>portable-net45+win8</AssetTargetFallback>
     <NoWarn>NU1701</NoWarn>
-    <Version>2.139.0</Version>
+    <Version>2.139.1</Version>
   </PropertyGroup>
 
   <ItemGroup>
@@ -18,7 +18,7 @@
     <PackageReference Include="Newtonsoft.Json" Version="11.0.2" />
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="4.4.0" />
     <PackageReference Include="System.Text.Encoding.CodePages" Version="4.4.0" /> -->
-    <PackageReference Include="vss-api-netcore" Version="0.5.74-private" /> 
+    <PackageReference Include="vss-api-netcore" Version="0.5.75-private" /> 
   </ItemGroup>
 
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">

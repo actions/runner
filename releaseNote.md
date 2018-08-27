@@ -1,11 +1,13 @@
 ## Features
-  - Consume dotnet core 2.1 #1663
+  - N/A
   
 ## Bugs
-  - N/A
+  - Fix TFVC_BUILDAGENT_POLICYPATH not set in getsource plugins. #1786 
+  - Fix permission issue on launch agent.pluginhost #1782
+  - Populate repository endpoint for legacy powershell handler. #1780 
 
 ## Misc
-  - Add more perf counter. #1769
+  - N/A
 
 ## Agent Downloads  
 
