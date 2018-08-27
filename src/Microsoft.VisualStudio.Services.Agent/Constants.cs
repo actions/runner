@@ -127,6 +127,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                     public static readonly string LocalRun = "localRun";
                     public static readonly string Remove = "remove";
                     public static readonly string Run = "run";
+                    public static readonly string Warmup = "warmup";
                 }
 
                 //if you are adding a new flag, please make sure you update the

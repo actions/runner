@@ -21,6 +21,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             Constants.Agent.CommandLine.Commands.LocalRun,
             Constants.Agent.CommandLine.Commands.Remove,
             Constants.Agent.CommandLine.Commands.Run,
+            Constants.Agent.CommandLine.Commands.Warmup,
         };
 
         private readonly string[] validFlags =
@@ -86,6 +87,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         public bool LocalRun => TestCommand(Constants.Agent.CommandLine.Commands.LocalRun);
         public bool Remove => TestCommand(Constants.Agent.CommandLine.Commands.Remove);
         public bool Run => TestCommand(Constants.Agent.CommandLine.Commands.Run);
+        public bool Warmup => TestCommand(Constants.Agent.CommandLine.Commands.Warmup);
 
         // Flags.
         public bool Commit => TestFlag(Constants.Agent.CommandLine.Flags.Commit);

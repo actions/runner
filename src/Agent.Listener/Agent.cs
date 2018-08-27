@@ -6,6 +6,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.Services.WebApi;
 using Pipelines = Microsoft.TeamFoundation.DistributedTask.Pipelines;
+using System.IO;
+using System.Reflection;
+using System.Runtime.CompilerServices;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener
 {
@@ -103,6 +106,49 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 }
 
                 _inConfigStage = false;
+
+                // warmup agent process (JIT/CLR)
+                // In scenarios where the agent is single use (used and then thrown away), the system provisioning the agent can call `agent.listener --warmup` before the machine is made available to the pool for use.
+                // this will optimizes the agent process startup time.
+                if (command.Warmup)
+                {
+                    var binDir = HostContext.GetDirectory(WellKnownDirectory.Bin);
+                    foreach (var assemblyFile in Directory.EnumerateFiles(binDir, "*.dll"))
+                    {
+                        try
+                        {
+                            Trace.Info($"Load assembly: {assemblyFile}.");
+                            var assembly = Assembly.LoadFrom(assemblyFile);
+                            var types = assembly.GetTypes();
+                            foreach (Type loadedType in types)
+                            {
+                                try
+                                {
+                                    Trace.Info($"Load methods: {loadedType.FullName}.");
+                                    var methods = loadedType.GetMethods(BindingFlags.DeclaredOnly | BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static);
+                                    foreach (var method in methods)
+                                    {
+                                        if (!method.IsAbstract && !method.ContainsGenericParameters)
+                                        {
+                                            Trace.Verbose($"Prepare method: {method.Name}.");
+                                            RuntimeHelpers.PrepareMethod(method.MethodHandle);
+                                        }
+                                    }
+                                }
+                                catch (Exception ex)
+                                {
+                                    Trace.Error(ex);
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Trace.Error(ex);
+                        }
+                    }
+
+                    return Constants.Agent.ReturnCode.Success;
+                }
 
                 AgentSettings settings = configManager.LoadSettings();
 
