@@ -231,7 +231,7 @@ namespace Agent.Plugins.Repository
                 endpoint = executionContext.Endpoints.Single(x => (repository.Endpoint.Id != Guid.Empty && x.Id == repository.Endpoint.Id) || (repository.Endpoint.Id == Guid.Empty && string.Equals(x.Name, repository.Endpoint.Name, StringComparison.OrdinalIgnoreCase)));
             }
 
-            if (endpoint.Data.TryGetValue(EndpointData.AcceptUntrustedCertificates, out string endpointAcceptUntrustedCerts))
+            if (endpoint != null && endpoint.Data.TryGetValue(EndpointData.AcceptUntrustedCertificates, out string endpointAcceptUntrustedCerts))
             {
                 acceptUntrustedCerts = StringUtil.ConvertToBoolean(endpointAcceptUntrustedCerts);
             }
