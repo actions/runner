@@ -15,16 +15,16 @@ using Microsoft.VisualStudio.Services.Agent.Util;
 using Newtonsoft.Json;
 using Agent.Sdk;
 
-namespace Agent.Plugins.BuildDrop
+namespace Agent.Plugins.PipelineArtifact
 {    
-    // A wrapper of BuildDropManager, providing basic functionalities such as uploading and downloading drop artifacts.
-    public class BuildDropServer
+    // A wrapper of BuildDropManager, providing basic functionalities such as uploading and downloading pipeline artifacts.
+    public class PipelineArtifactServer
     {
         public static readonly string RootId = "RootId";
         public static readonly string ProofNodes = "ProofNodes";
 
         // Upload from target path to VSTS BlobStore service through BuildDropManager, then associate it with the build
-        internal async Task UploadDropArtifactAsync(
+        internal async Task UploadAsync(
             AgentTaskPluginExecutionContext context,
             Guid projectId,
             int buildId,
@@ -34,25 +34,25 @@ namespace Agent.Plugins.BuildDrop
         {
             VssConnection connection = context.VssConnection;
 
-            // 1) upload build drop to VSTS BlobStore
+            // 1) upload pipeline artifact to VSTS BlobStore
             var httpclient = connection.GetClient<DedupStoreHttpClient>();
             var tracer = new CallbackAppTraceSource(str => context.Output(str), System.Diagnostics.SourceLevels.Information);
             httpclient.SetTracer(tracer);
             var client = new DedupStoreClientWithDataport(httpclient, 16 * Environment.ProcessorCount);
-            var buildDropManager = new BuildDropManager(client, tracer);
-            var result = await buildDropManager.PublishAsync(source, cancellationToken);
+            var BuildDropManager = new BuildDropManager(client, tracer);
+            var result = await BuildDropManager.PublishAsync(source, cancellationToken);
 
-            // 2) associate the drop with an artifact for this build
+            // 2) associate the pipeline artifact with an build artifact
             BuildServer buildHelper = new BuildServer(connection);
             Dictionary<string, string> propertiesDictionary = new Dictionary<string, string>();
             propertiesDictionary.Add(RootId, result.RootId.ValueString);
             propertiesDictionary.Add(ProofNodes, StringUtil.ConvertToJson(result.ProofNodes.ToArray()));
-            var artifact = await buildHelper.AssociateArtifact(projectId, buildId, name, ArtifactResourceTypes.Drop, result.ManifestId.ValueString, propertiesDictionary, cancellationToken);
+            var artifact = await buildHelper.AssociateArtifact(projectId, buildId, name, ArtifactResourceTypes.PipelineArtifact, result.ManifestId.ValueString, propertiesDictionary, cancellationToken);
             context.Output(StringUtil.Loc("AssociateArtifactWithBuild", artifact.Id, buildId));
         }
 
-        // Download drop artifact from VSTS BlobStore service through BuildDropManager to a target path
-        internal async Task DownloadDropArtifactAsync(
+        // Download pipeline artifact from VSTS BlobStore service through BuildDropManager to a target path
+        internal async Task DownloadAsync(
             AgentTaskPluginExecutionContext context,
             Guid projectId,
             int buildId,
@@ -72,8 +72,8 @@ namespace Agent.Plugins.BuildDrop
             var tracer = new CallbackAppTraceSource(str => context.Output(str), System.Diagnostics.SourceLevels.Information);
             httpclient.SetTracer(tracer);
             var client = new DedupStoreClientWithDataport(httpclient, maxParallelism: 16 * Environment.ProcessorCount);
-            var buildDropManager = new BuildDropManager(client, tracer);
-            await buildDropManager.DownloadAsync(manifestId, targetDir, cancellationToken);
+            var BuildDropManager = new BuildDropManager(client, tracer);
+            await BuildDropManager.DownloadAsync(manifestId, targetDir, cancellationToken);
         }
     }
 }

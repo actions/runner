@@ -14,12 +14,12 @@ using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using Agent.Sdk;
 
-namespace Agent.Plugins.BuildDrop
+namespace Agent.Plugins.PipelineArtifact
 {
-    public abstract class BuildDropTaskPluginBase : IAgentTaskPlugin
+    public abstract class PipelineArtifactTaskPluginBase : IAgentTaskPlugin
     {
         public abstract Guid Id { get; }
-        public string Version => "0.138.0"; // Publish and Download tasks will be always on the same version.
+        public string Version => "0.139.0"; // Publish and Download tasks will be always on the same version.
         public string Stage => "main";
 
         public async Task RunAsync(AgentTaskPluginExecutionContext context, CancellationToken token)
@@ -44,11 +44,11 @@ namespace Agent.Plugins.BuildDrop
             CancellationToken token);
     }
 
-    // Caller: PublishBuildDrop task
+    // Caller: PublishPipelineArtifact task
     // Can be invoked from a build run or a release run should a build be set as the artifact. 
-    public class PublishBuildDropTask : BuildDropTaskPluginBase
+    public class PublishPipelineArtifactTask : PipelineArtifactTaskPluginBase
     {
-        // Same as: https://github.com/Microsoft/vsts-tasks/blob/master/Tasks/PublishBuildDropV0/task.json
+        // Same as: https://github.com/Microsoft/vsts-tasks/blob/master/Tasks/PublishPipelineArtifactV0/task.json
         public override Guid Id => new Guid("ECDC45F6-832D-4AD9-B52B-EE49E94659BE");
 
         protected override async Task ProcessCommandInternalAsync(
@@ -90,18 +90,18 @@ namespace Agent.Plugins.BuildDrop
             }
 
             // Upload to VSTS BlobStore, and associate the artifact with the build.
-            context.Output(StringUtil.Loc("UploadingBuildDrop", fullPath, buildId));
-            BuildDropServer server = new BuildDropServer();
-            await server.UploadDropArtifactAsync(context, projectId, buildId, artifactName, fullPath, token);
+            context.Output(StringUtil.Loc("UploadingPipelineArtifact", fullPath, buildId));
+            PipelineArtifactServer server = new PipelineArtifactServer();
+            await server.UploadAsync(context, projectId, buildId, artifactName, fullPath, token);
             context.Output(StringUtil.Loc("UploadArtifactFinished"));
         }
     }
 
-    // CAller: DownloadBuildDrop task
+    // CAller: DownloadPipelineArtifact task
     // Can be invoked from a build run or a release run should a build be set as the artifact. 
-    public class DownloadBuildDropTask : BuildDropTaskPluginBase
+    public class DownloadPipelineArtifactTask : PipelineArtifactTaskPluginBase
     {
-        // Same as https://github.com/Microsoft/vsts-tasks/blob/master/Tasks/DownloadBuildDropV0/task.json
+        // Same as https://github.com/Microsoft/vsts-tasks/blob/master/Tasks/DownloadPipelineArtifactV0/task.json
         public override Guid Id => new Guid("61F2A582-95AE-4948-B34D-A1B3C4F6A737");
 
         protected override async Task ProcessCommandInternalAsync(
@@ -126,7 +126,7 @@ namespace Agent.Plugins.BuildDrop
 
             // Build ID
             int buildId = 0;
-            string buildIdStr = context.GetInput(ArtifactEventProperties.BuildId, required: false);
+            string buildIdStr = context.GetInput(ArtifactEventProperties.PipelineId, required: false);
             // Determine the build id
             if (Int32.TryParse(buildIdStr, out buildId) && buildId != 0)
             {
@@ -158,8 +158,8 @@ namespace Agent.Plugins.BuildDrop
 
             // Download from VSTS BlobStore
             context.Output(StringUtil.Loc("DownloadArtifactTo", targetPath));
-            BuildDropServer server = new BuildDropServer();
-            await server.DownloadDropArtifactAsync(context, projectId, buildId, artifactName, targetPath, token);
+            PipelineArtifactServer server = new PipelineArtifactServer();
+            await server.DownloadAsync(context, projectId, buildId, artifactName, targetPath, token);
             context.Output(StringUtil.Loc("DownloadArtifactFinished"));
         }
     }
@@ -167,8 +167,8 @@ namespace Agent.Plugins.BuildDrop
     // Properties set by tasks
     internal static class ArtifactEventProperties
     {
-        public static readonly string ArtifactName = "artifactname";
-        public static readonly string TargetPath = "targetpath";
-        public static readonly string BuildId = "buildid";
+        public static readonly string ArtifactName = "artifactName";
+        public static readonly string TargetPath = "targetPath";
+        public static readonly string PipelineId = "pipelineId";
     }
 }

@@ -8,7 +8,7 @@ using Microsoft.VisualStudio.Services.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using Agent.Sdk;
 
-namespace Agent.Plugins.BuildDrop
+namespace Agent.Plugins.PipelineArtifact
 {
     // A client wrapper interacting with TFS/Build's Artifact API
     public class BuildServer
