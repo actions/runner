@@ -2,9 +2,7 @@
   - N/A
   
 ## Bugs
-  - Fix TFVC_BUILDAGENT_POLICYPATH not set in getsource plugins. #1786 
-  - Fix permission issue on launch agent.pluginhost #1782
-  - Populate repository endpoint for legacy powershell handler. #1780 
+  - Fix null ref when building fork PR. #1808
 
 ## Misc
   - N/A
