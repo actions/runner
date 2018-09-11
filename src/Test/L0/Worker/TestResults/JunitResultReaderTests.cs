@@ -39,6 +39,21 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
             + "<system-err><![CDATA[]]></system-err>"
             + "</testsuite>";
 
+        private const string _sampleJunitResultXmlInvalidTime = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>"
+            + "<testsuite errors = \"0\" failures=\"0\" hostname=\"achalla-dev\" name=\"test.AllTests\" skipped=\"0\" tests=\"1\" time=\"NaN\" timestamp=\"2015-09-01T10:19:04\">"
+            + "<properties>"
+            + "<property name = \"java.vendor\" value=\"Oracle Corporation\" />"
+            + "<property name = \"lib.dir\" value=\"lib\" />"
+            + "<property name = \"sun.java.launcher\" value=\"SUN_STANDARD\" />"
+            + "</properties>"
+            + "<testcase classname = \"test.ExampleTest\" name=\"Fact\" time=\"NaN\" />"
+            + "<testcase name =\"can be instantiated\" time=\"-Infinity\" classname=\"PhantomJS 2.0.0 (Windows 8).the Admin module\"/>" 
+            + "<system-out><![CDATA[Set Up Complete."
+            + "Sample test Successful"
+            + "]]></system-out>"
+            + "<system-err><![CDATA[]]></system-err>"
+            + "</testsuite>";
+
         private const string _sampleJunitResultXmlWithOwner = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>"
             + "<testsuite errors = \"0\" failures=\"0\" hostname=\"achalla-dev\" name=\"test.AllTests\" skipped=\"0\" tests=\"1\" time=\"0.03\" timestamp=\"2015-09-01T10:19:04\">"
             + "<properties>"
@@ -186,6 +201,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
             var timeSpan = DateTime.Parse(_testRunData.CompleteDate) - DateTime.Parse(_testRunData.StartDate);
             Assert.Equal(0.03, timeSpan.TotalSeconds);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
+        public void VerifyCompletedTimeWhenTimeIsInvalid()
+        {
+            SetupMocks();
+            _junitResultsToBeRead = _sampleJunitResultXmlInvalidTime;
+            ReadResults();
+            Assert.Equal(_testRunData.StartDate, _testRunData.CompleteDate);
+            Assert.Equal(_testRunData.Results[0].StartedDate, _testRunData.Results[0].CompletedDate);
+            Assert.Equal(_testRunData.Results[1].StartedDate, _testRunData.Results[1].CompletedDate);
         }
 
         [Fact]
