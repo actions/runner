@@ -1,27 +1,26 @@
 
 
-# ![osx](../res/apple_med.png) OSX System Prerequisites
+# ![osx](../res/apple_med.png) macOS/OS X System Prerequisites
 
-## OSX Version
+## macOS/OS X Version
 
 ### Agent version 2.125.0 or above (.Net Core 2.x)  
-  - macOS 10.12 "Sierra" and later versions
+  - macOS Sierra (10.12) and later versions
 
 .Net Core 2.x doesn't has any extra prerequisites
 
 ### Agent version 2.124.0 or below (.Net Core 1.x) 
-  - macOS 10.12 "Sierra"
-  - macOS 10.11 "El Capitan"
-  - macOS 10.10 "Yosemite"
+  - macOS Sierra (10.12)
+  - OS X El Capitan (10.11)
+  - OS X Yosemite (10.10)
 
-.Net Core 1.x requires update OpenSSL - [issue 110](https://github.com/Microsoft/vsts-agent/issues/110) 
+.Net Core 1.x requires you to update OpenSSL - [issue 110](https://github.com/Microsoft/vsts-agent/issues/110) 
 
 [From Net Core Instructions](https://www.microsoft.com/net/core#macos)
 
-In order to use .NET Core, we first need the latest version of OpenSSL. The easiest way to get this is from [Homebrew](http://brew.sh). After installing brew, do the following:
+In order to use .NET Core, we first need a newer version of OpenSSL. The easiest way to get this is from [Homebrew](https://brew.sh). After installing Homebrew, run the following:
 
 ```bash
-brew update
 brew install openssl
 # Ensure folder exists on machine
 mkdir -p /usr/local/lib/
@@ -29,16 +28,15 @@ ln -s /usr/local/opt/openssl/lib/libcrypto.1.0.0.dylib /usr/local/lib/
 ln -s /usr/local/opt/openssl/lib/libssl.1.0.0.dylib /usr/local/lib/
 ```
 
-This was a recent change from brew.  [Issue here](https://github.com/Microsoft/vsts-agent/issues/470)
+This was a change in Homebrew. [Issue here](https://github.com/Microsoft/vsts-agent/issues/470)
 
 ## Git
 
-If you use git, git >= 2.9.0 is a pre-requisite for OSX agents.
+If you use OS X Yosemite agents git >= 2.9.0 is a pre-requisite and not provided by OS X (OS X El Capitan provides Git 2.10.1).
 
-We recommend using [home brew](http://brew.sh) to install
+We recommend using [Homebrew](https://brew.sh) to install Git:
 
 ```bash
-$ brew update
 $ brew install git
 ==> Downloading https://homebrew.bintray.com/bottles/git-2.9.0.el_capitan.bottle.tar.gz
 ...
