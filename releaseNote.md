@@ -2,7 +2,9 @@
   - N/A
   
 ## Bugs
-  - Fix null ref when building fork PR. #1808
+  - Fixing time span input to be valid values #1801
+  - Changing start and complete time according to sql time range #1832
+  - Fix use docker image from ACR. #1831
 
 ## Misc
   - N/A
