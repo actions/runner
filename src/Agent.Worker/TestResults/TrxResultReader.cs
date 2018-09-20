@@ -2,6 +2,7 @@
 using Microsoft.TeamFoundation.TestManagement.WebApi;
 using Microsoft.VisualStudio.Services.WebApi;
 using System;
+using System.Data.SqlTypes;
 using System.Diagnostics;
 using System.Collections.Generic;
 using System.Globalization;
@@ -303,6 +304,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
 
                 DateTime completedDate = startedDate.AddTicks(duration.Ticks);
                 resultCreateModel.CompletedDate = completedDate;
+
+                if ((DateTime.Compare(default(DateTime), startedDate) < 0 && DateTime.Compare(startedDate, (DateTime) SqlDateTime.MinValue) <= 0)
+                    || (DateTime.Compare(default(DateTime), completedDate) < 0 && DateTime.Compare(completedDate, (DateTime) SqlDateTime.MinValue) <= 0)) {
+                        
+                        DateTime utcNow = DateTime.UtcNow;
+                        resultCreateModel.StartedDate = utcNow;
+                        resultCreateModel.CompletedDate = utcNow.AddTicks(duration.Ticks);
+                }
 
                 if (resultNode.Attributes["outcome"] == null || resultNode.Attributes["outcome"].Value == null || string.Equals(resultNode.Attributes["outcome"].Value, "failed", StringComparison.OrdinalIgnoreCase))
                 {

@@ -4,6 +4,7 @@ using Microsoft.VisualStudio.Services.Agent.Worker.TestResults;
 using Moq;
 using System;
 using System.Collections.Generic;
+using System.Data.SqlTypes;
 using System.Globalization;
 using System.IO;
 using System.Runtime.CompilerServices;
@@ -122,6 +123,35 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
             Assert.Equal(1, runData.Results.Length);
             Assert.Equal(null, runData.Results[0].AutomatedTestId);
             Assert.Equal(null, runData.Results[0].AutomatedTestTypeId);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
+        public void ResultsWithInvalidStartDate()
+        {
+            SetupMocks();
+            String trxContents = "<?xml version = \"1.0\" encoding = \"UTF-8\"?>" +
+               "<TestRun id = \"asdf\" name = \"somerandomusername@SOMERANDOMCOMPUTERNAME 2015-03-20 16:53:32\" runUser = \"FAREAST\\somerandomusername\" xmlns =\"http://microsoft.com/schemas/VisualStudio/TeamTest/2010\"><Times creation = \"2015-03-20T16:53:32.3309380+05:30\" queuing = \"2015-03-20T16:53:32.3319381+05:30\" start = \"2015-03-20T16:53:32.3349628+05:30\" finish = \"2015-03-20T16:53:32.9232329+05:30\" />" +
+
+                 "<TestDefinitions>" +
+                   "<UnitTest name = \"TestMethod2\" storage = \"c:\\users\\somerandomusername\\source\\repos\\projectx\\unittestproject4\\unittestproject4\\bin\\debug\\unittestproject4.dll\" priority = \"1\" id = \"asdf\"><Owners><Owner name = \"asdf2\" /></Owners><Execution id = \"asdf\" /><TestMethod codeBase = \"C:\\Users\\somerandomusername\\Source\\Repos\\Projectx\\UnitTestProject4\\UnitTestProject4\\bin\\Debug\\UnitTestProject4.dll\" adapterTypeName = \"Microsoft.VisualStudio.TestTools.TestTypes.Unit.UnitTestAdapter\" className = \"UnitTestProject4.UnitTest1\" name = \"TestMethod2\" /></UnitTest>" +
+                 "</TestDefinitions>" +
+                  "<Results>" +
+                   "<UnitTestResult executionId = \"asdf\" testId = \"asdf\" testName = \"TestMethod2\" computerName = \"SOMERANDOMCOMPUTERNAME\" duration = \"00:00:00.0834563\" startTime = \"0001-01-01T00:00:00.0000000-08:00\" endTime = \"0001-01-01T00:00:00.0000000-08:00\" testType = \"asfd\" outcome = \"Failed\" testListId = \"asdf\" relativeResultsDirectory = \"48ec1e47-b9df-43b9-aef2-a2cc8742353d\" ><Output><StdOut>Show console log output.</StdOut><ErrorInfo><Message>Assert.Fail failed.</Message><StackTrace>at UnitTestProject4.UnitTest1.TestMethod2() in C:\\Users\\somerandomusername\\Source\\Repos\\Projectx\\UnitTestProject4\\UnitTestProject4\\UnitTest1.cs:line 21</StackTrace></ErrorInfo></Output>" +
+                     "<ResultFiles><ResultFile path=\"DIGANR-DEV4\\x.txt\" /></ResultFiles>" +
+                   "</UnitTestResult>" +
+                   "</Results></TestRun>";
+
+            _trxResultFile = "ResultsWithInvalidGuid.trx";
+            File.WriteAllText(_trxResultFile, trxContents);
+            TrxResultReader reader = new TrxResultReader();
+            TestRunData runData = reader.ReadResults(_ec.Object, _trxResultFile, new TestRunContext("Owner", "any cpu", "debug", 1, "", "releaseUri", "releaseEnvironmentUri", "My Run Title"));
+
+            Assert.NotNull(runData);
+            Assert.Equal(1, runData.Results.Length);
+            Assert.Equal(true, DateTime.Compare((DateTime) SqlDateTime.MinValue, runData.Results[0].StartedDate) < 0);
+            Assert.Equal(true, DateTime.Compare((DateTime) SqlDateTime.MinValue, runData.Results[0].CompletedDate) < 0);
         }
 
         [Fact]
