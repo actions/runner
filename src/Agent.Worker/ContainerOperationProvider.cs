@@ -134,11 +134,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 if (!container.SkipContainerImagePull)
                 {
                     string imageName = container.ContainerImage;
+                    var registryServerUri = new Uri(registryServer);
                     if (!string.IsNullOrEmpty(registryServer) &&
                         registryServer.IndexOf("index.docker.io", StringComparison.OrdinalIgnoreCase) < 0 &&
-                        !imageName.StartsWith(registryServer, StringComparison.OrdinalIgnoreCase))
+                        !imageName.StartsWith(registryServerUri.Authority, StringComparison.OrdinalIgnoreCase))
                     {
-                        imageName = $"{registryServer}/{imageName}";
+                        imageName = $"{registryServerUri.Authority}/{imageName}";
                     }
 
                     // Pull down docker image with retry up to 3 times
@@ -176,7 +177,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Tools), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Tools))));
 #else
                 string workingDirectory = Path.GetDirectoryName(executionContext.Variables.Get(Constants.Variables.System.DefaultWorkingDirectory).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
-                container.MountVolumes.Add(new MountVolume(container.TranslateToHostPath(workingDirectory),  workingDirectory));
+                container.MountVolumes.Add(new MountVolume(container.TranslateToHostPath(workingDirectory), workingDirectory));
                 container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Temp), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Temp))));
                 container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Tools), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Tools))));
                 container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Tasks), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Tasks))));
