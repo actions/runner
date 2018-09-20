@@ -310,7 +310,7 @@ phases:
         prerelease = $true;
       }
       $releaseParams = @{
-        Uri = "https://api.github.com/repos/Microsoft/vsts-agent/releases";
+        Uri = "https://api.github.com/repos/Microsoft/azure-pipelines-agent/releases";
         Method = 'POST';
         Headers = @{
           Authorization = 'Basic ' + [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("vsts:$(GithubToken)"));
@@ -324,7 +324,7 @@ phases:
       $releaseId = $releaseCreated.id
       $assets = [System.IO.File]::ReadAllText("$(Build.SourcesDirectory)\assets.json").Replace("<AGENT_VERSION>","$(ReleaseAgentVersion)")
       $assetsParams = @{
-        Uri = "https://uploads.github.com/repos/Microsoft/vsts-agent/releases/$releaseId/assets?name=assets.json"
+        Uri = "https://uploads.github.com/repos/Microsoft/azure-pipelines-agent/releases/$releaseId/assets?name=assets.json"
         Method = 'POST';
         Headers = @{
           Authorization = 'Basic ' + [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("vsts:$(GithubToken)"));
