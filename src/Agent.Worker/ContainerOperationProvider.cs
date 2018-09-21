@@ -134,12 +134,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 if (!container.SkipContainerImagePull)
                 {
                     string imageName = container.ContainerImage;
-                    var registryServerUri = new Uri(registryServer);
                     if (!string.IsNullOrEmpty(registryServer) &&
-                        registryServer.IndexOf("index.docker.io", StringComparison.OrdinalIgnoreCase) < 0 &&
-                        !imageName.StartsWith(registryServerUri.Authority, StringComparison.OrdinalIgnoreCase))
+                        registryServer.IndexOf("index.docker.io", StringComparison.OrdinalIgnoreCase) < 0)
                     {
-                        imageName = $"{registryServerUri.Authority}/{imageName}";
+                        var registryServerUri = new Uri(registryServer);
+                        if (!imageName.StartsWith(registryServerUri.Authority, StringComparison.OrdinalIgnoreCase))
+                        {
+                            imageName = $"{registryServerUri.Authority}/{imageName}";
+                        }
                     }
 
                     // Pull down docker image with retry up to 3 times
