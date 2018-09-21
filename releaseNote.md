@@ -1,5 +1,5 @@
 ## Features
-  - N/A
+  - Consume dotnet core 2.1, add win-x86 and linux-arm agent. #1844
   
 ## Bugs
   - N/A

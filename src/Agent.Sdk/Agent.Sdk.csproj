@@ -6,7 +6,7 @@
     <RuntimeIdentifiers>win-x64;win-x86;linux-x64;linux-arm;osx-x64</RuntimeIdentifiers>
     <AssetTargetFallback>portable-net45+win8</AssetTargetFallback>
     <NoWarn>NU1701</NoWarn>
-    <Version>2.140.1</Version>
+    <Version>2.141.0</Version>
   </PropertyGroup>
 
   <ItemGroup>
