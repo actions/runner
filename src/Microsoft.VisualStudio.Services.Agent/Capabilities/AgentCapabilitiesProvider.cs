@@ -19,6 +19,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Capabilities
             var capabilities = new List<Capability>();
             Add(capabilities, "Agent.Name", settings.AgentName ?? string.Empty);
             Add(capabilities, "Agent.OS", VarUtil.OS);
+            Add(capabilities, "Agent.OSArchitecture", VarUtil.OSArchitecture);
 #if OS_WINDOWS
             Add(capabilities, "Agent.OSVersion", GetOSVersionString());
             Add(capabilities, "Cmd", Environment.GetEnvironmentVariable("comspec"));

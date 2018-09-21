@@ -99,7 +99,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             if (handlerData == null)
             {
 #if OS_WINDOWS
-                throw new Exception(StringUtil.Loc("SupportedTaskHandlerNotFoundWindows", Constants.Agent.Platform));
+                throw new Exception(StringUtil.Loc("SupportedTaskHandlerNotFoundWindows", $"{Constants.Agent.Platform}({Constants.Agent.PlatformArchitecture})"));
 #else
                 throw new Exception(StringUtil.Loc("SupportedTaskHandlerNotFoundLinux"));
 #endif

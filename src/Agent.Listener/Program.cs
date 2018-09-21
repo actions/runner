@@ -12,6 +12,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
     {
         public static int Main(string[] args)
         {
+            // We can't use the new SocketsHttpHandler for now for both Windows and Linux
+            // On linux, Negotiate auth is not working if the TFS url is behind Https
+            // On windows, Proxy is not working
+            AppContext.SetSwitch("System.Net.Http.UseSocketsHttpHandler", false);
             using (HostContext context = new HostContext("Agent"))
             {
                 return MainAsync(context, args).GetAwaiter().GetResult();
@@ -26,7 +30,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         public async static Task<int> MainAsync(IHostContext context, string[] args)
         {
             Tracing trace = context.GetTrace("AgentProcess");
-            trace.Info($"Agent is built for {Constants.Agent.Platform} - {BuildConstants.AgentPackage.PackageName}.");
+            trace.Info($"Agent is built for {Constants.Agent.Platform} ({Constants.Agent.PlatformArchitecture}) - {BuildConstants.AgentPackage.PackageName}.");
             trace.Info($"RuntimeInformation: {RuntimeInformation.OSDescription}.");
             context.WritePerfCounter("AgentProcessStarted");
             var terminal = context.GetService<ITerminal>();

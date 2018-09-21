@@ -24,37 +24,48 @@ namespace Microsoft.VisualStudio.Services.Agent
             Dictionary<string, string> environmentVariables = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             IntPtr processHandle = process.SafeHandle.DangerousGetHandle();
 
-            // only support 32/64 bits process runs on x64 OS.
-            if (!Environment.Is64BitOperatingSystem)
-            {
-                throw new PlatformNotSupportedException();
-            }
-
-            PROCESS_BASIC_INFORMATION pbi = new PROCESS_BASIC_INFORMATION();
-            int returnLength = 0;
-            int status = NtQueryInformationProcess(processHandle, PROCESSINFOCLASS.ProcessBasicInformation, ref pbi, Marshal.SizeOf(pbi), ref returnLength);
-            if (status != 0)
-            {
-                throw new Win32Exception(Marshal.GetLastWin32Error());
-            }
-
-            bool wow64;
-            if (!IsWow64Process(processHandle, out wow64))
-            {
-                throw new Win32Exception(Marshal.GetLastWin32Error());
-            }
-
             IntPtr environmentBlockAddress;
-            if (!wow64)
+            if (Environment.Is64BitOperatingSystem)
             {
-                // 64 bits process
-                IntPtr UserProcessParameterAddress = ReadIntPtr64(processHandle, new IntPtr(pbi.PebBaseAddress) + 0x20);
-                environmentBlockAddress = ReadIntPtr64(processHandle, UserProcessParameterAddress + 0x80);
+                PROCESS_BASIC_INFORMATION64 pbi = new PROCESS_BASIC_INFORMATION64();
+                int returnLength = 0;
+                int status = NtQueryInformationProcess64(processHandle, PROCESSINFOCLASS.ProcessBasicInformation, ref pbi, Marshal.SizeOf(pbi), ref returnLength);
+                if (status != 0)
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
+
+                bool wow64;
+                if (!IsWow64Process(processHandle, out wow64))
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
+
+                if (!wow64)
+                {
+                    // 64 bits process on 64 bits OS
+                    IntPtr UserProcessParameterAddress = ReadIntPtr64(processHandle, new IntPtr(pbi.PebBaseAddress) + 0x20);
+                    environmentBlockAddress = ReadIntPtr64(processHandle, UserProcessParameterAddress + 0x80);
+                }
+                else
+                {
+                    // 32 bits process on 64 bits OS
+                    IntPtr UserProcessParameterAddress = ReadIntPtr32(processHandle, new IntPtr(pbi.PebBaseAddress) + 0x1010);
+                    environmentBlockAddress = ReadIntPtr32(processHandle, UserProcessParameterAddress + 0x48);
+                }
             }
             else
             {
-                // 32 bits process
-                IntPtr UserProcessParameterAddress = ReadIntPtr32(processHandle, new IntPtr(pbi.PebBaseAddress) + 0x1010);
+                PROCESS_BASIC_INFORMATION32 pbi = new PROCESS_BASIC_INFORMATION32();
+                int returnLength = 0;
+                int status = NtQueryInformationProcess32(processHandle, PROCESSINFOCLASS.ProcessBasicInformation, ref pbi, Marshal.SizeOf(pbi), ref returnLength);
+                if (status != 0)
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
+
+                // 32 bits process on 32 bits OS
+                IntPtr UserProcessParameterAddress = ReadIntPtr32(processHandle, new IntPtr(pbi.PebBaseAddress) + 0x10);
                 environmentBlockAddress = ReadIntPtr32(processHandle, UserProcessParameterAddress + 0x48);
             }
 
@@ -234,7 +245,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         }
 
         [StructLayout(LayoutKind.Sequential)]
-        private struct PROCESS_BASIC_INFORMATION
+        private struct PROCESS_BASIC_INFORMATION64
         {
             public long ExitStatus;
             public long PebBaseAddress;
@@ -244,9 +255,22 @@ namespace Microsoft.VisualStudio.Services.Agent
             public long InheritedFromUniqueProcessId;
         };
 
+        [StructLayout(LayoutKind.Sequential)]
+        private struct PROCESS_BASIC_INFORMATION32
+        {
+            public int ExitStatus;
+            public int PebBaseAddress;
+            public int AffinityMask;
+            public int BasePriority;
+            public int UniqueProcessId;
+            public int InheritedFromUniqueProcessId;
+        };
 
         [DllImport("ntdll.dll", SetLastError = true)]
-        private static extern int NtQueryInformationProcess(IntPtr processHandle, PROCESSINFOCLASS processInformationClass, ref PROCESS_BASIC_INFORMATION processInformation, int processInformationLength, ref int returnLength);
+        private static extern int NtQueryInformationProcess64(IntPtr processHandle, PROCESSINFOCLASS processInformationClass, ref PROCESS_BASIC_INFORMATION64 processInformation, int processInformationLength, ref int returnLength);
+
+        [DllImport("ntdll.dll", SetLastError = true)]
+        private static extern int NtQueryInformationProcess32(IntPtr processHandle, PROCESSINFOCLASS processInformationClass, ref PROCESS_BASIC_INFORMATION32 processInformation, int processInformationLength, ref int returnLength);
 
         [DllImport("kernel32.dll", SetLastError = true)]
         private static extern bool IsWow64Process(IntPtr processHandle, out bool wow64Process);

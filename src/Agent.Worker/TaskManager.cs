@@ -228,7 +228,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         [JsonIgnore]
         public List<HandlerData> All => _all;
 
-#if !OS_WINDOWS
+#if !OS_WINDOWS || X86
         [JsonIgnore]
 #endif
         public AzurePowerShellHandlerData AzurePowerShell
@@ -259,7 +259,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             }
         }
 
-#if !OS_WINDOWS
+#if !OS_WINDOWS || X86
         [JsonIgnore]
 #endif
         public PowerShellHandlerData PowerShell

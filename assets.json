@@ -6,6 +6,12 @@
         "downloadUrl": "https://vstsagentpackage.azureedge.net/agent/<AGENT_VERSION>/vsts-agent-win-x64-<AGENT_VERSION>.zip"
     },
     {
+        "name": "vsts-agent-win-x86-<AGENT_VERSION>.zip",
+        "platform": "win-x86",
+        "version": "<AGENT_VERSION>",
+        "downloadUrl": "https://vstsagentpackage.azureedge.net/agent/<AGENT_VERSION>/vsts-agent-win-x86-<AGENT_VERSION>.zip"
+    },
+    {
         "name": "vsts-agent-osx-x64-<AGENT_VERSION>.tar.gz",
         "platform": "osx-x64",
         "version": "<AGENT_VERSION>",
@@ -16,5 +22,11 @@
         "platform": "linux-x64",
         "version": "<AGENT_VERSION>",
         "downloadUrl": "https://vstsagentpackage.azureedge.net/agent/<AGENT_VERSION>/vsts-agent-linux-x64-<AGENT_VERSION>.tar.gz"
+    },
+    {
+        "name": "vsts-agent-linux-arm-<AGENT_VERSION>.tar.gz",
+        "platform": "linux-arm",
+        "version": "<AGENT_VERSION>",
+        "downloadUrl": "https://vstsagentpackage.azureedge.net/agent/<AGENT_VERSION>/vsts-agent-linux-arm-<AGENT_VERSION>.tar.gz"
     }
 ]

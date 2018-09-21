@@ -31,17 +31,17 @@
   </Target>
 
   <Target Name="Build" DependsOnTargets="GenerateConstant">
-    <Exec Command="dotnet publish Microsoft.VisualStudio.Services.Agent/Microsoft.VisualStudio.Services.Agent.csproj --output %22$(MSBuildProjectDirectory)/../_layout/bin%22 --runtime $(PackageRuntime) -c $(BUILDCONFIG)" ConsoleToMSBuild="true" />
-    <Exec Command="dotnet publish Agent.Listener/Agent.Listener.csproj --output %22$(MSBuildProjectDirectory)/../_layout/bin%22 --runtime $(PackageRuntime) -c $(BUILDCONFIG)" ConsoleToMSBuild="true" />
-    <Exec Command="dotnet publish Agent.Worker/Agent.Worker.csproj --output %22$(MSBuildProjectDirectory)/../_layout/bin%22 --runtime $(PackageRuntime) -c $(BUILDCONFIG)" ConsoleToMSBuild="true" />
-    <Exec Command="dotnet publish Agent.PluginHost/Agent.PluginHost.csproj --output %22$(MSBuildProjectDirectory)/../_layout/bin%22 --runtime $(PackageRuntime) -c $(BUILDCONFIG)" ConsoleToMSBuild="true" />
-    <Exec Command="dotnet publish Agent.Sdk/Agent.Sdk.csproj --output %22$(MSBuildProjectDirectory)/../_layout/bin%22 --runtime $(PackageRuntime) -c $(BUILDCONFIG)" ConsoleToMSBuild="true" />
-    <Exec Command="dotnet publish Agent.Plugins/Agent.Plugins.csproj --output %22$(MSBuildProjectDirectory)/../_layout/bin%22 --runtime $(PackageRuntime) -c $(BUILDCONFIG)" ConsoleToMSBuild="true" />
-    <Exec Command="%22$(DesktopMSBuild)%22 Agent.Service/Windows/AgentService.csproj /p:Configuration=$(BUILDCONFIG) /p:OutputPath=%22$(MSBuildProjectDirectory)/../_layout/bin%22" ConsoleToMSBuild="true" Condition="'$(PackageRuntime)' == 'win-x64'" />
+    <Exec Command="dotnet publish Microsoft.VisualStudio.Services.Agent/Microsoft.VisualStudio.Services.Agent.csproj --output %22$(MSBuildProjectDirectory)/../_layout/bin%22 --runtime $(PackageRuntime) -c $(BUILDCONFIG) /p:PackageRuntime=$(PackageRuntime)" ConsoleToMSBuild="true" />
+    <Exec Command="dotnet publish Agent.Listener/Agent.Listener.csproj --output %22$(MSBuildProjectDirectory)/../_layout/bin%22 --runtime $(PackageRuntime) -c $(BUILDCONFIG) /p:PackageRuntime=$(PackageRuntime)" ConsoleToMSBuild="true" />
+    <Exec Command="dotnet publish Agent.Worker/Agent.Worker.csproj --output %22$(MSBuildProjectDirectory)/../_layout/bin%22 --runtime $(PackageRuntime) -c $(BUILDCONFIG) /p:PackageRuntime=$(PackageRuntime)" ConsoleToMSBuild="true" />
+    <Exec Command="dotnet publish Agent.PluginHost/Agent.PluginHost.csproj --output %22$(MSBuildProjectDirectory)/../_layout/bin%22 --runtime $(PackageRuntime) -c $(BUILDCONFIG) /p:PackageRuntime=$(PackageRuntime)" ConsoleToMSBuild="true" />
+    <Exec Command="dotnet publish Agent.Sdk/Agent.Sdk.csproj --output %22$(MSBuildProjectDirectory)/../_layout/bin%22 --runtime $(PackageRuntime) -c $(BUILDCONFIG) /p:PackageRuntime=$(PackageRuntime)" ConsoleToMSBuild="true" />
+    <Exec Command="dotnet publish Agent.Plugins/Agent.Plugins.csproj --output %22$(MSBuildProjectDirectory)/../_layout/bin%22 --runtime $(PackageRuntime) -c $(BUILDCONFIG) /p:PackageRuntime=$(PackageRuntime)" ConsoleToMSBuild="true" />
+    <Exec Command="%22$(DesktopMSBuild)%22 Agent.Service/Windows/AgentService.csproj /p:Configuration=$(BUILDCONFIG) /p:OutputPath=%22$(MSBuildProjectDirectory)/../_layout/bin%22" ConsoleToMSBuild="true" Condition="'$(PackageRuntime)' == 'win-x64' Or '$(PackageRuntime)' == 'win-x86'" />
   </Target>
    
   <Target Name="Test" DependsOnTargets="GenerateConstant">
-    <Exec Command="dotnet build Test/Test.csproj -c $(BUILDCONFIG)" ConsoleToMSBuild="true" />
+    <Exec Command="dotnet build Test/Test.csproj -c $(BUILDCONFIG) /p:PackageRuntime=$(PackageRuntime)" ConsoleToMSBuild="true" />
     <Exec Command="dotnet test Test/Test.csproj --no-build --logger:trx" ConsoleToMSBuild="true" />
   </Target>
 
@@ -55,8 +55,8 @@
     <Copy SourceFiles="@(LayoutBinFiles)"  DestinationFolder="$(MSBuildProjectDirectory)/../_layout/bin/%(RecursiveDir)"/>
 
     <ItemGroup>
-        <LayoutRootFilesToDelete Include="$(MSBuildProjectDirectory)/../_layout/*.cmd" Condition="'$(PackageRuntime)' != 'win-x64'"/>
-        <LayoutRootFilesToDelete Include="$(MSBuildProjectDirectory)/../_layout/*.sh" Condition="'$(PackageRuntime)' == 'win-x64'"/>
+        <LayoutRootFilesToDelete Include="$(MSBuildProjectDirectory)/../_layout/*.cmd" Condition="'$(PackageRuntime)' != 'win-x64' And '$(PackageRuntime)' != 'win-x86'"/>
+        <LayoutRootFilesToDelete Include="$(MSBuildProjectDirectory)/../_layout/*.sh" Condition="'$(PackageRuntime)' == 'win-x64' Or '$(PackageRuntime)' == 'win-x86'"/>
     </ItemGroup>
 
     <Delete Files="@(LayoutRootFilesToDelete)" />

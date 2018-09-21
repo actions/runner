@@ -45,6 +45,24 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             }
         }
 
+        public static string OSArchitecture
+        {
+            get
+            {
+                switch (Constants.Agent.PlatformArchitecture)
+                {
+                    case Constants.Architecture.X86:
+                        return "X86";
+                    case Constants.Architecture.X64:
+                        return "X64";
+                    case Constants.Architecture.Arm:
+                        return "ARM";
+                    default:
+                        throw new NotSupportedException(); // Should never reach here.
+                }
+            }
+        }
+
         public static JToken ExpandEnvironmentVariables(IHostContext context, JToken target)
         {
             var mapFuncs = new Dictionary<JTokenType, Func<JToken, JToken>>

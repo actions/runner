@@ -1,9 +1,9 @@
 phases:
 
 ################################################################################
-- phase: build_windows_agent
+- phase: build_windows_agent_x64
 ################################################################################
-  displayName: Windows Agent
+  displayName: Windows Agent (x64)
   queue:
     name: Hosted VS2017
   steps:
@@ -17,7 +17,7 @@ phases:
       $outDir = Join-Path -Path $env:TMP -ChildPath ([Guid]::NewGuid())
       New-Item -Path $outDir -ItemType directory 
       $outFile = Join-Path -Path $outDir -ChildPath "ucrt.zip"
-      Invoke-WebRequest -Uri https://vstsagenttools.blob.core.windows.net/tools/ucrt/ucrt.zip -OutFile $outFile
+      Invoke-WebRequest -Uri https://vstsagenttools.blob.core.windows.net/tools/ucrt/ucrt_x64.zip -OutFile $outFile
       Write-Host "Unzipping 'VC++ Redistributable' package to agent layout."
       $unzipDir = Join-Path -Path $outDir -ChildPath "unzip"
       Add-Type -AssemblyName System.IO.Compression.FileSystem
@@ -202,11 +202,212 @@ phases:
       artifactType: container
 
 ################################################################################
-- phase: build_linux_agent
+- phase: build_windows_agent_x86
 ################################################################################
-  displayName: Linux Agent
+  displayName: Windows Agent (x86)
   queue:
-    name: Hosted Linux Preview
+    name: buildDevs
+    demands: 'Agent.OSArchitecture -equals X86'
+  steps:
+
+  # Steps template for windows platform
+  - template: .vsts.template.windows.yml
+  
+  # Package dotnet core windows dependency (VC++ Redistributable)
+  - powershell: |
+      Write-Host "Downloading 'VC++ Redistributable' package."
+      $outDir = Join-Path -Path $env:TMP -ChildPath ([Guid]::NewGuid())
+      New-Item -Path $outDir -ItemType directory 
+      $outFile = Join-Path -Path $outDir -ChildPath "ucrt.zip"
+      Invoke-WebRequest -Uri https://vstsagenttools.blob.core.windows.net/tools/ucrt/ucrt_x86.zip -OutFile $outFile
+      Write-Host "Unzipping 'VC++ Redistributable' package to agent layout."
+      $unzipDir = Join-Path -Path $outDir -ChildPath "unzip"
+      Add-Type -AssemblyName System.IO.Compression.FileSystem
+      [System.IO.Compression.ZipFile]::ExtractToDirectory($outFile, $unzipDir)
+      $agentLayoutBin = Join-Path -Path $(Build.SourcesDirectory) -ChildPath "_layout\bin"
+      Copy-Item -Path $unzipDir -Destination $agentLayoutBin -Force
+    displayName: Package UCRT
+
+  # Signing steps
+  - task: SFP.build-tasks.custom-build-task-1.EsrpCodeSigning@1
+    inputs:
+      ConnectedServiceName: VSTSAgentESRP
+      FolderPath: '_layout\bin'
+      Pattern: AgentService.exe
+      signConfigType: inlineSignParams
+      inlineOperation: |
+        [{
+        "keyCode": "CP-235845-SN",
+        "operationSetCode": "StrongNameSign",
+        "parameters": [],
+        "toolName": "sign",
+        "toolVersion": "1.0"
+        },
+        {
+        "keyCode": "CP-235845-SN",
+        "operationSetCode": "StrongNameVerify",
+        "parameters": [],
+        "toolName": "sign",
+        "toolVersion": "1.0"
+        }
+        ]
+    displayName: Sign Agent Assemblies (Strong Name Signing)
+
+  - task: SFP.build-tasks.custom-build-task-1.EsrpCodeSigning@1
+    inputs:
+      ConnectedServiceName: VSTSAgentESRP
+      FolderPath: '_layout\bin'
+      Pattern: 'Agent.*.dll,Agent.*.exe,Microsoft.VisualStudio.Services.Agent.dll,AgentService.exe'
+      signConfigType: inlineSignParams
+      inlineOperation: |
+        [{
+        "keyCode": "CP-229803",
+        "operationSetCode": "SigntoolSign",
+        "parameters": [{
+        "parameterName": "OpusName",
+        "parameterValue": "Microsoft"
+        },
+        {
+        "parameterName": "OpusInfo",
+        "parameterValue": "http://www.microsoft.com"
+        },
+        {
+        "parameterName": "PageHash",
+        "parameterValue": "/NPH"
+        },
+        {
+        "parameterName": "TimeStamp",
+        "parameterValue": "/t \"http://ts4096.gtm.microsoft.com/TSS/AuthenticodeTS\""
+        }
+        ],
+        "toolName": "sign",
+        "toolVersion": "1.0"
+        },
+        {
+        "keyCode": "CP-230012",
+        "operationSetCode": "SigntoolSign",
+        "parameters": [{
+        "parameterName": "OpusName",
+        "parameterValue": "Microsoft"
+        },
+        {
+        "parameterName": "OpusInfo",
+        "parameterValue": "http://www.microsoft.com"
+        },
+        {
+        "parameterName": "Append",
+        "parameterValue": "/as"
+        },
+        {
+        "parameterName": "FileDigest",
+        "parameterValue": "/fd \"SHA256\""
+        },
+        {
+        "parameterName": "PageHash",
+        "parameterValue": "/NPH"
+        },
+        {
+        "parameterName": "TimeStamp",
+        "parameterValue": "/tr \"http://rfc3161.gtm.corp.microsoft.com/TSS/HttpTspServer\" /td sha256"
+        }
+        ],
+        "toolName": "sign",
+        "toolVersion": "1.0"
+        },
+        {
+        "keyCode": "CP-230012",
+        "operationSetCode": "SigntoolVerify",
+        "parameters": [{
+        "parameterName": "VerifyAll",
+        "parameterValue": "/all"
+        }],
+        "toolName": "sign",
+        "toolVersion": "1.0"
+        }
+        ]
+    displayName: Sign Agent Assemblies (Authenticode Signing)
+
+  - task: SFP.build-tasks.custom-build-task-1.EsrpCodeSigning@1
+    inputs:
+      ConnectedServiceName: VSTSAgentESRP
+      FolderPath: '_layout'
+      Pattern: |
+        bin\Newtonsoft.Json.dll
+        bin\YamlDotNet.dll
+        externals\git\**\*.dll
+        externals\git\**\*.exe
+        externals\node\bin\node.exe
+        externals\vstshost\Minimatch.dll
+        externals\vstsom\Newtonsoft.Json.dll
+      UseMinimatch: true
+      signConfigType: inlineSignParams
+      inlineOperation: |
+        [{
+        "keyCode": "CP-231522",
+        "operationSetCode": "SigntoolSign",
+        "parameters": [{
+        "parameterName": "OpusName",
+        "parameterValue": "Microsoft"
+        },
+        {
+        "parameterName": "OpusInfo",
+        "parameterValue": "http://www.microsoft.com"
+        },
+        {
+        "parameterName": "Append",
+        "parameterValue": "/as"
+        },
+        {
+        "parameterName": "FileDigest",
+        "parameterValue": "/fd \"SHA256\""
+        },
+        {
+        "parameterName": "PageHash",
+        "parameterValue": "/NPH"
+        },
+        {
+        "parameterName": "TimeStamp",
+        "parameterValue": "/tr \"http://rfc3161.gtm.corp.microsoft.com/TSS/HttpTspServer\" /td sha256"
+        }
+        ],
+        "toolName": "sign",
+        "toolVersion": "1.0"
+        },
+        {
+        "keyCode": "CP-231522",
+        "operationSetCode": "SigntoolVerify",
+        "parameters": [],
+        "toolName": "sign",
+        "toolVersion": "1.0"
+        }
+        ]
+    displayName: Sign Agent Assemblies (3rd Party Assemblies Signing)
+
+  - task: DeleteFiles@1
+    inputs:
+      SourceFolder: '_layout'
+      Contents: '**\CodeSignSummary-*.md'
+    displayName: Delete CodeSignSummary.md
+
+  # Create agent package zip
+  - script: dev.cmd package Release
+    workingDirectory: src
+    displayName: Package Release
+
+  # Upload agent package zip as build artifact
+  - task: PublishBuildArtifacts@1
+    displayName: Publish Artifact (Windows)
+    inputs:
+      pathToPublish: _package
+      artifactName: agent
+      artifactType: container
+
+################################################################################
+- phase: build_linux_agent_x64
+################################################################################
+  displayName: Linux Agent (x64)
+  queue:
+    name: Hosted Ubuntu 1604
   steps:
 
   # Steps template for non-windows platform
@@ -226,9 +427,35 @@ phases:
       artifactType: container
 
 ################################################################################
+- phase: build_linux_agent_arm
+################################################################################
+  displayName: Linux Agent (ARM)
+  queue:
+    name: buildDevs
+    demands: 'Agent.OSArchitecture -equals ARM'
+  steps:
+
+  # Steps template for non-windows platform
+  - template: .vsts.template.nonwindows.yml
+
+  # Create agent package zip
+  - script: ./dev.sh package Release
+    workingDirectory: src
+    displayName: Package Release    
+
+  # Upload agent package zip as build artifact
+  - task: PublishBuildArtifacts@1
+    displayName: Publish Artifact (Linux)    
+    inputs:
+      pathToPublish: _package
+      artifactName: agent
+      artifactType: container
+
+
+################################################################################
 - phase: build_osx_agent
 ################################################################################
-  displayName: OSX Agent
+  displayName: macOS Agent (x64)
   queue:
     name: Hosted macOS Preview
   steps:
@@ -256,9 +483,11 @@ phases:
   queue:
     name: ProductionRMAgents
   dependsOn: 
-  - build_windows_agent
+  - build_windows_agent_x86
+  - build_windows_agent_x64
   - build_osx_agent
-  - build_linux_agent
+  - build_linux_agent_x64
+  - build_linux_agent_arm
   steps:
   
   # Clean

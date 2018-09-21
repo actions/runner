@@ -18,6 +18,10 @@ namespace Agent.PluginHost
 
         public static int Main(string[] args)
         {
+            // We can't use the new SocketsHttpHandler for now for both Windows and Linux
+            // On linux, Negotiate auth is not working if the TFS url is behind Https
+            // On windows, Proxy is not working
+            AppContext.SetSwitch("System.Net.Http.UseSocketsHttpHandler", false);
             Console.CancelKeyPress += Console_CancelKeyPress;
 
             try

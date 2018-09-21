@@ -8,7 +8,7 @@ if [ $user_id -eq 0 -a -z "$AGENT_ALLOW_RUNASROOT" ]; then
     exit 1
 fi
 
-# Check dotnet core 2.0 dependencies for Linux
+# Check dotnet core 2.1 dependencies for Linux
 if [[ (`uname` == "Linux") ]]
 then
     command -v ldd > /dev/null
@@ -20,33 +20,33 @@ then
 
     ldd ./bin/libcoreclr.so | grep 'not found'
     if [ $? -eq 0 ]; then
-        echo "Dependencies is missing for Dotnet Core 2.0"
-        echo "Execute ./bin/installdependencies.sh to install any missing Dotnet Core 2.0 dependencies."
+        echo "Dependencies is missing for Dotnet Core 2.1"
+        echo "Execute ./bin/installdependencies.sh to install any missing Dotnet Core 2.1 dependencies."
         exit 1
     fi
 
     ldd ./bin/System.Security.Cryptography.Native.OpenSsl.so | grep 'not found'
     if [ $? -eq 0 ]; then
-        echo "Dependencies is missing for Dotnet Core 2.0"
-        echo "Execute ./bin/installdependencies.sh to install any missing Dotnet Core 2.0 dependencies."
+        echo "Dependencies is missing for Dotnet Core 2.1"
+        echo "Execute ./bin/installdependencies.sh to install any missing Dotnet Core 2.1 dependencies."
         exit 1
     fi
 
     ldd ./bin/System.IO.Compression.Native.so | grep 'not found'
     if [ $? -eq 0 ]; then
-        echo "Dependencies is missing for Dotnet Core 2.0"
-        echo "Execute ./bin/installdependencies.sh to install any missing Dotnet Core 2.0 dependencies."
+        echo "Dependencies is missing for Dotnet Core 2.1"
+        echo "Execute ./bin/installdependencies.sh to install any missing Dotnet Core 2.1 dependencies."
         exit 1
     fi
 
     ldd ./bin/System.Net.Http.Native.so | grep 'not found'
     if [ $? -eq 0 ]; then
-        echo "Dependencies is missing for Dotnet Core 2.0"
-        echo "Execute ./bin/installdependencies.sh to install any missing Dotnet Core 2.0 dependencies."
+        echo "Dependencies is missing for Dotnet Core 2.1"
+        echo "Execute ./bin/installdependencies.sh to install any missing Dotnet Core 2.1 dependencies."
         exit 1
     fi
 
-    if ! [ -x "$(command -v ldconfig)" ]; then        
+    if ! [ -x "$(command -v ldconfig)" ]; then
         LDCONFIG_COMMAND="/sbin/ldconfig"
         if ! [ -x "$LDCONFIG_COMMAND" ]; then
             echo "Can not find 'ldconfig' in PATH and '/sbin/ldconfig' doesn't exists either. Please install 'ldconfig' and try again."
@@ -59,8 +59,8 @@ then
     libpath=${LD_LIBRARY_PATH:-}
     $LDCONFIG_COMMAND -NXv ${libpath//:/} 2>&1 | grep libicu >/dev/null 2>&1
     if [ $? -ne 0 ]; then
-        echo "Libicu's dependencies is missing for Dotnet Core 2.0"
-        echo "Execute ./bin/installdependencies.sh to install any missing Dotnet Core 2.0 dependencies."
+        echo "Libicu's dependencies is missing for Dotnet Core 2.1"
+        echo "Execute ./bin/installdependencies.sh to install any missing Dotnet Core 2.1 dependencies."
         exit 1
     fi
 fi

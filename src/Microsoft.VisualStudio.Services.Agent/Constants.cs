@@ -51,12 +51,20 @@ namespace Microsoft.VisualStudio.Services.Agent
         public static string ProcessLookupId = "VSTS_PROCESS_LOOKUP_ID";
 
         // This enum is embedded within the Constants class to make it easier to reference and avoid
-        // ambiguous type reference with System.Runtime.InteropServices.OSPlatform.
+        // ambiguous type reference with System.Runtime.InteropServices.OSPlatform and System.Runtime.InteropServices.Architecture
         public enum OSPlatform
         {
             OSX,
             Linux,
             Windows
+        }
+
+        public enum Architecture
+        {
+            X86,
+            X64,
+            Arm,
+            Arm64
         }
 
         public static class Agent
@@ -70,6 +78,17 @@ namespace Microsoft.VisualStudio.Services.Agent
 #elif OS_WINDOWS
             public static readonly OSPlatform Platform = OSPlatform.Windows;
 #endif
+
+#if X86
+            public static readonly Architecture PlatformArchitecture = Architecture.X86;
+#elif X64
+            public static readonly Architecture PlatformArchitecture = Architecture.X64;
+#elif ARM
+            public static readonly Architecture PlatformArchitecture = Architecture.Arm;
+#elif ARM64            
+            public static readonly Architecture PlatformArchitecture = Architecture.Arm64;
+#endif
+
             public static readonly TimeSpan ExitOnUnloadTimeout = TimeSpan.FromSeconds(30);
 
             public static class CommandLine
@@ -279,6 +298,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                 public static readonly string MachineName = "agent.machinename";
                 public static readonly string Name = "agent.name";
                 public static readonly string OS = "agent.os";
+                public static readonly string OSArchitecture = "agent.osarchitecture";
                 public static readonly string OSVersion = "agent.osversion";
                 public static readonly string ProxyUrl = "agent.proxyurl";
                 public static readonly string ProxyUsername = "agent.proxyusername";

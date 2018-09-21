@@ -1,5 +1,5 @@
 #!/bin/bash
-PLATFORM=$1
+PACKAGERUNTIME=$1
 PRECACHE=$2
 
 CONTAINER_URL=https://vstsagenttools.blob.core.windows.net/tools
@@ -127,10 +127,10 @@ function acquireExternalTool() {
 }
 
 # Download the external tools only for Windows.
-if [[ "$PLATFORM" == "windows" ]]; then
+if [[ "$PACKAGERUNTIME" == "win-x64" ]]; then
     acquireExternalTool "$CONTAINER_URL/azcopy/1/azcopy.zip" azcopy
     acquireExternalTool "$CONTAINER_URL/pdbstr/1/pdbstr.zip" pdbstr
-    acquireExternalTool "$CONTAINER_URL/mingit/2.17.1.2/MinGit-2.17.1.2-64-bit.zip" git
+    acquireExternalTool "$CONTAINER_URL/mingit/2.18.0/MinGit-2.18.0-64-bit.zip" git
     acquireExternalTool "$CONTAINER_URL/symstore/1/symstore.zip" symstore
     acquireExternalTool "$CONTAINER_URL/vstshost/m122_887c6659/vstshost.zip" vstshost
     acquireExternalTool "$CONTAINER_URL/vstsom/m122_887c6659/vstsom.zip" vstsom
@@ -140,18 +140,33 @@ if [[ "$PLATFORM" == "windows" ]]; then
     acquireExternalTool "https://dist.nuget.org/win-x86-commandline/v3.3.0/nuget.exe" nuget
 fi
 
+if [[ "$PACKAGERUNTIME" == "win-x86" ]]; then
+    acquireExternalTool "$CONTAINER_URL/pdbstr/1/pdbstr.zip" pdbstr
+    acquireExternalTool "$CONTAINER_URL/mingit/2.18.0/MinGit-2.18.0-32-bit.zip" git
+    acquireExternalTool "$CONTAINER_URL/symstore/1/symstore.zip" symstore
+    acquireExternalTool "$CONTAINER_URL/vstsom/m122_887c6659/vstsom.zip" vstsom
+    acquireExternalTool "$CONTAINER_URL/vswhere/1_0_62/vswhere.zip" vswhere
+    acquireExternalTool "$NODE_URL/v${NODE_VERSION}/win-x86/node.exe" node/bin
+    acquireExternalTool "$NODE_URL/v${NODE_VERSION}/win-x86/node.lib" node/bin
+    acquireExternalTool "https://dist.nuget.org/win-x86-commandline/v3.3.0/nuget.exe" nuget
+fi
+
 # Download the external tools only for OSX.
-if [[ "$PLATFORM" == "darwin" ]]; then
+if [[ "$PACKAGERUNTIME" == "osx-x64" ]]; then
     acquireExternalTool "$NODE_URL/v${NODE_VERSION}/node-v${NODE_VERSION}-darwin-x64.tar.gz" node fix_nested_dir
 fi
 
-# Download the external tools common across OSX and Linux platforms.
-if [[ "$PLATFORM" == "linux" || "$PLATFORM" == "darwin" ]]; then
+# Download the external tools common across OSX and Linux PACKAGERUNTIMEs.
+if [[ "$PACKAGERUNTIME" == "linux-x64" || "$PACKAGERUNTIME" == "linux-arm" || "$PACKAGERUNTIME" == "osx-x64" ]]; then
     acquireExternalTool "$CONTAINER_URL/tee/14_134_0/TEE-CLC-14.134.0.zip" tee fix_nested_dir
     acquireExternalTool "$CONTAINER_URL/vso-task-lib/0.5.5/vso-task-lib.tar.gz" vso-task-lib
 fi
 
-# Download the external tools common across Linux platforms (excluding OSX).
-if [[ "$PLATFORM" == "linux" ]]; then
+# Download the external tools common across Linux PACKAGERUNTIMEs (excluding OSX).
+if [[ "$PACKAGERUNTIME" == "linux-x64" ]]; then
     acquireExternalTool "$NODE_URL/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-x64.tar.gz" node fix_nested_dir
+fi
+
+if [[ "$PACKAGERUNTIME" == "linux-arm" ]]; then
+    acquireExternalTool "$NODE_URL/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-armv7l.tar.gz" node fix_nested_dir
 fi
