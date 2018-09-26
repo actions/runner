@@ -35,7 +35,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             serviceName = string.Empty;
             serviceDisplayName = string.Empty;
 
-            string accountName = new Uri(settings.ServerUrl).Host.Split('.').FirstOrDefault();
+            Uri accountUri = new Uri(settings.ServerUrl);
+            string accountName = string.Empty;
+
+            if (accountUri.Host.Equals("dev.azure.com", StringComparison.OrdinalIgnoreCase))
+            {
+                accountName = accountUri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+            }
+            else
+            {
+                accountName = accountUri.Host.Split('.').FirstOrDefault();
+            }
+
             if (string.IsNullOrEmpty(accountName))
             {
                 throw new InvalidOperationException(StringUtil.Loc("CannotFindHostName", settings.ServerUrl));
