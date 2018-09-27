@@ -144,6 +144,35 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
             Assert.Equal("runName", _runContext.RunName);
         }
 
+#if OS_LINUX	
+	[Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
+#endif
+        public void HavingColonInAttachmentFileNameIsReplaced()
+        {
+            SetupMocks();
+            File.WriteAllText("colon:1:2:3.trx", "asdf");
+            ResetValues();
+            
+            _testRunData = _publisher.ReadResultsFromFile(_testRunContext, "filepath");
+            _publisher.StartTestRunAsync(_testRunData).Wait();
+            var result = new TestCaseResultData();
+            var testRun = new TestRun { Id = 1 };
+            result.AttachmentData = new AttachmentData();
+            result.AttachmentData.AttachmentsFilePathList = new string[] { "colon:1:2:3.trx" };
+            _publisher.AddResultsAsync(testRun, new TestCaseResultData[] { result }).Wait();
+
+            Assert.Equal("colon_1_2_3.trx", _resultsLevelAttachments[1][0].FileName);
+
+            try
+            {
+                File.Delete("colon:1:2:3.trx");
+            }
+            catch
+            { }
+        }	
+
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "PublishTestResults")]

@@ -289,7 +289,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                 string encodedData = Convert.ToBase64String(bytes);
                 if (encodedData.Length <= TCM_MAX_FILECONTENT_SIZE)
                 {
-                    return new TestAttachmentRequestModel(encodedData, Path.GetFileName(attachment), "", GetAttachmentType(attachment));
+                    // Replace colon character with underscore character as on linux environment, some earlier version of .net core task
+                    // were creating trx files with ":" in it, but this is not an acceptable character in Results attachments API
+                    string attachmentFileName = Path.GetFileName(attachment);
+                    attachmentFileName = attachmentFileName.Replace(":", "_");
+
+                    return new TestAttachmentRequestModel(encodedData, attachmentFileName, "", GetAttachmentType(attachment));
                 }
                 else
                 {
