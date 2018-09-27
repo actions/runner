@@ -4,18 +4,18 @@
 
 ## Versions
 
-Tested on 16.04 LTS (Xenial) and 14.04 LTS (Trusty).  Not domain joined.  
+Tested on 18.04 LTS (Bionic), 16.04 LTS (Xenial) and 14.04 LTS (Trusty).  Not domain joined.  
 
-16.04 is recommended since latest and supports SystemD for runnings as a service.
+18.04 is recommended since it's the latest and supports SystemD for running as a service.
 
 ## Dependency Packages
 
-### Ubuntu 16.04 (64-bit only)
+### Ubuntu 18.04 (x64, ARM32), 16.04 (x64 only)
 ```bash
 sudo apt-get install -y libunwind8 libcurl3
 ```
 
-### Ubuntu 14.04 (64-bit only)
+### Ubuntu 14.04 (x64 only)
 ```bash
 sudo apt-get install -y libunwind8 libcurl3 libicu52
 ```
@@ -35,11 +35,11 @@ $ sudo apt-get update
 $ sudo apt-get install git
 ```
 
-## Optionally Java if Tfvc
+## Optionally Java if using TFVC
 
-The agent distributes team explorer everywhere.
+The agent distributes Team Explorer Everywhere.
 
-But, if you are using Tfvc, install Oracle Java 1.8+ as TEE uses Java.
+But, if you are using TFVC, install Oracle Java 1.8+ as TEE uses Java.
 
 ## Etc
 

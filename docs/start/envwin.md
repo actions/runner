@@ -1,10 +1,10 @@
 # ![win](../res/win_med.png) Windows System Prerequisites
 
-## Windows 10 and Windows Server 2016 (64-bit)
+## Windows 10 and Windows Server 2016 (64-bit, 32-bit)
 
 No known system prerequisites are known at this time.
 
-## Windows 7 to Windows 8.1, Windows Server 2008 R2 SP1 to Windows Server 2012 R2 (64-bit)
+## Windows 7 to Windows 8.1, Windows Server 2008 R2 SP1 to Windows Server 2012 R2 (64-bit, 32-bit)
 
 [PowerShell 3.0 or higher](https://msdn.microsoft.com/en-us/powershell/scripting/setup/installing-windows-powershell)
 
