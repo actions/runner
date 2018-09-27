@@ -546,8 +546,8 @@ if ($isAssetInstalled) {
 New-Item -ItemType Directory -Force -Path $InstallRoot | Out-Null
 
 $installDrive = $((Get-Item $InstallRoot).PSDrive.Name);
-$free = Get-CimInstance -Class win32_logicaldisk | where Deviceid -eq "${installDrive}:"
-if ($free.Freespace / 1MB -le 100 ) {
+$diskInfo = Get-PSDrive -Name $installDrive
+if ($diskInfo.Free / 1MB -le 100) {
     Say "There is not enough disk space on drive ${installDrive}:"
     exit 0
 }
