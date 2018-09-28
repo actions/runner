@@ -1,11 +1,11 @@
-phases:
+jobs:
 
 ################################################################################
-- phase: build_windows_x64_agent
+- job: build_windows_x64_agent
 ################################################################################
   displayName: Windows Agent (x64)
-  queue:
-    name: Hosted VS2017
+  pool:
+    vmImage: vs2017-win2016
   condition: eq(false, variables.skip_windows_x64)
   steps:
 
@@ -44,10 +44,10 @@ phases:
       artifactType: container
 
 ################################################################################
-- phase: build_windows_x86_agent
+- job: build_windows_x86_agent
 ################################################################################
   displayName: Windows Agent (x86)
-  queue:
+  pool:
     name: buildDevs
     demands: 'Agent.OSArchitecture -equals X86'
   condition: eq(false, variables.skip_windows_x86)
@@ -88,11 +88,11 @@ phases:
       artifactType: container
 
 ################################################################################
-- phase: build_linux_x64_agent
+- job: build_linux_x64_agent
 ################################################################################
   displayName: Linux Agent (x64)
-  queue:
-    name: Hosted Ubuntu 1604
+  pool:
+    vmImage: ubuntu-16.04
   condition: eq(false, variables.skip_linux_x64)
   steps:
 
@@ -115,10 +115,10 @@ phases:
       artifactType: container
 
 ################################################################################
-- phase: build_linux_arm_agent
+- job: build_linux_arm_agent
 ################################################################################
   displayName: Linux Agent (ARM)
-  queue:
+  pool:
     name: buildDevs
     demands: 'Agent.OSArchitecture -equals ARM'
   condition: eq(false, variables.skip_linux_arm)
@@ -143,11 +143,11 @@ phases:
       artifactType: container
 
 ################################################################################
-- phase: build_osx_agent
+- job: build_osx_agent
 ################################################################################
   displayName: macOS Agent (x64)
-  queue:
-    name: Hosted macOS Preview
+  pool:
+    vmImage: macOS-10.13
   condition: eq(false, variables.skip_macos)
   steps:
 

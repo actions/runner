@@ -1,11 +1,11 @@
-phases:
+jobs:
 
 ################################################################################
-- phase: build_windows_agent_x64
+- job: build_windows_agent_x64
 ################################################################################
   displayName: Windows Agent (x64)
-  queue:
-    name: Hosted VS2017
+  pool:
+    vmImage: vs2017-win2016
   steps:
 
   # Steps template for windows platform
@@ -202,10 +202,10 @@ phases:
       artifactType: container
 
 ################################################################################
-- phase: build_windows_agent_x86
+- job: build_windows_agent_x86
 ################################################################################
   displayName: Windows Agent (x86)
-  queue:
+  pool:
     name: buildDevs
     demands: 'Agent.OSArchitecture -equals X86'
   steps:
@@ -403,11 +403,11 @@ phases:
       artifactType: container
 
 ################################################################################
-- phase: build_linux_agent_x64
+- job: build_linux_agent_x64
 ################################################################################
   displayName: Linux Agent (x64)
-  queue:
-    name: Hosted Ubuntu 1604
+  pool:
+    vmImage: ubuntu-16.04
   steps:
 
   # Steps template for non-windows platform
@@ -427,10 +427,10 @@ phases:
       artifactType: container
 
 ################################################################################
-- phase: build_linux_agent_arm
+- job: build_linux_agent_arm
 ################################################################################
   displayName: Linux Agent (ARM)
-  queue:
+  pool:
     name: buildDevs
     demands: 'Agent.OSArchitecture -equals ARM'
   steps:
@@ -453,11 +453,11 @@ phases:
 
 
 ################################################################################
-- phase: build_osx_agent
+- job: build_osx_agent
 ################################################################################
   displayName: macOS Agent (x64)
-  queue:
-    name: Hosted macOS Preview
+  pool:
+    vmImage: macOS-10.13
   steps:
 
   # Steps template for windows platform
@@ -477,10 +477,10 @@ phases:
       artifactType: container
 
 ################################################################################
-- phase: publish_agent_packages
+- job: publish_agent_packages
 ################################################################################
   displayName: Publish Agents (Windows/Linux/OSX)
-  queue:
+  pool:
     name: ProductionRMAgents
   dependsOn: 
   - build_windows_agent_x86
