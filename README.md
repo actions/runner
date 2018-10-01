@@ -46,7 +46,7 @@ Next, download and configure the agent
 
 ## Supported Usage
 
-This agent can be used for the VSTS service and it replaces the node agent for TFS2015 On-Prem.
+This agent can be used for Azure Pipelines and it replaces the node agent for TFS2015 On-Prem.
 
 | Scenario | OSX/Unix | Windows | Comment |
 |:-------------:|:-----:|:-----:|:-----:|
