@@ -111,25 +111,39 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             // It appears that node.exe outputs UTF8 when not in TTY mode.
             Encoding outputEncoding = Encoding.UTF8;
 #else
-                // Let .NET choose the default.
+            // Let .NET choose the default.
             Encoding outputEncoding = null;
 #endif
 
             // Execute the process. Exit code 0 should always be returned.
             // A non-zero exit code indicates infrastructural failure.
             // Task failure should be communicated over STDOUT using ## commands.
-            await StepHost.ExecuteAsync(workingDirectory: StepHost.ResolvePathForStepHost(workingDirectory),
-                                        fileName: StepHost.ResolvePathForStepHost(file),
-                                        arguments: arguments,
-                                        environment: Environment,
-                                        requireExitCodeZero: true,
-                                        outputEncoding: outputEncoding,
-                                        killProcessOnCancel: false,
-                                        cancellationToken: ExecutionContext.CancellationToken);
+            Task step = StepHost.ExecuteAsync(workingDirectory: StepHost.ResolvePathForStepHost(workingDirectory),
+                                              fileName: StepHost.ResolvePathForStepHost(file),
+                                              arguments: arguments,
+                                              environment: Environment,
+                                              requireExitCodeZero: true,
+                                              outputEncoding: outputEncoding,
+                                              killProcessOnCancel: false,
+                                              cancellationToken: ExecutionContext.CancellationToken);
+
+            // Wait for either the node exit or force finish through ##vso command
+            await System.Threading.Tasks.Task.WhenAny(step, ExecutionContext.ForceCompleted);
+
+            if (ExecutionContext.ForceCompleted.IsCompleted)
+            {
+                ExecutionContext.Debug("The task was marked as \"done\", but the process has not closed after 5 seconds. Treating the task as complete.");
+            }
         }
 
         private void OnDataReceived(object sender, ProcessDataReceivedEventArgs e)
         {
+            // drop any outputs after the task get force completed.
+            if (ExecutionContext.ForceCompleted.IsCompleted)
+            {
+                return;
+            }
+
             // This does not need to be inside of a critical section.
             // The logging queues and command handlers are thread-safe.
             if (!CommandManager.TryProcessCommand(ExecutionContext, e.Data))

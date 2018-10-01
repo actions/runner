@@ -8,6 +8,7 @@ using System.Linq;
 using System.Threading;
 using Microsoft.VisualStudio.Services.Agent.Worker.Container;
 using Microsoft.VisualStudio.Services.WebApi;
+using System.Threading.Tasks;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
@@ -20,6 +21,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
     [ServiceLocator(Default = typeof(ExecutionContext))]
     public interface IExecutionContext : IAgentService
     {
+        Task ForceCompleted { get; }
         TaskResult? Result { get; set; }
         string ResultCode { get; set; }
         TaskResult? CommandResult { get; set; }
@@ -54,6 +56,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         void AddIssue(Issue issue);
         void Progress(int percentage, string currentOperation = null);
         void UpdateDetailTimelineRecord(TimelineRecord record);
+
+        // others
+        void ForceTaskComplete();
     }
 
     public sealed class ExecutionContext : AgentService, IExecutionContext
@@ -74,11 +79,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         private Guid _detailTimelineId;
         private int _childTimelineRecordOrder = 0;
         private CancellationTokenSource _cancellationTokenSource;
+        private TaskCompletionSource<int> _forceCompleted = new TaskCompletionSource<int>();
         private bool _throttlingReported = false;
 
         // only job level ExecutionContext will track throttling delay.
         private long _totalThrottlingDelayInMilliseconds = 0;
 
+        public Task ForceCompleted => _forceCompleted.Task;
         public CancellationToken CancellationToken => _cancellationTokenSource.Token;
         public List<ServiceEndpoint> Endpoints { get; private set; }
         public List<SecureFile> SecureFiles { get; private set; }
@@ -132,6 +139,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         public void CancelToken()
         {
             _cancellationTokenSource.Cancel();
+        }
+
+        public void ForceTaskComplete()
+        {
+            Trace.Info("Force finish current task in 5 sec.");
+            Task.Run(async () =>
+            {
+                await Task.Delay(TimeSpan.FromSeconds(5));
+                _forceCompleted?.TrySetResult(1);
+            });
         }
 
         public IExecutionContext CreateChild(Guid recordId, string displayName, string refName, Variables taskVariables = null)

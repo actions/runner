@@ -439,6 +439,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
             context.Result = TaskResultUtil.MergeTaskResults(context.Result, result);
             context.Progress(100, data);
+
+            if (eventProperties.TryGetValue(TaskCompleteEventProperties.Done, out string doneText) &&
+                !String.IsNullOrEmpty(doneText) &&
+                StringUtil.ConvertToBoolean(doneText))
+            {
+                context.ForceTaskComplete();
+            }
         }
 
         private void ProcessTaskProgressCommand(IExecutionContext context, Dictionary<string, string> eventProperties, string data)
@@ -677,6 +684,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
     internal static class TaskCompleteEventProperties
     {
         public static readonly String Result = "result";
+        public static readonly String Done = "done";
     }
 
     internal static class TaskIssueEventProperties
