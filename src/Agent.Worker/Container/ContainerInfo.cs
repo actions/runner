@@ -45,7 +45,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Container
         public string ContainerId { get; set; }
         public string ContainerDisplayName { get; private set; }
         public string ContainerNetwork { get; set; }
-        public string ContainerImage { get; private set; }
+        public string ContainerImage { get; set; }
         public string ContainerName { get; set; }
         public Guid ContainerRegistryEndpoint { get; private set; }
         public string ContainerCreateOptions { get; private set; }

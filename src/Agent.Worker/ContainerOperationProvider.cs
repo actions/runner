@@ -133,14 +133,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             {
                 if (!container.SkipContainerImagePull)
                 {
-                    string imageName = container.ContainerImage;
                     if (!string.IsNullOrEmpty(registryServer) &&
                         registryServer.IndexOf("index.docker.io", StringComparison.OrdinalIgnoreCase) < 0)
                     {
                         var registryServerUri = new Uri(registryServer);
-                        if (!imageName.StartsWith(registryServerUri.Authority, StringComparison.OrdinalIgnoreCase))
+                        if (!container.ContainerImage.StartsWith(registryServerUri.Authority, StringComparison.OrdinalIgnoreCase))
                         {
-                            imageName = $"{registryServerUri.Authority}/{imageName}";
+                            container.ContainerImage = $"{registryServerUri.Authority}/{container.ContainerImage}";
                         }
                     }
 
@@ -149,7 +148,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     int pullExitCode = 0;
                     while (retryCount < 3)
                     {
-                        pullExitCode = await _dockerManger.DockerPull(executionContext, imageName);
+                        pullExitCode = await _dockerManger.DockerPull(executionContext, container.ContainerImage);
                         if (pullExitCode == 0)
                         {
                             break;
