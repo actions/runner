@@ -36,7 +36,7 @@ function install()
     echo "Creating launch agent in ${PLIST_PATH}"
 
     if [ ! -d  "${LAUNCH_PATH}" ]; then
-        failed "${LAUNCH_PATH} does not exist.  OSX system dir expected"
+        mkdir ${LAUNCH_PATH}
     fi
 
     if [ -f "${PLIST_PATH}" ]; then
