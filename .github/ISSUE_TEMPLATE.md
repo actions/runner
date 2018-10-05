@@ -22,6 +22,7 @@ Logs are located in the agent's `_diag` folder. The agent logs are prefixed with
 ## Related Repositories
 Please ensure you are logging issues to the correct repository in order to get the best support.
 
+- [Azure-Pipelines-Yaml](https://github.com/Microsoft/azure-pipelines-yaml) - contains YAML templates and samples for Azure Pipelines. Also a place for the community to share best practices, ideas, and so on. File suggestions and issues here if they're specific to YAML pipelines.
 - [Tasks Repository](https://github.com/Microsoft/vsts-tasks) - contains all of the inbox tasks we ship with VSTS/TFS. If you are having issues with tasks in Build/Release jobs (e.g. unreasonable task failure) please log an issue [here](https://github.com/Microsoft/vsts-tasks/issues).
 - [Hosted Agent Image Repository](https://github.com/Microsoft/vsts-image-generation) - contains the VM image used in the VSTS Hosted Agent Pool. If you are having Build/Release failures that seems like they are related to software installed on the Hosted Agent (e.g. the DotnetSDK is missing or the AzureSDK is not on the latest version) please log an issue [here](https://github.com/Microsoft/vsts-image-generation/issues).
 
