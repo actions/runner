@@ -10,6 +10,7 @@ using System.Reflection;
 using System.Runtime.Loader;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Text;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
@@ -201,7 +202,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                                                   arguments: arguments,
                                                   environment: environment,
                                                   requireExitCodeZero: true,
-                                                  outputEncoding: null,
+                                                  outputEncoding: Encoding.UTF8,
                                                   killProcessOnCancel: false,
                                                   contentsToStandardIn: new List<string>() { JsonUtility.ToString(pluginContext) },
                                                   cancellationToken: context.CancellationToken);
