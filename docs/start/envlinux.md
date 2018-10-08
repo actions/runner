@@ -42,6 +42,9 @@ If you use git, git >= 2.9.0 is a pre-requisite for Linux agents.
 
 The agent distributes Team Explorer Everywhere.
 
-But, if you are using TFVC, install Oracle Java 1.8+ as TEE uses Java.
+But, if you are using TfsVc, install Oracle [Java SE Development Kit](http://www.oracle.com/technetwork/java/javaseproducts/downloads/index.html) (JDK) 1.6+. 
+> Notes:  
+> 1. Only install JRE is not sufficient.  
+> 2. Don't use OpenJDK, use Oracle JDK.  
 
 ## [More .Net Core Prerequisites Information](https://docs.microsoft.com/en-us/dotnet/core/linux-prerequisites?tabs=netcore2x)
