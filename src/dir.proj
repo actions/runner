@@ -57,6 +57,7 @@
     <ItemGroup>
         <LayoutRootFilesToDelete Include="$(MSBuildProjectDirectory)/../_layout/*.cmd" Condition="'$(PackageRuntime)' != 'win-x64' And '$(PackageRuntime)' != 'win-x86'"/>
         <LayoutRootFilesToDelete Include="$(MSBuildProjectDirectory)/../_layout/*.sh" Condition="'$(PackageRuntime)' == 'win-x64' Or '$(PackageRuntime)' == 'win-x86'"/>
+        <LayoutRootFilesToDelete Include="$(MSBuildProjectDirectory)/../_layout/bin/AgentService.js" Condition="'$(PackageRuntime)' == 'win-x64' Or '$(PackageRuntime)' == 'win-x86'"/>
     </ItemGroup>
 
     <Delete Files="@(LayoutRootFilesToDelete)" />
