@@ -112,6 +112,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     Trace.Info("Session creation has been cancelled.");
                     throw;
                 }
+                catch (TaskAgentAccessTokeExpiredException)
+                {
+                    Trace.Info("Agent OAuth token has been revoked. Session creation failed.");
+                    throw;
+                }
                 catch (Exception ex)
                 {
                     Trace.Error("Catch exception during create session.");
@@ -185,6 +190,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 catch (OperationCanceledException) when (token.IsCancellationRequested)
                 {
                     Trace.Info("Get next message has been cancelled.");
+                    throw;
+                }
+                catch (TaskAgentAccessTokeExpiredException)
+                {
+                    Trace.Info("Agent OAuth token has been revoked. Unable to pull message.");
                     throw;
                 }
                 catch (Exception ex)
