@@ -23,9 +23,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Container
             string containerImage = container.Properties.Get<string>("image");
             ArgUtil.NotNullOrEmpty(containerImage, nameof(containerImage));
 
-            AgentSettings settings = hostContext.GetService<IConfigurationStore>().GetSettings();
             this.ContainerImage = containerImage;
-            this.ContainerDisplayName = $"{container.Alias}_{Pipelines.Validation.NameValidation.Sanitize(containerImage)}_{Pipelines.Validation.NameValidation.Sanitize(settings.AgentName)}";
+            this.ContainerDisplayName = $"{container.Alias}_{Pipelines.Validation.NameValidation.Sanitize(containerImage)}_{Guid.NewGuid().ToString("N").Substring(0, 6)}";
             this.ContainerRegistryEndpoint = container.Endpoint?.Id ?? Guid.Empty;
             this.ContainerCreateOptions = container.Properties.Get<string>("options");
             this.SkipContainerImagePull = container.Properties.Get<bool>("localimage");
