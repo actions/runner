@@ -79,43 +79,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                     TestCaseResultDataConverter.Convert(currentBatch[testResultsIndex], testResultsBatch[testResultsIndex]);
                 }
 
-                List<TestCaseResult> testresults = await _testResultsServer.AddTestResultsToTestRunAsync(testResultsBatch, _projectName, testRun.Id, cancellationToken);
-
+                List<TestCaseResult> uploadedTestResults = await _testResultsServer.AddTestResultsToTestRunAsync(testResultsBatch, _projectName, testRun.Id, cancellationToken);
                 for (int j = 0; j < noOfResultsToBePublished; j++)
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    // Remove duplicate entries
-                    string[] attachments = testResults[i + j]?.AttachmentData?.AttachmentsFilePathList?.ToArray();
-                    HashSet<string> attachedFiles = GetUniqueTestRunFiles(attachments);
-
-                    if (attachedFiles != null)
-                    {
-                        var createAttachmentsTasks = attachedFiles.Select(async attachment =>
-                        {
-                            TestAttachmentRequestModel reqModel = GetAttachmentRequestModel(attachment);
-                            if (reqModel != null)
-                            {
-                                await _testResultsServer.CreateTestResultAttachmentAsync(reqModel, _projectName, testRun.Id, testresults[j].Id, cancellationToken);
-                            }
-                        });
-                        await Task.WhenAll(createAttachmentsTasks);
-                    }
-
-                    // Upload console log as attachment
-                    string consoleLog = testResults[i + j]?.AttachmentData?.ConsoleLog;
-                    TestAttachmentRequestModel attachmentRequestModel = GetConsoleLogAttachmentRequestModel(consoleLog);
-                    if (attachmentRequestModel != null)
-                    {
-                        await _testResultsServer.CreateTestResultAttachmentAsync(attachmentRequestModel, _projectName, testRun.Id, testresults[j].Id, cancellationToken);
-                    }
-
-                    // Upload standard error as attachment
-                    string standardError = testResults[i + j]?.AttachmentData?.StandardError;
-                    TestAttachmentRequestModel stdErrAttachmentRequestModel = GetStandardErrorAttachmentRequestModel(standardError);
-                    if (stdErrAttachmentRequestModel != null)
-                    {
-                        await _testResultsServer.CreateTestResultAttachmentAsync(stdErrAttachmentRequestModel, _projectName, testRun.Id, testresults[j].Id, cancellationToken);
-                    }
+                    await this.UploadTestResultsAttachmentAsync(testRun.Id, testResults[i + j], uploadedTestResults[j], cancellationToken);
                 }
             }
 
@@ -186,6 +153,117 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
             return _resultReader.ReadResults(_executionContext, filePath, runContext);
         }
         #endregion
+
+        private async Task UploadTestResultsAttachmentAsync(int testRunId,
+            TestCaseResultData testCaseResultData,
+            TestCaseResult testCaseResult,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (testCaseResult == null || testCaseResultData == null)
+            {
+                return;
+            }
+
+            if (testCaseResultData.AttachmentData != null)
+            {
+                // Remove duplicate entries
+                string[] attachments = testCaseResultData.AttachmentData.AttachmentsFilePathList?.ToArray();
+                HashSet<string> attachedFiles = GetUniqueTestRunFiles(attachments);
+
+                if (attachedFiles != null && attachedFiles.Any())
+                {
+                    var createAttachmentsTasks = attachedFiles.Select(async attachment =>
+                    {
+                        TestAttachmentRequestModel reqModel = GetAttachmentRequestModel(attachment);
+                        if (reqModel != null)
+                        {
+                            await _testResultsServer.CreateTestResultAttachmentAsync(reqModel, _projectName, testRunId, testCaseResult.Id, cancellationToken);
+                        }
+                    });
+                    await Task.WhenAll(createAttachmentsTasks);
+                }
+
+                // Upload console log as attachment
+                string consoleLog = testCaseResultData?.AttachmentData.ConsoleLog;
+                TestAttachmentRequestModel attachmentRequestModel = GetConsoleLogAttachmentRequestModel(consoleLog);
+                if (attachmentRequestModel != null)
+                {
+                    await _testResultsServer.CreateTestResultAttachmentAsync(attachmentRequestModel, _projectName, testRunId, testCaseResult.Id, cancellationToken);
+                }
+
+                // Upload standard error as attachment
+                string standardError = testCaseResultData.AttachmentData.StandardError;
+                TestAttachmentRequestModel stdErrAttachmentRequestModel = GetStandardErrorAttachmentRequestModel(standardError);
+                if (stdErrAttachmentRequestModel != null)
+                {
+                    await _testResultsServer.CreateTestResultAttachmentAsync(stdErrAttachmentRequestModel, _projectName, testRunId, testCaseResult.Id, cancellationToken);
+                }
+            }
+
+            if(testCaseResult.SubResults != null && testCaseResult.SubResults.Any() && testCaseResultData.TestCaseSubResultData != null)
+            {
+                for(int i = 0; i < testCaseResultData.TestCaseSubResultData.Count; i++)
+                {
+                    await UploadTestSubResultsAttachmentAsync(testRunId, testCaseResult.Id, testCaseResultData.TestCaseSubResultData[i], testCaseResult.SubResults[i], 1, cancellationToken);
+                }
+            }
+        }
+        private async Task UploadTestSubResultsAttachmentAsync(int testRunId,
+            int testResultId,
+            TestCaseSubResultData subResultData,
+            TestSubResult subresult,
+            int level,
+            CancellationToken cancellationToken)
+        {
+            if (level > TestManagementConstants.maxHierarchyLevelForSubresults || subresult == null || subResultData == null || subResultData.AttachmentData == null)
+            {
+                return;
+            }
+
+            string[] attachments = subResultData.AttachmentData.AttachmentsFilePathList?.ToArray();
+            
+            // remove duplicate entries
+            HashSet<string> attachedFiles = GetUniqueTestRunFiles(attachments);
+            if (attachedFiles != null && attachedFiles.Any())
+            {
+                var createAttachmentsTasks = attachedFiles
+                    .Select(async attachment =>
+                    {
+                        TestAttachmentRequestModel reqModel = GetAttachmentRequestModel(attachment);
+                        if(reqModel != null)
+                        {
+                            await _testResultsServer.CreateTestSubResultAttachmentAsync(reqModel, _projectName, testRunId, testResultId, subresult.Id, cancellationToken);
+                        }
+                    });
+                await Task.WhenAll(createAttachmentsTasks);
+            }
+
+            // Upload console log as attachment
+            string consoleLog = subResultData.AttachmentData.ConsoleLog;
+            TestAttachmentRequestModel attachmentRequestModel = GetConsoleLogAttachmentRequestModel(consoleLog);
+            if (attachmentRequestModel != null)
+            {
+                await _testResultsServer.CreateTestSubResultAttachmentAsync(attachmentRequestModel, _projectName, testRunId, testResultId, subresult.Id, cancellationToken);
+            }
+
+            // Upload standard error as attachment
+            string standardError = subResultData.AttachmentData.StandardError;
+            TestAttachmentRequestModel stdErrAttachmentRequestModel = GetStandardErrorAttachmentRequestModel(standardError);
+            if (stdErrAttachmentRequestModel != null)
+            {
+                await _testResultsServer.CreateTestSubResultAttachmentAsync(stdErrAttachmentRequestModel, _projectName, testRunId, testResultId, subresult.Id, cancellationToken);
+            }
+
+            if (subResultData.SubResultData != null)
+            {
+                for (int i = 0; i < subResultData.SubResultData.Count; ++i)
+                {
+                    await UploadTestSubResultsAttachmentAsync(testRunId, testResultId, subResultData.SubResultData[i], subresult.SubResults[i], level + 1, cancellationToken);
+                }
+            }
+        }
 
         private async Task UploadTestRunAttachmentsAsArchiveAsync(int testRunId, string[] attachments, CancellationToken cancellationToken)
         {

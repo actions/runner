@@ -16,6 +16,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
         Task<TestRun> UpdateTestRunAsync(string projectName, int testRunId, RunUpdateModel updateModel, CancellationToken cancellationToken = default(CancellationToken));
         Task<TestAttachmentReference> CreateTestRunAttachmentAsync(TestAttachmentRequestModel reqModel, string projectName, int testRunId, CancellationToken cancellationToken = default(CancellationToken));
         Task<TestAttachmentReference> CreateTestResultAttachmentAsync(TestAttachmentRequestModel reqModel, string projectName, int testRunId, int testCaseResultId, CancellationToken cancellationToken = default(CancellationToken));
+        Task<TestAttachmentReference> CreateTestSubResultAttachmentAsync(TestAttachmentRequestModel reqModel, string projectName, int testRunId, int testCaseResultId, int testSubResultId, CancellationToken cancellationToken = default(CancellationToken));
     }
 
     public class TestResultsServer : AgentService, ITestResultsServer
@@ -75,6 +76,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
             CancellationToken cancellationToken = default(CancellationToken))
         {
             return await TestHttpClient.CreateTestResultAttachmentAsync(reqModel, projectName, testRunId, testCaseResultId, cancellationToken);
+        }
+
+        public async Task<TestAttachmentReference> CreateTestSubResultAttachmentAsync(
+            TestAttachmentRequestModel reqModel,
+            string projectName,
+            int testRunId,
+            int testCaseResultId,
+            int testSubResultId,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            return await TestHttpClient.CreateTestSubResultAttachmentAsync(reqModel, projectName, testRunId, testCaseResultId, testSubResultId, cancellationToken);
         }
     }
 }

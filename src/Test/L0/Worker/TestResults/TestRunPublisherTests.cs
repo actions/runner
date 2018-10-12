@@ -29,6 +29,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
         private TestAttachmentRequestModel _attachmentRequestModel;
         private TestCaseResult[] _resultCreateModels;
         private Dictionary<int, List<TestAttachmentRequestModel>> _resultsLevelAttachments = new Dictionary<int, List<TestAttachmentRequestModel>>();
+        private Dictionary<int, Dictionary<int, List<TestAttachmentRequestModel>>> _subResultsLevelAttachments = new Dictionary<int, Dictionary<int, List<TestAttachmentRequestModel>>>();
         private RunUpdateModel _updateProperties;
         private List<int> _batchSizes = new List<int>();
         private string _resultsFilepath;
@@ -81,9 +82,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
                         {
                             List<TestCaseResult> resultsList = new List<TestCaseResult>();
                             int i = 0;
+                            int j = 999;
                             foreach (TestCaseResult resultCreateModel in _resultCreateModels)
                             {
-                                resultsList.Add(new TestCaseResult() { Id = ++i });
+                                resultsList.Add(new TestCaseResult() { Id = ++i, SubResults = new List<TestSubResult> { new TestSubResult() { Id = ++j} } });
                             }
                             return Task.FromResult(resultsList);
                         });
@@ -129,6 +131,29 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
                             else
                             {
                                 _resultsLevelAttachments.Add(testCaseResultId, new List<TestAttachmentRequestModel>() { reqModel });
+                            }
+                        })
+                        .Returns(Task.FromResult(new TestAttachmentReference()));
+            _testResultServer.Setup(x => x.CreateTestSubResultAttachmentAsync(It.IsAny<TestAttachmentRequestModel>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                        .Callback<TestAttachmentRequestModel, string, int, int, int, CancellationToken>
+                        ((reqModel, projectName, testRunId, testCaseResultId, testSubResultId, cancellationToken) =>
+                        {
+                            if (_subResultsLevelAttachments.ContainsKey(testCaseResultId))
+                            {
+                                if(_subResultsLevelAttachments[testCaseResultId].ContainsKey(testSubResultId))
+                                {
+                                    _subResultsLevelAttachments[testCaseResultId][testSubResultId].Add(reqModel);
+                                }
+                                else
+                                {
+                                    _subResultsLevelAttachments[testCaseResultId].Add(testSubResultId, new List<TestAttachmentRequestModel>() { reqModel });
+                                }
+                            }
+                            else
+                            {
+                                Dictionary<int, List<TestAttachmentRequestModel>> subResulAtt = new Dictionary<int, List<TestAttachmentRequestModel>>();
+                                subResulAtt.Add(testSubResultId, new List<TestAttachmentRequestModel>() { reqModel });
+                                _subResultsLevelAttachments.Add(testCaseResultId, subResulAtt);
                             }
                         })
                         .Returns(Task.FromResult(new TestAttachmentReference()));
@@ -179,6 +204,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
         public void AddResultsWithAttachmentsCallsRightApi()
         {
             SetupMocks();
+            
             //Add results
             _testRunData = _publisher.ReadResultsFromFile(_testRunContext, "filepath");
             _publisher.StartTestRunAsync(_testRunData);
@@ -193,6 +219,31 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
             Assert.Equal(_resultsLevelAttachments[1][0].AttachmentType, AttachmentType.GeneralAttachment.ToString());
             Assert.Equal(_resultsLevelAttachments[1][0].Comment, "");
             Assert.Equal(_resultsLevelAttachments[1][0].FileName, "attachment.txt");
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
+        public void AddResultsWithSubResultsAttachmentsCallsRightApi()
+        {
+            SetupMocks();
+            
+            //Add results
+            _testRunData = _publisher.ReadResultsFromFile(_testRunContext, "filepath");
+            _publisher.StartTestRunAsync(_testRunData);
+            var result = new TestCaseResultData();
+            result.TestCaseSubResultData = new List<TestCaseSubResultData> { new TestCaseSubResultData()};
+            var testRun = new TestRun { Id = 1 };
+            result.TestCaseSubResultData[0].AttachmentData = new AttachmentData();
+            result.TestCaseSubResultData[0].AttachmentData.AttachmentsFilePathList = new string[] { "attachment.txt" };
+            _publisher.AddResultsAsync(testRun, new TestCaseResultData[] { result }).Wait();
+
+            Assert.Equal(_subResultsLevelAttachments.Count, 1);
+            Assert.Equal(_subResultsLevelAttachments[1].Count, 1);
+            Assert.Equal(_subResultsLevelAttachments[1][1000].Count, 1);
+            Assert.Equal(_subResultsLevelAttachments[1][1000][0].AttachmentType, AttachmentType.GeneralAttachment.ToString());
+            Assert.Equal(_subResultsLevelAttachments[1][1000][0].Comment, "");
+            Assert.Equal(_subResultsLevelAttachments[1][1000][0].FileName, "attachment.txt");
         }
 
         [Fact]
