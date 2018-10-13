@@ -45,13 +45,16 @@ namespace Microsoft.VisualStudio.Services.Agent
             // Inspect whether response has throttling information
             IEnumerable<string> vssRequestDelayed = null;
             IEnumerable<string> vssRequestQuotaReset = null;
+
             if (response.Headers.TryGetValues(HttpHeaders.VssRateLimitDelay, out vssRequestDelayed) &&
                 response.Headers.TryGetValues(HttpHeaders.VssRateLimitReset, out vssRequestQuotaReset) &&
                 !string.IsNullOrEmpty(vssRequestDelayed.FirstOrDefault()) &&
                 !string.IsNullOrEmpty(vssRequestQuotaReset.FirstOrDefault()))
             {
-                TimeSpan delay = TimeSpan.FromMilliseconds(int.Parse(vssRequestDelayed.First()));
-                DateTime expiration = DateTime.Parse(vssRequestQuotaReset.First());
+                TimeSpan delay = TimeSpan.FromSeconds(double.Parse(vssRequestDelayed.First()));
+                int expirationEpoch = int.Parse(vssRequestQuotaReset.First());
+                DateTime expiration = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddSeconds(expirationEpoch);
+
                 _throttlingReporter.ReportThrottling(delay, expiration);
             }
 

@@ -1,14 +1,16 @@
-using Microsoft.TeamFoundation.DistributedTask.WebApi;
-using Pipelines = Microsoft.TeamFoundation.DistributedTask.Pipelines;
-using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
+using System.Web;
 using Microsoft.VisualStudio.Services.Agent.Worker.Container;
 using Microsoft.VisualStudio.Services.WebApi;
-using System.Threading.Tasks;
+using Microsoft.TeamFoundation.DistributedTask.WebApi;
+using Pipelines = Microsoft.TeamFoundation.DistributedTask.Pipelines;
+using Microsoft.VisualStudio.Services.Agent.Util;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
@@ -578,6 +580,24 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             if (!_throttlingReported)
             {
                 this.Warning(StringUtil.Loc("ServerTarpit"));
+
+                if (!String.IsNullOrEmpty(this.Variables.System_TFCollectionUrl))
+                {
+                    // Construct a URL to the resource utilization page, to aid the user debug throttling issues
+                    UriBuilder uriBuilder = new UriBuilder(Variables.System_TFCollectionUrl);
+                    NameValueCollection query = HttpUtility.ParseQueryString(uriBuilder.Query);
+                    DateTime endTime = DateTime.UtcNow;
+                    string queryDate = endTime.AddHours(-1).ToString("s") + "," + endTime.ToString("s");
+
+                    uriBuilder.Path += (Variables.System_TFCollectionUrl.EndsWith("/") ? "" : "/") + "_usersSettings/usage";
+                    query["tab"] = "pipelines";
+                    query["queryDate"] = queryDate;
+
+                    uriBuilder.Query = query.ToString();
+
+                    this.Warning(StringUtil.Loc("ServerTarpitUrl", uriBuilder.ToString()));
+                }
+
                 _throttlingReported = true;
             }
         }

@@ -498,6 +498,7 @@
   "ScreenSaverPolicyWarning": "Screensaver policy is defined on the machine. This may lead to screensaver being enabled again. Active screensaver may impact UI operations, for e.g., automated UI tests may fail.",
   "SelfManageGitCreds": "You are in self manage git creds mode. Make sure your agent host machine can bypass any git authentication challenge.",
   "ServerTarpit": "The job is currently being throttled by the server. You may experience delays in console line output, job status reporting, and task log uploads.",
+  "ServerTarpitUrl": "Link to resource utilization page: {0}.",
   "ServerUrl": "server URL",
   "ServiceAlreadyExists": "The service already exists: {0}, it will be replaced",
   "ServiceConfigured": "Service {0} successfully configured",
