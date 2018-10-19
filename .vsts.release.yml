@@ -188,6 +188,7 @@ jobs:
       Pattern: |
         bin\Newtonsoft.Json.dll
         bin\YamlDotNet.dll
+        bin\DotNet.Glob.dll
         externals\git\**\*.dll
         externals\git\**\*.exe
         externals\node\bin\node.exe
@@ -441,6 +442,7 @@ jobs:
       Pattern: |
         bin\Newtonsoft.Json.dll
         bin\YamlDotNet.dll
+        bin\DotNet.Glob.dll
         externals\git\**\*.dll
         externals\git\**\*.exe
         externals\node\bin\node.exe
