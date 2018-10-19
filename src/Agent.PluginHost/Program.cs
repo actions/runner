@@ -64,7 +64,8 @@ namespace Agent.PluginHost
                     catch (Exception ex)
                     {
                         // any exception throw from plugin will fail the task.
-                        executionContext.Error(ex.ToString());
+                        executionContext.Error(ex.Message);
+                        executionContext.Debug(ex.StackTrace);
                     }
                     finally
                     {
