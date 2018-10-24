@@ -83,11 +83,6 @@ namespace Agent.Plugins.PipelineArtifact
                 // if local path is neither file nor folder
                 throw new FileNotFoundException(StringUtil.Loc("PathNotExist", targetPath));
             }
-            else if (isDir && Directory.EnumerateFiles(fullPath, "*", SearchOption.AllDirectories).FirstOrDefault() == null)
-            {
-                // if local path is a folder which contains nothing
-                throw new ArgumentException(StringUtil.Loc("DirectoryIsEmptyForArtifact", fullPath, artifactName));
-            }
 
             // Upload to VSTS BlobStore, and associate the artifact with the build.
             context.Output(StringUtil.Loc("UploadingPipelineArtifact", fullPath, buildId));
