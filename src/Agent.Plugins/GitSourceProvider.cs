@@ -302,8 +302,25 @@ namespace Agent.Plugins.Repository
                 executionContext.Output(StringUtil.Loc("SelfManageGitCreds"));
             }
 
-            // Initialize git command manager
-            GitCliManager gitCommandManager = new GitCliManager();
+            // Initialize git command manager with additional environment variables.
+            Dictionary<string, string> gitEnv = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+            // Git-lfs will try to pull down asset if any of the local/user/system setting exist.
+            // If customer didn't enable `LFS` in their pipeline definition, we will use ENV to disable LFS fetch/checkout.
+            if (!gitLfsSupport)
+            {
+                gitEnv["GIT_LFS_SKIP_SMUDGE"] = "1";
+            }
+
+            // Add the public variables.
+            foreach (var variable in executionContext.Variables)
+            {
+                // Add the variable using the formatted name.
+                string formattedKey = (variable.Key ?? string.Empty).Replace('.', '_').Replace(' ', '_').ToUpperInvariant();
+                gitEnv[formattedKey] = variable.Value?.Value ?? string.Empty;
+            }
+
+            GitCliManager gitCommandManager = new GitCliManager(gitEnv);
             await gitCommandManager.LoadGitExecutionInfo(executionContext, useBuiltInGit: !preferGitFromPath);
 
             bool gitSupportAuthHeader = GitSupportUseAuthHeader(executionContext, gitCommandManager);

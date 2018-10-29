@@ -19,11 +19,29 @@ namespace Agent.Plugins.Repository
 #else
         private static readonly Encoding s_encoding = null;
 #endif
-        private string gitHttpUserAgentEnv = null;
+        private readonly Dictionary<string, string> gitEnv = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "GIT_TERMINAL_PROMPT", "0" },
+        };
+
         private string gitPath = null;
         private Version gitVersion = null;
         private string gitLfsPath = null;
         private Version gitLfsVersion = null;
+
+        public GitCliManager(Dictionary<string, string> envs = null)
+        {
+            if (envs != null)
+            {
+                foreach (var env in envs)
+                {
+                    if (!string.IsNullOrEmpty(env.Key))
+                    {
+                        gitEnv[env.Key] = env.Value ?? string.Empty;
+                    }
+                }
+            }
+        }
 
         public bool EnsureGitVersion(Version requiredVersion, bool throwOnNotMatch)
         {
@@ -106,8 +124,9 @@ namespace Agent.Plugins.Repository
             }
 
             // Set the user agent.
-            gitHttpUserAgentEnv = $"git/{gitVersion.ToString()} (vsts-agent-git/{context.Variables.GetValueOrDefault("agent.version")?.Value ?? "unknown"})";
+            string gitHttpUserAgentEnv = $"git/{gitVersion.ToString()} (vsts-agent-git/{context.Variables.GetValueOrDefault("agent.version")?.Value ?? "unknown"})";
             context.Debug($"Set git useragent to: {gitHttpUserAgentEnv}.");
+            gitEnv["GIT_HTTP_USER_AGENT"] = gitHttpUserAgentEnv;
         }
 
         // git init <LocalDir>
@@ -494,6 +513,7 @@ namespace Agent.Plugins.Repository
 
             return version;
         }
+
         private async Task<int> ExecuteGitCommandAsync(AgentTaskPluginExecutionContext context, string repoRoot, string command, string options, CancellationToken cancellationToken = default(CancellationToken))
         {
             string arg = StringUtil.Format($"{command} {options}").Trim();
@@ -514,7 +534,7 @@ namespace Agent.Plugins.Repository
                 workingDirectory: repoRoot,
                 fileName: gitPath,
                 arguments: arg,
-                environment: GetGitEnvironmentVariables(context),
+                environment: gitEnv,
                 requireExitCodeZero: false,
                 outputEncoding: s_encoding,
                 cancellationToken: cancellationToken);
@@ -530,29 +550,22 @@ namespace Agent.Plugins.Repository
                 output = new List<string>();
             }
 
-            object outputLock = new object();
             var processInvoker = new ProcessInvoker(context);
             processInvoker.OutputDataReceived += delegate (object sender, ProcessDataReceivedEventArgs message)
             {
-                lock (outputLock)
-                {
-                    output.Add(message.Data);
-                }
+                output.Add(message.Data);
             };
 
             processInvoker.ErrorDataReceived += delegate (object sender, ProcessDataReceivedEventArgs message)
             {
-                lock (outputLock)
-                {
-                    output.Add(message.Data);
-                }
+                context.Output(message.Data);
             };
 
             return await processInvoker.ExecuteAsync(
                 workingDirectory: repoRoot,
                 fileName: gitPath,
                 arguments: arg,
-                environment: GetGitEnvironmentVariables(context),
+                environment: gitEnv,
                 requireExitCodeZero: false,
                 outputEncoding: s_encoding,
                 cancellationToken: default(CancellationToken));
@@ -578,46 +591,10 @@ namespace Agent.Plugins.Repository
                 workingDirectory: repoRoot,
                 fileName: gitPath,
                 arguments: arg,
-                environment: GetGitEnvironmentVariables(context),
+                environment: gitEnv,
                 requireExitCodeZero: false,
                 outputEncoding: s_encoding,
                 cancellationToken: cancellationToken);
-        }
-
-        private IDictionary<string, string> GetGitEnvironmentVariables(AgentTaskPluginExecutionContext context)
-        {
-            Dictionary<string, string> gitEnv = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-            {
-                { "GIT_TERMINAL_PROMPT", "0" },
-            };
-
-            if (!string.IsNullOrEmpty(gitHttpUserAgentEnv))
-            {
-                gitEnv["GIT_HTTP_USER_AGENT"] = gitHttpUserAgentEnv;
-            }
-
-            // Add the public variables.
-            foreach (var variable in context.Variables)
-            {
-                // Add the variable using the formatted name.
-                string formattedKey = (variable.Key ?? string.Empty).Replace('.', '_').Replace(' ', '_').ToUpperInvariant();
-
-                // Skip any GIT_TRACE variable since GIT_TRACE will affect ouput from every git command.
-                // This will fail the parse logic for detect git version, remote url, etc.
-                // Ex. 
-                //      SET GIT_TRACE=true
-                //      git version 
-                //      11:39:58.295959 git.c:371               trace: built-in: git 'version'
-                //      git version 2.11.1.windows.1
-                if (formattedKey == "GIT_TRACE" || formattedKey.StartsWith("GIT_TRACE_"))
-                {
-                    continue;
-                }
-
-                gitEnv[formattedKey] = variable.Value?.Value ?? string.Empty;
-            }
-
-            return gitEnv;
         }
     }
 }
