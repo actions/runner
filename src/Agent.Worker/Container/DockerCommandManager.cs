@@ -251,17 +251,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Container
             context.Command($"{DockerPath} {arg}");
 
             List<string> output = new List<string>();
-            object outputLock = new object();
             var processInvoker = HostContext.CreateService<IProcessInvoker>();
             processInvoker.OutputDataReceived += delegate (object sender, ProcessDataReceivedEventArgs message)
             {
                 if (!string.IsNullOrEmpty(message.Data))
                 {
-                    lock (outputLock)
-                    {
-                        output.Add(message.Data);
-                        context.Output(message.Data);
-                    }
+                    output.Add(message.Data);
+                    context.Output(message.Data);
                 }
             };
 
@@ -269,11 +265,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Container
             {
                 if (!string.IsNullOrEmpty(message.Data))
                 {
-                    lock (outputLock)
-                    {
-                        output.Add(message.Data);
-                        context.Output(message.Data);
-                    }
+                    context.Output(message.Data);
                 }
             };
 
