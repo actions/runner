@@ -14,7 +14,7 @@ process.stdin.on('end', function () {
     console.log("##vso[task.debug]HandlerArg: " + handlerArg);
     console.log("##vso[task.debug]HandlerWorkDir: " + handlerWorkDir);
     Object.keys(stdinData.environment).forEach(function (key) {
-        console.log("##vso[task.debug]Set env: " + key + "=" + stdinData.environment[key]);
+        console.log("##vso[task.debug]Set env: " + key + "=" + stdinData.environment[key].toString().replace('\r', '%0D').replace('\n', '%0A'));
         process.env[key] = stdinData.environment[key];
     });
 
