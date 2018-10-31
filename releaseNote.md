@@ -1,11 +1,21 @@
 ## Features
-  - Consume dotnet core 2.1, add win-x86 and linux-arm agent. #1844
+  - Add support for ##vso[task.complete done=true;]. #1853
+  - Publish sub test result attachment #1883
+  - Added AGENT_ALLOW_RUNASROOT "flag" to allow the agent to be run as root interactively #1878
   
 ## Bugs
-  - N/A
+  - Set service name correctly when using Azure Pipelines urls #1846
+  - Fix container image name when use private docker registry. #1857
+  - Inherit system.culture in plugin.host, use UTF-8 as STDOUT encoding. #1861
+  - Use more unique container name. #1888
+  - Removed the empty directory check for Pipeline Artifact #1905
+  - Ignore STDERR for docker CLI. #1900
+  - Allow GIT_TRACE, use GIT_LFS_SKIP_SMUDGE. #1901
+  - Fix ##debug escaping issue for container. #1908
 
 ## Misc
-  - N/A
+  - Authenticode sign scripts packaged with agent. #1866
+  - Add a link to the Resource Utilization page whenever builds get throttled #1886
 
 ## Agent Downloads  
 
