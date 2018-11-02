@@ -266,10 +266,10 @@ namespace Microsoft.VisualStudio.Services.Agent
             public int InheritedFromUniqueProcessId;
         };
 
-        [DllImport("ntdll.dll", SetLastError = true)]
+        [DllImport("ntdll.dll", SetLastError = true, EntryPoint = "NtQueryInformationProcess")]
         private static extern int NtQueryInformationProcess64(IntPtr processHandle, PROCESSINFOCLASS processInformationClass, ref PROCESS_BASIC_INFORMATION64 processInformation, int processInformationLength, ref int returnLength);
 
-        [DllImport("ntdll.dll", SetLastError = true)]
+        [DllImport("ntdll.dll", SetLastError = true, EntryPoint = "NtQueryInformationProcess")]
         private static extern int NtQueryInformationProcess32(IntPtr processHandle, PROCESSINFOCLASS processInformationClass, ref PROCESS_BASIC_INFORMATION32 processInformation, int processInformationLength, ref int returnLength);
 
         [DllImport("kernel32.dll", SetLastError = true)]
@@ -364,9 +364,17 @@ namespace Microsoft.VisualStudio.Services.Agent
                             if (varStartIndex >= 0)
                             {
                                 string rightPart = psOutputString.Substring(varStartIndex + variable.Length + 1);
-                                string value = rightPart.Substring(0, rightPart.IndexOf(' '));
-                                env[variable] = value;
-                                trace.Verbose($"PID:{process.Id} ({variable}={value})");
+                                if (rightPart.IndexOf(' ') > 0)
+                                {
+                                    string value = rightPart.Substring(0, rightPart.IndexOf(' '));
+                                    env[variable] = value;
+                                }
+                                else
+                                {
+                                    env[variable] = rightPart;
+                                }
+
+                                trace.Verbose($"PID:{process.Id} ({variable}={env[variable]})");
                             }
                         }
                     }

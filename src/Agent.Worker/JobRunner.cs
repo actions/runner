@@ -318,7 +318,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                                 }
                                 catch (Exception ex)
                                 {
-                                    Trace.Verbose("Ignore any exception during read process environment variables.");
+                                    Trace.Warning($"Ignore exception during read process environment variables: {ex.Message}");
                                     Trace.Verbose(ex.ToString());
                                 }
 
