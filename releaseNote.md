@@ -12,6 +12,7 @@
   - Ignore STDERR for docker CLI. #1900
   - Allow GIT_TRACE, use GIT_LFS_SKIP_SMUDGE. #1901
   - Fix ##debug escaping issue for container. #1908
+  - Fix pinvoke for NtQueryInformationProcess (process env read). #1919
 
 ## Misc
   - Authenticode sign scripts packaged with agent. #1866
