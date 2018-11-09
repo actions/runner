@@ -151,11 +151,10 @@ function Invoke-With-Retry([ScriptBlock]$ScriptBlock, [int]$MaxAttempts = 3, [in
 function Get-Machine-Architecture() {
     Say-Invocation $MyInvocation
 
-    # possible values: AMD64, IA64, x86
+    # possible values: amd64, x64, x86, arm64, arm
     return $ENV:PROCESSOR_ARCHITECTURE
 }
 
-# TODO: Architecture and CLIArchitecture should be unified
 function Get-CLIArchitecture-From-Architecture([string]$Architecture) {
     Say-Invocation $MyInvocation
 
@@ -163,6 +162,8 @@ function Get-CLIArchitecture-From-Architecture([string]$Architecture) {
         { $_ -eq "<auto>" } { return Get-CLIArchitecture-From-Architecture $(Get-Machine-Architecture) }
         { ($_ -eq "amd64") -or ($_ -eq "x64") } { return "x64" }
         { $_ -eq "x86" } { return "x86" }
+        { $_ -eq "arm" } { return "arm" }
+        { $_ -eq "arm64" } { return "arm64" }
         default { throw "Architecture not supported. If you think this is a bug, please report it at https://github.com/dotnet/cli/issues" }
     }
 }

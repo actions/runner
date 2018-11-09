@@ -65,29 +65,6 @@ jobs:
       signConfigType: inlineSignParams
       inlineOperation: |
         [{
-        "keyCode": "CP-229803",
-        "operationSetCode": "SigntoolSign",
-        "parameters": [{
-        "parameterName": "OpusName",
-        "parameterValue": "Microsoft"
-        },
-        {
-        "parameterName": "OpusInfo",
-        "parameterValue": "http://www.microsoft.com"
-        },
-        {
-        "parameterName": "PageHash",
-        "parameterValue": "/NPH"
-        },
-        {
-        "parameterName": "TimeStamp",
-        "parameterValue": "/t \"http://ts4096.gtm.microsoft.com/TSS/AuthenticodeTS\""
-        }
-        ],
-        "toolName": "sign",
-        "toolVersion": "1.0"
-        },
-        {
         "keyCode": "CP-230012",
         "operationSetCode": "SigntoolSign",
         "parameters": [{
@@ -97,10 +74,6 @@ jobs:
         {
         "parameterName": "OpusInfo",
         "parameterValue": "http://www.microsoft.com"
-        },
-        {
-        "parameterName": "Append",
-        "parameterValue": "/as"
         },
         {
         "parameterName": "FileDigest",
@@ -121,10 +94,7 @@ jobs:
         {
         "keyCode": "CP-230012",
         "operationSetCode": "SigntoolVerify",
-        "parameters": [{
-        "parameterName": "VerifyAll",
-        "parameterValue": "/all"
-        }],
+        "parameters": [],
         "toolName": "sign",
         "toolVersion": "1.0"
         }
@@ -322,29 +292,6 @@ jobs:
       signConfigType: inlineSignParams
       inlineOperation: |
         [{
-        "keyCode": "CP-229803",
-        "operationSetCode": "SigntoolSign",
-        "parameters": [{
-        "parameterName": "OpusName",
-        "parameterValue": "Microsoft"
-        },
-        {
-        "parameterName": "OpusInfo",
-        "parameterValue": "http://www.microsoft.com"
-        },
-        {
-        "parameterName": "PageHash",
-        "parameterValue": "/NPH"
-        },
-        {
-        "parameterName": "TimeStamp",
-        "parameterValue": "/t \"http://ts4096.gtm.microsoft.com/TSS/AuthenticodeTS\""
-        }
-        ],
-        "toolName": "sign",
-        "toolVersion": "1.0"
-        },
-        {
         "keyCode": "CP-230012",
         "operationSetCode": "SigntoolSign",
         "parameters": [{
@@ -354,10 +301,6 @@ jobs:
         {
         "parameterName": "OpusInfo",
         "parameterValue": "http://www.microsoft.com"
-        },
-        {
-        "parameterName": "Append",
-        "parameterValue": "/as"
         },
         {
         "parameterName": "FileDigest",
@@ -378,10 +321,7 @@ jobs:
         {
         "keyCode": "CP-230012",
         "operationSetCode": "SigntoolVerify",
-        "parameters": [{
-        "parameterName": "VerifyAll",
-        "parameterValue": "/all"
-        }],
+        "parameters": [],
         "toolName": "sign",
         "toolVersion": "1.0"
         }
