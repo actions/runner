@@ -101,7 +101,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
             }
             else
             {
-                executionContext.Output("Only single test suite found, parsing its information");
                 XmlNode testSuiteNode = doc.SelectSingleNode("testsuite");
                 if (testSuiteNode != null)
                 {
