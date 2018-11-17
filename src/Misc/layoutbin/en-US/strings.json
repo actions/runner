@@ -206,6 +206,7 @@
   "ConnectingToServer": "Connecting to server ...",
   "ConnectSectionHeader": "Connect",
   "ConnectToServer": "Connecting to the server.",
+  "ContainerJobRequireSystemDefaultWorkDir": "System.DefaultWorkingDirectory is required for running a container job.",
   "ContainerWindowsVersionRequirement": "Container feature requires Windows Server 1803 or higher. Please reference documentation (https://go.microsoft.com/fwlink/?linkid=875268)",
   "CouldNotRemoveService": "Could not delete service '{0}'",
   "CreateUserWithSameUIDInsideContainer": "Try create an user with UID '{0}' inside the container.",
