@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -26,6 +27,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.ContainerFetchEng
             HttpRequestMessage request,
             CancellationToken cancellationToken)
         {
+#if OS_LINUX || OS_OSX
+            request.Version = HttpVersion.Version11;
+#endif            
             // Potential improvements:
             // 1. Calculate a max time across attempts, to avoid retries (this class) on top of retries (VssHttpRetryMessageHandler) 
             //    causing more time to pass than expected in degenerative cases.

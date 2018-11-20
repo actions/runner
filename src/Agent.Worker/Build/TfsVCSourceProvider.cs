@@ -507,7 +507,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 var tf = HostContext.CreateService<ITfsVCCommandManager>();
                 tf.CancellationToken = CancellationToken.None;
                 tf.Repository = repository;
-                tf.Endpoint = executionContext.Endpoints.Single(x => (repository.Endpoint.Id != Guid.Empty && x.Id == repository.Endpoint.Id) || (repository.Endpoint.Id == Guid.Empty && string.Equals(x.Name, repository.Endpoint.Name, StringComparison.OrdinalIgnoreCase)));
+                tf.Endpoint = executionContext.Endpoints.Single(
+                    x => (repository.Endpoint.Id != Guid.Empty && x.Id == repository.Endpoint.Id) ||
+                    (repository.Endpoint.Id == Guid.Empty && string.Equals(x.Name, repository.Endpoint.Name.ToString(), StringComparison.OrdinalIgnoreCase)));
                 tf.ExecutionContext = executionContext;
 
                 // Attempt to resolve the path.

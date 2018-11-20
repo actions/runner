@@ -1,4 +1,5 @@
 using System;
+using System.Net;
 using System.Net.Http;
 using System.Runtime.Serialization;
 using System.Threading.Tasks;
@@ -40,6 +41,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
             request.Headers.Add("Accept", "application/vnd.GitHubData.V3+json");
             request.Headers.Add("Authorization", "Token " + accessToken);
             request.Headers.Add("User-Agent", "VSTS-Agent/" + Constants.Agent.Version);
+
+#if OS_LINUX || OS_OSX
+            request.Version = HttpVersion.Version11;
+#endif
 
             int httpRequestTimeoutSeconds;
             if (!int.TryParse(Environment.GetEnvironmentVariable("VSTS_HTTP_TIMEOUT") ?? string.Empty, out httpRequestTimeoutSeconds))

@@ -428,7 +428,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     messageQueueLoopTokenSource.Dispose();
                 }
             }
-            catch (TaskAgentAccessTokeExpiredException)
+            catch (TaskAgentAccessTokenExpiredException)
             {
                 Trace.Info("Agent OAuth token has been revoked. Shutting down.");
             }

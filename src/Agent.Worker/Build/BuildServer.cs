@@ -60,7 +60,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 },
             };
 
-            return await _buildHttpClient.UpdateBuildAsync(build, _projectId, buildId, cancellationToken: cancellationToken);
+            return await _buildHttpClient.UpdateBuildAsync(build, cancellationToken: cancellationToken);
         }
 
         public async Task<IEnumerable<string>> AddBuildTag(
