@@ -100,7 +100,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             StepHost.OutputDataReceived += OnDataReceived;
             StepHost.ErrorDataReceived += OnDataReceived;
 
-            string file = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), "node", "bin", $"node{IOUtil.ExeExtension}");
+            string file;
+            if (!string.IsNullOrEmpty(ExecutionContext.Container?.ContainerBringNodePath))
+            {
+                file = ExecutionContext.Container.ContainerBringNodePath;
+            }
+            else
+            {
+                file = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), "node", "bin", $"node{IOUtil.ExeExtension}");
+            }
             // Format the arguments passed to node.
             // 1) Wrap the script file path in double quotes.
             // 2) Escape double quotes within the script file path. Double-quote is a valid

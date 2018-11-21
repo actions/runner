@@ -27,6 +27,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Container
         Task<int> DockerNetworkRemove(IExecutionContext context, string network);
         Task<int> DockerExec(IExecutionContext context, string containerId, string options, string command);
         Task<int> DockerExec(IExecutionContext context, string containerId, string options, string command, List<string> outputs);
+        Task<string> DockerInspect(IExecutionContext context, string dockerObject, string options);
     }
 
     public class DockerCommandManager : AgentService, IDockerCommandManager
@@ -120,7 +121,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Container
                 }
             }
 
-            string node = context.Container.TranslateToContainerPath(Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), "node", "bin", $"node{IOUtil.ExeExtension}"));
+            string node;
+            if (!string.IsNullOrEmpty(context.Container.ContainerBringNodePath))
+            {
+                node = context.Container.ContainerBringNodePath;
+            }
+            else
+            {
+                node = context.Container.TranslateToContainerPath(Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), "node", "bin", $"node{IOUtil.ExeExtension}"));
+            }
+
             string sleepCommand = $"\"{node}\" -e \"setInterval(function(){{}}, 24 * 60 * 60 * 1000);\"";
 #if OS_WINDOWS
             string dockerArgs = $"--name {displayName} {options} {dockerEnvArgs} {dockerMountVolumesArgs} {image} {sleepCommand}";  // add --network={network} and -v '\\.\pipe\docker_engine:\\.\pipe\docker_engine' when they are available (17.09)
@@ -210,6 +220,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Container
                             requireExitCodeZero: false,
                             outputEncoding: null,
                             cancellationToken: CancellationToken.None);
+        }
+
+        public async Task<string> DockerInspect(IExecutionContext context, string dockerObject, string options)
+        {
+            return (await ExecuteDockerCommandAsync(context, "inspect", $"{options} {dockerObject}")).FirstOrDefault();
         }
 
         private Task<int> ExecuteDockerCommandAsync(IExecutionContext context, string command, string options, CancellationToken cancellationToken = default(CancellationToken))

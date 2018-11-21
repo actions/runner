@@ -23,6 +23,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
     public class ContainerOperationProvider : AgentService, IContainerOperationProvider
     {
+        private const string _nodeJsPathLabel = "com.azure.dev.pipelines.agent.handler.node.path";
         private IDockerCommandManager _dockerManger;
 
         public override void Initialize(IHostContext hostContext)
@@ -214,6 +215,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     executionContext.Variables.Set(Constants.Variables.Agent.ContainerNetwork, container.ContainerNetwork);
                 }
 #endif
+                // See if this container brings its own Node.js
+                container.ContainerBringNodePath = await _dockerManger.DockerInspect(context: executionContext,
+                                                                      dockerObject: container.ContainerImage,
+                                                                      options: $"--format=\"{{{{index .Config.Labels \\\"{_nodeJsPathLabel}\\\"}}}}\"");
+
                 container.ContainerId = await _dockerManger.DockerCreate(context: executionContext,
                                                                          displayName: container.ContainerDisplayName,
                                                                          image: container.ContainerImage,
@@ -317,7 +323,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             // Create a new user with same UID
             if (string.IsNullOrEmpty(containerUserName))
             {
-                containerUserName = $"{container.CurrentUserName}_VSTSContainer";
+                containerUserName = $"{container.CurrentUserName}_azpcontainer";
                 int execUseraddExitCode = await _dockerManger.DockerExec(executionContext, container.ContainerId, string.Empty, $"useradd -m -u {container.CurrentUserId} {containerUserName}");
                 if (execUseraddExitCode != 0)
                 {
@@ -327,22 +333,22 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
             executionContext.Output(StringUtil.Loc("GrantContainerUserSUDOPrivilege", containerUserName));
 
-            // Create a new vsts_sudo group for giving sudo permission
-            int execGroupaddExitCode = await _dockerManger.DockerExec(executionContext, container.ContainerId, string.Empty, $"groupadd VSTS_Container_SUDO");
+            // Create a new group for giving sudo permission
+            int execGroupaddExitCode = await _dockerManger.DockerExec(executionContext, container.ContainerId, string.Empty, $"groupadd azure_pipelines_sudo");
             if (execGroupaddExitCode != 0)
             {
                 throw new InvalidOperationException($"Docker exec fail with exit code {execGroupaddExitCode}");
             }
 
-            // Add the new created user to the new created VSTS_SUDO group.
-            int execUsermodExitCode = await _dockerManger.DockerExec(executionContext, container.ContainerId, string.Empty, $"usermod -a -G VSTS_Container_SUDO {containerUserName}");
+            // Add the new created user to the new created sudo group.
+            int execUsermodExitCode = await _dockerManger.DockerExec(executionContext, container.ContainerId, string.Empty, $"usermod -a -G azure_pipelines_sudo {containerUserName}");
             if (execUsermodExitCode != 0)
             {
                 throw new InvalidOperationException($"Docker exec fail with exit code {execUsermodExitCode}");
             }
 
-            // Allow the new vsts_sudo group run any sudo command without providing password.
-            int execEchoExitCode = await _dockerManger.DockerExec(executionContext, container.ContainerId, string.Empty, $"su -c \"echo '%VSTS_Container_SUDO ALL=(ALL:ALL) NOPASSWD:ALL' >> /etc/sudoers\"");
+            // Allow the new sudo group run any sudo command without providing password.
+            int execEchoExitCode = await _dockerManger.DockerExec(executionContext, container.ContainerId, string.Empty, $"su -c \"echo '%azure_pipelines_sudo ALL=(ALL:ALL) NOPASSWD:ALL' >> /etc/sudoers\"");
             if (execUsermodExitCode != 0)
             {
                 throw new InvalidOperationException($"Docker exec fail with exit code {execEchoExitCode}");
