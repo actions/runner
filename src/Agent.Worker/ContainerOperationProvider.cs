@@ -106,6 +106,27 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 throw new NotSupportedException(StringUtil.Loc("MinRequiredDockerClientVersion", requiredDockerVersion, _dockerManger.DockerPath, dockerVersion.ClientVersion));
             }
 
+            // Clean up containers left by previous runs
+            executionContext.Debug($"Delete stale containers from previous jobs");
+            var staleContainers = await _dockerManger.DockerPS(executionContext, $"--all --quiet --no-trunc --filter \"label={_dockerManger.DockerInstanceLabel}\"");
+            foreach (var staleContainer in staleContainers)
+            {
+                int containerRemoveExitCode = await _dockerManger.DockerRemove(executionContext, staleContainer);
+                if (containerRemoveExitCode != 0)
+                {
+                    executionContext.Warning($"Delete stale containers failed, docker rm fail with exit code {containerRemoveExitCode} for container {staleContainer}");
+                }
+            }
+
+#if !OS_WINDOWS
+            executionContext.Debug($"Delete stale container networks from previous jobs");
+            int networkPruneExitCode = await _dockerManger.DockerNetworkPrune(executionContext);
+            if (networkPruneExitCode != 0)
+            {
+                executionContext.Warning($"Delete stale container networks failed, docker network prune fail with exit code {networkPruneExitCode}");
+            }
+#endif
+
             // Login to private docker registry
             string registryServer = string.Empty;
             if (container.ContainerRegistryEndpoint != Guid.Empty)
@@ -252,17 +273,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
 #if !OS_WINDOWS
             // Ensure bash exist in the image
-            int execWhichBashExitCode = await _dockerManger.DockerExec(executionContext, container.ContainerId, string.Empty, $"which bash");
+            int execWhichBashExitCode = await _dockerManger.DockerExec(executionContext, container.ContainerId, string.Empty, $"sh -c \"command -v bash\"");
             if (execWhichBashExitCode != 0)
             {
                 try
                 {
                     // Make sure container is up and running
-                    var psOutputs = await _dockerManger.DockerPS(executionContext, container.ContainerId, "--filter status=running");
+                    var psOutputs = await _dockerManger.DockerPS(executionContext, $"--all --filter id={container.ContainerId} --filter status=running --no-trunc --format \"{{{{.ID}}}} {{{{.Status}}}}\"");
                     if (psOutputs.FirstOrDefault(x => !string.IsNullOrEmpty(x))?.StartsWith(container.ContainerId) != true)
                     {
                         // container is not up and running, pull docker log for this container.
-                        await _dockerManger.DockerPS(executionContext, container.ContainerId, string.Empty);
+                        await _dockerManger.DockerPS(executionContext, $"--all --filter id={container.ContainerId} --no-trunc --format \"{{{{.ID}}}} {{{{.Status}}}}\"");
                         int logsExitCode = await _dockerManger.DockerLogs(executionContext, container.ContainerId);
                         if (logsExitCode != 0)
                         {
@@ -365,13 +386,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
             if (!string.IsNullOrEmpty(container.ContainerId))
             {
-                executionContext.Output($"Stop container: {container.ContainerDisplayName}");
-
-                int stopExitCode = await _dockerManger.DockerStop(executionContext, container.ContainerId);
-                if (stopExitCode != 0)
-                {
-                    executionContext.Error($"Docker stop fail with exit code {stopExitCode}");
-                }
+                executionContext.Output($"Stop and remove container: {container.ContainerDisplayName}");
 
                 int rmExitCode = await _dockerManger.DockerRemove(executionContext, container.ContainerId);
                 if (rmExitCode != 0)
