@@ -59,7 +59,7 @@
   "CodeCoverageDataIsNull": "No coverage data found. Check the build errors/warnings for more details.",
   "CodeCoveragePublishIsValidOnlyForBuild": "Publishing code coverage works only for 'build'.",
   "CollectionName": "Collection Name",
-  "CommandKeywordDetected": "'{0}' contains logging command keyword '##vso', but it's not a legal command. Please reference documentation to fix any potentially syntax error (http://go.microsoft.com/fwlink/?LinkId=817296)",
+  "CommandKeywordDetected": "'{0}' contains logging command keyword '##vso', but it's not a legal command. Please see the list of accepted commands: https://go.microsoft.com/fwlink/?LinkId=817296",
   "CommandLineHelp": [
     "CLI-WIDTH-TOTAL-(105-CHARS)------------------------------------------------------------------------------",
     "Commands:",
