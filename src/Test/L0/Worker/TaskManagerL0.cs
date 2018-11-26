@@ -17,7 +17,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
     public sealed class TaskManagerL0
     {
         private const string TestDataFolderName = "TestData";
-        private readonly CancellationTokenSource _ecTokenSource = new CancellationTokenSource();
+        private CancellationTokenSource _ecTokenSource;
         private Mock<IJobServer> _jobServer;
         private Mock<ITaskServer> _taskServer;
         private Mock<IConfigurationStore> _configurationStore;
@@ -61,11 +61,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                 var pingVersion = new TaskVersion(pingTask.Reference.Version);
 
                 _taskServer
-                    .Setup(x => x.GetTaskContentZipAsync(It.IsAny<Guid>(), It.IsAny<TaskVersion>(), _ec.Object.CancellationToken))
+                    .Setup(x => x.GetTaskContentZipAsync(It.IsAny<Guid>(), It.IsAny<TaskVersion>(), It.IsAny<CancellationToken>()))
                     .Returns((Guid taskId, TaskVersion taskVersion, CancellationToken token) =>
                     {
                         _ecTokenSource.Cancel();
-                        return Task.FromResult<Stream>(GetZipStream());
+                        _ecTokenSource.Token.ThrowIfCancellationRequested();
+                        return null;
                     });
 
                 var tasks = new List<Pipelines.TaskStep>(new Pipelines.TaskStep[] { bingTask, pingTask });
@@ -89,7 +90,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                     Directory.GetFiles(_hc.GetDirectory(WellKnownDirectory.Tasks), "*", SearchOption.AllDirectories).Length);
                 //assert download was invoked only once, because the first task cancelled the second task download
                 _taskServer
-                    .Verify(x => x.GetTaskContentZipAsync(It.IsAny<Guid>(), It.IsAny<TaskVersion>(), _ec.Object.CancellationToken), Times.Once());
+                    .Verify(x => x.GetTaskContentZipAsync(It.IsAny<Guid>(), It.IsAny<TaskVersion>(), It.IsAny<CancellationToken>()), Times.Once());
             }
             finally
             {
@@ -101,7 +102,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async void BubblesNetworkException()
+        public async void RetryNetworkException()
         {
             try
             {
@@ -121,7 +122,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                 var pingVersion = new TaskVersion(pingTask.Reference.Version);
                 Exception expectedException = new System.Net.Http.HttpRequestException("simulated network error");
                 _taskServer
-                    .Setup(x => x.GetTaskContentZipAsync(It.IsAny<Guid>(), It.IsAny<TaskVersion>(), _ec.Object.CancellationToken))
+                    .Setup(x => x.GetTaskContentZipAsync(It.IsAny<Guid>(), It.IsAny<TaskVersion>(), It.IsAny<CancellationToken>()))
                     .Returns((Guid taskId, TaskVersion taskVersion, CancellationToken token) =>
                     {
                         throw expectedException;
@@ -143,6 +144,73 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                 //Assert
                 //verify task completed in less than 2sec and it is in failed state state
                 Assert.Equal(expectedException, actualException);
+
+                //assert download was invoked 3 times, because we retry on task download
+                _taskServer
+                    .Verify(x => x.GetTaskContentZipAsync(It.IsAny<Guid>(), It.IsAny<TaskVersion>(), It.IsAny<CancellationToken>()), Times.Exactly(3));
+
+                //see if the task.json was not downloaded
+                Assert.Equal(
+                    0,
+                    Directory.GetFiles(_hc.GetDirectory(WellKnownDirectory.Tasks), "*", SearchOption.AllDirectories).Length);
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
+        //Test how exceptions are propagated to the caller.
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async void RetryStreamException()
+        {
+            try
+            {
+                // Arrange.
+                Setup();
+                var pingTask = new Pipelines.TaskStep()
+                {
+                    Enabled = true,
+                    Reference = new Pipelines.TaskStepDefinitionReference()
+                    {
+                        Name = "Ping",
+                        Version = "0.1.1",
+                        Id = Guid.NewGuid()
+                    }
+                };
+
+                var pingVersion = new TaskVersion(pingTask.Reference.Version);
+                Exception expectedException = new System.Net.Http.HttpRequestException("simulated network error");
+                _taskServer
+                    .Setup(x => x.GetTaskContentZipAsync(It.IsAny<Guid>(), It.IsAny<TaskVersion>(), It.IsAny<CancellationToken>()))
+                    .Returns((Guid taskId, TaskVersion taskVersion, CancellationToken token) =>
+                    {
+                        return Task.FromResult<Stream>(new ExceptionStream());
+                    });
+
+                var tasks = new List<Pipelines.TaskStep>(new Pipelines.TaskStep[] { pingTask });
+
+                //Act
+                Exception actualException = null;
+                try
+                {
+                    await _taskManager.DownloadAsync(_ec.Object, tasks);
+                }
+                catch (Exception ex)
+                {
+                    actualException = ex;
+                }
+
+                //Assert
+                //verify task completed in less than 2sec and it is in failed state state
+                Assert.Equal("NotImplementedException", actualException.GetType().Name);
+
+                //assert download was invoked 3 times, because we retry on task download
+                _taskServer
+                    .Verify(x => x.GetTaskContentZipAsync(It.IsAny<Guid>(), It.IsAny<TaskVersion>(), It.IsAny<CancellationToken>()), Times.Exactly(3));
+
                 //see if the task.json was not downloaded
                 Assert.Equal(
                     0,
@@ -236,7 +304,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                     .Setup(x => x.GetTaskContentZipAsync(
                         bingGuid,
                         It.Is<TaskVersion>(y => string.Equals(y.ToString(), bingVersion, StringComparison.Ordinal)),
-                        _ec.Object.CancellationToken))
+                        It.IsAny<CancellationToken>()))
                     .Returns(Task.FromResult<Stream>(GetZipStream()));
 
                 //Act
@@ -557,6 +625,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
 
         private void Setup([CallerMemberName] string name = "")
         {
+            _ecTokenSource?.Dispose();
+            _ecTokenSource = new CancellationTokenSource();
+
             // Mocks.
             _jobServer = new Mock<IJobServer>();
             _taskServer = new Mock<ITaskServer>();
@@ -585,6 +656,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             // Instance to test.
             _taskManager = new TaskManager();
             _taskManager.Initialize(_hc);
+
+            Environment.SetEnvironmentVariable("VSTS_TASK_DOWNLOAD_NO_BACKOFF", "1");
         }
 
         private void Teardown()
@@ -593,6 +666,44 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             if (!string.IsNullOrEmpty(_workFolder) && Directory.Exists(_workFolder))
             {
                 Directory.Delete(_workFolder, recursive: true);
+            }
+        }
+
+        private class ExceptionStream : Stream
+        {
+            public override bool CanRead => throw new NotImplementedException();
+
+            public override bool CanSeek => throw new NotImplementedException();
+
+            public override bool CanWrite => throw new NotImplementedException();
+
+            public override long Length => throw new NotImplementedException();
+
+            public override long Position { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+
+            public override void Flush()
+            {
+                throw new NotImplementedException();
+            }
+
+            public override int Read(byte[] buffer, int offset, int count)
+            {
+                throw new NotImplementedException();
+            }
+
+            public override long Seek(long offset, SeekOrigin origin)
+            {
+                throw new NotImplementedException();
+            }
+
+            public override void SetLength(long value)
+            {
+                throw new NotImplementedException();
+            }
+
+            public override void Write(byte[] buffer, int offset, int count)
+            {
+                throw new NotImplementedException();
             }
         }
     }

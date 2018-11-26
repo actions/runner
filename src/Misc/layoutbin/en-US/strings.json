@@ -538,6 +538,8 @@
   "SvnNotInstalled": "Can't find installed svn command line utility",
   "SvnSyncingRepo": "Syncing repository: {0} (Svn)",
   "TaskCommandNotFound": "##vso[task.{0}] is not a recognized command for Task command extension. Please reference documentation (http://go.microsoft.com/fwlink/?LinkId=817296)",
+  "TaskDownloadFailed": "Failed to download task '{0}'. Error {1}",
+  "TaskDownloadTimeout": "Task '{0}' didn't finish download within {1} seconds.",
   "TeeEula": [
     "Building sources from a TFVC repository requires accepting the Team Explorer Everywhere End User License Agreement. This step is not required for building sources from Git repositories.",
     "",

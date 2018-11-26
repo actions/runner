@@ -9,6 +9,7 @@ using System.IO.Compression;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.VisualStudio.Services.Common;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
@@ -22,6 +23,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
     public sealed class TaskManager : AgentService, ITaskManager
     {
+        private const int _defaultFileStreamBufferSize = 4096;
+
+        //81920 is the default used by System.IO.Stream.CopyTo and is under the large object heap threshold (85k). 
+        private const int _defaultCopyBufferSize = 81920;
+
         public async Task DownloadAsync(IExecutionContext executionContext, IEnumerable<Pipelines.JobStep> steps)
         {
             ArgUtil.NotNull(executionContext, nameof(executionContext));
@@ -128,7 +134,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             // the task zip is large. It would be nice to print the localized name, but it is not
             // available from the reference included in the job message.
             executionContext.Output(StringUtil.Loc("DownloadingTask0", task.Name));
-            string zipFile;
+            string zipFile = string.Empty;
             var version = new TaskVersion(task.Version);
 
             //download and extract task in a temp folder and rename it on success
@@ -136,15 +142,63 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             try
             {
                 Directory.CreateDirectory(tempDirectory);
-                zipFile = Path.Combine(tempDirectory, string.Format("{0}.zip", Guid.NewGuid()));
-                //open zip stream in async mode
-                using (FileStream fs = new FileStream(zipFile, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 4096, useAsync: true))
+                int retryCount = 0;
+
+                // Allow up to 20 * 60s for any task to be downloaded from service. 
+                // Base on Kusto, the longest we have on the service today is over 850 seconds.
+                // Timeout limit can be overwrite by environment variable
+                if (!int.TryParse(Environment.GetEnvironmentVariable("VSTS_TASK_DOWNLOAD_TIMEOUT") ?? string.Empty, out int timeoutSeconds))
                 {
-                    using (Stream result = await taskServer.GetTaskContentZipAsync(task.Id, version, executionContext.CancellationToken))
+                    timeoutSeconds = 20 * 60;
+                }
+
+                while (retryCount < 3)
+                {
+                    using (var taskDownloadTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds)))
+                    using (var taskDownloadCancellation = CancellationTokenSource.CreateLinkedTokenSource(taskDownloadTimeout.Token, executionContext.CancellationToken))
                     {
-                        //81920 is the default used by System.IO.Stream.CopyTo and is under the large object heap threshold (85k). 
-                        await result.CopyToAsync(fs, 81920, executionContext.CancellationToken);
-                        await fs.FlushAsync(executionContext.CancellationToken);
+                        try
+                        {
+                            zipFile = Path.Combine(tempDirectory, string.Format("{0}.zip", Guid.NewGuid()));
+
+                            //open zip stream in async mode
+                            using (FileStream fs = new FileStream(zipFile, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: _defaultFileStreamBufferSize, useAsync: true))
+                            using (Stream result = await taskServer.GetTaskContentZipAsync(task.Id, version, taskDownloadCancellation.Token))
+                            {
+                                await result.CopyToAsync(fs, _defaultCopyBufferSize, taskDownloadCancellation.Token);
+                                await fs.FlushAsync(taskDownloadCancellation.Token);
+
+                                // download succeed, break out the retry loop.
+                                break;
+                            }
+                        }
+                        catch (OperationCanceledException) when (executionContext.CancellationToken.IsCancellationRequested)
+                        {
+                            Trace.Info($"Task download has been cancelled.");
+                            throw;
+                        }
+                        catch (Exception ex) when (retryCount < 2)
+                        {
+                            retryCount++;
+                            Trace.Error($"Fail to download task '{task.Id} ({task.Name}/{task.Version})' -- Attempt: {retryCount}");
+                            Trace.Error(ex);
+                            if (taskDownloadTimeout.Token.IsCancellationRequested)
+                            {
+                                // task download didn't finish within timeout
+                                executionContext.Warning(StringUtil.Loc("TaskDownloadTimeout", task.Name, timeoutSeconds));
+                            }
+                            else
+                            {
+                                executionContext.Warning(StringUtil.Loc("TaskDownloadFailed", task.Name, ex.Message));
+                            }
+                        }
+                    }
+
+                    if (String.IsNullOrEmpty(Environment.GetEnvironmentVariable("VSTS_TASK_DOWNLOAD_NO_BACKOFF")))
+                    {
+                        var backOff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(30));
+                        executionContext.Warning($"Back off {backOff.TotalSeconds} seconds before retry.");
+                        await Task.Delay(backOff);
                     }
                 }
 

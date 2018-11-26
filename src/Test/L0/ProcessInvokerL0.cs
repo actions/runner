@@ -4,54 +4,55 @@ using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
+using Microsoft.VisualStudio.Services.Agent.Util;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests
 {
     public sealed class ProcessInvokerL0
     {
 #if OS_WINDOWS
-        // [Fact]
-        // [Trait("Level", "L0")]
-        // [Trait("Category", "Common")]
-        // public async Task DefaultsToCurrentSystemOemEncoding()
-        // {
-        //     // This test verifies that the additional code pages encoding provider is registered.
-        //     // By default, only Unicode encodings, ASCII, and code page 28591 are supported. An
-        //     // additional provider must be registered to support the full set of encodings that
-        //     // were included in Full .NET prior to 4.6.
-        //     //
-        //     // For example, on an en-US box, this is required for loading the encoding for the
-        //     // default console output code page '437'. Without loading the correct encoding for
-        //     // code page IBM437, some characters cannot be translated correctly, e.g. write 'ç'
-        //     // from powershell.exe.
-        //     using (TestHostContext hc = new TestHostContext(this))
-        //     {
-        //         Tracing trace = hc.GetTrace();
-        //         var processInvoker = new ProcessInvoker();
-        //         processInvoker.Initialize(hc);
-        //         var stdout = new List<string>();
-        //         var stderr = new List<string>();
-        //         processInvoker.OutputDataReceived += (object sender, ProcessDataReceivedEventArgs e) =>
-        //         {
-        //             stdout.Add(e.Data);
-        //         };
-        //         processInvoker.ErrorDataReceived += (object sender, ProcessDataReceivedEventArgs e) =>
-        //         {
-        //             stderr.Add(e.Data);
-        //         };
-        //         await processInvoker.ExecuteAsync(
-        //             workingDirectory: "",
-        //             fileName: "powershell.exe",
-        //             arguments: $@"-NoLogo -Sta -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -Command ""Write-Host 'From STDOUT ''ç''' ; Write-Error 'From STDERR ''ç'''""",
-        //             environment: null,
-        //             requireExitCodeZero: false,
-        //             cancellationToken: CancellationToken.None);
-        //         Assert.Equal(1, stdout.Count);
-        //         Assert.Equal("From STDOUT 'ç'", stdout[0]);
-        //         Assert.True(stderr.Count > 0);
-        //         Assert.True(stderr[0].Contains("From STDERR 'ç'"));
-        //     }
-        // }
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public async Task DefaultsToCurrentSystemOemEncoding()
+        {
+            // This test verifies that the additional code pages encoding provider is registered.
+            // By default, only Unicode encodings, ASCII, and code page 28591 are supported. An
+            // additional provider must be registered to support the full set of encodings that
+            // were included in Full .NET prior to 4.6.
+            //
+            // For example, on an en-US box, this is required for loading the encoding for the
+            // default console output code page '437'. Without loading the correct encoding for
+            // code page IBM437, some characters cannot be translated correctly, e.g. write 'ç'
+            // from powershell.exe.
+            using (TestHostContext hc = new TestHostContext(this))
+            {
+                Tracing trace = hc.GetTrace();
+                var processInvoker = new ProcessInvokerWrapper();
+                processInvoker.Initialize(hc);
+                var stdout = new List<string>();
+                var stderr = new List<string>();
+                processInvoker.OutputDataReceived += (object sender, ProcessDataReceivedEventArgs e) =>
+                {
+                    stdout.Add(e.Data);
+                };
+                processInvoker.ErrorDataReceived += (object sender, ProcessDataReceivedEventArgs e) =>
+                {
+                    stderr.Add(e.Data);
+                };
+                await processInvoker.ExecuteAsync(
+                    workingDirectory: "",
+                    fileName: "powershell.exe",
+                    arguments: $@"-NoLogo -Sta -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -Command ""Write-Host 'From STDOUT ''ç''' ; Write-Error 'From STDERR ''ç'''""",
+                    environment: null,
+                    requireExitCodeZero: false,
+                    cancellationToken: CancellationToken.None);
+                Assert.Equal(1, stdout.Count);
+                Assert.Equal("From STDOUT 'ç'", stdout[0]);
+                Assert.True(stderr.Count > 0);
+                Assert.True(stderr[0].Contains("From STDERR 'ç'"));
+            }
+        }
 #endif
 
         [Fact]
@@ -68,8 +69,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 processInvoker.Initialize(hc);
 #if OS_WINDOWS
                 exitCode = await processInvoker.ExecuteAsync("", "cmd.exe", "/c \"dir >nul\"", null, CancellationToken.None);
-#endif
-#if (OS_OSX || OS_LINUX)
+#else
                 exitCode = await processInvoker.ExecuteAsync("", "bash", "-c echo .", null, CancellationToken.None);
 #endif
 
@@ -93,15 +93,23 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 var processInvoker = new ProcessInvokerWrapper();
                 processInvoker.Initialize(hc);
                 Stopwatch watch = Stopwatch.StartNew();
+                Task execTask;
 #if OS_WINDOWS
-                Task execTask = processInvoker.ExecuteAsync("", "cmd.exe", $"/c \"choice /T {SecondsToRun} /D y\"", null, tokenSource.Token);
-#endif
-#if (OS_OSX || OS_LINUX)
-                Task execTask = processInvoker.ExecuteAsync("", "bash", $"-c \"sleep {SecondsToRun}s\"", null, tokenSource.Token);
+                execTask = processInvoker.ExecuteAsync("", "cmd.exe", $"/c \"choice /T {SecondsToRun} /D y\"", null, tokenSource.Token);
+#else
+                execTask = processInvoker.ExecuteAsync("", "bash", $"-c \"sleep {SecondsToRun}s\"", null, tokenSource.Token);
 #endif
                 await Task.Delay(500);
                 tokenSource.Cancel();
-                await Task.WhenAny(execTask);
+                try
+                {
+                    await execTask;
+                }
+                catch (OperationCanceledException)
+                {
+                    trace.Info("Get expected OperationCanceledException.");
+                }
+
                 Assert.True(execTask.IsCompleted);
                 Assert.True(!execTask.IsFaulted);
                 Assert.True(execTask.IsCanceled);
