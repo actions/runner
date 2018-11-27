@@ -5,24 +5,24 @@ $script:capabilityName = "AzurePS"
 
 function Get-FromModulePath {
     [CmdletBinding()]
-    param([switch]$Classic)
+    param([string]$ModuleName)
 
-    # Determine which module to look for.
-    if ($Classic) {
-        $name = "Azure"
-    } else {
-        $name = "AzureRM"
+     # Valid ModuleName values are Az.Profile, AzureRM and Azure
+     # We are looking for Az.Profile module because "Get-Module -Name Az" is not working due to a known PowerShell bug.
+    if (($ModuleName -ne "Az.Profile") -and ($ModuleName -ne "AzureRM") -and ($ModuleName -ne "Azure")) {
+        Write-Host "Attempting to find invalid module."
+        return $false
     }
 
     # Attempt to resolve the module.
-    Write-Host "Attempting to find the module '$name' from the module path."
-    $module = Get-Module -Name $name -ListAvailable | Select-Object -First 1
+    Write-Host "Attempting to find the module '$ModuleName' from the module path."
+    $module = Get-Module -Name $ModuleName -ListAvailable | Select-Object -First 1
     if (!$module) {
         Write-Host "Not found."
         return $false
     }
 
-    if (!$Classic) {
+    if ($ModuleName -eq "AzureRM") {
         # For AzureRM, validate the AzureRM.profile module can be found as well.
         $profileName = "AzureRM.profile"
         Write-Host "Attempting to find the module $profileName"
@@ -89,7 +89,8 @@ function Get-FromSdkPath {
 }
 
 Write-Host "Env:PSModulePath: '$env:PSModulePath'"
-$null = (Get-FromModulePath -Classic:$false) -or
+$null = (Get-FromModulePath -ModuleName:"Az.Profile") -or
+    (Get-FromModulePath -ModuleName:"AzureRM") -or
     (Get-FromSdkPath -Classic:$false) -or
-    (Get-FromModulePath -Classic:$true) -or
+    (Get-FromModulePath -ModuleName:"Azure") -or
     (Get-FromSdkPath -Classic:$true)
