@@ -176,6 +176,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
         private TestSuiteSummary ReadTestSuite(XmlNode rootNode, IdentityRef runUserIdRef)
         {
             TestSuiteSummary testSuiteSummary = new TestSuiteSummary(Name);
+            
+            XmlNodeList innerTestSuiteNodeList = rootNode.SelectNodes("./testsuite");
+            if(innerTestSuiteNodeList != null)
+            {
+                foreach(XmlNode innerTestSuiteNode in innerTestSuiteNodeList)
+                {
+                    TestSuiteSummary innerTestSuiteSummary = ReadTestSuite(innerTestSuiteNode , runUserIdRef);
+                    testSuiteSummary.Results.AddRange(innerTestSuiteSummary.Results);
+                }
+            }
+            
             TimeSpan totalTestSuiteDuration = TimeSpan.Zero;
             TimeSpan totalTestCaseDuration = TimeSpan.Zero;
 
