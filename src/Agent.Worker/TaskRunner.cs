@@ -128,9 +128,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     runtimeVariables = new Variables(HostContext, variableCopy, out expansionWarnings);
                     expansionWarnings?.ForEach(x => ExecutionContext.Warning(x));
                 }
-                else if (handlerData is NodeHandlerData || handlerData is PowerShell3HandlerData)
+                else if (handlerData is NodeHandlerData || handlerData is Node10HandlerData || handlerData is PowerShell3HandlerData)
                 {
-                    // Only node handler and powershell3 handler support running inside container. 
+                    // Only the node, node10, and powershell3 handlers support running inside container. 
                     // Make sure required container is already created.
                     ArgUtil.NotNullOrEmpty(ExecutionContext.Container.ContainerId, nameof(ExecutionContext.Container.ContainerId));
                     var containerStepHost = HostContext.CreateService<IContainerStepHost>();

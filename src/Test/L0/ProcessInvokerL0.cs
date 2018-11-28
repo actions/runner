@@ -114,9 +114,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 Assert.True(!execTask.IsFaulted);
                 Assert.True(execTask.IsCanceled);
                 watch.Stop();
-                var elapsedSeconds = watch.ElapsedMilliseconds / 1000;
-                //if cancellation fails, then execution time is more than 10 seconds
-                Assert.True(elapsedSeconds < SecondsToRun / 2, $"cancellation failed, because task took too long to run. {elapsedSeconds}");
+                long elapsedSeconds = watch.ElapsedMilliseconds / 1000;
+
+#if ARM
+                // if cancellation fails, then execution time is more than 15 seconds
+                // longer time to compensate for a slower ARM environment (e.g. Raspberry Pi)
+                long expectedSeconds = (SecondsToRun * 3) / 4;
+#else
+                // if cancellation fails, then execution time is more than 10 seconds
+                long expectedSeconds = SecondsToRun / 2;
+#endif
+
+                Assert.True(elapsedSeconds <= expectedSeconds, $"cancellation failed, because task took too long to run. {elapsedSeconds}");
             }
         }
 #endif

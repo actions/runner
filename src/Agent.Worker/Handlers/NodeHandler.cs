@@ -13,7 +13,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
     [ServiceLocator(Default = typeof(NodeHandler))]
     public interface INodeHandler : IHandler
     {
-        NodeHandlerData Data { get; set; }
+        // Data can be of these two types: NodeHandlerData, and Node10HandlerData
+        BaseNodeHandlerData Data { get; set; }
     }
 
     public sealed class NodeHandler : Handler, INodeHandler
@@ -38,7 +39,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             "};"
         };
 
-        public NodeHandlerData Data { get; set; }
+        public BaseNodeHandlerData Data { get; set; }
 
         public async Task RunAsync()
         {
@@ -107,8 +108,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             }
             else
             {
-                file = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), "node", "bin", $"node{IOUtil.ExeExtension}");
+                bool useNode10 = ExecutionContext.Variables.GetBoolean("AGENT_USE_NODE10") ??
+                    StringUtil.ConvertToBoolean(System.Environment.GetEnvironmentVariable("AGENT_USE_NODE10"), false);
+                bool taskHasNode10Data = Data is Node10HandlerData;
+                string nodeFolder = (taskHasNode10Data || useNode10) ? "node10" : "node";
+
+                Trace.Info($"Task.json has node10 handler data: {taskHasNode10Data}, use node10 for node tasks: {useNode10}");
+
+                file = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), nodeFolder, "bin", $"node{IOUtil.ExeExtension}");
             }
+            
             // Format the arguments passed to node.
             // 1) Wrap the script file path in double quotes.
             // 2) Escape double quotes within the script file path. Double-quote is a valid

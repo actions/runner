@@ -273,6 +273,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         private readonly List<HandlerData> _all = new List<HandlerData>();
         private AzurePowerShellHandlerData _azurePowerShell;
         private NodeHandlerData _node;
+        private Node10HandlerData _node10;
         private PowerShellHandlerData _powerShell;
         private PowerShell3HandlerData _powerShell3;
         private PowerShellExeHandlerData _powerShellExe;
@@ -309,6 +310,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             set
             {
                 _node = value;
+                Add(value);
+            }
+        }
+
+        public Node10HandlerData Node10
+        {
+            get
+            {
+                return _node10;
+            }
+
+            set
+            {
+                _node10 = value;
                 Add(value);
             }
         }
@@ -465,10 +480,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         }
     }
 
-    public sealed class NodeHandlerData : HandlerData
+    public abstract class BaseNodeHandlerData : HandlerData
     {
-        public override int Priority => 1;
-
         public string WorkingDirectory
         {
             get
@@ -483,9 +496,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         }
     }
 
-    public sealed class PowerShell3HandlerData : HandlerData
+    public sealed class NodeHandlerData : BaseNodeHandlerData
     {
         public override int Priority => 2;
+    }
+
+    public sealed class Node10HandlerData : BaseNodeHandlerData
+    {
+        public override int Priority => 1;
+    }
+
+    public sealed class PowerShell3HandlerData : HandlerData
+    {
+        public override int Priority => 3;
     }
 
     public sealed class PowerShellHandlerData : HandlerData
@@ -503,7 +526,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             }
         }
 
-        public override int Priority => 3;
+        public override int Priority => 4;
 
         public string WorkingDirectory
         {
@@ -534,7 +557,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             }
         }
 
-        public override int Priority => 4;
+        public override int Priority => 5;
 
         public string WorkingDirectory
         {

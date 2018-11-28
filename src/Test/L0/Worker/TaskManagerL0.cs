@@ -393,6 +393,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             ""target"": ""Some Node target"",
             ""extraNodeArg"": ""Extra node arg value""
         },
+        ""Node10"": {
+            ""target"": ""Some Node10 target"",
+            ""extraNodeArg"": ""Extra node10 arg value""
+        },
         ""Process"": {
             ""target"": ""Some process target"",
             ""argumentFormat"": ""Some process argument format"",
@@ -432,10 +436,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
 
 #if OS_WINDOWS
                 // Process handler should only be deserialized on Windows.
-                Assert.Equal(2, definition.Data.Execution.All.Count);
+                Assert.Equal(3, definition.Data.Execution.All.Count);
 #else
-                // Only Node handler should be deserialized on non-Windows.
-                Assert.Equal(1, definition.Data.Execution.All.Count);
+                // Only the Node and Node10 handlers should be deserialized on non-Windows.
+                Assert.Equal(2, definition.Data.Execution.All.Count);
 #endif
 
                 // Node handler should always be deserialized.
@@ -443,10 +447,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                 Assert.Equal(definition.Data.Execution.Node, definition.Data.Execution.All[0]);
                 Assert.Equal("Some Node target", definition.Data.Execution.Node.Target);
 
+                // Node10 handler should always be deserialized.
+                Assert.NotNull(definition.Data.Execution.Node10); // execution.Node10
+                Assert.Equal(definition.Data.Execution.Node10, definition.Data.Execution.All[1]);
+                Assert.Equal("Some Node10 target", definition.Data.Execution.Node10.Target);
+
 #if OS_WINDOWS
                 // Process handler should only be deserialized on Windows.
                 Assert.NotNull(definition.Data.Execution.Process); // execution.Process
-                Assert.Equal(definition.Data.Execution.Process, definition.Data.Execution.All[1]);
+                Assert.Equal(definition.Data.Execution.Process, definition.Data.Execution.All[2]);
                 Assert.Equal("Some process argument format", definition.Data.Execution.Process.ArgumentFormat);
                 Assert.NotNull(definition.Data.Execution.Process.Platforms);
                 Assert.Equal(1, definition.Data.Execution.Process.Platforms.Length);
