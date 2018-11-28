@@ -36,7 +36,17 @@ then
         command -v apt
         if [ $? -eq 0 ]
         then
-            apt update && apt install -y liblttng-ust0 libcurl3 libkrb5-3 zlib1g
+            apt update && apt install -y liblttng-ust0 libkrb5-3 zlib1g
+            if [ $? -ne 0 ]
+            then
+                echo "'apt' failed with exit code '$?'"
+                print_errormessage
+                exit 1
+            fi
+            
+            # ubuntu 18 uses libcurl4
+            # ubuntu 14, 16 and other linux use libcurl3
+            apt install -y libcurl3 || apt install -y libcurl4
             if [ $? -ne 0 ]
             then
                 echo "'apt' failed with exit code '$?'"
@@ -66,7 +76,17 @@ then
             command -v apt-get
             if [ $? -eq 0 ]
             then
-                apt-get update && apt-get install -y liblttng-ust0 libcurl3 libkrb5-3 zlib1g
+                apt-get update && apt-get install -y liblttng-ust0 libkrb5-3 zlib1g
+                if [ $? -ne 0 ]
+                then
+                    echo "'apt-get' failed with exit code '$?'"
+                    print_errormessage
+                    exit 1
+                fi
+                
+                # ubuntu 18 uses libcurl4
+                # ubuntu 14, 16 and other linux use libcurl3
+                apt-get install -y libcurl3 || apt-get install -y libcurl4
                 if [ $? -ne 0 ]
                 then
                     echo "'apt-get' failed with exit code '$?'"
