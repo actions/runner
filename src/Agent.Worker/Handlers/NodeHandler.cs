@@ -151,6 +151,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             {
                 ExecutionContext.Debug("The task was marked as \"done\", but the process has not closed after 5 seconds. Treating the task as complete.");
             }
+            else
+            {
+                await step;
+            }
         }
 
         private void OnDataReceived(object sender, ProcessDataReceivedEventArgs e)
