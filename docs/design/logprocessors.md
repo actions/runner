@@ -10,14 +10,15 @@ Performance and reliability will be critical.
 
 ### Publishing Test Results
 
-In addition to our tasks, testing tools can be invoked from command lines and 
-Scan the output looking for well known output patterns and publish test results to our test management service.  In addition many test frameworks do not have reporters by default.
+In addition to our tasks, testing tools can be invoked from command lines. Since many test frameworks do not have reporters by default, we need to scan the output looking for well known output patterns and publish test results to our test management service. We will also search for well known test result file on disk and publish those to our test management service.
 
-These test tools can be called from our tasks but also via command lines and scripts such as powershell, shellscripts, python, javascript or any scripting technology.  They can also be called via `npm test` which is simply an indirection to a set of cmd lines and script calls. 
+These test tools can be called from our tasks but also via command lines and scripts such as `PowerShell`, `ShellScripts`, `python`, `javascript` or any scripting technology.  They can also be called via `npm test` which is simply an indirection to a set of cmd lines and script calls. 
 
 ### Telemetry on Tool Usage
 
-It is useful to know the usage and trends of certain scenarios being leverage via Azure Pipelines.  For example, we may want to know the numbers and trends of packages published to npm or nuget, docker images published or kubernetes configurations applied using our pipelines.
+It is useful to know the usage and trends of certain scenarios being leverage via Azure Pipelines.  For example, we may want to know the numbers and trends of packages published to `npm` or `nuget`, docker images published or kubernetes configurations applied using our pipelines.
+
+Since we redirect all STDOUT/STDERR, we can identify tool invocation base on each tools output pattern.
 
 Once again, these may be called via tasks, cmd lines, scripts and even runners like `npm run publish`.
 
@@ -29,11 +30,58 @@ Output could be processed and sent to another service for storage and processing
 
 We will introduce a log processing plugins very similar to other agent plugins.
 
-Currently the task handlers output is sent to a command pluging if the line starts with ##vso.  Else, it's passed to the agents logger which sends to the live console circular buffer and permanent log storage in pages.
+Currently the Worker process will generate an `IList<IStep> steps` base on the job message server send down. Each `IStep` contains an `IExecutionContext`, the execution context is the core component which sends final output message (after mask secrets) to the live console circular buffer and permanent log storage in pages. In addition, `IExecutionContext` will also send the output message to the `log plugin host` through STDIN. 
 
-In a companion out of proc log processing extensibility point, output can be processed in parallel with our log processing.  Plugins will be loaded in-proc of the log host and will be written in net core loadable by the host.  It will not block our live console and log publishing.
+In a companion out of proc log processing extensibility point, output can be processed in parallel with our log processing.  Since not keeping up with stdin can cause it to fail.  In order to avoid having every plugin to get that right (and to reduce risk), we will create one `log plugin host` which buffers STDIN.
 
-Not keeping up with stdin can cause it to fail.  In order to avoid having every plugin to get that right (and to reduce risk), we will create one log processing host which buffers
+All log plugins are best effort, plugins can't change the result of customer's job.
+Plugin can produce outputs back to user, but it can't log error/warning issues back to job.
+
+Plugins will be written in net core and loaded in-proc of the `log plugin host`. It will not block our live console and log publishing.
+
+Each plugin needs to implement the following interface:
+```C#
+public interface IAgentLogPlugin
+{
+  // Used for prefix outputs
+  string FriendlyName { get;}
+
+  // Invoke on every line of the log output
+  Task ProcessLineAsync(IAgentLogPluginContext context, TaskStepDefinitionReference step, string line);
+  
+  // Invoke after all tasks finished on worker side and all output lines finished process on plugin.
+  Task FinalizeAsync(IAgentLogPluginContext context);
+}
+```
+
+The context will looks like:
+```C#
+public interface IAgentLogPluginContext
+{
+  // SystemConnection back to Azure DevOps Service
+  public VssConnection VssConnection { get; }
+
+  // Job variables
+  public IDictionary<String, VariableValue> Variables { get; }
+
+  // Job endpoints
+  public IList<ServiceEndpoint> Endpoints { get; }
+
+  // Job repositories
+  public IList<RepositoryResource> Repositories { get; }
+
+  // Tasks that's going to run
+  public IDictionary<Guid, TaskStepDefinitionReference> Steps { get; }
+
+  // goes to agent diag log
+  void Trace(string message);
+
+  // goes to user's build log in `Job Finalize` node
+  void Output(string message);
+}
+```
+
+General flow looks like:
 
 ![layers](res/AgentLogProcessors.png)
 
@@ -41,31 +89,74 @@ Not keeping up with stdin can cause it to fail.  In order to avoid having every 
 
 To ensure log processing plugins do not block stdin, the host will take care of buffering output, processing that buffer or queue of log lines and processing that queue.  That buffering may start out as in memory similar to our other queues but we could consider backing it by files if required.
 
-As it's processed each plugin will be called with `line()`.  That will be a blocking call per plugin which would ideally do light processing or alter internal tracking state and return.
+As it's processed each plugin will be called with `ProcessLineAsync(AgentLogPluginContext context, TaskStepDefinitionReference step, string line)`.  That will be a blocking call per plugin which would ideally do light processing or alter internal tracking state and return.
 
-If a plugin writes transient state data, it should do it in the agent temp folder so it gets cleaned up automatically by the agent.  To encourage this, the host plugin will set a property on the plugin where to write transient state if needed.
+If a plugin writes transient state data, it should do it in the agent temp folder so it gets cleaned up automatically by the agent.  To encourage this, the host plugin will provide context that contains all job variables worker setup at the beginning of the build, so plugin can get the temp folder base on `$(Agent.TempDirectory)`.
 
-It is a requirement that plugins process output in a stream sax style processing style.  Buffering the full log and then processing will not be efficient and may get you flagged in telemetry or terminated.
+It is a requirement that plugins process output in a stream SAX style processing style.  Buffering the full log and then processing will not be efficient and may get you flagged in telemetry or terminated by the plugin host.
 
-Each plugin will profer a friendly user message on it's role used in user feedback (see below).
+Each plugin will prefer a friendly user message on it's role used in user feedback (see below).
 
 The processing host will also have deep tracing in agent diagnostics.
 
 ## Lifetime
 
-We will call each plugin waiting for it to complete processing.  Clear output in the users live console and log will make it clear that we are waiting on "processing test results", "processing telemetry".  This will be done **in the context of the job**.  That feedback will hang off of a finishing up job style step.
+Worker will start the log processing plugin host at the end of `Job Initialize` along with a `LogPluginHostContext` send through STDIN in JSON format.
 
-We will explictly avoid long investigation that we've had in the past where it appears a tasks work is complete (the tool outputted done) but the tasks appears to hang for minutes when in reality something is doing processing before the task or job can complete.
+
+```C#
+public class LogPluginHostContext
+{
+  // Job variables
+  public IDictionary<String, VariableValue> Variables { get; }
+
+  // Job endpoints
+  public IList<ServiceEndpoint> Endpoints { get; }
+
+  // Job repositories
+  public IList<RepositoryResource> Repositories { get; }
+
+  // Tasks that's going to run
+  public IDictionary<Guid, TaskStepDefinitionReference> Steps { get; }
+}
+```
+
+After plugin host started, the plugin host will start async plugin process task for each plugin in separate threads. Then, the plugin host will sit in a loop of reading STDIN and redirect the input to each plugin.
+
+When worker finish running all job steps (tasks defined by user in their definition), the worker will enter `Job Finalize` mode. Worker will send a special string `##vso[logPlugin.finish]` to the plugin host, so each plugin can start their finalize process. The worker will start stream output from plugin host to user, so user can figure out what's going on.
+
+```C#
+
+AgentLogPluginHost pluginHost = new AgentLogPluginHost(context, plugins);
+Task pluginHostTask = pluginHost.Run();
+while(true)
+{
+  var input = Console.ReadLine();
+  if(string.Equals(input, "##vso[loglugin.finish]"))
+  {
+    pluginHost.Finish();
+    break;
+  }
+  else
+  {
+    pluginHost.EnqueueConsoleOutput(input);
+  }
+}
+
+await pluginHostTask;
+```
 
 ## Circuit Breaking
 
-The worker will monitor the log host process.  If it crashes or returns a non success code, telemetry will be sent.  
+The worker will monitor the log host process.  If it crashes or returns a non success code, report the error to log.  
 
 The agent and worker should continue reliably in the even of any issues with side processing.
 
-Question: Can the log host monitor memory and CPU usage of itself and circuit break itself?  Ideally yes.  Investigate across platforms supported.
+The plugin host will short-circuit the plugin if the plugin is not able to catch up processing outputs.
 
-## Telemetry
+For now, we will circuit break on memory usage, if the plugin has more than 10MB pending strings for more than 100 sec, we will stop let that plugin process anymore.
+
+## Telemetry (TODO)
 
 We need telemetry on:  
 
@@ -76,7 +167,7 @@ We need telemetry on:
 
 ## Testing  
 
-Since this work has the potential to be impactful on performance and reliability we will do heavy L0 testing around both the positive cases and the negative scenarios (getting circuit breaks etc...).  In the negative case testing, we can simply set the threshholds extremely low.  For exampleset memory consumption or processor utilization very low to avoid taking down the box running the tests.  We are testing the circuit breaking functionality.
+Since this work has the potential to be impactful on performance and reliability we will do heavy L0 testing around both the positive cases and the negative scenarios (getting circuit breaks etc...).  In the negative case testing, we can simply set the thresholds extremely low.  For example, set memory consumption or processor utilization very low to avoid taking down the box running the tests.  We are testing the circuit breaking functionality.
 
 Each plugin should be heavily tested in L0 fashion by contributing a set of output files and baseline results.  The tests will feed the output test files into the log processing host with the plugin writing it's conclusions to an output file that we baseline and automate.
 
