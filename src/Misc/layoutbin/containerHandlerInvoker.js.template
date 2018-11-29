@@ -9,6 +9,7 @@ process.stdin.on('end', function () {
     var handler = stdinData.handler;
     var handlerArg = stdinData.args;
     var handlerWorkDir = stdinData.workDir;
+    var prependPath = stdinData.prependPath;
 
     console.log("##vso[task.debug]Handler: " + handler);
     console.log("##vso[task.debug]HandlerArg: " + handlerArg);
@@ -18,6 +19,7 @@ process.stdin.on('end', function () {
         process.env[key] = stdinData.environment[key];
     });
 
+    var currentPath = process.env['PATH'];
     var options = {
         stdio: 'inherit',
         cwd: handlerWorkDir
@@ -25,6 +27,29 @@ process.stdin.on('end', function () {
     if (process.platform == 'win32') {
         options.argv0 = `"${handler}"`;
         options.windowsVerbatimArguments = true;
+
+        if (prependPath && prependPath.length > 0) {
+            if (currentPath && currentPath.length > 0) {
+                process.env['PATH'] = prependPath + ';' + currentPath;
+            }
+            else {
+                process.env['PATH'] = prependPath;
+            }
+        }
+    }
+    else {
+        if (prependPath && prependPath.length > 0) {
+            if (currentPath && currentPath.length > 0) {
+                process.env['PATH'] = prependPath + ':' + currentPath;
+            }
+            else {
+                process.env['PATH'] = prependPath;
+            }
+        }
+    }
+
+    if (prependPath && prependPath.length > 0) {
+        console.log("##vso[task.debug]Prepend Path: " + process.env['PATH']);
     }
 
     var launch = spawn(handler, [handlerArg], options);

@@ -4,7 +4,6 @@ using System.IO;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using Microsoft.VisualStudio.Services.Agent.Worker.Container;
 using Microsoft.VisualStudio.Services.WebApi;
@@ -33,6 +32,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
     public interface IContainerStepHost : IStepHost
     {
         ContainerInfo Container { get; set; }
+        string PrependPath { get; set; }
     }
 
     [ServiceLocator(Default = typeof(DefaultStepHost))]
@@ -79,6 +79,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
     public sealed class ContainerStepHost : AgentService, IContainerStepHost
     {
         public ContainerInfo Container { get; set; }
+        public string PrependPath { get; set; }
         public event EventHandler<ProcessDataReceivedEventArgs> OutputDataReceived;
         public event EventHandler<ProcessDataReceivedEventArgs> ErrorDataReceived;
 
@@ -137,6 +138,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
                 ExecutionHandlerWorkingDirectory = workingDirectory,
                 ExecutionHandlerArguments = arguments,
                 ExecutionHandlerEnvironment = environment,
+                ExecutionHandlerPrependPath = PrependPath
             };
 
             // copy the intermediate script (containerHandlerInvoker.js) into Agent_TempDirectory
@@ -206,6 +208,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
 
             [JsonProperty("environment")]
             public IDictionary<string, string> ExecutionHandlerEnvironment { get; set; }
+
+            [JsonProperty("prependPath")]
+            public string ExecutionHandlerPrependPath { get; set; }
         }
     }
 }
