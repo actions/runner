@@ -1,22 +1,18 @@
 ## Features
-  - Add support for ##vso[task.complete done=true;]. #1853
-  - Publish sub test result attachment #1883
-  - Added AGENT_ALLOW_RUNASROOT "flag" to allow the agent to be run as root interactively #1878
+  - Allow the container to bring its own Node.js #1979
+  - Populate AzurePS demand if Az module is installed on Agent machine #1984
+  - Add agent support for the Node v10 runtime #1972
   
 ## Bugs
-  - Set service name correctly when using Azure Pipelines urls #1846
-  - Fix container image name when use private docker registry. #1857
-  - Inherit system.culture in plugin.host, use UTF-8 as STDOUT encoding. #1861
-  - Use more unique container name. #1888
-  - Removed the empty directory check for Pipeline Artifact #1905
-  - Ignore STDERR for docker CLI. #1900
-  - Allow GIT_TRACE, use GIT_LFS_SKIP_SMUDGE. #1901
-  - Fix ##debug escaping issue for container. #1908
-  - Fix pinvoke for NtQueryInformationProcess (process env read). #1919
+  - Fix null ref caused by build.syncsource=false. #1904
+  - Agent changes to use HTTP 1.1 on Linux and OSX #1970 
+  - Create container/network with label, best effort clean them up. #1915
+  - Add retry for task zip download. #1926
+  - Fix for Nested TestSuite in JunitResultReader #1978
+  - Let container job handle prepends path correctly. #1977
 
 ## Misc
-  - Authenticode sign scripts packaged with agent. #1866
-  - Add a link to the Resource Utilization page whenever builds get throttled #1886
+  - Update installdependencies.sh to install correct version of libcurl #1991
 
 ## Agent Downloads  
 
