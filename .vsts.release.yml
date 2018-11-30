@@ -156,6 +156,7 @@ jobs:
       ConnectedServiceName: VSTSAgentESRP
       FolderPath: '_layout'
       Pattern: |
+        bin\Ben.Demystifier.dll
         bin\Newtonsoft.Json.dll
         bin\YamlDotNet.dll
         bin\DotNet.Glob.dll
@@ -380,6 +381,7 @@ jobs:
       ConnectedServiceName: VSTSAgentESRP
       FolderPath: '_layout'
       Pattern: |
+        bin\Ben.Demystifier.dll
         bin\Newtonsoft.Json.dll
         bin\YamlDotNet.dll
         bin\DotNet.Glob.dll
