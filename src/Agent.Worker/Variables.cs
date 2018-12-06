@@ -142,6 +142,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         public int? Release_Parallel_Download_Limit => GetInt(Constants.Variables.Release.ReleaseParallelDownloadLimit);
 
+#if OS_WINDOWS
+        public bool Retain_Default_Encoding => GetBoolean(Constants.Variables.Agent.RetainDefaultEncoding) ?? false;
+#else
+        public bool Retain_Default_Encoding = true;
+#endif
+
         public string System_CollectionId => Get(Constants.Variables.System.CollectionId);
 
         public bool? System_Debug => GetBoolean(Constants.Variables.System.Debug);

@@ -60,14 +60,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             // A non-zero exit code indicates infrastructural failure.
             // Task failure should be communicated over STDOUT using ## commands.
             await StepHost.ExecuteAsync(workingDirectory: StepHost.ResolvePathForStepHost(scriptDirectory),
-                                              fileName: powerShellExe,
-                                              arguments: powerShellExeArgs,
-                                              environment: Environment,
-                                              requireExitCodeZero: true,
-                                              outputEncoding: null,
-                                              killProcessOnCancel: false,
-                                              cancellationToken: ExecutionContext.CancellationToken);
-
+                                        fileName: powerShellExe,
+                                        arguments: powerShellExeArgs,
+                                        environment: Environment,
+                                        requireExitCodeZero: true,
+                                        outputEncoding: null,
+                                        killProcessOnCancel: false,
+                                        inheritConsoleHandler: !ExecutionContext.Variables.Retain_Default_Encoding,
+                                        cancellationToken: ExecutionContext.CancellationToken);
         }
 
         private void OnDataReceived(object sender, ProcessDataReceivedEventArgs e)

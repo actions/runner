@@ -25,6 +25,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
                                bool requireExitCodeZero,
                                Encoding outputEncoding,
                                bool killProcessOnCancel,
+                               bool inheritConsoleHandler,
                                CancellationToken cancellationToken);
     }
 
@@ -57,6 +58,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
                                             bool requireExitCodeZero,
                                             Encoding outputEncoding,
                                             bool killProcessOnCancel,
+                                            bool inheritConsoleHandler,
                                             CancellationToken cancellationToken)
         {
             using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
@@ -71,6 +73,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
                                                          requireExitCodeZero: requireExitCodeZero,
                                                          outputEncoding: outputEncoding,
                                                          killProcessOnCancel: killProcessOnCancel,
+                                                         contentsToStandardIn: null,
+                                                         inheritConsoleHandler: inheritConsoleHandler,
                                                          cancellationToken: cancellationToken);
             }
         }
@@ -123,6 +127,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
                                             bool requireExitCodeZero,
                                             Encoding outputEncoding,
                                             bool killProcessOnCancel,
+                                            bool inheritConsoleHandler,
                                             CancellationToken cancellationToken)
         {
             // make sure container exist.
@@ -191,6 +196,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
                                                          outputEncoding: outputEncoding,
                                                          killProcessOnCancel: killProcessOnCancel,
                                                          contentsToStandardIn: new List<string>() { JsonUtility.ToString(payload) },
+                                                         inheritConsoleHandler: inheritConsoleHandler,
                                                          cancellationToken: cancellationToken);
             }
         }

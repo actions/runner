@@ -24,10 +24,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             var expressionManager = new ExpressionManager();
             expressionManager.Initialize(hc);
             hc.SetSingleton<IExpressionManager>(expressionManager);
+            Dictionary<string, VariableValue> variablesToCopy = new Dictionary<string, VariableValue>();
+            variablesToCopy.Add(Constants.Variables.Agent.RetainDefaultEncoding, new VariableValue("true", false));
             List<string> warnings;
             _variables = new Variables(
                 hostContext: hc,
-                copy: new Dictionary<string, VariableValue>(),
+                copy: variablesToCopy,
                 warnings: out warnings);
             _ec = new Mock<IExecutionContext>();
             _ec.SetupAllProperties();
