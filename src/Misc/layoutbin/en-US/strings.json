@@ -260,6 +260,7 @@
   "ExpectedMappingServerPath": "Expected mapping[{0}] server path: '{1}'. Actual: '{2}'",
   "Failed": "Failed: ",
   "FailedDeletingTempDirectory0Message1": "Failed to delete temporary directory '{0}'. {1}",
+  "FailedTestsInResults": "There are one or more test failures detected in result files. Detailed summary of published test results can be viewed in the Tests tab.",
   "FailedToAddTags": "Failed to apply tags to agent. Try again or ctrl-c to quit. Alternatively you may go to deployment group web page to add tags",
   "FailedToConnect": "Failed to connect.  Try again or ctrl-c to quit",
   "FailedToDeleteTempScript": "Failed to delete temporary inline script file '{0}'. {1}",

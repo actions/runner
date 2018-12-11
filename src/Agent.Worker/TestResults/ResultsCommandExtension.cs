@@ -7,6 +7,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.Services.WebApi;
+using Microsoft.TeamFoundation.DistributedTask.WebApi;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
 {
@@ -22,6 +23,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
         private string _runTitle;
         private bool _publishRunLevelAttachments;
         private int _runCounter = 0;
+
+        private bool _failTaskOnFailedTests;
+
+        private bool _isTestRunOutcomeFailed = false;
         private readonly object _sync = new object();
         private string _testRunSystem;
         private const string _testRunSystemCustomFieldName = "TestRunSystem";
@@ -94,6 +99,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                 commandContext.Task = PublishToNewTestRunPerTestResultFileAsync(_testResultFiles, publisher, runContext, resultReader.Name, PublishBatchSize, context.CancellationToken);
             }
             _executionContext.AsyncCommands.Add(commandContext);
+
+            if(_isTestRunOutcomeFailed)
+            {
+                _executionContext.Result = TaskResult.Failed;
+                _executionContext.Error(StringUtil.Loc("FailedTestsInResults"));
+            }
         }
 
         /// <summary>
@@ -119,6 +130,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                     //test case results
                     _executionContext.Debug(StringUtil.Format("Reading test results from file '{0}'", resultFile));
                     TestRunData resultFileRunData = publisher.ReadResultsFromFile(runContext, resultFile);
+
+                    if(_failTaskOnFailedTests)
+                    {
+                        _isTestRunOutcomeFailed = GetTestRunOutcome(resultFileRunData);
+                    }
 
                     if (resultFileRunData != null && resultFileRunData.Results != null && resultFileRunData.Results.Length > 0)
                     {
@@ -249,6 +265,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                         _executionContext.Debug(StringUtil.Format("Reading test results from file '{0}'", resultFile));
                         TestRunData testRunData = publisher.ReadResultsFromFile(runContext, resultFile, runName);
 
+                        if(_failTaskOnFailedTests)
+                        {
+                            _isTestRunOutcomeFailed = GetTestRunOutcome(testRunData);
+                        }
+
                         cancellationToken.ThrowIfCancellationRequested();
 
                         if (testRunData != null && testRunData.Results != null && testRunData.Results.Length > 0)
@@ -279,6 +300,23 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
             {
                 return StringUtil.Format("{0}_{1}", _runTitle, ++_runCounter);
             }
+        }
+
+        /// <summary>
+        /// Reads a list testRunData Object and returns true if any test case outcome is failed
+        /// </summary>
+        /// <param name="testRunDataList"></param>
+        /// <returns></returns>
+        private bool GetTestRunOutcome(TestRunData testRunData)
+        {
+            foreach(var testCaseResultData in testRunData.Results)
+            {
+                if(testCaseResultData.Outcome == TestOutcome.Failed.ToString() || testCaseResultData.Outcome == TestOutcome.Aborted.ToString())
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         private IResultReader GetTestResultReader(string testRunner)
@@ -368,6 +406,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                 _testRunSystem = string.Empty;
             }
 
+            string failTaskInput;
+            eventProperties.TryGetValue(PublishTestResultsEventProperties.FailTaskOnFailedTests, out failTaskInput);
+            if (string.IsNullOrEmpty(failTaskInput) || !bool.TryParse(failTaskInput, out _failTaskOnFailedTests))
+            {
+                // if no proper input is provided by default fail task is false
+                _failTaskOnFailedTests = false;
+            }
+
             string publishRunAttachmentsInput;
             eventProperties.TryGetValue(PublishTestResultsEventProperties.PublishRunAttachments, out publishRunAttachmentsInput);
             if (string.IsNullOrEmpty(publishRunAttachmentsInput) || !bool.TryParse(publishRunAttachmentsInput, out _publishRunLevelAttachments))
@@ -404,5 +450,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
         public static readonly string PublishRunAttachments = "publishRunAttachments";
         public static readonly string ResultFiles = "resultFiles";
         public static readonly string TestRunSystem = "testRunSystem";
+        public static readonly string FailTaskOnFailedTests = "failTaskOnFailedTests";
     }
 }
