@@ -1,5 +1,5 @@
-﻿using Microsoft.TeamFoundation.Common.Internal;
-using Microsoft.TeamFoundation.TestManagement.WebApi;
+﻿using Microsoft.TeamFoundation.TestManagement.WebApi;
+using Microsoft.VisualStudio.Services.Agent.Util;
 using Microsoft.VisualStudio.Services.WebApi;
 using System;
 using System.Data.SqlTypes;
@@ -465,6 +465,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
         {
             List<TestCaseSubResultData> results = new List<TestCaseSubResultData>();
 
+            if (level > TestManagementConstants.maxHierarchyLevelForSubresults)
+            {
+                _executionContext.Warning(StringUtil.Loc("MaxHierarchyLevelReached", TestManagementConstants.maxHierarchyLevelForSubresults));
+                return results;
+            }
             object sync = new object();
             var resultXmlNodes = resultsNodes.Cast<XmlNode>();
             

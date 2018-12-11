@@ -332,6 +332,8 @@
   "LocalClockSkewed": "The local machine's clock may be out of sync with the server time by more than five minutes. Please sync your clock with your domain or internet time and try again.",
   "LocalSystemAccountNotFound": "Cannot find local system account",
   "Maintenance": "Maintenance",
+  "MaxHierarchyLevelReached": "Hierarchy level is more than supported limit {0}, truncating lower hierarchy.",
+  "MaxSubResultLimitReached": "No of subresults in test case: {0} are more than supported limit {1}, truncating remaning ones.",
   "MemberDoesNotExists": "Member: {0} does not Exist",
   "MinimumNetFramework": ".NET Framework x64 4.5 or higher is required.",
   "MinimumNetFramework46": ".NET Framework x64 4.6 or higher is required.",

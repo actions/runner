@@ -75,6 +75,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                 Array.Copy(testResults, i, currentBatch, 0, noOfResultsToBePublished);
 
                 for (int testResultsIndex = 0; testResultsIndex < noOfResultsToBePublished; testResultsIndex++){
+
+                    if (IsMaxLimitReachedForSubresultPreProcessing(currentBatch[testResultsIndex].AutomatedTestName, currentBatch[testResultsIndex].TestCaseSubResultData) == false)
+                    {
+                        _executionContext.Warning(StringUtil.Loc("MaxHierarchyLevelReached", TestManagementConstants.maxHierarchyLevelForSubresults));
+                        currentBatch[testResultsIndex].TestCaseSubResultData = null;
+                    }
                     testResultsBatch[testResultsIndex] = new TestCaseResult();
                     TestCaseResultDataConverter.Convert(currentBatch[testResultsIndex], testResultsBatch[testResultsIndex]);
                 }
@@ -153,6 +159,34 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
             return _resultReader.ReadResults(_executionContext, filePath, runContext);
         }
         #endregion
+
+        private bool IsMaxLimitReachedForSubresultPreProcessing(string automatedTestName, List<TestCaseSubResultData> subResults, int level = 1)
+        {
+            int maxSubResultHierarchyLevel = TestManagementConstants.maxHierarchyLevelForSubresults;
+            int maxSubResultIterationCount = TestManagementConstants.maxSubResultPerLevel;
+            if (subResults == null || subResults.Count == 0)
+            {
+                return true;
+            }
+            if (level > maxSubResultHierarchyLevel)
+            {
+                return false;
+            }
+            if (subResults.Count > maxSubResultIterationCount)
+            {
+                _executionContext.Warning(StringUtil.Loc("MaxSubResultLimitReached", automatedTestName, maxSubResultIterationCount));
+                subResults.RemoveRange(maxSubResultIterationCount, subResults.Count - maxSubResultIterationCount);
+            }
+            foreach (var subresult in subResults)
+            {
+                if (IsMaxLimitReachedForSubresultPreProcessing(automatedTestName, subresult.SubResultData, level + 1) == false)
+                {
+                    _executionContext.Warning(StringUtil.Loc("MaxHierarchyLevelReached", maxSubResultHierarchyLevel));
+                    subresult.SubResultData = null;
+                }
+            }
+            return true;
+        }
 
         private async Task UploadTestResultsAttachmentAsync(int testRunId,
             TestCaseResultData testCaseResultData,

@@ -82,10 +82,22 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
                         {
                             List<TestCaseResult> resultsList = new List<TestCaseResult>();
                             int i = 0;
-                            int j = 999;
+                            int j = 1;
                             foreach (TestCaseResult resultCreateModel in _resultCreateModels)
                             {
-                                resultsList.Add(new TestCaseResult() { Id = ++i, SubResults = new List<TestSubResult> { new TestSubResult() { Id = ++j} } });
+                                List <TestSubResult> SubResults = null;
+                                if (resultCreateModel.SubResults != null)
+                                {
+                                    SubResults = new List<TestSubResult>();
+                                    foreach (var subresultdata in resultCreateModel.SubResults)
+                                    {
+                                        var subResult = new TestSubResult();
+                                        subResult.Id = j++;
+                                        SubResults.Add(subResult);
+                                    }                                    
+                                }
+                                resultsList.Add(new TestCaseResult() { Id = ++i, SubResults = SubResults });
+
                             }
                             return Task.FromResult(resultsList);
                         });
@@ -240,10 +252,61 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
 
             Assert.Equal(_subResultsLevelAttachments.Count, 1);
             Assert.Equal(_subResultsLevelAttachments[1].Count, 1);
-            Assert.Equal(_subResultsLevelAttachments[1][1000].Count, 1);
-            Assert.Equal(_subResultsLevelAttachments[1][1000][0].AttachmentType, AttachmentType.GeneralAttachment.ToString());
-            Assert.Equal(_subResultsLevelAttachments[1][1000][0].Comment, "");
-            Assert.Equal(_subResultsLevelAttachments[1][1000][0].FileName, "attachment.txt");
+            Assert.Equal(_subResultsLevelAttachments[1][1].Count, 1);
+            Assert.Equal(_subResultsLevelAttachments[1][1][0].AttachmentType, AttachmentType.GeneralAttachment.ToString());
+            Assert.Equal(_subResultsLevelAttachments[1][1][0].Comment, "");
+            Assert.Equal(_subResultsLevelAttachments[1][1][0].FileName, "attachment.txt");
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
+        public void AddResultsWithMultiHierarchySubResultsExceedMaxLevel()
+        {
+            SetupMocks();
+
+            //Add results
+            _testRunData = _publisher.ReadResultsFromFile(_testRunContext, "filepath");
+            _publisher.StartTestRunAsync(_testRunData);
+            var result = new TestCaseResultData();
+            var testRun = new TestRun { Id = 1 };
+            result.Outcome = "Failed";
+            result.TestCaseSubResultData = new List<TestCaseSubResultData>();
+            var mockSubResult = new TestCaseSubResultData()
+            {
+                Outcome = "Failed",
+                SubResultData = new List<TestCaseSubResultData>() {
+                    new TestCaseSubResultData() {
+                        Outcome = "Failed",
+                        SubResultData = new List<TestCaseSubResultData>() {
+                            new TestCaseSubResultData() {
+                                Outcome = "Failed",
+                                SubResultData = new List<TestCaseSubResultData>()
+                                {
+                                    new TestCaseSubResultData()
+                                    {
+                                        Outcome = "Failed"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+
+            for (int i = 0; i < 1010; i++)
+            {
+                result.TestCaseSubResultData.Add(mockSubResult);
+            }
+            _publisher.AddResultsAsync(testRun, new TestCaseResultData[] { result }).Wait();
+
+            // validate
+            foreach (TestCaseResult resultCreateModel in _resultCreateModels)
+            {
+                Assert.Equal(resultCreateModel.SubResults.Count, 1000);
+                Assert.Equal(resultCreateModel.SubResults[0].SubResults[0].SubResults.Count, 1);
+                Assert.Null(resultCreateModel.SubResults[0].SubResults[0].SubResults[0].SubResults);
+            }
         }
 
         [Fact]
