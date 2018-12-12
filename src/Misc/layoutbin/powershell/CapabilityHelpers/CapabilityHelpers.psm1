@@ -24,5 +24,5 @@ Export-ModuleMember -Function @(
     'Get-RegistryValue'
     'Get-RegistryValueNames'
     # Visual Studio functions.
-    'Get-VisualStudio_15_0'
+    'Get-VisualStudio'
 )

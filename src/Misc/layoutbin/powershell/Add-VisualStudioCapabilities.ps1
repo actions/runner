@@ -33,6 +33,7 @@ $keyName11 = 'Software\Microsoft\VisualStudio\11.0'
 $keyName12 = 'Software\Microsoft\VisualStudio\12.0'
 $keyName14 = 'Software\Microsoft\VisualStudio\14.0'
 $keyName15 = 'Software\Microsoft\VisualStudio\15.0'
+$keyName16 = 'Software\Microsoft\VisualStudio\16.0'
 
 # Add the capabilities.
 $latestVS = $null
@@ -52,7 +53,7 @@ if ((Add-CapabilityFromRegistry -Name 'VisualStudio_14.0' -Hive 'LocalMachine' -
     Add-TestCapability -Name 'VSTest_14.0' -ShellPath $latestVS -Value ([ref]$latestTest)
 }
 
-$vs15 = Get-VisualStudio_15_0
+$vs15 = Get-VisualStudio -MajorVersion 15
 if ($vs15 -and $vs15.installationPath) {
     # Add VisualStudio_15.0.
     # End with "\" for consistency with old ShellFolder values.
@@ -79,6 +80,36 @@ if ($vs15 -and $vs15.installationPath) {
     if ((Add-CapabilityFromRegistry -Name 'VisualStudio_15.0' -Hive 'LocalMachine' -View 'Registry32' -KeyName $keyName15 -ValueName 'ShellFolder' -Value ([ref]$latestVS))) {
         $null = Add-CapabilityFromRegistry -Name 'VisualStudio_IDE_15.0' -Hive 'LocalMachine' -View 'Registry32' -KeyName $keyName15 -ValueName 'InstallDir' -Value ([ref]$latestIde)
         Add-TestCapability -Name 'VSTest_15.0' -ShellPath $latestVS -Value ([ref]$latestTest)
+    }
+}
+
+$vs16 = Get-VisualStudio -MajorVersion 16
+if ($vs16 -and $vs16.installationPath) {
+    # Add VisualStudio_16.0.
+    # End with "\" for consistency with old ShellFolder values.
+    $shellFolder16 = $vs16.installationPath.TrimEnd('\'[0]) + "\"
+    Write-Capability -Name 'VisualStudio_16.0' -Value $shellFolder16
+    $latestVS = $shellFolder16
+
+    # Add VisualStudio_IDE_16.0.
+    # End with "\" for consistency with old InstallDir values.
+    $installDir16 = ([System.IO.Path]::Combine($shellFolder16, 'Common7', 'IDE')) + '\'
+    if ((Test-Container -LiteralPath $installDir16)) {
+        Write-Capability -Name 'VisualStudio_IDE_16.0' -Value $installDir16
+        $latestIde = $installDir16
+    }
+
+    # Add VSTest_16.0.
+    $testWindowDir16 = [System.IO.Path]::Combine($installDir16, 'CommonExtensions\Microsoft\TestWindow')
+    $vstestConsole16 = [System.IO.Path]::Combine($testWindowDir16, 'vstest.console.exe')
+    if ((Test-Leaf -LiteralPath $vstestConsole16)) {
+        Write-Capability -Name 'VSTest_16.0' -Value $testWindowDir16
+        $latestTest = $testWindowDir16
+    }
+} else {
+    if ((Add-CapabilityFromRegistry -Name 'VisualStudio_16.0' -Hive 'LocalMachine' -View 'Registry32' -KeyName $keyName16 -ValueName 'ShellFolder' -Value ([ref]$latestVS))) {
+        $null = Add-CapabilityFromRegistry -Name 'VisualStudio_IDE_16.0' -Hive 'LocalMachine' -View 'Registry32' -KeyName $keyName16 -ValueName 'InstallDir' -Value ([ref]$latestIde)
+        Add-TestCapability -Name 'VSTest_16.0' -ShellPath $latestVS -Value ([ref]$latestTest)
     }
 }
 

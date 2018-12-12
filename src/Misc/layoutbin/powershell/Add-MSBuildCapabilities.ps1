@@ -15,7 +15,7 @@ $null = Add-CapabilityFromRegistry -Name "MSBuild_3.5" -Hive 'LocalMachine' -Vie
 $null = Add-CapabilityFromRegistry -Name "MSBuild_4.0" -Hive 'LocalMachine' -View 'Registry32' -KeyName $keyName40 -ValueName 'MSBuildToolsPath' -Value ([ref]$latest)
 $null = Add-CapabilityFromRegistry -Name "MSBuild_12.0" -Hive 'LocalMachine' -View 'Registry32' -KeyName $keyName12 -ValueName 'MSBuildToolsPath' -Value ([ref]$latest)
 $null = Add-CapabilityFromRegistry -Name "MSBuild_14.0" -Hive 'LocalMachine' -View 'Registry32' -KeyName $keyName14 -ValueName 'MSBuildToolsPath' -Value ([ref]$latest)
-$vs15 = Get-VisualStudio_15_0
+$vs15 = Get-VisualStudio -MajorVersion 15
 if ($vs15 -and $vs15.installationPath) {
     # Add MSBuild_15.0.
     # End with "\" for consistency with old MSBuildToolsPath value.
@@ -23,6 +23,17 @@ if ($vs15 -and $vs15.installationPath) {
     if ((Test-Leaf -LiteralPath "$($msbuild15)MSBuild.exe")) {
         Write-Capability -Name 'MSBuild_15.0' -Value $msbuild15
         $latest = $msbuild15
+    }
+}
+
+$vs16 = Get-VisualStudio -MajorVersion 16
+if ($vs16 -and $vs16.installationPath) {
+    # Add MSBuild_16.0.
+    # End with "\" for consistency with old MSBuildToolsPath value.
+    $msbuild16 = ([System.IO.Path]::Combine($vs16.installationPath, 'MSBuild\Current\Bin')) + '\'
+    if ((Test-Leaf -LiteralPath "$($msbuild16)MSBuild.exe")) {
+        Write-Capability -Name 'MSBuild_16.0' -Value $msbuild16
+        $latest = $msbuild16
     }
 }
 
@@ -44,6 +55,16 @@ if ($vs15 -and $vs15.installationPath) {
     if ((Test-Leaf -LiteralPath "$($msbuild15)MSBuild.exe")) {
         Write-Capability -Name 'MSBuild_15.0_x64' -Value $msbuild15
         $latest = $msbuild15
+    }
+}
+
+if ($vs16 -and $vs16.installationPath) {
+    # Add MSBuild_16.0_x64.
+    # End with "\" for consistency with old MSBuildToolsPath value.
+    $msbuild16 = ([System.IO.Path]::Combine($vs16.installationPath, 'MSBuild\Current\Bin\amd64')) + '\'
+    if ((Test-Leaf -LiteralPath "$($msbuild16)MSBuild.exe")) {
+        Write-Capability -Name 'MSBuild_16.0_x64' -Value $msbuild16
+        $latest = $msbuild16
     }
 }
 

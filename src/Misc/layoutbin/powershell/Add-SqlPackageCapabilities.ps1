@@ -81,13 +81,32 @@ function Get-MaxInfoFromVisualStudio_15_0 {
     [CmdletBinding()]
     param()
 
-    $vs15 = Get-VisualStudio_15_0
+    $vs15 = Get-VisualStudio -MajorVersion 15
     if ($vs15 -and $vs15.installationPath) {
         # End with "\" for consistency with old ShellFolder values.
         $shellFolder15 = $vs15.installationPath.TrimEnd('\'[0]) + "\"
 
         # Test for the DAC directory.
         $dacDirectory = [System.IO.Path]::Combine($shellFolder15, 'Common7', 'IDE', 'Extensions', 'Microsoft', 'SQLDB', 'DAC')
+        $sqlPacakgeInfo = Get-SqlPacakgeFromDacDirectory -dacDirectory $dacDirectory
+
+        if($sqlPacakgeInfo -and $sqlPacakgeInfo.File) {
+            return $sqlPacakgeInfo
+        }
+    }
+}
+
+function Get-MaxInfoFromVisualStudio_16_0 {
+    [CmdletBinding()]
+    param()
+
+    $vs16 = Get-VisualStudio -MajorVersion 16
+    if ($vs16 -and $vs16.installationPath) {
+        # End with "\" for consistency with old ShellFolder values.
+        $shellFolder16 = $vs16.installationPath.TrimEnd('\'[0]) + "\"
+
+        # Test for the DAC directory.
+        $dacDirectory = [System.IO.Path]::Combine($shellFolder16, 'Common7', 'IDE', 'Extensions', 'Microsoft', 'SQLDB', 'DAC')
         $sqlPacakgeInfo = Get-SqlPacakgeFromDacDirectory -dacDirectory $dacDirectory
 
         if($sqlPacakgeInfo -and $sqlPacakgeInfo.File) {
@@ -172,6 +191,7 @@ $sqlPackageInfo += (Get-MaxInfoFromSqlServer)
 $sqlPackageInfo += (Get-MaxInfoFromSqlServerDtaf)
 $sqlPackageInfo += (Get-MaxInfoFromVisualStudio)
 $sqlPackageInfo += (Get-MaxInfoFromVisualStudio_15_0)
+$sqlPackageInfo += (Get-MaxInfoFromVisualStudio_16_0)
 $sqlPackageInfo |
     Sort-Object -Property Version -Descending |
     Select -First 1 |
