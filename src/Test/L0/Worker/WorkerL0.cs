@@ -50,7 +50,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                 }
             });
             Guid JobId = Guid.NewGuid();
-            var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, JobId, jobName, jobName, "ubuntu", variables, new List<MaskHint>(), resources, null, tasks);
+            var sidecarContainers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["nginx"] =  "nginx"
+            };
+            var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, JobId, jobName, jobName, "ubuntu", sidecarContainers, variables, new List<MaskHint>(), resources, null, tasks);
             return jobRequest;
         }
 

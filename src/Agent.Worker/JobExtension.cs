@@ -131,17 +131,24 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     Stack<IStep> postJobStepsBuilder = new Stack<IStep>();
                     Dictionary<Guid, Variables> taskVariablesMapping = new Dictionary<Guid, Variables>();
 
-                    if (context.Container != null)
+                    if (context.Container != null || context.SidecarContainers.Count > 0)
                     {
                         var containerProvider = HostContext.GetService<IContainerOperationProvider>();
-                        initResult.PreJobSteps.Add(new JobExtensionRunner(runAsync: containerProvider.StartContainerAsync,
+                        var containers = new List<Container.ContainerInfo>();
+                        if (context.Container != null)
+                        {
+                            containers.Add(context.Container);
+                        }
+                        containers.AddRange(context.SidecarContainers);
+
+                        initResult.PreJobSteps.Add(new JobExtensionRunner(runAsync: containerProvider.StartContainersAsync,
                                                                           condition: ExpressionManager.Succeeded,
                                                                           displayName: StringUtil.Loc("InitializeContainer"),
-                                                                          data: (object)jobContext.Container));
-                        postJobStepsBuilder.Push(new JobExtensionRunner(runAsync: containerProvider.StopContainerAsync,
+                                                                          data: (object)containers));
+                        postJobStepsBuilder.Push(new JobExtensionRunner(runAsync: containerProvider.StopContainersAsync,
                                                                         condition: ExpressionManager.Always,
                                                                         displayName: StringUtil.Loc("StopContainer"),
-                                                                        data: (object)jobContext.Container));
+                                                                        data: (object)containers));
                     }
 
                     foreach (var task in message.Steps.OfType<Pipelines.TaskStep>())

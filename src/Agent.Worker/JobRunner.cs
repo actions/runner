@@ -218,6 +218,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     }
                 }
 
+                // Expand container properties
+                jobContext.Container?.ExpandProperties(jobContext.Variables);
+                foreach (var sidecar in jobContext.SidecarContainers)
+                {
+                    sidecar.ExpandProperties(jobContext.Variables);
+                }
+
                 // Get the job extension.
                 Trace.Info("Getting job extension.");
                 var hostType = jobContext.Variables.System_HostType;

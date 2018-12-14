@@ -308,6 +308,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                 public static readonly string RootDirectory = "agent.RootDirectory";
                 public static readonly string RunMode = "agent.runmode";
                 public static readonly string ServerOMDirectory = "agent.ServerOMDirectory";
+                public static readonly string ServicePortPrefix = "agent.services";
                 public static readonly string SslCAInfo = "agent.cainfo";
                 public static readonly string SslClientCert = "agent.clientcert";
                 public static readonly string SslClientCertKey = "agent.clientcertkey";

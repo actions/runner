@@ -39,6 +39,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         List<IAsyncCommandContext> AsyncCommands { get; }
         List<string> PrependPath { get; }
         ContainerInfo Container { get; }
+        List<ContainerInfo> SidecarContainers { get; }
 
         // Initialize
         void InitializeJob(Pipelines.AgentJobRequestMessage message, CancellationToken token);
@@ -98,6 +99,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         public bool WriteDebug { get; private set; }
         public List<string> PrependPath { get; private set; }
         public ContainerInfo Container { get; private set; }
+        public List<ContainerInfo> SidecarContainers { get; private set; }
 
         public List<IAsyncCommandContext> AsyncCommands => _asyncCommands;
 
@@ -170,6 +172,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             child._parentExecutionContext = this;
             child.PrependPath = PrependPath;
             child.Container = Container;
+            child.SidecarContainers = SidecarContainers;
 
             child.InitializeTimelineRecord(_mainTimelineId, recordId, _record.Id, ExecutionContextType.Task, displayName, refName, ++_childTimelineRecordOrder);
 
@@ -395,7 +398,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             // Prepend Path
             PrependPath = new List<string>();
 
-            // Docker 
+            // Docker (JobContainer)
             string imageName = Variables.Get("_PREVIEW_VSTS_DOCKER_IMAGE");
             if (string.IsNullOrEmpty(imageName))
             {
@@ -419,6 +422,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             else
             {
                 Container = null;
+            }
+
+            // Docker (Sidecar Containers)
+            SidecarContainers = new List<ContainerInfo>();
+            foreach (var sidecar in message.JobSidecarContainers)
+            {
+                var networkAlias = sidecar.Key;
+                var containerResourceAlias = sidecar.Value;
+                var containerResource = message.Resources.Containers.Single(c => string.Equals(c.Alias, containerResourceAlias, StringComparison.OrdinalIgnoreCase));
+                SidecarContainers.Add(new ContainerInfo(HostContext, containerResource, isJobContainer: false) { ContainerNetworkAlias = networkAlias });
             }
 
             // Proxy variables
