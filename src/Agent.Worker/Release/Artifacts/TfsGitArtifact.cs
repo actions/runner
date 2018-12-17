@@ -48,14 +48,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
             tfsGitEndpoint.Data.Add("fetchDepth", gitArtifactDetails.FetchDepth);
             tfsGitEndpoint.Data.Add("GitLfsSupport", gitArtifactDetails.GitLfsSupport);
 			
-            try
-            {
-                await sourceProvider.GetSourceAsync(executionContext, tfsGitEndpoint, executionContext.CancellationToken);
-            }
-            catch (InvalidOperationException ex)
-            {
-                throw new ArtifactDownloadException(StringUtil.Loc("RMDownloadArtifactUnexpectedError"), ex);
-            }
+            await sourceProvider.GetSourceAsync(executionContext, tfsGitEndpoint, executionContext.CancellationToken);
         }
 
         public IArtifactDetails GetArtifactDetails(IExecutionContext context, AgentArtifactDefinition agentArtifactDefinition)
