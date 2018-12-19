@@ -93,7 +93,7 @@ function stop()
 function uninstall()
 {
     stop
-    systemctl disable ${SVC_NAME} || failed "failed to enable ${SVC_NAME}"
+    systemctl disable ${SVC_NAME} || failed "failed to disable  ${SVC_NAME}"
     rm "${UNIT_PATH}" || failed "failed to delete ${UNIT_PATH}"
     if [ -f "${CONFIG_PATH}" ]; then
       rm "${CONFIG_PATH}" || failed "failed to delete ${CONFIG_PATH}"
