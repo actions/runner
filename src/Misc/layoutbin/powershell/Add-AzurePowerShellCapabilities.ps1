@@ -7,9 +7,9 @@ function Get-FromModulePath {
     [CmdletBinding()]
     param([string]$ModuleName)
 
-     # Valid ModuleName values are Az.Profile, AzureRM and Azure
-     # We are looking for Az.Profile module because "Get-Module -Name Az" is not working due to a known PowerShell bug.
-    if (($ModuleName -ne "Az.Profile") -and ($ModuleName -ne "AzureRM") -and ($ModuleName -ne "Azure")) {
+     # Valid ModuleName values are Az.Accounts, AzureRM and Azure
+     # We are looking for Az.Accounts module because "Get-Module -Name Az" is not working due to a known PowerShell bug.
+    if (($ModuleName -ne "Az.Accounts") -and ($ModuleName -ne "AzureRM") -and ($ModuleName -ne "Azure")) {
         Write-Host "Attempting to find invalid module."
         return $false
     }
@@ -89,8 +89,8 @@ function Get-FromSdkPath {
 }
 
 Write-Host "Env:PSModulePath: '$env:PSModulePath'"
-$null = (Get-FromModulePath -ModuleName:"Az.Profile") -or
+$null = (Get-FromModulePath -ModuleName:"Az.Accounts") -or
     (Get-FromModulePath -ModuleName:"AzureRM") -or
     (Get-FromSdkPath -Classic:$false) -or
     (Get-FromModulePath -ModuleName:"Azure") -or
-    (Get-FromSdkPath -Classic:$true)
+    (Get-FromSdkPath -Classic:$true)   
