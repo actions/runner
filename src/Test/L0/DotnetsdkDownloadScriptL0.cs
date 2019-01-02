@@ -12,7 +12,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Trait("Category", "Agent")]
         public async Task EnsureDotnetsdkBashDownloadScriptUpToDate()
         {
-            string shDownloadUrl = "https://raw.githubusercontent.com/dotnet/cli/master/scripts/obtain/dotnet-install.sh";
+            string shDownloadUrl = "https://dot.net/v1/dotnet-install.sh";
 
             using (HttpClient downloadClient = new HttpClient())
             {
@@ -27,7 +27,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 string existingShScript = File.ReadAllText(Path.Combine(TestUtil.GetSrcPath(), "Misc/dotnet-install.sh"));
 
                 bool shScriptMatched = string.Equals(shScript.TrimEnd('\n', '\r', '\0').Replace("\r\n", "\n").Replace("\r", "\n"), existingShScript.TrimEnd('\n', '\r', '\0').Replace("\r\n", "\n").Replace("\r", "\n"));
-                Assert.True(shScriptMatched, "Fix the test by updating Src/Misc/dotnet-install.sh with content from https://raw.githubusercontent.com/dotnet/cli/master/scripts/obtain/dotnet-install.sh");
+                Assert.True(shScriptMatched, "Fix the test by updating Src/Misc/dotnet-install.sh with content from https://dot.net/v1/dotnet-install.sh");
             }
         }
 
@@ -36,7 +36,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Trait("Category", "Agent")]
         public async Task EnsureDotnetsdkPowershellDownloadScriptUpToDate()
         {
-            string ps1DownloadUrl = "https://raw.githubusercontent.com/dotnet/cli/master/scripts/obtain/dotnet-install.ps1";
+            string ps1DownloadUrl = "https://dot.net/v1/dotnet-install.ps1";
 
             using (HttpClient downloadClient = new HttpClient())
             {
@@ -51,7 +51,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 string existingPs1Script = File.ReadAllText(Path.Combine(TestUtil.GetSrcPath(), "Misc/dotnet-install.ps1"));
 
                 bool ps1ScriptMatched = string.Equals(ps1Script.TrimEnd('\n', '\r', '\0').Replace("\r\n", "\n").Replace("\r", "\n"), existingPs1Script.TrimEnd('\n', '\r', '\0').Replace("\r\n", "\n").Replace("\r", "\n"));
-                Assert.True(ps1ScriptMatched, "Fix the test by updating Src/Misc/dotnet-install.ps1 with content from https://raw.githubusercontent.com/dotnet/cli/master/scripts/obtain/dotnet-install.ps1");
+                Assert.True(ps1ScriptMatched, "Fix the test by updating Src/Misc/dotnet-install.ps1 with content from https://dot.net/v1/dotnet-install.ps1");
             }
         }
     }
