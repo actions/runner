@@ -190,7 +190,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
             TimeSpan totalTestSuiteDuration = TimeSpan.Zero;
             TimeSpan totalTestCaseDuration = TimeSpan.Zero;
 
-            if (rootNode.Attributes["name"] != null && rootNode.Attributes["name"].Value != null)
+            if (rootNode.Attributes["name"] != null && rootNode.Attributes["name"].Value != null && rootNode.Attributes["name"].Value != string.Empty)
             {
                 testSuiteSummary.Name = rootNode.Attributes["name"].Value;
             }
