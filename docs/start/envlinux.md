@@ -5,7 +5,7 @@
 ## Supported Distributions and Versions
 
 x64
-  - Red Hat Enterprise Linux 7, 6
+  - Red Hat Enterprise Linux 7
   - CentOS 7
   - Oracle Linux 7
   - Fedora 28, 27
