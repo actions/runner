@@ -128,6 +128,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             {
                 await StartContainerAsync(executionContext, container);
             }
+
+            foreach (var container in containers.Where(c => !c.IsJobContainer))
+            {
+                await ContainerHealthcheck(executionContext, container);
+            }
         }
 
         public async Task StopContainersAsync(IExecutionContext executionContext, object data)
@@ -523,6 +528,34 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             }
             // Remove docker network from env
             executionContext.Variables.Set(Constants.Variables.Agent.ContainerNetwork, null);
+        }
+
+        private async Task ContainerHealthcheck(IExecutionContext executionContext, ContainerInfo container)
+        {
+            string healthCheck = "--format=\"{{if .Config.Healthcheck}}{{print .State.Health.Status}}{{end}}\"";
+            string serviceHealth = await _dockerManger.DockerInspect(context: executionContext, dockerObject: container.ContainerId, options: healthCheck);
+            if (string.IsNullOrEmpty(serviceHealth))
+            {
+                // Container has no HEALTHCHECK
+                return;
+            }
+            var retryCount = 0;
+            while (string.Equals(serviceHealth, "starting", StringComparison.OrdinalIgnoreCase))
+            {
+                TimeSpan backoff = BackoffTimerHelper.GetExponentialBackoff(retryCount, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(32), TimeSpan.FromSeconds(2));
+                executionContext.Output($"{container.ContainerNetworkAlias} service is starting, waiting {backoff.Seconds} seconds before checking again.");
+                await Task.Delay(backoff, executionContext.CancellationToken);
+                serviceHealth = await _dockerManger.DockerInspect(context: executionContext, dockerObject: container.ContainerId, options: healthCheck);
+                retryCount++;
+            }
+            if (string.Equals(serviceHealth, "healthy", StringComparison.OrdinalIgnoreCase))
+            {
+                executionContext.Output($"{container.ContainerNetworkAlias} service is healthy.");
+            }
+            else
+            {
+                throw new InvalidOperationException($"Failed to initialize, {container.ContainerNetworkAlias} service is {serviceHealth}.");
+            }
         }
     }
 }
