@@ -143,7 +143,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         public int? Release_Parallel_Download_Limit => GetInt(Constants.Variables.Release.ReleaseParallelDownloadLimit);
 
-        public bool Retain_Default_Encoding => RetainDefaultEncoding();
+#if OS_WINDOWS
+        public bool Retain_Default_Encoding => GetBoolean(Constants.Variables.Agent.RetainDefaultEncoding) ?? true;
+#else
+        public bool Retain_Default_Encoding => true;
+#endif
 
         public string System_CollectionId => Get(Constants.Variables.System.CollectionId);
 
@@ -451,18 +455,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
                 _expanded = expanded;
             } // End of critical section.
-        }
-
-        private bool RetainDefaultEncoding()
-        {
-#if OS_WINDOWS
-            object windowsReleaseId = Registry.GetValue(@"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion", "ReleaseId", defaultValue: null);
-            if (int.TryParse(windowsReleaseId?.ToString(), out int releaseId) && releaseId >= 1709)
-            {
-                return GetBoolean(Constants.Variables.Agent.RetainDefaultEncoding) ?? false;
-            }
-#endif
-            return true;
         }
 
         private sealed class RecursionState
