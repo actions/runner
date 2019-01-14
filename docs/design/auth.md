@@ -12,7 +12,7 @@
 
 Configuring an agent registers an agent with a pool using your identity.  Configuring an agent is [covered here in the documentation](https://www.visualstudio.com/en-us/docs/build/actions/agents/v2-windows).
 
-![Config](01AgentConfig.png)
+![Config](res/01AgentConfig.png)
 
 Configuration is done with the user being authenticated via a PAT (VSTS | TFS) or optionally for on-prem TFS integrated auth (domain logged on credentials) or NTLM (supply username and password from non domain joined machine - typically Linux or OSX).
 
@@ -26,7 +26,7 @@ Using your credentials, the agent is registered with the service by sending the 
 
 After configuring the agent, the agent can be started interactively (./run.cmd or ./run.sh) or as a service.
 
-![Start](02AgentStartListen.png)
+![Start](res/02AgentStartListen.png)
 
 On start, the agent listener process loads the RSA private key (on windows decrypting with machine key DPAPI), sends a JWT token which signed by the private key to the service in order to exchange back an OAuth token that has permission to calls the message queue (http long poll) waiting for a job message to run.  
 
@@ -34,7 +34,7 @@ On start, the agent listener process loads the RSA private key (on windows decry
 
 When a build is queued, it's demands are evaluated, it is matched to an agent and place in an agents queue of messages.  The agent is listening for jobs via the message queue http long poll.  The message also encrypted with the agent's public key service stored during agent configuration.  
 
-![Queue](03AgentQueueBuild.png)
+![Queue](res/03AgentQueueBuild.png)
 
 A build is queued manually or as the result of a check-in trigger or build schedule.  A [JWT token](http://self-issued.info/docs/draft-ietf-oauth-json-web-token.html) is generated to for the project or collection level build service account (see options tab of build definition).  The lifetime of the JWT token is the lifetime of the build or at most the build timeout (options tab).
 
