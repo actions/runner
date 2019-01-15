@@ -6,7 +6,7 @@
     <RuntimeIdentifiers>win-x64;win-x86;linux-x64;linux-arm;osx-x64</RuntimeIdentifiers>
     <TargetLatestRuntimePatch>true</TargetLatestRuntimePatch>
     <AssetTargetFallback>portable-net45+win8</AssetTargetFallback>
-    <NoWarn>NU1701</NoWarn>
+    <NoWarn>NU1701;NU1603</NoWarn>
     <Version>2.144.0</Version>
   </PropertyGroup>
 
@@ -21,7 +21,7 @@
     <PackageReference Include="System.IO.FileSystem.AccessControl" Version="4.4.0" />
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="4.4.0" />
     <PackageReference Include="System.ServiceProcess.ServiceController" Version="4.4.0" />
-    <PackageReference Include="vss-api-netcore" Version="0.5.91-private" />
+    <PackageReference Include="vss-api-netcore" Version="0.5.95-private" />
   </ItemGroup>
 
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
