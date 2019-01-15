@@ -22,9 +22,9 @@ LABEL "com.azure.dev.pipelines.agent.handler.node.path"="/usr/local/bin/node"
 ## Add requirements
 Azure Pipelines assumes a bash-based system with common administration packages installed.
 Alpine Linux in particular doesn't come with several of the packages needed.
-Installing `bash`, `sudo`, `which`, and `shadow` will cover the basic needs.
+Installing `bash`, `sudo`, and `shadow` will cover the basic needs.
 ```
-RUN apk add bash sudo which shadow
+RUN apk add bash sudo shadow
 ```
 
 If you depend on any in-box or Marketplace tasks, you'll also need to supply the binaries they require.
@@ -35,7 +35,7 @@ If you depend on any in-box or Marketplace tasks, you'll also need to supply the
 FROM node:10-alpine
 
 RUN apk add --no-cache --virtual .pipeline-deps readline linux-pam \
-  && apk add bash sudo which shadow \
+  && apk add bash sudo shadow \
   && apk del .pipeline-deps
 
 LABEL "com.azure.dev.pipelines.agent.handler.node.path"="/usr/local/bin/node"
