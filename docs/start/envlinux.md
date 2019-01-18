@@ -24,7 +24,7 @@ ARM32
 ## Install .Net Core 2.x Linux Dependencies
 
 The `./config.sh` will check .Net Core 2.x dependencies during agent configuration.  
-You might see something like this which indicate a dependencies missing.
+You might see something like this which indicate a dependency's missing.
 ```bash
 ./config.sh
     libunwind.so.8 => not found
