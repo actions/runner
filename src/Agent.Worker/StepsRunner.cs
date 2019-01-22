@@ -214,9 +214,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                                             requireExitCodeZero: false,
                                             outputEncoding: null,
                                             killProcessOnCancel: false,
-                                            contentsToStandardIn: null,
-                                            cancellationToken: step.ExecutionContext.CancellationToken,
-                                            inheritConsoleHandler: true);
+                                            redirectStandardIn: null,
+                                            inheritConsoleHandler: true,
+                                            cancellationToken: step.ExecutionContext.CancellationToken);
                     if (exitCode == 0)
                     {
                         Trace.Info("Successfully returned to code page 65001 (UTF8)");

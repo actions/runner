@@ -290,6 +290,7 @@
   "FileUploadRetryInSecond": "Retry file upload after {0} seconds.",
   "FileUploadRetrySucceed": "File upload succeed after retry.",
   "FileUploadSucceed": "File upload succeed.",
+  "FinalizeJob": "Finalize Job",
   "FinishMaintenance": "Maintenance finished: {0}",
   "GCBuildDir": "Delete orphan and stale build directory.",
   "GCBuildDirNotEnabled": "Delete orphan and stale build directory option is not enabled.",

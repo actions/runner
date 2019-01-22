@@ -17,7 +17,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
     {
         private IExecutionContext _jobEc;
         private JobRunner _jobRunner;
-        private JobInitializeResult _initResult = new JobInitializeResult();
+        private List<IStep> _initResult = new List<IStep>();
         private Pipelines.AgentJobRequestMessage _message;
         private CancellationTokenSource _tokenSource;
         private Mock<IJobServer> _jobServer;
@@ -88,9 +88,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             _extensions.Setup(x => x.GetExtensions<IJobExtension>()).
                 Returns(new[] { _jobExtension.Object }.ToList());
 
-            _initResult.PreJobSteps.Clear();
-            _initResult.JobSteps.Clear();
-            _initResult.PostJobStep.Clear();
+            _initResult.Clear();
 
             _jobExtension.Setup(x => x.InitializeJob(It.IsAny<IExecutionContext>(), It.IsAny<Pipelines.AgentJobRequestMessage>())).
                 Returns(Task.FromResult(_initResult));

@@ -177,3 +177,49 @@ Initially this will be first party plugins packaged with the agent.  Eventually,
 
 If we expose externally (not delivered as part of the agent), we will offer the ability to be your own log processing host because of the compat and dependency problems (agents stay back and get auto updated).  This is a long discussion out of the scope of this design document.
 
+
+## Sample
+
+A sample log plugin implementation might looks like following:
+
+```C#
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using Agent.Sdk;
+using Pipelines = Microsoft.TeamFoundation.DistributedTask.Pipelines;
+using Microsoft.VisualStudio.Services.Agent.Util;
+using System.IO;
+using Microsoft.VisualStudio.Services.Common;
+
+namespace Agent.Plugins.Log
+{
+    public class SampleLogPlugin : IAgentLogPlugin
+    {
+        public string FriendlyName => "Re-save Log";
+
+        private string _fileName = $"{Guid.NewGuid().ToString("N")}.log";
+
+        public Task<bool> InitializeAsync(IAgentLogPluginContext context)
+        {
+            return Task.FromResult(true);
+        }
+
+        public Task ProcessLineAsync(IAgentLogPluginContext context, Pipelines.TaskStepDefinitionReference step, string output)
+        {
+            context.Trace("DEBUG_PROCESS");
+            var file = Path.Combine(context.Variables.GetValueOrDefault("agent.homedirectory").Value, "_diag", _fileName);
+            context.Output($"{step.Name}: {output}");
+            return Task.CompletedTask;
+        }
+
+        public async Task FinalizeAsync(IAgentLogPluginContext context)
+        {
+            context.Trace("DEBUG_FINISH");
+            var file = Path.Combine(context.Variables.GetValueOrDefault("agent.homedirectory").Value, "_diag", _fileName);
+            await File.AppendAllTextAsync(file, StringUtil.ConvertToJson(context.Variables));
+        }
+    }
+}
+
+```

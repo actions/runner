@@ -1,10 +1,13 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Runtime.Loader;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using Agent.Sdk;
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Util;
@@ -24,6 +27,9 @@ namespace Agent.PluginHost
             AppContext.SetSwitch("System.Net.Http.UseSocketsHttpHandler", false);
             Console.CancelKeyPress += Console_CancelKeyPress;
 
+            // Set encoding to UTF8, process invoker will use UTF8 write to STDIN
+            Console.InputEncoding = Encoding.UTF8;
+            Console.OutputEncoding = Encoding.UTF8;
             try
             {
                 ArgUtil.NotNull(args, nameof(args));
@@ -35,9 +41,6 @@ namespace Agent.PluginHost
                     string assemblyQualifiedName = args[1];
                     ArgUtil.NotNullOrEmpty(assemblyQualifiedName, nameof(assemblyQualifiedName));
 
-                    // Set encoding to UTF8, process invoker will use UTF8 write to STDIN
-                    Console.InputEncoding = Encoding.UTF8;
-                    Console.OutputEncoding = Encoding.UTF8;
                     string serializedContext = Console.ReadLine();
                     ArgUtil.NotNullOrEmpty(serializedContext, nameof(serializedContext));
 
@@ -102,6 +105,69 @@ namespace Agent.PluginHost
                     {
                         AssemblyLoadContext.Default.Resolving -= ResolveAssembly;
                     }
+
+                    return 0;
+                }
+                else if (string.Equals("log", pluginType, StringComparison.OrdinalIgnoreCase))
+                {
+                    // read commandline arg to get the instance id
+                    var instanceId = args[1];
+                    ArgUtil.NotNullOrEmpty(instanceId, nameof(instanceId));
+
+                    // read STDIN, the first line will be the HostContext for the log plugin host
+                    string serializedContext = Console.ReadLine();
+                    ArgUtil.NotNullOrEmpty(serializedContext, nameof(serializedContext));
+                    AgentLogPluginHostContext hostContext = StringUtil.ConvertFromJson<AgentLogPluginHostContext>(serializedContext);
+                    ArgUtil.NotNull(hostContext, nameof(hostContext));
+
+                    // create plugin object base on plugin assembly names from the HostContext
+                    List<IAgentLogPlugin> logPlugins = new List<IAgentLogPlugin>();
+                    AssemblyLoadContext.Default.Resolving += ResolveAssembly;
+                    try
+                    {
+                        foreach (var pluginAssembly in hostContext.PluginAssemblies)
+                        {
+                            try
+                            {
+                                Type type = Type.GetType(pluginAssembly, throwOnError: true);
+                                var logPlugin = Activator.CreateInstance(type) as IAgentLogPlugin;
+                                ArgUtil.NotNull(logPlugin, nameof(logPlugin));
+                                logPlugins.Add(logPlugin);
+                            }
+                            catch (Exception ex)
+                            {
+                                // any exception throw from plugin will get trace and ignore, error from plugins will not fail the job.
+                                Console.WriteLine($"Unable to load plugin '{pluginAssembly}': {ex}");
+                            }
+                        }
+                    }
+                    finally
+                    {
+                        AssemblyLoadContext.Default.Resolving -= ResolveAssembly;
+                    }
+
+                    // start the log plugin host
+                    var logPluginHost = new AgentLogPluginHost(hostContext, logPlugins);
+                    Task hostTask = logPluginHost.Run();
+                    while (true)
+                    {
+                        var consoleInput = Console.ReadLine();
+                        if (string.Equals(consoleInput, $"##vso[logplugin.finish]{instanceId}", StringComparison.OrdinalIgnoreCase))
+                        {
+                            // singal all plugins, the job has finished.
+                            // plugin need to start their finalize process.
+                            logPluginHost.Finish();
+                            break;
+                        }
+                        else
+                        {
+                            // the format is TimelineRecordId(GUID):Output(String)
+                            logPluginHost.EnqueueOutput(consoleInput);
+                        }
+                    }
+
+                    // wait for the host to finish.
+                    hostTask.GetAwaiter().GetResult();
 
                     return 0;
                 }

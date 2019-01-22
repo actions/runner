@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.TeamFoundation.Framework.Common;
 
 namespace Microsoft.VisualStudio.Services.Agent
 {
@@ -55,7 +56,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             bool requireExitCodeZero,
             Encoding outputEncoding,
             bool killProcessOnCancel,
-            IList<string> contentsToStandardIn,
+            InputQueue<string> redirectStandardIn,
             CancellationToken cancellationToken);
         
         Task<int> ExecuteAsync(
@@ -66,7 +67,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             bool requireExitCodeZero,
             Encoding outputEncoding,
             bool killProcessOnCancel,
-            IList<string> contentsToStandardIn,
+            InputQueue<string> redirectStandardIn,
             bool inheritConsoleHandler,
             CancellationToken cancellationToken);
     }
@@ -142,7 +143,6 @@ namespace Microsoft.VisualStudio.Services.Agent
                 requireExitCodeZero: requireExitCodeZero,
                 outputEncoding: outputEncoding,
                 killProcessOnCancel: false,
-                contentsToStandardIn: null,
                 cancellationToken: cancellationToken);
         }
 
@@ -164,8 +164,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                 requireExitCodeZero: requireExitCodeZero,
                 outputEncoding: outputEncoding,
                 killProcessOnCancel: killProcessOnCancel,
-                contentsToStandardIn: null,
-                inheritConsoleHandler: false,
+                redirectStandardIn: null,
                 cancellationToken: cancellationToken);
         }
 
@@ -177,7 +176,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             bool requireExitCodeZero,
             Encoding outputEncoding,
             bool killProcessOnCancel,
-            IList<string> contentsToStandardIn,
+            InputQueue<string> redirectStandardIn,
             CancellationToken cancellationToken)
         {
             return ExecuteAsync(
@@ -188,7 +187,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                 requireExitCodeZero: requireExitCodeZero,
                 outputEncoding: outputEncoding,
                 killProcessOnCancel: killProcessOnCancel,
-                contentsToStandardIn: contentsToStandardIn,
+                redirectStandardIn: redirectStandardIn,
                 inheritConsoleHandler: false,
                 cancellationToken: cancellationToken
             );
@@ -202,7 +201,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             bool requireExitCodeZero,
             Encoding outputEncoding,
             bool killProcessOnCancel,
-            IList<string> contentsToStandardIn,
+            InputQueue<string> redirectStandardIn,
             bool inheritConsoleHandler,
             CancellationToken cancellationToken)
         {
@@ -216,7 +215,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                 requireExitCodeZero,
                 outputEncoding,
                 killProcessOnCancel,
-                contentsToStandardIn,
+                redirectStandardIn,
                 inheritConsoleHandler,
                 cancellationToken);
         }

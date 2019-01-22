@@ -110,7 +110,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             {
                 file = GetNodeLocation();
             }
-            
+
             // Format the arguments passed to node.
             // 1) Wrap the script file path in double quotes.
             // 2) Escape double quotes within the script file path. Double-quote is a valid

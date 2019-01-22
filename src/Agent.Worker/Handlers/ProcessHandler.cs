@@ -151,7 +151,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
                                                                  requireExitCodeZero: false,
                                                                  outputEncoding: null,
                                                                  killProcessOnCancel: false,
-                                                                 contentsToStandardIn: null,
+                                                                 redirectStandardIn: null,
                                                                  inheritConsoleHandler: !ExecutionContext.Variables.Retain_Default_Encoding,
                                                                  cancellationToken: ExecutionContext.CancellationToken);
                 FlushErrorData();

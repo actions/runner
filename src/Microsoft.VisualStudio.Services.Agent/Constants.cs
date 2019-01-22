@@ -49,6 +49,7 @@ namespace Microsoft.VisualStudio.Services.Agent
 #endif
         public static string TFBuild = "TF_BUILD";
         public static string ProcessLookupId = "VSTS_PROCESS_LOOKUP_ID";
+        public static string PluginTracePrefix = "##[plugin.trace]";
 
         // This enum is embedded within the Constants class to make it easier to reference and avoid
         // ambiguous type reference with System.Runtime.InteropServices.OSPlatform and System.Runtime.InteropServices.Architecture

@@ -24,10 +24,10 @@ steps:
     testRunTitle: 'Agent Tests'
 
 # Upload test log
-#- task: PublishBuildArtifacts@1
-#  displayName: Publish Test logs
-#  condition: always()
-#  inputs:
-#    pathToPublish: src/Test/TestLogs
-#    artifactName: $(System.JobId)
-#    artifactType: container
+- task: PublishBuildArtifacts@1
+  displayName: Publish Test logs
+  condition: always()
+  inputs:
+    pathToPublish: src/Test/TestLogs
+    artifactName: $(System.JobId)
+    artifactType: container

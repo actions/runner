@@ -236,14 +236,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     .FirstOrDefault();
                 ArgUtil.NotNull(jobExtension, nameof(jobExtension));
 
-                List<IStep> jobSteps = new List<IStep>();
+                List<IStep> jobSteps = null;
                 try
                 {
                     Trace.Info("Initialize job. Getting all job steps.");
-                    var initializeResult = await jobExtension.InitializeJob(jobContext, message);
-                    jobSteps.AddRange(initializeResult.PreJobSteps);
-                    jobSteps.AddRange(initializeResult.JobSteps);
-                    jobSteps.AddRange(initializeResult.PostJobStep);
+                    jobSteps = await jobExtension.InitializeJob(jobContext, message);
                 }
                 catch (OperationCanceledException ex) when (jobContext.CancellationToken.IsCancellationRequested)
                 {
@@ -267,25 +264,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 Trace.Verbose($"Job steps: '{string.Join(", ", jobSteps.Select(x => x.DisplayName))}'");
                 HostContext.WritePerfCounter($"WorkerJobInitialized_{message.RequestId.ToString()}");
 
-                bool processCleanup = jobContext.Variables.GetBoolean("process.clean") ?? true;
-                HashSet<string> existingProcesses = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                string processLookupId = null;
-                if (processCleanup)
-                {
-                    processLookupId = $"vsts_{Guid.NewGuid()}";
-
-                    // Set the VSTS_PROCESS_LOOKUP_ID env variable.
-                    jobContext.SetVariable(Constants.ProcessLookupId, processLookupId, false, false);
-
-                    // Take a snapshot of current running processes
-                    Dictionary<int, Process> processes = SnapshotProcesses();
-                    foreach (var proc in processes)
-                    {
-                        // Pid_ProcessName
-                        existingProcesses.Add($"{proc.Key}_{proc.Value.ProcessName}");
-                    }
-                }
-
                 // Run all job steps
                 Trace.Info("Run all job steps.");
                 var stepsRunner = HostContext.GetService<IStepsRunner>();
@@ -304,47 +282,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 }
                 finally
                 {
-                    if (processCleanup)
-                    {
-                        // Only check environment variable for any process that doesn't run before we invoke our process.
-                        Dictionary<int, Process> currentProcesses = SnapshotProcesses();
-                        foreach (var proc in currentProcesses)
-                        {
-                            if (existingProcesses.Contains($"{proc.Key}_{proc.Value.ProcessName}"))
-                            {
-                                Trace.Verbose($"Skip existing process. PID: {proc.Key} ({proc.Value.ProcessName})");
-                            }
-                            else
-                            {
-                                Trace.Info($"Inspecting process environment variables. PID: {proc.Key} ({proc.Value.ProcessName})");
-
-                                string lookupId = null;
-                                try
-                                {
-                                    lookupId = proc.Value.GetEnvironmentVariable(HostContext, Constants.ProcessLookupId);
-                                }
-                                catch (Exception ex)
-                                {
-                                    Trace.Warning($"Ignore exception during read process environment variables: {ex.Message}");
-                                    Trace.Verbose(ex.ToString());
-                                }
-
-                                if (string.Equals(lookupId, processLookupId, StringComparison.OrdinalIgnoreCase))
-                                {
-                                    Trace.Info($"Terminate orphan process: pid ({proc.Key}) ({proc.Value.ProcessName})");
-                                    try
-                                    {
-                                        proc.Value.Kill();
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        Trace.Error("Catch exception during orphan process cleanup.");
-                                        Trace.Error(ex);
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    Trace.Info("Finalize job.");
+                    await jobExtension.FinalizeJob(jobContext);
                 }
 
                 Trace.Info($"Job result after all job steps finish: {jobContext.Result ?? TaskResult.Succeeded}");
@@ -549,30 +488,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 message.Variables[Constants.Variables.System.TFServerUrl] = ReplaceWithConfigUriBase(new Uri(tfsServerUrl)).AbsoluteUri;
                 Trace.Info($"Ensure System.TFServerUrl match config url base. {message.Variables[Constants.Variables.System.TFServerUrl].Value}");
             }
-        }
-
-        private Dictionary<int, Process> SnapshotProcesses()
-        {
-            Dictionary<int, Process> snapshot = new Dictionary<int, Process>();
-            foreach (var proc in Process.GetProcesses())
-            {
-                try
-                {
-                    // On Windows, this will throw exception on error.
-                    // On Linux, this will be NULL on error.
-                    if (!string.IsNullOrEmpty(proc.ProcessName))
-                    {
-                        snapshot[proc.Id] = proc;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Trace.Verbose($"Ignore any exception during taking process snapshot of process pid={proc.Id}: '{ex.Message}'.");
-                }
-            }
-
-            Trace.Info($"Total accessible running process: {snapshot.Count}.");
-            return snapshot;
         }
     }
 }

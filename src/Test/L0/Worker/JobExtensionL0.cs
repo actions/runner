@@ -48,10 +48,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
         }
 
         private IExecutionContext _jobEc;
-        private JobInitializeResult _initResult = new JobInitializeResult();
         private Pipelines.AgentJobRequestMessage _message;
         private Mock<ITaskManager> _taskManager;
-
+        private Mock<IAgentLogPlugin> _logPlugin;
         private Mock<IJobServerQueue> _jobServerQueue;
         private Mock<IVstsAgentWebProxy> _proxy;
         private Mock<IAgentCertificateManager> _cert;
@@ -72,6 +71,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             _cert = new Mock<IAgentCertificateManager>();
             _express = new Mock<IExpressionManager>();
             _containerProvider = new Mock<IContainerOperationProvider>();
+            _logPlugin = new Mock<IAgentLogPlugin>();
 
             TaskRunner step1 = new TaskRunner();
             TaskRunner step2 = new TaskRunner();
@@ -165,10 +165,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             Guid JobId = Guid.NewGuid();
             _message = Pipelines.AgentJobRequestMessageUtil.Convert(new AgentJobRequestMessage(plan, timeline, JobId, testName, testName, environment, tasks));
 
-            _initResult.PreJobSteps.Clear();
-            _initResult.JobSteps.Clear();
-            _initResult.PostJobStep.Clear();
-
             _taskManager.Setup(x => x.DownloadAsync(It.IsAny<IExecutionContext>(), It.IsAny<IEnumerable<Pipelines.TaskStep>>()))
                 .Returns(Task.CompletedTask);
 
@@ -250,6 +246,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             hc.SetSingleton(_cert.Object);
             hc.SetSingleton(_express.Object);
             hc.SetSingleton(_containerProvider.Object);
+            hc.SetSingleton(_logPlugin.Object);
             hc.EnqueueInstance<IPagingLogger>(_logger.Object); // jobcontext logger
             hc.EnqueueInstance<IPagingLogger>(_logger.Object); // init step logger
             hc.EnqueueInstance<IPagingLogger>(_logger.Object); // step 1
@@ -292,30 +289,26 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             {
                 TestJobExtension testExtension = new TestJobExtension();
                 testExtension.Initialize(hc);
-                JobInitializeResult result = await testExtension.InitializeJob(_jobEc, _message);
+                List<IStep> result = await testExtension.InitializeJob(_jobEc, _message);
 
                 var trace = hc.GetTrace();
 
-                trace.Info(string.Join(", ", result.PreJobSteps.Select(x => x.DisplayName)));
-                trace.Info(string.Join(", ", result.JobSteps.Select(x => x.DisplayName)));
-                trace.Info(string.Join(", ", result.PostJobStep.Select(x => x.DisplayName)));
+                trace.Info(string.Join(", ", result.Select(x => x.DisplayName)));
 
-                Assert.Equal(4, result.PreJobSteps.Count);
-                Assert.Equal(4, result.JobSteps.Count);
-                Assert.Equal(4, result.PostJobStep.Count);
+                Assert.Equal(12, result.Count);
 
-                Assert.Equal("task2", result.PreJobSteps[0].DisplayName);
-                Assert.Equal("task3", result.PreJobSteps[1].DisplayName);
-                Assert.Equal("task4", result.PreJobSteps[2].DisplayName);
-                Assert.Equal("task6", result.PreJobSteps[3].DisplayName);
-                Assert.Equal("task1", result.JobSteps[0].DisplayName);
-                Assert.Equal("task2", result.JobSteps[1].DisplayName);
-                Assert.Equal("task6", result.JobSteps[2].DisplayName);
-                Assert.Equal("task7", result.JobSteps[3].DisplayName);
-                Assert.Equal("task7", result.PostJobStep[0].DisplayName);
-                Assert.Equal("task5", result.PostJobStep[1].DisplayName);
-                Assert.Equal("task3", result.PostJobStep[2].DisplayName);
-                Assert.Equal("task2", result.PostJobStep[3].DisplayName);
+                Assert.Equal("task2", result[0].DisplayName);
+                Assert.Equal("task3", result[1].DisplayName);
+                Assert.Equal("task4", result[2].DisplayName);
+                Assert.Equal("task6", result[3].DisplayName);
+                Assert.Equal("task1", result[4].DisplayName);
+                Assert.Equal("task2", result[5].DisplayName);
+                Assert.Equal("task6", result[6].DisplayName);
+                Assert.Equal("task7", result[7].DisplayName);
+                Assert.Equal("task7", result[8].DisplayName);
+                Assert.Equal("task5", result[9].DisplayName);
+                Assert.Equal("task3", result[10].DisplayName);
+                Assert.Equal("task2", result[11].DisplayName);
             }
         }
 
@@ -328,28 +321,24 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             {
                 TestJobExtension testExtension = new TestJobExtension();
                 testExtension.Initialize(hc);
-                JobInitializeResult result = await testExtension.InitializeJob(_jobEc, _message);
+                List<IStep> result = await testExtension.InitializeJob(_jobEc, _message);
 
                 var trace = hc.GetTrace();
 
-                trace.Info(string.Join(", ", result.PreJobSteps.Select(x => x.DisplayName)));
-                trace.Info(string.Join(", ", result.JobSteps.Select(x => x.DisplayName)));
-                trace.Info(string.Join(", ", result.PostJobStep.Select(x => x.DisplayName)));
+                trace.Info(string.Join(", ", result.Select(x => x.DisplayName)));
 
-                Assert.Equal(4, result.PreJobSteps.Count);
-                Assert.Equal(4, result.JobSteps.Count);
-                Assert.Equal(4, result.PostJobStep.Count);
+                Assert.Equal(12, result.Count);
 
-                result.PreJobSteps[0].ExecutionContext.TaskVariables.Set("state1", "value1", false);
-                Assert.Equal("value1", result.JobSteps[1].ExecutionContext.TaskVariables.Get("state1"));
-                Assert.Equal("value1", result.PostJobStep[3].ExecutionContext.TaskVariables.Get("state1"));
+                result[0].ExecutionContext.TaskVariables.Set("state1", "value1", false);
+                Assert.Equal("value1", result[5].ExecutionContext.TaskVariables.Get("state1"));
+                Assert.Equal("value1", result[11].ExecutionContext.TaskVariables.Get("state1"));
 
-                Assert.Null(result.JobSteps[0].ExecutionContext.TaskVariables.Get("state1"));
-                Assert.Null(result.PreJobSteps[1].ExecutionContext.TaskVariables.Get("state1"));
-                Assert.Null(result.PreJobSteps[2].ExecutionContext.TaskVariables.Get("state1"));
-                Assert.Null(result.PostJobStep[2].ExecutionContext.TaskVariables.Get("state1"));
-                Assert.Null(result.JobSteps[2].ExecutionContext.TaskVariables.Get("state1"));
-                Assert.Null(result.JobSteps[3].ExecutionContext.TaskVariables.Get("state1"));
+                Assert.Null(result[4].ExecutionContext.TaskVariables.Get("state1"));
+                Assert.Null(result[1].ExecutionContext.TaskVariables.Get("state1"));
+                Assert.Null(result[2].ExecutionContext.TaskVariables.Get("state1"));
+                Assert.Null(result[10].ExecutionContext.TaskVariables.Get("state1"));
+                Assert.Null(result[6].ExecutionContext.TaskVariables.Get("state1"));
+                Assert.Null(result[7].ExecutionContext.TaskVariables.Get("state1"));
             }
         }
 
@@ -371,23 +360,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                 {
                     TestJobExtension testExtension = new TestJobExtension();
                     testExtension.Initialize(hc);
-                    JobInitializeResult result = await testExtension.InitializeJob(_jobEc, _message);
+                    List<IStep> result = await testExtension.InitializeJob(_jobEc, _message);
 
                     var trace = hc.GetTrace();
 
-                    trace.Info(string.Join(", ", result.PreJobSteps.Select(x => x.DisplayName)));
-                    trace.Info(string.Join(", ", result.JobSteps.Select(x => x.DisplayName)));
-                    trace.Info(string.Join(", ", result.PostJobStep.Select(x => x.DisplayName)));
+                    trace.Info(string.Join(", ", result.Select(x => x.DisplayName)));
 
-                    Assert.Equal(5, result.PreJobSteps.Count);
-                    Assert.Equal(4, result.JobSteps.Count);
-                    Assert.Equal(5, result.PostJobStep.Count);
+                    Assert.Equal(14, result.Count);
 
-                    Assert.True(result.PreJobSteps[0] is ManagementScriptStep);
-                    Assert.True(result.PostJobStep[4] is ManagementScriptStep);
+                    Assert.True(result[0] is ManagementScriptStep);
+                    Assert.True(result[13] is ManagementScriptStep);
 
-                    Assert.Equal(result.PreJobSteps[0].DisplayName, "Agent Initialization");
-                    Assert.Equal(result.PostJobStep[4].DisplayName, "Agent Cleanup");
+                    Assert.Equal(result[0].DisplayName, "Agent Initialization");
+                    Assert.Equal(result[13].DisplayName, "Agent Cleanup");
                 }
                 finally
                 {
