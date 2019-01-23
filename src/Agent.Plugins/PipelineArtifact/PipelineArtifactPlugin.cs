@@ -42,6 +42,15 @@ namespace Agent.Plugins.PipelineArtifact
             string targetPath, 
             string artifactName, 
             CancellationToken token);
+
+            
+        // Properties set by tasks
+        protected static class ArtifactEventProperties
+        {
+            public static readonly string ArtifactName = "artifactName";
+            public static readonly string TargetPath = "targetPath";
+            public static readonly string PipelineId = "pipelineId";
+        }
     }
 
     // Caller: PublishPipelineArtifact task
@@ -49,7 +58,7 @@ namespace Agent.Plugins.PipelineArtifact
     public class PublishPipelineArtifactTask : PipelineArtifactTaskPluginBase
     {
         // Same as: https://github.com/Microsoft/vsts-tasks/blob/master/Tasks/PublishPipelineArtifactV0/task.json
-        public override Guid Id => new Guid("ECDC45F6-832D-4AD9-B52B-EE49E94659BE");
+        public override Guid Id => PipelineArtifactPluginConstants.PublishPipelineArtifactTaskId;
 
         protected override async Task ProcessCommandInternalAsync(
             AgentTaskPluginExecutionContext context, 
@@ -92,12 +101,12 @@ namespace Agent.Plugins.PipelineArtifact
         }
     }
 
-    // CAller: DownloadPipelineArtifact task
+    // Caller: DownloadPipelineArtifact task
     // Can be invoked from a build run or a release run should a build be set as the artifact. 
     public class DownloadPipelineArtifactTask : PipelineArtifactTaskPluginBase
     {
         // Same as https://github.com/Microsoft/vsts-tasks/blob/master/Tasks/DownloadPipelineArtifactV0/task.json
-        public override Guid Id => new Guid("61F2A582-95AE-4948-B34D-A1B3C4F6A737");
+        public override Guid Id => PipelineArtifactPluginConstants.DownloadPipelineArtifactTaskId;
 
         protected override async Task ProcessCommandInternalAsync(
             AgentTaskPluginExecutionContext context, 
@@ -157,13 +166,5 @@ namespace Agent.Plugins.PipelineArtifact
             await server.DownloadAsync(context, projectId, buildId, artifactName, targetPath, token);
             context.Output(StringUtil.Loc("DownloadArtifactFinished"));
         }
-    }
-
-    // Properties set by tasks
-    internal static class ArtifactEventProperties
-    {
-        public static readonly string ArtifactName = "artifactName";
-        public static readonly string TargetPath = "targetPath";
-        public static readonly string PipelineId = "pipelineId";
     }
 }

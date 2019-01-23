@@ -33,14 +33,10 @@ namespace Agent.Plugins.PipelineArtifact
             CancellationToken cancellationToken)
         {
             VssConnection connection = context.VssConnection;
+            var buildDropManager = this.GetBDM(context, connection);
 
-            // 1) upload pipeline artifact to VSTS BlobStore
-            var httpclient = connection.GetClient<DedupStoreHttpClient>();
-            var tracer = new CallbackAppTraceSource(str => context.Output(str), System.Diagnostics.SourceLevels.Information);
-            httpclient.SetTracer(tracer);
-            var client = new DedupStoreClientWithDataport(httpclient, 16 * Environment.ProcessorCount);
-            var BuildDropManager = new BuildDropManager(client, tracer);
-            var result = await BuildDropManager.PublishAsync(source, cancellationToken);
+            //Upload the pipeline artifact.
+            var result = await buildDropManager.PublishAsync(source, cancellationToken);
 
             // 2) associate the pipeline artifact with an build artifact
             BuildServer buildHelper = new BuildServer(connection);
@@ -65,15 +61,79 @@ namespace Agent.Plugins.PipelineArtifact
             // 1) get manifest id from artifact data
             BuildServer buildHelper = new BuildServer(connection);
             BuildArtifact art = await buildHelper.GetArtifact(projectId, buildId, artifactName, cancellationToken);
+            if (art.Resource.Type != "PipelineArtifact")
+            {
+                throw new ArgumentException("The artifact is not of the type Pipeline Artifact\n");
+            }
+            var manifestId = DedupIdentifier.Create(art.Resource.Data);
+            
+            // 2) download to the target path
+            var buildDropManager = this.GetBDM(context, connection);
+            await buildDropManager.DownloadAsync(manifestId, targetDir, cancellationToken);
+        }
+
+        // Download with minimatch patterns.
+        internal async Task DownloadAsyncMinimatch(
+            AgentTaskPluginExecutionContext context,
+            Guid projectId,
+            int buildId,
+            string artifactName,
+            string targetDir,
+            string[] minimatchFilters,
+            CancellationToken cancellationToken)
+        {
+            VssConnection connection = context.VssConnection;
+
+            // 1) get manifest id from artifact data
+            BuildServer buildHelper = new BuildServer(connection);
+            BuildArtifact art = await buildHelper.GetArtifact(projectId, buildId, artifactName, cancellationToken);
+            if (art.Resource.Type != "PipelineArtifact")
+            {
+                throw new ArgumentException($"The artifact is not of the type Pipeline Artifact. Unrecognized type: {art.Resource.Type}.");
+            }
             var manifestId = DedupIdentifier.Create(art.Resource.Data);
 
             // 2) download to the target path
-            var httpclient = connection.GetClient<DedupStoreHttpClient>();
+            var buildDropManager = this.GetBDM(context, connection);
+            DownloadPipelineArtifactOptions options = DownloadPipelineArtifactOptions.CreateWithManifestId(manifestId, targetDir, proxyUri: null, minimatchPatterns: minimatchFilters);
+            await buildDropManager.DownloadAsync(options, cancellationToken);
+        }
+
+        // Download pipeline artifact with project name.
+        internal async Task DownloadAsyncWithProjectNameMiniMatch(
+            AgentTaskPluginExecutionContext context,
+            string project,
+            int buildId,
+            string artifactName,
+            string targetDir,
+            string[] minimatchFilters,
+            CancellationToken cancellationToken)
+        {
+            VssConnection connection = context.VssConnection;
+
+            // 1) get manifest id from artifact data
+            BuildServer buildHelper = new BuildServer(connection);
+            BuildArtifact art = await buildHelper.GetArtifactWithProjectAsync(project, buildId, artifactName, cancellationToken);
+            if (art.Resource.Type != "PipelineArtifact")
+            {
+                throw new ArgumentException("The artifact is not of the type Pipeline Artifact\n");
+            }
+            var manifestId = DedupIdentifier.Create(art.Resource.Data);
+
+            // 2) download to the target path
+            var buildDropManager = this.GetBDM(context, connection);
+            DownloadPipelineArtifactOptions options = DownloadPipelineArtifactOptions.CreateWithManifestId(manifestId, targetDir, proxyUri: null, minimatchPatterns: minimatchFilters);
+            await buildDropManager.DownloadAsync(options, cancellationToken);
+        }
+
+        private BuildDropManager GetBDM(AgentTaskPluginExecutionContext context, VssConnection connection)
+        {
+            var dedupStoreHttpClient = connection.GetClient<DedupStoreHttpClient>();
             var tracer = new CallbackAppTraceSource(str => context.Output(str), System.Diagnostics.SourceLevels.Information);
-            httpclient.SetTracer(tracer);
-            var client = new DedupStoreClientWithDataport(httpclient, maxParallelism: 16 * Environment.ProcessorCount);
-            var BuildDropManager = new BuildDropManager(client, tracer);
-            await BuildDropManager.DownloadAsync(manifestId, targetDir, cancellationToken);
+            dedupStoreHttpClient.SetTracer(tracer);
+            var client = new DedupStoreClientWithDataport(dedupStoreHttpClient, 16 * Environment.ProcessorCount);
+            var buildDropManager = new BuildDropManager(client, tracer);
+            return buildDropManager;
         }
     }
 }
