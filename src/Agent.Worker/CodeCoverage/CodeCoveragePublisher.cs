@@ -19,7 +19,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
         /// <summary>
         /// publish codecoverage summary data to server
         /// </summary>
-        Task PublishCodeCoverageSummaryAsync(IEnumerable<CodeCoverageStatistics> coverageData, string project, CancellationToken cancellationToken);
+        Task PublishCodeCoverageSummaryAsync(IAsyncCommandContext context, IEnumerable<CodeCoverageStatistics> coverageData, string project, CancellationToken cancellationToken);
 
         /// <summary>
         /// publish codecoverage files to server
@@ -41,9 +41,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
             _codeCoverageServer = HostContext.GetService<ICodeCoverageServer>();
         }
 
-        public async Task PublishCodeCoverageSummaryAsync(IEnumerable<CodeCoverageStatistics> coverageData, string project, CancellationToken cancellationToken)
+        public async Task PublishCodeCoverageSummaryAsync(IAsyncCommandContext context, IEnumerable<CodeCoverageStatistics> coverageData, string project, CancellationToken cancellationToken)
         {
-            await _codeCoverageServer.PublishCoverageSummaryAsync(_connection, project, _buildId, coverageData, cancellationToken);
+            await _codeCoverageServer.PublishCoverageSummaryAsync(context, _connection, project, _buildId, coverageData, cancellationToken);
         }
 
         public async Task PublishCodeCoverageFilesAsync(IAsyncCommandContext context, Guid projectId, long containerId, List<Tuple<string, string>> files, bool browsable, CancellationToken cancellationToken)

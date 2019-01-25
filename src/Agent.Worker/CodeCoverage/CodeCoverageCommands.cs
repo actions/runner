@@ -111,7 +111,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage
                 {
                     commandContext.Output(StringUtil.Format(" {0}- {1} of {2} covered.", coverage.Label, coverage.Covered, coverage.Total));
                 }
-                await codeCoveragePublisher.PublishCodeCoverageSummaryAsync(coverageData, project, cancellationToken);
+                await codeCoveragePublisher.PublishCodeCoverageSummaryAsync(commandContext, coverageData, project, cancellationToken);
             }
 
             // step 3: publish code coverage files as build artifacts
