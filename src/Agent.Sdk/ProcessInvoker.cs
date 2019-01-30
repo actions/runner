@@ -568,6 +568,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
 
         private void WindowsKillProcessTree()
         {
+            var pid = _proc?.Id;
+            if (pid == null)
+            {
+                // process already exit, stop here.
+                return;
+            }
+
             Dictionary<int, int> processRelationship = new Dictionary<int, int>();
             Trace.Info($"Scan all processes to find relationship between all processes.");
             foreach (Process proc in Process.GetProcesses())
@@ -598,9 +605,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
                 }
             }
 
-            Trace.Verbose($"Start killing process tree of process '{_proc.Id}'.");
+            Trace.Verbose($"Start killing process tree of process '{pid.Value}'.");
             Stack<ProcessTerminationInfo> processesNeedtoKill = new Stack<ProcessTerminationInfo>();
-            processesNeedtoKill.Push(new ProcessTerminationInfo(_proc.Id, false));
+            processesNeedtoKill.Push(new ProcessTerminationInfo(pid.Value, false));
             while (processesNeedtoKill.Count() > 0)
             {
                 ProcessTerminationInfo procInfo = processesNeedtoKill.Pop();
@@ -751,9 +758,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
         {
             try
             {
-                if (!_proc.HasExited)
+                if (_proc?.HasExited == false)
                 {
-                    _proc.Kill();
+                    _proc?.Kill();
                 }
             }
             catch (InvalidOperationException ex)
