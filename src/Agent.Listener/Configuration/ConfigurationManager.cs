@@ -389,11 +389,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             _term.WriteLine(StringUtil.Loc("TestAgentConnection"));
             var credMgr = HostContext.GetService<ICredentialManager>();
             VssCredentials credential = credMgr.LoadCredentials();
-            VssConnection conn = VssUtil.CreateConnection(new Uri(agentSettings.ServerUrl), credential);
             var agentSvr = HostContext.GetService<IAgentServer>();
             try
             {
-                await agentSvr.ConnectAsync(conn);
+                await agentSvr.ConnectAsync(new Uri(agentSettings.ServerUrl), credential);
             }
             catch (VssOAuthTokenRequestException ex) when (ex.Message.Contains("Current server time is"))
             {

@@ -5,13 +5,25 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using Microsoft.VisualStudio.Services.WebApi;
+using Microsoft.VisualStudio.Services.Common;
 
 namespace Microsoft.VisualStudio.Services.Agent
 {
+    public enum AgentConnectionType
+    {
+        Generic,
+        MessageQueue,
+        JobRequest
+    }
+
     [ServiceLocator(Default = typeof(AgentServer))]
     public interface IAgentServer : IAgentService
     {
-        Task ConnectAsync(VssConnection agentConnection);
+        Task ConnectAsync(Uri serverUrl, VssCredentials credentials);
+
+        Task RefreshConnectionAsync(AgentConnectionType connectionType, TimeSpan timeout);
+
+        void SetConnectionTimeout(AgentConnectionType connectionType, TimeSpan timeout);
 
         // Configuration
         Task<TaskAgent> AddAgentAsync(Int32 agentPoolId, TaskAgent agent);
@@ -41,44 +53,132 @@ namespace Microsoft.VisualStudio.Services.Agent
 
     public sealed class AgentServer : AgentService, IAgentServer
     {
-        private bool _hasConnection;
-        private VssConnection _connection;
-        private TaskAgentHttpClient _taskAgentClient;
+        private bool _hasGenericConnection;
+        private bool _hasMessageConnection;
+        private bool _hasRequestConnection;
+        private VssConnection _genericConnection;
+        private VssConnection _messageConnection;
+        private VssConnection _requestConnection;
+        private TaskAgentHttpClient _genericTaskAgentClient;
+        private TaskAgentHttpClient _messageTaskAgentClient;
+        private TaskAgentHttpClient _requestTaskAgentClient;
 
-        public async Task ConnectAsync(VssConnection agentConnection)
+        public async Task ConnectAsync(Uri serverUrl, VssCredentials credentials)
         {
             if (HostContext.RunMode == RunMode.Local)
             {
                 return;
             }
 
-            _connection = agentConnection;
-            int attemptCount = 5;
-            while (!_connection.HasAuthenticated && attemptCount-- > 0)
+            _genericConnection = await EstablishVssConnection(serverUrl, credentials, TimeSpan.FromSeconds(100));
+            _messageConnection = await EstablishVssConnection(serverUrl, credentials, TimeSpan.FromSeconds(60));
+            _requestConnection = await EstablishVssConnection(serverUrl, credentials, TimeSpan.FromSeconds(60));
+
+            _genericTaskAgentClient = _genericConnection.GetClient<TaskAgentHttpClient>();
+            _messageTaskAgentClient = _messageConnection.GetClient<TaskAgentHttpClient>();
+            _requestTaskAgentClient = _requestConnection.GetClient<TaskAgentHttpClient>();
+
+            _hasGenericConnection = true;
+            _hasMessageConnection = true;
+            _hasRequestConnection = true;
+        }
+
+        public async Task RefreshConnectionAsync(AgentConnectionType connectionType, TimeSpan timeout)
+        {
+            Trace.Info($"Refresh {connectionType} VssConnection to get on a different AFD node.");
+            switch (connectionType)
             {
+                case AgentConnectionType.MessageQueue:
+                    _hasMessageConnection = false;
+                    _messageConnection = await EstablishVssConnection(_messageConnection.Uri, _messageConnection.Credentials, timeout);
+                    _messageTaskAgentClient = _messageConnection.GetClient<TaskAgentHttpClient>();
+                    _hasMessageConnection = true;
+                    break;
+                case AgentConnectionType.JobRequest:
+                    _hasRequestConnection = false;
+                    _requestConnection = await EstablishVssConnection(_requestConnection.Uri, _requestConnection.Credentials, timeout);
+                    _requestTaskAgentClient = _requestConnection.GetClient<TaskAgentHttpClient>();
+                    _hasRequestConnection = true;
+                    break;
+                case AgentConnectionType.Generic:
+                    _hasGenericConnection = false;
+                    _genericConnection = await EstablishVssConnection(_genericConnection.Uri, _genericConnection.Credentials, timeout);
+                    _genericTaskAgentClient = _genericConnection.GetClient<TaskAgentHttpClient>();
+                    _hasGenericConnection = true;
+                    break;
+                default:
+                    throw new NotSupportedException(connectionType.ToString());
+            }
+        }
+
+        public void SetConnectionTimeout(AgentConnectionType connectionType, TimeSpan timeout)
+        {
+            Trace.Info($"Set {connectionType} VssConnection's timeout to {timeout.TotalSeconds} seconds.");
+            switch (connectionType)
+            {
+                case AgentConnectionType.JobRequest:
+                    _requestConnection.Settings.SendTimeout = timeout;
+                    break;
+                case AgentConnectionType.MessageQueue:
+                    _messageConnection.Settings.SendTimeout = timeout;
+                    break;
+                case AgentConnectionType.Generic:
+                    _genericConnection.Settings.SendTimeout = timeout;
+                    break;
+                default:
+                    throw new NotSupportedException(connectionType.ToString());
+            }
+        }
+
+        private async Task<VssConnection> EstablishVssConnection(Uri serverUrl, VssCredentials credentials, TimeSpan timeout)
+        {
+            Trace.Info($"Establish connection with {timeout.TotalSeconds} seconds timeout.");
+            int attemptCount = 5;
+            while (attemptCount-- > 0)
+            {
+                var connection = VssUtil.CreateConnection(serverUrl, credentials, timeout: timeout);
                 try
                 {
-                    await _connection.ConnectAsync();
-                    break;
+                    await connection.ConnectAsync();
+                    return connection;
                 }
                 catch (Exception ex) when (attemptCount > 0)
                 {
-                    Trace.Info($"Catch exception during connect. {attemptCount} attemp left.");
+                    Trace.Info($"Catch exception during connect. {attemptCount} attempt left.");
                     Trace.Error(ex);
-                }
 
-                await Task.Delay(100);
+                    await HostContext.Delay(TimeSpan.FromMilliseconds(100), CancellationToken.None);
+                }
             }
 
-            _taskAgentClient = _connection.GetClient<TaskAgentHttpClient>();
-            _hasConnection = true;
+            // should never reach here.
+            throw new InvalidOperationException(nameof(EstablishVssConnection));
         }
 
-        private void CheckConnection()
+        private void CheckConnection(AgentConnectionType connectionType)
         {
-            if (!_hasConnection)
+            switch (connectionType)
             {
-                throw new InvalidOperationException("SetConnection");
+                case AgentConnectionType.Generic:
+                    if (!_hasGenericConnection)
+                    {
+                        throw new InvalidOperationException($"SetConnection {AgentConnectionType.Generic}");
+                    }
+                    break;
+                case AgentConnectionType.JobRequest:
+                    if (!_hasRequestConnection)
+                    {
+                        throw new InvalidOperationException($"SetConnection {AgentConnectionType.JobRequest}");
+                    }
+                    break;
+                case AgentConnectionType.MessageQueue:
+                    if (!_hasMessageConnection)
+                    {
+                        throw new InvalidOperationException($"SetConnection {AgentConnectionType.MessageQueue}");
+                    }
+                    break;
+                default:
+                    throw new NotSupportedException(connectionType.ToString());
             }
         }
 
@@ -88,32 +188,32 @@ namespace Microsoft.VisualStudio.Services.Agent
 
         public Task<List<TaskAgentPool>> GetAgentPoolsAsync(string agentPoolName, TaskAgentPoolType poolType = TaskAgentPoolType.Automation)
         {
-            CheckConnection();
-            return _taskAgentClient.GetAgentPoolsAsync(agentPoolName, poolType: poolType);
+            CheckConnection(AgentConnectionType.Generic);
+            return _genericTaskAgentClient.GetAgentPoolsAsync(agentPoolName, poolType: poolType);
         }
 
         public Task<TaskAgent> AddAgentAsync(Int32 agentPoolId, TaskAgent agent)
         {
-            CheckConnection();
-            return _taskAgentClient.AddAgentAsync(agentPoolId, agent);
+            CheckConnection(AgentConnectionType.Generic);
+            return _genericTaskAgentClient.AddAgentAsync(agentPoolId, agent);
         }
 
         public Task<List<TaskAgent>> GetAgentsAsync(int agentPoolId, string agentName = null)
         {
-            CheckConnection();
-            return _taskAgentClient.GetAgentsAsync(agentPoolId, agentName, false);
+            CheckConnection(AgentConnectionType.Generic);
+            return _genericTaskAgentClient.GetAgentsAsync(agentPoolId, agentName, false);
         }
 
         public Task<TaskAgent> UpdateAgentAsync(int agentPoolId, TaskAgent agent)
         {
-            CheckConnection();
-            return _taskAgentClient.ReplaceAgentAsync(agentPoolId, agent);
+            CheckConnection(AgentConnectionType.Generic);
+            return _genericTaskAgentClient.ReplaceAgentAsync(agentPoolId, agent);
         }
 
         public Task DeleteAgentAsync(int agentPoolId, int agentId)
         {
-            CheckConnection();
-            return _taskAgentClient.DeleteAgentAsync(agentPoolId, agentId);
+            CheckConnection(AgentConnectionType.Generic);
+            return _genericTaskAgentClient.DeleteAgentAsync(agentPoolId, agentId);
         }
 
         //-----------------------------------------------------------------
@@ -122,26 +222,26 @@ namespace Microsoft.VisualStudio.Services.Agent
 
         public Task<TaskAgentSession> CreateAgentSessionAsync(Int32 poolId, TaskAgentSession session, CancellationToken cancellationToken)
         {
-            CheckConnection();
-            return _taskAgentClient.CreateAgentSessionAsync(poolId, session, cancellationToken: cancellationToken);
+            CheckConnection(AgentConnectionType.MessageQueue);
+            return _messageTaskAgentClient.CreateAgentSessionAsync(poolId, session, cancellationToken: cancellationToken);
         }
 
         public Task DeleteAgentMessageAsync(Int32 poolId, Int64 messageId, Guid sessionId, CancellationToken cancellationToken)
         {
-            CheckConnection();
-            return _taskAgentClient.DeleteMessageAsync(poolId, messageId, sessionId, cancellationToken: cancellationToken);
+            CheckConnection(AgentConnectionType.MessageQueue);
+            return _messageTaskAgentClient.DeleteMessageAsync(poolId, messageId, sessionId, cancellationToken: cancellationToken);
         }
 
         public Task DeleteAgentSessionAsync(Int32 poolId, Guid sessionId, CancellationToken cancellationToken)
         {
-            CheckConnection();
-            return _taskAgentClient.DeleteAgentSessionAsync(poolId, sessionId, cancellationToken: cancellationToken);
+            CheckConnection(AgentConnectionType.MessageQueue);
+            return _messageTaskAgentClient.DeleteAgentSessionAsync(poolId, sessionId, cancellationToken: cancellationToken);
         }
 
         public Task<TaskAgentMessage> GetAgentMessageAsync(Int32 poolId, Guid sessionId, Int64? lastMessageId, CancellationToken cancellationToken)
         {
-            CheckConnection();
-            return _taskAgentClient.GetMessageAsync(poolId, sessionId, lastMessageId, cancellationToken: cancellationToken);
+            CheckConnection(AgentConnectionType.MessageQueue);
+            return _messageTaskAgentClient.GetMessageAsync(poolId, sessionId, lastMessageId, cancellationToken: cancellationToken);
         }
 
         //-----------------------------------------------------------------
@@ -155,8 +255,8 @@ namespace Microsoft.VisualStudio.Services.Agent
                 return Task.FromResult(JsonUtility.FromString<TaskAgentJobRequest>("{ lockedUntil: \"" + DateTime.Now.Add(TimeSpan.FromMinutes(5)).ToString("u") + "\" }"));
             }
 
-            CheckConnection();
-            return _taskAgentClient.RenewAgentRequestAsync(poolId, requestId, lockToken, cancellationToken: cancellationToken);
+            CheckConnection(AgentConnectionType.JobRequest);
+            return _requestTaskAgentClient.RenewAgentRequestAsync(poolId, requestId, lockToken, cancellationToken: cancellationToken);
         }
 
         public Task<TaskAgentJobRequest> FinishAgentRequestAsync(int poolId, long requestId, Guid lockToken, DateTime finishTime, TaskResult result, CancellationToken cancellationToken = default(CancellationToken))
@@ -166,15 +266,15 @@ namespace Microsoft.VisualStudio.Services.Agent
                 return Task.FromResult<TaskAgentJobRequest>(null);
             }
 
-            CheckConnection();
-            return _taskAgentClient.FinishAgentRequestAsync(poolId, requestId, lockToken, finishTime, result, cancellationToken: cancellationToken);
+            CheckConnection(AgentConnectionType.JobRequest);
+            return _requestTaskAgentClient.FinishAgentRequestAsync(poolId, requestId, lockToken, finishTime, result, cancellationToken: cancellationToken);
         }
 
         public Task<TaskAgentJobRequest> GetAgentRequestAsync(int poolId, long requestId, CancellationToken cancellationToken = default(CancellationToken))
         {
             ArgUtil.Equal(RunMode.Normal, HostContext.RunMode, nameof(HostContext.RunMode));
-            CheckConnection();
-            return _taskAgentClient.GetAgentRequestAsync(poolId, requestId, cancellationToken: cancellationToken);
+            CheckConnection(AgentConnectionType.JobRequest);
+            return _requestTaskAgentClient.GetAgentRequestAsync(poolId, requestId, cancellationToken: cancellationToken);
         }
 
         //-----------------------------------------------------------------
@@ -183,20 +283,20 @@ namespace Microsoft.VisualStudio.Services.Agent
         public Task<List<PackageMetadata>> GetPackagesAsync(string packageType, string platform, int top, CancellationToken cancellationToken)
         {
             ArgUtil.Equal(RunMode.Normal, HostContext.RunMode, nameof(HostContext.RunMode));
-            CheckConnection();
-            return _taskAgentClient.GetPackagesAsync(packageType, platform, top, cancellationToken: cancellationToken);
+            CheckConnection(AgentConnectionType.Generic);
+            return _genericTaskAgentClient.GetPackagesAsync(packageType, platform, top, cancellationToken: cancellationToken);
         }
 
         public Task<PackageMetadata> GetPackageAsync(string packageType, string platform, string version, CancellationToken cancellationToken)
         {
-            CheckConnection();
-            return _taskAgentClient.GetPackageAsync(packageType, platform, version, cancellationToken: cancellationToken);
+            CheckConnection(AgentConnectionType.Generic);
+            return _genericTaskAgentClient.GetPackageAsync(packageType, platform, version, cancellationToken: cancellationToken);
         }
 
         public Task<TaskAgent> UpdateAgentUpdateStateAsync(int agentPoolId, int agentId, string currentState)
         {
-            CheckConnection();
-            return _taskAgentClient.UpdateAgentUpdateStateAsync(agentPoolId, agentId, currentState);
+            CheckConnection(AgentConnectionType.Generic);
+            return _genericTaskAgentClient.UpdateAgentUpdateStateAsync(agentPoolId, agentId, currentState);
         }
     }
 }

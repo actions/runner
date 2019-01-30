@@ -102,9 +102,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         public async Task TestConnectionAsync(AgentSettings agentSettings, VssCredentials creds, bool isHosted)
         {
             _term.WriteLine(StringUtil.Loc("ConnectingToServer"));
-            VssConnection connection = VssUtil.CreateConnection(new Uri(agentSettings.ServerUrl), creds);
-
-            await _agentServer.ConnectAsync(connection);
+            await _agentServer.ConnectAsync(new Uri(agentSettings.ServerUrl), creds);
         }
 
         public async Task<TaskAgent> GetAgentAsync(AgentSettings agentSettings)

@@ -15,6 +15,7 @@ using System.Security.Cryptography;
 using System.Threading.Tasks;
 using Xunit;
 using Microsoft.VisualStudio.Services.Location;
+using Microsoft.VisualStudio.Services.Common;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
 {
@@ -94,7 +95,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
                 DeploymentType = DeploymentFlags.Hosted,
                 DeploymentId = Guid.NewGuid()
             };
-            _agentServer.Setup(x => x.ConnectAsync(It.IsAny<VssConnection>())).Returns(Task.FromResult<object>(null));
+            _agentServer.Setup(x => x.ConnectAsync(It.IsAny<Uri>(), It.IsAny<VssCredentials>())).Returns(Task.FromResult<object>(null));
             _locationServer.Setup(x => x.ConnectAsync(It.IsAny<VssConnection>())).Returns(Task.FromResult<object>(null));
             _locationServer.Setup(x => x.GetConnectionDataAsync()).Returns(Task.FromResult<ConnectionData>(connectionData));
             _machineGroupServer.Setup(x => x.ConnectAsync(It.IsAny<VssConnection>())).Returns(Task.FromResult<object>(null));

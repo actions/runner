@@ -1,13 +1,14 @@
-using Microsoft.TeamFoundation.DistributedTask.WebApi;
-using Microsoft.VisualStudio.Services.Agent.Listener;
-using Moq;
 using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using Xunit;
+using Microsoft.TeamFoundation.DistributedTask.WebApi;
+using Microsoft.VisualStudio.Services.Agent.Listener;
 using Microsoft.VisualStudio.Services.WebApi;
+using Moq;
+using Xunit;
+
 using Pipelines = Microsoft.TeamFoundation.DistributedTask.Pipelines;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
@@ -86,63 +87,362 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
             }
         }
 
-        // TODO: Fix after JobDispatcher changes.
-        // [Fact]
-        // [Trait("Level", "L0")]
-        // [Trait("Category", "Agent")]
-        // public async void DispatchesCancellationRequest()
-        // {
-        //     //Arrange
-        //     using (var hc = new TestHostContext(this))
-        //     using (var jobDispatcher = new JobDispatcher())
-        //     {
-        //         hc.SetSingleton<IConfigurationStore>(_configurationStore.Object);
-        //         hc.SetSingleton<IAgentServer>(_agentServer.Object);
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Agent")]
+        public async void DispatcherRenewJobRequest()
+        {
+            //Arrange
+            using (var hc = new TestHostContext(this))
+            {
+                int poolId = 1;
+                Int64 requestId = 1000;
+                int count = 0;
 
-        //         hc.EnqueueInstance<IProcessChannel>(_processChannel.Object);
-        //         hc.EnqueueInstance<IProcessInvoker>(_processInvoker.Object);
-        //         jobDispatcher.Initialize(hc);
-        //         var ts = new CancellationTokenSource();
-        //         CancellationToken token = ts.Token;
-        //         JobRequestMessage message = CreateJobRequestMessage();
-        //         string strMessage = JsonUtility.ToString(message);
+                var trace = hc.GetTrace(nameof(DispatcherRenewJobRequest));
+                TaskCompletionSource<int> firstJobRequestRenewed = new TaskCompletionSource<int>();
+                CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
 
-        //         _processInvoker.Setup(x => x.ExecuteAsync(It.IsAny<String>(), It.IsAny<String>(), "spawnclient 1 2", null, It.IsAny<CancellationToken>()))
-        //             .Returns(async(String workingFolder, String filename, String arguments, IDictionary<String, String> environment, CancellationToken cancellationToken) =>
-        //             {
-        //                 await Task.Delay(5000);
-        //                 return 1;
-        //             });
+                TaskAgentJobRequest request = new TaskAgentJobRequest();
+                PropertyInfo lockUntilProperty = request.GetType().GetProperty("LockedUntil", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+                Assert.NotNull(lockUntilProperty);
+                lockUntilProperty.SetValue(request, DateTime.UtcNow.AddMinutes(5));
 
-        //         _processChannel.Setup(x => x.StartServer(It.IsAny<StartProcessDelegate>()))
-        //             .Callback((StartProcessDelegate startDel) => { startDel("1", "2"); });
-        //         _processChannel.Setup(x => x.SendAsync(MessageType.NewJobRequest, It.Is<string>(s => s.Equals(strMessage)), It.IsAny<CancellationToken>()))
-        //             .Returns(Task.CompletedTask);
-        //         _processChannel.Setup(x => x.SendAsync(MessageType.CancelRequest, It.IsAny<String>(), It.IsAny<CancellationToken>()))
-        //             .Returns(Task.CompletedTask);
+                hc.SetSingleton<IAgentServer>(_agentServer.Object);
+                hc.SetSingleton<IConfigurationStore>(_configurationStore.Object);
+                _configurationStore.Setup(x => x.GetSettings()).Returns(new AgentSettings() { PoolId = 1 });
+                _agentServer.Setup(x => x.RenewAgentRequestAsync(It.IsAny<int>(), It.IsAny<long>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                            .Returns(() =>
+                            {
+                                count++;
+                                if (!firstJobRequestRenewed.Task.IsCompletedSuccessfully)
+                                {
+                                    trace.Info("First renew happens.");
+                                }
 
-        //         _configurationStore.Setup(x => x.GetSettings()).Returns(new AgentSettings() { PoolId = 1 });
+                                if (count < 5)
+                                {
+                                    return Task.FromResult<TaskAgentJobRequest>(request);
+                                }
+                                else if (count == 5)
+                                {
+                                    cancellationTokenSource.Cancel();
+                                    return Task.FromResult<TaskAgentJobRequest>(request);
+                                }
+                                else
+                                {
+                                    throw new InvalidOperationException("Should not reach here.");
+                                }
+                            });
 
-        //         var request = new TaskAgentJobRequest();
-        //         PropertyInfo sessionIdProperty = request.GetType().GetProperty("LockedUntil", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
-        //         Assert.NotNull(sessionIdProperty);
-        //         sessionIdProperty.SetValue(request, DateTime.UtcNow.AddMinutes(5));
+                var jobDispatcher = new JobDispatcher();
+                jobDispatcher.Initialize(hc);
 
-        //         _agentServer.Setup(x => x.RenewAgentRequestAsync(It.IsAny<int>(), It.IsAny<long>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>())).Returns(Task.FromResult<TaskAgentJobRequest>(request));
+                await jobDispatcher.RenewJobRequestAsync(poolId, requestId, Guid.Empty, firstJobRequestRenewed, cancellationTokenSource.Token);
 
-        //         _agentServer.Setup(x => x.FinishAgentRequestAsync(It.IsAny<int>(), It.IsAny<long>(), It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<TaskResult>(), It.IsAny<CancellationToken>())).Returns(Task.FromResult<TaskAgentJobRequest>(new TaskAgentJobRequest()));
+                Assert.True(firstJobRequestRenewed.Task.IsCompletedSuccessfully);
+                _agentServer.Verify(x => x.RenewAgentRequestAsync(It.IsAny<int>(), It.IsAny<long>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Exactly(5));
+            }
+        }
 
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Agent")]
+        public async void DispatcherRenewJobRequestStopOnJobNotFoundExceptions()
+        {
+            //Arrange
+            using (var hc = new TestHostContext(this))
+            {
+                int poolId = 1;
+                Int64 requestId = 1000;
+                int count = 0;
 
-        //         //Act
-        //         Task<int> runAsyncTask = jobDispatcher.RunAsync(message, ts.Token);
-        //         ts.Cancel();
-        //         await runAsyncTask;
+                var trace = hc.GetTrace(nameof(DispatcherRenewJobRequestStopOnJobNotFoundExceptions));
+                TaskCompletionSource<int> firstJobRequestRenewed = new TaskCompletionSource<int>();
+                CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
 
-        //         //Assert
-        //         // Verify the cancellation message was sent
-        //         _processChannel.Verify(x => x.SendAsync(MessageType.CancelRequest, It.IsAny<String>(), It.IsAny<CancellationToken>()),
-        //             "Cancelation message not sent");
-        //     }
-        // }
+                TaskAgentJobRequest request = new TaskAgentJobRequest();
+                PropertyInfo lockUntilProperty = request.GetType().GetProperty("LockedUntil", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+                Assert.NotNull(lockUntilProperty);
+                lockUntilProperty.SetValue(request, DateTime.UtcNow.AddMinutes(5));
+
+                hc.SetSingleton<IAgentServer>(_agentServer.Object);
+                hc.SetSingleton<IConfigurationStore>(_configurationStore.Object);
+                _configurationStore.Setup(x => x.GetSettings()).Returns(new AgentSettings() { PoolId = 1 });
+                _agentServer.Setup(x => x.RenewAgentRequestAsync(It.IsAny<int>(), It.IsAny<long>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                            .Returns(() =>
+                            {
+                                count++;
+                                if (!firstJobRequestRenewed.Task.IsCompletedSuccessfully)
+                                {
+                                    trace.Info("First renew happens.");
+                                }
+
+                                if (count < 5)
+                                {
+                                    return Task.FromResult<TaskAgentJobRequest>(request);
+                                }
+                                else if (count == 5)
+                                {
+                                    cancellationTokenSource.CancelAfter(10000);
+                                    throw new TaskAgentJobNotFoundException("");
+                                }
+                                else
+                                {
+                                    throw new InvalidOperationException("Should not reach here.");
+                                }
+                            });
+
+                var jobDispatcher = new JobDispatcher();
+                jobDispatcher.Initialize(hc);
+
+                await jobDispatcher.RenewJobRequestAsync(poolId, requestId, Guid.Empty, firstJobRequestRenewed, cancellationTokenSource.Token);
+
+                Assert.True(firstJobRequestRenewed.Task.IsCompletedSuccessfully, "First renew should succeed.");
+                Assert.False(cancellationTokenSource.IsCancellationRequested);
+                _agentServer.Verify(x => x.RenewAgentRequestAsync(It.IsAny<int>(), It.IsAny<long>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Exactly(5));
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Agent")]
+        public async void DispatcherRenewJobRequestStopOnJobTokenExpiredExceptions()
+        {
+            //Arrange
+            using (var hc = new TestHostContext(this))
+            {
+                int poolId = 1;
+                Int64 requestId = 1000;
+                int count = 0;
+
+                var trace = hc.GetTrace(nameof(DispatcherRenewJobRequestStopOnJobTokenExpiredExceptions));
+                TaskCompletionSource<int> firstJobRequestRenewed = new TaskCompletionSource<int>();
+                CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
+
+                TaskAgentJobRequest request = new TaskAgentJobRequest();
+                PropertyInfo lockUntilProperty = request.GetType().GetProperty("LockedUntil", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+                Assert.NotNull(lockUntilProperty);
+                lockUntilProperty.SetValue(request, DateTime.UtcNow.AddMinutes(5));
+
+                hc.SetSingleton<IAgentServer>(_agentServer.Object);
+                hc.SetSingleton<IConfigurationStore>(_configurationStore.Object);
+                _configurationStore.Setup(x => x.GetSettings()).Returns(new AgentSettings() { PoolId = 1 });
+                _agentServer.Setup(x => x.RenewAgentRequestAsync(It.IsAny<int>(), It.IsAny<long>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                            .Returns(() =>
+                            {
+                                count++;
+                                if (!firstJobRequestRenewed.Task.IsCompletedSuccessfully)
+                                {
+                                    trace.Info("First renew happens.");
+                                }
+
+                                if (count < 5)
+                                {
+                                    return Task.FromResult<TaskAgentJobRequest>(request);
+                                }
+                                else if (count == 5)
+                                {
+                                    cancellationTokenSource.CancelAfter(10000);
+                                    throw new TaskAgentJobTokenExpiredException("");
+                                }
+                                else
+                                {
+                                    throw new InvalidOperationException("Should not reach here.");
+                                }
+                            });
+
+                var jobDispatcher = new JobDispatcher();
+                jobDispatcher.Initialize(hc);
+
+                await jobDispatcher.RenewJobRequestAsync(poolId, requestId, Guid.Empty, firstJobRequestRenewed, cancellationTokenSource.Token);
+
+                Assert.True(firstJobRequestRenewed.Task.IsCompletedSuccessfully, "First renew should succeed.");
+                Assert.False(cancellationTokenSource.IsCancellationRequested);
+                _agentServer.Verify(x => x.RenewAgentRequestAsync(It.IsAny<int>(), It.IsAny<long>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Exactly(5));
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Agent")]
+        public async void DispatcherRenewJobRequestRecoverFromExceptions()
+        {
+            //Arrange
+            using (var hc = new TestHostContext(this))
+            {
+                int poolId = 1;
+                Int64 requestId = 1000;
+                int count = 0;
+
+                var trace = hc.GetTrace(nameof(DispatcherRenewJobRequestRecoverFromExceptions));
+                TaskCompletionSource<int> firstJobRequestRenewed = new TaskCompletionSource<int>();
+                CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
+
+                TaskAgentJobRequest request = new TaskAgentJobRequest();
+                PropertyInfo lockUntilProperty = request.GetType().GetProperty("LockedUntil", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+                Assert.NotNull(lockUntilProperty);
+                lockUntilProperty.SetValue(request, DateTime.UtcNow.AddMinutes(5));
+
+                hc.SetSingleton<IAgentServer>(_agentServer.Object);
+                hc.SetSingleton<IConfigurationStore>(_configurationStore.Object);
+                _configurationStore.Setup(x => x.GetSettings()).Returns(new AgentSettings() { PoolId = 1 });
+                _agentServer.Setup(x => x.RenewAgentRequestAsync(It.IsAny<int>(), It.IsAny<long>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                            .Returns(() =>
+                            {
+                                count++;
+                                if (!firstJobRequestRenewed.Task.IsCompletedSuccessfully)
+                                {
+                                    trace.Info("First renew happens.");
+                                }
+
+                                if (count < 5)
+                                {
+                                    return Task.FromResult<TaskAgentJobRequest>(request);
+                                }
+                                else if (count == 5 || count == 6 || count == 7)
+                                {
+                                    throw new TimeoutException("");
+                                }
+                                else
+                                {
+                                    cancellationTokenSource.Cancel();
+                                    return Task.FromResult<TaskAgentJobRequest>(request);
+                                }
+                            });
+
+                var jobDispatcher = new JobDispatcher();
+                jobDispatcher.Initialize(hc);
+
+                await jobDispatcher.RenewJobRequestAsync(poolId, requestId, Guid.Empty, firstJobRequestRenewed, cancellationTokenSource.Token);
+
+                Assert.True(firstJobRequestRenewed.Task.IsCompletedSuccessfully, "First renew should succeed.");
+                Assert.True(cancellationTokenSource.IsCancellationRequested);
+                _agentServer.Verify(x => x.RenewAgentRequestAsync(It.IsAny<int>(), It.IsAny<long>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Exactly(8));
+                _agentServer.Verify(x => x.RefreshConnectionAsync(AgentConnectionType.JobRequest, It.IsAny<TimeSpan>()), Times.Exactly(3));
+                _agentServer.Verify(x => x.SetConnectionTimeout(AgentConnectionType.JobRequest, It.IsAny<TimeSpan>()), Times.Once);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Agent")]
+        public async void DispatcherRenewJobRequestFirstRenewRetrySixTimes()
+        {
+            //Arrange
+            using (var hc = new TestHostContext(this))
+            {
+                int poolId = 1;
+                Int64 requestId = 1000;
+                int count = 0;
+
+                var trace = hc.GetTrace(nameof(DispatcherRenewJobRequestFirstRenewRetrySixTimes));
+                TaskCompletionSource<int> firstJobRequestRenewed = new TaskCompletionSource<int>();
+                CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
+
+                TaskAgentJobRequest request = new TaskAgentJobRequest();
+                PropertyInfo lockUntilProperty = request.GetType().GetProperty("LockedUntil", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+                Assert.NotNull(lockUntilProperty);
+                lockUntilProperty.SetValue(request, DateTime.UtcNow.AddMinutes(5));
+
+                hc.SetSingleton<IAgentServer>(_agentServer.Object);
+                hc.SetSingleton<IConfigurationStore>(_configurationStore.Object);
+                _configurationStore.Setup(x => x.GetSettings()).Returns(new AgentSettings() { PoolId = 1 });
+                _agentServer.Setup(x => x.RenewAgentRequestAsync(It.IsAny<int>(), It.IsAny<long>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                            .Returns(() =>
+                            {
+                                count++;
+                                if (!firstJobRequestRenewed.Task.IsCompletedSuccessfully)
+                                {
+                                    trace.Info("First renew happens.");
+                                }
+
+                                if (count <= 5)
+                                {
+                                    throw new TimeoutException("");
+                                }
+                                else
+                                {
+                                    cancellationTokenSource.CancelAfter(10000);
+                                    throw new InvalidOperationException("Should not reach here.");
+                                }
+                            });
+
+                var jobDispatcher = new JobDispatcher();
+                jobDispatcher.Initialize(hc);
+
+                await jobDispatcher.RenewJobRequestAsync(poolId, requestId, Guid.Empty, firstJobRequestRenewed, cancellationTokenSource.Token);
+
+                Assert.False(firstJobRequestRenewed.Task.IsCompletedSuccessfully, "First renew should failed.");
+                Assert.False(cancellationTokenSource.IsCancellationRequested);
+                _agentServer.Verify(x => x.RenewAgentRequestAsync(It.IsAny<int>(), It.IsAny<long>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Exactly(6));
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Agent")]
+        public async void DispatcherRenewJobRequestStopOnExpiredRequest()
+        {
+            //Arrange
+            using (var hc = new TestHostContext(this))
+            {
+                int poolId = 1;
+                Int64 requestId = 1000;
+                int count = 0;
+
+                var trace = hc.GetTrace(nameof(DispatcherRenewJobRequestStopOnExpiredRequest));
+                TaskCompletionSource<int> firstJobRequestRenewed = new TaskCompletionSource<int>();
+                CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
+
+                TaskAgentJobRequest request = new TaskAgentJobRequest();
+                PropertyInfo lockUntilProperty = request.GetType().GetProperty("LockedUntil", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+                Assert.NotNull(lockUntilProperty);
+                lockUntilProperty.SetValue(request, DateTime.UtcNow.AddMinutes(5));
+
+                hc.SetSingleton<IAgentServer>(_agentServer.Object);
+                hc.SetSingleton<IConfigurationStore>(_configurationStore.Object);
+                _configurationStore.Setup(x => x.GetSettings()).Returns(new AgentSettings() { PoolId = 1 });
+                _agentServer.Setup(x => x.RenewAgentRequestAsync(It.IsAny<int>(), It.IsAny<long>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                            .Returns(() =>
+                            {
+                                count++;
+                                if (!firstJobRequestRenewed.Task.IsCompletedSuccessfully)
+                                {
+                                    trace.Info("First renew happens.");
+                                }
+
+                                if (count == 1)
+                                {
+                                    return Task.FromResult<TaskAgentJobRequest>(request);
+                                }
+                                else if (count < 5)
+                                {
+                                    throw new TimeoutException("");
+                                }
+                                else if (count == 5)
+                                {
+                                    lockUntilProperty.SetValue(request, DateTime.UtcNow.Subtract(TimeSpan.FromMinutes(11)));
+                                    throw new TimeoutException("");
+                                }
+                                else
+                                {
+                                    cancellationTokenSource.CancelAfter(10000);
+                                    throw new InvalidOperationException("Should not reach here.");
+                                }
+                            });
+
+                var jobDispatcher = new JobDispatcher();
+                jobDispatcher.Initialize(hc);
+
+                await jobDispatcher.RenewJobRequestAsync(poolId, requestId, Guid.Empty, firstJobRequestRenewed, cancellationTokenSource.Token);
+
+                Assert.True(firstJobRequestRenewed.Task.IsCompletedSuccessfully, "First renew should succeed.");
+                Assert.False(cancellationTokenSource.IsCancellationRequested);
+                _agentServer.Verify(x => x.RenewAgentRequestAsync(It.IsAny<int>(), It.IsAny<long>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Exactly(5));
+                _agentServer.Verify(x => x.RefreshConnectionAsync(AgentConnectionType.JobRequest, It.IsAny<TimeSpan>()), Times.Exactly(3));
+                _agentServer.Verify(x => x.SetConnectionTimeout(AgentConnectionType.JobRequest, It.IsAny<TimeSpan>()), Times.Never);
+            }
+        }
     }
 }

@@ -65,9 +65,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             Trace.Info("Loading Credentials");
             var credMgr = HostContext.GetService<ICredentialManager>();
             VssCredentials creds = credMgr.LoadCredentials();
-            Uri uri = new Uri(serverUrl);
-            VssConnection conn = VssUtil.CreateConnection(uri, creds);
-            Trace.Info("VssConnection created");
 
             var agent = new TaskAgentReference
             {
@@ -90,7 +87,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 try
                 {
                     Trace.Info("Connecting to the Agent Server...");
-                    await _agentServer.ConnectAsync(conn);
+                    await _agentServer.ConnectAsync(new Uri(serverUrl), creds);
+                    Trace.Info("VssConnection created");
 
                     _session = await _agentServer.CreateAgentSessionAsync(
                                                         _settings.PoolId,
@@ -233,6 +231,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                             _term.WriteError(StringUtil.Loc("QueueConError", DateTime.UtcNow, ex.Message));
                             encounteringError = true;
                         }
+
+                        // re-create VssConnection before next retry
+                        await _agentServer.RefreshConnectionAsync(AgentConnectionType.MessageQueue, TimeSpan.FromSeconds(60));
 
                         Trace.Info("Sleeping for {0} seconds before retrying.", _getNextMessageRetryInterval.TotalSeconds);
                         await HostContext.Delay(_getNextMessageRetryInterval, token);
