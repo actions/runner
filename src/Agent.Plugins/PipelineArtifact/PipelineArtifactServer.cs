@@ -22,6 +22,7 @@ namespace Agent.Plugins.PipelineArtifact
     {
         public static readonly string RootId = "RootId";
         public static readonly string ProofNodes = "ProofNodes";
+        public const string PipelineArtifactTypeName = "PipelineArtifact";
 
         // Upload from target path to VSTS BlobStore service through BuildDropManager, then associate it with the build
         internal async Task UploadAsync(
@@ -33,7 +34,7 @@ namespace Agent.Plugins.PipelineArtifact
             CancellationToken cancellationToken)
         {
             VssConnection connection = context.VssConnection;
-            var buildDropManager = this.GetBDM(context, connection);
+            var buildDropManager = this.CreateBulidDropManager(context, connection);
 
             //Upload the pipeline artifact.
             var result = await buildDropManager.PublishAsync(source, cancellationToken);
@@ -48,7 +49,8 @@ namespace Agent.Plugins.PipelineArtifact
         }
 
         // Download pipeline artifact from VSTS BlobStore service through BuildDropManager to a target path
-        internal async Task DownloadAsync(
+        // Old V0 function
+        internal Task DownloadAsync(
             AgentTaskPluginExecutionContext context,
             Guid projectId,
             int buildId,
@@ -56,77 +58,87 @@ namespace Agent.Plugins.PipelineArtifact
             string targetDir,
             CancellationToken cancellationToken)
         {
-            VssConnection connection = context.VssConnection;
-
-            // 1) get manifest id from artifact data
-            BuildServer buildHelper = new BuildServer(connection);
-            BuildArtifact art = await buildHelper.GetArtifact(projectId, buildId, artifactName, cancellationToken);
-            if (art.Resource.Type != "PipelineArtifact")
+            var downloadParameters = new PipelineArtifactDownloadParameters
             {
-                throw new ArgumentException("The artifact is not of the type Pipeline Artifact\n");
-            }
-            var manifestId = DedupIdentifier.Create(art.Resource.Data);
-            
-            // 2) download to the target path
-            var buildDropManager = this.GetBDM(context, connection);
-            await buildDropManager.DownloadAsync(manifestId, targetDir, cancellationToken);
+                ProjectRetrievalOptions = BuildArtifactRetrievalOptions.RetrieveByProjectId,
+                ProjectId = projectId,
+                BuildId = buildId,
+                ArtifactName = artifactName,
+                TargetDirectory = targetDir
+            };
+
+            return this.DownloadAsync(context, downloadParameters, cancellationToken);
         }
 
         // Download with minimatch patterns.
-        internal async Task DownloadAsyncMinimatch(
+        internal async Task DownloadAsync(
             AgentTaskPluginExecutionContext context,
-            Guid projectId,
-            int buildId,
-            string artifactName,
-            string targetDir,
-            string[] minimatchFilters,
+            PipelineArtifactDownloadParameters downloadParameters,
             CancellationToken cancellationToken)
         {
             VssConnection connection = context.VssConnection;
-
-            // 1) get manifest id from artifact data
+            var buildDropManager = this.CreateBulidDropManager(context, connection);
             BuildServer buildHelper = new BuildServer(connection);
-            BuildArtifact art = await buildHelper.GetArtifact(projectId, buildId, artifactName, cancellationToken);
-            if (art.Resource.Type != "PipelineArtifact")
+            
+            // download all pipeline artifacts if artifact name is missing
+            if (string.IsNullOrEmpty(downloadParameters.ArtifactName))
             {
-                throw new ArgumentException($"The artifact is not of the type Pipeline Artifact. Unrecognized type: {art.Resource.Type}.");
+                List<BuildArtifact> artifacts = await buildHelper.GetArtifactsAsync(downloadParameters.ProjectId, downloadParameters.BuildId, cancellationToken);
+                IEnumerable<BuildArtifact> pipelineArtifacts = artifacts.Where(a => a.Resource.Type == PipelineArtifactTypeName);
+                if (pipelineArtifacts.Count() == 0)
+                {
+                    throw new ArgumentException("Could not find any pipeline artifacts in the build.");
+                }
+                else
+                {
+                    context.Output(StringUtil.Loc("DownloadingMultiplePipelineArtifacts", pipelineArtifacts.Count()));
+                    foreach (BuildArtifact pipelineArtifact in pipelineArtifacts)
+                    {
+                        // each pipeline artifact will have its own subroot to avoid file collisions
+                        string pipelineArtifactRootPath = Path.Combine(downloadParameters.TargetDirectory, pipelineArtifact.Name);
+                        await DownloadPipelineArtifact(
+                            buildDropManager, 
+                            pipelineArtifact,
+                            pipelineArtifactRootPath, 
+                            downloadParameters.MinimatchFilters, 
+                            cancellationToken);
+                    }
+                }
             }
-            var manifestId = DedupIdentifier.Create(art.Resource.Data);
+            else
+            {
+                // 1) get manifest id from artifact data
+                BuildArtifact buildArtifact;
+                if (downloadParameters.ProjectRetrievalOptions == BuildArtifactRetrievalOptions.RetrieveByProjectId)
+                {
+                    buildArtifact = await buildHelper.GetArtifact(downloadParameters.ProjectId, downloadParameters.BuildId, downloadParameters.ArtifactName, cancellationToken);
+                }
+                else if (downloadParameters.ProjectRetrievalOptions == BuildArtifactRetrievalOptions.RetrieveByProjectName)
+                {
+                    if (string.IsNullOrEmpty(downloadParameters.ProjectName))
+                    {
+                        throw new InvalidOperationException("Project name can't be empty when trying to fetch build artifacts!");
+                    }
+                    else
+                    {
+                        buildArtifact = await buildHelper.GetArtifactWithProjectNameAsync(downloadParameters.ProjectName, downloadParameters.BuildId, downloadParameters.ArtifactName, cancellationToken);
+                    }
+                }
+                else
+                {
+                    throw new InvalidOperationException("Unreachable code!");
+                }
 
-            // 2) download to the target path
-            var buildDropManager = this.GetBDM(context, connection);
-            DownloadPipelineArtifactOptions options = DownloadPipelineArtifactOptions.CreateWithManifestId(manifestId, targetDir, proxyUri: null, minimatchPatterns: minimatchFilters);
-            await buildDropManager.DownloadAsync(options, cancellationToken);
+                await DownloadPipelineArtifact(
+                    buildDropManager, 
+                    buildArtifact, 
+                    downloadParameters.TargetDirectory, 
+                    downloadParameters.MinimatchFilters, 
+                    cancellationToken);
+            }
         }
 
-        // Download pipeline artifact with project name.
-        internal async Task DownloadAsyncWithProjectNameMiniMatch(
-            AgentTaskPluginExecutionContext context,
-            string project,
-            int buildId,
-            string artifactName,
-            string targetDir,
-            string[] minimatchFilters,
-            CancellationToken cancellationToken)
-        {
-            VssConnection connection = context.VssConnection;
-
-            // 1) get manifest id from artifact data
-            BuildServer buildHelper = new BuildServer(connection);
-            BuildArtifact art = await buildHelper.GetArtifactWithProjectAsync(project, buildId, artifactName, cancellationToken);
-            if (art.Resource.Type != "PipelineArtifact")
-            {
-                throw new ArgumentException("The artifact is not of the type Pipeline Artifact\n");
-            }
-            var manifestId = DedupIdentifier.Create(art.Resource.Data);
-
-            // 2) download to the target path
-            var buildDropManager = this.GetBDM(context, connection);
-            DownloadPipelineArtifactOptions options = DownloadPipelineArtifactOptions.CreateWithManifestId(manifestId, targetDir, proxyUri: null, minimatchPatterns: minimatchFilters);
-            await buildDropManager.DownloadAsync(options, cancellationToken);
-        }
-
-        private BuildDropManager GetBDM(AgentTaskPluginExecutionContext context, VssConnection connection)
+        private BuildDropManager CreateBulidDropManager(AgentTaskPluginExecutionContext context, VssConnection connection)
         {
             var dedupStoreHttpClient = connection.GetClient<DedupStoreHttpClient>();
             var tracer = new CallbackAppTraceSource(str => context.Output(str), System.Diagnostics.SourceLevels.Information);
@@ -135,5 +147,53 @@ namespace Agent.Plugins.PipelineArtifact
             var buildDropManager = new BuildDropManager(client, tracer);
             return buildDropManager;
         }
+
+        private Task DownloadPipelineArtifact(
+            BuildDropManager buildDropManager, 
+            BuildArtifact buildArtifact, 
+            string targetDirectory,
+            string[] minimatchFilters,
+            CancellationToken cancellationToken)
+        {
+            if (buildArtifact.Resource.Type != PipelineArtifactTypeName)
+            {
+                throw new ArgumentException("The artifact is not of the type Pipeline Artifact.");
+            }
+            var manifestId = DedupIdentifier.Create(buildArtifact.Resource.Data);
+
+            // 2) download to the target path
+            DownloadPipelineArtifactOptions options = DownloadPipelineArtifactOptions.CreateWithManifestId(
+                manifestId,
+                targetDirectory,
+                proxyUri: null,
+                minimatchPatterns: minimatchFilters);
+            return buildDropManager.DownloadAsync(options, cancellationToken);
+        }
+    }
+
+    internal class PipelineArtifactDownloadParameters
+    {
+        /// <remarks>
+        /// Options on how to retrieve the build using the following parameters.
+        /// </remarks>
+        public BuildArtifactRetrievalOptions ProjectRetrievalOptions { get; set; }
+        /// <remarks>
+        /// Either project ID or project name need to be supplied.
+        /// </remarks>
+        public Guid ProjectId { get; set; }
+        /// <remarks>
+        /// Either project ID or project name need to be supplied.
+        /// </remarks>
+        public string ProjectName { get; set; }
+        public int BuildId { get; set; }
+        public string ArtifactName { get; set; }
+        public string TargetDirectory { get; set; }
+        public string[] MinimatchFilters { get; set; }
+    }
+
+    internal enum BuildArtifactRetrievalOptions
+    {
+        RetrieveByProjectId,
+        RetrieveByProjectName
     }
 }

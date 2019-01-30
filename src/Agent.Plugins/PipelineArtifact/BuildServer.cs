@@ -50,17 +50,22 @@ namespace Agent.Plugins.PipelineArtifact
             Guid projectId,
             int buildId,
             string name,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken)
         {
             return await _buildHttpClient.GetArtifactAsync(projectId, buildId, name, cancellationToken: cancellationToken);
         }
 
+        public Task<List<BuildArtifact>> GetArtifactsAsync(Guid project, int buildId, CancellationToken cancellationToken)
+        {
+            return _buildHttpClient.GetArtifactsAsync(project, buildId, userState: null, cancellationToken: cancellationToken);
+        }
+
         //Get artifact with project name.
-        public async Task<BuildArtifact> GetArtifactWithProjectAsync(
+        public async Task<BuildArtifact> GetArtifactWithProjectNameAsync(
             string project,
             int buildId,
             string name,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken)
         {
             return await _buildHttpClient.GetArtifactAsync(project, buildId, name, cancellationToken: cancellationToken);
         }

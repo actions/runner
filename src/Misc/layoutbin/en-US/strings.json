@@ -240,6 +240,7 @@
   "DownloadingFromBuild": "Download from the specified build: #{0}",
   "DownloadingJenkinsCommitsBetween": "Downloading commits between job {0} to {1}",
   "DownloadingJenkinsCommitsFailedWithException": "Downloading commits for jenkins artifact {0} failed. Exception: {1}",
+  "DownloadingMultiplePipelineArtifacts": "Downloading {0} pipeline artifacts...",
   "DownloadingTask0": "Downloading task: {0}",
   "EnsureJobFinished": "Waiting for current job finish running.",
   "EnsureTasksExist": "Download all required tasks.",
