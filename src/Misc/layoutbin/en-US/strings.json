@@ -493,6 +493,7 @@
   "RMTfsVCEndpointNotFound": "Cannot find required information in the job to download the Team Foundation Version Control artifact.",
   "RMUpdateReleaseName": "Update Release Name.",
   "RMUpdateReleaseNameForRelease": "Update release name to {0} for release {1}.",
+  "RMUpdateReleaseNameForReleaseComment": "Updating release name to {0} using task logging command",
   "RMUserChoseToSkipArtifactDownload": "Skipping artifact download based on the setting specified.",
   "RSAKeyFileNotFound": "RSA key file {0} was not found",
   "RunAgentAsServiceDescription": "run agent as service? (Y/N)",

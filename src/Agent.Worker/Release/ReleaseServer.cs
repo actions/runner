@@ -40,9 +40,13 @@ namespace Agent.Worker.Release
             string releaseName,
             CancellationToken cancellationToken = default(CancellationToken))
         {
-            RMContracts.Release release = _releaseHttpClient.GetReleaseAsync(_projectId, int.Parse(releaseId), cancellationToken: cancellationToken).Result;
-            release.Name = releaseName;
-            return await _releaseHttpClient.UpdateReleaseAsync(release, _projectId, int.Parse(releaseId), cancellationToken: cancellationToken);
+            RMContracts.ReleaseUpdateMetadata updateMetadata = new RMContracts.ReleaseUpdateMetadata()
+            {
+                Name = releaseName,
+                Comment = StringUtil.Loc("RMUpdateReleaseNameForReleaseComment", releaseName)
+            };
+            
+            return await _releaseHttpClient.UpdateReleaseResourceAsync(updateMetadata, _projectId, int.Parse(releaseId), cancellationToken: cancellationToken);
         }
     }
 }
