@@ -230,6 +230,52 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.LogPluginHost
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Plugin")]
+        public async Task LogPluginHost_RunSinglePluginWithEmptyLinesInput()
+        {
+            using (TestHostContext tc = new TestHostContext(this))
+            {
+                AgentLogPluginHostContext hostContext = CreateTestLogPluginHostContext();
+                List<IAgentLogPlugin> plugins = new List<IAgentLogPlugin>() { new TestPlugin1() };
+
+                TestTrace trace = new TestTrace(tc);
+                AgentLogPluginHost logPluginHost = new AgentLogPluginHost(hostContext, plugins, trace);
+                var task = logPluginHost.Run();
+                for (int i = 0; i < 100; i++)
+                {
+                    logPluginHost.EnqueueOutput($"{Guid.Empty.ToString("D")}:{i}");
+                }
+
+                for (int i = 0; i < 100; i++)
+                {
+                    logPluginHost.EnqueueOutput($"{Guid.Empty.ToString("D")}:{i}");
+                }
+
+                for (int i = 0; i < 10; i++)
+                {
+                    logPluginHost.EnqueueOutput($"{Guid.Empty.ToString("D")}:");
+                }
+
+                for (int i = 100; i < 200; i++)
+                {
+                    logPluginHost.EnqueueOutput($"{Guid.Empty.ToString("D")}:{i}");
+                }
+
+                await Task.Delay(1000);
+                logPluginHost.Finish();
+                await task;
+
+                Assert.True(trace.Outputs.Contains("Test1: 0"));
+                Assert.True(trace.Outputs.Contains("Test1: 99"));
+                Assert.True(trace.Outputs.Contains("Test1: "));
+                Assert.True(trace.Outputs.Contains("Test1: 100"));
+                Assert.True(trace.Outputs.Contains("Test1: 199"));
+                Assert.Equal(10, trace.Outputs.FindAll(x => x == "Test1: ").Count);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Plugin")]
         public async Task LogPluginHost_RunMultiplePlugins()
         {
             using (TestHostContext tc = new TestHostContext(this))

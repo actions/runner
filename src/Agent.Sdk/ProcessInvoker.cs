@@ -471,7 +471,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
                     if (completedTask == dequeueTask)
                     {
                         string input = await dequeueTask;
-                        if (!string.IsNullOrEmpty(input))
+                        if (input != null)
                         {
                             utf8Writer.WriteLine(input);
                             utf8Writer.Flush();

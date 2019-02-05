@@ -95,14 +95,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
                 processInvoker.OutputDataReceived += (object sender, ProcessDataReceivedEventArgs e) =>
                 {
-                    if (!string.IsNullOrEmpty(e.Data))
+                    if (e.Data != null)
                     {
                         _outputs.Enqueue(e.Data);
                     }
                 };
                 processInvoker.ErrorDataReceived += (object sender, ProcessDataReceivedEventArgs e) =>
                 {
-                    if (!string.IsNullOrEmpty(e.Data))
+                    if (e.Data != null)
                     {
                         _outputs.Enqueue(e.Data);
                     }
@@ -217,12 +217,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         public void Write(Guid stepId, string message)
         {
-            if (_pluginHostProcess != null && !string.IsNullOrEmpty(message))
+            if (_pluginHostProcess != null && message != null)
             {
-                var lines = message.Replace("\r\n", "\n").Replace("\r", "\n").Split('\n', StringSplitOptions.RemoveEmptyEntries);
+                var lines = message.Replace("\r\n", "\n").Replace("\r", "\n").Split('\n', StringSplitOptions.None);
                 foreach (var line in lines)
                 {
-                    if (!String.IsNullOrEmpty(line))
+                    if (line != null)
                     {
                         _redirectedStdin.Enqueue($"{stepId}:{line}");
                     }

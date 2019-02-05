@@ -368,7 +368,7 @@ namespace Agent.Sdk
 
         public void EnqueueOutput(string output)
         {
-            if (!String.IsNullOrEmpty(output))
+            if (output != null)
             {
                 foreach (var plugin in _plugins)
                 {
