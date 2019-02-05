@@ -223,6 +223,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                            defaultValue: false);
         }
 
+        public bool GetAutoLaunchBrowser()
+        {
+            return TestFlagOrPrompt(
+                name: Constants.Agent.CommandLine.Flags.LaunchBrowser,
+                description: StringUtil.Loc("LaunchBrowser"),
+                defaultValue: true);
+        }
         //
         // Args.
         //

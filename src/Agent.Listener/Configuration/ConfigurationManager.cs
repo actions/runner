@@ -626,6 +626,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             // Create the credential.
             Trace.Info("Creating credential for auth: {0}", authType);
             var provider = credentialManager.GetCredentialProvider(authType);
+            if (provider.RequireInteractive && command.Unattended)
+            {
+                throw new NotSupportedException($"Authentication type '{authType}' is not supported for unattended configuration.");
+            }
+
             provider.EnsureCredential(HostContext, command, serverUrl);
             return provider;
         }

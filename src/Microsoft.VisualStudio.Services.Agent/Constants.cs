@@ -166,6 +166,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                     public static readonly string MachineGroup = "machinegroup";
                     public static readonly string Replace = "replace";
                     public static readonly string NoRestart = "norestart";
+                    public static readonly string LaunchBrowser = "launchbrowser";
                     public static readonly string RunAsAutoLogon = "runasautologon";
                     public static readonly string RunAsService = "runasservice";
                     public static readonly string SslSkipCertValidation = "sslskipcertvalidation";
@@ -212,6 +213,7 @@ namespace Microsoft.VisualStudio.Services.Agent
 
         public static class Configuration
         {
+            public static readonly string AAD = "AAD";
             public static readonly string PAT = "PAT";
             public static readonly string Alternate = "ALT";
             public static readonly string Negotiate = "Negotiate";
