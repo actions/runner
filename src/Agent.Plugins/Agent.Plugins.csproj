@@ -20,6 +20,7 @@
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="4.4.0" />
     <PackageReference Include="System.Text.Encoding.CodePages" Version="4.4.0" /> -->
     <PackageReference Include="vss-api-netcore" Version="0.5.97-private" />
+    <PackageReference Include="azuredevops-testresultparser" Version="0.0.4" />
   </ItemGroup>
 
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">

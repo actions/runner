@@ -12,6 +12,7 @@
     <ProjectReference Include="..\Agent.Listener\Agent.Listener.csproj" />
     <ProjectReference Include="..\Microsoft.VisualStudio.Services.Agent\Microsoft.VisualStudio.Services.Agent.csproj" />
     <ProjectReference Include="..\Agent.Worker\Agent.Worker.csproj" />
+    <ProjectReference Include="..\Agent.Plugins\Agent.Plugins.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -23,6 +24,7 @@
     <PackageReference Include="System.Threading.ThreadPool" Version="4.3.0" />
     <PackageReference Include="vss-api-netcore" Version="0.5.97-private" />
     <PackageReference Include="Moq" Version="4.6.36-alpha" />
+    <PackageReference Include="azuredevops-testresultparser" Version="0.0.4" />
   </ItemGroup>
 
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
