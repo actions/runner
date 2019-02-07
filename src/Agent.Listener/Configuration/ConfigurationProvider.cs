@@ -3,6 +3,7 @@ using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.TeamFoundation.Common;
 using Microsoft.VisualStudio.Services.Common;
@@ -181,6 +182,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         public async Task<TaskAgent> AddAgentAsync(AgentSettings agentSettings, TaskAgent agent, CommandSettings command)
         {
             var deploymentMachine = new DeploymentMachine() { Agent = agent };
+            var azureSubscriptionId = await GetAzureSubscriptionIdAsync();
+            if (!String.IsNullOrEmpty(azureSubscriptionId))
+            {
+                deploymentMachine.Properties.Add("AzureSubscriptionId", azureSubscriptionId);
+            }
             deploymentMachine = await _deploymentGroupServer.AddDeploymentTargetAsync(new Guid(agentSettings.ProjectId), agentSettings.DeploymentGroupId, deploymentMachine);
 
             await GetAndAddTags(deploymentMachine, agentSettings, command);
@@ -305,6 +311,34 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             }
 
             return machines;
+        }
+
+        private async Task<string> GetAzureSubscriptionIdAsync()
+        {
+            // We will use the Azure Instance Metadata Service in order to fetch metadata ( in this case Subscription Id used to provision the VM) if the VM is an Azure VM
+            // More on Instance Metadata Service can be found here: https://docs.microsoft.com/en-us/azure/virtual-machines/windows/instance-metadata-service
+            string azureSubscriptionId = string.Empty;
+            const string imdsUri = "http://169.254.169.254/metadata/instance/compute/subscriptionId?api-version=2017-08-01&format=text";
+            using (var httpClient = new HttpClient(HostContext.CreateHttpClientHandler()))
+            {
+                httpClient.DefaultRequestHeaders.Add("Metadata", "True");
+                try
+                {
+                    azureSubscriptionId = await httpClient.GetStringAsync(imdsUri);
+                    if (!Guid.TryParse(azureSubscriptionId, out Guid result))
+                    {
+                        azureSubscriptionId = string.Empty;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // An exception will be thrown if the Agent Machine is a non-Azure VM.
+                    azureSubscriptionId = string.Empty;
+                    Trace.Info($"GetAzureSubscriptionId ex: {ex.Message}");
+                }
+            }
+
+            return azureSubscriptionId;
         }
     }
 
