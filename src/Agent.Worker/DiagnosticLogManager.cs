@@ -96,6 +96,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 File.Copy(workerLogFile, destination);
             }
 
+            // Copy agent diag log files
+            List<string> agentDiagLogFiles = GetAgentDiagLogFiles(HostContext.GetDirectory(WellKnownDirectory.Diag), jobStartTimeUtc);
+            executionContext.Debug($"Copying {agentDiagLogFiles.Count()} agent diag logs.");
+
+            foreach (string agentLogFile in agentDiagLogFiles)
+            {
+                ArgUtil.File(agentLogFile, nameof(agentLogFile));
+
+                string destination = Path.Combine(supportFilesFolder, Path.GetFileName(agentLogFile));
+                File.Copy(agentLogFile, destination);
+            }
+
             executionContext.Debug("Zipping diagnostic files.");
 
             string buildNumber = executionContext.Variables.Build_Number ?? "UnknownBuildNumber";
@@ -152,7 +164,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         }
 
         // The current solution is a hack. We need to rethink this and find a better one.
-        // The list of worker log files isnt available from the logger. It's also nested several levels deep.
+        // The list of worker log files isn't available from the logger. It's also nested several levels deep.
         // For this solution we deduce the applicable worker log files by comparing their create time to the start time of the job.
         private List<string> GetWorkerDiagLogFiles(string diagFolder, DateTime jobStartTimeUtc)
         {
@@ -179,6 +191,46 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             }
 
             return workerLogFiles;
+        }
+
+        private List<string> GetAgentDiagLogFiles(string diagFolder, DateTime jobStartTimeUtc)
+        {
+            // Get the newest agent log file that created just before the start of the job
+            var agentLogFiles = new List<string>();
+            var directoryInfo = new DirectoryInfo(diagFolder);
+
+            // The agent log that record the start point of the job should created before the job start time.
+            // The agent log may get paged if it reach size limit.
+            // We will only need upload 1 agent log file in 99%.
+            // There might be 1% we need to upload 2 agent log files.
+            String recentLog = null;
+            DateTime recentTimeUtc = DateTime.MinValue;
+
+            foreach (FileInfo file in directoryInfo.GetFiles().Where(f => f.Name.StartsWith("Agent_")))
+            {
+                // The format of the logs is:
+                // Agent_20171003-143110-utc.log
+                if (DateTime.TryParseExact(s: file.Name.Substring(startIndex: 6, length: 15), format: "yyyyMMdd-HHmmss", provider: CultureInfo.InvariantCulture, style: DateTimeStyles.None, result: out DateTime fileCreateTime))
+                {
+                    // always add log file created after the job start.
+                    if (fileCreateTime >= jobStartTimeUtc)
+                    {
+                        agentLogFiles.Add(file.FullName);
+                    }
+                    else if (fileCreateTime > recentTimeUtc)
+                    {
+                        recentLog = file.FullName;
+                        recentTimeUtc = fileCreateTime;
+                    }
+                }
+            }
+
+            if (!String.IsNullOrEmpty(recentLog))
+            {
+                agentLogFiles.Add(recentLog);
+            }
+
+            return agentLogFiles;
         }
 
 #if OS_WINDOWS
