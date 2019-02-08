@@ -98,6 +98,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                 case "Microsoft.VisualStudio.Services.Agent.Worker.TestResults.IResultReader":
                     Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.TestResults.JUnitResultReader, Agent.Worker");
                     Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.TestResults.NUnitResultReader, Agent.Worker");
+                    Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.TestResults.CTestResultReader, Agent.Worker");
                     Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.TestResults.TrxResultReader, Agent.Worker");
                     Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.TestResults.XUnitResultReader, Agent.Worker");
                     break;
