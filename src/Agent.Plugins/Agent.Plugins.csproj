@@ -7,7 +7,7 @@
     <TargetLatestRuntimePatch>true</TargetLatestRuntimePatch>
     <AssetTargetFallback>portable-net45+win8</AssetTargetFallback>
     <NoWarn>NU1701;NU1603</NoWarn>
-    <Version>2.144.0</Version>
+    <Version>2.147.0</Version>
   </PropertyGroup>
 
   <ItemGroup>
@@ -15,10 +15,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- <PackageReference Include="Microsoft.Win32.Registry" Version="4.4.0" />
-    <PackageReference Include="Newtonsoft.Json" Version="11.0.2" />
-    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="4.4.0" />
-    <PackageReference Include="System.Text.Encoding.CodePages" Version="4.4.0" /> -->
     <PackageReference Include="vss-api-netcore" Version="0.5.97-private" />
     <PackageReference Include="azuredevops-testresultparser" Version="0.0.4" />
   </ItemGroup>

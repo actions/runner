@@ -7,7 +7,7 @@
     <TargetLatestRuntimePatch>true</TargetLatestRuntimePatch>
     <AssetTargetFallback>portable-net45+win8</AssetTargetFallback>
     <NoWarn>NU1701;NU1603</NoWarn>
-    <Version>2.144.0</Version>
+    <Version>2.147.0</Version>
   </PropertyGroup>
 
   <ItemGroup>
