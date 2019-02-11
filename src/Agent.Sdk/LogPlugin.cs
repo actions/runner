@@ -383,6 +383,7 @@ namespace Agent.Sdk
 
         public void Finish()
         {
+            _trace.Trace("Job has finished, start shutting down log output processing process.");
             _jobFinished.TrySetResult(0);
         }
 
@@ -424,6 +425,8 @@ namespace Agent.Sdk
 
                 await Task.WhenAny(Task.Delay(_shortCircuitMonitorFrequency), Task.Delay(-1, token));
             }
+            
+            _trace.Trace($"Output buffer monitor stopped.");
         }
 
         private async Task RunAsync(IAgentLogPlugin plugin, CancellationToken token)

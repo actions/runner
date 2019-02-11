@@ -116,6 +116,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                                                              outputEncoding: Encoding.UTF8,
                                                              killProcessOnCancel: true,
                                                              redirectStandardIn: _redirectedStdin,
+                                                             inheritConsoleHandler: false,
+                                                             keepStandardInOpen: true,
                                                              cancellationToken: token);
 
                 // construct plugin context

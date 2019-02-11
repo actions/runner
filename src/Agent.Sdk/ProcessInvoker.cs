@@ -166,6 +166,32 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
                 cancellationToken: cancellationToken);
         }
 
+        public Task<int> ExecuteAsync(
+            string workingDirectory,
+            string fileName,
+            string arguments,
+            IDictionary<string, string> environment,
+            bool requireExitCodeZero,
+            Encoding outputEncoding,
+            bool killProcessOnCancel,
+            InputQueue<string> redirectStandardIn,
+            bool inheritConsoleHandler,
+            CancellationToken cancellationToken)
+        {
+            return ExecuteAsync(
+                workingDirectory: workingDirectory,
+                fileName: fileName,
+                arguments: arguments,
+                environment: environment,
+                requireExitCodeZero: requireExitCodeZero,
+                outputEncoding: outputEncoding,
+                killProcessOnCancel: killProcessOnCancel,
+                redirectStandardIn: redirectStandardIn,
+                inheritConsoleHandler: inheritConsoleHandler,
+                keepStandardInOpen: false,
+                cancellationToken: cancellationToken);
+        }
+
         public async Task<int> ExecuteAsync(
             string workingDirectory,
             string fileName,
@@ -176,6 +202,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             bool killProcessOnCancel,
             InputQueue<string> redirectStandardIn,
             bool inheritConsoleHandler,
+            bool keepStandardInOpen,
             CancellationToken cancellationToken)
         {
             ArgUtil.Null(_proc, nameof(_proc));
@@ -190,6 +217,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             Trace.Info($"  Force kill process on cancellation: '{killProcessOnCancel}'");
             Trace.Info($"  Redirected STDIN: '{redirectStandardIn != null}'");
             Trace.Info($"  Persist current code page: '{inheritConsoleHandler}'");
+            Trace.Info($"  Keep redirected STDIN open: '{keepStandardInOpen}'");
 
             _proc = new Process();
             _proc.StartInfo.FileName = fileName;
@@ -263,7 +291,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             {
                 if (redirectStandardIn != null)
                 {
-                    StartWriteStream(redirectStandardIn, _proc.StandardInput);
+                    StartWriteStream(redirectStandardIn, _proc.StandardInput, keepStandardInOpen);
                 }
                 else
                 {
@@ -457,7 +485,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             });
         }
 
-        private void StartWriteStream(InputQueue<string> redirectStandardIn, StreamWriter standardIn)
+        private void StartWriteStream(InputQueue<string> redirectStandardIn, StreamWriter standardIn, bool keepStandardInOpen)
         {
             Task.Run(async () =>
             {
@@ -475,6 +503,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
                         {
                             utf8Writer.WriteLine(input);
                             utf8Writer.Flush();
+
+                            if (!keepStandardInOpen)
+                            {
+                                Trace.Info("Close STDIN after the first redirect finished.");
+                                standardIn.Close();
+                                break;
+                            }
                         }
                     }
                 }
