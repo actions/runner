@@ -37,19 +37,27 @@ if [[ "$CURRENT_PLATFORM" == 'windows' ]]; then
 elif [[ "$CURRENT_PLATFORM" == 'linux' ]]; then
    RUNTIME_ID="linux-x64"
    if command -v uname > /dev/null; then
-        CPU_NAME=$(uname -m)
-        case $CPU_NAME in
-            armv7l) RUNTIME_ID="linux-arm";;
-            aarch64) RUNTIME_ID="linux-arm";;
-        esac
-    fi
+      CPU_NAME=$(uname -m)
+      case $CPU_NAME in
+         armv7l) RUNTIME_ID="linux-arm";;
+         aarch64) RUNTIME_ID="linux-arm";;
+      esac
+   fi
+   
+   if [ -e /etc/redhat-release ]; then
+      redhatRelease=$(</etc/redhat-release)
+      if [[ $redhatRelease == "CentOS release 6."* || $redhatRelease == "Red Hat Enterprise Linux Server release 6."* ]]; then
+         RUNTIME_ID='rhel.6-x64'
+      fi
+   fi
+   
 elif [[ "$CURRENT_PLATFORM" == 'darwin' ]]; then
    RUNTIME_ID='osx-x64'
 fi
 
 # Make sure current platform support publish the dotnet runtime
 # Windows can publish win-x86/x64
-# Linux can publish linux-x64/arm
+# Linux can publish linux-x64/arm/rhel.6-x64
 # OSX can publish osx-x64
 if [[ "$CURRENT_PLATFORM" == 'windows' ]]; then
    if [[ ("$RUNTIME_ID" != 'win-x86') && ("$RUNTIME_ID" != 'win-x64') ]]; then
@@ -57,7 +65,7 @@ if [[ "$CURRENT_PLATFORM" == 'windows' ]]; then
       exit 1
    fi
 elif [[ "$CURRENT_PLATFORM" == 'linux' ]]; then
-   if [[ ("$RUNTIME_ID" != 'linux-x64') && ("$RUNTIME_ID" != 'linux-arm') ]]; then
+   if [[ ("$RUNTIME_ID" != 'linux-x64') && ("$RUNTIME_ID" != 'linux-arm') && ("$RUNTIME_ID" != 'rhel.6-x64') ]]; then
       echo "Failed: Can't build $RUNTIME_ID package $CURRENT_PLATFORM" >&2
       exit 1
    fi

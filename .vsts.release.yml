@@ -502,6 +502,30 @@ jobs:
       artifactName: agent
       artifactType: container
 
+################################################################################
+- job: build_rhel6_agent_x64
+################################################################################
+  displayName: RHEL6 Agent (x64)
+  pool:
+    name: buildDevs
+    demands: 'LinuxFlavor -equals RHEL6'
+  steps:
+
+  # Steps template for non-windows platform
+  - template: .vsts.template.nonwindows.yml
+
+  # Create agent package zip
+  - script: ./dev.sh package Release
+    workingDirectory: src
+    displayName: Package Release
+
+  # Upload agent package zip as build artifact
+  - task: PublishBuildArtifacts@1
+    displayName: Publish Artifact (RHEL6 x64)
+    inputs:
+      pathToPublish: _package
+      artifactName: agent
+      artifactType: container
 
 ################################################################################
 - job: build_osx_agent
@@ -511,7 +535,7 @@ jobs:
     vmImage: macOS-10.13
   steps:
 
-  # Steps template for windows platform
+  # Steps template for non-windows platform
   - template: .vsts.template.nonwindows.yml
   
   # Create agent package zip

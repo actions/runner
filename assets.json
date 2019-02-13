@@ -28,5 +28,11 @@
         "platform": "linux-arm",
         "version": "<AGENT_VERSION>",
         "downloadUrl": "https://vstsagentpackage.azureedge.net/agent/<AGENT_VERSION>/vsts-agent-linux-arm-<AGENT_VERSION>.tar.gz"
+    },
+    {
+        "name": "vsts-agent-rhel.6-x64-<AGENT_VERSION>.tar.gz",
+        "platform": "rhel.6-x64",
+        "version": "<AGENT_VERSION>",
+        "downloadUrl": "https://vstsagentpackage.azureedge.net/agent/<AGENT_VERSION>/vsts-agent-rhel.6-x64-<AGENT_VERSION>.tar.gz"
     }
 ]

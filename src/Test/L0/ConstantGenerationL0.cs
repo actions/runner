@@ -17,6 +17,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 "win-x86",
                 "linux-x64",
                 "linux-arm",
+                "rhel.6-x64",
                 "osx-x64"
             };
 
