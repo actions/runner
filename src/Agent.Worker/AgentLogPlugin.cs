@@ -35,7 +35,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         private readonly Dictionary<string, PluginInfo> _logPlugins = new Dictionary<string, PluginInfo>()
         {
-            {"TestResultLogPlugin",  new PluginInfo("Agent.Plugins.Log.TestResultLogPlugin, Agent.Plugins", "Test Result Parser plugin")},
+            {"TestResultLogPlugin",  new PluginInfo("Agent.Plugins.Log.TestResultParser.Plugin.TestResultLogPlugin, Agent.Plugins", "Test Result Parser plugin")},
         };
 
         private class PluginInfo

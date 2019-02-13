@@ -4,7 +4,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Agent.Plugins.Log.TestResultParser.Contracts;
 using Agent.Plugins.Log.TestResultParser.Plugin;
-using Agent.Plugins.TestResultParser.Plugin;
 using Microsoft.TeamFoundation.TestManagement.WebApi;
 using Microsoft.VisualStudio.Services.Common;
 using Microsoft.VisualStudio.Services.TestResults.WebApi;
@@ -23,6 +22,8 @@ namespace Test.L0.Plugin.TestResultParser
         public async Task PipelineTestRunPublisher_PublishTestRun()
         {
             var clientFactory = new Mock<IClientFactory>();
+            var logger = new Mock<ITraceLogger>();
+            var telemetry = new Mock<ITelemetryDataCollector>();
             var testClient = new Mock<TestResultsHttpClient>(new Uri("http://dummyurl"), new VssCredentials());
             var pipelineConfig = new PipelineConfig()
             {
@@ -41,9 +42,8 @@ namespace Test.L0.Plugin.TestResultParser
                     x.UpdateTestRunAsync(It.IsAny<RunUpdateModel>(), It.IsAny<Guid>(), It.IsAny<int>(), null, It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult(new Microsoft.TeamFoundation.TestManagement.WebApi.TestRun()));
 
-
-            var publisher = new PipelineTestRunPublisher(clientFactory.Object, pipelineConfig);
-            await publisher.PublishAsync(new TestRun("fake/1", 1)
+            var publisher = new PipelineTestRunPublisher(clientFactory.Object, pipelineConfig, logger.Object, telemetry.Object);
+            await publisher.PublishAsync(new TestRun("FakeTestResultParser/1", "Fake", 1)
             {
                 PassedTests = new List<TestResult>()
                 {
@@ -56,7 +56,7 @@ namespace Test.L0.Plugin.TestResultParser
             });
 
             testClient.Verify(x =>
-                x.CreateTestRunAsync(It.Is<RunCreateModel>(run => run.Name.Equals("fake test run 1 - automatically inferred results", StringComparison.OrdinalIgnoreCase)),
+                x.CreateTestRunAsync(It.Is<RunCreateModel>(run => run.Name.Equals("Fake test run 1 - automatically inferred results", StringComparison.OrdinalIgnoreCase)),
                 It.IsAny<Guid>(), null, It.IsAny<CancellationToken>()));
             testClient.Verify(x => x.AddTestResultsToTestRunAsync(It.Is<TestCaseResult[]>(res => res.Length == 1),
                 It.IsAny<Guid>(), It.IsAny<int>(), null, It.IsAny<CancellationToken>()));
@@ -70,6 +70,8 @@ namespace Test.L0.Plugin.TestResultParser
         public async Task PipelineTestRunPublisher_PublishTestRun_ValidateTestResults()
         {
             var clientFactory = new Mock<IClientFactory>();
+            var logger = new Mock<ITraceLogger>();
+            var telemetry = new Mock<ITelemetryDataCollector>();
             var testClient = new Mock<TestResultsHttpClient>(new Uri("http://dummyurl"), new VssCredentials());
             var pipelineConfig = new PipelineConfig()
             {
@@ -94,8 +96,8 @@ namespace Test.L0.Plugin.TestResultParser
                     Id = 1
                 }));
 
-            var publisher = new PipelineTestRunPublisher(clientFactory.Object, pipelineConfig);
-            await publisher.PublishAsync(new TestRun("fake/1", 1)
+            var publisher = new PipelineTestRunPublisher(clientFactory.Object, pipelineConfig, logger.Object, telemetry.Object);
+            await publisher.PublishAsync(new TestRun("FakeTestResultParser/1", "Fake", 1)
             {
                 PassedTests = new List<TestResult>()
                 {

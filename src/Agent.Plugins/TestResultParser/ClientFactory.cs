@@ -1,6 +1,6 @@
 ﻿using Microsoft.VisualStudio.Services.WebApi;
 
-namespace Agent.Plugins.TestResultParser.Plugin
+namespace Agent.Plugins.Log.TestResultParser.Plugin
 {
     public interface IClientFactory
     {

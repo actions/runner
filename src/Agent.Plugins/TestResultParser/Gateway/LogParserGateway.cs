@@ -4,26 +4,27 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using Agent.Plugins.Log.TestResultParser.Contracts;
-using Agent.Plugins.Log.TestResultParser.Plugin;
 
-namespace Agent.Plugins.TestResultParser.Plugin
+namespace Agent.Plugins.Log.TestResultParser.Plugin
 {
     public class LogParserGateway : ILogParserGateway, IBus<LogData>
     {
         /// <inheritdoc />
-        public async Task InitializeAsync(IClientFactory clientFactory, IPipelineConfig pipelineConfig, ITraceLogger traceLogger)
+        public async Task InitializeAsync(IClientFactory clientFactory, IPipelineConfig pipelineConfig, ITraceLogger traceLogger, ITelemetryDataCollector telemetry)
         {
             await Task.Run(() =>
             {
                 _logger = traceLogger;
-                var publisher = new PipelineTestRunPublisher(clientFactory, pipelineConfig);
-                var telemetry = new TelemetryDataCollector(clientFactory);
-                _testRunManager = new TestRunManager(publisher, _logger);
-                var parsers = ParserFactory.GetTestResultParsers(_testRunManager, traceLogger, telemetry);
+                _telemetry = telemetry;
+                var publisher = new PipelineTestRunPublisher(clientFactory, pipelineConfig, _logger, _telemetry);
+                _testRunManager = new TestRunManager(publisher, _logger, _telemetry);
+                var parsers = ParserFactory.GetTestResultParsers(_testRunManager, traceLogger, _telemetry);
+
+                _telemetry.AddOrUpdate(TelemetryConstants.ParserCount, parsers.Count());
 
                 foreach (var parser in parsers)
                 {
-                    //Subscribe parsers to Pub-Sub model
+                    // Subscribe parsers to Pub-Sub model
                     Subscribe(parser.Parse);
                 }
             });
@@ -46,13 +47,21 @@ namespace Agent.Plugins.TestResultParser.Plugin
         {
             try
             {
+                _telemetry.AddOrUpdate(TelemetryConstants.TotalLines, _counter);
+
                 _broadcast.Complete();
                 Task.WaitAll(_subscribers.Values.Select(x => x.Completion).ToArray());
-                await _testRunManager.FinalizeAsync();
+
+                using (var timer = new SimpleTimer("TestRunManagerFinalize", _logger, 
+                    new TelemetryDataWrapper(_telemetry, TelemetryConstants.TestRunManagerEventArea, TelemetryConstants.FinalizeAsync), 
+                    TimeSpan.FromMilliseconds(Int32.MaxValue)))
+                {
+                    await _testRunManager.FinalizeAsync();
+                }
             }
             catch (Exception ex)
             {
-                _logger?.Warning($"Failed to finish the complete operation: {ex.StackTrace}");
+                _logger?.Warning($"Failed to finish the complete operation: {ex}");
             }
         }
 
@@ -84,8 +93,10 @@ namespace Agent.Plugins.TestResultParser.Plugin
 
         private readonly BroadcastBlock<LogData> _broadcast = new BroadcastBlock<LogData>(message => message);
         private readonly ConcurrentDictionary<Guid, ITargetBlock<LogData>> _subscribers = new ConcurrentDictionary<Guid, ITargetBlock<LogData>>();
-        private int _counter;
+
+        private int _counter = 0;
         private ITraceLogger _logger;
+        private ITelemetryDataCollector _telemetry;
         private ITestRunManager _testRunManager;
     }
 }

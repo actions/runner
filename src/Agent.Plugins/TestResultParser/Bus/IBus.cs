@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Agent.Plugins.TestResultParser.Plugin
+namespace Agent.Plugins.Log.TestResultParser.Plugin
 {
     public interface IBus<out TMessage>
     {

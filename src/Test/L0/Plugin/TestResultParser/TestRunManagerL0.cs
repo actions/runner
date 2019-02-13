@@ -18,8 +18,9 @@ namespace Test.L0.Plugin.TestResultParser
         {
             var logger = new Mock<ITraceLogger>();
             var publisher = new Mock<ITestRunPublisher>();
-            var runManager = new TestRunManager(publisher.Object, logger.Object);
-            var fakeRun = new TestRun("mocha/1", 1)
+            var telemetry = new Mock<ITelemetryDataCollector>();
+            var runManager = new TestRunManager(publisher.Object, logger.Object, telemetry.Object);
+            var fakeRun = new TestRun("mocha/1", "somename", 1)
             {
                 TestRunSummary = new TestRunSummary
                 {
@@ -31,7 +32,7 @@ namespace Test.L0.Plugin.TestResultParser
                 }
             };
 
-            publisher.Setup(x => x.PublishAsync(It.IsAny<TestRun>())).Returns(Task.CompletedTask);
+            publisher.Setup(x => x.PublishAsync(It.IsAny<TestRun>())).Returns(Task.FromResult(GetFakePipelineTestRun(fakeRun, 1)));
 
             await runManager.PublishAsync(fakeRun);
 
@@ -45,9 +46,10 @@ namespace Test.L0.Plugin.TestResultParser
         {
             var logger = new Mock<ITraceLogger>();
             var publisher = new Mock<ITestRunPublisher>();
-            var runManager = new TestRunManager(publisher.Object, logger.Object);
+            var telemetry = new Mock<ITelemetryDataCollector>();
+            var runManager = new TestRunManager(publisher.Object, logger.Object, telemetry.Object);
 
-            publisher.Setup(x => x.PublishAsync(It.IsAny<TestRun>())).Returns(Task.CompletedTask);
+            publisher.Setup(x => x.PublishAsync(It.IsAny<TestRun>()));
 
             await runManager.PublishAsync(null);
 
@@ -62,11 +64,12 @@ namespace Test.L0.Plugin.TestResultParser
         {
             var logger = new Mock<ITraceLogger>();
             var publisher = new Mock<ITestRunPublisher>();
-            var runManager = new TestRunManager(publisher.Object, logger.Object);
+            var telemetry = new Mock<ITelemetryDataCollector>();
+            var runManager = new TestRunManager(publisher.Object, logger.Object, telemetry.Object);
 
-            publisher.Setup(x => x.PublishAsync(It.IsAny<TestRun>())).Returns(Task.CompletedTask);
+            publisher.Setup(x => x.PublishAsync(It.IsAny<TestRun>()));
 
-            await runManager.PublishAsync(new TestRun("fake/1", 1)
+            await runManager.PublishAsync(new TestRun("fake/1", "somename", 1)
             {
                 TestRunSummary = null
             });
@@ -82,11 +85,12 @@ namespace Test.L0.Plugin.TestResultParser
         {
             var logger = new Mock<ITraceLogger>();
             var publisher = new Mock<ITestRunPublisher>();
-            var runManager = new TestRunManager(publisher.Object, logger.Object);
+            var telemetry = new Mock<ITelemetryDataCollector>();
+            var runManager = new TestRunManager(publisher.Object, logger.Object, telemetry.Object);
 
-            publisher.Setup(x => x.PublishAsync(It.IsAny<TestRun>())).Returns(Task.CompletedTask);
+            publisher.Setup(x => x.PublishAsync(It.IsAny<TestRun>()));
 
-            await runManager.PublishAsync(new TestRun("fake/1", 1));
+            await runManager.PublishAsync(new TestRun("fake/1", "somename", 1));
 
             publisher.Verify(x => x.PublishAsync(It.IsAny<TestRun>()), Times.Never());
             logger.Verify(x => x.Error(It.IsAny<string>()));
@@ -99,11 +103,9 @@ namespace Test.L0.Plugin.TestResultParser
         {
             var logger = new Mock<ITraceLogger>();
             var publisher = new Mock<ITestRunPublisher>();
-            var runManager = new TestRunManager(publisher.Object, logger.Object);
-
-            publisher.Setup(x => x.PublishAsync(It.IsAny<TestRun>())).Returns(Task.CompletedTask);
-
-            await runManager.PublishAsync(new TestRun("fake/1", 1)
+            var telemetry = new Mock<ITelemetryDataCollector>();
+            var runManager = new TestRunManager(publisher.Object, logger.Object, telemetry.Object);
+            var fakeRun = new TestRun("fake/1", "somename", 1)
             {
                 TestRunSummary = new TestRunSummary
                 {
@@ -113,7 +115,11 @@ namespace Test.L0.Plugin.TestResultParser
                     TotalExecutionTime = TimeSpan.FromMinutes(1),
                     TotalTests = 6
                 }
-            });
+            };
+
+            publisher.Setup(x => x.PublishAsync(It.IsAny<TestRun>())).Returns(Task.FromResult(GetFakePipelineTestRun(fakeRun, 1)));
+
+            await runManager.PublishAsync(fakeRun);
 
             publisher.Verify(x => x.PublishAsync(It.Is<TestRun>(run => run.TestRunSummary.TotalTests == 7)));
         }
@@ -125,11 +131,9 @@ namespace Test.L0.Plugin.TestResultParser
         {
             var logger = new Mock<ITraceLogger>();
             var publisher = new Mock<ITestRunPublisher>();
-            var runManager = new TestRunManager(publisher.Object, logger.Object);
-
-            publisher.Setup(x => x.PublishAsync(It.IsAny<TestRun>())).Returns(Task.CompletedTask);
-
-            await runManager.PublishAsync(new TestRun("fake/1", 1)
+            var telemetry = new Mock<ITelemetryDataCollector>();
+            var runManager = new TestRunManager(publisher.Object, logger.Object, telemetry.Object);
+            var fakeRun = new TestRun("fake/1", "somename", 1)
             {
                 TestRunSummary = new TestRunSummary
                 {
@@ -149,7 +153,11 @@ namespace Test.L0.Plugin.TestResultParser
                 {
                     new TestResult()
                 }
-            });
+            };
+
+            publisher.Setup(x => x.PublishAsync(It.IsAny<TestRun>())).Returns(Task.FromResult(GetFakePipelineTestRun(fakeRun, 1)));
+
+            await runManager.PublishAsync(fakeRun);
 
             publisher.Verify(x => x.PublishAsync(It.Is<TestRun>(run => run.TestRunSummary.TotalTests == 10
                                                                        && run.PassedTests.Count == 0
@@ -167,8 +175,9 @@ namespace Test.L0.Plugin.TestResultParser
         {
             var logger = new Mock<ITraceLogger>();
             var publisher = new Mock<ITestRunPublisher>();
-            var runManager = new TestRunManager(publisher.Object, logger.Object);
-            var fakeRun = new TestRun("mocha/1", 1)
+            var telemetry = new Mock<ITelemetryDataCollector>();
+            var runManager = new TestRunManager(publisher.Object, logger.Object, telemetry.Object);
+            var fakeRun = new TestRun("mocha/1", "somename", 1)
             {
                 TestRunSummary = new TestRunSummary
                 {
@@ -176,7 +185,7 @@ namespace Test.L0.Plugin.TestResultParser
                 }
             };
 
-            publisher.SetupSequence(x => x.PublishAsync(It.IsAny<TestRun>())).Returns(Task.CompletedTask).Returns(Task.CompletedTask);
+            publisher.SetupSequence(x => x.PublishAsync(It.IsAny<TestRun>())).Returns(Task.FromResult(GetFakePipelineTestRun(fakeRun, 1))).Returns(Task.FromResult(GetFakePipelineTestRun(fakeRun, 2)));
 
             RunTasks(runManager, fakeRun);
             await runManager.FinalizeAsync();
@@ -191,8 +200,9 @@ namespace Test.L0.Plugin.TestResultParser
         {
             var logger = new Mock<ITraceLogger>();
             var publisher = new Mock<ITestRunPublisher>();
-            var runManager = new TestRunManager(publisher.Object, logger.Object);
-            var fakeRun = new TestRun("mocha/1", 1)
+            var telemetry = new Mock<ITelemetryDataCollector>();
+            var runManager = new TestRunManager(publisher.Object, logger.Object, telemetry.Object);
+            var fakeRun = new TestRun("mocha/1", "somename", 1)
             {
                 TestRunSummary = new TestRunSummary
                 {
@@ -201,14 +211,19 @@ namespace Test.L0.Plugin.TestResultParser
             };
 
             publisher.SetupSequence(x => x.PublishAsync(It.IsAny<TestRun>()))
-                .Returns(Task.CompletedTask)
-                .Returns(Task.FromException(new Exception("some exception ")));
+                .Returns(Task.FromResult(GetFakePipelineTestRun(fakeRun, 1)))
+                .Returns(Task.FromException<TestRun>(new Exception("some exception ")));
 
             RunTasks(runManager, fakeRun);
             await runManager.FinalizeAsync();
 
             publisher.Verify(x => x.PublishAsync(It.IsAny<TestRun>()), Times.Exactly(2));
             logger.Verify(x => x.Error(It.IsAny<string>()), Times.Once());
+        }
+
+        private TestRun GetFakePipelineTestRun(TestRun testRun, int TcmRunId)
+        {
+            return new PipelineTestRun(testRun.ParserUri, testRun.RunNamePrefix, testRun.TestRunId, TcmRunId);
         }
 
         private void RunTasks(ITestRunManager runManager, TestRun testRun)
