@@ -41,6 +41,52 @@ namespace Test.L0.Plugin.TestResultParser
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Plugin")]
+        public async Task TestResultLogPlugin_DisableWhenHostTypeNotSet()
+        {
+            var agentContext = new Mock<IAgentLogPluginContext>();
+            var logger = new Mock<ITraceLogger>();
+            var telemetry = new Mock<ITelemetryDataCollector>();
+            var logParser = new Mock<ILogParserGateway>();
+            var plugin = new TestResultLogPlugin(logParser.Object, logger.Object, telemetry.Object);
+
+            telemetry.Setup(x => x.PublishCumulativeTelemetryAsync()).Returns(Task.FromResult(TaskResult.Succeeded));
+
+            agentContext.Setup(x => x.Variables).Returns(new Dictionary<string, VariableValue>()
+            {
+                {"system.hosttype", null }
+            });
+
+            var result = await plugin.InitializeAsync(agentContext.Object);
+
+            Assert.True(result == false);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Plugin")]
+        public async Task TestResultLogPlugin_DisableWhenServerTypeNotSet()
+        {
+            var agentContext = new Mock<IAgentLogPluginContext>();
+            var logger = new Mock<ITraceLogger>();
+            var telemetry = new Mock<ITelemetryDataCollector>();
+            var logParser = new Mock<ILogParserGateway>();
+            var plugin = new TestResultLogPlugin(logParser.Object, logger.Object, telemetry.Object);
+
+            telemetry.Setup(x => x.PublishCumulativeTelemetryAsync()).Returns(Task.FromResult(TaskResult.Succeeded));
+
+            agentContext.Setup(x => x.Variables).Returns(new Dictionary<string, VariableValue>()
+            {
+                {"system.servertype", null }
+            });
+
+            var result = await plugin.InitializeAsync(agentContext.Object);
+
+            Assert.True(result == false);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Plugin")]
         public async Task TestResultLogPlugin_DisableIfOnPremPipeline()
         {
             var agentContext = new Mock<IAgentLogPluginContext>();

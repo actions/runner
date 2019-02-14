@@ -35,9 +35,17 @@ namespace Agent.Plugins.Log.TestResultParser.Plugin
         {
             var logData = new LogData
             {
-                Line = data,
+                Line = logPreProcessor.ProcessData(data),
                 LineNumber = ++_counter
             };
+
+            // If the preprocesor deems the line as unnecessary to send to the parsers
+            // it returns null. In which case we would like to return after just
+            // incrementing the line number for book keeping
+            if (logData.Line == null)
+            {
+                return;
+            }
 
             await _broadcast.SendAsync(logData);
         }
@@ -91,6 +99,7 @@ namespace Agent.Plugins.Log.TestResultParser.Plugin
             return subscriptionId;
         }
 
+        private ILogPreProcessor logPreProcessor = new LogPreProcessor();
         private readonly BroadcastBlock<LogData> _broadcast = new BroadcastBlock<LogData>(message => message);
         private readonly ConcurrentDictionary<Guid, ITargetBlock<LogData>> _subscribers = new ConcurrentDictionary<Guid, ITargetBlock<LogData>>();
 

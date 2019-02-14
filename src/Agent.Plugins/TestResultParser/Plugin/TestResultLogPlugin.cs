@@ -96,16 +96,16 @@ namespace Agent.Plugins.Log.TestResultParser.Plugin
             }
 
             // Enable only for build
-            if (context.Variables.TryGetValue("system.hosttype", out var hostType)
-                && !string.Equals("Build", hostType.Value, StringComparison.OrdinalIgnoreCase))
+            if (!context.Variables.TryGetValue("system.hosttype", out var hostType)
+                || !string.Equals("Build", hostType.Value, StringComparison.OrdinalIgnoreCase))
             {
                 _telemetry.AddOrUpdate("PluginDisabledReason", "NotABuild");
                 return true;
             }
 
             // Disable for on-prem
-            if (context.Variables.TryGetValue("system.servertype", out var serverType)
-                && !string.Equals("Hosted", serverType.Value, StringComparison.OrdinalIgnoreCase))
+            if (!context.Variables.TryGetValue("system.servertype", out var serverType)
+                || !string.Equals("Hosted", serverType.Value, StringComparison.OrdinalIgnoreCase))
             {
                 _telemetry.AddOrUpdate("PluginDisabledReason", "NotHosted");
                 return true;
