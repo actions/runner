@@ -188,7 +188,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             }
 
             // Set the user agent.
-            _gitHttpUserAgentEnv = $"git/{_gitVersion.ToString()} (vsts-agent-git/{Constants.Agent.Version})";
+            _gitHttpUserAgentEnv = $"git/{_gitVersion.ToString()} (vsts-agent-git/{BuildConstants.AgentPackage.Version})";
             context.Debug($"Set git useragent to: {_gitHttpUserAgentEnv}.");
         }
 

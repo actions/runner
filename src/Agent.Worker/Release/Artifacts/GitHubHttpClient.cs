@@ -40,7 +40,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts
 
             request.Headers.Add("Accept", "application/vnd.GitHubData.V3+json");
             request.Headers.Add("Authorization", "Token " + accessToken);
-            request.Headers.Add("User-Agent", "VSTS-Agent/" + Constants.Agent.Version);
+            request.Headers.Add("User-Agent", "VSTS-Agent/" + BuildConstants.AgentPackage.Version);
 
 #if OS_LINUX || OS_OSX
             request.Version = HttpVersion.Version11;

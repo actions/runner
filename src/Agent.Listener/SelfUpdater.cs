@@ -118,8 +118,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
             Trace.Info($"Version '{_targetPackage.Version}' of '{_targetPackage.Type}' package available in server.");
             PackageVersion serverVersion = new PackageVersion(_targetPackage.Version);
-            Trace.Info($"Current running agent version is {Constants.Agent.Version}");
-            PackageVersion agentVersion = new PackageVersion(Constants.Agent.Version);
+            Trace.Info($"Current running agent version is {BuildConstants.AgentPackage.Version}");
+            PackageVersion agentVersion = new PackageVersion(BuildConstants.AgentPackage.Version);
 
             return serverVersion.CompareTo(agentVersion) > 0;
         }
@@ -307,7 +307,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 foreach (var oldBinDir in allBinDirs)
                 {
                     if (string.Equals(oldBinDir, Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), $"bin"), StringComparison.OrdinalIgnoreCase) ||
-                        string.Equals(oldBinDir, Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), $"bin.{Constants.Agent.Version}"), StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(oldBinDir, Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), $"bin.{BuildConstants.AgentPackage.Version}"), StringComparison.OrdinalIgnoreCase) ||
                         string.Equals(oldBinDir, Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), $"bin.{_targetPackage.Version}"), StringComparison.OrdinalIgnoreCase))
                     {
                         // skip for current agent version
@@ -336,7 +336,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 foreach (var oldExternalDir in allExternalsDirs)
                 {
                     if (string.Equals(oldExternalDir, Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), $"externals"), StringComparison.OrdinalIgnoreCase) ||
-                        string.Equals(oldExternalDir, Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), $"externals.{Constants.Agent.Version}"), StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(oldExternalDir, Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), $"externals.{BuildConstants.AgentPackage.Version}"), StringComparison.OrdinalIgnoreCase) ||
                         string.Equals(oldExternalDir, Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), $"externals.{_targetPackage.Version}"), StringComparison.OrdinalIgnoreCase))
                     {
                         // skip for current agent version
@@ -375,7 +375,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             template = template.Replace("_PROCESS_ID_", processId.ToString());
             template = template.Replace("_AGENT_PROCESS_NAME_", $"Agent.Listener{IOUtil.ExeExtension}");
             template = template.Replace("_ROOT_FOLDER_", agentRoot);
-            template = template.Replace("_EXIST_AGENT_VERSION_", Constants.Agent.Version);
+            template = template.Replace("_EXIST_AGENT_VERSION_", BuildConstants.AgentPackage.Version);
             template = template.Replace("_DOWNLOAD_AGENT_VERSION_", _targetPackage.Version);
             template = template.Replace("_UPDATE_LOG_", updateLog);
             template = template.Replace("_RESTART_INTERACTIVE_AGENT_", restartInteractiveAgent ? "1" : "0");

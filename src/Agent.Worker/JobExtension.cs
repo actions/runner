@@ -65,8 +65,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     context.Section(StringUtil.Loc("StepStarting", StringUtil.Loc("InitializeJob")));
 
                     // Set agent version variable.
-                    context.Variables.Set(Constants.Variables.Agent.Version, Constants.Agent.Version);
-                    context.Output(StringUtil.Loc("AgentVersion", Constants.Agent.Version));
+                    context.Variables.Set(Constants.Variables.Agent.Version, BuildConstants.AgentPackage.Version);
+                    context.Output(StringUtil.Loc("AgentVersion", BuildConstants.AgentPackage.Version));
 
                     // Print proxy setting information for better diagnostic experience
                     var agentWebProxy = HostContext.GetService<IVstsAgentWebProxy>();

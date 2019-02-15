@@ -70,7 +70,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             {
                 Id = _settings.AgentId,
                 Name = _settings.AgentName,
-                Version = Constants.Agent.Version,
+                Version = BuildConstants.AgentPackage.Version,
                 OSDescription = RuntimeInformation.OSDescription,
             };
             string sessionName = $"{Environment.MachineName ?? "AGENT"}";

@@ -644,7 +644,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             };
 
             // update - update instead of delete so we don't lose user capabilities etc...
-            agent.Version = Constants.Agent.Version;
+            agent.Version = BuildConstants.AgentPackage.Version;
             agent.OSDescription = RuntimeInformation.OSDescription;
 
             foreach (KeyValuePair<string, string> capability in systemCapabilities)
@@ -664,7 +664,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                     PublicKey = new TaskAgentPublicKey(publicKey.Exponent, publicKey.Modulus),
                 },
                 MaxParallelism = 1,
-                Version = Constants.Agent.Version,
+                Version = BuildConstants.AgentPackage.Version,
                 OSDescription = RuntimeInformation.OSDescription,
             };
 

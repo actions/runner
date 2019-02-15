@@ -27,7 +27,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             Tracing trace = context.GetTrace(nameof(Program));
             try
             {
-                trace.Info($"Version: {Constants.Agent.Version}");
+                trace.Info($"Version: {BuildConstants.AgentPackage.Version}");
                 trace.Info($"Commit: {BuildConstants.Source.CommitHash}");
                 trace.Info($"Culture: {CultureInfo.CurrentCulture.Name}");
                 trace.Info($"UI Culture: {CultureInfo.CurrentUICulture.Name}");

@@ -239,7 +239,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             var builder = new StringBuilder();
 
             builder.AppendLine($"Environment file created at(UTC): {DateTime.UtcNow}"); // TODO: Format this like we do in other places.
-            builder.AppendLine($"Agent Version: {Constants.Agent.Version}");
+            builder.AppendLine($"Agent Version: {BuildConstants.AgentPackage.Version}");
             builder.AppendLine($"Agent Id: {agentId}");
             builder.AppendLine($"Agent Name: {agentName}");
             builder.AppendLine($"OS: {System.Runtime.InteropServices.RuntimeInformation.OSDescription}");
@@ -328,7 +328,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             var builder = new StringBuilder();
 
             builder.AppendLine($"Environment file created at(UTC): {DateTime.UtcNow}"); // TODO: Format this like we do in other places.
-            builder.AppendLine($"Agent Version: {Constants.Agent.Version}");
+            builder.AppendLine($"Agent Version: {BuildConstants.AgentPackage.Version}");
             builder.AppendLine($"Agent Id: {agentId}");
             builder.AppendLine($"Agent Name: {agentName}");
             builder.AppendLine($"OS: {System.Runtime.InteropServices.RuntimeInformation.OSDescription}");

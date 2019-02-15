@@ -62,7 +62,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 
                 if (command.Version)
                 {
-                    _term.WriteLine(Constants.Agent.Version);
+                    _term.WriteLine(BuildConstants.AgentPackage.Version);
                     return Constants.Agent.ReturnCode.Success;
                 }
 

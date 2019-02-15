@@ -16,6 +16,7 @@ PACKAGE_DIR="$SCRIPT_DIR/../_package"
 DOTNETSDK_ROOT="$SCRIPT_DIR/../_dotnetsdk"
 DOTNETSDK_VERSION="2.1.403"
 DOTNETSDK_INSTALLDIR="$DOTNETSDK_ROOT/$DOTNETSDK_VERSION"
+AGENT_VERSION=`cat agentversion`
 
 pushd $SCRIPT_DIR
 
@@ -111,9 +112,9 @@ function build ()
     heading "Building ..."
 
     if [[ ("$CURRENT_PLATFORM" == "windows") ]]; then
-        dotnet msbuild //t:Build //p:PackageRuntime=${RUNTIME_ID} //p:BUILDCONFIG=${BUILD_CONFIG} || failed build
+        dotnet msbuild //t:Build //p:PackageRuntime=${RUNTIME_ID} //p:BUILDCONFIG=${BUILD_CONFIG} //p:Version=${AGENT_VERSION} || failed build
     else
-        dotnet msbuild /t:Build /p:PackageRuntime=${RUNTIME_ID} /p:BUILDCONFIG=${BUILD_CONFIG} || failed build
+        dotnet msbuild /t:Build /p:PackageRuntime=${RUNTIME_ID} /p:BUILDCONFIG=${BUILD_CONFIG} /p:Version=${AGENT_VERSION} || failed build
     fi    
 
     mkdir -p ${LAYOUT_DIR}/bin/en-US
@@ -125,9 +126,9 @@ function layout ()
     heading "Create layout ..."
 
     if [[ ("$CURRENT_PLATFORM" == "windows") ]]; then
-        dotnet msbuild //t:layout //p:PackageRuntime=${RUNTIME_ID} //p:BUILDCONFIG=${BUILD_CONFIG} || failed build
+        dotnet msbuild //t:layout //p:PackageRuntime=${RUNTIME_ID} //p:BUILDCONFIG=${BUILD_CONFIG} //p:Version=${AGENT_VERSION} || failed build
     else
-        dotnet msbuild /t:layout /p:PackageRuntime=${RUNTIME_ID} /p:BUILDCONFIG=${BUILD_CONFIG} || failed build
+        dotnet msbuild /t:layout /p:PackageRuntime=${RUNTIME_ID} /p:BUILDCONFIG=${BUILD_CONFIG} /p:Version=${AGENT_VERSION} || failed build
     fi
 
     mkdir -p ${LAYOUT_DIR}/bin/en-US
@@ -156,9 +157,9 @@ function runtest ()
     export VSTS_AGENT_SRC_DIR=${SCRIPT_DIR}
 
     if [[ ("$CURRENT_PLATFORM" == "windows") ]]; then
-        dotnet msbuild //t:test //p:PackageRuntime=${RUNTIME_ID} //p:BUILDCONFIG=${BUILD_CONFIG} || failed "failed tests" 
+        dotnet msbuild //t:test //p:PackageRuntime=${RUNTIME_ID} //p:BUILDCONFIG=${BUILD_CONFIG} //p:Version=${AGENT_VERSION} || failed "failed tests" 
     else
-        dotnet msbuild /t:test /p:PackageRuntime=${RUNTIME_ID} /p:BUILDCONFIG=${BUILD_CONFIG} || failed "failed tests" 
+        dotnet msbuild /t:test /p:PackageRuntime=${RUNTIME_ID} /p:BUILDCONFIG=${BUILD_CONFIG} /p:Version=${AGENT_VERSION} || failed "failed tests" 
     fi
 }
 
