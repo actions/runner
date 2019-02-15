@@ -297,6 +297,7 @@ namespace Microsoft.VisualStudio.Services.Agent
     {
         private const string _osxAgentCredStoreKeyChainName = "_VSTS_AGENT_CREDSTORE_INTERNAL_";
 
+        // Keychain requires a password, but this is not intended to add security
         private const string _osxAgentCredStoreKeyChainPassword = "A1DC2A63B3D14817A64619FDDBC92264";
 
         private string _securityUtil;
@@ -747,6 +748,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             if (File.Exists("/etc/machine-id"))
             {
                 // try use machine-id as encryption key
+                // this helps avoid accidental information disclosure, but isn't intended for true security
                 machineId = File.ReadAllLines("/etc/machine-id").FirstOrDefault();
                 Trace.Info($"machine-id length {machineId?.Length ?? 0}.");
 
