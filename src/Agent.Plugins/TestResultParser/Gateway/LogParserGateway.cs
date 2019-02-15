@@ -18,9 +18,9 @@ namespace Agent.Plugins.Log.TestResultParser.Plugin
                 _telemetry = telemetry;
                 var publisher = new PipelineTestRunPublisher(clientFactory, pipelineConfig, _logger, _telemetry);
                 _testRunManager = new TestRunManager(publisher, _logger, _telemetry);
-                var parsers = ParserFactory.GetTestResultParsers(_testRunManager, traceLogger, _telemetry);
+                var parsers = ParserFactory.GetTestResultParsers(_testRunManager, traceLogger, _telemetry).ToList();
 
-                _telemetry.AddOrUpdate(TelemetryConstants.ParserCount, parsers.Count());
+                _telemetry.AddOrUpdate(TelemetryConstants.ParserCount, parsers.Count);
 
                 foreach (var parser in parsers)
                 {

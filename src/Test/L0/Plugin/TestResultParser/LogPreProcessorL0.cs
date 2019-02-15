@@ -17,6 +17,15 @@ namespace Test.L0.Plugin.TestResultParser
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Plugin")]
+        public void LogPreProcessorRemovesWarningLines()
+        {
+            var logLine = "##[warning]some log line";
+            Assert.Null(new LogPreProcessor().ProcessData(logLine));
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Plugin")]
         public void LogPreProcessorRemovesCommandLines()
         {
             var logLine = "##[command]some log line";

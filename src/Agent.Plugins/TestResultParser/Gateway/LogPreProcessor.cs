@@ -19,6 +19,11 @@
                 return data.Substring(errorLogPrefix.Length);
             }
 
+            if (data.StartsWith(warningLogPrefix))
+            {
+                return null;
+            }
+
             if (data.StartsWith(commandLogPrefix))
             {
                 return null;
@@ -35,6 +40,8 @@
         private const string debugLogPrefix = "##[debug]";
 
         private const string errorLogPrefix = "##[error]";
+
+        private const string warningLogPrefix = "##[warning]";
 
         private const string commandLogPrefix = "##[command]";
 
