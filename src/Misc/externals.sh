@@ -12,8 +12,8 @@ get_abs_path() {
   echo "$(cd "$(dirname "$1")" && pwd)/$(basename "$1")"
 }
 
-LAYOUT_DIR=$(get_abs_path `dirname $0`/../../_layout)
-DOWNLOAD_DIR="$(get_abs_path `dirname $0`/../../_downloads)/netcore2x"
+LAYOUT_DIR=$(get_abs_path "$(dirname $0)/../../_layout")
+DOWNLOAD_DIR="$(get_abs_path "$(dirname $0)/../../_downloads")/netcore2x"
 
 function failed() {
    local error=${1:-Undefined error}
@@ -41,8 +41,8 @@ function acquireExternalTool() {
 
     # Check if the download already exists.
     local download_target="$DOWNLOAD_DIR/$relative_url"
-    local download_basename="$(basename $download_target)"
-    local download_dir="$(dirname $download_target)"
+    local download_basename="$(basename "$download_target")"
+    local download_dir="$(dirname "$download_target")"
 
     if [[ "$PRECACHE" != "" ]]; then
         if [ -f "$download_target" ]; then
@@ -57,7 +57,7 @@ function acquireExternalTool() {
 
             # Download from source to the partial file.
             echo "Downloading $download_source"
-            mkdir -p "$(dirname $download_target)" || checkRC 'mkdir'
+            mkdir -p "$(dirname "$download_target")" || checkRC 'mkdir'
             # curl -f Fail silently (no output at all) on HTTP errors (H)
             #      -k Allow connections to SSL sites without certs (H)
             #      -S Show error. With -s, make curl show errors when they occur
