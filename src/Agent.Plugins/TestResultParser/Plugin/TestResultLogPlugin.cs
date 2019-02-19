@@ -151,6 +151,11 @@ namespace Agent.Plugins.Log.TestResultParser.Plugin
                 props.Add("BuildId", _pipelineConfig.BuildId);
             }
 
+            if (context.Variables.TryGetValue("System.DefinitionId", out var buildDefinitionId))
+            {
+                _telemetry.AddOrUpdate("BuildDefinitionId", buildDefinitionId.Value);
+            }
+
             // Publish the initial telemetry event in case we are not able to fire the cumulative one for whatever reason
             await _telemetry.PublishTelemetryAsync("TestResultParserInitialzie", props);
         }
