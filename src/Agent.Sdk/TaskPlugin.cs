@@ -29,7 +29,11 @@ namespace Agent.Sdk
         private readonly object _stdoutLock = new object();
         private readonly bool _quiet; // for unit tests
 
-        public AgentTaskPluginExecutionContext(bool quiet = false)
+        public AgentTaskPluginExecutionContext()
+            : this(false)
+        { }
+
+        public AgentTaskPluginExecutionContext(bool quiet)
         {
             _quiet = quiet;
             this.Endpoints = new List<ServiceEndpoint>();
