@@ -64,7 +64,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Release
         [Trait("Category", "Worker")]
         public void GetRootedPathShouldReturnRootedPathIfPathIsRelative()
         {
-            using (TestHostContext tc = Setup(createWorkDirectory: false))
+            using (TestHostContext tc = Setup(createWorkDirectory: false, useReleaseDefinitionId: true, setupArtifactsDirectory: true))
             {
                 var rootedPath = Path.Combine(this.stubWorkFolder, "temp");
                 var result = releaseJobExtension.GetRootedPath(_ec.Object, "temp");
@@ -111,7 +111,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Release
             }
         }
 
-        private TestHostContext Setup([CallerMemberName] string name = "", bool createWorkDirectory = true, bool useReleaseDefinitionId = true)
+        private TestHostContext Setup([CallerMemberName] string name = "", bool createWorkDirectory = true, bool useReleaseDefinitionId = true, bool setupArtifactsDirectory = false)
         {
             TestHostContext hc = new TestHostContext(this, name);
             this.stubWorkFolder =hc.GetDirectory(WellKnownDirectory.Work);
@@ -132,6 +132,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Release
             var releaseVariables = useReleaseDefinitionId
                 ? GetReleaseVariables(id.ToString(), bool.TrueString)
                 : GetReleaseVariables(null, bool.TrueString);
+
+            if(setupArtifactsDirectory)
+            {
+                releaseVariables.Add(Constants.Variables.Release.ArtifactsDirectory, this.stubWorkFolder);
+            }
+
             _variables = new Variables(hc, releaseVariables, out warnings);
 
             hc.SetSingleton(_releaseDirectoryManager.Object);
@@ -150,7 +156,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Release
         private Dictionary<string, VariableValue> GetReleaseVariables(string releaseDefinitionId, string skipArtifactDownload)
         {
             var releaseVariables = new Dictionary<string, VariableValue>();
-            releaseVariables.Add(Constants.Variables.Release.ArtifactsDirectory, this.stubWorkFolder);
             releaseVariables.Add(Constants.Variables.Release.ReleaseDefinitionName, releaseDefinitionName);
             releaseVariables.Add(Constants.Variables.System.TeamProjectId, projectId.ToString());
             releaseVariables.Add(Constants.Variables.Release.ReleaseId, releaseId.ToString());
