@@ -84,6 +84,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
 
                 //Assert
                 await jobDispatcher.WaitAsync(CancellationToken.None);
+
+                Assert.False(jobDispatcher.RunOnceJobCompleted.Task.IsCompleted, "JobDispatcher should not set task complete token for regular agent.");
             }
         }
 
@@ -442,6 +444,56 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                 _agentServer.Verify(x => x.RenewAgentRequestAsync(It.IsAny<int>(), It.IsAny<long>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Exactly(5));
                 _agentServer.Verify(x => x.RefreshConnectionAsync(AgentConnectionType.JobRequest, It.IsAny<TimeSpan>()), Times.Exactly(3));
                 _agentServer.Verify(x => x.SetConnectionTimeout(AgentConnectionType.JobRequest, It.IsAny<TimeSpan>()), Times.Never);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Agent")]
+        public async void DispatchesOneTimeJobRequest()
+        {
+            //Arrange
+            using (var hc = new TestHostContext(this))
+            {
+                var jobDispatcher = new JobDispatcher();
+                hc.SetSingleton<IConfigurationStore>(_configurationStore.Object);
+                hc.SetSingleton<IAgentServer>(_agentServer.Object);
+
+                hc.EnqueueInstance<IProcessChannel>(_processChannel.Object);
+                hc.EnqueueInstance<IProcessInvoker>(_processInvoker.Object);
+
+                _configurationStore.Setup(x => x.GetSettings()).Returns(new AgentSettings() { PoolId = 1 });
+                jobDispatcher.Initialize(hc);
+
+                var ts = new CancellationTokenSource();
+                Pipelines.AgentJobRequestMessage message = CreateJobRequestMessage();
+                string strMessage = JsonUtility.ToString(message);
+
+                _processInvoker.Setup(x => x.ExecuteAsync(It.IsAny<String>(), It.IsAny<String>(), "spawnclient 1 2", null, It.IsAny<CancellationToken>()))
+                    .Returns(Task.FromResult<int>(56));
+
+                _processChannel.Setup(x => x.StartServer(It.IsAny<StartProcessDelegate>()))
+                    .Callback((StartProcessDelegate startDel) => { startDel("1", "2"); });
+                _processChannel.Setup(x => x.SendAsync(MessageType.NewJobRequest, It.Is<string>(s => s.Equals(strMessage)), It.IsAny<CancellationToken>()))
+                    .Returns(Task.CompletedTask);
+
+                var request = new TaskAgentJobRequest();
+                PropertyInfo sessionIdProperty = request.GetType().GetProperty("LockedUntil", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+                Assert.NotNull(sessionIdProperty);
+                sessionIdProperty.SetValue(request, DateTime.UtcNow.AddMinutes(5));
+
+                _agentServer.Setup(x => x.RenewAgentRequestAsync(It.IsAny<int>(), It.IsAny<long>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>())).Returns(Task.FromResult<TaskAgentJobRequest>(request));
+
+                _agentServer.Setup(x => x.FinishAgentRequestAsync(It.IsAny<int>(), It.IsAny<long>(), It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<TaskResult>(), It.IsAny<CancellationToken>())).Returns(Task.FromResult<TaskAgentJobRequest>(new TaskAgentJobRequest()));
+
+                //Act
+                jobDispatcher.Run(message, true);
+
+                //Assert
+                await jobDispatcher.WaitAsync(CancellationToken.None);
+
+                Assert.True(jobDispatcher.RunOnceJobCompleted.Task.IsCompleted, "JobDispatcher should set task complete token for one time agent.");
+                Assert.True(jobDispatcher.RunOnceJobCompleted.Task.Result, "JobDispatcher should set task complete token to 'TRUE' for one time agent.");
             }
         }
     }

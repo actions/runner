@@ -42,6 +42,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             Constants.Agent.CommandLine.Flags.Replace,
             Constants.Agent.CommandLine.Flags.RunAsAutoLogon,
             Constants.Agent.CommandLine.Flags.RunAsService,
+            Constants.Agent.CommandLine.Flags.Once,
             Constants.Agent.CommandLine.Flags.SslSkipCertValidation,
             Constants.Agent.CommandLine.Flags.Unattended,
             Constants.Agent.CommandLine.Flags.Version,
@@ -100,6 +101,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
 #if OS_WINDOWS
         public bool GitUseSChannel => TestFlag(Constants.Agent.CommandLine.Flags.GitUseSChannel);
 #endif
+        public bool RunOnce => TestFlag(Constants.Agent.CommandLine.Flags.Once);
+
         // Constructor.
         public CommandSettings(IHostContext context, string[] args)
         {

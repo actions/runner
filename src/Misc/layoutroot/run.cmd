@@ -35,4 +35,11 @@ if /i "%~1" equ "localRun" (
   rem Run.
   rem ********************************************************************************
   "%~dp0bin\Agent.Listener.exe" run %*
+
+  rem Return code 4 means the run once agent received an update message.
+  rem Sleep 5 seconds to wait for the update process finish and run the agent again.
+  if ERRORLEVEL 4 (
+    timeout /t 5 /nobreak > NUL
+    "%~dp0bin\Agent.Listener.exe" run %*
+  )
 )

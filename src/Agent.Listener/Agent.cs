@@ -209,7 +209,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 }
 #endif
                 // Run the agent interactively or as service
-                return await RunAsync(settings);
+                return await RunAsync(settings, command.RunOnce);
             }
             finally
             {
@@ -263,7 +263,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         }
 
         //create worker manager, create message listener and start listening to the queue
-        private async Task<int> RunAsync(AgentSettings settings)
+        private async Task<int> RunAsync(AgentSettings settings, bool runOnce = false)
         {
             try
             {
@@ -296,6 +296,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     bool disableAutoUpdate = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("agent.disableupdate"));
                     bool autoUpdateInProgress = false;
                     Task<bool> selfUpdateTask = null;
+                    bool runOnceJobReceived = false;
                     jobDispatcher = HostContext.CreateService<IJobDispatcher>();
 
                     while (!HostContext.AgentShutdownToken.IsCancellationRequested)
@@ -326,12 +327,41 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                                             Trace.Info($"Ignore any exception after cancel message loop. {ex}");
                                         }
 
-                                        return Constants.Agent.ReturnCode.AgentUpdating;
+                                        if (runOnce)
+                                        {
+                                            return Constants.Agent.ReturnCode.RunOnceAgentUpdating;
+                                        }
+                                        else
+                                        {
+                                            return Constants.Agent.ReturnCode.AgentUpdating;
+                                        }
                                     }
                                     else
                                     {
                                         Trace.Info("Auto update task finished at backend, there is no available agent update needs to apply, continue message queue looping.");
                                     }
+                                }
+                            }
+
+                            if (runOnceJobReceived)
+                            {
+                                Trace.Verbose("One time used agent has start running its job, waiting for getNextMessage or the job to finish.");
+                                Task completeTask = await Task.WhenAny(getNextMessage, jobDispatcher.RunOnceJobCompleted.Task);
+                                if (completeTask == jobDispatcher.RunOnceJobCompleted.Task)
+                                {
+                                    Trace.Info("Job has finished at backend, the agent will exit since it is running under onetime use mode.");
+                                    Trace.Info("Stop message queue looping.");
+                                    messageQueueLoopTokenSource.Cancel();
+                                    try
+                                    {
+                                        await getNextMessage;
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        Trace.Info($"Ignore any exception after cancel message loop. {ex}");
+                                    }
+
+                                    return Constants.Agent.ReturnCode.Success;
                                 }
                             }
 
@@ -350,7 +380,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                                         autoUpdateInProgress = true;
                                         var agentUpdateMessage = JsonUtility.FromString<AgentRefreshMessage>(message.Body);
                                         var selfUpdater = HostContext.GetService<ISelfUpdater>();
-                                        selfUpdateTask = selfUpdater.SelfUpdate(agentUpdateMessage, jobDispatcher, HostContext.StartupType != StartupType.Service, HostContext.AgentShutdownToken);
+                                        selfUpdateTask = selfUpdater.SelfUpdate(agentUpdateMessage, jobDispatcher, !runOnce && HostContext.StartupType != StartupType.Service, HostContext.AgentShutdownToken);
                                         Trace.Info("Refresh message received, kick-off selfupdate background process.");
                                     }
                                     else
@@ -362,9 +392,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                             else if (string.Equals(message.MessageType, JobRequestMessageTypes.AgentJobRequest, StringComparison.OrdinalIgnoreCase) ||
                                     string.Equals(message.MessageType, JobRequestMessageTypes.PipelineAgentJobRequest, StringComparison.OrdinalIgnoreCase))
                             {
-                                if (autoUpdateInProgress)
+                                if (autoUpdateInProgress || runOnceJobReceived)
                                 {
                                     skipMessageDeletion = true;
+                                    Trace.Info($"Skip message deletion for job request message '{message.MessageId}'.");
                                 }
                                 else
                                 {
@@ -380,14 +411,24 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                                             break;
                                     }
 
-                                    jobDispatcher.Run(pipelineJobMessage);
+                                    jobDispatcher.Run(pipelineJobMessage, runOnce);
+                                    if (runOnce)
+                                    {
+                                        Trace.Info("One time used agent received job message.");
+                                        runOnceJobReceived = true;
+                                    }
                                 }
                             }
                             else if (string.Equals(message.MessageType, JobCancelMessage.MessageType, StringComparison.OrdinalIgnoreCase))
                             {
                                 var cancelJobMessage = JsonUtility.FromString<JobCancelMessage>(message.Body);
                                 bool jobCancelled = jobDispatcher.Cancel(cancelJobMessage);
-                                skipMessageDeletion = autoUpdateInProgress && !jobCancelled;
+                                skipMessageDeletion = (autoUpdateInProgress || runOnceJobReceived) && !jobCancelled;
+
+                                if (skipMessageDeletion)
+                                {
+                                    Trace.Info($"Skip message deletion for cancellation message '{message.MessageId}'.");
+                                }
                             }
                             else
                             {

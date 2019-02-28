@@ -16,7 +16,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
     [ServiceLocator(Default = typeof(JobDispatcher))]
     public interface IJobDispatcher : IAgentService
     {
-        void Run(Pipelines.AgentJobRequestMessage message);
+        TaskCompletionSource<bool> RunOnceJobCompleted { get; }
+        void Run(Pipelines.AgentJobRequestMessage message, bool runOnce = false);
         bool Cancel(JobCancelMessage message);
         Task WaitAsync(CancellationToken token);
         TaskResult GetLocalRunJobResult(AgentJobRequestMessage message);
@@ -43,6 +44,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
         //timeout limit can be overwrite by environment VSTS_AGENT_CHANNEL_TIMEOUT
         private TimeSpan _channelTimeout;
 
+        private TaskCompletionSource<bool> _runOnceJobCompleted = new TaskCompletionSource<bool>();
+
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
@@ -63,7 +66,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             Trace.Info($"Set agent/worker IPC timeout to {_channelTimeout.TotalSeconds} seconds.");
         }
 
-        public void Run(Pipelines.AgentJobRequestMessage jobRequestMessage)
+        public TaskCompletionSource<bool> RunOnceJobCompleted => _runOnceJobCompleted;
+
+        public void Run(Pipelines.AgentJobRequestMessage jobRequestMessage, bool runOnce = false)
         {
             Trace.Info($"Job request {jobRequestMessage.RequestId} for plan {jobRequestMessage.Plan.PlanId} job {jobRequestMessage.JobId} received.");
 
@@ -78,7 +83,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             }
 
             WorkerDispatcher newDispatch = new WorkerDispatcher(jobRequestMessage.JobId, jobRequestMessage.RequestId);
-            newDispatch.WorkerDispatch = RunAsync(jobRequestMessage, currentDispatch, newDispatch.WorkerCancellationTokenSource.Token, newDispatch.WorkerCancelTimeoutKillTokenSource.Token);
+            if (runOnce)
+            {
+                Trace.Info("Start dispatcher for one time used agent.");
+                newDispatch.WorkerDispatch = RunOnceAsync(jobRequestMessage, currentDispatch, newDispatch.WorkerCancellationTokenSource.Token, newDispatch.WorkerCancelTimeoutKillTokenSource.Token);
+            }
+            else
+            {
+                newDispatch.WorkerDispatch = RunAsync(jobRequestMessage, currentDispatch, newDispatch.WorkerCancellationTokenSource.Token, newDispatch.WorkerCancelTimeoutKillTokenSource.Token);
+            }
 
             _jobInfos.TryAdd(newDispatch.JobId, newDispatch);
             _jobDispatchedQueue.Enqueue(newDispatch.JobId);
@@ -134,7 +147,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     }
                     catch (Exception ex)
                     {
-                        Trace.Error($"Worker Dispatch failed witn an exception for job request {currentDispatch.JobId}.");
+                        Trace.Error($"Worker Dispatch failed with an exception for job request {currentDispatch.JobId}.");
                         Trace.Error(ex);
                     }
                     finally
@@ -269,6 +282,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     Trace.Verbose($"Remove WorkerDispather from {nameof(_jobInfos)} dictionary for job {jobDispatch.JobId}.");
                     workerDispatcher.Dispose();
                 }
+            }
+        }
+
+        private async Task RunOnceAsync(Pipelines.AgentJobRequestMessage message, WorkerDispatcher previousJobDispatch, CancellationToken jobRequestCancellationToken, CancellationToken workerCancelTimeoutKillToken)
+        {
+            try
+            {
+                await RunAsync(message, previousJobDispatch, jobRequestCancellationToken, workerCancelTimeoutKillToken);
+            }
+            finally
+            {
+                Trace.Info("Fire signal for one time used agent.");
+                _runOnceJobCompleted.TrySetResult(true);
             }
         }
 

@@ -165,6 +165,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                     public static readonly string Replace = "replace";
                     public static readonly string NoRestart = "norestart";
                     public static readonly string LaunchBrowser = "launchbrowser";
+                    public static readonly string Once = "once";
                     public static readonly string RunAsAutoLogon = "runasautologon";
                     public static readonly string RunAsService = "runasservice";
                     public static readonly string SslSkipCertValidation = "sslskipcertvalidation";
@@ -180,6 +181,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                 public const int TerminatedError = 1;
                 public const int RetryableError = 2;
                 public const int AgentUpdating = 3;
+                public const int RunOnceAgentUpdating = 4;
             }
 
             public static class AgentConfigurationProvider
