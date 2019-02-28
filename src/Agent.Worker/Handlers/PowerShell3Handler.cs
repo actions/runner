@@ -49,7 +49,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
                 StepHost.ResolvePathForStepHost(scriptFile).Replace("'", "''''")); // nested within a single-quoted string within a single-quoted string
 
             // Resolve powershell.exe.
-            string powerShellExe = HostContext.GetService<IPowerShellExeUtil>().GetPath(); // The location of powershell.exe might be wrong when running inside container
+            string powerShellExe = "powershell.exe";
+            if (StepHost is DefaultStepHost)
+            {
+                powerShellExe = HostContext.GetService<IPowerShellExeUtil>().GetPath();
+            }
+
             ArgUtil.NotNullOrEmpty(powerShellExe, nameof(powerShellExe));
 
             // Invoke the process.
