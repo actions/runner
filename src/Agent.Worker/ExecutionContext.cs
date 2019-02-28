@@ -303,7 +303,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     issue.Data["logFileLineNumber"] = logLineNumber.ToString();
                 }
 
-                if (_record.ErrorCount <= _maxIssueCount)
+                if (_record.ErrorCount < _maxIssueCount)
                 {
                     _record.Issues.Add(issue);
                 }
@@ -320,7 +320,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     issue.Data["logFileLineNumber"] = logLineNumber.ToString();
                 }
 
-                if (_record.WarningCount <= _maxIssueCount)
+                if (_record.WarningCount < _maxIssueCount)
                 {
                     _record.Issues.Add(issue);
                 }
