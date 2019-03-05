@@ -56,7 +56,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Pipeline
             SerializerBuilder serializerBuilder = new SerializerBuilder();
             serializerBuilder.DisableAliases();
             serializerBuilder.WithTypeConverter(new ProcessConverter());
-            Serializer serializer = serializerBuilder.Build();
+            ISerializer serializer = serializerBuilder.Build();
             return serializer.Serialize(process);
         }
 
@@ -279,7 +279,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Pipeline
             // Deserialize
             DeserializerBuilder deserializerBuilder = new DeserializerBuilder();
             deserializerBuilder.WithTypeConverter(new TConverter());
-            Deserializer deserializer = deserializerBuilder.Build();
+            IDeserializer deserializer = deserializerBuilder.Build();
             TObject obj = deserializer.Deserialize<TObject>(mustacheReplaced);
             m_trace.Verbose("{0}", new TraceObject<TObject, TConverter>($"{file.Name} after deserialization ", obj));
             var result = new PipelineFile<TObject> { Name = file.Name, Directory = file.Directory, Object = obj };
@@ -586,7 +586,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Pipeline
                 result.AppendLine();
                 SerializerBuilder serializerBuilder = new SerializerBuilder();
                 serializerBuilder.WithTypeConverter(new TConverter());
-                Serializer serializer = serializerBuilder.Build();
+                ISerializer serializer = serializerBuilder.Build();
                 result.AppendLine(serializer.Serialize(m_value));
                 return result.ToString();
             }
