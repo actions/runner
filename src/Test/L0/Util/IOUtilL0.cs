@@ -667,7 +667,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Util
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
-        public void GetRelativPath()
+        public void GetRelativePath()
         {
             using (TestHostContext hc = new TestHostContext(this))
             {
@@ -758,6 +758,105 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Util
                 relativePath = IOUtil.MakeRelative(@"/user/src/project", @"/user/src/project");
                 // Assert.
                 Assert.True(string.Equals(relativePath, string.Empty, StringComparison.OrdinalIgnoreCase), $"RelativePath does not expected: {relativePath}");
+#endif
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void ResolvePath()
+        {
+            using (TestHostContext hc = new TestHostContext(this))
+            {
+                Tracing trace = hc.GetTrace();
+
+                string resolvePath;
+#if OS_WINDOWS
+                // Act.
+                resolvePath = IOUtil.ResolvePath(@"d:\src\project\", @"foo");
+                // Assert.
+                Assert.True(string.Equals(resolvePath, @"d:\src\project\foo", StringComparison.OrdinalIgnoreCase), $"resolvePath does not expected: {resolvePath}");
+
+                // Act.
+                resolvePath = IOUtil.ResolvePath(@"d:\", @"specs");
+                // Assert.
+                Assert.True(string.Equals(resolvePath, @"d:\specs", StringComparison.OrdinalIgnoreCase), $"resolvePath does not expected: {resolvePath}");
+
+                // Act.
+                resolvePath = IOUtil.ResolvePath(@"d:\src\project\", @"src\proj");
+                // Assert.
+                Assert.True(string.Equals(resolvePath, @"d:\src\project\src\proj", StringComparison.OrdinalIgnoreCase), $"resolvePath does not expected: {resolvePath}");
+
+                // Act.
+                resolvePath = IOUtil.ResolvePath(@"d:\src\project\foo", @"..");
+                // Assert.
+                Assert.True(string.Equals(resolvePath, @"d:\src\project", StringComparison.OrdinalIgnoreCase), $"resolvePath does not expected: {resolvePath}");
+
+                // Act.
+                resolvePath = IOUtil.ResolvePath(@"d:\src\project", @"..\..\");
+                // Assert.
+                Assert.True(string.Equals(resolvePath, @"d:\", StringComparison.OrdinalIgnoreCase), $"resolvePath does not expected: {resolvePath}");
+
+                // Act.
+                resolvePath = IOUtil.ResolvePath(@"d:/src/project", @"../.");
+                // Assert.
+                Assert.True(string.Equals(resolvePath, @"d:\src", StringComparison.OrdinalIgnoreCase), $"resolvePath does not expected: {resolvePath}");
+
+                // Act.
+                resolvePath = IOUtil.ResolvePath(@"d:/src/project/", @"../../foo");
+                // Assert.
+                Assert.True(string.Equals(resolvePath, @"d:\foo", StringComparison.OrdinalIgnoreCase), $"resolvePath does not expected: {resolvePath}");
+
+                // Act.
+                resolvePath = IOUtil.ResolvePath(@"d:/src/project/foo", @".././bar/.././../foo");
+                // Assert.
+                Assert.True(string.Equals(resolvePath, @"d:\src\foo", StringComparison.OrdinalIgnoreCase), $"resolvePath does not expected: {resolvePath}");
+
+                // Act.
+                resolvePath = IOUtil.ResolvePath(@"d:\", @".");
+                // Assert.
+                Assert.True(string.Equals(resolvePath, @"d:\", StringComparison.OrdinalIgnoreCase), $"resolvePath does not expected: {resolvePath}");
+#else
+                // Act.
+                resolvePath = IOUtil.ResolvePath(@"/user/src/project", @"foo");
+                // Assert.
+                Assert.True(string.Equals(resolvePath, @"/user/src/project/foo", StringComparison.OrdinalIgnoreCase), $"RelativePath does not expected: {resolvePath}");
+
+                // Act.
+                resolvePath = IOUtil.ResolvePath(@"/root", @"./user/./specs");
+                // Assert.
+                Assert.True(string.Equals(resolvePath, @"/root/user/specs", StringComparison.OrdinalIgnoreCase), $"RelativePath does not expected: {resolvePath}");
+
+                // Act.
+                resolvePath = IOUtil.ResolvePath(@"/", @"user/specs/.");
+                // Assert.
+                Assert.True(string.Equals(resolvePath, @"/user/specs", StringComparison.OrdinalIgnoreCase), $"RelativePath does not expected: {resolvePath}");
+
+                // Act.
+                resolvePath = IOUtil.ResolvePath(@"/user/src/project", @"../");
+                // Assert.
+                Assert.True(string.Equals(resolvePath, @"/user/src", StringComparison.OrdinalIgnoreCase), $"RelativePath does not expected: {resolvePath}");
+
+                // Act.
+                resolvePath = IOUtil.ResolvePath(@"/user/src/project", @"../../");
+                // Assert.
+                Assert.True(string.Equals(resolvePath, @"/user", StringComparison.OrdinalIgnoreCase), $"RelativePath does not expected: {resolvePath}");
+
+                // Act.
+                resolvePath = IOUtil.ResolvePath(@"/user/src/project/foo", @"../../../../user/./src");
+                // Assert.
+                Assert.True(string.Equals(resolvePath, @"/user/src", StringComparison.OrdinalIgnoreCase), $"RelativePath does not expected: {resolvePath}");
+
+                // Act.
+                resolvePath = IOUtil.ResolvePath(@"/user/src", @"../../.");
+                // Assert.
+                Assert.True(string.Equals(resolvePath, @"/", StringComparison.OrdinalIgnoreCase), $"RelativePath does not expected: {resolvePath}");
+
+                // Act.
+                resolvePath = IOUtil.ResolvePath(@"/", @"./");
+                // Assert.
+                Assert.True(string.Equals(resolvePath, @"/", StringComparison.OrdinalIgnoreCase), $"RelativePath does not expected: {resolvePath}");
 #endif
             }
         }

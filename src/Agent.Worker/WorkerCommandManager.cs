@@ -8,13 +8,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
     [ServiceLocator(Default = typeof(WorkerCommandManager))]
     public interface IWorkerCommandManager : IAgentService
     {
+        void EnablePluginInternalCommand(bool enable);
         bool TryProcessCommand(IExecutionContext context, string input);
     }
 
     public sealed class WorkerCommandManager : AgentService, IWorkerCommandManager
     {
         private readonly Dictionary<string, IWorkerCommandExtension> _commandExtensions = new Dictionary<string, IWorkerCommandExtension>(StringComparer.OrdinalIgnoreCase);
+
+        private IWorkerCommandExtension _pluginInternalCommandExtensions;
+
         private readonly object _commandSerializeLock = new object();
+
+        private bool _invokePluginInternalCommand = false;
 
         public override void Initialize(IHostContext hostContext)
         {
@@ -25,7 +31,28 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             foreach (var commandExt in extensionManager.GetExtensions<IWorkerCommandExtension>() ?? new List<IWorkerCommandExtension>())
             {
                 Trace.Info($"Register command extension for area {commandExt.CommandArea}");
-                _commandExtensions[commandExt.CommandArea] = commandExt;
+                if (!string.Equals(commandExt.CommandArea, "plugininternal", StringComparison.OrdinalIgnoreCase))
+                {
+                    _commandExtensions[commandExt.CommandArea] = commandExt;
+                }
+                else
+                {
+                    _pluginInternalCommandExtensions = commandExt;
+                }
+            }
+        }
+
+        public void EnablePluginInternalCommand(bool enable)
+        {
+            if (enable)
+            {
+                Trace.Info($"Enable plugin internal command extension.");
+                _invokePluginInternalCommand = true;
+            }
+            else
+            {
+                Trace.Info($"Disable plugin internal command extension.");
+                _invokePluginInternalCommand = false;
             }
         }
 
@@ -49,7 +76,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 return false;
             }
 
-            if (_commandExtensions.TryGetValue(command.Area, out IWorkerCommandExtension extension))
+            IWorkerCommandExtension extension = null;
+            if (_invokePluginInternalCommand && string.Equals(command.Area, _pluginInternalCommandExtensions.CommandArea, StringComparison.OrdinalIgnoreCase))
+            {
+                extension = _pluginInternalCommandExtensions;
+            }
+
+            if (extension != null || _commandExtensions.TryGetValue(command.Area, out extension))
             {
                 if (!extension.SupportedHostTypes.HasFlag(context.Variables.System_HostType))
                 {

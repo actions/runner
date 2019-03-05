@@ -183,6 +183,22 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
+        public void PrepareDirectoryUpdateRepositoryPath()
+        {
+            // Arrange.
+            using (TestHostContext hc = Setup())
+            {
+                // Act.
+                _buildDirectoryManager.PrepareDirectory(_ec.Object, _repository, _workspaceOptions);
+
+                // Assert.
+                Assert.Equal(Path.Combine(_workFolder, _newConfig.SourcesDirectory), _repository.Properties.Get<string>(Pipelines.RepositoryPropertyNames.Path));
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
         public void UpdatesExistingConfig()
         {
             // Arrange.
@@ -197,6 +213,45 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
             }
         }
 
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void UpdateDirectory()
+        {
+            // Arrange.
+            using (TestHostContext hc = Setup(existingConfigKind: ExistingConfigKind.Matching))
+            {
+                // Act.
+                var tracking = _buildDirectoryManager.PrepareDirectory(_ec.Object, _repository, _workspaceOptions);
+
+                _repository.Properties.Set<string>(Pipelines.RepositoryPropertyNames.Path, Path.Combine(hc.GetDirectory(WellKnownDirectory.Work), tracking.BuildDirectory, $"test{Path.DirectorySeparatorChar}foo"));
+
+                var newTracking = _buildDirectoryManager.UpdateDirectory(_ec.Object, _repository);
+
+                // Assert.
+                Assert.Equal(newTracking.SourcesDirectory, $"1{Path.DirectorySeparatorChar}test{Path.DirectorySeparatorChar}foo");
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void UpdateDirectoryFailOnInvalidPath()
+        {
+            // Arrange.
+            using (TestHostContext hc = Setup(existingConfigKind: ExistingConfigKind.Matching))
+            {
+                // Act.
+                var tracking = _buildDirectoryManager.PrepareDirectory(_ec.Object, _repository, _workspaceOptions);
+
+                _repository.Properties.Set<string>(Pipelines.RepositoryPropertyNames.Path, Path.Combine(hc.GetDirectory(WellKnownDirectory.Work), "test\\foo"));
+
+                var exception = Assert.Throws<ArgumentException>(() => _buildDirectoryManager.UpdateDirectory(_ec.Object, _repository));
+
+                // Assert.
+                Assert.True(exception.Message.Contains("should be located under agent's work directory"));
+            }
+        }
         // TODO: Updates legacy config.
 
         private TestHostContext Setup(

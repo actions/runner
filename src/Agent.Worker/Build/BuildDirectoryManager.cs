@@ -1,8 +1,6 @@
-using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
 using System.IO;
-using Microsoft.TeamFoundation.Build.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Worker.Maintenance;
 using System.Linq;
 using System.Collections.Generic;
@@ -70,6 +68,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             IExecutionContext executionContext,
             string description, string path,
             bool deleteExisting);
+
+        TrackingConfig UpdateDirectory(
+            IExecutionContext executionContext,
+            RepositoryResource repository);
     }
 
     public sealed class BuildDirectoryManager : AgentService, IBuildDirectoryManager, IMaintenanceServiceProvider
@@ -185,8 +187,64 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             CreateDirectory(
                 executionContext,
                 description: "source directory",
-                path: Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), newConfig.BuildDirectory, Constants.Build.Path.SourcesDirectory),
+                path: Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), newConfig.SourcesDirectory),
                 deleteExisting: cleanOption == BuildCleanOption.Source);
+
+            var repoPath = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), newConfig.SourcesDirectory);
+            Trace.Info($"Set repository path for repository {repository.Alias} to '{repoPath}'");
+            repository.Properties.Set<string>(RepositoryPropertyNames.Path, repoPath);
+
+            return newConfig;
+        }
+
+        public TrackingConfig UpdateDirectory(
+            IExecutionContext executionContext,
+            RepositoryResource repository)
+        {
+            // Validate parameters.
+            Trace.Entering();
+            ArgUtil.NotNull(executionContext, nameof(executionContext));
+            ArgUtil.NotNull(executionContext.Variables, nameof(executionContext.Variables));
+            ArgUtil.NotNull(repository, nameof(repository));
+            var trackingManager = HostContext.GetService<ITrackingManager>();
+
+            // Defer to the source provider to calculate the hash key.
+            Trace.Verbose("Calculating build directory hash key.");
+            string hashKey = repository.GetSourceDirectoryHashKey(executionContext);
+            Trace.Verbose($"Hash key: {hashKey}");
+
+            // Load the existing tracking file.
+            string trackingFile = Path.Combine(
+                HostContext.GetDirectory(WellKnownDirectory.Work),
+                Constants.Build.Path.SourceRootMappingDirectory,
+                executionContext.Variables.System_CollectionId,
+                executionContext.Variables.System_DefinitionId,
+                Constants.Build.Path.TrackingConfigFile);
+            Trace.Verbose($"Loading tracking config if exists: {trackingFile}");
+            TrackingConfigBase existingConfig = trackingManager.LoadIfExists(executionContext, trackingFile);
+            ArgUtil.NotNull(existingConfig, nameof(existingConfig));
+
+            TrackingConfig newConfig = ConvertToNewFormat(executionContext, repository, existingConfig);
+            ArgUtil.NotNull(newConfig, nameof(newConfig));
+
+            var repoPath = repository.Properties.Get<string>(RepositoryPropertyNames.Path);
+            ArgUtil.NotNullOrEmpty(repoPath, nameof(repoPath));
+            Trace.Info($"Update repository path for repository {repository.Alias} to '{repoPath}'");
+
+            string buildDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), newConfig.BuildDirectory);
+            if (repoPath.StartsWith(buildDirectory + Path.DirectorySeparatorChar) || repoPath.StartsWith(buildDirectory + Path.AltDirectorySeparatorChar))
+            {
+                // The sourcesDirectory in tracking file is a relative path to agent's work folder.
+                newConfig.SourcesDirectory = repoPath.Substring(HostContext.GetDirectory(WellKnownDirectory.Work).Length + 1).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            }
+            else
+            {
+                throw new ArgumentException($"Repository path '{repoPath}' should be located under agent's work directory '{buildDirectory}'.");
+            }
+
+            // Update the tracking config files.
+            Trace.Verbose("Updating job run properties.");
+            trackingManager.UpdateJobRunProperties(executionContext, newConfig, trackingFile);
 
             return newConfig;
         }

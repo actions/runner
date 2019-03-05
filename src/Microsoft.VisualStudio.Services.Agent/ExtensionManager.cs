@@ -70,6 +70,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                     Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.TestResults.ResultsCommandExtension, Agent.Worker");
                     Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.Telemetry.TelemetryCommandExtension, Agent.Worker");
                     Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.Release.ReleaseCommandExtension, Agent.Worker");
+                    Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.PluginInternalCommandExtension, Agent.Worker");
                     break;
                 // Worker build source providers.
                 case "Microsoft.VisualStudio.Services.Agent.Worker.Build.ISourceProvider":

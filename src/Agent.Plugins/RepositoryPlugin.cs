@@ -11,6 +11,7 @@ using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using Newtonsoft.Json.Linq;
 using Pipelines = Microsoft.TeamFoundation.DistributedTask.Pipelines;
+using System.IO;
 
 namespace Agent.Plugins.Repository
 {
@@ -114,6 +115,61 @@ namespace Agent.Plugins.Repository
             var repo = executionContext.Repositories.Single(x => string.Equals(x.Alias, repoAlias, StringComparison.OrdinalIgnoreCase));
 
             MergeCheckoutOptions(executionContext, repo);
+
+            var currentRepoPath = repo.Properties.Get<string>(Pipelines.RepositoryPropertyNames.Path);
+            var buildDirectory = executionContext.Variables.GetValueOrDefault("agent.builddirectory")?.Value;
+            var tempDirectory = executionContext.Variables.GetValueOrDefault("agent.tempdirectory")?.Value;
+
+            ArgUtil.NotNullOrEmpty(currentRepoPath, nameof(currentRepoPath));
+            ArgUtil.NotNullOrEmpty(buildDirectory, nameof(buildDirectory));
+            ArgUtil.NotNullOrEmpty(tempDirectory, nameof(tempDirectory));
+
+            string expectRepoPath;
+            var path = executionContext.GetInput("path");
+            if (!string.IsNullOrEmpty(path))
+            {
+                expectRepoPath = IOUtil.ResolvePath(buildDirectory, path);
+                if (!expectRepoPath.StartsWith(buildDirectory.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar))
+                {
+                    throw new ArgumentException($"Input path '{path}' should resolve to a directory under '{buildDirectory}', current resolved path '{expectRepoPath}'.");
+                }
+            }
+            else
+            {
+                // When repository doesn't has path set, default to sources directory 1/s
+                expectRepoPath = Path.Combine(buildDirectory, "s");
+            }
+
+            executionContext.UpdateRepositoryPath(repoAlias, expectRepoPath);
+
+            executionContext.Debug($"Repository requires to be placed at '{expectRepoPath}', current location is '{currentRepoPath}'");
+            if (!string.Equals(currentRepoPath.Trim(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar), expectRepoPath.Trim(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar), IOUtil.FilePathStringComparison))
+            {
+                executionContext.Output($"Repository is current at '{currentRepoPath}', move to '{expectRepoPath}'.");
+                var count = 1;
+                var staging = Path.Combine(tempDirectory, $"_{count}");
+                while (Directory.Exists(staging))
+                {
+                    count++;
+                    staging = Path.Combine(tempDirectory, $"_{count}");
+                }
+
+                try
+                {
+                    executionContext.Debug($"Move existing repository '{currentRepoPath}' to '{expectRepoPath}' via staging directory '{staging}'.");
+                    IOUtil.MoveDirectory(currentRepoPath, expectRepoPath, staging, CancellationToken.None);
+                }
+                catch (Exception ex)
+                {
+                    executionContext.Debug("Catch exception during repository move.");
+                    executionContext.Debug(ex.ToString());
+                    executionContext.Warning("Unable move and reuse existing repository to required location.");
+                    IOUtil.DeleteDirectory(expectRepoPath, CancellationToken.None);
+                }
+
+                executionContext.Output($"Repository will locate at '{expectRepoPath}'.");
+                repo.Properties.Set<string>(Pipelines.RepositoryPropertyNames.Path, expectRepoPath);
+            }
 
             ISourceProvider sourceProvider = SourceProviderFactory.GetSourceProvider(repo.Type);
             await sourceProvider.GetSourceAsync(executionContext, repo, token);

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -29,7 +30,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Plugin
         {
             using (TestHostContext tc = new TestHostContext(this))
             {
-                Setup();
+                Setup(tc);
                 var repository = _executionContext.Repositories.Single();
                 repository.Properties.Set(
                     Pipelines.RepositoryPropertyNames.CheckoutOptions,
@@ -59,7 +60,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Plugin
         {
             using (TestHostContext tc = new TestHostContext(this))
             {
-                Setup();
+                Setup(tc);
                 var repository = _executionContext.Repositories.Single();
                 repository.Properties.Set(
                     Pipelines.RepositoryPropertyNames.CheckoutOptions,
@@ -89,7 +90,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Plugin
         {
             using (TestHostContext tc = new TestHostContext(this))
             {
-                Setup();
+                Setup(tc);
                 var repository = _executionContext.Repositories.Single();
                 repository.Properties.Set(
                     Pipelines.RepositoryPropertyNames.CheckoutOptions,
@@ -123,7 +124,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Plugin
         {
             using (TestHostContext tc = new TestHostContext(this))
             {
-                Setup();
+                Setup(tc);
                 var repository = _executionContext.Repositories.Single();
                 repository.Properties.Set(
                     Pipelines.RepositoryPropertyNames.CheckoutOptions,
@@ -154,7 +155,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Plugin
         {
             using (TestHostContext tc = new TestHostContext(this))
             {
-                Setup();
+                Setup(tc);
                 var repository = _executionContext.Repositories.Single();
                 repository.Properties.Set(
                     Pipelines.RepositoryPropertyNames.CheckoutOptions,
@@ -186,7 +187,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Plugin
         {
             using (TestHostContext tc = new TestHostContext(this))
             {
-                Setup();
+                Setup(tc);
                 var repository = _executionContext.Repositories.Single();
                 repository.Properties.Set(
                     Pipelines.RepositoryPropertyNames.CheckoutOptions,
@@ -209,9 +210,146 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Plugin
             }
         }
 
-        private void Setup()
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Plugin")]
+        public async Task RepositoryPlugin_NoPathInput()
         {
-            _executionContext = new AgentTaskPluginExecutionContext(quiet: true)
+            using (TestHostContext tc = new TestHostContext(this))
+            {
+                Setup(tc);
+                var repository = _executionContext.Repositories.Single();
+                var currentPath = repository.Properties.Get<string>(Pipelines.RepositoryPropertyNames.Path);
+                Directory.CreateDirectory(currentPath);
+
+                await _checkoutTask.RunAsync(_executionContext, CancellationToken.None);
+
+                var actualPath = repository.Properties.Get<string>(Pipelines.RepositoryPropertyNames.Path);
+
+                Assert.Equal(actualPath, currentPath);
+
+                var temp = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+                File.Copy(tc.TraceFileName, temp);
+                Assert.True(File.ReadAllText(temp).Contains($"##vso[plugininternal.updaterepositorypath alias=myRepo;]{actualPath}"));
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Plugin")]
+        public async Task RepositoryPlugin_PathInputMoveFolder()
+        {
+            using (TestHostContext tc = new TestHostContext(this))
+            {
+                Setup(tc);
+                var repository = _executionContext.Repositories.Single();
+                var currentPath = repository.Properties.Get<string>(Pipelines.RepositoryPropertyNames.Path);
+                Directory.CreateDirectory(currentPath);
+
+                _executionContext.Inputs["Path"] = "test";
+
+                await _checkoutTask.RunAsync(_executionContext, CancellationToken.None);
+
+                var actualPath = repository.Properties.Get<string>(Pipelines.RepositoryPropertyNames.Path);
+
+                Assert.NotEqual(actualPath, currentPath);
+                Assert.Equal(actualPath, Path.Combine(tc.GetDirectory(WellKnownDirectory.Work), "1", "test"));
+                Assert.True(Directory.Exists(actualPath));
+                Assert.False(Directory.Exists(currentPath));
+
+                var temp = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+                File.Copy(tc.TraceFileName, temp);
+                Assert.True(File.ReadAllText(temp).Contains($"##vso[plugininternal.updaterepositorypath alias=myRepo;]{actualPath}"));
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Plugin")]
+        public async Task RepositoryPlugin_NoPathInputMoveBackToDefault()
+        {
+            using (TestHostContext tc = new TestHostContext(this))
+            {
+                var trace = tc.GetTrace();
+                Setup(tc);
+                var repository = _executionContext.Repositories.Single();
+                repository.Properties.Set(Pipelines.RepositoryPropertyNames.Path, Path.Combine(tc.GetDirectory(WellKnownDirectory.Work), "1", "test"));
+                var currentPath = repository.Properties.Get<string>(Pipelines.RepositoryPropertyNames.Path);
+                Directory.CreateDirectory(currentPath);
+
+                await _checkoutTask.RunAsync(_executionContext, CancellationToken.None);
+                var actualPath = repository.Properties.Get<string>(Pipelines.RepositoryPropertyNames.Path);
+
+                Assert.Equal(actualPath, Path.Combine(tc.GetDirectory(WellKnownDirectory.Work), "1", "s"));
+                Assert.True(Directory.Exists(actualPath));
+                Assert.False(Directory.Exists(currentPath));
+
+                var temp = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+                File.Copy(tc.TraceFileName, temp);
+                Assert.True(File.ReadAllText(temp).Contains($"##vso[plugininternal.updaterepositorypath alias=myRepo;]{actualPath}"));
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Plugin")]
+        public async Task RepositoryPlugin_InvalidPathInput()
+        {
+            using (TestHostContext tc = new TestHostContext(this))
+            {
+                var trace = tc.GetTrace();
+                Setup(tc);
+                var repository = _executionContext.Repositories.Single();
+                var currentPath = repository.Properties.Get<string>(Pipelines.RepositoryPropertyNames.Path);
+                Directory.CreateDirectory(currentPath);
+                _executionContext.Inputs["Path"] = "..";
+
+                var ex = await Assert.ThrowsAsync<ArgumentException>(async () => await _checkoutTask.RunAsync(_executionContext, CancellationToken.None));
+                Assert.True(ex.Message.Contains("should resolve to a directory under"));
+
+                var temp = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+                File.Copy(tc.TraceFileName, temp);
+                Assert.False(File.ReadAllText(temp).Contains($"##vso[plugininternal.updaterepositorypath alias=myRepo;]"));
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Plugin")]
+        public async Task RepositoryPlugin_UpdatePathEvenCheckoutFail()
+        {
+            using (TestHostContext tc = new TestHostContext(this))
+            {
+                var trace = tc.GetTrace();
+                Setup(tc);
+
+                _sourceProvider.Setup(x => x.GetSourceAsync(It.IsAny<AgentTaskPluginExecutionContext>(), It.IsAny<Pipelines.RepositoryResource>(), It.IsAny<CancellationToken>()))
+                               .Throws(new InvalidOperationException("RIGHT"));
+
+                var repository = _executionContext.Repositories.Single();
+                var currentPath = repository.Properties.Get<string>(Pipelines.RepositoryPropertyNames.Path);
+                Directory.CreateDirectory(currentPath);
+
+                var ex = await Assert.ThrowsAsync<InvalidOperationException>(async () => await _checkoutTask.RunAsync(_executionContext, CancellationToken.None));
+                Assert.True(ex.Message.Contains("RIGHT"));
+
+                var temp = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+                File.Copy(tc.TraceFileName, temp);
+                Assert.True(File.ReadAllText(temp).Contains($"##vso[plugininternal.updaterepositorypath alias=myRepo;]{currentPath}"));
+            }
+        }
+
+        private void Setup(TestHostContext hostContext)
+        {
+            var repo = new Pipelines.RepositoryResource()
+            {
+                Alias = "myRepo",
+                Type = Pipelines.RepositoryTypes.Git,
+            };
+
+            repo.Properties.Set<string>(Pipelines.RepositoryPropertyNames.Path, Path.Combine(hostContext.GetDirectory(WellKnownDirectory.Work), "1", "s"));
+
+            _executionContext = new AgentTaskPluginExecutionContext(hostContext.GetTrace())
             {
                 Endpoints = new List<ServiceEndpoint>(),
                 Inputs = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
@@ -220,13 +358,23 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Plugin
                 },
                 Repositories = new List<Pipelines.RepositoryResource>
                 {
-                    new Pipelines.RepositoryResource
-                    {
-                        Alias = "myRepo",
-                        Type = Pipelines.RepositoryTypes.Git,
-                    },
+                    repo
                 },
-                Variables = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase),
+                Variables = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase)
+                {
+                    {
+                        "agent.builddirectory",
+                         Path.Combine(hostContext.GetDirectory(WellKnownDirectory.Work), "1")
+                    },
+                    {
+                        "agent.workfolder",
+                        hostContext.GetDirectory(WellKnownDirectory.Work)
+                    },
+                    {
+                        "agent.tempdirectory",
+                        hostContext.GetDirectory(WellKnownDirectory.Temp)
+                    }
+                },
             };
 
             _sourceProvider = new Mock<ISourceProvider>();

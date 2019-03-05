@@ -35,7 +35,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         {
             string rootedPath = null;
 
-            if (SourceProvider != null && Repository != null)
+            if (SourceProvider != null &&
+                Repository != null &&
+                StringUtil.ConvertToBoolean(Repository.Properties.Get<string>("__AZP_READY")))
             {
                 path = SourceProvider.GetLocalPath(context, Repository, path) ?? string.Empty;
                 Trace.Info($"Build JobExtension resolving path use source provide: {path}");
@@ -195,8 +197,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             executionContext.SetVariable(Constants.Variables.Build.StagingDirectory, Path.Combine(_workDirectory, trackingConfig.ArtifactsDirectory), isFilePath: true);
             executionContext.SetVariable(Constants.Variables.Build.ArtifactStagingDirectory, Path.Combine(_workDirectory, trackingConfig.ArtifactsDirectory), isFilePath: true);
             executionContext.SetVariable(Constants.Variables.Build.RepoLocalPath, Path.Combine(_workDirectory, trackingConfig.SourcesDirectory), isFilePath: true);
-
-            Repository.Properties.Set<string>(Pipelines.RepositoryPropertyNames.Path, Path.Combine(_workDirectory, trackingConfig.SourcesDirectory));
         }
 
         private bool TrySetPrimaryRepositoryAndProviderInfo(IExecutionContext executionContext)
