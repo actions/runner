@@ -166,7 +166,7 @@ function package ()
     find "${LAYOUT_DIR}/bin" -type f -name '*.pdb' -delete
 
     mkdir -p "$PACKAGE_DIR"
-    rm -Rf "${PACKAGE_DIR:?}/*"
+    rm -Rf "${PACKAGE_DIR:?}"/*
 
     pushd "$PACKAGE_DIR" > /dev/null
 
