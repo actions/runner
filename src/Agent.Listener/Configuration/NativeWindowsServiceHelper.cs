@@ -1,8 +1,7 @@
 #if OS_WINDOWS
-using Microsoft.VisualStudio.Services.Agent.Util;
-using Microsoft.Win32;
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
@@ -12,6 +11,8 @@ using System.Security.AccessControl;
 using System.Security.Principal;
 using System.ServiceProcess;
 using System.Threading;
+using Microsoft.VisualStudio.Services.Agent.Util;
+using Microsoft.Win32;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 {
@@ -69,6 +70,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         void UnloadUserProfile(IntPtr tokenHandle, PROFILEINFO userProfile);
 
         bool IsValidAutoLogonCredential(string domain, string userName, string logonPassword);
+
+        void GrantDirectoryPermissionForAccount(string accountName, IList<string> folders);
+
+        void RevokeDirectoryPermissionForAccount(IList<string> folders);
     }
 
     public class NativeWindowsServiceHelper : AgentService, INativeWindowsServiceHelper
@@ -858,6 +863,60 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             }
 
             Trace.Info($"Successfully unloaded the profile for {userProfile.lpUserName}.");
+        }
+
+        public void GrantDirectoryPermissionForAccount(string accountName, IList<string> folders)
+        {
+            Trace.Entering();
+            string groupName = GetUniqueBuildGroupName();
+            Trace.Info(StringUtil.Format("Calculated unique group name {0}", groupName));
+
+            if (!LocalGroupExists(groupName))
+            {
+                Trace.Info(StringUtil.Format("Trying to create group {0}", groupName));
+                CreateLocalGroup(groupName);
+            }
+
+            Trace.Info(StringUtil.Format("Trying to add userName {0} to the group {1}", accountName, groupName));
+            AddMemberToLocalGroup(accountName, groupName);
+
+            // grant permssion for folders
+            foreach(var folder in folders)
+            {
+                if (Directory.Exists(folder))
+                {
+                    Trace.Info(StringUtil.Format("Set full access control to group for the folder {0}", folder));
+                    GrantFullControlToGroup(folder, groupName);
+                }
+            }
+        }
+
+        public void RevokeDirectoryPermissionForAccount(IList<string> folders)
+        {
+            Trace.Entering();
+            string groupName = GetUniqueBuildGroupName();
+            Trace.Info(StringUtil.Format("Calculated unique group name {0}", groupName));
+
+            // remove the group from folders
+            foreach(var folder in folders)
+            {
+                if (Directory.Exists(folder))
+                {
+                    Trace.Info(StringUtil.Format($"Remove the group {groupName} for the folder {folder}."));
+                    try
+                    {
+                        RemoveGroupFromFolderSecuritySetting(folder, groupName);
+                    }
+                    catch(Exception ex)
+                    {
+                        Trace.Error(ex);
+                    }
+                }
+            }
+
+            //delete group
+            Trace.Info(StringUtil.Format($"Delete the group {groupName}."));
+            DeleteLocalGroup(groupName);
         }
 
         private bool IsValidCredentialInternal(string domain, string userName, string logonPassword, UInt32 logonType)

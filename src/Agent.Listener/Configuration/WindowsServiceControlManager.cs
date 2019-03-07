@@ -1,11 +1,11 @@
 #if OS_WINDOWS
-using Microsoft.VisualStudio.Services.Agent.Util;
 using System;
 using System.IO;
 using System.Linq;
-using System.Security.Principal;
 using System.Security;
+using System.Security.Principal;
 using System.Text;
+using Microsoft.VisualStudio.Services.Agent.Util;
 
 namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 {
@@ -104,8 +104,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 }
             }
 
+            // grant permission for agent root folder and work folder
             Trace.Info("Create local group and grant folder permission to service logon account.");
-            GrantDirectoryPermissionForAccount(logonAccount);
+            string agentRoot = HostContext.GetDirectory(WellKnownDirectory.Root);
+            string workFolder = HostContext.GetDirectory(WellKnownDirectory.Work);
+            Directory.CreateDirectory(workFolder);
+            _windowsServiceHelper.GrantDirectoryPermissionForAccount(logonAccount, new[] { agentRoot, workFolder });
+            _term.WriteLine(StringUtil.Loc("GrantingFilePermissions", logonAccount));
 
             // install service.
             _windowsServiceHelper.InstallService(serviceName, serviceDisplayName, logonAccount, logonPassword);
@@ -118,61 +123,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
             Trace.Info("Configuration was successful, trying to start the service");
             _windowsServiceHelper.StartService(serviceName);
-        }
-
-        private void GrantDirectoryPermissionForAccount(string accountName)
-        {
-            Trace.Entering();
-            string groupName = _windowsServiceHelper.GetUniqueBuildGroupName();
-            Trace.Info(StringUtil.Format("Calculated unique group name {0}", groupName));
-
-            if (!_windowsServiceHelper.LocalGroupExists(groupName))
-            {
-                Trace.Info(StringUtil.Format("Trying to create group {0}", groupName));
-                _windowsServiceHelper.CreateLocalGroup(groupName);
-            }
-
-            Trace.Info(StringUtil.Format("Trying to add userName {0} to the group {1}", accountName, groupName));
-            _windowsServiceHelper.AddMemberToLocalGroup(accountName, groupName);
-
-            // grant permssion for agent root folder
-            string agentRoot = HostContext.GetDirectory(WellKnownDirectory.Root);
-            Trace.Info(StringUtil.Format("Set full access control to group for the folder {0}", agentRoot));
-            _windowsServiceHelper.GrantFullControlToGroup(agentRoot, groupName);
-
-            // grant permssion for work folder
-            string workFolder = HostContext.GetDirectory(WellKnownDirectory.Work);
-            Directory.CreateDirectory(workFolder);
-            Trace.Info(StringUtil.Format("Set full access control to group for the folder {0}", workFolder));
-            _term.WriteLine(StringUtil.Loc("GrantingFilePermissions", accountName));
-            _windowsServiceHelper.GrantFullControlToGroup(workFolder, groupName);
-        }
-
-        private void RevokeDirectoryPermissionForAccount()
-        {
-            Trace.Entering();
-            string groupName = _windowsServiceHelper.GetUniqueBuildGroupName();
-            Trace.Info(StringUtil.Format("Calculated unique group name {0}", groupName));
-
-            // remove the group from the work folder
-            string workFolder = HostContext.GetDirectory(WellKnownDirectory.Work);
-            if (Directory.Exists(workFolder))
-            {
-                Trace.Info(StringUtil.Format($"Remove the group {groupName} for the folder {workFolder}."));
-                _windowsServiceHelper.RemoveGroupFromFolderSecuritySetting(workFolder, groupName);
-            }
-
-            //remove group from agent root folder
-            string agentRoot = HostContext.GetDirectory(WellKnownDirectory.Root);
-            if (Directory.Exists(agentRoot))
-            {
-                Trace.Info(StringUtil.Format($"Remove the group {groupName} for the folder {agentRoot}."));
-                _windowsServiceHelper.RemoveGroupFromFolderSecuritySetting(agentRoot, groupName);
-            }
-
-            //delete group
-            Trace.Info(StringUtil.Format($"Delete the group {groupName}."));
-            _windowsServiceHelper.DeleteLocalGroup(groupName);
         }
 
         public void UnconfigureService()
@@ -190,8 +140,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 _windowsServiceHelper.StopService(serviceName);
                 _windowsServiceHelper.UninstallService(serviceName);
 
-                // Delete local group we created during confiure.
-                RevokeDirectoryPermissionForAccount();
+                // Delete local group we created during configure.
+                string agentRoot = HostContext.GetDirectory(WellKnownDirectory.Root);
+                string workFolder = HostContext.GetDirectory(WellKnownDirectory.Work);
+                _windowsServiceHelper.RevokeDirectoryPermissionForAccount(new[] { agentRoot, workFolder });
 
                 // Remove registry key only on Windows
                 _windowsServiceHelper.DeleteVstsAgentRegistryKey();
