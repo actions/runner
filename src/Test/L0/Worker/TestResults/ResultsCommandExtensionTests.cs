@@ -225,6 +225,57 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.TestResults
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "PublishTestResults")]
+        public void VerifyPublishTaskErrorIfFailTaskIsTrueAndThereAreFailedTestsInMultipleResultFiles()
+        {
+            SetupMocks();
+            var resultCommand = new ResultsCommandExtension();
+            resultCommand.Initialize(_hc);
+            var command = new Command("results", "publish");
+            command.Properties.Add("resultFiles", "file1.trx,file2.trx");
+            command.Properties.Add("type", "NUnit");
+            command.Properties.Add("mergeResults", bool.TrueString);
+            command.Properties.Add("failTaskOnFailedTests", bool.TrueString);
+            var resultsFiles = new List<string> { "file1.trx", "file2.trx" };
+
+            var testRunDataPassed = new TestRunData();
+            var testRunDataFailed = new TestRunData();
+
+            var passedTest = new TestCaseResultData();
+            passedTest.Outcome = TestOutcome.Passed.ToString();
+
+            var failedTest = new TestCaseResultData();
+            failedTest.Outcome = TestOutcome.Failed.ToString();
+
+            testRunDataPassed.Results = new TestCaseResultData[] { passedTest };
+            testRunDataPassed.Attachments = new string[] { "attachment1", "attachment2" };
+            testRunDataFailed.Results = new TestCaseResultData[] { failedTest };
+            testRunDataPassed.Attachments = new string[] { "attachment1", "attachment2" };
+
+            _mockTestRunPublisher.Setup(q => q.StartTestRunAsync(It.IsAny<TestRunData>(), It.IsAny<CancellationToken>()))
+                .Callback((TestRunData trd, CancellationToken cancellationToken) =>
+                {
+                    Assert.Equal(resultsFiles.Count * testRunDataPassed.Attachments.Length, trd.Attachments.Length);
+                });
+            _mockTestRunPublisher.Setup(q => q.AddResultsAsync(It.IsAny<TestRun>(), It.IsAny<TestCaseResultData[]>(), It.IsAny<CancellationToken>()))
+                .Callback((TestRun testRun, TestCaseResultData[] tcrd, CancellationToken cancellationToken) =>
+                {
+                    Assert.Equal(resultsFiles.Count * testRunDataPassed.Results.Length, tcrd.Length);
+                });
+            _mockTestRunPublisher.Setup(q => q.ReadResultsFromFile(It.IsAny<TestRunContext>(), "file1.trx"))
+                .Returns(testRunDataPassed);
+            _mockTestRunPublisher.Setup(q => q.ReadResultsFromFile(It.IsAny<TestRunContext>(), "file2.trx"))
+                .Returns(testRunDataFailed);
+            _mockTestRunPublisher.Setup(q => q.EndTestRunAsync(It.IsAny<TestRunData>(), It.IsAny<int>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+
+            resultCommand.ProcessCommand(_ec.Object, command);
+
+            Assert.Equal(1, _errors.Count());
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "PublishTestResults")]
         public void VerifyPublishTaskErrorIfFailTaskIsTrueAndThereAreAbortedTests()
         {
             SetupMocks();
