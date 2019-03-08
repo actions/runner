@@ -12,7 +12,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
     {
         // This is the name you would see when you do `systemctl list-units | grep vsts`
         private const string _svcNamePattern = "vsts.agent.{0}.{1}.service";
-        private const string _svcDisplayPattern = "VSTS Agent ({0}.{1})";
+        private const string _svcDisplayPattern = "Azure Pipelines Agent ({0}.{1})";
 
         private const int MaxUserNameLength = 32;
         private const string VstsAgentServiceTemplate = "vsts.agent.service.template";

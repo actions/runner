@@ -22,7 +22,7 @@ From src:
 
 Normal dev flow:
 ```bash
-git clone https://github.com/microsoft/vsts-agent
+git clone https://github.com/microsoft/azure-pipelines-agent
 cd ./src
 ./dev.(sh/cmd) layout # the agent that build from source is in {root}/_layout
 <make code changes>

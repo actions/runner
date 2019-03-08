@@ -14,7 +14,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         public const string WindowsServiceControllerName = "AgentService.exe";
 
         private const string ServiceNamePattern = "vstsagent.{0}.{1}";
-        private const string ServiceDisplayNamePattern = "VSTS Agent ({0}.{1})";
+        private const string ServiceDisplayNamePattern = "Azure Pipelines Agent ({0}.{1})";
 
         private INativeWindowsServiceHelper _windowsServiceHelper;
         private ITerminal _term;
