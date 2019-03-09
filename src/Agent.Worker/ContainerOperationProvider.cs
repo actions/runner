@@ -4,13 +4,14 @@ using System.IO;
 using System.ServiceProcess;
 using System.Threading.Tasks;
 using Pipelines = Microsoft.TeamFoundation.DistributedTask.Pipelines;
-using Microsoft.VisualStudio.Services.Agent.Util;
-using Microsoft.VisualStudio.Services.Agent.Worker.Handlers;
-using Microsoft.VisualStudio.Services.Agent.Worker.Container;
-using System.Threading;
 using System.Linq;
-using Microsoft.Win32;
+using System.Threading;
+using Microsoft.VisualStudio.Services.Agent.Util;
+using Microsoft.VisualStudio.Services.Agent.Worker.Container;
+using Microsoft.VisualStudio.Services.Agent.Worker.Handlers;
 using Microsoft.VisualStudio.Services.Common;
+using Microsoft.Win32;
+
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
@@ -432,6 +433,69 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 if (execUsermodExitCode != 0)
                 {
                     throw new InvalidOperationException($"Docker exec fail with exit code {execEchoExitCode}");
+                }
+
+                bool setupDockerGroup = executionContext.Variables.GetBoolean("VSTS_SETUP_DOCKERGROUP") ?? StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("VSTS_SETUP_DOCKERGROUP"), true);
+                if (setupDockerGroup)
+                {
+                    executionContext.Output(StringUtil.Loc("AllowContainerUserRunDocker", containerUserName));
+                    // Get docker.sock group id on Host
+                    string dockerSockGroupId = (await ExecuteCommandAsync(executionContext, "stat", $"-c %g /var/run/docker.sock")).FirstOrDefault();
+
+                    // We need to find out whether there is a group with same GID inside the container
+                    string existingGroupName = null;
+                    List<string> groupsOutput = new List<string>();
+                    int execGroupGrepExitCode = await _dockerManger.DockerExec(executionContext, container.ContainerId, string.Empty, $"bash -c \"cat /etc/group\"", groupsOutput);
+                    if (execGroupGrepExitCode != 0)
+                    {
+                        throw new InvalidOperationException($"Docker exec fail with exit code {execGroupGrepExitCode}");
+                    }
+
+                    if (groupsOutput.Count > 0)
+                    {
+                        // check all potential groups that might match the GID.
+                        foreach (string groupOutput in groupsOutput)
+                        {
+                            if(!string.IsNullOrEmpty(groupOutput))
+                            {
+                                var groupSegments = groupOutput.Split(':');
+                                if( groupSegments.Length != 4 )
+                                {
+                                    Trace.Warning($"Unexpected output from /etc/group: '{groupOutput}'");
+                                }
+                                else
+                                {
+                                    // the output of /etc/group should looks like `group:x:gid:`
+                                    var groupName = groupSegments[0];
+                                    var groupId = groupSegments[2];
+
+                                    if(string.Equals(dockerSockGroupId, groupId))
+                                    {
+                                        existingGroupName = groupName;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if(string.IsNullOrEmpty(existingGroupName))
+                    {
+                        // create a new group with same gid
+                        existingGroupName = "azure_pipelines_docker";
+                        int execDockerGroupaddExitCode = await _dockerManger.DockerExec(executionContext, container.ContainerId, string.Empty, $"groupadd -g {dockerSockGroupId} azure_pipelines_docker");
+                        if (execDockerGroupaddExitCode != 0)
+                        {
+                            throw new InvalidOperationException($"Docker exec fail with exit code {execDockerGroupaddExitCode}");
+                        }
+                    }
+                    
+                    // Add the new created user to the docker socket group.
+                    int execGroupUsermodExitCode = await _dockerManger.DockerExec(executionContext, container.ContainerId, string.Empty, $"usermod -a -G {existingGroupName} {containerUserName}");
+                    if (execGroupUsermodExitCode != 0)
+                    {
+                        throw new InvalidOperationException($"Docker exec fail with exit code {execGroupUsermodExitCode}");
+                    }
                 }
             }
 #endif
