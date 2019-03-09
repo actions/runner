@@ -18,19 +18,26 @@ var listener = null;
 
 var runService = function() {
     var listenerExePath = path.join(__dirname, '../bin/Agent.Listener');
-    console.log('Starting Agent listener');
+    var interactive = process.argv[2] === "interactive";
 
     if(!stopping) {
         try {
-            listener = childProcess.spawn(listenerExePath, ['run', '--startuptype', 'service'], { env: process.env });
-            console.log('started listener process');
+            if (interactive) {
+                console.log('Starting Agent listener interactively');
+                listener = childProcess.spawn(listenerExePath, ['run'], { env: process.env });
+            } else {
+                console.log('Starting Agent listener with startup type: service');
+                listener = childProcess.spawn(listenerExePath, ['run', '--startuptype', 'service'], { env: process.env });
+            }
+
+            console.log('Started listener process');
         
             listener.stdout.on('data', (data) => {
-                console.log(data);
+                process.stdout.write(data.toString('utf8'));
             });
 
             listener.stderr.on('data', (data) => {
-                console.log(data);
+                process.stdout.write(data.toString('utf8'));
             });
 
             listener.on('close', (code) => {
@@ -62,10 +69,10 @@ var runService = function() {
 }
 
 runService();
-console.log('started running service');
+console.log('Started running service');
 
 var gracefulShutdown = function(code) {
-    console.log('shutting down agent listener');
+    console.log('Shutting down agent listener');
     stopping = true;
     if (listener) {
         console.log('Sending SIGINT to agent listener to stop');
@@ -82,4 +89,3 @@ process.on('SIGINT', () => {
 process.on('SIGTERM', () => {
     gracefulShutdown(0);
 });
-
