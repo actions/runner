@@ -189,6 +189,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
                 redirectStandardIn: redirectStandardIn,
                 inheritConsoleHandler: inheritConsoleHandler,
                 keepStandardInOpen: false,
+                highPriorityProcess: false,
                 cancellationToken: cancellationToken);
         }
 
@@ -203,6 +204,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             InputQueue<string> redirectStandardIn,
             bool inheritConsoleHandler,
             bool keepStandardInOpen,
+            bool highPriorityProcess,
             CancellationToken cancellationToken)
         {
             ArgUtil.Null(_proc, nameof(_proc));
@@ -218,6 +220,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             Trace.Info($"  Redirected STDIN: '{redirectStandardIn != null}'");
             Trace.Info($"  Persist current code page: '{inheritConsoleHandler}'");
             Trace.Info($"  Keep redirected STDIN open: '{keepStandardInOpen}'");
+            Trace.Info($"  High priority process: '{highPriorityProcess}'");
 
             _proc = new Process();
             _proc.StartInfo.FileName = fileName;
@@ -274,6 +277,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             // Start the process.
             _stopWatch = Stopwatch.StartNew();
             _proc.Start();
+
+            // Decrease invoked process priority, in platform specifc way, relative to parent
+            if (!highPriorityProcess)
+            {
+                DecreaseProcessPriority(_proc);
+            }
 
             // Start the standard error notifications, if appropriate.
             if (_proc.StartInfo.RedirectStandardError)
@@ -510,7 +519,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
                                 standardIn.Close();
                                 break;
                             }
-                        }
+                    }
                     }
                 }
 
@@ -524,6 +533,30 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             WindowsKillProcessTree();
 #else
             NixKillProcessTree();
+#endif
+        }
+
+        private void DecreaseProcessPriority(Process process)
+        {
+#if OS_LINUX
+            int oomScoreAdj = 500;
+            string userOomScoreAdj;
+            if (process.StartInfo.Environment.TryGetValue("PIPELINE_JOB_OOMSCOREADJ", out userOomScoreAdj))
+            {
+                int userOomScoreAdjParsed;
+                if (int.TryParse(userOomScoreAdj, out userOomScoreAdjParsed) && userOomScoreAdjParsed >= -1000 && userOomScoreAdjParsed <= 1000)
+                {
+                    oomScoreAdj = userOomScoreAdjParsed;
+                }
+                else
+                {
+                    Trace.Info($"Invalid PIPELINE_JOB_OOMSCOREADJ ({userOomScoreAdj}). Valid range is -1000:1000. Using default 500.");
+                }
+            }
+            // Values (up to 1000) make the process more likely to be killed under OOM scenario,
+            // protecting the agent by extension. Default of 500 is likely to get killed, but can
+            // be adjusted up or down as appropriate.
+            WriteProcessOomScoreAdj(process.Id, oomScoreAdj);
 #endif
         }
 
@@ -804,6 +837,26 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
                 Trace.Info(ex.ToString());
             }
         }
+
+#if OS_LINUX
+        private void WriteProcessOomScoreAdj(int processId, int oomScoreAdj)
+        {
+            try
+            {
+                string procFilePath = $"/proc/{processId}/oom_score_adj";
+                if (File.Exists(procFilePath))
+                {
+                    File.WriteAllText(procFilePath, oomScoreAdj.ToString());
+                    Trace.Info($"Updated oom_score_adj to {oomScoreAdj} for PID: {processId}.");
+                }
+            }
+            catch (Exception ex)
+            {
+                Trace.Info($"Failed to update oom_score_adj for PID: {processId}.");
+                Trace.Info(ex.ToString());
+            }
+        }
+#endif
 
         private enum Signals : int
         {

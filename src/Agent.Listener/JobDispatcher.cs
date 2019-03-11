@@ -415,6 +415,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                                 requireExitCodeZero: false,
                                 outputEncoding: null,
                                 killProcessOnCancel: true,
+                                redirectStandardIn: null,
+                                inheritConsoleHandler: false,
+                                keepStandardInOpen: false,
+                                highPriorityProcess: true,
                                 cancellationToken: workerProcessCancelTokenSource.Token);
                         });
 

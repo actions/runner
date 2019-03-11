@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
@@ -80,7 +81,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         }
 
 #if !OS_WINDOWS
-        //Run a process that normally takes 20sec to finish and cancel it.        
+        //Run a process that normally takes 20sec to finish and cancel it.
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
@@ -230,5 +231,119 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 Assert.True(stdout.Contains("More line of STDIN"), "STDIN should keep open and accept more inputs after first input line.");
             }
         }
+
+#if OS_LINUX
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public async Task OomScoreAdjIsWriten_Default()
+        {
+            // We are on a system that supports oom_score_adj in procfs as assumed by ProcessInvoker
+            string testProcPath = $"/proc/{Process.GetCurrentProcess().Id}/oom_score_adj";
+            if (File.Exists(testProcPath))
+            {
+                using (TestHostContext hc = new TestHostContext(this))
+                using (var tokenSource = new CancellationTokenSource())
+                {
+                    Tracing trace = hc.GetTrace();
+                    var processInvoker = new ProcessInvokerWrapper();
+                    processInvoker.Initialize(hc);
+                    int oomScoreAdj = -9999;
+                    processInvoker.OutputDataReceived += (object sender, ProcessDataReceivedEventArgs e) =>
+                    {
+                        oomScoreAdj = int.Parse(e.Data);
+                        tokenSource.Cancel();
+                    };
+                    try
+                    {
+                        var proc = await processInvoker.ExecuteAsync("", "bash", "-c \"cat /proc/$$/oom_score_adj\"", null, false, null, false, null, false, false,
+                                                            highPriorityProcess: false,
+                                                            cancellationToken: tokenSource.Token);
+                        Assert.Equal(oomScoreAdj, 500);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        trace.Info("Caught expected OperationCanceledException");
+                    }
+                }
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public async Task OomScoreAdjIsWriten_FromEnv()
+        {
+            // We are on a system that supports oom_score_adj in procfs as assumed by ProcessInvoker
+            string testProcPath = $"/proc/{Process.GetCurrentProcess().Id}/oom_score_adj";
+            if (File.Exists(testProcPath))
+            {
+                using (TestHostContext hc = new TestHostContext(this))
+                using (var tokenSource = new CancellationTokenSource())
+                {
+                    Tracing trace = hc.GetTrace();
+                    var processInvoker = new ProcessInvokerWrapper();
+                    processInvoker.Initialize(hc);
+                    int oomScoreAdj = -9999;
+                    processInvoker.OutputDataReceived += (object sender, ProcessDataReceivedEventArgs e) =>
+                    {
+                        oomScoreAdj = int.Parse(e.Data);
+                        tokenSource.Cancel();
+                    };
+                    try
+                    {
+                        var proc = await processInvoker.ExecuteAsync("", "bash", "-c \"cat /proc/$$/oom_score_adj\"", 
+                                                                new Dictionary<string, string> { {"PIPELINE_JOB_OOMSCOREADJ", "1234"} },
+                                                                false, null, false, null, false, false,
+                                                                highPriorityProcess: false,
+                                                                cancellationToken: tokenSource.Token);
+                        Assert.Equal(oomScoreAdj, 1234);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        trace.Info("Caught expected OperationCanceledException");
+                    }
+                }
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public async Task OomScoreAdjIsInherited()
+        {
+            // We are on a system that supports oom_score_adj in procfs as assumed by ProcessInvoker
+            string testProcPath = $"/proc/{Process.GetCurrentProcess().Id}/oom_score_adj";
+            if (File.Exists(testProcPath))
+            {
+                int testProcOomScoreAdj = 123;
+                File.WriteAllText(testProcPath, testProcOomScoreAdj.ToString());
+                using (TestHostContext hc = new TestHostContext(this))
+                using (var tokenSource = new CancellationTokenSource())
+                {
+                    Tracing trace = hc.GetTrace();
+                    var processInvoker = new ProcessInvokerWrapper();
+                    processInvoker.Initialize(hc);
+                    int oomScoreAdj = -9999;
+                    processInvoker.OutputDataReceived += (object sender, ProcessDataReceivedEventArgs e) =>
+                    {
+                        oomScoreAdj = int.Parse(e.Data);
+                        tokenSource.Cancel();
+                    };
+                    try
+                    {
+                        var proc = await processInvoker.ExecuteAsync("", "bash", "-c \"cat /proc/$$/oom_score_adj\"", null, false, null, false, null, false, false,
+                                                            highPriorityProcess: true,
+                                                            cancellationToken: tokenSource.Token);
+                        Assert.Equal(oomScoreAdj, 123);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        trace.Info("Caught expected OperationCanceledException");
+                    }
+                }
+            }
+        }
+#endif
     }
 }

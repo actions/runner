@@ -58,7 +58,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             bool killProcessOnCancel,
             InputQueue<string> redirectStandardIn,
             CancellationToken cancellationToken);
-        
+
         Task<int> ExecuteAsync(
             string workingDirectory,
             string fileName,
@@ -83,15 +83,29 @@ namespace Microsoft.VisualStudio.Services.Agent
             bool inheritConsoleHandler,
             bool keepStandardInOpen,
             CancellationToken cancellationToken);
+
+        Task<int> ExecuteAsync(
+            string workingDirectory,
+            string fileName,
+            string arguments,
+            IDictionary<string, string> environment,
+            bool requireExitCodeZero,
+            Encoding outputEncoding,
+            bool killProcessOnCancel,
+            InputQueue<string> redirectStandardIn,
+            bool inheritConsoleHandler,
+            bool keepStandardInOpen,
+            bool highPriorityProcess,
+            CancellationToken cancellationToken);
     }
 
     // The implementation of the process invoker does not hook up DataReceivedEvent and ErrorReceivedEvent of Process,
-    // instead, we read both STDOUT and STDERR stream manually on seperate thread. 
-    // The reason is we find a huge perf issue about process STDOUT/STDERR with those events. 
-    // 
+    // instead, we read both STDOUT and STDERR stream manually on seperate thread.
+    // The reason is we find a huge perf issue about process STDOUT/STDERR with those events.
+    //
     // Missing functionalities:
     //       1. Cancel/Kill process tree
-    //       2. Make sure STDOUT and STDERR not process out of order 
+    //       2. Make sure STDOUT and STDERR not process out of order
     public sealed class ProcessInvokerWrapper : AgentService, IProcessInvoker
     {
         private ProcessInvoker _invoker;
@@ -233,6 +247,35 @@ namespace Microsoft.VisualStudio.Services.Agent
             );
         }
 
+        public Task<int> ExecuteAsync(
+            string workingDirectory,
+            string fileName,
+            string arguments,
+            IDictionary<string, string> environment,
+            bool requireExitCodeZero,
+            Encoding outputEncoding,
+            bool killProcessOnCancel,
+            InputQueue<string> redirectStandardIn,
+            bool inheritConsoleHandler,
+            bool keepStandardInOpen,
+            CancellationToken cancellationToken)
+        {
+            return ExecuteAsync(
+                workingDirectory: workingDirectory,
+                fileName: fileName,
+                arguments: arguments,
+                environment: environment,
+                requireExitCodeZero: requireExitCodeZero,
+                outputEncoding: outputEncoding,
+                killProcessOnCancel: killProcessOnCancel,
+                redirectStandardIn: redirectStandardIn,
+                inheritConsoleHandler: inheritConsoleHandler,
+                keepStandardInOpen: keepStandardInOpen,
+                highPriorityProcess: false,
+                cancellationToken: cancellationToken
+            );
+        }
+
         public async Task<int> ExecuteAsync(
             string workingDirectory,
             string fileName,
@@ -244,6 +287,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             InputQueue<string> redirectStandardIn,
             bool inheritConsoleHandler,
             bool keepStandardInOpen,
+            bool highPriorityProcess,
             CancellationToken cancellationToken)
         {
             _invoker.ErrorDataReceived += this.ErrorDataReceived;
@@ -259,6 +303,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                 redirectStandardIn,
                 inheritConsoleHandler,
                 keepStandardInOpen,
+                highPriorityProcess,
                 cancellationToken);
         }
 
