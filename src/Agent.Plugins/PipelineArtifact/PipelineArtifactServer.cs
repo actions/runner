@@ -92,17 +92,12 @@ namespace Agent.Plugins.PipelineArtifact
                 else
                 {
                     context.Output(StringUtil.Loc("DownloadingMultiplePipelineArtifacts", pipelineArtifacts.Count()));
-                    foreach (BuildArtifact pipelineArtifact in pipelineArtifacts)
-                    {
-                        // each pipeline artifact will have its own subroot to avoid file collisions
-                        string pipelineArtifactRootPath = Path.Combine(downloadParameters.TargetDirectory, pipelineArtifact.Name);
-                        await DownloadPipelineArtifact(
-                            buildDropManager, 
-                            pipelineArtifact,
-                            pipelineArtifactRootPath, 
-                            downloadParameters.MinimatchFilters, 
-                            cancellationToken);
-                    }
+                    await DownloadPipelineArtifacts(
+                        buildDropManager,
+                        pipelineArtifacts,
+                        downloadParameters.TargetDirectory,
+                        downloadParameters.MinimatchFilters,
+                        cancellationToken);
                 }
             }
             else
@@ -129,9 +124,9 @@ namespace Agent.Plugins.PipelineArtifact
                     throw new InvalidOperationException("Unreachable code!");
                 }
 
-                await DownloadPipelineArtifact(
+                await DownloadPipelineArtifacts(
                     buildDropManager, 
-                    buildArtifact, 
+                    new List<BuildArtifact>(){ buildArtifact },
                     downloadParameters.TargetDirectory, 
                     downloadParameters.MinimatchFilters, 
                     cancellationToken);
@@ -148,28 +143,33 @@ namespace Agent.Plugins.PipelineArtifact
             return buildDropManager;
         }
 
-        private Task DownloadPipelineArtifact(
-            BuildDropManager buildDropManager, 
-            BuildArtifact buildArtifact, 
+
+        private Task DownloadPipelineArtifacts(
+            BuildDropManager buildDropManager,
+            IEnumerable<BuildArtifact> buildArtifacts,
             string targetDirectory,
             string[] minimatchFilters,
             CancellationToken cancellationToken)
         {
-            if (buildArtifact.Resource.Type != PipelineArtifactTypeName)
+            IDictionary<string, DedupIdentifier> artifactNameAndManifestId = new Dictionary<string, DedupIdentifier>();
+            foreach (var buildArtifact in buildArtifacts)
             {
-                throw new ArgumentException("The artifact is not of the type Pipeline Artifact.");
+                if (buildArtifact.Resource.Type != PipelineArtifactTypeName)
+                {
+                    throw new ArgumentException("The artifact is not of the type Pipeline Artifact.");
+                }
+                artifactNameAndManifestId.Add(buildArtifact.Name, DedupIdentifier.Create(buildArtifact.Resource.Data));
             }
-            var manifestId = DedupIdentifier.Create(buildArtifact.Resource.Data);
 
             // 2) download to the target path
-            DownloadPipelineArtifactOptions options = DownloadPipelineArtifactOptions.CreateWithManifestId(
-                manifestId,
+            DownloadPipelineArtifactOptions options = DownloadPipelineArtifactOptions.CreateWithMultiManifestIds(
+                artifactNameAndManifestId,
                 targetDirectory,
                 proxyUri: null,
                 minimatchPatterns: minimatchFilters);
             return buildDropManager.DownloadAsync(options, cancellationToken);
         }
-    }
+    } 
 
     internal class PipelineArtifactDownloadParameters
     {
