@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Agent.Plugins.Log.TestResultParser.Contracts;
 using Microsoft.TeamFoundation.TestManagement.WebApi;
@@ -81,8 +82,13 @@ namespace Agent.Plugins.Log.TestResultParser.Plugin
                     });
                 }
 
-                // Update the run with test results
-                await _httpClient.AddTestResultsToTestRunAsync(testResults.ToArray(), _pipelineConfig.Project, run.Id);
+                var batchedResults = testResults.Batch(BatchSize);
+
+                foreach (var batch in batchedResults)
+                {
+                    // Update the run with test results
+                    await _httpClient.AddTestResultsToTestRunAsync(batch.ToArray(), _pipelineConfig.Project, run.Id);
+                }
 
                 var runUpdateModel = new RunUpdateModel(state: TestRunState.Completed.ToString())
                 {
@@ -104,5 +110,7 @@ namespace Agent.Plugins.Log.TestResultParser.Plugin
         private readonly IPipelineConfig _pipelineConfig;
         private readonly ITraceLogger _logger;
         private readonly ITelemetryDataCollector _telemetry;
+
+        public int BatchSize = 1000;
     }
 }

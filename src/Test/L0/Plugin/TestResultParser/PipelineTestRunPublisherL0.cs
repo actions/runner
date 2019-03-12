@@ -67,6 +67,73 @@ namespace Test.L0.Plugin.TestResultParser
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Plugin")]
+        public async Task PipelineTestRunPublisher_PublishTestRun_ForBatchedResults()
+        {
+            var clientFactory = new Mock<IClientFactory>();
+            var logger = new Mock<ITraceLogger>();
+            var telemetry = new Mock<ITelemetryDataCollector>();
+            var testClient = new Mock<TestResultsHttpClient>(new Uri("http://dummyurl"), new VssCredentials());
+            var pipelineConfig = new PipelineConfig()
+            {
+                BuildId = 1,
+                Project = new Guid()
+            };
+
+            clientFactory.Setup(x => x.GetClient<TestResultsHttpClient>()).Returns(testClient.Object);
+            testClient.Setup(x =>
+                x.CreateTestRunAsync(It.IsAny<RunCreateModel>(), It.IsAny<Guid>(), null, It.IsAny<CancellationToken>()))
+                .Returns(Task.FromResult(new Microsoft.TeamFoundation.TestManagement.WebApi.TestRun()));
+            testClient.SetupSequence(x =>
+                    x.AddTestResultsToTestRunAsync(It.IsAny<TestCaseResult[]>(), It.IsAny<Guid>(), It.IsAny<int>(), null, It.IsAny<CancellationToken>()))
+                .Returns(Task.FromResult(new List<TestCaseResult>())).Returns(Task.FromResult(new List<TestCaseResult>()));
+            testClient.Setup(x =>
+                    x.UpdateTestRunAsync(It.IsAny<RunUpdateModel>(), It.IsAny<Guid>(), It.IsAny<int>(), null, It.IsAny<CancellationToken>()))
+                .Returns(Task.FromResult(new Microsoft.TeamFoundation.TestManagement.WebApi.TestRun()));
+
+            var publisher = new PipelineTestRunPublisher(clientFactory.Object, pipelineConfig, logger.Object, telemetry.Object) {BatchSize = 3};
+            await publisher.PublishAsync(new TestRun("FakeTestResultParser/1", "Fake", 1)
+            {
+                PassedTests = new List<TestResult>()
+                {
+                    new TestResult()
+                    {
+                        Name = "pass",
+                        Outcome = TestOutcome.Passed
+                    },
+                    new TestResult()
+                    {
+                        Name = "pass",
+                        Outcome = TestOutcome.Passed
+                    },
+                    new TestResult()
+                    {
+                        Name = "pass",
+                        Outcome = TestOutcome.Passed
+                    },
+                    new TestResult()
+                    {
+                        Name = "pass",
+                        Outcome = TestOutcome.Passed
+                    }
+                }
+            });
+
+            testClient.Verify(x =>
+                x.CreateTestRunAsync(It.Is<RunCreateModel>(run => run.Name.Equals("Fake test run 1 - automatically inferred results", StringComparison.OrdinalIgnoreCase)),
+                It.IsAny<Guid>(), null, It.IsAny<CancellationToken>()));
+            testClient.Verify(x => x.UpdateTestRunAsync(It.Is<RunUpdateModel>(run => run.State.Equals("completed", StringComparison.OrdinalIgnoreCase)),
+                It.IsAny<Guid>(), It.IsAny<int>(), null, It.IsAny<CancellationToken>()));
+
+            testClient.Verify(x => x.AddTestResultsToTestRunAsync(It.Is<TestCaseResult[]>(res => res.Length == 3),
+                It.IsAny<Guid>(), It.IsAny<int>(), null, It.IsAny<CancellationToken>()), Times.Once);
+            testClient.Verify(x => x.AddTestResultsToTestRunAsync(It.Is<TestCaseResult[]>(res => res.Length == 1),
+                It.IsAny<Guid>(), It.IsAny<int>(), null, It.IsAny<CancellationToken>()), Times.Once);
+            
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Plugin")]
         public async Task PipelineTestRunPublisher_PublishTestRun_ValidateTestResults()
         {
             var clientFactory = new Mock<IClientFactory>();
