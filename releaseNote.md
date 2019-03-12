@@ -1,17 +1,19 @@
 ## Features
-  - Enable AAD device auth flow for configure agent. #1924
-  - Integrate Test result log parser #2066
-  - Upload agent diag log as part of system.diagnostic=true. #2089
-  - Adding CTest XML Support in PublishTestResults #2092
-  - RHEL6 Agent support #2063
-
+  - Allow users to override artifacts directory #2123
+  - Enable run once agent. #2119
+  - Allow user set checkout path #2132
+  - Enable run docker command inside a container job without sudo #2142
+  - Added multi download support to pipeline artifacts #2125
+  - Configure oom_score_adj for linux platforms #2131
 ## Bugs
-  - Don't fail if chcp not found #2087
-  - best effort on reset vssconnection. #2105
+  - Fix error/warning issues count. #2129
+  - Fix workingDirectory/targetPath on container jobs #2121
+  - Grant directory permission to auto logon account. #2139
+  - Failing PTR on failed tests does not work with multiple result files #2144
 
 ## Misc
-  - Add subscription id to deployment group telemetry #2070
-  - Bump up bundled node 6 version to 6.16.0 #2111
+  - Always disable git prompt. #2135
+  - Add code sign validation step into release yaml. #2136
 
 ## Agent Downloads  
 
