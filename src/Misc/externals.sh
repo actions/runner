@@ -4,7 +4,7 @@ PRECACHE=$2
 
 CONTAINER_URL=https://vstsagenttools.blob.core.windows.net/tools
 NODE_URL=https://nodejs.org/dist
-NODE_VERSION="6.16.0"
+NODE_VERSION="6.10.3"
 NODE10_VERSION="10.13.0"
 
 get_abs_path() {
