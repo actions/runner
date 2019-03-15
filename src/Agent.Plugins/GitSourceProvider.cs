@@ -210,15 +210,23 @@ namespace Agent.Plugins.Repository
 
             bool clean = StringUtil.ConvertToBoolean(executionContext.GetInput(Pipelines.PipelineConstants.CheckoutTaskInputs.Clean));
 
+            // input Submodules can be ['', true, false, recursive]
+            // '' or false indicate don't checkout submodules
+            // true indicate checkout top level submodules
+            // recursive indicate checkout submodules recursively 
             bool checkoutSubmodules = false;
             bool checkoutNestedSubmodules = false;
             string submoduleInput = executionContext.GetInput(Pipelines.PipelineConstants.CheckoutTaskInputs.Submodules);
             if (!string.IsNullOrEmpty(submoduleInput))
             {
-                checkoutSubmodules = true;
                 if (string.Equals(submoduleInput, Pipelines.PipelineConstants.CheckoutTaskInputs.SubmodulesOptions.Recursive, StringComparison.OrdinalIgnoreCase))
                 {
+                    checkoutSubmodules = true;
                     checkoutNestedSubmodules = true;
+                }
+                else
+                {
+                    checkoutSubmodules = StringUtil.ConvertToBoolean(submoduleInput);
                 }
             }
 
