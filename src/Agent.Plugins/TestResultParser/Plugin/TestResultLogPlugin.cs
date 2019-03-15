@@ -35,29 +35,29 @@ namespace Agent.Plugins.Log.TestResultParser.Plugin
             {
                 _logger = _logger ?? new TraceLogger(context);
                 _clientFactory = new ClientFactory(context.VssConnection);
-                _telemetry = _telemetry?? new TelemetryDataCollector(_clientFactory, _logger);
+                _telemetry = _telemetry ?? new TelemetryDataCollector(_clientFactory, _logger);
 
                 await PopulatePipelineConfig(context);
 
-                _telemetry.AddOrUpdate(TelemetryConstants.PluginInitialized, true);
-                _telemetry.AddOrUpdate(TelemetryConstants.PluginDisabled, true);
-
                 if (DisablePlugin(context))
                 {
-                    await _telemetry?.PublishCumulativeTelemetryAsync();
+                    _telemetry.AddOrUpdate(TelemetryConstants.PluginDisabled, true);
+                    await _telemetry.PublishCumulativeTelemetryAsync();
                     return false; // disable the plugin
                 }
-
-                _telemetry.AddOrUpdate(TelemetryConstants.PluginDisabled, false);
-
+                
                 await _inputDataParser.InitializeAsync(_clientFactory, _pipelineConfig, _logger, _telemetry);
+                _telemetry.AddOrUpdate(TelemetryConstants.PluginInitialized, true);
             }
             catch (Exception ex)
             {
                 context.Trace(ex.ToString());
                 _logger?.Warning($"Unable to initialize {FriendlyName}.");
-                _telemetry?.AddOrUpdate(TelemetryConstants.InitialzieFailed, ex);
-                await _telemetry?.PublishCumulativeTelemetryAsync();
+                if (_telemetry != null)
+                {
+                    _telemetry?.AddOrUpdate(TelemetryConstants.InitialzieFailed, ex);
+                    await _telemetry.PublishCumulativeTelemetryAsync();
+                }
                 return false;
             }
 
@@ -99,7 +99,7 @@ namespace Agent.Plugins.Log.TestResultParser.Plugin
             if (!context.Variables.TryGetValue("system.hosttype", out var hostType)
                 || !string.Equals("Build", hostType.Value, StringComparison.OrdinalIgnoreCase))
             {
-                _telemetry.AddOrUpdate("PluginDisabledReason", "NotABuild");
+                _telemetry.AddOrUpdate("PluginDisabledReason", hostType?.Value);
                 return true;
             }
 
@@ -107,7 +107,7 @@ namespace Agent.Plugins.Log.TestResultParser.Plugin
             if (!context.Variables.TryGetValue("system.servertype", out var serverType)
                 || !string.Equals("Hosted", serverType.Value, StringComparison.OrdinalIgnoreCase))
             {
-                _telemetry.AddOrUpdate("PluginDisabledReason", "NotHosted");
+                _telemetry.AddOrUpdate("PluginDisabledReason", serverType?.Value);
                 return true;
             }
 
@@ -144,20 +144,20 @@ namespace Agent.Plugins.Log.TestResultParser.Plugin
                 props.Add("ProjectId", _pipelineConfig.Project);
             }
 
-            if (context.Variables.TryGetValue("build.buildId", out var buildId))
+            if (context.Variables.TryGetValue("build.buildId", out var buildIdVar) && int.TryParse(buildIdVar.Value, out var buildId))
             {
-                _pipelineConfig.BuildId = int.Parse(buildId.Value);
-                _telemetry.AddOrUpdate("BuildId", _pipelineConfig.BuildId);
-                props.Add("BuildId", _pipelineConfig.BuildId);
+                _pipelineConfig.BuildId = buildId;
+                _telemetry.AddOrUpdate("BuildId", buildId);
+                props.Add("BuildId", buildId);
             }
 
-            if (context.Variables.TryGetValue("System.DefinitionId", out var buildDefinitionId))
+            if (context.Variables.TryGetValue("system.definitionid", out var buildDefinitionId))
             {
                 _telemetry.AddOrUpdate("BuildDefinitionId", buildDefinitionId.Value);
             }
 
             // Publish the initial telemetry event in case we are not able to fire the cumulative one for whatever reason
-            await _telemetry.PublishTelemetryAsync("TestResultParserInitialzie", props);
+            await _telemetry.PublishTelemetryAsync("TestResultParserInitialize", props);
         }
 
         private readonly ILogParserGateway _inputDataParser = new LogParserGateway();
