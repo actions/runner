@@ -90,18 +90,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             ArgUtil.NotNull(dockerVersion.ClientVersion, nameof(dockerVersion.ClientVersion));
 
 #if OS_WINDOWS
-            Version requiredDockerVersion = new Version(17, 6);
+            Version requiredDockerEngineAPIVersion = new Version(1, 30);  // Docker-EE version 17.6
 #else
-            Version requiredDockerVersion = new Version(17, 12);
+            Version requiredDockerEngineAPIVersion = new Version(1, 35); // Docker-CE version 17.12
 #endif
 
-            if (dockerVersion.ServerVersion < requiredDockerVersion)
+            if (dockerVersion.ServerVersion < requiredDockerEngineAPIVersion)
             {
-                throw new NotSupportedException(StringUtil.Loc("MinRequiredDockerServerVersion", requiredDockerVersion, _dockerManger.DockerPath, dockerVersion.ServerVersion));
+                throw new NotSupportedException(StringUtil.Loc("MinRequiredDockerServerVersion", requiredDockerEngineAPIVersion, _dockerManger.DockerPath, dockerVersion.ServerVersion));
             }
-            if (dockerVersion.ClientVersion < requiredDockerVersion)
+            if (dockerVersion.ClientVersion < requiredDockerEngineAPIVersion)
             {
-                throw new NotSupportedException(StringUtil.Loc("MinRequiredDockerClientVersion", requiredDockerVersion, _dockerManger.DockerPath, dockerVersion.ClientVersion));
+                throw new NotSupportedException(StringUtil.Loc("MinRequiredDockerClientVersion", requiredDockerEngineAPIVersion, _dockerManger.DockerPath, dockerVersion.ClientVersion));
             }
 
             // Clean up containers left by previous runs

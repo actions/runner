@@ -348,8 +348,8 @@
     "",
     ".NET Framework x64 4.6 or higher is required to sync TFVC repositories. It is not required to sync Git repositories."
   ],
-  "MinRequiredDockerClientVersion": "Min required docker client version is '{0}', your docker ('{1}') client version is '{2}'",
-  "MinRequiredDockerServerVersion": "Min required docker server version is '{0}', your docker ('{1}') server version is '{2}'",
+  "MinRequiredDockerClientVersion": "Min required docker engine API client version is '{0}', your docker ('{1}') client version is '{2}'",
+  "MinRequiredDockerServerVersion": "Min required docker engine API server version is '{0}', your docker ('{1}') server version is '{2}'",
   "MinRequiredGitLfsVersion": "Min required git-lfs version is '{0}', your git-lfs ('{1}') version is '{2}'",
   "MinRequiredGitVersion": "Min required git version is '{0}', your git ('{1}') version is '{2}'",
   "MissingAgent": "The agent no longer exists on the server. Please reconfigure the agent.",
