@@ -621,10 +621,25 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     uriBuilder.Path += (Variables.System_TFCollectionUrl.EndsWith("/") ? "" : "/") + "_usersSettings/usage";
                     query["tab"] = "pipelines";
                     query["queryDate"] = queryDate;
-
+                    
+                    // Global RU link
                     uriBuilder.Query = query.ToString();
+                    string global = StringUtil.Loc("ServerTarpitUrl", uriBuilder.ToString());
 
-                    this.Warning(StringUtil.Loc("ServerTarpitUrl", uriBuilder.ToString()));
+                    if (!String.IsNullOrEmpty(this.Variables.Build_DefinitionName))
+                    {
+                        query["keywords"] = this.Variables.Build_Number;
+                        query["definition"] = this.Variables.Build_DefinitionName;
+                    }
+                    else if (!String.IsNullOrEmpty(this.Variables.Release_ReleaseName))
+                    {
+                        query["keywords"] = this.Variables.Release_ReleaseId;
+                        query["definition"] = this.Variables.Release_ReleaseName;
+                    }
+
+                    // RU link scoped for the build/release
+                    uriBuilder.Query = query.ToString();
+                    this.Warning($"{global}\n{StringUtil.Loc("ServerTarpitUrlScoped", uriBuilder.ToString())}");
                 }
 
                 _throttlingReported = true;
