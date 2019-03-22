@@ -156,6 +156,16 @@ namespace Agent.Plugins.Log.TestResultParser.Plugin
                 _telemetry.AddOrUpdate("BuildDefinitionId", buildDefinitionId.Value);
             }
 
+            if (context.Variables.TryGetValue("build.Repository.name", out var repositoryName))
+            {
+                _telemetry.AddOrUpdate("RepositoryName", repositoryName.Value);
+            }
+
+            if (context.Variables.TryGetValue("agent.version", out var agentVersion))
+            {
+                _telemetry.AddOrUpdate("AgentVersion", agentVersion.Value);
+            }
+
             // Publish the initial telemetry event in case we are not able to fire the cumulative one for whatever reason
             await _telemetry.PublishTelemetryAsync("TestResultParserInitialize", props);
         }

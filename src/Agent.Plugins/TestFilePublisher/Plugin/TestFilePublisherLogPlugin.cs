@@ -180,6 +180,16 @@ namespace Agent.Plugins.Log.TestFilePublisher
                 props.Add("BuildDefinitionId", buildDefinitionId.Value);
             }
 
+            if (context.Variables.TryGetValue("build.Repository.name", out var repositoryName))
+            {
+                _telemetry.AddOrUpdate("RepositoryName", repositoryName.Value);
+            }
+
+            if (context.Variables.TryGetValue("agent.version", out var agentVersion))
+            {
+                _telemetry.AddOrUpdate("AgentVersion", agentVersion.Value);
+            }
+
             if (context.Variables.TryGetValue("agent.testfilepublisher.pattern", out var pattern)
                 && !string.IsNullOrWhiteSpace(pattern.Value))
             {
