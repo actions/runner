@@ -18,6 +18,8 @@ jobs:
 
   # Steps template for windows platform
   - template: .vsts.template.windows.yml
+    parameters:
+      componentDetection: 'true'
 
   # Package dotnet core windows dependency (VC++ Redistributable)
   - powershell: |
@@ -103,6 +105,8 @@ jobs:
 
   # Steps template for non-windows platform
   - template: .vsts.template.nonwindows.yml
+    parameters:
+      componentDetection: 'true'
 
   # Create agent package zip
   - script: ./dev.sh package Release
@@ -184,6 +188,8 @@ jobs:
 
   # Steps template for non-windows platform
   - template: .vsts.template.nonwindows.yml
+    parameters:
+      componentDetection: 'true'
   
   # Create agent package zip
   - script: ./dev.sh package Release
