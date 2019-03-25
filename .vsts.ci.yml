@@ -1,3 +1,11 @@
+resources:
+  containers:
+  - container: dotnetcore_arm
+    image: huangtingluo/azure-pipelines-agent-eng:arm
+  
+  - container: dotnetcore_centos6
+    image: huangtingluo/azure-pipelines-agent-eng:centos6
+
 jobs:
 
 ################################################################################
@@ -118,6 +126,7 @@ jobs:
   pool:
     name: buildDevs
     demands: 'Agent.OSArchitecture -equals ARM'
+  container: dotnetcore_arm
   steps:
 
   # Steps template for non-windows platform
@@ -143,8 +152,8 @@ jobs:
 ################################################################################
   displayName: RHEL6 Agent (x64)
   pool:
-    name: buildDevs
-    demands: 'LinuxFlavor -equals RHEL6'
+    vmImage: ubuntu-16.04  
+  container: dotnetcore_centos6
   steps:
 
   # Steps template for non-windows platform
