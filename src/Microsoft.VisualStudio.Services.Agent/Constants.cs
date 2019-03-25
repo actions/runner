@@ -105,6 +105,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                     public static readonly string MachineGroupName = "machinegroupname";
                     public static readonly string MachineGroupTags = "machinegrouptags";
                     public static readonly string Matrix = "matrix";
+                    public static readonly string MonitorSocketAddress = "monitorsocketaddress";
                     public static readonly string NotificationPipeName = "notificationpipename";
                     public static readonly string NotificationSocketAddress = "notificationsocketaddress";
                     public static readonly string Phase = "phase";

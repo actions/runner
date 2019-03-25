@@ -60,6 +60,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             Constants.Agent.CommandLine.Args.MachineGroupName,
             Constants.Agent.CommandLine.Args.MachineGroupTags,
             Constants.Agent.CommandLine.Args.Matrix,
+            Constants.Agent.CommandLine.Args.MonitorSocketAddress,
             Constants.Agent.CommandLine.Args.NotificationPipeName,
             Constants.Agent.CommandLine.Args.Password,
             Constants.Agent.CommandLine.Args.Phase,
@@ -396,6 +397,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 description: StringUtil.Loc("WorkFolderDescription"),
                 defaultValue: Constants.Path.WorkDirectory,
                 validator: Validators.NonEmptyValidator);
+        }
+
+        public string GetMonitorSocketAddress()
+        {
+            return GetArg(Constants.Agent.CommandLine.Args.MonitorSocketAddress);
         }
 
         public string GetNotificationPipeName()

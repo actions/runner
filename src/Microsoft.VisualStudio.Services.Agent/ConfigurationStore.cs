@@ -64,6 +64,9 @@ namespace Microsoft.VisualStudio.Services.Agent
 
         [DataMember(EmitDefaultValue = false)]
         public string CollectionName { get; set; }
+
+        [DataMember(EmitDefaultValue = false)]
+        public string MonitorSocketAddress { get; set; }
     }
 
     [DataContract]

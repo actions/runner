@@ -119,12 +119,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                     {
 
                     });
-                _jobNotification.Setup(x => x.StartClient(It.IsAny<String>(), It.IsAny<CancellationToken>()))
+                _jobNotification.Setup(x => x.StartClient(It.IsAny<String>(), It.IsAny<String>(), It.IsAny<CancellationToken>()))
                     .Callback(() =>
                     {
 
                     });
-                _jobNotification.Setup(x => x.StartClient(It.IsAny<String>()))
+                _jobNotification.Setup(x => x.StartClient(It.IsAny<String>(), It.IsAny<String>()))
                     .Callback(() =>
                     {
 
@@ -341,12 +341,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                     {
                         runOnceJobCompleted.TrySetResult(true);
                     });
-                _jobNotification.Setup(x => x.StartClient(It.IsAny<String>(), It.IsAny<CancellationToken>()))
+                _jobNotification.Setup(x => x.StartClient(It.IsAny<String>(), It.IsAny<String>(), It.IsAny<CancellationToken>()))
                     .Callback(() =>
                     {
 
                     });
-                _jobNotification.Setup(x => x.StartClient(It.IsAny<String>()))
+                _jobNotification.Setup(x => x.StartClient(It.IsAny<String>(), It.IsAny<String>()))
                     .Callback(() =>
                     {
 
@@ -444,12 +444,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                     {
                         runOnceJobCompleted.TrySetResult(true);
                     });
-                _jobNotification.Setup(x => x.StartClient(It.IsAny<String>(), It.IsAny<CancellationToken>()))
+                _jobNotification.Setup(x => x.StartClient(It.IsAny<String>(), It.IsAny<String>(), It.IsAny<CancellationToken>()))
                     .Callback(() =>
                     {
 
                     });
-                _jobNotification.Setup(x => x.StartClient(It.IsAny<String>()))
+                _jobNotification.Setup(x => x.StartClient(It.IsAny<String>(), It.IsAny<String>()))
                     .Callback(() =>
                     {
 
@@ -536,12 +536,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                     .Returns(Task.CompletedTask);
                 _messageListener.Setup(x => x.DeleteMessageAsync(It.IsAny<TaskAgentMessage>()))
                     .Returns(Task.CompletedTask);
-                _jobNotification.Setup(x => x.StartClient(It.IsAny<String>(), It.IsAny<CancellationToken>()))
+                _jobNotification.Setup(x => x.StartClient(It.IsAny<String>(), It.IsAny<String>(), It.IsAny<CancellationToken>()))
                     .Callback(() =>
                     {
 
                     });
-                _jobNotification.Setup(x => x.StartClient(It.IsAny<String>()))
+                _jobNotification.Setup(x => x.StartClient(It.IsAny<String>(), It.IsAny<String>()))
                     .Callback(() =>
                     {
 
