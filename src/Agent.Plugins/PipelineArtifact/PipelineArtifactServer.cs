@@ -83,7 +83,27 @@ namespace Agent.Plugins.PipelineArtifact
             // download all pipeline artifacts if artifact name is missing
             if (string.IsNullOrEmpty(downloadParameters.ArtifactName))
             {
-                List<BuildArtifact> artifacts = await buildHelper.GetArtifactsAsync(downloadParameters.ProjectId, downloadParameters.BuildId, cancellationToken);
+                List<BuildArtifact> artifacts;
+                if (downloadParameters.ProjectRetrievalOptions == BuildArtifactRetrievalOptions.RetrieveByProjectId)
+                {
+                    artifacts = await buildHelper.GetArtifactsAsync(downloadParameters.ProjectId, downloadParameters.BuildId, cancellationToken);
+                }
+                else if (downloadParameters.ProjectRetrievalOptions == BuildArtifactRetrievalOptions.RetrieveByProjectName)
+                {
+                    if (string.IsNullOrEmpty(downloadParameters.ProjectName))
+                    {
+                        throw new InvalidOperationException("Project name can't be empty when trying to fetch build artifacts!");
+                    }
+                    else
+                    {
+                        artifacts = await buildHelper.GetArtifactsWithProjectNameAsync(downloadParameters.ProjectName, downloadParameters.BuildId, cancellationToken);
+                    }
+                }
+                else
+                {
+                    throw new InvalidOperationException("Unreachable code!");
+                }
+
                 IEnumerable<BuildArtifact> pipelineArtifacts = artifacts.Where(a => a.Resource.Type == PipelineArtifactTypeName);
                 if (pipelineArtifacts.Count() == 0)
                 {
