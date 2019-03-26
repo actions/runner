@@ -141,33 +141,98 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             IOUtil.DeleteDirectory(latestAgentDirectory, token);
             Directory.CreateDirectory(latestAgentDirectory);
 
-            string archiveFile;
-            if (_targetPackage.Platform.StartsWith("win"))
-            {
-                archiveFile = Path.Combine(latestAgentDirectory, "agent.zip");
-            }
-            else
-            {
-                archiveFile = Path.Combine(latestAgentDirectory, "agent.tar.gz");
-            }
+            int agentSuffix = 1;
+            string archiveFile = null;
+            bool downloadSucceeded = false;
 
-            Trace.Info($"Save latest agent into {archiveFile}.");
             try
             {
-                using (var httpClient = new HttpClient(HostContext.CreateHttpClientHandler()))
+                // Download the agent, using multiple attempts in order to be resilient against any networking/CDN issues
+                for (int attempt = 1; attempt <= Constants.AgentDownloadRetryMaxAttempts; attempt++)
                 {
-                    //open zip stream in async mode
-                    using (FileStream fs = new FileStream(archiveFile, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 4096, useAsync: true))
+                    // Generate an available package name, and do our best effort to clean up stale local zip files
+                    while (true)
                     {
-                        using (Stream result = await httpClient.GetStreamAsync(_targetPackage.DownloadUrl))
+                        if (_targetPackage.Platform.StartsWith("win"))
                         {
-                            //81920 is the default used by System.IO.Stream.CopyTo and is under the large object heap threshold (85k). 
-                            await result.CopyToAsync(fs, 81920, token);
-                            await fs.FlushAsync(token);
+                            archiveFile = Path.Combine(latestAgentDirectory, $"agent{agentSuffix}.zip");
+                        }
+                        else
+                        {
+                            archiveFile = Path.Combine(latestAgentDirectory, $"agent{agentSuffix}.tar.gz");
+                        }
+
+                        try
+                        {
+                            // delete .zip file
+                            if (!string.IsNullOrEmpty(archiveFile) && File.Exists(archiveFile))
+                            {
+                                Trace.Verbose("Deleting latest agent package zip '{0}'", archiveFile);
+                                IOUtil.DeleteFile(archiveFile);
+                            }
+
+                            break;
+                        }
+                        catch (Exception ex)
+                        {
+                            // couldn't delete the file for whatever reason, so generate another name
+                            Trace.Warning("Failed to delete agent package zip '{0}'. Exception: {1}", archiveFile, ex);
+                            agentSuffix++;
+                        }
+                    }
+
+                    // Allow a 15-minute package download timeout, which is good enough to update the agent from a 1 Mbit/s ADSL connection.
+                    if (!int.TryParse(Environment.GetEnvironmentVariable("AZP_AGENT_DOWNLOAD_TIMEOUT") ?? string.Empty, out int timeoutSeconds))
+                    {
+                        timeoutSeconds = 15 * 60;
+                    }
+
+                    Trace.Info($"Attempt {attempt}: save latest agent into {archiveFile}.");
+
+                    using (var downloadTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds)))
+                    using (var downloadCts = CancellationTokenSource.CreateLinkedTokenSource(downloadTimeout.Token, token))
+                    {
+                        try
+                        {
+                            Trace.Info($"Download agent: begin download");
+
+                            //open zip stream in async mode
+                            using (HttpClient httpClient = new HttpClient(HostContext.CreateHttpClientHandler()))
+                            using (FileStream fs = new FileStream(archiveFile, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 4096, useAsync: true))
+                            using (Stream result = await httpClient.GetStreamAsync(_targetPackage.DownloadUrl))
+                            {
+                                //81920 is the default used by System.IO.Stream.CopyTo and is under the large object heap threshold (85k). 
+                                await result.CopyToAsync(fs, 81920, downloadCts.Token);
+                                await fs.FlushAsync(downloadCts.Token);
+                            }
+
+                            Trace.Info($"Download agent: finished download");
+                            downloadSucceeded = true;
+                            break;
+                        }
+                        catch (OperationCanceledException) when (token.IsCancellationRequested)
+                        {
+                            Trace.Info($"Agent download has been canceled.");
+                            throw;
+                        }
+                        catch (Exception ex)
+                        {
+                            if (downloadCts.Token.IsCancellationRequested)
+                            {
+                                Trace.Warning($"Agent download has timed out after {timeoutSeconds} seconds");
+                            }
+
+                            Trace.Warning($"Failed to get package '{archiveFile}' from '{_targetPackage.DownloadUrl}'. Exception {ex}");
                         }
                     }
                 }
 
+                if (!downloadSucceeded)
+                {
+                    throw new TaskCanceledException($"Agent package '{archiveFile}' failed after {Constants.AgentDownloadRetryMaxAttempts} download attempts");
+                }
+
+                // If we got this far, we know that we've successfully downloadeded the agent package
                 if (archiveFile.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
                 {
                     ZipFile.ExtractToDirectory(archiveFile, latestAgentDirectory);
@@ -175,6 +240,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 else if (archiveFile.EndsWith(".tar.gz", StringComparison.OrdinalIgnoreCase))
                 {
                     string tar = WhichUtil.Which("tar", trace: Trace);
+                    
                     if (string.IsNullOrEmpty(tar))
                     {
                         throw new NotSupportedException($"tar -xzf");
@@ -226,7 +292,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 }
                 catch (Exception ex)
                 {
-                    //it is not critical if we fail to delete the temp folder
+                    //it is not critical if we fail to delete the .zip file
                     Trace.Warning("Failed to delete agent package zip '{0}'. Exception: {1}", archiveFile, ex);
                 }
             }
