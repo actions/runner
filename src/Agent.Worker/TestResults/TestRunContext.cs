@@ -2,7 +2,7 @@
 {
     public class TestRunContext
     {
-        public TestRunContext(string owner, string platform, string configuration, int buildId, string buildUri, string releaseUri, string releaseEnvironmentUri, string runName = null)
+        public TestRunContext(string owner, string platform, string configuration, int buildId, string buildUri, string releaseUri, string releaseEnvironmentUri, string runName = null, string pullRequestTargetBranchName = null)
         {
             Owner = owner;
             Platform = platform;
@@ -12,6 +12,7 @@
             ReleaseUri = releaseUri;
             ReleaseEnvironmentUri = releaseEnvironmentUri;
             RunName = runName;
+            PullRequestTargetBranchName = pullRequestTargetBranchName;
         }
 
         public string Owner { get; }
@@ -22,5 +23,6 @@
         public string ReleaseUri { get; }
         public string ReleaseEnvironmentUri { get; }
         public string RunName { get; set; }
+        public string PullRequestTargetBranchName { get; set; }
     }
 }
