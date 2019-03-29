@@ -169,8 +169,18 @@ namespace Agent.Plugins.PipelineArtifact
 
             string fullPath = this.CreateDirectoryIfDoesntExist(downloadPath);
 
+            DownloadOptions downloadOptions;
+            if (string.IsNullOrEmpty(downloadParameters.ArtifactName))
+            {
+                downloadOptions = DownloadOptions.MultiDownload;
+            }
+            else
+            {
+                downloadOptions = DownloadOptions.SingleDownload;
+            }
+
             context.Output(StringUtil.Loc("DownloadArtifactTo", downloadPath));
-            await server.DownloadAsync(context, downloadParameters, token);
+            await server.DownloadAsync(context, downloadParameters, downloadOptions, token);
             context.Output(StringUtil.Loc("DownloadArtifactFinished"));
         }
 
