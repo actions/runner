@@ -1095,7 +1095,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 int exitCode_countobjectsbefore = await _gitCommandManager.GitCountObjects(executionContext, repositoryPath);
                 if (exitCode_countobjectsbefore != 0)
                 {
-                    throw new InvalidOperationException($"Git count-objects failed with exit code: {exitCode_countobjectsbefore}");
+                    Trace.Warning($"Git count-objects failed with exit code: {exitCode_countobjectsbefore}");
+                    Trace.Warning($"Repository is most likely in a corrupt state; delete the sources directory");
+
+                    IOUtil.DeleteDirectory(repositoryPath, executionContext.CancellationToken);
+                    return;
                 }
 
                 // git repack
