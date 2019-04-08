@@ -1,19 +1,18 @@
 ## Features
-  - Allow users to override artifacts directory #2123
-  - Enable run once agent. #2119
-  - Allow user set checkout path #2132
-  - Enable run docker command inside a container job without sudo #2142
-  - Added multi download support to pipeline artifacts #2125
-  - Configure oom_score_adj for linux platforms #2131
+  - Auto Publish Test Files Plugin #2141
+  - Add Pipeline.Workspace variable, the physical path is equivalent to BuildDirectory #2169
+
 ## Bugs
-  - Fix error/warning issues count. #2129
-  - Fix workingDirectory/targetPath on container jobs #2121
-  - Grant directory permission to auto logon account. #2139
-  - Failing PTR on failed tests does not work with multiple result files #2144
+  - Allow submodules: false in checkout task. #2153
+  - Target branch for single agent flow in Vstest Task #2126
+  - Retry agent update download on failure #2183
+  - Fixing issue where project name is known for DownloadArtifact but project Id is used and error occurs #2188
+  - Maintenance job recover from case where git repo is corrupt #2201
+  - Prepend workaround to dotnet issue to ps setup script #2197
 
 ## Misc
-  - Always disable git prompt. #2135
-  - Add code sign validation step into release yaml. #2136
+  - Consume MinGit 2.21 #2166
+  - Scrub PII data from the job request message in the diag log #2196
 
 ## Agent Downloads  
 
