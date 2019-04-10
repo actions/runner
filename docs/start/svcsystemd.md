@@ -1,9 +1,9 @@
-# Running As A Service On Unix with SystemD
+# Running As A Service On Unix with systemd
 
 Key Points:
   - This is a convenience which only creates OS specific service files.
-  - SystemD is used on Linux.  Ubuntu 16 LTS, Redhat 7.1 has SystemD
-  - SystemD commands require sudo
+  - systemd is used on Linux.  Ubuntu 16 LTS, Redhat 7.1 has systemd
+  - systemd commands require sudo
 
 ## Managing the Service
 
@@ -90,7 +90,7 @@ This is a convenience that simply creates a service file for you can sets permis
 
 Details are in .service file in root of the agent
 
-Linux SystemD: /etc/systemd/system/vsts.agent.{accountName}.{agentName}.service
+Linux systemd: /etc/systemd/system/vsts.agent.{accountName}.{agentName}.service
 
 These files are created from a template located
 
