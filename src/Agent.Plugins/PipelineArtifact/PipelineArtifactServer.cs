@@ -28,7 +28,7 @@ namespace Agent.Plugins.PipelineArtifact
         internal async Task UploadAsync(
             AgentTaskPluginExecutionContext context,
             Guid projectId,
-            int buildId,
+            int pipelineId,
             string name,
             string source,
             CancellationToken cancellationToken)
@@ -44,8 +44,8 @@ namespace Agent.Plugins.PipelineArtifact
             Dictionary<string, string> propertiesDictionary = new Dictionary<string, string>();
             propertiesDictionary.Add(RootId, result.RootId.ValueString);
             propertiesDictionary.Add(ProofNodes, StringUtil.ConvertToJson(result.ProofNodes.ToArray()));
-            var artifact = await buildHelper.AssociateArtifact(projectId, buildId, name, ArtifactResourceTypes.PipelineArtifact, result.ManifestId.ValueString, propertiesDictionary, cancellationToken);
-            context.Output(StringUtil.Loc("AssociateArtifactWithBuild", artifact.Id, buildId));
+            var artifact = await buildHelper.AssociateArtifact(projectId, pipelineId, name, ArtifactResourceTypes.PipelineArtifact, result.ManifestId.ValueString, propertiesDictionary, cancellationToken);
+            context.Output(StringUtil.Loc("AssociateArtifactWithBuild", artifact.Id, pipelineId));
         }
 
         // Download pipeline artifact from VSTS BlobStore service through BuildDropManager to a target path
@@ -53,7 +53,7 @@ namespace Agent.Plugins.PipelineArtifact
         internal Task DownloadAsync(
             AgentTaskPluginExecutionContext context,
             Guid projectId,
-            int buildId,
+            int pipelineId,
             string artifactName,
             string targetDir,
             CancellationToken cancellationToken)
@@ -62,7 +62,7 @@ namespace Agent.Plugins.PipelineArtifact
             {
                 ProjectRetrievalOptions = BuildArtifactRetrievalOptions.RetrieveByProjectId,
                 ProjectId = projectId,
-                BuildId = buildId,
+                PipelineId = pipelineId,
                 ArtifactName = artifactName,
                 TargetDirectory = targetDir
             };
@@ -87,7 +87,7 @@ namespace Agent.Plugins.PipelineArtifact
                 List<BuildArtifact> artifacts;
                 if (downloadParameters.ProjectRetrievalOptions == BuildArtifactRetrievalOptions.RetrieveByProjectId)
                 {
-                    artifacts = await buildHelper.GetArtifactsAsync(downloadParameters.ProjectId, downloadParameters.BuildId, cancellationToken);
+                    artifacts = await buildHelper.GetArtifactsAsync(downloadParameters.ProjectId, downloadParameters.PipelineId, cancellationToken);
                 }
                 else if (downloadParameters.ProjectRetrievalOptions == BuildArtifactRetrievalOptions.RetrieveByProjectName)
                 {
@@ -97,7 +97,7 @@ namespace Agent.Plugins.PipelineArtifact
                     }
                     else
                     {
-                        artifacts = await buildHelper.GetArtifactsWithProjectNameAsync(downloadParameters.ProjectName, downloadParameters.BuildId, cancellationToken);
+                        artifacts = await buildHelper.GetArtifactsWithProjectNameAsync(downloadParameters.ProjectName, downloadParameters.PipelineId, cancellationToken);
                     }
                 }
                 else
@@ -132,7 +132,7 @@ namespace Agent.Plugins.PipelineArtifact
                 BuildArtifact buildArtifact;
                 if (downloadParameters.ProjectRetrievalOptions == BuildArtifactRetrievalOptions.RetrieveByProjectId)
                 {
-                    buildArtifact = await buildHelper.GetArtifact(downloadParameters.ProjectId, downloadParameters.BuildId, downloadParameters.ArtifactName, cancellationToken);
+                    buildArtifact = await buildHelper.GetArtifact(downloadParameters.ProjectId, downloadParameters.PipelineId, downloadParameters.ArtifactName, cancellationToken);
                 }
                 else if (downloadParameters.ProjectRetrievalOptions == BuildArtifactRetrievalOptions.RetrieveByProjectName)
                 {
@@ -142,7 +142,7 @@ namespace Agent.Plugins.PipelineArtifact
                     }
                     else
                     {
-                        buildArtifact = await buildHelper.GetArtifactWithProjectNameAsync(downloadParameters.ProjectName, downloadParameters.BuildId, downloadParameters.ArtifactName, cancellationToken);
+                        buildArtifact = await buildHelper.GetArtifactWithProjectNameAsync(downloadParameters.ProjectName, downloadParameters.PipelineId, downloadParameters.ArtifactName, cancellationToken);
                     }
                 }
                 else
@@ -190,7 +190,7 @@ namespace Agent.Plugins.PipelineArtifact
         /// Either project ID or project name need to be supplied.
         /// </remarks>
         public string ProjectName { get; set; }
-        public int BuildId { get; set; }
+        public int PipelineId { get; set; }
         public string ArtifactName { get; set; }
         public string TargetDirectory { get; set; }
         public string[] MinimatchFilters { get; set; }
