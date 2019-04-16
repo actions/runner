@@ -163,6 +163,13 @@ namespace Agent.Sdk
             Output($"##vso[task.logissue type=warning;]{Escape(message)}");
         }
 
+        public void PublishTelemetry(string area, string feature, Dictionary<string, string> properties)
+        {      
+            string propertiesAsJson = StringUtil.ConvertToJson(properties, Formatting.None);
+
+            Output($"##vso[telemetry.publish area={area};feature={feature}]{Escape(propertiesAsJson)}");
+        }           
+
         public void Output(string message)
         {
             lock (_stdoutLock)

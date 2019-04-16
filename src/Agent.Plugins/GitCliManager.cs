@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -168,7 +169,25 @@ namespace Agent.Plugins.Repository
             int fetchExitCode = 0;
             while (retryCount < 3)
             {
+                Stopwatch watch = new Stopwatch();
+
+                watch.Start();
+
                 fetchExitCode = await ExecuteGitCommandAsync(context, repositoryPath, "fetch", options, additionalCommandLine, cancellationToken);
+                
+                watch.Stop();
+
+                // Publish some fetch statistics
+                context.PublishTelemetry(area: "AzurePipelinesAgent", feature: "GitFetch", properties: new Dictionary<string, string>
+                {
+                    { "ElapsedTimeMilliseconds", $"{watch.ElapsedMilliseconds}" },
+                    { "RefSpec", string.Join(" ", refSpec) },
+                    { "RemoteName", remoteName },
+                    { "FetchDepth", $"{fetchDepth}" },
+                    { "ExitCode", $"{fetchExitCode}" },
+                    { "Options", options }
+                });
+
                 if (fetchExitCode == 0)
                 {
                     break;

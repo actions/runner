@@ -18,6 +18,14 @@ namespace Agent.Plugins.Repository
 {
     public class ExternalGitSourceProvider : GitSourceProvider
     {
+        public override bool GitSupportsFetchingCommitBySha1Hash
+        {
+            get
+            {
+                return false;
+            }
+        }
+
         // external git repository won't use auth header cmdline arg, since we don't know the auth scheme.
         public override bool GitSupportUseAuthHeader(AgentTaskPluginExecutionContext executionContext, GitCliManager gitCommandManager)
         {
@@ -48,7 +56,7 @@ namespace Agent.Plugins.Repository
         }
     }
 
-    public sealed class AuthenticatedGitSourceProvider : GitSourceProvider
+    public abstract class AuthenticatedGitSourceProvider : GitSourceProvider
     {
         public override bool GitSupportUseAuthHeader(AgentTaskPluginExecutionContext executionContext, GitCliManager gitCommandManager)
         {
@@ -86,8 +94,38 @@ namespace Agent.Plugins.Repository
         }
     }
 
+    public sealed class BitbucketGitSourceProvider : AuthenticatedGitSourceProvider
+    {
+        public override bool GitSupportsFetchingCommitBySha1Hash
+        {
+            get
+            {
+                return true;
+            }
+        }
+    }
+
+    public sealed class GitHubSourceProvider : AuthenticatedGitSourceProvider
+    {
+        public override bool GitSupportsFetchingCommitBySha1Hash
+        {
+            get
+            {
+                return false;
+            }
+        }
+    }
+
     public sealed class TfsGitSourceProvider : GitSourceProvider
     {
+        public override bool GitSupportsFetchingCommitBySha1Hash
+        {
+            get
+            {
+                return true;
+            }
+        }
+
         public override bool GitSupportUseAuthHeader(AgentTaskPluginExecutionContext executionContext, GitCliManager gitCommandManager)
         {
             // v2.9 git exist use auth header for tfsgit repository.
@@ -176,6 +214,8 @@ namespace Agent.Plugins.Repository
         public abstract bool GitLfsSupportUseAuthHeader(AgentTaskPluginExecutionContext executionContext, GitCliManager gitCommandManager);
         public abstract void RequirementCheck(AgentTaskPluginExecutionContext executionContext, Pipelines.RepositoryResource repository, GitCliManager gitCommandManager);
         public abstract string GenerateAuthHeader(AgentTaskPluginExecutionContext executionContext, string username, string password);
+
+        public abstract bool GitSupportsFetchingCommitBySha1Hash { get; }
 
         public async Task GetSourceAsync(
             AgentTaskPluginExecutionContext executionContext,
@@ -269,6 +309,11 @@ namespace Agent.Plugins.Repository
             }
 
             bool exposeCred = StringUtil.ConvertToBoolean(executionContext.GetInput(Pipelines.PipelineConstants.CheckoutTaskInputs.PersistCredentials));
+            
+            // Read 'disable fetch by commit' value from the execution variable first, then from the environment variable if the first one is not set
+            bool fetchByCommit = !StringUtil.ConvertToBoolean(
+                executionContext.Variables.GetValueOrDefault("VSTS.DisableFetchByCommit")?.Value ??
+                System.Environment.GetEnvironmentVariable("VSTS_DISABLEFETCHBYCOMMIT"), false);
 
             executionContext.Debug($"repository url={repositoryUrl}");
             executionContext.Debug($"targetPath={targetPath}");
@@ -749,13 +794,29 @@ namespace Agent.Plugins.Repository
                 }
             }
 
-            // If this is a build for a pull request, then include
-            // the pull request reference as an additional ref.
             List<string> additionalFetchSpecs = new List<string>();
             if (IsPullRequest(sourceBranch))
             {
-                additionalFetchSpecs.Add("+refs/heads/*:refs/remotes/origin/*");
-                additionalFetchSpecs.Add(StringUtil.Format("+{0}:{1}", sourceBranch, GetRemoteRefName(sourceBranch)));
+                // Build a 'fetch-by-commit' refspec iff the server allows us to do so in the shallow fetch scenario
+                // Otherwise, fall back to fetch all branches and pull request ref
+                if (fetchDepth > 0 && fetchByCommit && !string.IsNullOrEmpty(sourceVersion))
+                {
+                    additionalFetchSpecs.Add($"+{sourceVersion}:{_remoteRefsPrefix}{sourceVersion}");
+                }
+                else
+                {
+                    additionalFetchSpecs.Add("+refs/heads/*:refs/remotes/origin/*");
+                    additionalFetchSpecs.Add($"+{sourceBranch}:{GetRemoteRefName(sourceBranch)}");
+                }
+            }
+            else
+            {
+                // Build a refspec iff the server allows us to fetch a specific commit in the shallow fetch scenario
+                // Otherwise, use the default fetch behavior (i.e. with no refspecs)
+                if (fetchDepth > 0 && fetchByCommit && !string.IsNullOrEmpty(sourceVersion))
+                {
+                    additionalFetchSpecs.Add($"+{sourceVersion}:{_remoteRefsPrefix}{sourceVersion}");
+                }
             }
 
             int exitCode_fetch = await gitCommandManager.GitFetch(executionContext, targetPath, "origin", fetchDepth, additionalFetchSpecs, string.Join(" ", additionalFetchArgs), cancellationToken);

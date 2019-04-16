@@ -207,11 +207,14 @@ namespace Agent.Plugins.Repository
         {
             ISourceProvider sourceProvider = null;
 
-            if (string.Equals(repositoryType, Pipelines.RepositoryTypes.Bitbucket, StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(repositoryType, Pipelines.RepositoryTypes.GitHub, StringComparison.OrdinalIgnoreCase) ||
+            if (string.Equals(repositoryType, Pipelines.RepositoryTypes.GitHub, StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(repositoryType, Pipelines.RepositoryTypes.GitHubEnterprise, StringComparison.OrdinalIgnoreCase))
             {
-                sourceProvider = new AuthenticatedGitSourceProvider();
+                sourceProvider = new GitHubSourceProvider();
+            }
+            else if (string.Equals(repositoryType, Pipelines.RepositoryTypes.Bitbucket, StringComparison.OrdinalIgnoreCase))
+            {
+                sourceProvider = new BitbucketGitSourceProvider();
             }
             else if (string.Equals(repositoryType, Pipelines.RepositoryTypes.ExternalGit, StringComparison.OrdinalIgnoreCase))
             {
