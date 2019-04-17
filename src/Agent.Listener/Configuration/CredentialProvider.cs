@@ -58,7 +58,25 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 throw new NotSupportedException($"This Azure DevOps organization '{serverUrl}' is not backed by Azure Active Directory.");
             }
 
-            LoggerCallbackHandler.Callback = new AadTrace(trace);
+            LoggerCallbackHandler.LogCallback = ((LogLevel level, string message, bool containsPii) =>
+            {
+                switch (level)
+                {
+                    case LogLevel.Information:
+                        trace.Info(message);
+                        break;
+                    case LogLevel.Error:
+                        trace.Error(message);
+                        break;
+                    case LogLevel.Warning:
+                        trace.Warning(message);
+                        break;
+                    default:
+                        trace.Verbose(message);
+                        break;
+                }
+            });
+
             LoggerCallbackHandler.UseDefaultLogging = false;
             AuthenticationContext ctx = new AuthenticationContext(tenantAuthorityUrl.AbsoluteUri);
             var queryParameters = $"redirect_uri={Uri.EscapeDataString(new Uri(serverUrl).GetLeftPart(UriPartial.Authority))}";
@@ -131,37 +149,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 }
 
                 return null;
-            }
-        }
-
-        private class AadTrace : IAdalLogCallback
-        {
-            private Tracing _trace;
-
-            public AadTrace(Tracing trace)
-            {
-                _trace = trace;
-            }
-
-            public void Log(LogLevel level, string message)
-            {
-                switch (level)
-                {
-                    case LogLevel.Information:
-                        _trace.Info(message);
-                        break;
-                    case LogLevel.Verbose:
-                        _trace.Verbose(message);
-                        break;
-                    case LogLevel.Error:
-                        _trace.Error(message);
-                        break;
-                    case LogLevel.Warning:
-                        _trace.Warning(message);
-                        break;
-                    default:
-                        break;
-                }
             }
         }
     }

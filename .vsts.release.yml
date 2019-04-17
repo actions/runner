@@ -166,10 +166,12 @@ jobs:
         bin\Ben.Demystifier.dll
         bin\DotNet.Glob.dll
         bin\Minimatch.dll
+        bin\NCrontab.Signed.dll
         bin\Newtonsoft.Json.dll
         bin\Newtonsoft.Json.Bson.dll
         bin\RuntimeContracts.dll
         bin\System.Interactive.Async.dll
+        bin\System.IO.Abstractions.dll
         bin\YamlDotNet.dll
         externals\git\**\*.dll
         externals\git\**\*.exe
@@ -410,10 +412,12 @@ jobs:
         bin\Ben.Demystifier.dll
         bin\DotNet.Glob.dll
         bin\Minimatch.dll
+        bin\NCrontab.Signed.dll
         bin\Newtonsoft.Json.dll
         bin\Newtonsoft.Json.Bson.dll
         bin\RuntimeContracts.dll
         bin\System.Interactive.Async.dll
+        bin\System.IO.Abstractions.dll
         bin\YamlDotNet.dll
         externals\git\**\*.dll
         externals\git\**\*.exe
