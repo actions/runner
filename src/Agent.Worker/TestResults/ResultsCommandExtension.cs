@@ -139,47 +139,54 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
                         _isTestRunOutcomeFailed = _isTestRunOutcomeFailed || GetTestRunOutcome(resultFileRunData);
                     }
 
-                    if (resultFileRunData != null && resultFileRunData.Results != null && resultFileRunData.Results.Length > 0)
+                    if (resultFileRunData != null)
                     {
-                        try
+                        if (resultFileRunData.Results != null && resultFileRunData.Results.Length > 0)
                         {
-                            if (string.IsNullOrEmpty(resultFileRunData.StartDate) || string.IsNullOrEmpty(resultFileRunData.CompleteDate))
+                            try
                             {
+                                if (string.IsNullOrEmpty(resultFileRunData.StartDate) || string.IsNullOrEmpty(resultFileRunData.CompleteDate))
+                                {
+                                    dateFormatError = true;
+                                }
+
+                                //As per discussion with Manoj(refer bug 565487): Test Run duration time should be minimum Start Time to maximum Completed Time when merging
+                                if (!string.IsNullOrEmpty(resultFileRunData.StartDate))
+                                {
+                                    DateTime startDate = DateTime.Parse(resultFileRunData.StartDate, null, DateTimeStyles.RoundtripKind);
+                                    minStartDate = minStartDate > startDate ? startDate : minStartDate;
+
+                                    if (!string.IsNullOrEmpty(resultFileRunData.CompleteDate))
+                                    {
+                                        DateTime endDate = DateTime.Parse(resultFileRunData.CompleteDate, null, DateTimeStyles.RoundtripKind);
+                                        maxCompleteDate = maxCompleteDate < endDate ? endDate : maxCompleteDate;
+                                    }
+                                }
+                            }
+                            catch (FormatException)
+                            {
+                                _executionContext.Warning(StringUtil.Loc("InvalidDateFormat", resultFile, resultFileRunData.StartDate, resultFileRunData.CompleteDate));
                                 dateFormatError = true;
                             }
 
-                            //As per discussion with Manoj(refer bug 565487): Test Run duration time should be minimum Start Time to maximum Completed Time when merging
-                            if (!string.IsNullOrEmpty(resultFileRunData.StartDate))
+                            //continue to calculate duration as a fallback for case: if there is issue with format or dates are null or empty
+                            foreach (TestCaseResultData tcResult in resultFileRunData.Results)
                             {
-                                DateTime startDate = DateTime.Parse(resultFileRunData.StartDate, null, DateTimeStyles.RoundtripKind);
-                                minStartDate = minStartDate > startDate ? startDate : minStartDate;
+                                int durationInMs = Convert.ToInt32(tcResult.DurationInMs);
+                                totalTestCaseDuration = totalTestCaseDuration.Add(TimeSpan.FromMilliseconds(durationInMs));
+                            }
 
-                                if (!string.IsNullOrEmpty(resultFileRunData.CompleteDate))
-                                {
-                                    DateTime endDate = DateTime.Parse(resultFileRunData.CompleteDate, null, DateTimeStyles.RoundtripKind);
-                                    maxCompleteDate = maxCompleteDate < endDate ? endDate : maxCompleteDate;
-                                }
+                            runResults.AddRange(resultFileRunData.Results);
+
+                            //run attachments
+                            if (resultFileRunData.Attachments != null)
+                            {
+                                runAttachments.AddRange(resultFileRunData.Attachments);
                             }
                         }
-                        catch (FormatException)
+                        else
                         {
-                            _executionContext.Warning(StringUtil.Loc("InvalidDateFormat", resultFile, resultFileRunData.StartDate, resultFileRunData.CompleteDate));
-                            dateFormatError = true;
-                        }
-
-                        //continue to calculate duration as a fallback for case: if there is issue with format or dates are null or empty
-                        foreach (TestCaseResultData tcResult in resultFileRunData.Results)
-                        {
-                            int durationInMs = Convert.ToInt32(tcResult.DurationInMs);
-                            totalTestCaseDuration = totalTestCaseDuration.Add(TimeSpan.FromMilliseconds(durationInMs));
-                        }
-
-                        runResults.AddRange(resultFileRunData.Results);
-
-                        //run attachments
-                        if (resultFileRunData.Attachments != null)
-                        {
-                            runAttachments.AddRange(resultFileRunData.Attachments);
+                            _executionContext.Output(StringUtil.Loc("NoResultFound", resultFile));
                         }
                     }
                     else
@@ -276,13 +283,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.TestResults
 
                         cancellationToken.ThrowIfCancellationRequested();
 
-                        if (testRunData != null && testRunData.Results != null && testRunData.Results.Length > 0)
+                        if (testRunData != null)
                         {
-                            testRunData.AddCustomField(_testRunSystemCustomFieldName, _testRunSystem);
-                            AddTargetBranchInfoToRunCreateModel(testRunData, runContext.PullRequestTargetBranchName);
-                            TestRun testRun = await publisher.StartTestRunAsync(testRunData, _executionContext.CancellationToken);
-                            await publisher.AddResultsAsync(testRun, testRunData.Results, _executionContext.CancellationToken);
-                            await publisher.EndTestRunAsync(testRunData, testRun.Id, cancellationToken: _executionContext.CancellationToken);
+                            if (testRunData.Results != null && testRunData.Results.Length > 0)
+                            {
+                                testRunData.AddCustomField(_testRunSystemCustomFieldName, _testRunSystem);
+                                AddTargetBranchInfoToRunCreateModel(testRunData, runContext.PullRequestTargetBranchName);
+                                TestRun testRun = await publisher.StartTestRunAsync(testRunData, _executionContext.CancellationToken);
+                                await publisher.AddResultsAsync(testRun, testRunData.Results, _executionContext.CancellationToken);
+                                await publisher.EndTestRunAsync(testRunData, testRun.Id, cancellationToken: _executionContext.CancellationToken);
+                            }
+                            else
+                            {
+                                _executionContext.Output(StringUtil.Loc("NoResultFound", resultFile));
+                            }
                         }
                         else
                         {

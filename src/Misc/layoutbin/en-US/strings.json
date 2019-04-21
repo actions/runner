@@ -377,6 +377,7 @@
   "NoArtifactsFound": "No artifacts are available in the version '{0}'.",
   "NoRestart": "Restart the machine at a later time? (Y/N)",
   "NoRestartSuggestion": "AutoLogon was enabled during agent configuration. It is recommended that the machine be restarted for AutoLogon settings to take effect.",
+  "NoResultFound": "No Result Found to Publish '{0}'.",
   "NotLinux": "This Agent version is built for Linux. Please install a correct build for your OS.",
   "NotOSX": "This Agent version is built for OSX. Please install a correct build for your OS.",
   "NotWindows": "This Agent version is built for Windows. Please install a correct build for your OS.",
