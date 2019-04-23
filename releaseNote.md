@@ -1,18 +1,13 @@
 ## Features
-  - Auto Publish Test Files Plugin #2141
-  - Add Pipeline.Workspace variable, the physical path is equivalent to BuildDirectory #2169
+  - Pipeline caching plugins #2184
 
 ## Bugs
-  - Allow submodules: false in checkout task. #2153
-  - Target branch for single agent flow in Vstest Task #2126
-  - Retry agent update download on failure #2183
-  - Fixing issue where project name is known for DownloadArtifact but project Id is used and error occurs #2188
-  - Maintenance job recover from case where git repo is corrupt #2201
-  - Prepend workaround to dotnet issue to ps setup script #2197
+  - Fix Result publisher warning for empty results file. #2222
+  - Implement shallow fetch by commit #2211
+  - Use LogCallback instead of IAdalLogCallback. #2219
 
 ## Misc
-  - Consume MinGit 2.21 #2166
-  - Scrub PII data from the job request message in the diag log #2196
+  - Changing vss-api-netcore version to 0.5.103-private #2215
 
 ## Agent Downloads  
 
