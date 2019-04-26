@@ -383,12 +383,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             ArgUtil.NotNull(Task, nameof(Task));
             ArgUtil.NotNull(Task.Reference, nameof(Task.Reference));
             ArgUtil.NotNull(taskDefinition.Data, nameof(taskDefinition.Data));
+
             ExecutionContext.Output("==============================================================================");
             ExecutionContext.Output($"Task         : {taskDefinition.Data.FriendlyName}");
             ExecutionContext.Output($"Description  : {taskDefinition.Data.Description}");
             ExecutionContext.Output($"Version      : {Task.Reference.Version}");
             ExecutionContext.Output($"Author       : {taskDefinition.Data.Author}");
-            ExecutionContext.Output($"Help         : {taskDefinition.Data.HelpMarkDown}");
+            ExecutionContext.Output($"Help         : {taskDefinition.Data.HelpUrl ?? taskDefinition.Data.HelpMarkDown}");
             ExecutionContext.Output("==============================================================================");
         }
     }

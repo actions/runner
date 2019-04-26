@@ -254,6 +254,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         public string FriendlyName { get; set; }
         public string Description { get; set; }
         public string HelpMarkDown { get; set; }
+        public string HelpUrl { get; set; }
         public string Author { get; set; }
         public OutputVariable[] OutputVariables { get; set; }
         public TaskInputDefinition[] Inputs { get; set; }
