@@ -52,8 +52,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 throw new InvalidOperationException(StringUtil.Loc("CannotFindHostName", settings.ServerUrl));
             }
 
-            serviceName = StringUtil.Format(serviceNamePattern, accountName, settings.AgentName);
-            serviceDisplayName = StringUtil.Format(serviceDisplayNamePattern, accountName, settings.AgentName);
+            serviceName = StringUtil.Format(serviceNamePattern, accountName, settings.PoolName, settings.AgentName);
+            serviceDisplayName = StringUtil.Format(serviceDisplayNamePattern, accountName, settings.PoolName, settings.AgentName);
 
             Trace.Info($"Service name '{serviceName}' display name '{serviceDisplayName}' will be used for service configuration.");
         }

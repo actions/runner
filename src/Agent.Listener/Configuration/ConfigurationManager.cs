@@ -242,7 +242,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             {
                 try
                 {
-                    await agentProvider.GetPoolId(agentSettings, command);
+                    await agentProvider.GetPoolIdAndName(agentSettings, command);
                     break;
                 }
                 catch (Exception e) when (!command.Unattended)

@@ -21,7 +21,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
         Task TestConnectionAsync(AgentSettings agentSettings, VssCredentials creds, bool isHosted);
 
-        Task GetPoolId(AgentSettings agentSettings, CommandSettings command);
+        Task GetPoolIdAndName(AgentSettings agentSettings, CommandSettings command);
 
         string GetFailedToFindPoolErrorString();
 
@@ -62,7 +62,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             // Collection name is not required for Build/Release agent
         }
 
-        public virtual async Task GetPoolId(AgentSettings agentSettings, CommandSettings command)
+        public virtual async Task GetPoolIdAndName(AgentSettings agentSettings, CommandSettings command)
         {
             string poolName = command.GetPool();
 
@@ -73,8 +73,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             }
             else
             {
-                Trace.Info("Found pool {0} with id {1}", poolName, agentPool.Id);
+                Trace.Info("Found pool {0} with id {1} and name {2}", poolName, agentPool.Id, agentPool.Name);
                 agentSettings.PoolId = agentPool.Id;
+                agentSettings.PoolName = agentPool.Name;
             }
         }
 
@@ -147,7 +148,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             }
         }
 
-        public async Task GetPoolId(AgentSettings agentSettings, CommandSettings command)
+        public async Task GetPoolIdAndName(AgentSettings agentSettings, CommandSettings command)
         {
             _projectName = command.GetProjectName(_projectName);
             var deploymentGroupName = command.GetDeploymentGroupName();
@@ -157,6 +158,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             Trace.Info($"Project id for deployment group '{deploymentGroupName}' is '{deploymentGroup.Project.Id.ToString()}'.");
 
             agentSettings.PoolId = deploymentGroup.Pool.Id;
+            agentSettings.PoolName = deploymentGroup.Pool.Name;
             agentSettings.DeploymentGroupId = deploymentGroup.Id;
             agentSettings.ProjectId = deploymentGroup.Project.Id.ToString();
         }
@@ -348,7 +350,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
         public new string ConfigurationProviderType
             => Constants.Agent.AgentConfigurationProvider.SharedDeploymentAgentConfiguration;
 
-        public override async Task GetPoolId(AgentSettings agentSettings, CommandSettings command)
+        public override async Task GetPoolIdAndName(AgentSettings agentSettings, CommandSettings command)
         {
             string poolName = command.GetDeploymentPoolName();
 
@@ -359,8 +361,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             }
             else
             {
-                Trace.Info("Found deployment pool {0} with id {1}", poolName, agentPool.Id);
+                Trace.Info("Found deployment pool {0} with id {1} and name {2}", poolName, agentPool.Id, agentPool.Name);
                 agentSettings.PoolId = agentPool.Id;
+                agentSettings.PoolName = agentPool.Name;
             }
         }
     }
