@@ -24,7 +24,7 @@
     <PackageReference Include="System.Threading.ThreadPool" Version="4.3.0" />
     <PackageReference Include="vss-api-netcore" Version="0.5.103-private" />
     <PackageReference Include="Moq" Version="4.6.36-alpha" />
-    <PackageReference Include="azuredevops-testresultparser" Version="1.0.0" />
+    <PackageReference Include="azuredevops-testresultparser" Version="1.0.1" />
   </ItemGroup>
 
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
