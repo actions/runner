@@ -251,4 +251,16 @@ namespace Agent.Plugins.PipelineArtifact
             return context.GetInput(ArtifactEventProperties.ArtifactName, required: false);
         }
     }
+
+    // 1.1.2 is the same as 1.1.0 because we reverted 1.1.1 change.
+    public class DownloadPipelineArtifactTaskV1_1_2 : DownloadPipelineArtifactTaskV1_1_0
+    {
+        public override string Version => "1.1.2";
+    }
+
+    // 1.1.3 is the same as 1.1.0 because we reverted 1.1.1 change and the minimum agent version.
+    public class DownloadPipelineArtifactTaskV1_1_3 : DownloadPipelineArtifactTaskV1_1_0
+    {
+        public override string Version => "1.1.3";
+    }
 }
