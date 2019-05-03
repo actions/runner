@@ -50,7 +50,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
         {
             base.Initialize(hostContext);
             CommandManager = hostContext.GetService<IWorkerCommandManager>();
-            ActionCommandManager = hostContext.GetService<IActionCommandManager>();
+            ActionCommandManager = hostContext.CreateService<IActionCommandManager>();
         }
 
         protected void AddEndpointsToEnvironment()

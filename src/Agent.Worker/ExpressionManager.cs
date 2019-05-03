@@ -1,17 +1,19 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Microsoft.TeamFoundation.DistributedTask.Expressions;
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Util;
-using Microsoft.TeamFoundation.DistributedTask.Expressions;
-using System.Text;
+using ObjectTemplating = Microsoft.TeamFoundation.DistributedTask.ObjectTemplating;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
     [ServiceLocator(Default = typeof(ExpressionManager))]
     public interface IExpressionManager : IAgentService
     {
-        IExpressionNode Parse(IExecutionContext context, string condition);
+        IExpressionNode Parse(IExecutionContext context, string condition, bool legacy);
         ConditionResult Evaluate(IExecutionContext context, IExpressionNode tree, bool hostTracingOnly = false);
     }
 
@@ -21,15 +23,23 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         public static IExpressionNode Succeeded = new SucceededNode();
         public static IExpressionNode SucceededOrFailed = new SucceededOrFailedNode();
 
-        public IExpressionNode Parse(IExecutionContext executionContext, string condition)
+        public IExpressionNode Parse(IExecutionContext executionContext, string condition, bool legacy)
         {
             ArgUtil.NotNull(executionContext, nameof(executionContext));
             var expressionTrace = new TraceWriter(Trace, executionContext);
             var parser = new ExpressionParser();
-            var namedValues = new INamedValueInfo[]
+            var namedValues = default(INamedValueInfo[]);
+            if (legacy)
             {
-                new NamedValueInfo<VariablesNode>(name: Constants.Expressions.Variables),
-            };
+                namedValues = new INamedValueInfo[]
+                {
+                    new NamedValueInfo<VariablesNode>(name: Constants.Expressions.Variables),
+                };
+            }
+            else
+            {
+                namedValues = executionContext.ExpressionValues.Keys.Select(x => new NamedValueInfo<ContextValueNode>(x)).ToArray();
+            }
             var functions = new IFunctionInfo[]
             {
                 new FunctionInfo<AlwaysNode>(name: Constants.Expressions.Always, minParameters: 0, maxParameters: 0),
@@ -49,7 +59,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             ConditionResult result = new ConditionResult();
             var expressionTrace = new TraceWriter(Trace, hostTracingOnly ? null : executionContext);
 
-            result.Value = tree.Evaluate<bool>(trace: expressionTrace, secretMasker: HostContext.SecretMasker, state: executionContext);
+            var evaluationOptions = new EvaluationOptions
+            {
+                Converters = new ObjectTemplating.TemplateContext().ExpressionConverters,
+                UseCollectionInterfaces = true,
+            };
+
+            result.Value = tree.Evaluate<bool>(trace: expressionTrace, secretMasker: HostContext.SecretMasker, state: executionContext, options: evaluationOptions);
             result.Trace = expressionTrace.Trace;
 
             return result;
@@ -188,6 +204,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
             // IEnumerable members
             IEnumerator IEnumerable.GetEnumerator() => throw new NotSupportedException();
+        }
+
+        private sealed class ContextValueNode : NamedValueNode
+        {
+            protected override Object EvaluateCore(EvaluationContext evaluationContext)
+            {
+                var jobContext = evaluationContext.State as IExecutionContext;
+                ArgUtil.NotNull(jobContext, nameof(jobContext));
+                return jobContext.ExpressionValues[Name];
+            }
         }
     }
 

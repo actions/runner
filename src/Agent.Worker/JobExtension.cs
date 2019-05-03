@@ -90,26 +90,29 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     Dictionary<Guid, IExpressionNode> taskConditionMap = new Dictionary<Guid, IExpressionNode>();
                     foreach (var step in message.Steps)
                     {
-                        if (step.Type == Pipelines.StepType.Task ||
-                            step.Type == Pipelines.StepType.Action)
+                        IExpressionNode condition;
+                        if (string.IsNullOrEmpty(step.Condition))
                         {
-                            IExpressionNode condition;
-                            if (!string.IsNullOrEmpty(step.Condition))
-                            {
-                                context.Debug($"Task '{step.DisplayName}' has following condition: '{step.Condition}'.");
-                                condition = expression.Parse(context, step.Condition);
-                            }
-                            else
-                            {
-                                condition = ExpressionManager.Succeeded;
-                            }
-
-                            taskConditionMap[step.Id] = condition;
+                            condition = ExpressionManager.Succeeded;
                         }
                         else
                         {
-                            throw new NotSupportedException(step.Type.ToString());
+                            context.Debug($"Step '{step.DisplayName}' has following condition: '{step.Condition}'.");
+                            if (step.Type == Pipelines.StepType.Task)
+                            {
+                                condition = expression.Parse(context, step.Condition, legacy: true);
+                            }
+                            else if (step.Type == Pipelines.StepType.Action || step.Type == Pipelines.StepType.Script)
+                            {
+                                condition = expression.Parse(context, step.Condition, legacy: false);
+                            }
+                            else
+                            {
+                                throw new NotSupportedException(step.Type.ToString());
+                            }
                         }
+
+                        taskConditionMap[step.Id] = condition;
                     }
 
 #if OS_WINDOWS
@@ -166,6 +169,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                             actionRunner.Action = action;
                             actionRunner.Condition = taskConditionMap[action.Id];
                             jobSteps.Add(actionRunner);
+                        }
+                        else if (step.Type == Pipelines.StepType.Script)
+                        {
+                            var script = step as Pipelines.ScriptStep;
+                            Trace.Info($"Adding {script.DisplayName}.");
+                            var scriptRunner = HostContext.CreateService<IScriptRunner>();
+                            scriptRunner.Script = script;
+                            scriptRunner.Condition = taskConditionMap[script.Id];
+                            jobSteps.Add(scriptRunner);
                         }
                         else if (step.Type == Pipelines.StepType.Task)
                         {
@@ -264,6 +276,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                             IActionRunner actionStep = step as IActionRunner;
                             ArgUtil.NotNull(actionStep, step.DisplayName);
                             actionStep.ExecutionContext = jobContext.CreateChild(actionStep.Action.Id, actionStep.DisplayName, actionStep.Action.Name, outputForward: true);
+                        }
+                        else if (step is IScriptRunner)
+                        {
+                            IScriptRunner scriptStep = step as IScriptRunner;
+                            ArgUtil.NotNull(scriptStep, step.DisplayName);
+                            scriptStep.ExecutionContext = jobContext.CreateChild(scriptStep.Script.Id, scriptStep.DisplayName, scriptStep.Script.Name, outputForward: true);
                         }
                     }
 
