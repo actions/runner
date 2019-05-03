@@ -470,6 +470,215 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             }
         }
 
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void LoadsContainerActionDefinition()
+        {
+            try
+            {
+                // Arrange.
+                Setup();
+                // Prepare the task.json content.
+                const string Content = @"
+# Container action
+name: 'Hello World'
+description: 'Greet the world and record the time'
+author: 'Microsoft Corporation'
+inputs: 
+  greeting: # id of input
+    description: 'The greeting we choose - will print ""{greeting}, World!"" on stdout'
+    required: true
+    default: 'Hello'
+  entryPoint: # id of input
+    description: 'optional docker entrypoint overwrite.'
+    required: false
+outputs:
+  time: # id of output
+    description: 'The time we did the greeting'
+icon: 'hello.svg' # vector art to display in the GitHub Marketplace
+color: 'green' # optional, decorates the entry in the GitHub Marketplace
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
+  args:
+  - '${{ inputs.greeting }}'
+  entrypoint: '${{ inputs.entryPoint }}'
+  env:
+    Token: foo
+    Url: bar
+";
+                // Write the task.json to disk.
+                Pipelines.ActionStep instance;
+                string directory;
+                CreateAction(yamlContent: Content, instance: out instance, directory: out directory);
+
+                // Act.
+                Definition definition = _taskManager.LoadAction(_ec.Object, instance);
+
+                // Assert.
+                Assert.NotNull(definition);
+                Assert.Equal(directory, definition.Directory);
+                Assert.NotNull(definition.Data);
+                Assert.NotNull(definition.Data.Inputs); // inputs
+                Assert.Equal(2, definition.Data.Inputs.Length);
+                Assert.Equal("someFilePathInput", definition.Data.Inputs[0].Name);
+                Assert.Equal("Some default file path", definition.Data.Inputs[0].DefaultValue);
+                Assert.Equal("someStringInput", definition.Data.Inputs[1].Name);
+                Assert.Equal("Some default string", definition.Data.Inputs[1].DefaultValue);
+                Assert.NotNull(definition.Data.Execution); // execution
+
+#if OS_WINDOWS
+                // Process handler should only be deserialized on Windows.
+                Assert.Equal(3, definition.Data.Execution.All.Count);
+#else
+                // Only the Node and Node10 handlers should be deserialized on non-Windows.
+                Assert.Equal(2, definition.Data.Execution.All.Count);
+#endif
+
+                // Node handler should always be deserialized.
+                Assert.NotNull(definition.Data.Execution.Node); // execution.Node
+                Assert.Equal(definition.Data.Execution.Node, definition.Data.Execution.All[0]);
+                Assert.Equal("Some Node target", definition.Data.Execution.Node.Target);
+
+                // Node10 handler should always be deserialized.
+                Assert.NotNull(definition.Data.Execution.Node10); // execution.Node10
+                Assert.Equal(definition.Data.Execution.Node10, definition.Data.Execution.All[1]);
+                Assert.Equal("Some Node10 target", definition.Data.Execution.Node10.Target);
+
+#if OS_WINDOWS
+                // Process handler should only be deserialized on Windows.
+                Assert.NotNull(definition.Data.Execution.Process); // execution.Process
+                Assert.Equal(definition.Data.Execution.Process, definition.Data.Execution.All[2]);
+                Assert.Equal("Some process argument format", definition.Data.Execution.Process.ArgumentFormat);
+                Assert.NotNull(definition.Data.Execution.Process.Platforms);
+                Assert.Equal(1, definition.Data.Execution.Process.Platforms.Length);
+                Assert.Equal("windows", definition.Data.Execution.Process.Platforms[0]);
+                Assert.Equal("Some process target", definition.Data.Execution.Process.Target);
+                Assert.Equal("Some process working directory", definition.Data.Execution.Process.WorkingDirectory);
+#endif
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void LoadsNodeActionDefinition()
+        {
+            try
+            {
+                // Arrange.
+                Setup();
+                // Prepare the task.json content.
+                const string Content = @"
+{
+    ""inputs"": [
+        {
+            ""extraInputKey"": ""Extra input value"",
+            ""name"": ""someFilePathInput"",
+            ""type"": ""filePath"",
+            ""label"": ""Some file path input label"",
+            ""defaultValue"": ""Some default file path"",
+            ""required"": true,
+            ""helpMarkDown"": ""Some file path input markdown""
+        },
+        {
+            ""name"": ""someStringInput"",
+            ""type"": ""string"",
+            ""label"": ""Some string input label"",
+            ""defaultValue"": ""Some default string"",
+            ""helpMarkDown"": ""Some string input markdown"",
+            ""required"": false,
+            ""groupName"": ""advanced""
+        }
+    ],
+    ""execution"": {
+        ""Node"": {
+            ""target"": ""Some Node target"",
+            ""extraNodeArg"": ""Extra node arg value""
+        },
+        ""Node10"": {
+            ""target"": ""Some Node10 target"",
+            ""extraNodeArg"": ""Extra node10 arg value""
+        },
+        ""Process"": {
+            ""target"": ""Some process target"",
+            ""argumentFormat"": ""Some process argument format"",
+            ""workingDirectory"": ""Some process working directory"",
+            ""extraProcessArg"": ""Some extra process arg"",
+            ""platforms"": [
+                ""windows""
+            ]
+        },
+        ""NoSuchHandler"": {
+            ""target"": ""no such target""
+        }
+    },
+    ""someExtraSection"": {
+        ""someExtraKey"": ""Some extra value""
+    }
+}";
+                // Write the task.json to disk.
+                Pipelines.TaskStep instance;
+                string directory;
+                CreateTask(jsonContent: Content, instance: out instance, directory: out directory);
+
+                // Act.
+                Definition definition = _taskManager.Load(instance);
+
+                // Assert.
+                Assert.NotNull(definition);
+                Assert.Equal(directory, definition.Directory);
+                Assert.NotNull(definition.Data);
+                Assert.NotNull(definition.Data.Inputs); // inputs
+                Assert.Equal(2, definition.Data.Inputs.Length);
+                Assert.Equal("someFilePathInput", definition.Data.Inputs[0].Name);
+                Assert.Equal("Some default file path", definition.Data.Inputs[0].DefaultValue);
+                Assert.Equal("someStringInput", definition.Data.Inputs[1].Name);
+                Assert.Equal("Some default string", definition.Data.Inputs[1].DefaultValue);
+                Assert.NotNull(definition.Data.Execution); // execution
+
+#if OS_WINDOWS
+                // Process handler should only be deserialized on Windows.
+                Assert.Equal(3, definition.Data.Execution.All.Count);
+#else
+                // Only the Node and Node10 handlers should be deserialized on non-Windows.
+                Assert.Equal(2, definition.Data.Execution.All.Count);
+#endif
+
+                // Node handler should always be deserialized.
+                Assert.NotNull(definition.Data.Execution.Node); // execution.Node
+                Assert.Equal(definition.Data.Execution.Node, definition.Data.Execution.All[0]);
+                Assert.Equal("Some Node target", definition.Data.Execution.Node.Target);
+
+                // Node10 handler should always be deserialized.
+                Assert.NotNull(definition.Data.Execution.Node10); // execution.Node10
+                Assert.Equal(definition.Data.Execution.Node10, definition.Data.Execution.All[1]);
+                Assert.Equal("Some Node10 target", definition.Data.Execution.Node10.Target);
+
+#if OS_WINDOWS
+                // Process handler should only be deserialized on Windows.
+                Assert.NotNull(definition.Data.Execution.Process); // execution.Process
+                Assert.Equal(definition.Data.Execution.Process, definition.Data.Execution.All[2]);
+                Assert.Equal("Some process argument format", definition.Data.Execution.Process.ArgumentFormat);
+                Assert.NotNull(definition.Data.Execution.Process.Platforms);
+                Assert.Equal(1, definition.Data.Execution.Process.Platforms.Length);
+                Assert.Equal("windows", definition.Data.Execution.Process.Platforms[0]);
+                Assert.Equal("Some process target", definition.Data.Execution.Process.Target);
+                Assert.Equal("Some process working directory", definition.Data.Execution.Process.WorkingDirectory);
+#endif
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
@@ -612,6 +821,25 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                     Id = taskGuid,
                     Name = TaskName,
                     Version = TaskVersion,
+                }
+            };
+        }
+
+        private void CreateAction(string yamlContent, out Pipelines.ActionStep instance, out string directory)
+        {
+            const string RepoAlias = "action";
+            const string RepoName = "microsoft/actions";
+            const string RepoVersion = "master";
+            Guid taskGuid = Guid.NewGuid();
+            directory = Path.Combine(_workFolder, Constants.Path.TasksDirectory, RepoName, RepoVersion);
+            string file = Path.Combine(directory, Constants.Path.TaskJsonFile);
+            Directory.CreateDirectory(Path.GetDirectoryName(file));
+            File.WriteAllText(file, yamlContent);
+            instance = new Pipelines.ActionStep()
+            {
+                Reference = new Pipelines.RepositoryActionDefinitionReference()
+                {
+                    Repository = "action",
                 }
             };
         }

@@ -1,6 +1,14 @@
 using System;
 using System.Threading.Tasks;
 using Microsoft.TeamFoundation.DistributedTask.Expressions;
+using Microsoft.VisualStudio.Services.Agent.Util;
+using Pipelines = Microsoft.TeamFoundation.DistributedTask.Pipelines;
+using Microsoft.VisualStudio.Services.Agent.Worker.Container;
+using System.Linq;
+using Microsoft.TeamFoundation.DistributedTask.WebApi;
+using Microsoft.VisualStudio.Services.Agent.Worker.Handlers;
+using System.Collections.Generic;
+using System.IO;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
@@ -31,6 +39,236 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         public async Task RunAsync()
         {
             await _runAsync(ExecutionContext, _data);
+        }
+    }
+
+
+    [ServiceLocator(Default = typeof(ActionRunner))]
+    public interface IActionRunner : IStep, IAgentService
+    {
+        Pipelines.ActionStep Action { get; set; }
+    }
+
+    public sealed class ActionRunner : AgentService, IActionRunner
+    {
+        public IExpressionNode Condition { get; set; }
+
+        public bool ContinueOnError => Action?.ContinueOnError ?? default(bool);
+
+        public string DisplayName => Action?.DisplayName;
+
+        public bool Enabled => Action?.Enabled ?? default(bool);
+
+        public IExecutionContext ExecutionContext { get; set; }
+
+        public Pipelines.ActionStep Action { get; set; }
+
+        public TimeSpan? Timeout => (Action?.TimeoutInMinutes ?? 0) > 0 ? (TimeSpan?)TimeSpan.FromMinutes(Action.TimeoutInMinutes) : null;
+
+        public async Task RunAsync()
+        {
+            // Validate args.
+            Trace.Entering();
+            ArgUtil.NotNull(ExecutionContext, nameof(ExecutionContext));
+            ArgUtil.NotNull(ExecutionContext.Variables, nameof(ExecutionContext.Variables));
+            ArgUtil.NotNull(Action, nameof(Action));
+            var taskManager = HostContext.GetService<ITaskManager>();
+            var handlerFactory = HostContext.GetService<IHandlerFactory>();
+
+            // // Set the task id and display name variable.
+            // ExecutionContext.Variables.Set(Constants.Variables.Task.DisplayName, DisplayName);
+            // ExecutionContext.Variables.Set(WellKnownDistributedTaskVariables.TaskInstanceId, Task.Id.ToString("D"));
+            // ExecutionContext.Variables.Set(WellKnownDistributedTaskVariables.TaskDisplayName, DisplayName);
+            // ExecutionContext.Variables.Set(WellKnownDistributedTaskVariables.TaskInstanceName, Task.Name);
+
+            // Load the task definition and choose the handler.
+            // TODO: Add a try catch here to give a better error message.
+            Definition definition = taskManager.LoadAction(ExecutionContext, Action);
+            ArgUtil.NotNull(definition, nameof(definition));
+
+            // Print out task metadata
+            // PrintTaskMetaData(definition);
+
+            // ExecutionData currentExecution = null;
+            // switch (definition.Type)
+            // {
+            //     case ActionType.Container:
+            //         await RunContainerActionAsync(executionContext);
+            //         break;
+            //     case ActionType.NodeScript:
+            //         await RunNodeScriptActionAsync();
+            //         break;
+            //     default:
+            //         throw new NotSupportedException(definition.Type.ToString());
+            // };
+
+            HandlerData handlerData = definition.Data?.Execution?.All?.Single();
+            ArgUtil.NotNull(handlerData, nameof(handlerData));
+
+            Variables runtimeVariables = ExecutionContext.Variables;
+            IStepHost stepHost = HostContext.CreateService<IDefaultStepHost>();
+            // Setup container stephost and the right runtime variables for running job inside container.
+            if (ExecutionContext.Container != null)
+            {
+                if (handlerData is ContainerActionHandlerData)
+                {
+                    // plugin handler always runs on the Host, the rumtime variables needs to the variable works on the Host, ex: file path variable System.DefaultWorkingDirectory
+                    Dictionary<string, VariableValue> variableCopy = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
+                    foreach (var publicVar in ExecutionContext.Variables.Public)
+                    {
+                        variableCopy[publicVar.Key] = new VariableValue(ExecutionContext.Container.TranslateToHostPath(publicVar.Value));
+                    }
+                    foreach (var secretVar in ExecutionContext.Variables.Private)
+                    {
+                        variableCopy[secretVar.Key] = new VariableValue(ExecutionContext.Container.TranslateToHostPath(secretVar.Value), true);
+                    }
+
+                    List<string> expansionWarnings;
+                    runtimeVariables = new Variables(HostContext, variableCopy, out expansionWarnings);
+                    expansionWarnings?.ForEach(x => ExecutionContext.Warning(x));
+                }
+                else if (handlerData is NodeScriptActionHandlerData)
+                {
+                    // Only the node, node10, and powershell3 handlers support running inside container. 
+                    // Make sure required container is already created.
+                    ArgUtil.NotNullOrEmpty(ExecutionContext.Container.ContainerId, nameof(ExecutionContext.Container.ContainerId));
+                    var containerStepHost = HostContext.CreateService<IContainerStepHost>();
+                    containerStepHost.Container = ExecutionContext.Container;
+                    stepHost = containerStepHost;
+                }
+                else
+                {
+                    throw new NotSupportedException(String.Format("Task '{0}' is using legacy execution handler '{1}' which is not supported in container execution flow.", definition.Data.FriendlyName, handlerData.GetType().ToString()));
+                }
+            }
+
+            // Load the default input values from the definition.
+            Trace.Verbose("Loading default inputs.");
+            var inputs = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var input in (definition.Data?.Inputs ?? new TaskInputDefinition[0]))
+            {
+                string key = input?.Name?.Trim() ?? string.Empty;
+                if (!string.IsNullOrEmpty(key))
+                {
+                    inputs[key] = input.DefaultValue?.Trim() ?? string.Empty;
+                }
+            }
+
+            // Merge the instance inputs.
+            Trace.Verbose("Loading instance inputs.");
+            foreach (var input in (Action.Inputs as IEnumerable<KeyValuePair<string, string>> ?? new KeyValuePair<string, string>[0]))
+            {
+                string key = input.Key?.Trim() ?? string.Empty;
+                if (!string.IsNullOrEmpty(key))
+                {
+                    inputs[key] = input.Value?.Trim() ?? string.Empty;
+                }
+            }
+
+            // Expand the inputs.
+            Trace.Verbose("Expanding inputs.");
+            // runtimeVariables.ExpandValues(target: inputs);
+            // VarUtil.ExpandEnvironmentVariables(HostContext, target: inputs);
+
+
+            // Translate the server file path inputs to local paths.
+            foreach (var input in definition.Data?.Inputs ?? new TaskInputDefinition[0])
+            {
+                if (string.Equals(input.InputType, TaskInputType.FilePath, StringComparison.OrdinalIgnoreCase))
+                {
+                    Trace.Verbose($"Translating file path input '{input.Name}': '{inputs[input.Name]}'");
+                    inputs[input.Name] = stepHost.ResolvePathForStepHost(TranslateFilePathInput(inputs[input.Name] ?? string.Empty));
+                    Trace.Verbose($"Translated file path input '{input.Name}': '{inputs[input.Name]}'");
+                }
+            }
+
+
+            // Load the task environment.
+            Trace.Verbose("Loading task environment.");
+            var environment = new Dictionary<string, string>(VarUtil.EnvironmentVariableKeyComparer);
+            foreach (var env in (Action.Environment ?? new Dictionary<string, string>(0)))
+            {
+                string key = env.Key?.Trim() ?? string.Empty;
+                if (!string.IsNullOrEmpty(key))
+                {
+                    environment[key] = env.Value?.Trim() ?? string.Empty;
+                }
+            }
+
+
+            // Expand the environments.
+            Trace.Verbose("Expanding task environment.");
+            // runtimeVariables.ExpandValues(target: environment);
+            // VarUtil.ExpandEnvironmentVariables(HostContext, target: environment);
+
+            // Create the handler.
+            IHandler handler = handlerFactory.Create(
+                ExecutionContext,
+                Action.Reference,
+                stepHost,
+                handlerData,
+                inputs,
+                environment,
+                runtimeVariables,
+                taskDirectory: definition.Directory);
+
+            // Run the task.
+            await handler.RunAsync();
+        }
+        private string TranslateFilePathInput(string inputValue)
+        {
+            Trace.Entering();
+
+#if OS_WINDOWS
+            if (!string.IsNullOrEmpty(inputValue))
+            {
+                Trace.Verbose("Trim double quotes around filepath type input on Windows.");
+                inputValue = inputValue.Trim('\"');
+
+                Trace.Verbose($"Replace any '{Path.AltDirectorySeparatorChar}' with '{Path.DirectorySeparatorChar}'.");
+                inputValue = inputValue.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
+            }
+#endif 
+            // if inputValue is rooted, return full path.
+            string fullPath;
+            if (!string.IsNullOrEmpty(inputValue) &&
+                inputValue.IndexOfAny(Path.GetInvalidPathChars()) < 0 &&
+                Path.IsPathRooted(inputValue))
+            {
+                try
+                {
+                    fullPath = Path.GetFullPath(inputValue);
+                    Trace.Info($"The original input is a rooted path, return absolute path: {fullPath}");
+                    return fullPath;
+                }
+                catch (Exception ex)
+                {
+                    Trace.Error(ex);
+                    Trace.Info($"The original input is a rooted path, but it is not full qualified, return the path: {inputValue}");
+                    return inputValue;
+                }
+            }
+
+            // use jobextension solve inputValue, if solved result is rooted, return full path.
+            var extensionManager = HostContext.GetService<IExtensionManager>();
+            IJobExtension[] extensions =
+                (extensionManager.GetExtensions<IJobExtension>() ?? new List<IJobExtension>())
+                .Where(x => x.HostType.HasFlag(ExecutionContext.Variables.System_HostType))
+                .ToArray();
+            foreach (IJobExtension extension in extensions)
+            {
+                fullPath = extension.GetRootedPath(ExecutionContext, inputValue);
+                if (!string.IsNullOrEmpty(fullPath))
+                {
+                    // Stop on the first path root found.
+                    Trace.Info($"{extension.HostType.ToString()} JobExtension resolved a rooted path:: {fullPath}");
+                    return fullPath;
+                }
+            }
+
+            // return original inputValue.
+            Trace.Info("Can't root path even by using JobExtension, return original input.");
+            return inputValue;
         }
     }
 }

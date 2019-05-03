@@ -1,3 +1,29 @@
+// workflow:
+//   build:
+//     actions:
+//     - run: printenv
+//       name: printenv_name
+//       id: printenv_id
+//       if: succeeded()
+//       env:
+//         foo: bar
+//     - uses: 'docker://ubuntu:16.04'
+//       if: succeeded()
+//       with:
+//         entryPoint: /bin/bash
+//         args: echo
+//       env:
+//         foo: bar
+//     - uses: actions/npm@master
+//       name: npm_version
+//       with:
+//         args: version
+//     - uses: actions/aws/cli@master
+//       id: cli_id
+//       with:
+//         args: version
+    
+
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Pipelines = Microsoft.TeamFoundation.DistributedTask.Pipelines;
 using Microsoft.VisualStudio.Services.Agent.Util;

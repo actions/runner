@@ -69,6 +69,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             // Otherwise, the interface needs to whitelisted.
             var whitelist = new[]
             {
+                typeof(IActionCommandExtension),
                 typeof(IArtifactDetails),
                 typeof(IArtifactExtension),
                 typeof(ICodeCoverageSummaryReader),

@@ -32,6 +32,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         List<ServiceEndpoint> Endpoints { get; }
         List<SecureFile> SecureFiles { get; }
         List<Pipelines.RepositoryResource> Repositories { get; }
+        List<Pipelines.ContainerResource> Containers { get; }
 
         PlanFeatures Features { get; }
         Variables Variables { get; }
@@ -56,6 +57,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         void Start(string currentOperation = null);
         TaskResult Complete(TaskResult? result = null, string currentOperation = null, string resultCode = null);
         void SetVariable(string name, string value, bool isSecret = false, bool isOutput = false, bool isFilePath = false);
+        void SetOutput(string name, string value, bool isSecret = false);
         void SetTimeout(TimeSpan? timeout);
         void AddIssue(Issue issue);
         void Progress(int percentage, string currentOperation = null);
@@ -97,6 +99,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         public List<ServiceEndpoint> Endpoints { get; private set; }
         public List<SecureFile> SecureFiles { get; private set; }
         public List<Pipelines.RepositoryResource> Repositories { get; private set; }
+        public List<Pipelines.ContainerResource> Containers { get; private set; }
         public Variables Variables { get; private set; }
         public Variables TaskVariables { get; private set; }
         public HashSet<string> OutputVariables => _outputvariables;
@@ -169,6 +172,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             child.Variables = Variables;
             child.Endpoints = Endpoints;
             child.Repositories = Repositories;
+            child.Containers = Containers;
             child.SecureFiles = SecureFiles;
             child.TaskVariables = taskVariables;
             child._cancellationTokenSource = new CancellationTokenSource();
@@ -263,6 +267,28 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             else
             {
                 Variables.Set(name, value, secret: isSecret);
+            }
+        }
+
+        public void SetOutput(string name, string value, bool isSecret = false)
+        {
+            ArgUtil.NotNullOrEmpty(name, nameof(name));
+
+            if (OutputVariables.Contains(name))
+            {
+                _record.Variables[name] = new VariableValue()
+                {
+                    Value = value,
+                    IsSecret = isSecret
+                };
+                _jobServerQueue.QueueTimelineRecordUpdate(_mainTimelineId, _record);
+
+                ArgUtil.NotNullOrEmpty(_record.RefName, nameof(_record.RefName));
+                Variables.Set($"{_record.RefName}.{name}", value, secret: isSecret);
+            }
+            else
+            {
+                throw new InvalidOperationException($"'{name}' is not defined as an output value.");
             }
         }
 
@@ -410,6 +436,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 imageName = Environment.GetEnvironmentVariable("_PREVIEW_VSTS_DOCKER_IMAGE");
             }
 
+            var containerNetwork = $"vsts_network_{Guid.NewGuid().ToString("N")}";
             if (!string.IsNullOrEmpty(imageName) &&
                 string.IsNullOrEmpty(message.JobContainer))
             {
@@ -418,11 +445,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     Alias = "vsts_container_preview"
                 };
                 dockerContainer.Properties.Set("image", imageName);
-                Container = new ContainerInfo(HostContext, dockerContainer);
+                Container = new ContainerInfo(HostContext, dockerContainer) { ContainerNetwork = containerNetwork };
             }
             else if (!string.IsNullOrEmpty(message.JobContainer))
             {
-                Container = new ContainerInfo(HostContext, message.Resources.Containers.Single(x => string.Equals(x.Alias, message.JobContainer, StringComparison.OrdinalIgnoreCase)));
+                Container = new ContainerInfo(HostContext, message.Resources.Containers.Single(x => string.Equals(x.Alias, message.JobContainer, StringComparison.OrdinalIgnoreCase))) { ContainerNetwork = containerNetwork };
             }
             else
             {
@@ -436,8 +463,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 var networkAlias = sidecar.Key;
                 var containerResourceAlias = sidecar.Value;
                 var containerResource = message.Resources.Containers.Single(c => string.Equals(c.Alias, containerResourceAlias, StringComparison.OrdinalIgnoreCase));
-                SidecarContainers.Add(new ContainerInfo(HostContext, containerResource, isJobContainer: false) { ContainerNetworkAlias = networkAlias });
+                SidecarContainers.Add(new ContainerInfo(HostContext, containerResource, isJobContainer: false) { ContainerNetwork = containerNetwork, ContainerNetworkAlias = networkAlias });
             }
+
+            // Containers
+            Containers = message.Resources.Containers;
 
             // Proxy variables
             var agentWebProxy = HostContext.GetService<IVstsAgentWebProxy>();
@@ -621,7 +651,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     uriBuilder.Path += (Variables.System_TFCollectionUrl.EndsWith("/") ? "" : "/") + "_usersSettings/usage";
                     query["tab"] = "pipelines";
                     query["queryDate"] = queryDate;
-                    
+
                     // Global RU link
                     uriBuilder.Query = query.ToString();
                     string global = StringUtil.Loc("ServerTarpitUrl", uriBuilder.ToString());

@@ -88,20 +88,28 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     Trace.Info("Parsing all task's condition inputs.");
                     var expression = HostContext.GetService<IExpressionManager>();
                     Dictionary<Guid, IExpressionNode> taskConditionMap = new Dictionary<Guid, IExpressionNode>();
-                    foreach (var task in message.Steps.OfType<Pipelines.TaskStep>())
+                    foreach (var step in message.Steps)
                     {
-                        IExpressionNode condition;
-                        if (!string.IsNullOrEmpty(task.Condition))
+                        if (step.Type == Pipelines.StepType.Task ||
+                            step.Type == Pipelines.StepType.Action)
                         {
-                            context.Debug($"Task '{task.DisplayName}' has following condition: '{task.Condition}'.");
-                            condition = expression.Parse(context, task.Condition);
+                            IExpressionNode condition;
+                            if (!string.IsNullOrEmpty(step.Condition))
+                            {
+                                context.Debug($"Task '{step.DisplayName}' has following condition: '{step.Condition}'.");
+                                condition = expression.Parse(context, step.Condition);
+                            }
+                            else
+                            {
+                                condition = ExpressionManager.Succeeded;
+                            }
+
+                            taskConditionMap[step.Id] = condition;
                         }
                         else
                         {
-                            condition = ExpressionManager.Succeeded;
+                            throw new NotSupportedException(step.Type.ToString());
                         }
-
-                        taskConditionMap[task.Id] = condition;
                     }
 
 #if OS_WINDOWS
@@ -148,44 +156,57 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                                                                         data: (object)containers));
                     }
 
-                    foreach (var task in message.Steps.OfType<Pipelines.TaskStep>())
+                    foreach (var step in message.Steps)
                     {
-                        var taskDefinition = taskManager.Load(task);
-
-                        List<string> warnings;
-                        taskVariablesMapping[task.Id] = new Variables(HostContext, new Dictionary<string, VariableValue>(), out warnings);
-
-                        // Add pre-job steps from Tasks
-                        if (taskDefinition.Data?.PreJobExecution != null)
+                        if (step.Type == Pipelines.StepType.Action)
                         {
-                            Trace.Info($"Adding Pre-Job {task.DisplayName}.");
-                            var taskRunner = HostContext.CreateService<ITaskRunner>();
-                            taskRunner.Task = task;
-                            taskRunner.Stage = JobRunStage.PreJob;
-                            taskRunner.Condition = taskConditionMap[task.Id];
-                            preJobSteps.Add(taskRunner);
+                            var action = step as Pipelines.ActionStep;
+                            Trace.Info($"Adding {action.DisplayName}.");
+                            var actionRunner = HostContext.CreateService<IActionRunner>();
+                            actionRunner.Action = action;
+                            actionRunner.Condition = taskConditionMap[action.Id];
+                            jobSteps.Add(actionRunner);
                         }
-
-                        // Add execution steps from Tasks
-                        if (taskDefinition.Data?.Execution != null)
+                        else if (step.Type == Pipelines.StepType.Task)
                         {
-                            Trace.Verbose($"Adding {task.DisplayName}.");
-                            var taskRunner = HostContext.CreateService<ITaskRunner>();
-                            taskRunner.Task = task;
-                            taskRunner.Stage = JobRunStage.Main;
-                            taskRunner.Condition = taskConditionMap[task.Id];
-                            jobSteps.Add(taskRunner);
-                        }
+                            var task = step as Pipelines.TaskStep;
+                            var taskDefinition = taskManager.Load(task);
 
-                        // Add post-job steps from Tasks
-                        if (taskDefinition.Data?.PostJobExecution != null)
-                        {
-                            Trace.Verbose($"Adding Post-Job {task.DisplayName}.");
-                            var taskRunner = HostContext.CreateService<ITaskRunner>();
-                            taskRunner.Task = task;
-                            taskRunner.Stage = JobRunStage.PostJob;
-                            taskRunner.Condition = ExpressionManager.Always;
-                            postJobStepsBuilder.Push(taskRunner);
+                            List<string> warnings;
+                            taskVariablesMapping[task.Id] = new Variables(HostContext, new Dictionary<string, VariableValue>(), out warnings);
+
+                            // Add pre-job steps from Tasks
+                            if (taskDefinition.Data?.PreJobExecution != null)
+                            {
+                                Trace.Info($"Adding Pre-Job {task.DisplayName}.");
+                                var taskRunner = HostContext.CreateService<ITaskRunner>();
+                                taskRunner.Task = task;
+                                taskRunner.Stage = JobRunStage.PreJob;
+                                taskRunner.Condition = taskConditionMap[task.Id];
+                                preJobSteps.Add(taskRunner);
+                            }
+
+                            // Add execution steps from Tasks
+                            if (taskDefinition.Data?.Execution != null)
+                            {
+                                Trace.Info($"Adding {task.DisplayName}.");
+                                var taskRunner = HostContext.CreateService<ITaskRunner>();
+                                taskRunner.Task = task;
+                                taskRunner.Stage = JobRunStage.Main;
+                                taskRunner.Condition = taskConditionMap[task.Id];
+                                jobSteps.Add(taskRunner);
+                            }
+
+                            // Add post-job steps from Tasks
+                            if (taskDefinition.Data?.PostJobExecution != null)
+                            {
+                                Trace.Info($"Adding Post-Job {task.DisplayName}.");
+                                var taskRunner = HostContext.CreateService<ITaskRunner>();
+                                taskRunner.Task = task;
+                                taskRunner.Stage = JobRunStage.PostJob;
+                                taskRunner.Condition = ExpressionManager.Always;
+                                postJobStepsBuilder.Push(taskRunner);
+                            }
                         }
                     }
 
@@ -232,9 +253,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     // create task execution context for all job steps from task
                     foreach (var step in jobSteps)
                     {
-                        ITaskRunner taskStep = step as ITaskRunner;
-                        ArgUtil.NotNull(taskStep, step.DisplayName);
-                        taskStep.ExecutionContext = jobContext.CreateChild(taskStep.Task.Id, taskStep.DisplayName, taskStep.Task.Name, taskVariablesMapping[taskStep.Task.Id], outputForward: true);
+                        if (step is ITaskRunner)
+                        {
+                            ITaskRunner taskStep = step as ITaskRunner;
+                            ArgUtil.NotNull(taskStep, step.DisplayName);
+                            taskStep.ExecutionContext = jobContext.CreateChild(taskStep.Task.Id, taskStep.DisplayName, taskStep.Task.Name, taskVariablesMapping[taskStep.Task.Id], outputForward: true);
+                        }
+                        else if (step is IActionRunner)
+                        {
+                            IActionRunner actionStep = step as IActionRunner;
+                            ArgUtil.NotNull(actionStep, step.DisplayName);
+                            actionStep.ExecutionContext = jobContext.CreateChild(actionStep.Action.Id, actionStep.DisplayName, actionStep.Action.Name, outputForward: true);
+                        }
                     }
 
                     // Add post-job steps from Tasks

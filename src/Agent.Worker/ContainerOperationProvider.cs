@@ -26,13 +26,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
     {
         private const string _nodeJsPathLabel = "com.azure.dev.pipelines.agent.handler.node.path";
         private IDockerCommandManager _dockerManger;
-        private string _containerNetwork;
 
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
             _dockerManger = HostContext.GetService<IDockerCommandManager>();
-            _containerNetwork = $"vsts_network_{Guid.NewGuid().ToString("N")}";
         }
 
         public async Task StartContainersAsync(IExecutionContext executionContext, object data)
@@ -125,8 +123,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
             // Create local docker network for this job to avoid port conflict when multiple agents run on same machine.
             // All containers within a job join the same network
-            await CreateContainerNetworkAsync(executionContext, _containerNetwork);
-            containers.ForEach(container => container.ContainerNetwork = _containerNetwork);
+            await CreateContainerNetworkAsync(executionContext, containers.First().ContainerNetwork);
+
+            // Expose the network name through variable
+            executionContext.SetVariable("Agent.ContainerNetwork", containers.First().ContainerNetwork);
 
             foreach (var container in containers)
             {
@@ -152,7 +152,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 await StopContainerAsync(executionContext, container);
             }
             // Remove the container network
-            await RemoveContainerNetworkAsync(executionContext, _containerNetwork);
+            await RemoveContainerNetworkAsync(executionContext, containers.First().ContainerNetwork);
         }
 
         private async Task StartContainerAsync(IExecutionContext executionContext, ContainerInfo container)
@@ -167,11 +167,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             Trace.Info($"Container registry: {container.ContainerRegistryEndpoint.ToString()}");
             Trace.Info($"Container options: {container.ContainerCreateOptions}");
             Trace.Info($"Skip container image pull: {container.SkipContainerImagePull}");
-            foreach(var port in container.UserPortMappings)
+            foreach (var port in container.UserPortMappings)
             {
                 Trace.Info($"User provided port: {port.Value}");
             }
-            foreach(var volume in container.UserMountVolumes)
+            foreach (var volume in container.UserMountVolumes)
             {
                 Trace.Info($"User provided volume: {volume.Value}");
             }
@@ -456,10 +456,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                         // check all potential groups that might match the GID.
                         foreach (string groupOutput in groupsOutput)
                         {
-                            if(!string.IsNullOrEmpty(groupOutput))
+                            if (!string.IsNullOrEmpty(groupOutput))
                             {
                                 var groupSegments = groupOutput.Split(':');
-                                if( groupSegments.Length != 4 )
+                                if (groupSegments.Length != 4)
                                 {
                                     Trace.Warning($"Unexpected output from /etc/group: '{groupOutput}'");
                                 }
@@ -469,7 +469,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                                     var groupName = groupSegments[0];
                                     var groupId = groupSegments[2];
 
-                                    if(string.Equals(dockerSockGroupId, groupId))
+                                    if (string.Equals(dockerSockGroupId, groupId))
                                     {
                                         existingGroupName = groupName;
                                         break;
@@ -479,7 +479,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                         }
                     }
 
-                    if(string.IsNullOrEmpty(existingGroupName))
+                    if (string.IsNullOrEmpty(existingGroupName))
                     {
                         // create a new group with same gid
                         existingGroupName = "azure_pipelines_docker";
@@ -489,7 +489,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                             throw new InvalidOperationException($"Docker exec fail with exit code {execDockerGroupaddExitCode}");
                         }
                     }
-                    
+
                     // Add the new created user to the docker socket group.
                     int execGroupUsermodExitCode = await _dockerManger.DockerExec(executionContext, container.ContainerId, string.Empty, $"usermod -a -G {existingGroupName} {containerUserName}");
                     if (execGroupUsermodExitCode != 0)

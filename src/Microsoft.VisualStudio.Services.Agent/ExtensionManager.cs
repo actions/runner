@@ -113,6 +113,15 @@ namespace Microsoft.VisualStudio.Services.Agent
                     Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.Build.BuildDirectoryManager, Agent.Worker");
                     Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.Release.ReleaseDirectoryManager, Agent.Worker");
                     break;
+                // Action command extensions.
+                case "Microsoft.VisualStudio.Services.Agent.Worker.IActionCommandExtension":
+                    Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.SetEnvCommandExtension, Agent.Worker");
+                    Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.SetOutputCommandExtension, Agent.Worker");
+                    Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.SetSecretCommandExtension, Agent.Worker");
+                    Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.AddPathCommandExtension, Agent.Worker");
+                    Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.WarningCommandExtension, Agent.Worker");
+                    Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.ErrorCommandExtension, Agent.Worker");
+                    break;
                 default:
                     // This should never happen.
                     throw new NotSupportedException($"Unexpected extension type: '{typeof(T).FullName}'");

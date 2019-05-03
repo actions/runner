@@ -15,7 +15,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="vss-api-netcore" Version="0.5.103-private" />
+    <PackageReference Include="vss-api-netcore" Version="0.5.106-private" />
     <PackageReference Include="azuredevops-testresultparser" Version="1.0.1" />
   </ItemGroup>
 

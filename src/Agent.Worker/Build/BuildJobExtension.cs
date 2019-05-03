@@ -206,7 +206,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             Trace.Entering();
             var extensionManager = HostContext.GetService<IExtensionManager>();
             List<ISourceProvider> sourceProviders = extensionManager.GetExtensions<ISourceProvider>();
-            Repository = executionContext.Repositories.SingleOrDefault();
+            Repository = executionContext.Repositories.SingleOrDefault(x => x.Alias == PipelineConstants.SelfAlias || x.Alias == PipelineConstants.DesignerRepo); // server task may not have repository.
             if (Repository != null)
             {
                 SourceProvider = sourceProviders.FirstOrDefault(x => string.Equals(x.RepositoryType, Repository.Type, StringComparison.OrdinalIgnoreCase));

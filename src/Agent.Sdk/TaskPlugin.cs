@@ -41,6 +41,7 @@ namespace Agent.Sdk
             this.Repositories = new List<Pipelines.RepositoryResource>();
             this.TaskVariables = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
             this.Variables = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
+            // this.Environment = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         }
 
         public List<ServiceEndpoint> Endpoints { get; set; }
@@ -48,6 +49,7 @@ namespace Agent.Sdk
         public Dictionary<string, VariableValue> Variables { get; set; }
         public Dictionary<string, VariableValue> TaskVariables { get; set; }
         public Dictionary<string, string> Inputs { get; set; }
+        // public Dictionary<string, string> Environment { get; set; }
 
         [JsonIgnore]
         public VssConnection VssConnection
@@ -120,6 +122,8 @@ namespace Agent.Sdk
             {
                 value = this.Inputs[name];
             }
+
+            Debug($"Input '{name}': '{value ?? string.Empty}'");
 
             if (string.IsNullOrEmpty(value) && required)
             {

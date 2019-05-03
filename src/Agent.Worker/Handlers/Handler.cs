@@ -34,6 +34,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
 #endif
 
         protected IWorkerCommandManager CommandManager { get; private set; }
+        protected IActionCommandManager ActionCommandManager { get; private set; }
 
         public List<ServiceEndpoint> Endpoints { get; set; }
         public Dictionary<string, string> Environment { get; set; }
@@ -49,6 +50,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
         {
             base.Initialize(hostContext);
             CommandManager = hostContext.GetService<IWorkerCommandManager>();
+            ActionCommandManager = hostContext.GetService<IActionCommandManager>();
         }
 
         protected void AddEndpointsToEnvironment()

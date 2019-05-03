@@ -19,7 +19,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Container
         Task<int> DockerLogin(IExecutionContext context, string server, string username, string password);
         Task<int> DockerLogout(IExecutionContext context, string server);
         Task<int> DockerPull(IExecutionContext context, string image);
+        Task<int> DockerBuild(IExecutionContext context, string path, string tag);
         Task<string> DockerCreate(IExecutionContext context, ContainerInfo container);
+        Task<int> DockerRun(IExecutionContext context, ContainerInfo container);
         Task<int> DockerStart(IExecutionContext context, string containerId);
         Task<int> DockerLogs(IExecutionContext context, string containerId);
         Task<List<string>> DockerPS(IExecutionContext context, string options);
@@ -102,6 +104,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Container
             return await ExecuteDockerCommandAsync(context, "pull", image, context.CancellationToken);
         }
 
+        public async Task<int> DockerBuild(IExecutionContext context, string path, string tag)
+        {
+            return await ExecuteDockerCommandAsync(context, "build", $"-t {tag} \"{path}\"", context.CancellationToken);
+        }
+
         public async Task<string> DockerCreate(IExecutionContext context, ContainerInfo container)
         {
             IList<string> dockerOptions = new List<string>();
@@ -162,6 +169,59 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Container
             List<string> outputStrings = await ExecuteDockerCommandAsync(context, "create", optionsString);
 
             return outputStrings.FirstOrDefault();
+        }
+
+        public async Task<int> DockerRun(IExecutionContext context, ContainerInfo container)
+        {
+            IList<string> dockerOptions = new List<string>();
+            // OPTIONS
+            dockerOptions.Add($"--name {container.ContainerDisplayName}");
+            dockerOptions.Add($"--label {DockerInstanceLabel}");
+
+            dockerOptions.Add($"--workdir {container.ContainerWorkDirectory}");
+            dockerOptions.Add($"--rm");
+
+            var envFile = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Temp), ".container_env");
+            File.WriteAllLines(envFile, container.ContainerEnvironmentVariables.Select(x => $"{x.Key}={x.Value}"));
+            dockerOptions.Add($"--env-file \"{envFile}\"");
+
+            if (!string.IsNullOrEmpty(container.ContainerEntryPoint))
+            {
+                dockerOptions.Add($"--entrypoint \"{container.ContainerEntryPoint}\"");
+            }
+
+            if (!string.IsNullOrEmpty(container.ContainerNetwork))
+            {
+                dockerOptions.Add($"--network {container.ContainerNetwork}");
+            }
+
+            foreach (var volume in container.MountVolumes)
+            {
+                // replace `"` with `\"` and add `"{0}"` to all path.
+                String volumeArg;
+                if (String.IsNullOrEmpty(volume.SourceVolumePath))
+                {
+                    // Anonymous docker volume
+                    volumeArg = $"-v \"{volume.TargetVolumePath.Replace("\"", "\\\"")}\"";
+                }
+                else
+                {
+                    // Named Docker volume / host bind mount
+                    volumeArg = $"-v \"{volume.SourceVolumePath.Replace("\"", "\\\"")}\":\"{volume.TargetVolumePath.Replace("\"", "\\\"")}\"";
+                }
+                if (volume.ReadOnly)
+                {
+                    volumeArg += ":ro";
+                }
+                dockerOptions.Add(volumeArg);
+            }
+            // IMAGE
+            dockerOptions.Add($"{container.ContainerImage}");
+            // COMMAND
+            dockerOptions.Add($"{container.ContainerCommand}");
+
+            var optionsString = string.Join(" ", dockerOptions);
+            return await ExecuteDockerCommandAsync(context, "run", optionsString, context.CancellationToken);
         }
 
         public async Task<int> DockerStart(IExecutionContext context, string containerId)
@@ -239,6 +299,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Container
                 }
             };
 
+#if OS_WINDOWS
+            context.Output("");
+            context.Output("                        ##         .");
+            context.Output("                  ## ## ##        ==");
+            context.Output("               ## ## ## ## ##    ===");
+            context.Output("           /\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\\___/ ===");
+            context.Output("      ~~~ {~~ ~~~~ ~~~ ~~~~ ~~~ ~ /  ===- ~~~");
+            context.Output("           \\______ o           __/");
+            context.Output("             \\    \\         __/");
+            context.Output("              \\____\\_______/");
+            context.Output("");
+            await Task.Delay(1000);
+            return 0;
+#else
             return await processInvoker.ExecuteAsync(
                             workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Work),
                             fileName: DockerPath,
@@ -247,6 +321,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Container
                             requireExitCodeZero: false,
                             outputEncoding: null,
                             cancellationToken: CancellationToken.None);
+#endif
         }
 
         public async Task<string> DockerInspect(IExecutionContext context, string dockerObject, string options)
@@ -291,6 +366,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Container
                 }
             }
 
+#if OS_WINDOWS
+            context.Output("");
+            context.Output("                        ##         .");
+            context.Output("                  ## ## ##        ==");
+            context.Output("               ## ## ## ## ##    ===");
+            context.Output("           /\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\\___/ ===");
+            context.Output("      ~~~ {~~ ~~~~ ~~~ ~~~~ ~~~ ~ /  ===- ~~~");
+            context.Output("           \\______ o           __/");
+            context.Output("             \\    \\         __/");
+            context.Output("              \\____\\_______/");
+            context.Output("");
+            await Task.Delay(1000);
+            return 0;
+#else
             return await processInvoker.ExecuteAsync(
                 workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Work),
                 fileName: DockerPath,
@@ -301,6 +390,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Container
                 killProcessOnCancel: false,
                 redirectStandardIn: redirectStandardIn,
                 cancellationToken: cancellationToken);
+#endif
         }
 
         private async Task<List<string>> ExecuteDockerCommandAsync(IExecutionContext context, string command, string options)

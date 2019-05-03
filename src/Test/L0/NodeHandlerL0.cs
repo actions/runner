@@ -24,6 +24,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             {
                 thc.SetSingleton(new WorkerCommandManager() as IWorkerCommandManager);
                 thc.SetSingleton(new ExtensionManager() as IExtensionManager);
+                thc.SetSingleton(new ActionCommandManager() as IActionCommandManager);
 
                 NodeHandler nodeHandler = new NodeHandler();
 
@@ -49,6 +50,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             {
                 thc.SetSingleton(new WorkerCommandManager() as IWorkerCommandManager);
                 thc.SetSingleton(new ExtensionManager() as IExtensionManager);
+                thc.SetSingleton(new ActionCommandManager() as IActionCommandManager);
 
                 NodeHandler nodeHandler = new NodeHandler();
 
@@ -78,6 +80,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 {
                     thc.SetSingleton(new WorkerCommandManager() as IWorkerCommandManager);
                     thc.SetSingleton(new ExtensionManager() as IExtensionManager);
+                    thc.SetSingleton(new ActionCommandManager() as IActionCommandManager);
 
                     NodeHandler nodeHandler = new NodeHandler();
 
@@ -108,6 +111,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             {
                 thc.SetSingleton(new WorkerCommandManager() as IWorkerCommandManager);
                 thc.SetSingleton(new ExtensionManager() as IExtensionManager);
+                thc.SetSingleton(new ActionCommandManager() as IActionCommandManager);
 
                 var variables = new Dictionary<string, VariableValue>();
 
@@ -137,6 +141,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             {
                 thc.SetSingleton(new WorkerCommandManager() as IWorkerCommandManager);
                 thc.SetSingleton(new ExtensionManager() as IExtensionManager);
+                thc.SetSingleton(new ActionCommandManager() as IActionCommandManager);
 
                 var variables = new Dictionary<string, VariableValue>();
 
@@ -163,7 +168,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         {
             return new TestHostContext(this, testName);
         }
-        
+
         private IExecutionContext CreateTestExecutionContext(TestHostContext tc,
             Dictionary<string, VariableValue> variables = null)
         {
@@ -172,11 +177,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             List<string> warnings;
             variables = variables ?? new Dictionary<string, VariableValue>();
 
-             executionContext
-                .Setup(x => x.Variables)
-                .Returns(new Variables(tc, copy: variables, warnings: out warnings));
+            executionContext
+               .Setup(x => x.Variables)
+               .Returns(new Variables(tc, copy: variables, warnings: out warnings));
 
-             return executionContext.Object;
+            return executionContext.Object;
         }
     }
 }

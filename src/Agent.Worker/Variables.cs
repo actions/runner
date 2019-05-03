@@ -199,6 +199,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             "RequestedFor"
         };
 
+        public string System_DefaultWorkingDirectory => Get(Constants.Variables.System.DefaultWorkingDirectory);
+
         public void ExpandValues(IDictionary<string, string> target)
         {
             _trace.Entering();

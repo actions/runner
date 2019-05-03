@@ -10,15 +10,21 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.Services.Common;
+using Newtonsoft.Json.Linq;
+using Microsoft.VisualStudio.Services.Agent.Worker.Container;
+using System.Net.Http;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
     [ServiceLocator(Default = typeof(TaskManager))]
     public interface ITaskManager : IAgentService
     {
+        Dictionary<Guid, ContainerInfo> CachedActionContainers { get; }
         Task DownloadAsync(IExecutionContext executionContext, IEnumerable<Pipelines.JobStep> steps);
 
         Definition Load(Pipelines.TaskStep task);
+
+        Definition LoadAction(IExecutionContext executionContext, Pipelines.ActionStep action);
     }
 
     public sealed class TaskManager : AgentService, ITaskManager
@@ -28,6 +34,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         //81920 is the default used by System.IO.Stream.CopyTo and is under the large object heap threshold (85k). 
         private const int _defaultCopyBufferSize = 81920;
 
+        private readonly Dictionary<Guid, ContainerInfo> _cachedActionContainers = new Dictionary<Guid, ContainerInfo>();
+
+        public Dictionary<Guid, ContainerInfo> CachedActionContainers => _cachedActionContainers;
+
         public async Task DownloadAsync(IExecutionContext executionContext, IEnumerable<Pipelines.JobStep> steps)
         {
             ArgUtil.NotNull(executionContext, nameof(executionContext));
@@ -36,6 +46,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             executionContext.Output(StringUtil.Loc("EnsureTasksExist"));
 
             IEnumerable<Pipelines.TaskStep> tasks = steps.OfType<Pipelines.TaskStep>();
+            IEnumerable<Pipelines.ActionStep> actions = steps.OfType<Pipelines.ActionStep>();
 
             //remove duplicate, disabled and built-in tasks
             IEnumerable<Pipelines.TaskStep> uniqueTasks =
@@ -48,9 +59,23 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 into taskGrouping
                 select taskGrouping.First();
 
-            if (uniqueTasks.Count() == 0)
+            List<Pipelines.ContainerResource> actionContainers = new List<Pipelines.ContainerResource>();
+            foreach (var containerAction in actions.Where(x => x.Reference.Type == Pipelines.ActionSourceType.ContainerRegistry))
             {
-                executionContext.Debug("There is no required tasks need to download.");
+                var container = containerAction.Reference as Pipelines.ContainerRegistryActionDefinitionReference;
+                actionContainers.Add(executionContext.Containers.Single(x => x.Alias == container.Container));
+            }
+
+            List<Pipelines.RepositoryResource> actionRepositories = new List<Pipelines.RepositoryResource>();
+            foreach (var repositoryAction in actions.Where(x => x.Reference.Type == Pipelines.ActionSourceType.Repository))
+            {
+                var repository = repositoryAction.Reference as Pipelines.RepositoryActionDefinitionReference;
+                actionRepositories.Add(executionContext.Repositories.Single(x => x.Alias == repository.Repository));
+            }
+
+            if (uniqueTasks.Count() == 0 && actionContainers.Count() == 0 && actionRepositories.Count() == 0)
+            {
+                executionContext.Debug("There is no required tasks/actions need to download.");
                 return;
             }
 
@@ -61,8 +86,391 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     Trace.Info("Skip download checkout task.");
                     continue;
                 }
+
+                if (task.Id == Pipelines.PipelineConstants.RunTask.Id && task.Version == Pipelines.PipelineConstants.RunTask.Version)
+                {
+                    Trace.Info("Skip download run task.");
+                    continue;
+                }
+
                 await DownloadAsync(executionContext, task);
             }
+
+            foreach (var containerAction in actions.Where(x => x.Reference.Type == Pipelines.ActionSourceType.ContainerRegistry))
+            {
+                var container = containerAction.Reference as Pipelines.ContainerRegistryActionDefinitionReference;
+                var containerResource = actionContainers.Single(x => x.Alias == container.Container);
+                await DownloadContainerRegistryActionAsync(executionContext, containerResource, containerAction);
+            }
+
+            foreach (var repositoryAction in actions.Where(x => x.Reference.Type == Pipelines.ActionSourceType.Repository))
+            {
+                var repository = repositoryAction.Reference as Pipelines.RepositoryActionDefinitionReference;
+                var repositoryResource = actionRepositories.Single(x => x.Alias == repository.Repository);
+                await DownloadRepositoryActionAsync(executionContext, repositoryResource, repositoryAction);
+            }
+        }
+
+        private async Task DownloadContainerRegistryActionAsync(IExecutionContext executionContext, Pipelines.ContainerResource containerResource, Pipelines.ActionStep containerAction)
+        {
+            Trace.Entering();
+            ArgUtil.NotNull(executionContext, nameof(executionContext));
+
+            ArgUtil.NotNull(containerResource, nameof(containerResource));
+            ArgUtil.NotNullOrEmpty(containerResource.Image, nameof(containerResource.Image));
+
+            executionContext.Output($"Pull down action image '{containerResource.Image}'");
+
+            // Pull down docker image with retry up to 3 times
+            var dockerManger = HostContext.GetService<IDockerCommandManager>();
+            int retryCount = 0;
+            int pullExitCode = 0;
+            while (retryCount < 3)
+            {
+                pullExitCode = await dockerManger.DockerPull(executionContext, containerResource.Image);
+                if (pullExitCode == 0)
+                {
+                    break;
+                }
+                else
+                {
+                    retryCount++;
+                    if (retryCount < 3)
+                    {
+                        var backOff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(10));
+                        executionContext.Warning($"Docker pull failed with exit code {pullExitCode}, back off {backOff.TotalSeconds} seconds before retry.");
+                        await Task.Delay(backOff);
+                    }
+                }
+            }
+
+            if (retryCount == 3 && pullExitCode != 0)
+            {
+                throw new InvalidOperationException($"Docker pull failed with exit code {pullExitCode}");
+            }
+
+            CachedActionContainers[containerAction.Id] = new ContainerInfo() { ContainerImage = containerResource.Image };
+        }
+
+        private async Task DownloadRepositoryActionAsync(IExecutionContext executionContext, Pipelines.RepositoryResource repositoryResource, Pipelines.ActionStep repositoryAction)
+        {
+            Trace.Entering();
+            ArgUtil.NotNull(executionContext, nameof(executionContext));
+
+            ArgUtil.NotNull(repositoryResource, nameof(repositoryResource));
+            ArgUtil.NotNullOrEmpty(repositoryResource.Alias, nameof(repositoryResource.Alias));
+
+            if (string.Equals(repositoryResource.Alias, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase))
+            {
+                Trace.Info($"Repository action is in 'self' repository.");
+                return;
+            }
+
+            ArgUtil.NotNullOrEmpty(repositoryResource.Id, nameof(repositoryResource.Id));
+            ArgUtil.NotNullOrEmpty(repositoryResource.Version, nameof(repositoryResource.Version));
+
+#if OS_WINDOWS
+            string archiveLink = $"https://api.github.com/repos/{repositoryResource.Id}/zipball/{repositoryResource.Version}";
+#else
+            string archiveLink = $"https://api.github.com/repos/{repositoryResource.Id}/tarball/{repositoryResource.Version}";
+#endif
+
+            string destDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Tasks), repositoryResource.Id.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar), repositoryResource.Version);
+            Trace.Info($"Download archive '{archiveLink}' to '{destDirectory}'.");
+            if (File.Exists(destDirectory + ".completed"))
+            {
+                executionContext.Debug($"Action '{repositoryResource.Id}@{repositoryResource.Version}' already downloaded at '{destDirectory}'.");
+                return;
+            }
+            else
+            {
+                // make sure we get an clean folder ready to use.
+                IOUtil.DeleteDirectory(destDirectory, executionContext.CancellationToken);
+                Directory.CreateDirectory(destDirectory);
+            }
+
+            //download and extract task in a temp folder and rename it on success
+            string tempDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Tasks), "_temp_" + Guid.NewGuid());
+            Directory.CreateDirectory(tempDirectory);
+
+
+#if OS_WINDOWS
+            string archiveFile = Path.Combine(tempDirectory, $"{Guid.NewGuid()}.zip");
+#else
+            string archiveFile = Path.Combine(tempDirectory, $"{Guid.NewGuid()}.tar.gz");
+#endif
+            Trace.Info($"Save archive '{archiveLink}' into {archiveFile}.");
+            try
+            {
+
+                int retryCount = 0;
+
+                // Allow up to 20 * 60s for any task to be downloaded from service. 
+                // Base on Kusto, the longest we have on the service today is over 850 seconds.
+                // Timeout limit can be overwrite by environment variable
+                if (!int.TryParse(Environment.GetEnvironmentVariable("VSTS_TASK_DOWNLOAD_TIMEOUT") ?? string.Empty, out int timeoutSeconds))
+                {
+                    timeoutSeconds = 20 * 60;
+                }
+
+                while (retryCount < 3)
+                {
+                    using (var taskDownloadTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds)))
+                    using (var taskDownloadCancellation = CancellationTokenSource.CreateLinkedTokenSource(taskDownloadTimeout.Token, executionContext.CancellationToken))
+                    {
+                        try
+                        {
+                            //open zip stream in async mode
+                            using (FileStream fs = new FileStream(archiveFile, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: _defaultFileStreamBufferSize, useAsync: true))
+                            using (var httpClientHandler = HostContext.CreateHttpClientHandler())
+                            using (var httpClient = new HttpClient(httpClientHandler))
+                            {
+                                httpClient.DefaultRequestHeaders.UserAgent.Add(HostContext.UserAgent);
+                                using (var result = await httpClient.GetStreamAsync(archiveLink))
+                                {
+                                    await result.CopyToAsync(fs, _defaultCopyBufferSize, taskDownloadCancellation.Token);
+                                    await fs.FlushAsync(taskDownloadCancellation.Token);
+
+                                    // download succeed, break out the retry loop.
+                                    break;
+                                }
+                            }
+                        }
+                        catch (OperationCanceledException) when (executionContext.CancellationToken.IsCancellationRequested)
+                        {
+                            Trace.Info($"Task download has been cancelled.");
+                            throw;
+                        }
+                        catch (Exception ex) when (retryCount < 2)
+                        {
+                            retryCount++;
+                            Trace.Error($"Fail to download archive '{archiveLink}' -- Attempt: {retryCount}");
+                            Trace.Error(ex);
+                            if (taskDownloadTimeout.Token.IsCancellationRequested)
+                            {
+                                // task download didn't finish within timeout
+                                executionContext.Warning(StringUtil.Loc("TaskDownloadTimeout", archiveLink, timeoutSeconds));
+                            }
+                            else
+                            {
+                                executionContext.Warning(StringUtil.Loc("TaskDownloadFailed", archiveLink, ex.Message));
+                            }
+                        }
+                    }
+
+                    if (String.IsNullOrEmpty(Environment.GetEnvironmentVariable("VSTS_TASK_DOWNLOAD_NO_BACKOFF")))
+                    {
+                        var backOff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(30));
+                        executionContext.Warning($"Back off {backOff.TotalSeconds} seconds before retry.");
+                        await Task.Delay(backOff);
+                    }
+                }
+
+                ArgUtil.NotNullOrEmpty(archiveFile, nameof(archiveFile));
+                executionContext.Debug($"Download '{archiveLink}' to '{archiveFile}'");
+
+                var stagingDirectory = Path.Combine(tempDirectory, "_staging");
+                Directory.CreateDirectory(stagingDirectory);
+
+#if OS_WINDOWS
+                ZipFile.ExtractToDirectory(archiveFile, stagingDirectory);
+#else
+                string tar = WhichUtil.Which("tar", trace: Trace);
+                if (string.IsNullOrEmpty(tar))
+                {
+                    throw new NotSupportedException($"tar -xzf");
+                }
+
+                // tar -xzf
+                using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
+                {
+                    processInvoker.OutputDataReceived += new EventHandler<ProcessDataReceivedEventArgs>((sender, args) =>
+                    {
+                        if (!string.IsNullOrEmpty(args.Data))
+                        {
+                            Trace.Info(args.Data);
+                        }
+                    });
+
+                    processInvoker.ErrorDataReceived += new EventHandler<ProcessDataReceivedEventArgs>((sender, args) =>
+                    {
+                        if (!string.IsNullOrEmpty(args.Data))
+                        {
+                            Trace.Error(args.Data);
+                        }
+                    });
+
+                    int exitCode = await processInvoker.ExecuteAsync(stagingDirectory, tar, $"-xzf \"{archiveFile}\"", null, executionContext.CancellationToken);
+                    if (exitCode != 0)
+                    {
+                        throw new NotSupportedException($"Can't use 'tar -xzf' extract archive file: {archiveFile}. return code: {exitCode}.");
+                    }
+                }
+#endif
+
+                // repository archive from github always contains a nested folder
+                var subDirectories = new DirectoryInfo(stagingDirectory).GetDirectories();
+                if (subDirectories.Length != 1)
+                {
+                    throw new InvalidOperationException($"'{archiveFile}' contains '{subDirectories.Length}' directories");
+                }
+                else
+                {
+                    executionContext.Debug($"Unwrap '{subDirectories[0].Name}' to '{destDirectory}'");
+                    IOUtil.CopyDirectory(subDirectories[0].FullName, destDirectory, executionContext.CancellationToken);
+                }
+
+                Trace.Verbose("Create watermark file indicate task download succeed.");
+                File.WriteAllText(destDirectory + ".completed", DateTime.UtcNow.ToString());
+
+                executionContext.Debug($"Archive '{archiveFile}' has been unzipped into '{destDirectory}'.");
+                Trace.Info("Finished getting action repository.");
+            }
+            finally
+            {
+                try
+                {
+                    //if the temp folder wasn't moved -> wipe it
+                    if (Directory.Exists(tempDirectory))
+                    {
+                        Trace.Verbose("Deleting task temp folder: {0}", tempDirectory);
+                        IOUtil.DeleteDirectory(tempDirectory, CancellationToken.None); // Don't cancel this cleanup and should be pretty fast.
+                    }
+                }
+                catch (Exception ex)
+                {
+                    //it is not critical if we fail to delete the temp folder
+                    Trace.Warning("Failed to delete temp folder '{0}'. Exception: {1}", tempDirectory, ex);
+                    executionContext.Warning(StringUtil.Loc("FailedDeletingTempDirectory0Message1", tempDirectory, ex.Message));
+                }
+            }
+
+            string actionEntryDirectory = destDirectory;
+            var repoReference = repositoryAction.Reference as Pipelines.RepositoryActionDefinitionReference;
+            ArgUtil.NotNull(repoReference, nameof(repoReference));
+            if (!string.IsNullOrEmpty(repoReference.Path))
+            {
+                actionEntryDirectory = Path.Combine(destDirectory, repoReference.Path);
+            }
+
+            // find the docker file
+            string dockerFile = Path.Combine(actionEntryDirectory, "Dockerfile");
+            if (File.Exists(dockerFile))
+            {
+                executionContext.Output($"Dockerfile for action: '{dockerFile}'.");
+
+                var dockerManger = HostContext.GetService<IDockerCommandManager>();
+                var imageName = $"{dockerManger.DockerInstanceLabel}:{Guid.NewGuid().ToString("N")}";
+                var buildExitCode = await dockerManger.DockerBuild(executionContext, Directory.GetParent(dockerFile).FullName, imageName);
+                if (buildExitCode != 0)
+                {
+                    throw new InvalidOperationException($"Docker build failed with exit code {buildExitCode}");
+                }
+
+                CachedActionContainers[repositoryAction.Id] = new ContainerInfo() { ContainerImage = imageName };
+            }
+            else
+            {
+                var nodeScript = Path.Combine(actionEntryDirectory, "task.json");
+                if (File.Exists(nodeScript))
+                {
+                    executionContext.Output($"task.json for action: '{nodeScript}'.");
+                }
+                else
+                {
+                    throw new InvalidOperationException($"'{actionEntryDirectory}' does not contains any action entry file.");
+                }
+            }
+        }
+
+        public Definition LoadAction(IExecutionContext executionContext, Pipelines.ActionStep action)
+        {
+            // Validate args.
+            Trace.Entering();
+            ArgUtil.NotNull(action, nameof(action));
+
+            // Initialize the definition wrapper object.
+            var definition = new Definition()
+            {
+                Data = new DefinitionData()
+                {
+                    Execution = new ExecutionData()
+                }
+            };
+
+            if (action.Reference.Type == Pipelines.ActionSourceType.ContainerRegistry)
+            {
+                CachedActionContainers.TryGetValue(action.Id, out var container);
+                ArgUtil.NotNull(container, nameof(container));
+                definition.Data.Execution.ContainerAction = new ContainerActionHandlerData()
+                {
+                    ContainerImage = container.ContainerImage
+                };
+            }
+            else
+            {
+                string actionDirectory = null;
+                if (action.Reference.Type == Pipelines.ActionSourceType.Repository)
+                {
+                    var repoAction = action.Reference as Pipelines.RepositoryActionDefinitionReference;
+                    if (string.Equals(repoAction.Repository, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase))
+                    {
+                        var selfRepo = executionContext.Repositories.Single(x => string.Equals(x.Alias, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase));
+                        actionDirectory = selfRepo.Properties.Get<string>(Pipelines.RepositoryPropertyNames.Path);
+                        if (!string.IsNullOrEmpty(repoAction.Path))
+                        {
+                            actionDirectory = Path.Combine(actionDirectory, repoAction.Path);
+                        }
+                    }
+                    else
+                    {
+                        var repo = executionContext.Repositories.Single(x => string.Equals(x.Alias, repoAction.Repository, StringComparison.OrdinalIgnoreCase));
+                        actionDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Tasks), repo.Id.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar), repo.Version);
+                        if (!string.IsNullOrEmpty(repoAction.Path))
+                        {
+                            actionDirectory = Path.Combine(actionDirectory, repoAction.Path);
+                        }
+                    }
+                }
+                else
+                {
+                    throw new NotSupportedException(action.Reference.Type.ToString());
+                }
+
+                // string manifestFile = Path.Combine(actionDirectory, "manifest.yml");
+                // if (!File.Exists(manifestFile))
+                // {
+                //     throw new FileNotFoundException(manifestFile);
+                // }
+
+                string dockerFile = Path.Combine(actionDirectory, "Dockerfile");
+                string nodeFile = Path.Combine(actionDirectory, "action.js");
+                if (File.Exists(dockerFile))
+                {
+                    definition.Data.Execution.ContainerAction = new ContainerActionHandlerData
+                    {
+                        Target = dockerFile,
+                    };
+
+                    if (CachedActionContainers.TryGetValue(action.Id, out var container))
+                    {
+                        definition.Data.Execution.ContainerAction.ContainerImage = container.ContainerImage;
+                    }
+                }
+                else if (File.Exists(nodeFile))
+                {
+                    definition.Data.Execution.NodeAction = new NodeScriptActionHandlerData()
+                    {
+                        Target = nodeFile,
+                    };
+                }
+                else
+                {
+                    throw new NotSupportedException($"'{actionDirectory}' doesn't contain a Dockerfile or an action.js file");
+                }
+            }
+
+            return definition;
         }
 
         public Definition Load(Pipelines.TaskStep task)
@@ -90,6 +498,71 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
                 return checkoutTask;
             }
+
+            if (task.Reference.Id == Pipelines.PipelineConstants.RunTask.Id && task.Reference.Version == Pipelines.PipelineConstants.RunTask.Version)
+            {
+                var runTask = new Definition()
+                {
+                    Directory = HostContext.GetDirectory(WellKnownDirectory.Tasks),
+                    Data = new DefinitionData()
+                    {
+                        Author = Pipelines.PipelineConstants.RunTask.Author,
+                        Description = Pipelines.PipelineConstants.RunTask.Description,
+                        FriendlyName = Pipelines.PipelineConstants.RunTask.FriendlyName,
+                        HelpMarkDown = Pipelines.PipelineConstants.RunTask.HelpMarkDown,
+                        Inputs = Pipelines.PipelineConstants.RunTask.Inputs.ToArray(),
+                        Execution = StringUtil.ConvertFromJson<ExecutionData>(StringUtil.ConvertToJson(Pipelines.PipelineConstants.RunTask.Execution)),
+                    }
+                };
+
+                return runTask;
+            }
+
+            // if (task.Reference.Id == new Guid("22f9b24a-0e55-484c-870e-1a0041f0167e"))
+            // {
+            //     var containerTask = new Definition()
+            //     {
+            //         Directory = HostContext.GetDirectory(WellKnownDirectory.Tasks),
+            //         Data = new DefinitionData()
+            //         {
+            //             Author = "Microsoft",
+            //             Description = "Container",
+            //             FriendlyName = "Container",
+            //             HelpMarkDown = "Container",
+            //             Inputs = new TaskInputDefinition[]{
+            //                 new TaskInputDefinition()
+            //                 {
+            //                     Name =  "container",
+            //                     Required = true,
+            //                     InputType = TaskInputType.String
+            //                 },
+            //                 new TaskInputDefinition()
+            //                 {
+            //                     Name =  "runs",
+            //                     Required = false,
+            //                     InputType = TaskInputType.String
+            //                 },
+            //                 new TaskInputDefinition()
+            //                 {
+            //                     Name =  "args",
+            //                     Required = false,
+            //                     InputType = TaskInputType.String
+            //                 },
+            //             },
+            //             Execution = StringUtil.ConvertFromJson<ExecutionData>(StringUtil.ConvertToJson(
+            //                 new Dictionary<string, JObject>()
+            //                 {
+            //                     {
+            //                         "agentPlugin",
+            //                         JObject.FromObject(new Dictionary<String, String>(){ { "target", "Agent.Plugins.Container.ContainerActionTask, Agent.Plugins"} })
+            //                     }
+            //                 }
+            //             )),
+            //         }
+            //     };
+
+            //     return containerTask;
+            // }
 
             // Initialize the definition wrapper object.
             var definition = new Definition() { Directory = GetDirectory(task.Reference) };
@@ -243,6 +716,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         }
     }
 
+    public enum ActionType
+    {
+        Container,
+        NodeScript
+    }
+
+    public sealed class ActionDefinition
+    {
+        public DefinitionData Data { get; set; }
+        public string Directory { get; set; }
+        public ActionType Type { get; set; }
+    }
+
     public sealed class Definition
     {
         public DefinitionData Data { get; set; }
@@ -273,6 +759,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
     {
         private readonly List<HandlerData> _all = new List<HandlerData>();
         private AzurePowerShellHandlerData _azurePowerShell;
+        private ContainerActionHandlerData _containerAction;
+        private NodeScriptActionHandlerData _nodeScriptAction;
+        private ShellHandlerData _shell;
         private NodeHandlerData _node;
         private Node10HandlerData _node10;
         private PowerShellHandlerData _powerShell;
@@ -325,6 +814,48 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             set
             {
                 _node10 = value;
+                Add(value);
+            }
+        }
+
+        public ContainerActionHandlerData ContainerAction
+        {
+            get
+            {
+                return _containerAction;
+            }
+
+            set
+            {
+                _containerAction = value;
+                Add(value);
+            }
+        }
+
+        public NodeScriptActionHandlerData NodeAction
+        {
+            get
+            {
+                return _nodeScriptAction;
+            }
+
+            set
+            {
+                _nodeScriptAction = value;
+                Add(value);
+            }
+        }
+
+        public ShellHandlerData Shell
+        {
+            get
+            {
+                return _shell;
+            }
+
+            set
+            {
+                _shell = value;
                 Add(value);
             }
         }
@@ -512,6 +1043,68 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         public override int Priority => 3;
     }
 
+    public sealed class ContainerActionHandlerData : HandlerData
+    {
+        public override int Priority => 3;
+
+        public string ContainerImage
+        {
+            get
+            {
+                return GetInput(nameof(ContainerImage));
+            }
+
+            set
+            {
+                SetInput(nameof(ContainerImage), value);
+            }
+        }
+
+        public string EntryPoint
+        {
+            get
+            {
+                return GetInput(nameof(EntryPoint));
+            }
+
+            set
+            {
+                SetInput(nameof(EntryPoint), value);
+            }
+        }
+
+        public string Arguments
+        {
+            get
+            {
+                return GetInput(nameof(Arguments));
+            }
+
+            set
+            {
+                SetInput(nameof(Arguments), value);
+            }
+        }
+    }
+
+    public sealed class NodeScriptActionHandlerData : HandlerData
+    {
+        public override int Priority => 3;
+
+        public string WorkingDirectory
+        {
+            get
+            {
+                return GetInput(nameof(WorkingDirectory));
+            }
+
+            set
+            {
+                SetInput(nameof(WorkingDirectory), value);
+            }
+        }
+    }
+
     public sealed class PowerShellHandlerData : HandlerData
     {
         public string ArgumentFormat
@@ -691,5 +1284,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
     public sealed class AgentPluginHandlerData : HandlerData
     {
         public override int Priority => 0;
+    }
+
+    public sealed class ShellHandlerData : HandlerData
+    {
+        public override int Priority => 6;
     }
 }

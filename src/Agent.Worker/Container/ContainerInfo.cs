@@ -20,6 +20,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Container
         private Dictionary<string, string> _pathMappings = new Dictionary<string, string>();
 #endif
 
+        public ContainerInfo()
+        {
+            
+        }
+
         public ContainerInfo(IHostContext hostContext, Pipelines.ContainerResource container, Boolean isJobContainer = true)
         {
             this.ContainerName = container.Alias;
@@ -33,7 +38,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Container
             this.ContainerCreateOptions = container.Properties.Get<string>("options");
             this.SkipContainerImagePull = container.Properties.Get<bool>("localimage");
             _environmentVariables = container.Environment;
+            this.ContainerEntryPoint = container.Properties.Get<string>("entrypoint", defaultValue: "");
             this.ContainerCommand = container.Properties.Get<string>("command", defaultValue: "");
+            this.ContainerWorkDirectory = container.Properties.Get<string>("workdir", defaultValue: "");
             this.IsJobContainer = isJobContainer;
 
 #if OS_WINDOWS
@@ -67,12 +74,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Container
         }
 
         public string ContainerId { get; set; }
-        public string ContainerDisplayName { get; private set; }
+        public string ContainerDisplayName { get; set; }
         public string ContainerNetwork { get; set; }
         public string ContainerNetworkAlias { get; set; }
         public string ContainerImage { get; set; }
         public string ContainerName { get; set; }
+        public string ContainerEntryPoint { get; set; }
         public string ContainerCommand { get; set; }
+        public string ContainerWorkDirectory { get; set; }
         public string ContainerBringNodePath { get; set; }
         public Guid ContainerRegistryEndpoint { get; private set; }
         public string ContainerCreateOptions { get; private set; }
