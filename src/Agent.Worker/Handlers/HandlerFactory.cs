@@ -118,11 +118,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
                 handler = HostContext.CreateService<INodeScriptActionHandler>();
                 (handler as INodeScriptActionHandler).Data = data as NodeScriptActionHandlerData;
             }
-            else if (data is ShellHandlerData)
-            {
-                handler = HostContext.CreateService<IShellHandler>();
-                (handler as IShellHandler).Data = data as ShellHandlerData;
-            }
             else
             {
                 // This should never happen.

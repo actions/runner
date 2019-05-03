@@ -87,12 +87,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     continue;
                 }
 
-                if (task.Id == Pipelines.PipelineConstants.RunTask.Id && task.Version == Pipelines.PipelineConstants.RunTask.Version)
-                {
-                    Trace.Info("Skip download run task.");
-                    continue;
-                }
-
                 await DownloadAsync(executionContext, task);
             }
 
@@ -499,25 +493,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 return checkoutTask;
             }
 
-            if (task.Reference.Id == Pipelines.PipelineConstants.RunTask.Id && task.Reference.Version == Pipelines.PipelineConstants.RunTask.Version)
-            {
-                var runTask = new Definition()
-                {
-                    Directory = HostContext.GetDirectory(WellKnownDirectory.Tasks),
-                    Data = new DefinitionData()
-                    {
-                        Author = Pipelines.PipelineConstants.RunTask.Author,
-                        Description = Pipelines.PipelineConstants.RunTask.Description,
-                        FriendlyName = Pipelines.PipelineConstants.RunTask.FriendlyName,
-                        HelpMarkDown = Pipelines.PipelineConstants.RunTask.HelpMarkDown,
-                        Inputs = Pipelines.PipelineConstants.RunTask.Inputs.ToArray(),
-                        Execution = StringUtil.ConvertFromJson<ExecutionData>(StringUtil.ConvertToJson(Pipelines.PipelineConstants.RunTask.Execution)),
-                    }
-                };
-
-                return runTask;
-            }
-
             // if (task.Reference.Id == new Guid("22f9b24a-0e55-484c-870e-1a0041f0167e"))
             // {
             //     var containerTask = new Definition()
@@ -761,7 +736,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         private AzurePowerShellHandlerData _azurePowerShell;
         private ContainerActionHandlerData _containerAction;
         private NodeScriptActionHandlerData _nodeScriptAction;
-        private ShellHandlerData _shell;
         private NodeHandlerData _node;
         private Node10HandlerData _node10;
         private PowerShellHandlerData _powerShell;
@@ -842,20 +816,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             set
             {
                 _nodeScriptAction = value;
-                Add(value);
-            }
-        }
-
-        public ShellHandlerData Shell
-        {
-            get
-            {
-                return _shell;
-            }
-
-            set
-            {
-                _shell = value;
                 Add(value);
             }
         }
@@ -1284,10 +1244,5 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
     public sealed class AgentPluginHandlerData : HandlerData
     {
         public override int Priority => 0;
-    }
-
-    public sealed class ShellHandlerData : HandlerData
-    {
-        public override int Priority => 6;
     }
 }

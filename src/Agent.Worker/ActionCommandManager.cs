@@ -63,7 +63,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 {
                     if (string.Equals(actionCommand.Command, _stopCommand, StringComparison.OrdinalIgnoreCase))
                     {
-                        context.Output($"Stop process further commands till '##[{actionCommand.Data}]' come in.");
+                        context.Output(input);
+                        context.Output($"{WellKnownTags.Debug}Paused processing commands until '##[{actionCommand.Data}]' is received");
                         _stopToken = actionCommand.Data;
                         _stopProcessCommand = true;
                         _registeredCommands.Add(_stopToken);
@@ -72,7 +73,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     else if (!string.IsNullOrEmpty(_stopToken) &&
                              string.Equals(actionCommand.Command, _stopToken, StringComparison.OrdinalIgnoreCase))
                     {
-                        context.Output($"Resume process further commands.");
+                        context.Output(input);
+                        context.Output($"{WellKnownTags.Debug}Resume processing commands");
                         _registeredCommands.Remove(_stopToken);
                         _stopProcessCommand = false;
                         _stopToken = null;
@@ -80,19 +82,24 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     }
                     else if (_commandExtensions.TryGetValue(actionCommand.Command, out IActionCommandExtension extension))
                     {
+                        bool omitEcho;
                         try
                         {
-                            extension.ProcessCommand(context, actionCommand);
+                            extension.ProcessCommand(context, input, actionCommand, out omitEcho);
                         }
                         catch (Exception ex)
                         {
+                            omitEcho = true;
+                            context.Output(input);
                             context.Error(StringUtil.Loc("CommandProcessFailed", input));
                             context.Error(ex);
                             context.CommandResult = TaskResult.Failed;
                         }
-                        finally
+
+                        if (!omitEcho)
                         {
-                            context.Debug($"Processed: {input}");
+                            context.Output(input);
+                            context.Output($"{WellKnownTags.Debug}Processed command");
                         }
 
                     }
@@ -111,7 +118,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
     {
         string Command { get; }
 
-        void ProcessCommand(IExecutionContext context, ActionCommand command);
+        void ProcessCommand(IExecutionContext context, string line, ActionCommand command, out bool omitEcho);
     }
 
     public sealed class SetEnvCommandExtension : AgentService, IActionCommandExtension
@@ -120,7 +127,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         public Type ExtensionType => typeof(IActionCommandExtension);
 
-        public void ProcessCommand(IExecutionContext context, ActionCommand command)
+        public void ProcessCommand(IExecutionContext context, string line, ActionCommand command, out bool omitEcho)
         {
             if (!command.Properties.TryGetValue(SetEnvCommandProperties.Name, out string envName) || string.IsNullOrEmpty(envName))
             {
@@ -128,6 +135,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             }
 
             context.SetVariable(envName, command.Data);
+            context.Output(line);
+            context.Output($"{WellKnownTags.Debug}{envName}='{command.Data}'");
+            omitEcho = true;
         }
 
         private static class SetEnvCommandProperties
@@ -142,14 +152,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         public Type ExtensionType => typeof(IActionCommandExtension);
 
-        public void ProcessCommand(IExecutionContext context, ActionCommand command)
+        public void ProcessCommand(IExecutionContext context, string line, ActionCommand command, out bool omitEcho)
         {
             if (!command.Properties.TryGetValue(SetOutputCommandProperties.Name, out string outputName) || string.IsNullOrEmpty(outputName))
             {
                 throw new Exception(StringUtil.Loc("MissingOutputName"));
             }
 
-            context.SetOutput(outputName, command.Data);
+            context.SetOutput(outputName, command.Data, out var reference);
+            context.Output(line);
+            context.Output($"{WellKnownTags.Debug}{reference}='{command.Data}'");
+            omitEcho = true;
         }
 
         private static class SetOutputCommandProperties
@@ -164,14 +177,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         public Type ExtensionType => typeof(IActionCommandExtension);
 
-        public void ProcessCommand(IExecutionContext context, ActionCommand command)
+        public void ProcessCommand(IExecutionContext context, string line, ActionCommand command, out bool omitEcho)
         {
             if (!command.Properties.TryGetValue(SetSecretCommandProperties.Name, out string secretName) || string.IsNullOrEmpty(secretName))
             {
                 throw new Exception(StringUtil.Loc("MissingSecretName"));
             }
 
-            context.SetOutput(secretName, command.Data, isSecret: true);
+            throw new NotSupportedException("Not supported yet");
         }
 
         private static class SetSecretCommandProperties
@@ -186,11 +199,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         public Type ExtensionType => typeof(IActionCommandExtension);
 
-        public void ProcessCommand(IExecutionContext context, ActionCommand command)
+        public void ProcessCommand(IExecutionContext context, string line, ActionCommand command, out bool omitEcho)
         {
             ArgUtil.NotNullOrEmpty(command.Data, "path");
             context.PrependPath.RemoveAll(x => string.Equals(x, command.Data, StringComparison.CurrentCulture));
             context.PrependPath.Add(command.Data);
+            omitEcho = false;
         }
     }
 
@@ -215,8 +229,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         public Type ExtensionType => typeof(IActionCommandExtension);
 
-        public void ProcessCommand(IExecutionContext context, ActionCommand command)
+        public void ProcessCommand(IExecutionContext context, string inputLine, ActionCommand command, out bool omitEcho)
         {
+            omitEcho = false;
             command.Properties.TryGetValue(IssueCommandProperties.File, out string file);
             command.Properties.TryGetValue(IssueCommandProperties.Line, out string line);
             command.Properties.TryGetValue(IssueCommandProperties.Column, out string column);

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -10,6 +11,7 @@ using Microsoft.VisualStudio.Services.Agent.Worker.Container;
 using Microsoft.VisualStudio.Services.WebApi;
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Pipelines = Microsoft.TeamFoundation.DistributedTask.Pipelines;
+using ObjectTemplating = Microsoft.TeamFoundation.DistributedTask.ObjectTemplating;
 using Microsoft.VisualStudio.Services.Agent.Util;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
@@ -38,6 +40,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         Variables Variables { get; }
         Variables TaskVariables { get; }
         HashSet<string> OutputVariables { get; }
+        IDictionary<String, Object> ExpressionValues { get; }
         List<IAsyncCommandContext> AsyncCommands { get; }
         List<string> PrependPath { get; }
         ContainerInfo Container { get; }
@@ -57,7 +60,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         void Start(string currentOperation = null);
         TaskResult Complete(TaskResult? result = null, string currentOperation = null, string resultCode = null);
         void SetVariable(string name, string value, bool isSecret = false, bool isOutput = false, bool isFilePath = false);
-        void SetOutput(string name, string value, bool isSecret = false);
+        void SetOutput(string name, string value, out string reference);
         void SetTimeout(TimeSpan? timeout);
         void AddIssue(Issue issue);
         void Progress(int percentage, string currentOperation = null);
@@ -103,6 +106,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         public Variables Variables { get; private set; }
         public Variables TaskVariables { get; private set; }
         public HashSet<string> OutputVariables => _outputvariables;
+        public IDictionary<String, Object> ExpressionValues { get; private set; }
         public bool WriteDebug { get; private set; }
         public List<string> PrependPath { get; private set; }
         public ContainerInfo Container { get; private set; }
@@ -175,6 +179,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             child.Containers = Containers;
             child.SecureFiles = SecureFiles;
             child.TaskVariables = taskVariables;
+            child.ExpressionValues = ExpressionValues;
             child._cancellationTokenSource = new CancellationTokenSource();
             child.WriteDebug = WriteDebug;
             child._parentExecutionContext = this;
@@ -270,26 +275,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             }
         }
 
-        public void SetOutput(string name, string value, bool isSecret = false)
+        public void SetOutput(string name, string value, out string reference)
         {
             ArgUtil.NotNullOrEmpty(name, nameof(name));
 
-            if (OutputVariables.Contains(name))
-            {
-                _record.Variables[name] = new VariableValue()
-                {
-                    Value = value,
-                    IsSecret = isSecret
-                };
-                _jobServerQueue.QueueTimelineRecordUpdate(_mainTimelineId, _record);
+            // todo: restrict multiline?
 
-                ArgUtil.NotNullOrEmpty(_record.RefName, nameof(_record.RefName));
-                Variables.Set($"{_record.RefName}.{name}", value, secret: isSecret);
-            }
-            else
-            {
-                throw new InvalidOperationException($"'{name}' is not defined as an output value.");
-            }
+            var actionsContext = ExpressionValues["actions"] as ActionsContext;
+            actionsContext.SetOutput(_record.RefName, name, value, out reference);
         }
 
         public void SetTimeout(TimeSpan? timeout)
@@ -425,6 +418,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             // Variables (constructor performs initial recursive expansion)
             List<string> warnings;
             Variables = new Variables(HostContext, message.Variables, out warnings);
+
+            // Expression values
+            ExpressionValues = new Dictionary<String, Object>();
+            if (message.ExpressionValues?.Count > 0)
+            {
+                foreach (var pair in message.ExpressionValues)
+                {
+                    ExpressionValues[pair.Key] = pair.Value;
+                }
+            }
+            ExpressionValues["actions"] = new ActionsContext();
 
             // Prepend Path
             PrependPath = new List<string>();
@@ -729,6 +733,37 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             {
                 context.Write(WellKnownTags.Debug, message);
             }
+        }
+
+        public static ObjectTemplating.ITraceWriter ToTemplateTraceWriter(this IExecutionContext context)
+        {
+            return new TemplateTraceWriter(context);
+        }
+    }
+
+    internal sealed class TemplateTraceWriter : ObjectTemplating.ITraceWriter
+    {
+        private readonly IExecutionContext _executionContext;
+
+        internal TemplateTraceWriter(IExecutionContext executionContext)
+        {
+            _executionContext = executionContext;
+        }
+
+        public void Error(string format, params Object[] args)
+        {
+            _executionContext.Error(string.Format(CultureInfo.CurrentCulture, format, args));
+        }
+
+        public void Info(string format, params Object[] args)
+        {
+            _executionContext.Output(string.Format(CultureInfo.CurrentCulture, $"{WellKnownTags.Debug}{format}", args));
+        }
+
+        public void Verbose(string format, params Object[] args)
+        {
+            // // todo: switch to verbose? how to set system.debug?
+            // _executionContext.Output(string.Format(CultureInfo.CurrentCulture, $"{WellKnownTags.Debug}{format}", args));
         }
     }
 
