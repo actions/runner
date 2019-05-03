@@ -13,6 +13,8 @@ using Microsoft.VisualStudio.Services.Common;
 using Newtonsoft.Json.Linq;
 using Microsoft.VisualStudio.Services.Agent.Worker.Container;
 using System.Net.Http;
+using YamlDotNet.Serialization;
+using YamlDotNet.Serialization.NamingConventions;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
@@ -400,12 +402,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
             if (action.Reference.Type == Pipelines.ActionSourceType.ContainerRegistry)
             {
+                Trace.Info("Load action that reference container from registry.");
                 CachedActionContainers.TryGetValue(action.Id, out var container);
                 ArgUtil.NotNull(container, nameof(container));
                 definition.Data.Execution.ContainerAction = new ContainerActionHandlerData()
                 {
                     ContainerImage = container.ContainerImage
                 };
+                Trace.Info($"Using action container image: {container.ContainerImage}.");
             }
             else
             {
@@ -437,36 +441,112 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     throw new NotSupportedException(action.Reference.Type.ToString());
                 }
 
-                // string manifestFile = Path.Combine(actionDirectory, "manifest.yml");
-                // if (!File.Exists(manifestFile))
-                // {
-                //     throw new FileNotFoundException(manifestFile);
-                // }
+                Trace.Info($"Load action that reference repository from '{actionDirectory}'");
+                definition.Directory = actionDirectory;
 
-                string dockerFile = Path.Combine(actionDirectory, "Dockerfile");
-                string nodeFile = Path.Combine(actionDirectory, "action.js");
-                if (File.Exists(dockerFile))
+                string manifestFile = Path.Combine(actionDirectory, "manifest.yml");
+                if (!File.Exists(manifestFile))
                 {
-                    definition.Data.Execution.ContainerAction = new ContainerActionHandlerData
+                    string dockerFile = Path.Combine(actionDirectory, "Dockerfile");
+                    if (File.Exists(dockerFile))
                     {
-                        Target = dockerFile,
-                    };
+                        definition.Data.Execution.ContainerAction = new ContainerActionHandlerData
+                        {
+                            Target = "Dockerfile",
+                        };
 
-                    if (CachedActionContainers.TryGetValue(action.Id, out var container))
-                    {
-                        definition.Data.Execution.ContainerAction.ContainerImage = container.ContainerImage;
+                        if (CachedActionContainers.TryGetValue(action.Id, out var container))
+                        {
+                            definition.Data.Execution.ContainerAction.ContainerImage = container.ContainerImage;
+                        }
                     }
-                }
-                else if (File.Exists(nodeFile))
-                {
-                    definition.Data.Execution.NodeAction = new NodeScriptActionHandlerData()
+                    else
                     {
-                        Target = nodeFile,
-                    };
+                        throw new NotSupportedException($"'{actionDirectory}' doesn't contain a Dockerfile");
+                    }
                 }
                 else
                 {
-                    throw new NotSupportedException($"'{actionDirectory}' doesn't contain a Dockerfile or an action.js file");
+                    using (var yamlInput = new StringReader(File.ReadAllText(manifestFile)))
+                    {
+                        var deserializer = new DeserializerBuilder().IgnoreUnmatchedProperties().WithNamingConvention(new CamelCaseNamingConvention()).Build();
+                        var actionDefinitionData = deserializer.Deserialize<ActionDefinitionData>(yamlInput);
+
+                        definition.Data.FriendlyName = actionDefinitionData.Name;
+                        Trace.Verbose($"Action friendly name: '{definition.Data.FriendlyName}'");
+
+                        definition.Data.Description = actionDefinitionData.Description;
+                        Trace.Verbose($"Action description: '{definition.Data.Description}'");
+
+                        definition.Data.Author = actionDefinitionData.Author;
+                        Trace.Verbose($"Action author: '{definition.Data.Author}'");
+
+                        if (actionDefinitionData.Inputs != null)
+                        {
+                            List<TaskInputDefinition> inputs = new List<TaskInputDefinition>();
+                            foreach (var input in actionDefinitionData.Inputs)
+                            {
+                                Trace.Verbose($"Action input: '{input.Key}' default to '{input.Value.Default}'");
+                                inputs.Add(new TaskInputDefinition() { Name = input.Key, DefaultValue = input.Value.Default });
+                            }
+
+                            definition.Data.Inputs = inputs.ToArray();
+                        }
+
+                        if (actionDefinitionData.Outputs != null)
+                        {
+                            List<OutputVariable> outputs = new List<OutputVariable>();
+                            foreach (var output in actionDefinitionData.Outputs)
+                            {
+                                Trace.Verbose($"Action output: '{output.Key}' for '{output.Value.Description}'");
+                                outputs.Add(new OutputVariable() { Name = output.Key, Description = output.Value.Description });
+                            }
+
+                            definition.Data.OutputVariables = outputs.ToArray();
+                        }
+
+                        if (string.Equals(actionDefinitionData.Execution.ExecutionType, "docker", StringComparison.OrdinalIgnoreCase))
+                        {
+                            definition.Data.Execution.ContainerAction = new ContainerActionHandlerData
+                            {
+                                Target = actionDefinitionData.Execution.Image,
+                                Arguments = actionDefinitionData.Execution.Arguments?.ToList(),
+                                Environment = actionDefinitionData.Execution.Environment,
+                                EntryPoint = actionDefinitionData.Execution.EntryPoint
+                            };
+
+                            Trace.Info($"Action container Dockerfile: {actionDefinitionData.Execution.Image}.");
+
+                            if (actionDefinitionData.Execution.Arguments != null)
+                            {
+                                Trace.Info($"Action container args: [{string.Join(", ", actionDefinitionData.Execution.Arguments)}].");
+                            }
+
+                            if (actionDefinitionData.Execution.Environment != null)
+                            {
+                                Trace.Info($"Action container env: [{string.Join(", ", actionDefinitionData.Execution.Environment.Keys)}].");
+                            }
+
+                            if (CachedActionContainers.TryGetValue(action.Id, out var container))
+                            {
+                                definition.Data.Execution.ContainerAction.ContainerImage = container.ContainerImage;
+                                Trace.Info($"Using action container image: {container.ContainerImage}.");
+                            }
+                        }
+                        else if (string.Equals(actionDefinitionData.Execution.ExecutionType, "node", StringComparison.OrdinalIgnoreCase))
+                        {
+                            definition.Data.Execution.NodeAction = new NodeScriptActionHandlerData
+                            {
+                                Target = actionDefinitionData.Execution.Script
+                            };
+
+                            Trace.Info($"Action node.js file: {actionDefinitionData.Execution.Script}.");
+                        }
+                        else
+                        {
+                            throw new NotSupportedException(actionDefinitionData.Execution.ExecutionType);
+                        }
+                    }
                 }
             }
 
@@ -724,7 +804,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
     public sealed class ActionDefinition
     {
-        public DefinitionData Data { get; set; }
+        public ActionDefinitionData Data { get; set; }
         public string Directory { get; set; }
         public ActionType Type { get; set; }
     }
@@ -747,6 +827,61 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         public ExecutionData PreJobExecution { get; set; }
         public ExecutionData Execution { get; set; }
         public ExecutionData PostJobExecution { get; set; }
+    }
+
+    public sealed class ActionDefinitionData
+    {
+        [YamlMember]
+        public string Name { get; set; }
+
+        [YamlMember]
+        public string Description { get; set; }
+
+        [YamlMember]
+        public string Author { get; set; }
+
+        [YamlMember]
+        public Dictionary<string, ActionInputDefinition> Inputs { get; set; }
+
+        [YamlMember]
+        public Dictionary<string, ActionOutput> Outputs { get; set; }
+
+        [YamlMember(Alias = "runs")]
+        public ActionExecutionData Execution { get; set; }
+    }
+
+
+    public sealed class ActionInputDefinition
+    {
+        [YamlMember]
+        public string Default { get; set; }
+    }
+
+    public sealed class ActionOutput
+    {
+        [YamlMember]
+        public string Description { get; set; }
+    }
+
+    public sealed class ActionExecutionData
+    {
+        [YamlMember(Alias = "using")]
+        public string ExecutionType { get; set; }
+
+        [YamlMember]
+        public string Image { get; set; }
+
+        [YamlMember(Alias = "main")]
+        public string Script { get; set; }
+
+        [YamlMember(Alias = "args")]
+        public string[] Arguments { get; set; }
+
+        [YamlMember(Alias = "entrypoint")]
+        public string EntryPoint { get; set; }
+
+        [YamlMember(Alias = "env")]
+        public Dictionary<string, string> Environment { get; set; }
     }
 
     public sealed class OutputVariable
@@ -1073,18 +1208,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             }
         }
 
-        public string Arguments
-        {
-            get
-            {
-                return GetInput(nameof(Arguments));
-            }
-
-            set
-            {
-                SetInput(nameof(Arguments), value);
-            }
-        }
+        public List<string> Arguments { get; set; }
+        public Dictionary<string, string> Environment { get; set; }
     }
 
     public sealed class NodeScriptActionHandlerData : HandlerData

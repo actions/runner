@@ -39,11 +39,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             if (string.IsNullOrEmpty(Data.ContainerImage))
             {
                 // ensure docker file exist
-                ArgUtil.File(Data.Target, nameof(Data.Target));
-                ExecutionContext.Output($"Dockerfile for action: '{Data.Target}'.");
+                var dockerFile = Path.Combine(TaskDirectory, Data.Target);
+                ArgUtil.File(dockerFile, nameof(Data.Target));
+                ExecutionContext.Output($"Dockerfile for action: '{dockerFile}'.");
 
                 var imageName = $"{dockerManger.DockerInstanceLabel}:{ExecutionContext.Id.ToString("N")}";
-                var buildExitCode = await dockerManger.DockerBuild(ExecutionContext, Directory.GetParent(Data.Target).FullName, imageName);
+                var buildExitCode = await dockerManger.DockerBuild(ExecutionContext, Directory.GetParent(dockerFile).FullName, imageName);
                 if (buildExitCode != 0)
                 {
                     throw new InvalidOperationException($"Docker build failed with exit code {buildExitCode}");
