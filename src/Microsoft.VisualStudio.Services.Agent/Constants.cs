@@ -255,6 +255,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             public static readonly string TeeDirectory = "tee";
             public static readonly string ToolDirectory = "_tool";
             public static readonly string TaskJsonFile = "task.json";
+            public static readonly string ActionManifestFile = "manifest.yml";
             public static readonly string TasksDirectory = "_tasks";
             public static readonly string UpdateDirectory = "_update";
             public static readonly string WorkDirectory = "_work";
