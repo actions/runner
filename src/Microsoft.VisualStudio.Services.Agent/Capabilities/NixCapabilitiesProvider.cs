@@ -21,6 +21,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Capabilities
         {
             Trace.Entering();
 
+            if (BuildConstants.AgentPackage.Product == Constants.Agent.Product.Github)
+            {
+                Trace.Info("Skip capabilities scan for Github action runner.");
+                return new List<Capability>();
+            }
+
             // Check the cache.
             if (_capabilities != null)
             {

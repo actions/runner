@@ -61,6 +61,30 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
 
             // delete file on succeed
             File.Delete(prettyStringsFile);
+
+            if (BuildConstants.AgentPackage.Product == Constants.Agent.Product.Github)
+            {
+                // Load the strings.
+                string githubStringsFile = Path.Combine(TestUtil.GetSrcPath(), "Misc", "layoutbin", "en-US", "github_strings.json");
+                Assert.True(File.Exists(githubStringsFile), $"File does not exist: {githubStringsFile}");
+                var githubResourceDictionary = IOUtil.LoadObject<Dictionary<string, object>>(githubStringsFile);
+
+                // sort the dictionary.
+                Dictionary<string, object> sortedGithubResourceDictionary = new Dictionary<string, object>();
+                foreach (var res in githubResourceDictionary.OrderBy(r => r.Key))
+                {
+                    sortedGithubResourceDictionary[res.Key] = res.Value;
+                }
+
+                // print to file.
+                string prettyGithubStringsFile = Path.Combine(TestUtil.GetSrcPath(), "Misc", "layoutbin", "en-US", "github_strings.json.pretty");
+                IOUtil.SaveObject(sortedGithubResourceDictionary, prettyGithubStringsFile);
+
+                Assert.True(string.Equals(File.ReadAllText(githubStringsFile), File.ReadAllText(prettyGithubStringsFile)), $"Orginal github_string.json file: {githubStringsFile} is not pretty printed, replace it with: {prettyGithubStringsFile}");
+
+                // delete file on succeed
+                File.Delete(prettyGithubStringsFile);
+            }
         }
 
         [Fact]
@@ -72,6 +96,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             string stringsFile = Path.Combine(TestUtil.GetSrcPath(), "Misc", "layoutbin", "en-US", "strings.json");
             Assert.True(File.Exists(stringsFile), $"File does not exist: {stringsFile}");
             var resourceDictionary = IOUtil.LoadObject<Dictionary<string, object>>(stringsFile);
+
+            if (BuildConstants.AgentPackage.Product == Constants.Agent.Product.Github)
+            {
+                string githubStringsFile = Path.Combine(TestUtil.GetSrcPath(), "Misc", "layoutbin", "en-US", "github_strings.json");
+                Assert.True(File.Exists(githubStringsFile), $"File does not exist: {githubStringsFile}");
+                var githubResourceDictionary = IOUtil.LoadObject<Dictionary<string, object>>(githubStringsFile);
+                foreach (var res in githubResourceDictionary)
+                {
+                    resourceDictionary[res.Key] = res.Value;
+                }
+            }
 
             // Find all loc string key in source file.
             //
@@ -204,6 +239,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 string stringsFile = Path.Combine(TestUtil.GetSrcPath(), "Misc", "layoutbin", "en-US", "strings.json");
                 Assert.True(File.Exists(stringsFile), $"File does not exist: {stringsFile}");
                 var resourceDictionary = IOUtil.LoadObject<Dictionary<string, object>>(stringsFile);
+
+                if (BuildConstants.AgentPackage.Product == Constants.Agent.Product.Github)
+                {
+                    string githubStringsFile = Path.Combine(TestUtil.GetSrcPath(), "Misc", "layoutbin", "en-US", "github_strings.json");
+                    Assert.True(File.Exists(githubStringsFile), $"File does not exist: {githubStringsFile}");
+                    var githubResourceDictionary = IOUtil.LoadObject<Dictionary<string, object>>(githubStringsFile);
+                    foreach (var res in githubResourceDictionary)
+                    {
+                        resourceDictionary[res.Key] = res.Value;
+                    }
+                }
 
                 // Find missing keys.
                 string[] missingKeys =

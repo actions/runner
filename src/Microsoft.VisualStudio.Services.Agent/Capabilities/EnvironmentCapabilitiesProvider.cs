@@ -33,6 +33,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Capabilities
             Trace.Entering();
             var capabilities = new List<Capability>();
 
+            if (BuildConstants.AgentPackage.Product == Constants.Agent.Product.Github)
+            {
+                Trace.Info("Skip capabilities scan for Github action runner.");
+                return Task.FromResult(capabilities);
+            }
+
             // Initialize the ignored hash set.
 #if OS_WINDOWS
             var comparer = StringComparer.OrdinalIgnoreCase;

@@ -4,7 +4,7 @@
     <Exec Command="git rev-parse HEAD" ConsoleToMSBuild="true">
       <Output TaskParameter="ConsoleOutput" PropertyName="GitInfoCommitHash" />
     </Exec>
-    <Message Text="Building $(GitInfoCommitHash) --- $(PackageRuntime)" Importance="high"/>
+    <Message Text="Building $(Product): $(GitInfoCommitHash) --- $(PackageRuntime)" Importance="high"/>
 
     <ItemGroup>
         <BuildConstants Include="namespace Microsoft.VisualStudio.Services.Agent"/>
@@ -19,13 +19,14 @@
         <BuildConstants Include="%20%20%20%20%20%20%20%20{"/>
         <BuildConstants Include="%20%20%20%20%20%20%20%20%20%20%20%20public static readonly string PackageName = %22$(PackageRuntime)%22%3B"/>
         <BuildConstants Include="%20%20%20%20%20%20%20%20%20%20%20%20public static readonly string Version = %22$(Version)%22%3B"/>
+        <BuildConstants Include="%20%20%20%20%20%20%20%20%20%20%20%20public static readonly string Product = %22$(Product)%22%3B"/>
         <BuildConstants Include="%20%20%20%20%20%20%20%20}"/>
         <BuildConstants Include="%20%20%20%20}"/>
         <BuildConstants Include="}"/>
     </ItemGroup>
 
     <WriteLinesToFile  
-            File="Microsoft.VisualStudio.Services.Agent/BuildConstants.cs"
+            File="Agent.Sdk/BuildConstants.cs"
             Lines="@(BuildConstants)"
             Overwrite="true"  
             Encoding="Unicode"/>
@@ -62,6 +63,7 @@
     </ItemGroup>
 
     <Delete Files="@(LayoutRootFilesToDelete)" />
+    <RemoveDir Directories="$(MSBuildProjectDirectory)/../_layout/bin/powershell" Condition="'$(Product)' == 'Github' Or ('$(PackageRuntime)' != 'win-x64' And '$(PackageRuntime)' != 'win-x86')"/>
   </Target>
 
   <Target Name="Clean">

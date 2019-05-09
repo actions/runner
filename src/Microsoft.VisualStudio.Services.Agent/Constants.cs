@@ -89,6 +89,12 @@ namespace Microsoft.VisualStudio.Services.Agent
             public static readonly Architecture PlatformArchitecture = Architecture.Arm64;
 #endif
 
+            public static class Product
+            {
+                public static readonly string Github = "Github";
+                public static readonly string AzurePipelines = "AzurePipelines";
+            }
+
             public static readonly TimeSpan ExitOnUnloadTimeout = TimeSpan.FromSeconds(30);
 
             public static class CommandLine

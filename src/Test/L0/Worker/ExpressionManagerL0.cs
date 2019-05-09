@@ -35,7 +35,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                 {
                     InitializeExecutionContext(hc);
                     _ec.Object.Variables.Agent_JobStatus = variableSet.JobStatus;
-                    IExpressionNode condition = _expressionManager.Parse(_ec.Object, "always()");
+                    IExpressionNode condition = _expressionManager.Parse(_ec.Object, "always()", true);
 
                     // Act.
                     bool actual = _expressionManager.Evaluate(_ec.Object, condition).Value;
@@ -66,7 +66,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                 {
                     InitializeExecutionContext(hc);
                     _ec.Object.Variables.Agent_JobStatus = variableSet.JobStatus;
-                    IExpressionNode condition = _expressionManager.Parse(_ec.Object, "canceled()");
+                    IExpressionNode condition = _expressionManager.Parse(_ec.Object, "canceled()", true);
 
                     // Act.
                     bool actual = _expressionManager.Evaluate(_ec.Object, condition).Value;
@@ -97,7 +97,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                 {
                     InitializeExecutionContext(hc);
                     _ec.Object.Variables.Agent_JobStatus = variableSet.JobStatus;
-                    IExpressionNode condition = _expressionManager.Parse(_ec.Object, "failed()");
+                    IExpressionNode condition = _expressionManager.Parse(_ec.Object, "failed()", true);
 
                     // Act.
                     bool actual = _expressionManager.Evaluate(_ec.Object, condition).Value;
@@ -128,7 +128,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                 {
                     InitializeExecutionContext(hc);
                     _ec.Object.Variables.Agent_JobStatus = variableSet.JobStatus;
-                    IExpressionNode condition = _expressionManager.Parse(_ec.Object, "succeeded()");
+                    IExpressionNode condition = _expressionManager.Parse(_ec.Object, "succeeded()", true);
 
                     // Act.
                     bool actual = _expressionManager.Evaluate(_ec.Object, condition).Value;
@@ -159,7 +159,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                 {
                     InitializeExecutionContext(hc);
                     _ec.Object.Variables.Agent_JobStatus = variableSet.JobStatus;
-                    IExpressionNode condition = _expressionManager.Parse(_ec.Object, "succeededOrFailed()");
+                    IExpressionNode condition = _expressionManager.Parse(_ec.Object, "succeededOrFailed()", true);
 
                     // Act.
                     bool actual = _expressionManager.Evaluate(_ec.Object, condition).Value;
@@ -190,7 +190,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                 {
                     InitializeExecutionContext(hc);
                     _ec.Object.Variables.Set(variableSet.VariableName, variableSet.VariableValue);
-                    IExpressionNode condition = _expressionManager.Parse(_ec.Object, variableSet.Condition);
+                    IExpressionNode condition = _expressionManager.Parse(_ec.Object, variableSet.Condition, true);
 
                     // Act.
                     bool actual = _expressionManager.Evaluate(_ec.Object, condition).Value;

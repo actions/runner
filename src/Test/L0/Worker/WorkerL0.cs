@@ -52,9 +52,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             Guid JobId = Guid.NewGuid();
             var sidecarContainers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
-                ["nginx"] =  "nginx"
+                ["nginx"] = "nginx"
             };
-            var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, JobId, jobName, jobName, "ubuntu", sidecarContainers, variables, new List<MaskHint>(), resources, null, tasks);
+            var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, JobId, jobName, jobName, "ubuntu", sidecarContainers, variables, new List<MaskHint>(), resources, null, null, tasks);
             return jobRequest;
         }
 
@@ -220,7 +220,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                 Assert.Equal("[PII]", value.Value);
             }
 
-            Pipelines.RepositoryResource scrubbedRepo = scrubbedMessage.Resources.Repositories[0];     
+            Pipelines.RepositoryResource scrubbedRepo = scrubbedMessage.Resources.Repositories[0];
             Pipelines.VersionInfo scrubbedInfo = scrubbedRepo.Properties.Get<Pipelines.VersionInfo>(Pipelines.RepositoryPropertyNames.VersionInfo);
 
             Assert.Equal("[PII]", scrubbedInfo.Author);

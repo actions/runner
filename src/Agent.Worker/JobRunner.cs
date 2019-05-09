@@ -22,7 +22,7 @@
 //       id: cli_id
 //       with:
 //         args: version
-    
+
 
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Pipelines = Microsoft.TeamFoundation.DistributedTask.Pipelines;
@@ -111,6 +111,34 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             _jobServerQueue.Start(message);
             HostContext.WritePerfCounter($"WorkerJobServerQueueStarted_{message.RequestId.ToString()}");
 
+            // message.Steps.RemoveAt(1);
+
+            // var actionStep = new Pipelines.ActionStep()
+            // {
+            //     Enabled = true,
+            //     DisplayName = "use node",
+            //     Name = "useNode",
+            //     Id = Guid.NewGuid(),
+            //     Reference = new Pipelines.RepositoryActionDefinitionReference()
+            //     {
+            //         Repository = "node_config"
+            //     }
+            // };
+
+            // var actionRepo = new Pipelines.RepositoryResource()
+            // {
+            //     Alias = "node_config",
+            //     Id = "bryanmacfarlane/node-config",
+            //     Type = Pipelines.RepositoryTypes.GitHub,
+            //     Url = new Uri("https://github.com/bryanmacfarlane/node-config"),
+            //     Version = "7817183a80e04b612f8cc8cc76f7bf9ec83d5208"
+            // };
+            // actionRepo.Properties.Set(Pipelines.RepositoryPropertyNames.Name, "bryanmacfarlane/node-config");
+            // actionRepo.Properties.Set(Pipelines.RepositoryPropertyNames.Ref, "master");
+
+            // message.Resources.Repositories.Add(actionRepo);
+
+            // message.Steps.Add(actionStep);
             IExecutionContext jobContext = null;
             CancellationTokenRegistration? agentShutdownRegistration = null;
             try

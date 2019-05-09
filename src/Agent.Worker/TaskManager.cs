@@ -367,13 +367,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             }
             else
             {
-                var taskJson = Path.Combine(actionEntryDirectory, "task.json");
                 var actionManifest = Path.Combine(actionEntryDirectory, "manifest.yml");
-                if (File.Exists(taskJson))
-                {
-                    executionContext.Output($"task.json for action: '{taskJson}'.");
-                }
-                else if (File.Exists(actionManifest))
+                if (File.Exists(actionManifest))
                 {
                     executionContext.Output($"manifest.yml for action: '{actionManifest}'.");
                 }
@@ -444,7 +439,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 definition.Directory = actionDirectory;
 
                 string manifestFile = Path.Combine(actionDirectory, "manifest.yml");
-                string jsontFile = Path.Combine(actionDirectory, Constants.Path.TaskJsonFile);
                 string dockerFile = Path.Combine(actionDirectory, "Dockerfile");
                 if (File.Exists(manifestFile))
                 {
@@ -529,19 +523,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                         }
                     }
 
-                }
-                else if (File.Exists(jsontFile))
-                {
-                    // Deserialize the JSON.
-                    Trace.Info($"Loading task definition '{jsontFile}'.");
-                    string json = File.ReadAllText(jsontFile);
-                    definition.Data = JsonConvert.DeserializeObject<DefinitionData>(json);
-
-                    // Replace the macros within the handler data sections.
-                    foreach (HandlerData handlerData in (definition.Data?.Execution?.All as IEnumerable<HandlerData> ?? new HandlerData[0]))
-                    {
-                        handlerData?.ReplaceMacros(HostContext, definition);
-                    }
                 }
                 else if (File.Exists(dockerFile))
                 {

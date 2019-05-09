@@ -19,6 +19,7 @@ DOTNETSDK_ROOT="$SCRIPT_DIR/../_dotnetsdk"
 DOTNETSDK_VERSION="2.1.403"
 DOTNETSDK_INSTALLDIR="$DOTNETSDK_ROOT/$DOTNETSDK_VERSION"
 AGENT_VERSION=$(cat agentversion)
+PRODUCT="Github"
 
 pushd "$SCRIPT_DIR"
 
@@ -112,7 +113,7 @@ function heading()
 function build ()
 {
     heading "Building ..."
-    dotnet msbuild -t:Build -p:PackageRuntime="${RUNTIME_ID}" -p:BUILDCONFIG="${BUILD_CONFIG}" -p:Version="${AGENT_VERSION}" || failed build
+    dotnet msbuild -t:Build -p:PackageRuntime="${RUNTIME_ID}" -p:BUILDCONFIG="${BUILD_CONFIG}" -p:Version="${AGENT_VERSION}" -p:Product="${PRODUCT}" || failed build
 
     mkdir -p "${LAYOUT_DIR}/bin/en-US"
     grep --invert-match '^ *"CLI-WIDTH-' ./Misc/layoutbin/en-US/strings.json > "${LAYOUT_DIR}/bin/en-US/strings.json"
@@ -121,7 +122,7 @@ function build ()
 function layout ()
 {
     heading "Create layout ..."
-    dotnet msbuild -t:layout -p:PackageRuntime="${RUNTIME_ID}" -p:BUILDCONFIG="${BUILD_CONFIG}" -p:Version="${AGENT_VERSION}" || failed build
+    dotnet msbuild -t:layout -p:PackageRuntime="${RUNTIME_ID}" -p:BUILDCONFIG="${BUILD_CONFIG}" -p:Version="${AGENT_VERSION}" -p:Product="${PRODUCT}" || failed build
 
     mkdir -p "${LAYOUT_DIR}/bin/en-US"
     grep --invert-match '^ *"CLI-WIDTH-' ./Misc/layoutbin/en-US/strings.json > "${LAYOUT_DIR}/bin/en-US/strings.json"
@@ -134,7 +135,7 @@ function layout ()
         chmod +x "${LAYOUT_DIR}/bin/installdependencies.sh"
     fi
 
-    heading "Setup externals folder for $RUNTIME_ID agent's layout"
+    heading "Setup externals folder for $RUNTIME_ID $PRODUCT agent's layout"
     bash ./Misc/externals.sh $RUNTIME_ID || checkRC externals.sh
 }
 
@@ -148,7 +149,7 @@ function runtest ()
 
     export VSTS_AGENT_SRC_DIR=${SCRIPT_DIR}
 
-    dotnet msbuild -t:test -p:PackageRuntime="${RUNTIME_ID}" -p:BUILDCONFIG="${BUILD_CONFIG}" -p:Version="${AGENT_VERSION}" || failed "failed tests" 
+    dotnet msbuild -t:test -p:PackageRuntime="${RUNTIME_ID}" -p:BUILDCONFIG="${BUILD_CONFIG}" -p:Version="${AGENT_VERSION}" -p:Product="${PRODUCT}" || failed "failed tests" 
 }
 
 function package ()
@@ -159,6 +160,9 @@ function package ()
 
     agent_ver=$("${LAYOUT_DIR}/bin/Agent.Listener" --version) || failed "version"
     agent_pkg_name="vsts-agent-${RUNTIME_ID}-${agent_ver}"
+    if [[ "$PRODUCT" == "Github" ]]; then
+        agent_pkg_name="action-runner-${RUNTIME_ID}-${agent_ver}"
+    fi
 
     heading "Packaging ${agent_pkg_name}"
 
@@ -213,6 +217,13 @@ fi
 
 echo "Prepend ${DOTNETSDK_INSTALLDIR} to %PATH%"
 export PATH=${DOTNETSDK_INSTALLDIR}:$PATH
+
+if [[ "$AZURE_PIPELINES_AGENT" != "" ]]; then
+    heading "Azure Pipelines Agent"
+    PRODUCT="AzurePipelines"
+else
+    heading "Github Dreamlifter Agent"
+fi
 
 heading "Dotnet SDK Version"
 dotnet --version

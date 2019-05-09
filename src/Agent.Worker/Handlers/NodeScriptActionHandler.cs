@@ -38,6 +38,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             // Update the env dictionary.
             AddInputsToEnvironment();
             AddPrependPathToEnvironment();
+            AddAgentVariablesToEnvironment();
 
             // populate action environment variables.
             var selfRepo = ExecutionContext.Repositories.Single(x => string.Equals(x.Alias, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase) ||
