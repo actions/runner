@@ -24,7 +24,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             {
                 thc.SetSingleton(new WorkerCommandManager() as IWorkerCommandManager);
                 thc.SetSingleton(new ExtensionManager() as IExtensionManager);
-                thc.SetSingleton(new ActionCommandManager() as IActionCommandManager);
+                thc.EnqueueInstance(new ActionCommandManager() as IActionCommandManager);
 
                 NodeHandler nodeHandler = new NodeHandler();
 
@@ -50,7 +50,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             {
                 thc.SetSingleton(new WorkerCommandManager() as IWorkerCommandManager);
                 thc.SetSingleton(new ExtensionManager() as IExtensionManager);
-                thc.SetSingleton(new ActionCommandManager() as IActionCommandManager);
+                thc.EnqueueInstance(new ActionCommandManager() as IActionCommandManager);
 
                 NodeHandler nodeHandler = new NodeHandler();
 
@@ -80,7 +80,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 {
                     thc.SetSingleton(new WorkerCommandManager() as IWorkerCommandManager);
                     thc.SetSingleton(new ExtensionManager() as IExtensionManager);
-                    thc.SetSingleton(new ActionCommandManager() as IActionCommandManager);
+                    thc.EnqueueInstance(new ActionCommandManager() as IActionCommandManager);
 
                     NodeHandler nodeHandler = new NodeHandler();
 
@@ -111,7 +111,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             {
                 thc.SetSingleton(new WorkerCommandManager() as IWorkerCommandManager);
                 thc.SetSingleton(new ExtensionManager() as IExtensionManager);
-                thc.SetSingleton(new ActionCommandManager() as IActionCommandManager);
+                thc.EnqueueInstance(new ActionCommandManager() as IActionCommandManager);
 
                 var variables = new Dictionary<string, VariableValue>();
 
@@ -141,7 +141,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             {
                 thc.SetSingleton(new WorkerCommandManager() as IWorkerCommandManager);
                 thc.SetSingleton(new ExtensionManager() as IExtensionManager);
-                thc.SetSingleton(new ActionCommandManager() as IActionCommandManager);
+                thc.EnqueueInstance(new ActionCommandManager() as IActionCommandManager);
 
                 var variables = new Dictionary<string, VariableValue>();
 

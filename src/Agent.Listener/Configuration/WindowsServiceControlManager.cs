@@ -119,7 +119,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             SaveServiceSettings(serviceName);
 
             // Add registry key after installation
-            _windowsServiceHelper.CreateVstsAgentRegistryKey();
+            if(BuildConstants.AgentPackage.Product == Constants.Agent.Product.AzurePipelines)
+            {
+                _windowsServiceHelper.CreateVstsAgentRegistryKey();
+            }
 
             Trace.Info("Configuration was successful, trying to start the service");
             _windowsServiceHelper.StartService(serviceName);

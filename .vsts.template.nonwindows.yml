@@ -1,17 +1,4 @@
-parameters:
-  componentDetection: 'false'
-
 steps:
-
-- ${{ if eq(parameters.componentDetection, 'true') }}:
-    # Component detection
-    - task: ms.vss-governance-buildtask.governance-build-task-component-detection.ComponentGovernanceComponentDetection@0
-      displayName: 'Component Detection'
-      condition: and(succeeded(), eq(variables['Build.Reason'], 'PullRequest'))
-
-# Clean
-- checkout: self
-  clean: true
 
 # Build agent layout
 - script: ./dev.sh layout Release

@@ -13,6 +13,7 @@ using System.Linq;
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Util;
+using Microsoft.VisualStudio.Services.Agent;
 
 namespace Agent.Plugins.Repository
 {
@@ -309,7 +310,7 @@ namespace Agent.Plugins.Repository
             }
 
             bool exposeCred = StringUtil.ConvertToBoolean(executionContext.GetInput(Pipelines.PipelineConstants.CheckoutTaskInputs.PersistCredentials));
-            
+
             // Read 'disable fetch by commit' value from the execution variable first, then from the environment variable if the first one is not set
             bool fetchByCommit = !StringUtil.ConvertToBoolean(
                 executionContext.Variables.GetValueOrDefault("VSTS.DisableFetchByCommit")?.Value ??
@@ -348,6 +349,12 @@ namespace Agent.Plugins.Repository
             // On Linux, we will always use git find in %PATH% regardless of system.prefergitfrompath
             preferGitFromPath = true;
 #endif
+            
+            // we don't package git with for github action
+            if (BuildConstants.AgentPackage.Product == "Github")
+            {
+                preferGitFromPath = true;
+            }
 
             // Determine do we need to provide creds to git operation
             selfManageGitCreds = StringUtil.ConvertToBoolean(executionContext.Variables.GetValueOrDefault("system.selfmanagegitcreds")?.Value);

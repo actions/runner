@@ -180,6 +180,26 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             }
         }
 
+        protected void AddAgentVariablesToEnvironment()
+        {
+            // Validate args.
+            Trace.Entering();
+            ArgUtil.NotNull(Environment, nameof(Environment));
+            ArgUtil.NotNull(RuntimeVariables, nameof(RuntimeVariables));
+
+            // Add the public variables.
+            var names = new List<string>();
+            foreach (KeyValuePair<string, string> pair in RuntimeVariables.Public)
+            {
+                if (pair.Key.StartsWith("Agent.", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Add the variable using the formatted name.
+                    string formattedKey = (pair.Key ?? string.Empty).Replace('.', '_').Replace(' ', '_').ToUpperInvariant();
+                    AddEnvironmentVariable(formattedKey, pair.Value);
+                }
+            }
+        }
+
         protected void AddVariablesToEnvironment(bool excludeNames = false, bool excludeSecrets = false)
         {
             // Validate args.

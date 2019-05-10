@@ -87,7 +87,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             ArgUtil.NotNull(definition, nameof(definition));
 
             // Print out task metadata
-            // PrintTaskMetaData(definition);
+            PrintTaskMetaData(definition);
 
             // ExecutionData currentExecution = null;
             // switch (definition.Type)
@@ -215,6 +215,35 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             // Run the task.
             await handler.RunAsync();
         }
+
+        private void PrintTaskMetaData(Definition actionDefinition)
+        {
+            ArgUtil.NotNull(Action, nameof(Action));
+            ArgUtil.NotNull(Action.Reference, nameof(Action.Reference));
+            ArgUtil.NotNull(actionDefinition.Data, nameof(actionDefinition.Data));
+
+            ExecutionContext.Output("==============================================================================");
+            ExecutionContext.Output($"Action             : {actionDefinition.Data.FriendlyName}");
+            ExecutionContext.Output($"Description        : {actionDefinition.Data.Description}");
+
+            if (Action.Reference.Type == Pipelines.ActionSourceType.ContainerRegistry)
+            {
+                var registryAction = Action.Reference as Pipelines.ContainerRegistryActionDefinitionReference;
+                var image = ExecutionContext.Containers.Single(x => x.Alias == registryAction.Container).Image;
+                ExecutionContext.Output($"Action image       : {image}");
+            }
+            else
+            {
+                var repoAction = Action.Reference as Pipelines.RepositoryActionDefinitionReference;
+                var repo = ExecutionContext.Repositories.Single(x => x.Alias == repoAction.Repository).Id;
+                var version = ExecutionContext.Repositories.Single(x => x.Alias == repoAction.Repository).Version;
+                ExecutionContext.Output($"Action repository  : {repo}@{version}");
+            }
+
+            ExecutionContext.Output($"Author             : {actionDefinition.Data.Author}");
+            ExecutionContext.Output("==============================================================================");
+        }
+
         private string TranslateFilePathInput(string inputValue)
         {
             Trace.Entering();

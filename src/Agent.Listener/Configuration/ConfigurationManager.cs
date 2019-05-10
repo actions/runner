@@ -138,37 +138,41 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
             }
 
             AgentSettings agentSettings = new AgentSettings();
-            // TEE EULA
-            agentSettings.AcceptTeeEula = false;
-            switch (Constants.Agent.Platform)
+
+            if (BuildConstants.AgentPackage.Product == Constants.Agent.Product.AzurePipelines)
             {
-                case Constants.OSPlatform.OSX:
-                case Constants.OSPlatform.Linux:
-                    // Write the section header.
-                    WriteSection(StringUtil.Loc("EulasSectionHeader"));
+                // TEE EULA
+                agentSettings.AcceptTeeEula = false;
+                switch (Constants.Agent.Platform)
+                {
+                    case Constants.OSPlatform.OSX:
+                    case Constants.OSPlatform.Linux:
+                        // Write the section header.
+                        WriteSection(StringUtil.Loc("EulasSectionHeader"));
 
-                    // Verify the EULA exists on disk in the expected location.
-                    string eulaFile = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), Constants.Path.TeeDirectory, "license.html");
-                    ArgUtil.File(eulaFile, nameof(eulaFile));
+                        // Verify the EULA exists on disk in the expected location.
+                        string eulaFile = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), Constants.Path.TeeDirectory, "license.html");
+                        ArgUtil.File(eulaFile, nameof(eulaFile));
 
-                    // Write elaborate verbiage about the TEE EULA.
-                    _term.WriteLine(StringUtil.Loc("TeeEula", eulaFile));
-                    _term.WriteLine();
+                        // Write elaborate verbiage about the TEE EULA.
+                        _term.WriteLine(StringUtil.Loc("TeeEula", eulaFile));
+                        _term.WriteLine();
 
-                    // Prompt to acccept the TEE EULA.
-                    agentSettings.AcceptTeeEula = command.GetAcceptTeeEula();
-                    break;
-                case Constants.OSPlatform.Windows:
-                    // Warn and continue if .NET 4.6 is not installed.
-                    if (!NetFrameworkUtil.Test(new Version(4, 6), Trace))
-                    {
-                        WriteSection(StringUtil.Loc("PrerequisitesSectionHeader")); // Section header.
-                        _term.WriteLine(StringUtil.Loc("MinimumNetFrameworkTfvc")); // Warning.
-                    }
+                        // Prompt to acccept the TEE EULA.
+                        agentSettings.AcceptTeeEula = command.GetAcceptTeeEula();
+                        break;
+                    case Constants.OSPlatform.Windows:
+                        // Warn and continue if .NET 4.6 is not installed.
+                        if (!NetFrameworkUtil.Test(new Version(4, 6), Trace))
+                        {
+                            WriteSection(StringUtil.Loc("PrerequisitesSectionHeader")); // Section header.
+                            _term.WriteLine(StringUtil.Loc("MinimumNetFrameworkTfvc")); // Warning.
+                        }
 
-                    break;
-                default:
-                    throw new NotSupportedException();
+                        break;
+                    default:
+                        throw new NotSupportedException();
+                }
             }
 
             // Create the configuration provider as per agent type.
