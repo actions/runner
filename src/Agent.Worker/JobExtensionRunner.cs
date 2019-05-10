@@ -1,6 +1,7 @@
 using System;
 using System.Threading.Tasks;
 using Microsoft.TeamFoundation.DistributedTask.Expressions;
+using Microsoft.TeamFoundation.DistributedTask.Pipelines.ObjectTemplating;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using Pipelines = Microsoft.TeamFoundation.DistributedTask.Pipelines;
 using Microsoft.VisualStudio.Services.Agent.Worker.Container;
@@ -142,34 +143,23 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 }
             }
 
-            // Load the default input values from the definition.
-            Trace.Verbose("Loading default inputs.");
-            var inputs = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+            // Load the inputs.
+            ExecutionContext.Output($"{WellKnownTags.Debug}Loading inputs");
+            var templateTrace = ExecutionContext.ToTemplateTraceWriter();
+            var schema = new PipelineTemplateSchemaFactory().CreateSchema();
+            var templateEvaluator = new PipelineTemplateEvaluator(templateTrace, schema);
+            var inputs = templateEvaluator.EvaluateStepInputs(Action.Inputs, ExecutionContext.ExpressionValues);
+
+            // Merge the default inputs from the definition
             foreach (var input in (definition.Data?.Inputs ?? new TaskInputDefinition[0]))
             {
-                string key = input?.Name?.Trim() ?? string.Empty;
-                if (!string.IsNullOrEmpty(key))
+                string key = input.Name?.Trim();
+                if (!string.IsNullOrEmpty(key) && !inputs.ContainsKey(key))
                 {
                     inputs[key] = input.DefaultValue?.Trim() ?? string.Empty;
                 }
             }
-
-            // Merge the instance inputs.
-            Trace.Verbose("Loading instance inputs.");
-            foreach (var input in (Action.Inputs as IEnumerable<KeyValuePair<string, string>> ?? new KeyValuePair<string, string>[0]))
-            {
-                string key = input.Key?.Trim() ?? string.Empty;
-                if (!string.IsNullOrEmpty(key))
-                {
-                    inputs[key] = input.Value?.Trim() ?? string.Empty;
-                }
-            }
-
-            // Expand the inputs.
-            Trace.Verbose("Expanding inputs.");
-            // runtimeVariables.ExpandValues(target: inputs);
-            // VarUtil.ExpandEnvironmentVariables(HostContext, target: inputs);
-
 
             // Translate the server file path inputs to local paths.
             foreach (var input in definition.Data?.Inputs ?? new TaskInputDefinition[0])
@@ -182,24 +172,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 }
             }
 
-
             // Load the task environment.
-            Trace.Verbose("Loading task environment.");
-            var environment = new Dictionary<string, string>(VarUtil.EnvironmentVariableKeyComparer);
-            foreach (var env in (Action.Environment ?? new Dictionary<string, string>(0)))
-            {
-                string key = env.Key?.Trim() ?? string.Empty;
-                if (!string.IsNullOrEmpty(key))
-                {
-                    environment[key] = env.Value?.Trim() ?? string.Empty;
-                }
-            }
-
-
-            // Expand the environments.
-            Trace.Verbose("Expanding task environment.");
-            // runtimeVariables.ExpandValues(target: environment);
-            // VarUtil.ExpandEnvironmentVariables(HostContext, target: environment);
+            ExecutionContext.Output($"{WellKnownTags.Debug}Loading env");
+            var environment = templateEvaluator.EvaluateStepEnvironment(Action.Environment, ExecutionContext.ExpressionValues, VarUtil.EnvironmentVariableKeyComparer);
 
             // Create the handler.
             IHandler handler = handlerFactory.Create(
