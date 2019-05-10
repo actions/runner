@@ -12,19 +12,13 @@ Supported on Windows, OSX, Ubuntu and Red Hat.  Written for the .NET Core CLR as
 |   | Build & Test |
 |---|:-----:|
 |![Win-x64](docs/res/win_med.png) **Windows x64**|[![Build & Test][win-x64-build-badge]][build]| 
-|![Win-x86](docs/res/win_med.png) **Windows x86**|[![Build & Test][win-x86-build-badge]][build]| 
 |![macOS](docs/res/apple_med.png) **macOS**|[![Build & Test][macOS-build-badge]][build]| 
 |![Linux-x64](docs/res/linux_med.png) **Linux x64**|[![Build & Test][linux-x64-build-badge]][build]|
-|![Linux-arm](docs/res/linux_med.png) **Linux ARM**|[![Build & Test][linux-arm-build-badge]][build]|
-|![RHEL6-x64](docs/res/redhat_med.png) **RHEL 6 x64**|[![Build & Test][rhel6-x64-build-badge]][build]|
 
-[win-x64-build-badge]: https://mseng.visualstudio.com/pipelinetools/_apis/build/status/VSTS.Agent/azure-pipelines-agent.ci?branchName=master&jobname=Windows%20Agent%20(x64)
-[win-x86-build-badge]: https://mseng.visualstudio.com/pipelinetools/_apis/build/status/VSTS.Agent/azure-pipelines-agent.ci?branchName=master&jobname=Windows%20Agent%20(x86)
-[macOS-build-badge]: https://mseng.visualstudio.com/pipelinetools/_apis/build/status/VSTS.Agent/azure-pipelines-agent.ci?branchName=master&jobname=macOS%20Agent%20(x64)
-[linux-x64-build-badge]: https://mseng.visualstudio.com/pipelinetools/_apis/build/status/VSTS.Agent/azure-pipelines-agent.ci?branchName=master&jobname=Linux%20Agent%20(x64)
-[linux-arm-build-badge]: https://mseng.visualstudio.com/pipelinetools/_apis/build/status/VSTS.Agent/azure-pipelines-agent.ci?branchName=master&jobname=Linux%20Agent%20(ARM)
-[rhel6-x64-build-badge]: https://mseng.visualstudio.com/pipelinetools/_apis/build/status/VSTS.Agent/azure-pipelines-agent.ci?branchName=master&jobname=RHEL6%20Agent%20(x64)
-[build]: https://mseng.visualstudio.com/PipelineTools/_build?_a=completed&definitionId=7502
+[win-x64-build-badge]: https://dev.azure.com/mseng/AzureDevOps/_apis/build/status/Products/Azure-pipelines-agent/actions-runner.ci?branchName=features/actionsrunner&jobName=Windows%20Agent%20(x64)
+[macOS-build-badge]: https://dev.azure.com/mseng/AzureDevOps/_apis/build/status/Products/Azure-pipelines-agent/actions-runner.ci?branchName=features/actionsrunner&jobName=macOS%20Agent%20(x64)
+[linux-x64-build-badge]: https://dev.azure.com/mseng/AzureDevOps/_apis/build/status/Products/Azure-pipelines-agent/actions-runner.ci?branchName=features/actionsrunner&jobName=Linux%20Agent%20(x64)
+[build]: https://dev.azure.com/mseng/AzureDevOps/_build/latest?definitionId=8777&branchName=features/actionsrunner
 
 ## System Pre-Requisites
 
