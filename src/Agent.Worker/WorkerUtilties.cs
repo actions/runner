@@ -89,7 +89,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 variables: scrubbedVariables,
                 maskHints: message.MaskHints,
                 jobResources: scrubbedJobResources,
-                expressionValues: message.ExpressionValues,
+                contextData: message.ContextData,
                 workspaceOptions: message.Workspace,
                 steps: message.Steps);
         }
