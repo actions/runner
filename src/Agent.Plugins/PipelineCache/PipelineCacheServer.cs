@@ -39,20 +39,21 @@ namespace Agent.Plugins.PipelineCache
             var result = await dedupManifestClient.PublishAsync(path, cancellationToken);
             var scope = "myscope";
 
-            CreatePipelineCacheArtifactOptions options = new CreatePipelineCacheArtifactOptions
-            {
-                Key = key,
-                RootId = result.RootId,
-                ManifestId = result.ManifestId,
-                Scope = scope,
-                ProofNodes = result.ProofNodes.ToArray(),
-                Salt = salt
-            };
+            throw new NotImplementedException();
+            // CreatePipelineCacheArtifactOptions options = new CreatePipelineCacheArtifactOptions
+            // {
+            //     Key = key,
+            //     RootId = result.RootId,
+            //     ManifestId = result.ManifestId,
+            //     Scope = scope,
+            //     ProofNodes = result.ProofNodes.ToArray(),
+            //     Salt = salt
+            // };
 
-            var pipelineCacheClient = this.CreateClient(context, connection);
-            await pipelineCacheClient.CreatePipelineCacheArtifactAsync(options, cancellationToken);
+            // var pipelineCacheClient = this.CreateClient(context, connection);
+            // await pipelineCacheClient.CreatePipelineCacheArtifactAsync(options, cancellationToken);
 
-            Console.WriteLine("Saved item.");
+            // Console.WriteLine("Saved item.");
         }
 
         internal async Task DownloadAsync(
@@ -66,26 +67,27 @@ namespace Agent.Plugins.PipelineCache
             VssConnection connection = context.VssConnection;
             var pipelineCacheClient = this.CreateClient(context, connection);
 
-            GetPipelineCacheArtifactOptions options = new GetPipelineCacheArtifactOptions
-            {
-                Key = key,
-                Scope = "myscope",
-                Salt = salt,
-            };
+            throw new NotImplementedException();
+            // GetPipelineCacheArtifactOptions options = new GetPipelineCacheArtifactOptions
+            // {
+            //     Key = key,
+            //     Scope = "myscope",
+            //     Salt = salt,
+            // };
 
-            var result = await pipelineCacheClient.GetPipelineCacheArtifactAsync(options, cancellationToken);
-            if (result == null)
-            {
-                return;
-            }
-            else
-            {
-                Console.WriteLine("Manifest ID is: {0}", result.ManifestId.ValueString);
-                DedupManifestArtifactClient dedupManifestClient = DedupManifestArtifactClientFactory.CreateDedupManifestClient(context, connection);
-                await this.DownloadPipelineCacheAsync(dedupManifestClient, result.ManifestId, path, cancellationToken);
-                context.SetVariable($"{PipelineCacheVarPrefix}.{variableToSetOnHit}", "True");
-                Console.WriteLine("Cache restored.");
-            }
+            // var result = await pipelineCacheClient.GetPipelineCacheArtifactAsync(options, cancellationToken);
+            // if (result == null)
+            // {
+            //     return;
+            // }
+            // else
+            // {
+            //     Console.WriteLine("Manifest ID is: {0}", result.ManifestId.ValueString);
+            //     DedupManifestArtifactClient dedupManifestClient = DedupManifestArtifactClientFactory.CreateDedupManifestClient(context, connection);
+            //     await this.DownloadPipelineCacheAsync(dedupManifestClient, result.ManifestId, path, cancellationToken);
+            //     context.SetVariable($"{PipelineCacheVarPrefix}.{variableToSetOnHit}", "True");
+            //     Console.WriteLine("Cache restored.");
+            // }
         }
 
         private PipelineCacheClient CreateClient(

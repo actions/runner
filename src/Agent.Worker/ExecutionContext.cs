@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using System.Web;
 using Microsoft.VisualStudio.Services.Agent.Worker.Container;
 using Microsoft.VisualStudio.Services.WebApi;
+using Microsoft.TeamFoundation.DistributedTask.Pipelines.ContextData;
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Pipelines = Microsoft.TeamFoundation.DistributedTask.Pipelines;
 using ObjectTemplating = Microsoft.TeamFoundation.DistributedTask.ObjectTemplating;
@@ -40,7 +41,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         Variables Variables { get; }
         Variables TaskVariables { get; }
         HashSet<string> OutputVariables { get; }
-        IDictionary<String, Object> ExpressionValues { get; }
+        IDictionary<String, PipelineContextData> ExpressionValues { get; }
         List<IAsyncCommandContext> AsyncCommands { get; }
         List<string> PrependPath { get; }
         ContainerInfo Container { get; }
@@ -106,7 +107,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         public Variables Variables { get; private set; }
         public Variables TaskVariables { get; private set; }
         public HashSet<string> OutputVariables => _outputvariables;
-        public IDictionary<String, Object> ExpressionValues { get; private set; }
+        public IDictionary<String, PipelineContextData> ExpressionValues { get; private set; }
         public bool WriteDebug { get; private set; }
         public List<string> PrependPath { get; private set; }
         public ContainerInfo Container { get; private set; }
@@ -420,14 +421,23 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             Variables = new Variables(HostContext, message.Variables, out warnings);
 
             // Expression values
-            ExpressionValues = new Dictionary<String, Object>();
+            ExpressionValues = new Dictionary<String, PipelineContextData>();
+            // todo: delete in master during m154
             if (message.ExpressionValues?.Count > 0)
             {
                 foreach (var pair in message.ExpressionValues)
                 {
+                    ExpressionValues[pair.Key] = pair.Value?.ToContextData();
+                }
+            }
+            if (message.ContextData?.Count > 0)
+            {
+                foreach (var pair in message.ContextData)
+                {
                     ExpressionValues[pair.Key] = pair.Value;
                 }
             }
+
             ExpressionValues["actions"] = new ActionsContext();
 
             // Prepend Path
