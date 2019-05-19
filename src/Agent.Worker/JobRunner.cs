@@ -139,6 +139,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             // message.Resources.Repositories.Add(actionRepo);
 
             // message.Steps.Add(actionStep);
+
+            // best effort to make job message forward compat.
+            MakeJobMessageCompat(message);
+
             IExecutionContext jobContext = null;
             CancellationTokenRegistration? agentShutdownRegistration = null;
             try
@@ -381,6 +385,46 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 }
 
                 await ShutdownQueue(throwOnFailure: false);
+            }
+        }
+
+        private void MakeJobMessageCompat(Pipelines.AgentJobRequestMessage message)
+        {
+            foreach (var action in message.Steps.OfType<Pipelines.ActionStep>())
+            {
+                if (action.Reference.Type == Pipelines.ActionSourceType.ContainerRegistry)
+                {
+                    var containerAction = action.Reference as Pipelines.ContainerRegistryActionDefinitionReference;
+                    if (!string.IsNullOrEmpty(containerAction.Container))
+                    {
+                        // compat mode, convert container resource to inline step inputs
+                        var containerResource = message.Resources.Containers.FirstOrDefault(x => x.Alias == containerAction.Container);
+                        ArgUtil.NotNull(containerResource, nameof(containerResource));
+
+                        containerAction.Image = containerResource.Image;
+                    }
+                }
+                else if (action.Reference.Type == Pipelines.ActionSourceType.Repository)
+                {
+                    var repoAction = action.Reference as Pipelines.RepositoryActionDefinitionReference;
+                    if (!string.IsNullOrEmpty(repoAction.Repository))
+                    {
+                        // compat mode, convert repository resource to inline step inputs
+                        var repoResource = message.Resources.Repositories.FirstOrDefault(x => x.Alias == repoAction.Repository);
+                        ArgUtil.NotNull(repoResource, nameof(repoResource));
+
+                        repoAction.Name = repoResource.Id;
+                        repoAction.Ref = repoResource.Version;
+                        if (repoResource.Alias == Pipelines.PipelineConstants.SelfAlias)
+                        {
+                            repoAction.RepositoryType = Pipelines.PipelineConstants.SelfAlias;
+                        }
+                        else
+                        {
+                            repoAction.RepositoryType = repoResource.Type;
+                        }
+                    }
+                }
             }
         }
 

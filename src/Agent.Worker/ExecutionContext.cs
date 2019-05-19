@@ -35,7 +35,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         List<ServiceEndpoint> Endpoints { get; }
         List<SecureFile> SecureFiles { get; }
         List<Pipelines.RepositoryResource> Repositories { get; }
-        List<Pipelines.ContainerResource> Containers { get; }
 
         PlanFeatures Features { get; }
         Variables Variables { get; }
@@ -103,7 +102,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         public List<ServiceEndpoint> Endpoints { get; private set; }
         public List<SecureFile> SecureFiles { get; private set; }
         public List<Pipelines.RepositoryResource> Repositories { get; private set; }
-        public List<Pipelines.ContainerResource> Containers { get; private set; }
         public Variables Variables { get; private set; }
         public Variables TaskVariables { get; private set; }
         public HashSet<string> OutputVariables => _outputvariables;
@@ -177,7 +175,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             child.Variables = Variables;
             child.Endpoints = Endpoints;
             child.Repositories = Repositories;
-            child.Containers = Containers;
             child.SecureFiles = SecureFiles;
             child.TaskVariables = taskVariables;
             child.ExpressionValues = ExpressionValues;
@@ -479,9 +476,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 var containerResource = message.Resources.Containers.Single(c => string.Equals(c.Alias, containerResourceAlias, StringComparison.OrdinalIgnoreCase));
                 SidecarContainers.Add(new ContainerInfo(HostContext, containerResource, isJobContainer: false) { ContainerNetwork = containerNetwork, ContainerNetworkAlias = networkAlias });
             }
-
-            // Containers
-            Containers = message.Resources.Containers;
 
             // Proxy variables
             var agentWebProxy = HostContext.GetService<IVstsAgentWebProxy>();

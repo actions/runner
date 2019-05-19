@@ -513,9 +513,7 @@ runs:
                 Pipelines.ActionStep instance;
                 string directory;
                 Pipelines.RepositoryResource repository;
-                CreateAction(yamlContent: Content, instance: out instance, directory: out directory, repo: out repository);
-
-                _ec.Setup(x => x.Repositories).Returns(new List<Pipelines.RepositoryResource>() { repository });
+                CreateAction(yamlContent: Content, instance: out instance, directory: out directory);
 
                 // Act.
                 Definition definition = _taskManager.LoadAction(_ec.Object, instance);
@@ -585,9 +583,7 @@ runs:
                 Pipelines.ActionStep instance;
                 string directory;
                 Pipelines.RepositoryResource repository;
-                CreateAction(yamlContent: Content, instance: out instance, directory: out directory, repo: out repository);
-
-                _ec.Setup(x => x.Repositories).Returns(new List<Pipelines.RepositoryResource>() { repository });
+                CreateAction(yamlContent: Content, instance: out instance, directory: out directory);
 
                 // Act.
                 Definition definition = _taskManager.LoadAction(_ec.Object, instance);
@@ -762,18 +758,10 @@ runs:
             };
         }
 
-        private void CreateAction(string yamlContent, out Pipelines.ActionStep instance, out string directory, out Pipelines.RepositoryResource repo)
+        private void CreateAction(string yamlContent, out Pipelines.ActionStep instance, out string directory)
         {
-            repo = new Pipelines.RepositoryResource()
-            {
-                Alias = "action",
-                Id = "microsoft/actions",
-                Version = "master"
-            };
-            repo.Properties.Set(Pipelines.RepositoryPropertyNames.Name, "microsoft/actions");
-
             Guid taskGuid = Guid.NewGuid();
-            directory = Path.Combine(_workFolder, Constants.Path.TasksDirectory, repo.Id.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar), repo.Version);
+            directory = Path.Combine(_workFolder, Constants.Path.TasksDirectory, "microsoft/actions".Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar), "master");
             string file = Path.Combine(directory, Constants.Path.ActionManifestFile);
             Directory.CreateDirectory(Path.GetDirectoryName(file));
             File.WriteAllText(file, yamlContent);
@@ -781,7 +769,9 @@ runs:
             {
                 Reference = new Pipelines.RepositoryActionDefinitionReference()
                 {
-                    Repository = "action",
+                    Name = "microsoft/actions",
+                    Ref = "master",
+                    RepositoryType = Pipelines.RepositoryTypes.GitHub
                 }
             };
         }

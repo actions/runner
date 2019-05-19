@@ -128,9 +128,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             StepHost.OutputDataReceived += OnDataReceived;
             StepHost.ErrorDataReceived += OnDataReceived;
 
+            // dump out the command
+            var fileName = StepHost.ResolvePathForStepHost(commandPath);
+            ExecutionContext.Command($"{fileName} {arguments}");
+
             // Execute
             int exitCode = await StepHost.ExecuteAsync(workingDirectory: StepHost.ResolvePathForStepHost(workingDirectory),
-                                        fileName: StepHost.ResolvePathForStepHost(commandPath),
+                                        fileName: fileName,
                                         arguments: arguments,
                                         environment: Environment,
                                         requireExitCodeZero: false,
