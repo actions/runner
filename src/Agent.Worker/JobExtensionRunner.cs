@@ -4,7 +4,6 @@ using Microsoft.TeamFoundation.DistributedTask.Expressions;
 using Microsoft.TeamFoundation.DistributedTask.Pipelines.ObjectTemplating;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using Pipelines = Microsoft.TeamFoundation.DistributedTask.Pipelines;
-using Microsoft.VisualStudio.Services.Agent.Worker.Container;
 using System.Linq;
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Worker.Handlers;
@@ -204,15 +203,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             if (Action.Reference.Type == Pipelines.ActionSourceType.ContainerRegistry)
             {
                 var registryAction = Action.Reference as Pipelines.ContainerRegistryActionDefinitionReference;
-                var image = ExecutionContext.Containers.Single(x => x.Alias == registryAction.Container).Image;
-                ExecutionContext.Output($"Action image       : {image}");
+                ExecutionContext.Output($"Action image       : {registryAction.Image}");
             }
             else
             {
                 var repoAction = Action.Reference as Pipelines.RepositoryActionDefinitionReference;
-                var repo = ExecutionContext.Repositories.Single(x => x.Alias == repoAction.Repository).Id;
-                var version = ExecutionContext.Repositories.Single(x => x.Alias == repoAction.Repository).Version;
-                ExecutionContext.Output($"Action repository  : {repo}@{version}");
+                if (string.Equals(repoAction.RepositoryType, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase))
+                {
+                    ExecutionContext.Output($"Action repository  : {Pipelines.PipelineConstants.SelfAlias}");
+                }
+                else
+                {
+                    ExecutionContext.Output($"Action repository  : {repoAction.Name}@{repoAction.Ref}");
+                }
             }
 
             ExecutionContext.Output($"Author             : {actionDefinition.Data.Author}");

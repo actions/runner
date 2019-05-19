@@ -61,18 +61,21 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 into taskGrouping
                 select taskGrouping.First();
 
-            List<Pipelines.ContainerResource> actionContainers = new List<Pipelines.ContainerResource>();
+            HashSet<string> actionContainers = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var containerAction in actions.Where(x => x.Reference.Type == Pipelines.ActionSourceType.ContainerRegistry))
             {
                 var container = containerAction.Reference as Pipelines.ContainerRegistryActionDefinitionReference;
-                actionContainers.Add(executionContext.Containers.Single(x => x.Alias == container.Container));
+                actionContainers.Add(container.Image);
             }
 
-            List<Pipelines.RepositoryResource> actionRepositories = new List<Pipelines.RepositoryResource>();
+            HashSet<string> actionRepositories = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var repositoryAction in actions.Where(x => x.Reference.Type == Pipelines.ActionSourceType.Repository))
             {
                 var repository = repositoryAction.Reference as Pipelines.RepositoryActionDefinitionReference;
-                actionRepositories.Add(executionContext.Repositories.Single(x => x.Alias == repository.Repository));
+                if (!string.IsNullOrEmpty(repository.Name))
+                {
+                    actionRepositories.Add($"{repository.Type}:{repository.Name}@{repository.Ref}");
+                }
             }
 
             if (uniqueTasks.Count() == 0 && actionContainers.Count() == 0 && actionRepositories.Count() == 0)
@@ -94,28 +97,26 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
             foreach (var containerAction in actions.Where(x => x.Reference.Type == Pipelines.ActionSourceType.ContainerRegistry))
             {
-                var container = containerAction.Reference as Pipelines.ContainerRegistryActionDefinitionReference;
-                var containerResource = actionContainers.Single(x => x.Alias == container.Container);
-                await DownloadContainerRegistryActionAsync(executionContext, containerResource, containerAction);
+                await DownloadContainerRegistryActionAsync(executionContext, containerAction);
             }
 
             foreach (var repositoryAction in actions.Where(x => x.Reference.Type == Pipelines.ActionSourceType.Repository))
             {
-                var repository = repositoryAction.Reference as Pipelines.RepositoryActionDefinitionReference;
-                var repositoryResource = actionRepositories.Single(x => x.Alias == repository.Repository);
-                await DownloadRepositoryActionAsync(executionContext, repositoryResource, repositoryAction);
+                await DownloadRepositoryActionAsync(executionContext, repositoryAction);
             }
         }
 
-        private async Task DownloadContainerRegistryActionAsync(IExecutionContext executionContext, Pipelines.ContainerResource containerResource, Pipelines.ActionStep containerAction)
+        private async Task DownloadContainerRegistryActionAsync(IExecutionContext executionContext, Pipelines.ActionStep containerAction)
         {
             Trace.Entering();
             ArgUtil.NotNull(executionContext, nameof(executionContext));
+            ArgUtil.NotNull(containerAction, nameof(containerAction));
 
-            ArgUtil.NotNull(containerResource, nameof(containerResource));
-            ArgUtil.NotNullOrEmpty(containerResource.Image, nameof(containerResource.Image));
+            var containerReference = containerAction.Reference as Pipelines.ContainerRegistryActionDefinitionReference;
+            ArgUtil.NotNull(containerReference, nameof(containerReference));
+            ArgUtil.NotNullOrEmpty(containerReference.Image, nameof(containerReference.Image));
 
-            executionContext.Output($"Pull down action image '{containerResource.Image}'");
+            executionContext.Output($"Pull down action image '{containerReference.Image}'");
 
             // Pull down docker image with retry up to 3 times
             var dockerManger = HostContext.GetService<IDockerCommandManager>();
@@ -123,7 +124,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             int pullExitCode = 0;
             while (retryCount < 3)
             {
-                pullExitCode = await dockerManger.DockerPull(executionContext, containerResource.Image);
+                pullExitCode = await dockerManger.DockerPull(executionContext, containerReference.Image);
                 if (pullExitCode == 0)
                 {
                     break;
@@ -145,37 +146,43 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 throw new InvalidOperationException($"Docker pull failed with exit code {pullExitCode}");
             }
 
-            CachedActionContainers[containerAction.Id] = new ContainerInfo() { ContainerImage = containerResource.Image };
+            CachedActionContainers[containerAction.Id] = new ContainerInfo() { ContainerImage = containerReference.Image };
         }
 
-        private async Task DownloadRepositoryActionAsync(IExecutionContext executionContext, Pipelines.RepositoryResource repositoryResource, Pipelines.ActionStep repositoryAction)
+        private async Task DownloadRepositoryActionAsync(IExecutionContext executionContext, Pipelines.ActionStep repositoryAction)
         {
             Trace.Entering();
             ArgUtil.NotNull(executionContext, nameof(executionContext));
 
-            ArgUtil.NotNull(repositoryResource, nameof(repositoryResource));
-            ArgUtil.NotNullOrEmpty(repositoryResource.Alias, nameof(repositoryResource.Alias));
+            var repositoryReference = repositoryAction.Reference as Pipelines.RepositoryActionDefinitionReference;
 
-            if (string.Equals(repositoryResource.Alias, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase))
+            ArgUtil.NotNull(repositoryReference, nameof(repositoryReference));
+
+            if (string.Equals(repositoryReference.RepositoryType, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase))
             {
                 Trace.Info($"Repository action is in 'self' repository.");
                 return;
             }
 
-            ArgUtil.NotNullOrEmpty(repositoryResource.Id, nameof(repositoryResource.Id));
-            ArgUtil.NotNullOrEmpty(repositoryResource.Version, nameof(repositoryResource.Version));
+            if (!string.Equals(repositoryReference.RepositoryType, Pipelines.RepositoryTypes.GitHub, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new NotSupportedException(repositoryReference.RepositoryType);
+            }
+
+            ArgUtil.NotNullOrEmpty(repositoryReference.Name, nameof(repositoryReference.Name));
+            ArgUtil.NotNullOrEmpty(repositoryReference.Ref, nameof(repositoryReference.Ref));
 
 #if OS_WINDOWS
-            string archiveLink = $"https://api.github.com/repos/{repositoryResource.Id}/zipball/{repositoryResource.Version}";
+            string archiveLink = $"https://api.github.com/repos/{repositoryReference.Name}/zipball/{repositoryReference.Ref}";
 #else
-            string archiveLink = $"https://api.github.com/repos/{repositoryResource.Id}/tarball/{repositoryResource.Version}";
+            string archiveLink = $"https://api.github.com/repos/{repositoryReference.Name}/tarball/{repositoryReference.Ref}";
 #endif
 
-            string destDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Tasks), repositoryResource.Id.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar), repositoryResource.Version);
+            string destDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Tasks), repositoryReference.Name.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar), repositoryReference.Ref);
             Trace.Info($"Download archive '{archiveLink}' to '{destDirectory}'.");
             if (File.Exists(destDirectory + ".completed"))
             {
-                executionContext.Debug($"Action '{repositoryResource.Id}@{repositoryResource.Version}' already downloaded at '{destDirectory}'.");
+                executionContext.Debug($"Action '{repositoryReference.Name}@{repositoryReference.Ref}' already downloaded at '{destDirectory}'.");
                 return;
             }
             else
@@ -342,11 +349,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             }
 
             string actionEntryDirectory = destDirectory;
-            var repoReference = repositoryAction.Reference as Pipelines.RepositoryActionDefinitionReference;
-            ArgUtil.NotNull(repoReference, nameof(repoReference));
-            if (!string.IsNullOrEmpty(repoReference.Path))
+            ArgUtil.NotNull(repositoryReference, nameof(repositoryReference));
+            if (!string.IsNullOrEmpty(repositoryReference.Path))
             {
-                actionEntryDirectory = Path.Combine(destDirectory, repoReference.Path);
+                actionEntryDirectory = Path.Combine(destDirectory, repositoryReference.Path);
             }
 
             // find the docker file
@@ -411,7 +417,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 if (action.Reference.Type == Pipelines.ActionSourceType.Repository)
                 {
                     var repoAction = action.Reference as Pipelines.RepositoryActionDefinitionReference;
-                    if (string.Equals(repoAction.Repository, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase))
+                    if (string.Equals(repoAction.RepositoryType, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase))
                     {
                         var selfRepo = executionContext.Repositories.Single(x => string.Equals(x.Alias, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase));
                         actionDirectory = selfRepo.Properties.Get<string>(Pipelines.RepositoryPropertyNames.Path);
@@ -422,8 +428,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     }
                     else
                     {
-                        var repo = executionContext.Repositories.Single(x => string.Equals(x.Alias, repoAction.Repository, StringComparison.OrdinalIgnoreCase));
-                        actionDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Tasks), repo.Id.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar), repo.Version);
+                        actionDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Tasks), repoAction.Name.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar), repoAction.Ref);
                         if (!string.IsNullOrEmpty(repoAction.Path))
                         {
                             actionDirectory = Path.Combine(actionDirectory, repoAction.Path);
