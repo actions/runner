@@ -435,6 +435,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 }
             }
 
+            // todo: delete in master during m154
+            foreach (var key in new[] { "strategy", "matrix", "parallel" })
+            {
+                if (!ExpressionValues.ContainsKey(key))
+                {
+                    ExpressionValues[key] = null;
+                }
+            }
+
             ExpressionValues["actions"] = new ActionsContext();
 
             // Prepend Path
