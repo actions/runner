@@ -271,22 +271,22 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
         protected void AddTaskVariablesToEnvironment()
         {
             // Validate args.
-            Trace.Entering();
-            ArgUtil.NotNull(ExecutionContext.TaskVariables, nameof(ExecutionContext.TaskVariables));
+            // Trace.Entering();
+            // ArgUtil.NotNull(ExecutionContext.TaskVariables, nameof(ExecutionContext.TaskVariables));
 
-            foreach (KeyValuePair<string, string> pair in ExecutionContext.TaskVariables.Public)
-            {
-                // Add the variable using the formatted name.
-                string formattedKey = (pair.Key ?? string.Empty).Replace('.', '_').Replace(' ', '_').ToUpperInvariant();
-                AddEnvironmentVariable($"VSTS_TASKVARIABLE_{formattedKey}", pair.Value);
-            }
+            // foreach (KeyValuePair<string, string> pair in ExecutionContext.TaskVariables.Public)
+            // {
+            //     // Add the variable using the formatted name.
+            //     string formattedKey = (pair.Key ?? string.Empty).Replace('.', '_').Replace(' ', '_').ToUpperInvariant();
+            //     AddEnvironmentVariable($"VSTS_TASKVARIABLE_{formattedKey}", pair.Value);
+            // }
 
-            foreach (KeyValuePair<string, string> pair in ExecutionContext.TaskVariables.Private)
-            {
-                // Add the variable using the formatted name.
-                string formattedKey = (pair.Key ?? string.Empty).Replace('.', '_').Replace(' ', '_').ToUpperInvariant();
-                AddEnvironmentVariable($"VSTS_TASKVARIABLE_{formattedKey}", pair.Value);
-            }
+            // foreach (KeyValuePair<string, string> pair in ExecutionContext.TaskVariables.Private)
+            // {
+            //     // Add the variable using the formatted name.
+            //     string formattedKey = (pair.Key ?? string.Empty).Replace('.', '_').Replace(' ', '_').ToUpperInvariant();
+            //     AddEnvironmentVariable($"VSTS_TASKVARIABLE_{formattedKey}", pair.Value);
+            // }
         }
 
         protected void AddPrependPathToEnvironment()

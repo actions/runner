@@ -1,5 +1,7 @@
-﻿using Microsoft.TeamFoundation.DistributedTask.WebApi;
+﻿using Microsoft.TeamFoundation.DistributedTask.Pipelines;
+using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Util;
+using Microsoft.VisualStudio.Services.Agent.Worker.Build;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,6 +11,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
     [ServiceLocator(Default = typeof(ActionCommandManager))]
     public interface IActionCommandManager : IAgentService
     {
+        void EnablePluginInternalCommand();
+        void DisablePluginInternalCommand();
         bool TryProcessCommand(IExecutionContext context, string input);
     }
 
@@ -33,8 +37,23 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             {
                 Trace.Info($"Register action command extension for command {commandExt.Command}");
                 _commandExtensions[commandExt.Command] = commandExt;
-                _registeredCommands.Add(commandExt.Command);
+                if (commandExt.Command != "internal-set-self-path")
+                {
+                    _registeredCommands.Add(commandExt.Command);
+                }
             }
+        }
+
+        public void EnablePluginInternalCommand()
+        {
+            Trace.Info($"Enable plugin internal command extension.");
+            _registeredCommands.Add("internal-set-self-path");
+        }
+
+        public void DisablePluginInternalCommand()
+        {
+            Trace.Info($"Disable plugin internal command extension.");
+            _registeredCommands.Remove("internal-set-self-path");
         }
 
         public bool TryProcessCommand(IExecutionContext context, string input)
@@ -121,6 +140,25 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         void ProcessCommand(IExecutionContext context, string line, ActionCommand command, out bool omitEcho);
     }
 
+    public sealed class InternalPluginSetRepoPathCommandExtension : AgentService, IActionCommandExtension
+    {
+        public string Command => "internal-set-self-path";
+
+        public Type ExtensionType => typeof(IActionCommandExtension);
+
+        public void ProcessCommand(IExecutionContext context, string line, ActionCommand command, out bool omitEcho)
+        {
+            var selfRepo = context.Repositories.Single(x => string.Equals(x.Alias, PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase));
+            selfRepo.Properties.Set(RepositoryPropertyNames.Path, command.Data);
+            context.SetGitHubContext("workspace", command.Data);
+
+            var directoryManager = HostContext.GetService<IBuildDirectoryManager>();
+            var trackingConfig = directoryManager.UpdateDirectory(context, selfRepo);
+
+            omitEcho = true;
+        }
+    }
+
     public sealed class SetEnvCommandExtension : AgentService, IActionCommandExtension
     {
         public string Command => "set-env";
@@ -134,7 +172,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 throw new Exception(StringUtil.Loc("MissingEnvName"));
             }
 
-            context.SetVariable(envName, command.Data);
+            context.EnvironmentVariables[envName] = command.Data;
             context.Output(line);
             context.Output($"{WellKnownTags.Debug}{envName}='{command.Data}'");
             omitEcho = true;

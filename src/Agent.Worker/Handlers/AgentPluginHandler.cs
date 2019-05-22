@@ -38,24 +38,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
 
             // Make sure only particular task get run as agent plugin.
             var agentPlugin = HostContext.GetService<IAgentPluginManager>();
-            var pluginTask = agentPlugin.GetPluginTask(Task.Id, Task.Version);
-            ArgUtil.NotNull(pluginTask, $"{Task.Name} ({Task.Id}/{Task.Version})");
-            if (!string.Equals(pluginTask.TaskPluginPreJobTypeName, Data.Target, StringComparison.OrdinalIgnoreCase) &&
-                !string.Equals(pluginTask.TaskPluginTypeName, Data.Target, StringComparison.OrdinalIgnoreCase) &&
-                !string.Equals(pluginTask.TaskPluginPostJobTypeName, Data.Target, StringComparison.OrdinalIgnoreCase))
-            {
-                throw new NotSupportedException(Data.Target);
-            }
-
-            var commandManager = HostContext.GetService<IWorkerCommandManager>();
-            commandManager.EnablePluginInternalCommand(true);
+            ActionCommandManager.EnablePluginInternalCommand();
             try
             {
                 await agentPlugin.RunPluginTaskAsync(ExecutionContext, Data.Target, Inputs, Environment, RuntimeVariables, OnDataReceived);
             }
             finally
             {
-                commandManager.EnablePluginInternalCommand(false);
+                ActionCommandManager.DisablePluginInternalCommand();
             }
         }
 
@@ -63,7 +53,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
         {
             // This does not need to be inside of a critical section.
             // The logging queues and command handlers are thread-safe.
-            if (!CommandManager.TryProcessCommand(ExecutionContext, e.Data))
+            if (!ActionCommandManager.TryProcessCommand(ExecutionContext, e.Data))
             {
                 ExecutionContext.Output(e.Data);
             }

@@ -11,6 +11,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Text;
 using Microsoft.TeamFoundation.Framework.Common;
+using Microsoft.TeamFoundation.DistributedTask.Pipelines.ContextData;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
@@ -18,6 +19,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
     public interface IAgentPluginManager : IAgentService
     {
         AgentTaskPluginInfo GetPluginTask(Guid taskId, string taskVersion);
+        AgentActionPluginInfo GetPluginAction(string plugin);
         AgentCommandPluginInfo GetPluginCommad(string commandArea, string commandEvent);
         Task RunPluginTaskAsync(IExecutionContext context, string plugin, Dictionary<string, string> inputs, Dictionary<string, string> environment, Variables runtimeVariables, EventHandler<ProcessDataReceivedEventArgs> outputHandler);
         void ProcessCommand(IExecutionContext context, Command command);
@@ -42,6 +44,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             "Agent.Plugins.PipelineArtifact.DownloadPipelineArtifactTaskV1_1_2, Agent.Plugins",
             "Agent.Plugins.PipelineArtifact.DownloadPipelineArtifactTaskV1_1_3, Agent.Plugins",
             //"Agent.Plugins.Container.ContainerActionTask, Agent.Plugins",
+        };
+
+        private readonly Dictionary<string, AgentActionPluginInfo> _actionPlugins = new Dictionary<string, AgentActionPluginInfo>(StringComparer.OrdinalIgnoreCase)
+        {
+            {
+                "checkout",
+                new AgentActionPluginInfo()
+                {
+                    Author = "GitHub",
+                    Description = "Get sources from a Git repository",
+                    FriendlyName = "Get sources",
+                    PluginTypeName = "Agent.Plugins.Repository.CheckoutTask, Agent.Plugins"
+                }
+            }
         };
 
         private readonly HashSet<string> _commandPlugins = new HashSet<string>();
@@ -126,6 +142,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             }
         }
 
+        public AgentActionPluginInfo GetPluginAction(string plugin)
+        {
+            if (_actionPlugins.ContainsKey(plugin))
+            {
+                return _actionPlugins[plugin];
+            }
+            else
+            {
+                return null;
+            }
+        }
+
         public AgentTaskPluginInfo GetPluginTask(Guid taskId, string taskVersion)
         {
             if (_supportedTasks.ContainsKey(taskId) && _supportedTasks[taskId].ContainsKey(taskVersion))
@@ -176,31 +204,33 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             {
                 Inputs = inputs,
                 Repositories = context.Repositories,
-                Endpoints = context.Endpoints
+                Endpoints = context.Endpoints,
+                Context = context.ExpressionValues as Dictionary<string, PipelineContextData>
             };
+
             // // environment
             // foreach(var env in environment)
             // {
             //     pluginContext.Environment[env.Key] = env.Value;
             // }
             // variables
-            foreach (var publicVar in runtimeVariables.Public)
-            {
-                pluginContext.Variables[publicVar.Key] = publicVar.Value;
-            }
-            foreach (var publicVar in runtimeVariables.Private)
-            {
-                pluginContext.Variables[publicVar.Key] = new VariableValue(publicVar.Value, true);
-            }
-            // task variables (used by wrapper task)
-            foreach (var publicVar in context.TaskVariables.Public)
-            {
-                pluginContext.TaskVariables[publicVar.Key] = publicVar.Value;
-            }
-            foreach (var publicVar in context.TaskVariables.Private)
-            {
-                pluginContext.TaskVariables[publicVar.Key] = new VariableValue(publicVar.Value, true);
-            }
+            // foreach (var publicVar in runtimeVariables.Public)
+            // {
+            //     pluginContext.Variables[publicVar.Key] = publicVar.Value;
+            // }
+            // foreach (var publicVar in runtimeVariables.Private)
+            // {
+            //     pluginContext.Variables[publicVar.Key] = new VariableValue(publicVar.Value, true);
+            // }
+            // // task variables (used by wrapper task)
+            // foreach (var publicVar in context.TaskVariables.Public)
+            // {
+            //     pluginContext.TaskVariables[publicVar.Key] = publicVar.Value;
+            // }
+            // foreach (var publicVar in context.TaskVariables.Private)
+            // {
+            //     pluginContext.TaskVariables[publicVar.Key] = new VariableValue(publicVar.Value, true);
+            // }
 
             using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
             {
@@ -343,5 +373,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         public string TaskPluginPreJobTypeName { get; set; }
         public string TaskPluginTypeName { get; set; }
         public string TaskPluginPostJobTypeName { get; set; }
+    }
+
+    public class AgentActionPluginInfo
+    {
+        public string Author { get; set; }
+        public string Description { get; set; }
+        public string FriendlyName { get; set; }
+        public string HelpUrl { get; set; }
+        public string PluginTypeName { get; set; }
     }
 }

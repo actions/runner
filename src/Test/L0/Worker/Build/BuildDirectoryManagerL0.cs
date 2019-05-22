@@ -43,7 +43,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
                 // Assert.
                 Assert.True(Directory.Exists(Path.Combine(_workFolder, _newConfig.BuildDirectory, Constants.Build.Path.ArtifactsDirectory)));
                 Assert.True(Directory.Exists(Path.Combine(_workFolder, _newConfig.BuildDirectory, Constants.Build.Path.BinariesDirectory)));
-                Assert.True(Directory.Exists(Path.Combine(_workFolder, _newConfig.BuildDirectory, Constants.Build.Path.TestResultsDirectory)));
             }
         }
 
@@ -116,19 +115,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
                 Directory.CreateDirectory(Path.GetDirectoryName(artifactFile));
                 File.WriteAllText(path: artifactFile, contents: "some artifact contents");
 
-                string testResultsDirectory = Path.Combine(_workFolder, _newConfig.BuildDirectory, Constants.Build.Path.TestResultsDirectory);
-                string testResultsFile = Path.Combine(testResultsDirectory, "some subdirectory", "some test results file");
-                Directory.CreateDirectory(Path.GetDirectoryName(testResultsFile));
-                File.WriteAllText(path: testResultsFile, contents: "some test result contents");
-
                 // Act.
                 _buildDirectoryManager.PrepareDirectory(_ec.Object, _repository, _workspaceOptions);
 
                 // Assert.
                 Assert.True(Directory.Exists(artifactsDirectory));
                 Assert.Equal(0, Directory.GetFileSystemEntries(artifactsDirectory).Length);
-                Assert.True(Directory.Exists(testResultsDirectory));
-                Assert.Equal(0, Directory.GetFileSystemEntries(testResultsDirectory).Length);
             }
         }
 
@@ -154,7 +146,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
                 Assert.True(Directory.Exists(Path.Combine(_workFolder, _newConfig.BuildDirectory, Constants.Build.Path.ArtifactsDirectory)));
                 Assert.True(Directory.Exists(Path.Combine(_workFolder, _newConfig.BuildDirectory, Constants.Build.Path.BinariesDirectory)));
                 Assert.True(Directory.Exists(Path.Combine(_workFolder, _newConfig.BuildDirectory, Constants.Build.Path.SourcesDirectory)));
-                Assert.True(Directory.Exists(Path.Combine(_workFolder, _newConfig.BuildDirectory, Constants.Build.Path.TestResultsDirectory)));
             }
         }
 

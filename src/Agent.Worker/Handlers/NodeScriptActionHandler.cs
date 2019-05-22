@@ -13,6 +13,7 @@ using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.WebApi;
 using Pipelines = Microsoft.TeamFoundation.DistributedTask.Pipelines;
 using Microsoft.TeamFoundation.Build.WebApi;
+using Microsoft.TeamFoundation.DistributedTask.Pipelines.ContextData;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
 {
@@ -38,49 +39,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             // Update the env dictionary.
             AddInputsToEnvironment();
             AddPrependPathToEnvironment();
-            AddAgentVariablesToEnvironment();
 
-            // populate action environment variables.
-            var selfRepo = ExecutionContext.Repositories.Single(x => string.Equals(x.Alias, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase) ||
-                                                                     string.Equals(x.Alias, Pipelines.PipelineConstants.DesignerRepo, StringComparison.OrdinalIgnoreCase));
-
-            // GITHUB_ACTOR=ericsciple
-            Environment["GITHUB_ACTOR"] = selfRepo.Properties.Get<Pipelines.VersionInfo>(Pipelines.RepositoryPropertyNames.VersionInfo)?.Author ?? string.Empty;
-
-            // GITHUB_REPOSITORY=bryanmacfarlane/actionstest
-            Environment["GITHUB_REPOSITORY"] = selfRepo.Properties.Get<string>(Pipelines.RepositoryPropertyNames.Name, string.Empty);
-
-            // GITHUB_WORKSPACE=/github/workspace
-            Environment["GITHUB_WORKSPACE"] = ExecutionContext.Variables.Get(Constants.Variables.System.DefaultWorkingDirectory);
-
-            // GITHUB_SHA=1a204f473f6001b7fac9c6453e76702f689a41a9
-            Environment["GITHUB_SHA"] = selfRepo.Version;
-
-            // GITHUB_REF=refs/heads/master
-            Environment["GITHUB_REF"] = selfRepo.Properties.Get<string>(Pipelines.RepositoryPropertyNames.Ref, string.Empty);
-
-            // GITHUB_TOKEN=TOKEN
-            if (selfRepo.Endpoint != null)
+            // expose context to environment
+            foreach (var context in ExecutionContext.ExpressionValues)
             {
-                var repoEndpoint = ExecutionContext.Endpoints.FirstOrDefault(x => x.Id == selfRepo.Endpoint.Id);
-                if (repoEndpoint?.Authorization?.Parameters != null && repoEndpoint.Authorization.Parameters.ContainsKey("accessToken"))
+                if (context.Value is IEnvironmentContextData runtimeContext && runtimeContext != null)
                 {
-                    Environment["GITHUB_TOKEN"] = repoEndpoint.Authorization.Parameters["accessToken"];
+                    foreach (var env in runtimeContext.GetRuntimeEnvironmentVariables())
+                    {
+                        Environment[env.Key] = env.Value;
+                    }
                 }
             }
-
-            // HOME=/github/home
-            // Environment["HOME"] = "/github/home";
-
-            // GITHUB_WORKFLOW=test on push
-            Environment["GITHUB_WORKFLOW"] = ExecutionContext.Variables.Build_DefinitionName;
-
-            // GITHUB_EVENT_NAME=push
-            Environment["GITHUB_EVENT_NAME"] = ExecutionContext.Variables.Get(BuildVariables.Reason);
-
-            // GITHUB_ACTION=dump.env
-
-            // GITHUB_EVENT_PATH=/github/workflow/event.Json
 
             // Resolve the target script.
             string target = Data.Target;
@@ -89,10 +59,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             ArgUtil.File(target, nameof(target));
 
             // Resolve the working directory.
+            var githubContext = ExecutionContext.ExpressionValues["github"] as GitHubContext;
+            ArgUtil.NotNull(githubContext, nameof(githubContext));
+
             string workingDirectory = Data.WorkingDirectory;
             if (string.IsNullOrEmpty(workingDirectory))
             {
-                workingDirectory = ExecutionContext.Variables.Get(Constants.Variables.System.DefaultWorkingDirectory);
+                workingDirectory = githubContext["workspace"] as StringContextData;
                 if (string.IsNullOrEmpty(workingDirectory))
                 {
                     workingDirectory = HostContext.GetDirectory(WellKnownDirectory.Work);

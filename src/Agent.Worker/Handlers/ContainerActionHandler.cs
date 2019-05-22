@@ -13,6 +13,7 @@ using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Pipelines = Microsoft.TeamFoundation.DistributedTask.Pipelines;
 using Microsoft.VisualStudio.Services.WebApi;
 using Microsoft.TeamFoundation.Build.WebApi;
+using Microsoft.TeamFoundation.DistributedTask.Pipelines.ContextData;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
 {
@@ -69,7 +70,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
                 container.ContainerNetwork = containerNetwork;
             }
 
-            var defaultWorkingDirectory = ExecutionContext.Variables.System_DefaultWorkingDirectory;
+            var githubContext = ExecutionContext.ExpressionValues["github"] as GitHubContext;
+            ArgUtil.NotNull(githubContext, nameof(githubContext));
+            var defaultWorkingDirectory = githubContext["workspace"] as StringContextData;
             var tempDirectory = HostContext.GetDirectory(WellKnownDirectory.Temp);
 
             ArgUtil.NotNullOrEmpty(defaultWorkingDirectory, nameof(defaultWorkingDirectory));
@@ -91,46 +94,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
 
             container.ContainerWorkDirectory = "/github/workspace";
 
-            // populate action environment variables.
-            var selfRepo = ExecutionContext.Repositories.Single(x => string.Equals(x.Alias, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase) ||
-                                                                     string.Equals(x.Alias, Pipelines.PipelineConstants.DesignerRepo, StringComparison.OrdinalIgnoreCase));
-
-            // GITHUB_ACTOR=ericsciple
-            container.ContainerEnvironmentVariables["GITHUB_ACTOR"] = selfRepo.Properties.Get<Pipelines.VersionInfo>(Pipelines.RepositoryPropertyNames.VersionInfo)?.Author ?? string.Empty;
-
-            // GITHUB_REPOSITORY=bryanmacfarlane/actionstest
-            container.ContainerEnvironmentVariables["GITHUB_REPOSITORY"] = selfRepo.Properties.Get<string>(Pipelines.RepositoryPropertyNames.Name, string.Empty);
-
-            // GITHUB_WORKSPACE=/github/workspace
-            container.ContainerEnvironmentVariables["GITHUB_WORKSPACE"] = "/github/workspace";
-
-            // GITHUB_SHA=1a204f473f6001b7fac9c6453e76702f689a41a9
-            container.ContainerEnvironmentVariables["GITHUB_SHA"] = selfRepo.Version;
-
-            // GITHUB_REF=refs/heads/master
-            container.ContainerEnvironmentVariables["GITHUB_REF"] = selfRepo.Properties.Get<string>(Pipelines.RepositoryPropertyNames.Ref, string.Empty);
-
-            // GITHUB_TOKEN=TOKEN
-            if (selfRepo.Endpoint != null)
+            // expose context to environment
+            foreach (var context in ExecutionContext.ExpressionValues)
             {
-                var repoEndpoint = ExecutionContext.Endpoints.FirstOrDefault(x => x.Id == selfRepo.Endpoint.Id);
-                if (repoEndpoint?.Authorization?.Parameters != null && repoEndpoint.Authorization.Parameters.ContainsKey("accessToken"))
+                if (context.Value is IEnvironmentContextData runtimeContext && runtimeContext != null)
                 {
-                    container.ContainerEnvironmentVariables["GITHUB_TOKEN"] = repoEndpoint.Authorization.Parameters["accessToken"];
+                    foreach (var env in runtimeContext.GetRuntimeEnvironmentVariables())
+                    {
+                        Environment[env.Key] = env.Value;
+                    }
                 }
             }
-
-            // HOME=/github/home
-            container.ContainerEnvironmentVariables["HOME"] = "/github/home";
-
-            // GITHUB_WORKFLOW=test on push
-            container.ContainerEnvironmentVariables["GITHUB_WORKFLOW"] = ExecutionContext.Variables.Build_DefinitionName;
-
-            // GITHUB_EVENT_NAME=push
-            container.ContainerEnvironmentVariables["GITHUB_EVENT_NAME"] = ExecutionContext.Variables.Get(BuildVariables.Reason);
-
-            // GITHUB_ACTION=dump.env
-            // GITHUB_EVENT_PATH=/github/workflow/event.json
 
             foreach (var variable in this.Environment)
             {

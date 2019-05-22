@@ -62,43 +62,43 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             IHandler handler;
             if (data is NodeHandlerData)
             {
-                // Node.
+                // Node.	
                 handler = HostContext.CreateService<INodeHandler>();
                 (handler as INodeHandler).Data = data as NodeHandlerData;
             }
             else if (data is Node10HandlerData)
             {
-                // Node10.
+                // Node10.	
                 handler = HostContext.CreateService<INodeHandler>();
                 (handler as INodeHandler).Data = data as Node10HandlerData;
             }
             else if (data is PowerShell3HandlerData)
             {
-                // PowerShell3.
+                // PowerShell3.	
                 handler = HostContext.CreateService<IPowerShell3Handler>();
                 (handler as IPowerShell3Handler).Data = data as PowerShell3HandlerData;
             }
             else if (data is PowerShellExeHandlerData)
             {
-                // PowerShellExe.
+                // PowerShellExe.	
                 handler = HostContext.CreateService<IPowerShellExeHandler>();
                 (handler as IPowerShellExeHandler).Data = data as PowerShellExeHandlerData;
             }
             else if (data is ProcessHandlerData)
             {
-                // Process.
+                // Process.	
                 handler = HostContext.CreateService<IProcessHandler>();
                 (handler as IProcessHandler).Data = data as ProcessHandlerData;
             }
             else if (data is PowerShellHandlerData)
             {
-                // PowerShell.
+                // PowerShell.	
                 handler = HostContext.CreateService<IPowerShellHandler>();
                 (handler as IPowerShellHandler).Data = data as PowerShellHandlerData;
             }
             else if (data is AzurePowerShellHandlerData)
             {
-                // AzurePowerShell.
+                // AzurePowerShell.	
                 handler = HostContext.CreateService<IAzurePowerShellHandler>();
                 (handler as IAzurePowerShellHandler).Data = data as AzurePowerShellHandlerData;
             }
@@ -166,6 +166,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             {
                 handler = HostContext.CreateService<INodeScriptActionHandler>();
                 (handler as INodeScriptActionHandler).Data = data as NodeScriptActionHandlerData;
+            }
+            else if (data is ScriptActionHandlerData)
+            {
+                handler = HostContext.CreateService<IScriptHandler>();
+                (handler as IScriptHandler).Data = data as ScriptActionHandlerData;
+            }
+            else if (data is AgentPluginHandlerData)
+            {
+                // Agent plugin
+                handler = HostContext.CreateService<IAgentPluginHandler>();
+                (handler as IAgentPluginHandler).Data = data as AgentPluginHandlerData;
             }
             else
             {

@@ -61,4 +61,32 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             return action;
         }
     }
+
+    public interface IEnvironmentContextData
+    {
+        IEnumerable<KeyValuePair<String, String>> GetRuntimeEnvironmentVariables();
+    }
+
+    public sealed class RunnerContext : DictionaryContextData, IEnvironmentContextData
+    {
+        public IEnumerable<KeyValuePair<String, String>> GetRuntimeEnvironmentVariables()
+        {
+            foreach (var data in this)
+            {
+                // Change to RUNNER_ after the new action toolkits released
+                yield return new KeyValuePair<String, String>($"AGENT_{data.Key.ToUpperInvariant()}", data.Value as StringContextData);
+            }
+        }
+    }
+
+    public sealed class GitHubContext : DictionaryContextData, IEnvironmentContextData
+    {
+        public IEnumerable<KeyValuePair<String, String>> GetRuntimeEnvironmentVariables()
+        {
+            foreach (var data in this)
+            {
+                yield return new KeyValuePair<String, String>($"GITHUB_{data.Key.ToUpperInvariant()}", data.Value as StringContextData);
+            }
+        }
+    }
 }

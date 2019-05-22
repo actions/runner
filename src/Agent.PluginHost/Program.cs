@@ -69,6 +69,7 @@ namespace Agent.PluginHost
                         // any exception throw from plugin will fail the task.
                         executionContext.Error(ex.Message);
                         executionContext.Debug(ex.StackTrace);
+                        return 1;
                     }
                     finally
                     {

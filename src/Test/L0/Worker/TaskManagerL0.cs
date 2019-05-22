@@ -767,7 +767,7 @@ runs:
             File.WriteAllText(file, yamlContent);
             instance = new Pipelines.ActionStep()
             {
-                Reference = new Pipelines.RepositoryActionDefinitionReference()
+                Reference = new Pipelines.RepositoryPathReference()
                 {
                     Name = "microsoft/actions",
                     Ref = "master",

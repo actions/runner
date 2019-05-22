@@ -312,35 +312,35 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             }
         }
 
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Worker")]
-        public async Task JobExtensionIntraTaskState()
-        {
-            using (TestHostContext hc = CreateTestContext())
-            {
-                TestJobExtension testExtension = new TestJobExtension();
-                testExtension.Initialize(hc);
-                List<IStep> result = await testExtension.InitializeJob(_jobEc, _message);
+        // [Fact]
+        // [Trait("Level", "L0")]
+        // [Trait("Category", "Worker")]
+        // public async Task JobExtensionIntraTaskState()
+        // {
+        //     using (TestHostContext hc = CreateTestContext())
+        //     {
+        //         TestJobExtension testExtension = new TestJobExtension();
+        //         testExtension.Initialize(hc);
+        //         List<IStep> result = await testExtension.InitializeJob(_jobEc, _message);
 
-                var trace = hc.GetTrace();
+        //         var trace = hc.GetTrace();
 
-                trace.Info(string.Join(", ", result.Select(x => x.DisplayName)));
+        //         trace.Info(string.Join(", ", result.Select(x => x.DisplayName)));
 
-                Assert.Equal(12, result.Count);
+        //         Assert.Equal(12, result.Count);
 
-                result[0].ExecutionContext.TaskVariables.Set("state1", "value1", false);
-                Assert.Equal("value1", result[5].ExecutionContext.TaskVariables.Get("state1"));
-                Assert.Equal("value1", result[11].ExecutionContext.TaskVariables.Get("state1"));
+        //         result[0].ExecutionContext.TaskVariables.Set("state1", "value1", false);
+        //         Assert.Equal("value1", result[5].ExecutionContext.TaskVariables.Get("state1"));
+        //         Assert.Equal("value1", result[11].ExecutionContext.TaskVariables.Get("state1"));
 
-                Assert.Null(result[4].ExecutionContext.TaskVariables.Get("state1"));
-                Assert.Null(result[1].ExecutionContext.TaskVariables.Get("state1"));
-                Assert.Null(result[2].ExecutionContext.TaskVariables.Get("state1"));
-                Assert.Null(result[10].ExecutionContext.TaskVariables.Get("state1"));
-                Assert.Null(result[6].ExecutionContext.TaskVariables.Get("state1"));
-                Assert.Null(result[7].ExecutionContext.TaskVariables.Get("state1"));
-            }
-        }
+        //         Assert.Null(result[4].ExecutionContext.TaskVariables.Get("state1"));
+        //         Assert.Null(result[1].ExecutionContext.TaskVariables.Get("state1"));
+        //         Assert.Null(result[2].ExecutionContext.TaskVariables.Get("state1"));
+        //         Assert.Null(result[10].ExecutionContext.TaskVariables.Get("state1"));
+        //         Assert.Null(result[6].ExecutionContext.TaskVariables.Get("state1"));
+        //         Assert.Null(result[7].ExecutionContext.TaskVariables.Get("state1"));
+        //     }
+        // }
 
 #if OS_WINDOWS
         [Fact]
