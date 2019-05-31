@@ -213,7 +213,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                 public static readonly string LegacyStagingDirectory = "staging";
                 public static readonly string SourceRootMappingDirectory = "SourceRootMapping";
                 public static readonly string SourcesDirectory = "s";
-                public static readonly string TestResultsDirectory = "TestResults";
+                // public static readonly string TestResultsDirectory = "TestResults";
                 public static readonly string TopLevelTrackingConfigFile = "Mappings.json";
                 public static readonly string TrackingConfigFile = "SourceFolder.json";
             }
@@ -261,7 +261,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             public static readonly string TeeDirectory = "tee";
             public static readonly string ToolDirectory = "_tool";
             public static readonly string TaskJsonFile = "task.json";
-            public static readonly string ActionManifestFile = "manifest.yml";
+            public static readonly string ActionManifestFile = "action.yml";
             public static readonly string TasksDirectory = "_tasks";
             public static readonly string UpdateDirectory = "_update";
             public static readonly string WorkDirectory = "_work";

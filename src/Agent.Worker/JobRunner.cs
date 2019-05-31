@@ -42,6 +42,7 @@ using System.IO.Compression;
 using Microsoft.VisualStudio.Services.Agent.Worker.Build;
 using System.Diagnostics;
 using Newtonsoft.Json.Linq;
+using Microsoft.TeamFoundation.DistributedTask.ObjectTemplating.Tokens;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
@@ -111,36 +112,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             _jobServerQueue.Start(message);
             HostContext.WritePerfCounter($"WorkerJobServerQueueStarted_{message.RequestId.ToString()}");
 
-            // message.Steps.RemoveAt(1);
-
-            // var actionStep = new Pipelines.ActionStep()
-            // {
-            //     Enabled = true,
-            //     DisplayName = "use node",
-            //     Name = "useNode",
-            //     Id = Guid.NewGuid(),
-            //     Reference = new Pipelines.RepositoryActionDefinitionReference()
-            //     {
-            //         Repository = "node_config"
-            //     }
-            // };
-
-            // var actionRepo = new Pipelines.RepositoryResource()
-            // {
-            //     Alias = "node_config",
-            //     Id = "bryanmacfarlane/node-config",
-            //     Type = Pipelines.RepositoryTypes.GitHub,
-            //     Url = new Uri("https://github.com/bryanmacfarlane/node-config"),
-            //     Version = "7817183a80e04b612f8cc8cc76f7bf9ec83d5208"
-            // };
-            // actionRepo.Properties.Set(Pipelines.RepositoryPropertyNames.Name, "bryanmacfarlane/node-config");
-            // actionRepo.Properties.Set(Pipelines.RepositoryPropertyNames.Ref, "master");
-
-            // message.Resources.Repositories.Add(actionRepo);
-
-            // message.Steps.Add(actionStep);
-
-            // best effort to make job message forward compat.
             MakeJobMessageCompat(message);
 
             IExecutionContext jobContext = null;
@@ -189,33 +160,37 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 }
 
                 // Set agent variables.
-                AgentSettings settings = HostContext.GetService<IConfigurationStore>().GetSettings();
-                jobContext.Variables.Set(Constants.Variables.Agent.Id, settings.AgentId.ToString(CultureInfo.InvariantCulture));
-                jobContext.SetVariable(Constants.Variables.Agent.HomeDirectory, HostContext.GetDirectory(WellKnownDirectory.Root), isFilePath: true);
-                jobContext.Variables.Set(Constants.Variables.Agent.JobName, message.JobDisplayName);
-                jobContext.Variables.Set(Constants.Variables.Agent.MachineName, Environment.MachineName);
-                jobContext.Variables.Set(Constants.Variables.Agent.Name, settings.AgentName);
-                jobContext.Variables.Set(Constants.Variables.Agent.OS, VarUtil.OS);
-                jobContext.Variables.Set(Constants.Variables.Agent.OSArchitecture, VarUtil.OSArchitecture);
-                jobContext.SetVariable(Constants.Variables.Agent.RootDirectory, HostContext.GetDirectory(WellKnownDirectory.Work), isFilePath: true);
-#if OS_WINDOWS
-                jobContext.SetVariable(Constants.Variables.Agent.ServerOMDirectory, HostContext.GetDirectory(WellKnownDirectory.ServerOM), isFilePath: true);
-#else
-                jobContext.Variables.Set(Constants.Variables.Agent.AcceptTeeEula, settings.AcceptTeeEula.ToString());
-#endif
-                jobContext.SetVariable(Constants.Variables.Agent.WorkFolder, HostContext.GetDirectory(WellKnownDirectory.Work), isFilePath: true);
-                jobContext.SetVariable(Constants.Variables.System.WorkFolder, HostContext.GetDirectory(WellKnownDirectory.Work), isFilePath: true);
+//                 AgentSettings settings = HostContext.GetService<IConfigurationStore>().GetSettings();
+//                 jobContext.Variables.Set(Constants.Variables.Agent.Id, settings.AgentId.ToString(CultureInfo.InvariantCulture));
+//                 jobContext.SetVariable(Constants.Variables.Agent.HomeDirectory, HostContext.GetDirectory(WellKnownDirectory.Root), isFilePath: true);
+//                 jobContext.Variables.Set(Constants.Variables.Agent.JobName, message.JobDisplayName);
+//                 jobContext.Variables.Set(Constants.Variables.Agent.MachineName, Environment.MachineName);
+//                 jobContext.Variables.Set(Constants.Variables.Agent.Name, settings.AgentName);
+//                 jobContext.Variables.Set(Constants.Variables.Agent.OS, VarUtil.OS);
+//                 jobContext.Variables.Set(Constants.Variables.Agent.OSArchitecture, VarUtil.OSArchitecture);
+//                 jobContext.SetVariable(Constants.Variables.Agent.RootDirectory, HostContext.GetDirectory(WellKnownDirectory.Work), isFilePath: true);
+// #if OS_WINDOWS
+//                 jobContext.SetVariable(Constants.Variables.Agent.ServerOMDirectory, HostContext.GetDirectory(WellKnownDirectory.ServerOM), isFilePath: true);
+// #else
+//                 jobContext.Variables.Set(Constants.Variables.Agent.AcceptTeeEula, settings.AcceptTeeEula.ToString());
+// #endif
+//                 jobContext.SetVariable(Constants.Variables.Agent.WorkFolder, HostContext.GetDirectory(WellKnownDirectory.Work), isFilePath: true);
+//                 jobContext.SetVariable(Constants.Variables.System.WorkFolder, HostContext.GetDirectory(WellKnownDirectory.Work), isFilePath: true);
 
                 string toolsDirectory = HostContext.GetDirectory(WellKnownDirectory.Tools);
                 Directory.CreateDirectory(toolsDirectory);
-                jobContext.SetVariable(Constants.Variables.Agent.ToolsDirectory, toolsDirectory, isFilePath: true);
+                jobContext.SetRunnerContext("toolsdirectory", toolsDirectory);
+                jobContext.SetRunnerContext("workfolder", HostContext.GetDirectory(WellKnownDirectory.Work));
+                jobContext.SetRunnerContext("version", BuildConstants.AgentPackage.Version);
 
-                bool disableGitPrompt = jobContext.Variables.GetBoolean("VSTS_DISABLE_GIT_PROMPT") ?? StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("VSTS_DISABLE_GIT_PROMPT"), true);
-                if (disableGitPrompt &&
-                    string.IsNullOrEmpty(jobContext.Variables.Get("GIT_TERMINAL_PROMPT")))
-                {
-                    jobContext.SetVariable("GIT_TERMINAL_PROMPT", "0");
-                }
+                // jobContext.SetVariable(Constants.Variables.Agent.ToolsDirectory, toolsDirectory, isFilePath: true);
+
+                // bool disableGitPrompt = jobContext.Variables.GetBoolean("VSTS_DISABLE_GIT_PROMPT") ?? StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("VSTS_DISABLE_GIT_PROMPT"), true);
+                // if (disableGitPrompt &&
+                //     string.IsNullOrEmpty(jobContext.Variables.Get("GIT_TERMINAL_PROMPT")))
+                // {
+                //     jobContext.SetVariable("GIT_TERMINAL_PROMPT", "0");
+                // }
 
                 // Setup TEMP directories
                 _tempDirectoryManager = HostContext.GetService<ITempDirectoryManager>();
@@ -223,82 +198,84 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
                 // todo: task server can throw. try/catch and fail job gracefully.
                 // prefer task definitions url, then TFS collection url, then TFS account url
-                var taskServer = HostContext.GetService<ITaskServer>();
-                Uri taskServerUri = null;
-                if (!string.IsNullOrEmpty(jobContext.Variables.System_TaskDefinitionsUri))
-                {
-                    taskServerUri = new Uri(jobContext.Variables.System_TaskDefinitionsUri);
-                }
-                else if (!string.IsNullOrEmpty(jobContext.Variables.System_TFCollectionUrl))
-                {
-                    taskServerUri = new Uri(jobContext.Variables.System_TFCollectionUrl);
-                }
+                // var taskServer = HostContext.GetService<ITaskServer>();
+                // Uri taskServerUri = null;
+                // if (!string.IsNullOrEmpty(jobContext.Variables.System_TaskDefinitionsUri))
+                // {
+                //     taskServerUri = new Uri(jobContext.Variables.System_TaskDefinitionsUri);
+                // }
+                // else if (!string.IsNullOrEmpty(jobContext.Variables.System_TFCollectionUrl))
+                // {
+                //     taskServerUri = new Uri(jobContext.Variables.System_TFCollectionUrl);
+                // }
 
-                var taskServerCredential = VssUtil.GetVssCredential(systemConnection);
-                if (taskServerUri != null)
-                {
-                    Trace.Info($"Creating task server with {taskServerUri}");
-                    await taskServer.ConnectAsync(VssUtil.CreateConnection(taskServerUri, taskServerCredential));
-                }
+                // var taskServerCredential = VssUtil.GetVssCredential(systemConnection);
+                // if (taskServerUri != null)
+                // {
+                //     Trace.Info($"Creating task server with {taskServerUri}");
+                //     await taskServer.ConnectAsync(VssUtil.CreateConnection(taskServerUri, taskServerCredential));
+                // }
 
-                // for back compat TFS 2015 RTM/QU1, we may need to switch the task server url to agent config url
-                if (!string.Equals(message.Variables.GetValueOrDefault(Constants.Variables.System.ServerType)?.Value, "Hosted", StringComparison.OrdinalIgnoreCase))
-                {
-                    if (taskServerUri == null || !await taskServer.TaskDefinitionEndpointExist())
-                    {
-                        Trace.Info($"Can't determine task download url from JobMessage or the endpoint doesn't exist.");
-                        var configStore = HostContext.GetService<IConfigurationStore>();
-                        taskServerUri = new Uri(configStore.GetSettings().ServerUrl);
-                        Trace.Info($"Recreate task server with configuration server url: {taskServerUri}");
-                        await taskServer.ConnectAsync(VssUtil.CreateConnection(taskServerUri, taskServerCredential));
-                    }
-                }
+                // // for back compat TFS 2015 RTM/QU1, we may need to switch the task server url to agent config url
+                // if (!string.Equals(message.Variables.GetValueOrDefault(Constants.Variables.System.ServerType)?.Value, "Hosted", StringComparison.OrdinalIgnoreCase))
+                // {
+                //     if (taskServerUri == null || !await taskServer.TaskDefinitionEndpointExist())
+                //     {
+                //         Trace.Info($"Can't determine task download url from JobMessage or the endpoint doesn't exist.");
+                //         var configStore = HostContext.GetService<IConfigurationStore>();
+                //         taskServerUri = new Uri(configStore.GetSettings().ServerUrl);
+                //         Trace.Info($"Recreate task server with configuration server url: {taskServerUri}");
+                //         await taskServer.ConnectAsync(VssUtil.CreateConnection(taskServerUri, taskServerCredential));
+                //     }
+                // }
 
                 // Expand the endpoint data values.
-                foreach (ServiceEndpoint endpoint in jobContext.Endpoints)
-                {
-                    jobContext.Variables.ExpandValues(target: endpoint.Data);
-                    VarUtil.ExpandEnvironmentVariables(HostContext, target: endpoint.Data);
-                }
+                // foreach (ServiceEndpoint endpoint in jobContext.Endpoints)
+                // {
+                //     jobContext.Variables.ExpandValues(target: endpoint.Data);
+                //     VarUtil.ExpandEnvironmentVariables(HostContext, target: endpoint.Data);
+                // }
 
-                // Expand the repository property values.
-                foreach (var repository in jobContext.Repositories)
-                {
-                    // expand checkout option
-                    var checkoutOptions = repository.Properties.Get<JToken>(Pipelines.RepositoryPropertyNames.CheckoutOptions);
-                    if (checkoutOptions != null)
-                    {
-                        checkoutOptions = jobContext.Variables.ExpandValues(target: checkoutOptions);
-                        checkoutOptions = VarUtil.ExpandEnvironmentVariables(HostContext, target: checkoutOptions);
-                        repository.Properties.Set<JToken>(Pipelines.RepositoryPropertyNames.CheckoutOptions, checkoutOptions); ;
-                    }
+                // // Expand the repository property values.
+                // foreach (var repository in jobContext.Repositories)
+                // {
+                //     // expand checkout option
+                //     var checkoutOptions = repository.Properties.Get<JToken>(Pipelines.RepositoryPropertyNames.CheckoutOptions);
+                //     if (checkoutOptions != null)
+                //     {
+                //         checkoutOptions = jobContext.Variables.ExpandValues(target: checkoutOptions);
+                //         checkoutOptions = VarUtil.ExpandEnvironmentVariables(HostContext, target: checkoutOptions);
+                //         repository.Properties.Set<JToken>(Pipelines.RepositoryPropertyNames.CheckoutOptions, checkoutOptions); ;
+                //     }
 
-                    // expand workspace mapping
-                    var mappings = repository.Properties.Get<JToken>(Pipelines.RepositoryPropertyNames.Mappings);
-                    if (mappings != null)
-                    {
-                        mappings = jobContext.Variables.ExpandValues(target: mappings);
-                        mappings = VarUtil.ExpandEnvironmentVariables(HostContext, target: mappings);
-                        repository.Properties.Set<JToken>(Pipelines.RepositoryPropertyNames.Mappings, mappings);
-                    }
-                }
+                //     // expand workspace mapping
+                //     var mappings = repository.Properties.Get<JToken>(Pipelines.RepositoryPropertyNames.Mappings);
+                //     if (mappings != null)
+                //     {
+                //         mappings = jobContext.Variables.ExpandValues(target: mappings);
+                //         mappings = VarUtil.ExpandEnvironmentVariables(HostContext, target: mappings);
+                //         repository.Properties.Set<JToken>(Pipelines.RepositoryPropertyNames.Mappings, mappings);
+                //     }
+                // }
 
-                // Expand container properties
-                jobContext.Container?.ExpandProperties(jobContext.Variables);
-                foreach (var sidecar in jobContext.SidecarContainers)
-                {
-                    sidecar.ExpandProperties(jobContext.Variables);
-                }
+                // // Expand container properties
+                // jobContext.Container?.ExpandProperties(jobContext.Variables);
+                // foreach (var sidecar in jobContext.SidecarContainers)
+                // {
+                //     sidecar.ExpandProperties(jobContext.Variables);
+                // }
 
                 // Get the job extension.
                 Trace.Info("Getting job extension.");
-                var hostType = jobContext.Variables.System_HostType;
-                var extensionManager = HostContext.GetService<IExtensionManager>();
+                // var hostType = jobContext.Variables.System_HostType;
+                // var extensionManager = HostContext.GetService<IExtensionManager>();
                 // We should always have one job extension
-                IJobExtension jobExtension =
-                    (extensionManager.GetExtensions<IJobExtension>() ?? new List<IJobExtension>())
-                    .Where(x => x.HostType.HasFlag(hostType))
-                    .FirstOrDefault();
+                // IJobExtension jobExtension = 
+                //     (extensionManager.GetExtensions<IJobExtension>() ?? new List<IJobExtension>())
+                //     .Where(x => x.HostType.HasFlag(hostType))
+                //     .FirstOrDefault();
+                IJobExtension jobExtension = new BuildJobExtension();
+                jobExtension.Initialize(HostContext);
                 ArgUtil.NotNull(jobExtension, nameof(jobExtension));
 
                 List<IStep> jobSteps = null;
@@ -353,25 +330,25 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
                 Trace.Info($"Job result after all job steps finish: {jobContext.Result ?? TaskResult.Succeeded}");
 
-                if (jobContext.Variables.GetBoolean(Constants.Variables.Agent.Diagnostic) ?? false)
-                {
-                    Trace.Info("Support log upload starting.");
+                // if (jobContext.Variables.GetBoolean(Constants.Variables.Agent.Diagnostic) ?? false)
+                // {
+                //     Trace.Info("Support log upload starting.");
 
-                    IDiagnosticLogManager diagnosticLogManager = HostContext.GetService<IDiagnosticLogManager>();
+                //     IDiagnosticLogManager diagnosticLogManager = HostContext.GetService<IDiagnosticLogManager>();
 
-                    try
-                    {
-                        await diagnosticLogManager.UploadDiagnosticLogsAsync(executionContext: jobContext, message: message, jobStartTimeUtc: jobStartTimeUtc);
+                //     try
+                //     {
+                //         await diagnosticLogManager.UploadDiagnosticLogsAsync(executionContext: jobContext, message: message, jobStartTimeUtc: jobStartTimeUtc);
 
-                        Trace.Info("Support log upload complete.");
-                    }
-                    catch (Exception ex)
-                    {
-                        // Log the error but make sure we continue gracefully.
-                        Trace.Info("Error uploading support logs.");
-                        Trace.Error(ex);
-                    }
-                }
+                //         Trace.Info("Support log upload complete.");
+                //     }
+                //     catch (Exception ex)
+                //     {
+                //         // Log the error but make sure we continue gracefully.
+                //         Trace.Info("Error uploading support logs.");
+                //         Trace.Error(ex);
+                //     }
+                // }
 
                 Trace.Info("Completing the job execution context.");
                 return await CompleteJobAsync(jobServer, jobContext, message);
@@ -390,42 +367,96 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         private void MakeJobMessageCompat(Pipelines.AgentJobRequestMessage message)
         {
-            foreach (var action in message.Steps.OfType<Pipelines.ActionStep>())
+            List<Pipelines.JobStep> steps = new List<Pipelines.JobStep>();
+            foreach (var step in message.Steps)
             {
-                if (action.Reference.Type == Pipelines.ActionSourceType.ContainerRegistry)
+                if (step.Type == Pipelines.StepType.Action)
                 {
-                    var containerAction = action.Reference as Pipelines.ContainerRegistryActionDefinitionReference;
-                    if (!string.IsNullOrEmpty(containerAction.Container))
+                    var action = step as Pipelines.ActionStep;
+                    if (action.Reference.Type == Pipelines.ActionSourceType.ContainerRegistry)
                     {
-                        // compat mode, convert container resource to inline step inputs
-                        var containerResource = message.Resources.Containers.FirstOrDefault(x => x.Alias == containerAction.Container);
-                        ArgUtil.NotNull(containerResource, nameof(containerResource));
+                        var containerReference = action.Reference as Pipelines.ContainerRegistryReference;
+                        if (!string.IsNullOrEmpty(containerReference.Container))
+                        {
+                            // compat mode, convert container resource to inline step inputs
+                            var containerResource = message.Resources.Containers.FirstOrDefault(x => x.Alias == containerReference.Container);
+                            ArgUtil.NotNull(containerResource, nameof(containerResource));
 
-                        containerAction.Image = containerResource.Image;
+                            containerReference.Image = containerResource.Image;
+                        }
+                    }
+                    else if (action.Reference.Type == Pipelines.ActionSourceType.Repository)
+                    {
+                        var repoReference = action.Reference as Pipelines.RepositoryPathReference;
+                        if (!string.IsNullOrEmpty(repoReference.Repository))
+                        {
+                            // compat mode, convert repository resource to inline step inputs
+                            var repoResource = message.Resources.Repositories.FirstOrDefault(x => x.Alias == repoReference.Repository);
+                            ArgUtil.NotNull(repoResource, nameof(repoResource));
+
+                            repoReference.Name = repoResource.Id;
+                            repoReference.Ref = repoResource.Version;
+                            if (repoResource.Alias == Pipelines.PipelineConstants.SelfAlias)
+                            {
+                                repoReference.RepositoryType = Pipelines.PipelineConstants.SelfAlias;
+                            }
+                            else
+                            {
+                                repoReference.RepositoryType = repoResource.Type;
+                            }
+                        }
+                    }
+
+                    steps.Add(action);
+                }
+                else if (step.Type == Pipelines.StepType.Task)
+                {
+                    var task = step as Pipelines.TaskStep;
+                    if (task.Reference.Id == Pipelines.PipelineConstants.CheckoutTask.Id)
+                    {
+                        var checkoutAction = new Pipelines.ActionStep
+                        {
+                            Id = task.Id,
+                            Name = task.Name,
+                            DisplayName = task.DisplayName,
+                            Enabled = true,
+                            Reference = new Pipelines.PluginReference
+                            {
+                                Plugin = Pipelines.PipelineConstants.AgentPlugins.Checkout
+                            }
+                        };
+                        var inputs = new MappingToken(null, null, null);
+                        inputs.Add(new LiteralToken(null, null, null, Pipelines.PipelineConstants.CheckoutTaskInputs.Repository), new LiteralToken(null, null, null, Pipelines.PipelineConstants.SelfAlias));
+                        checkoutAction.Inputs = inputs;
+
+                        steps.Add(checkoutAction);
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException(task.Name);
                     }
                 }
-                else if (action.Reference.Type == Pipelines.ActionSourceType.Repository)
+                else if (step.Type == Pipelines.StepType.Script)
                 {
-                    var repoAction = action.Reference as Pipelines.RepositoryActionDefinitionReference;
-                    if (!string.IsNullOrEmpty(repoAction.Repository))
+                    var script = step as Pipelines.ScriptStep;
+                    var result = new Pipelines.ActionStep
                     {
-                        // compat mode, convert repository resource to inline step inputs
-                        var repoResource = message.Resources.Repositories.FirstOrDefault(x => x.Alias == repoAction.Repository);
-                        ArgUtil.NotNull(repoResource, nameof(repoResource));
-
-                        repoAction.Name = repoResource.Id;
-                        repoAction.Ref = repoResource.Version;
-                        if (repoResource.Alias == Pipelines.PipelineConstants.SelfAlias)
-                        {
-                            repoAction.RepositoryType = Pipelines.PipelineConstants.SelfAlias;
-                        }
-                        else
-                        {
-                            repoAction.RepositoryType = repoResource.Type;
-                        }
-                    }
+                        Enabled = true,
+                        Id = script.Id,
+                        Name = script.Name,
+                        DisplayName = script.DisplayName,
+                        Condition = script.Condition,
+                        TimeoutInMinutes = script.TimeoutInMinutes,
+                        Environment = script.Environment?.Clone(true),
+                        Reference = new Pipelines.ScriptReference(),
+                        Inputs = script.Inputs?.Clone(true),
+                    };
+                    steps.Add(script);
                 }
             }
+
+            message.Steps.Clear();
+            message.Steps.AddRange(steps);
         }
 
         private async Task<TaskResult> CompleteJobAsync(IJobServer jobServer, IExecutionContext jobContext, Pipelines.AgentJobRequestMessage message, TaskResult? taskResult = null)

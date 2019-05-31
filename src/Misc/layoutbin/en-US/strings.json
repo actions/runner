@@ -15,7 +15,7 @@
   "AgentName": "agent name",
   "AgentReplaced": "Successfully replaced the agent",
   "AgentRunningBehindProxy": "Agent is running behind proxy server: '{0}'",
-  "AgentVersion": "Current agent version: '{0}'",
+  "AgentVersion": "Current runner version: '{0}'",
   "AgentWithSameNameAlreadyExistInPool": "Pool {0} already contains an agent with name {1}.",
   "AllowContainerUserRunDocker": "Allow user '{0}' run any docker command without SUDO.",
   "AlreadyConfiguredError": "Cannot configure the agent because it is already configured. To reconfigure the agent, run 'config.cmd remove' or './config.sh remove' first.",

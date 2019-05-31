@@ -74,17 +74,17 @@ namespace Microsoft.VisualStudio.Services.Agent
                     break;
                 // Worker build source providers.
                 case "Microsoft.VisualStudio.Services.Agent.Worker.Build.ISourceProvider":
-                    Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.Build.ExternalGitSourceProvider, Agent.Worker");
+                    // Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.Build.ExternalGitSourceProvider, Agent.Worker");
                     Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.Build.GitHubSourceProvider, Agent.Worker");
-                    Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.Build.GitHubEnterpriseSourceProvider, Agent.Worker");
-                    Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.Build.BitbucketSourceProvider, Agent.Worker");
-                    Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.Build.SvnSourceProvider, Agent.Worker");
-                    Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.Build.TfsGitSourceProvider, Agent.Worker");
-                    Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.Build.TfsVCSourceProvider, Agent.Worker");
-                    if (HostContext.RunMode == RunMode.Local)
-                    {
-                        Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.Build.LocalRunSourceProvider, Agent.Worker");
-                    }
+                    // Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.Build.GitHubEnterpriseSourceProvider, Agent.Worker");
+                    // Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.Build.BitbucketSourceProvider, Agent.Worker");
+                    // Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.Build.SvnSourceProvider, Agent.Worker");
+                    // Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.Build.TfsGitSourceProvider, Agent.Worker");
+                    // Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.Build.TfsVCSourceProvider, Agent.Worker");
+                    // if (HostContext.RunMode == RunMode.Local)
+                    // {
+                    //     Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.Build.LocalRunSourceProvider, Agent.Worker");
+                    // }
                     break;
                 // Worker release artifact extensions.
                 case "Microsoft.VisualStudio.Services.Agent.Worker.Release.IArtifactExtension":
@@ -115,6 +115,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                     break;
                 // Action command extensions.
                 case "Microsoft.VisualStudio.Services.Agent.Worker.IActionCommandExtension":
+                    Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.InternalPluginSetRepoPathCommandExtension, Agent.Worker");
                     Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.SetEnvCommandExtension, Agent.Worker");
                     Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.SetOutputCommandExtension, Agent.Worker");
                     Add<T>(extensions, "Microsoft.VisualStudio.Services.Agent.Worker.SetSecretCommandExtension, Agent.Worker");

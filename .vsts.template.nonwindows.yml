@@ -10,20 +10,20 @@ steps:
   workingDirectory: src
   displayName: Test
 
-# Publish test results
-- task: PublishTestResults@2
-  displayName: Publish Test Results **/*.trx
-  condition: always()
-  inputs:
-    testRunner: VSTest
-    testResultsFiles: '**/*.trx'
-    testRunTitle: 'Agent Tests'
+# # Publish test results
+# - task: PublishTestResults@2
+#   displayName: Publish Test Results **/*.trx
+#   condition: always()
+#   inputs:
+#     testRunner: VSTest
+#     testResultsFiles: '**/*.trx'
+#     testRunTitle: 'Agent Tests'
 
-# Upload test log
-- task: PublishBuildArtifacts@1
-  displayName: Publish Test logs
-  condition: always()
-  inputs:
-    pathToPublish: src/Test/TestLogs
-    artifactName: $(System.JobId)
-    artifactType: container
+# # Upload test log
+# - task: PublishBuildArtifacts@1
+#   displayName: Publish Test logs
+#   condition: always()
+#   inputs:
+#     pathToPublish: src/Test/TestLogs
+#     artifactName: $(System.JobId)
+#     artifactType: container

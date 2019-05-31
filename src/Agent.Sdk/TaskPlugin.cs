@@ -6,6 +6,7 @@ using System.Net.Http.Headers;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.TeamFoundation.DistributedTask.Pipelines.ContextData;
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using Microsoft.VisualStudio.Services.Common;
@@ -41,6 +42,7 @@ namespace Agent.Sdk
             this.Repositories = new List<Pipelines.RepositoryResource>();
             this.TaskVariables = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
             this.Variables = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
+            this.Context = new Dictionary<string, PipelineContextData>(StringComparer.OrdinalIgnoreCase);
             // this.Environment = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         }
 
@@ -49,6 +51,8 @@ namespace Agent.Sdk
         public Dictionary<string, VariableValue> Variables { get; set; }
         public Dictionary<string, VariableValue> TaskVariables { get; set; }
         public Dictionary<string, string> Inputs { get; set; }
+        public Dictionary<String, PipelineContextData> Context { get; set; }
+
         // public Dictionary<string, string> Environment { get; set; }
 
         [JsonIgnore]
@@ -153,26 +157,28 @@ namespace Agent.Sdk
 
         public void Error(string message)
         {
-            Output($"##vso[task.logissue type=error;]{Escape(message)}");
-            Output($"##vso[task.complete result=Failed;]");
+            Output($"##[error]{Escape(message)}");
         }
 
         public void Debug(string message)
         {
-            Output($"##vso[task.debug]{Escape(message)}");
+            if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("system.debug")))
+            {
+                Output($"##[debug]{Escape(message)}");
+            }
         }
 
         public void Warning(string message)
         {
-            Output($"##vso[task.logissue type=warning;]{Escape(message)}");
+            Output($"##[warning]{Escape(message)}");
         }
 
         public void PublishTelemetry(string area, string feature, Dictionary<string, string> properties)
-        {      
-            string propertiesAsJson = StringUtil.ConvertToJson(properties, Formatting.None);
+        {
+            // string propertiesAsJson = StringUtil.ConvertToJson(properties, Formatting.None);
 
-            Output($"##vso[telemetry.publish area={area};feature={feature}]{Escape(propertiesAsJson)}");
-        }           
+            // Output($"##vso[telemetry.publish area={area};feature={feature}]{Escape(propertiesAsJson)}");
+        }
 
         public void Output(string message)
         {
@@ -191,8 +197,8 @@ namespace Agent.Sdk
 
         public void PrependPath(string directory)
         {
-            PathUtil.PrependPath(directory);
-            Output($"##vso[task.prependpath]{Escape(directory)}");
+            // PathUtil.PrependPath(directory);
+            // Output($"##vso[task.prependpath]{Escape(directory)}");
         }
 
         public void Progress(int progress, string operation)
@@ -202,24 +208,24 @@ namespace Agent.Sdk
                 throw new ArgumentOutOfRangeException(nameof(progress));
             }
 
-            Output($"##vso[task.setprogress value={progress}]{Escape(operation)}");
+            // Output($"##vso[task.setprogress value={progress}]{Escape(operation)}");
         }
 
         public void SetSecret(string secret)
         {
-            Output($"##vso[task.setsecret]{Escape(secret)}");
+            //Output($"##[set-secret]{Escape(secret)}");
         }
 
         public void SetVariable(string variable, string value, bool isSecret = false)
         {
             this.Variables[variable] = new VariableValue(value, isSecret);
-            Output($"##vso[task.setvariable variable={Escape(variable)};issecret={isSecret.ToString()};]{Escape(value)}");
+            // Output($"##vso[task.setvariable variable={Escape(variable)};issecret={isSecret.ToString()};]{Escape(value)}");
         }
 
         public void SetTaskVariable(string variable, string value, bool isSecret = false)
         {
-            this.TaskVariables[variable] = new VariableValue(value, isSecret);
-            Output($"##vso[task.settaskvariable variable={Escape(variable)};issecret={isSecret.ToString()};]{Escape(value)}");
+            // this.TaskVariables[variable] = new VariableValue(value, isSecret);
+            // Output($"##vso[task.settaskvariable variable={Escape(variable)};issecret={isSecret.ToString()};]{Escape(value)}");
         }
 
         public void Command(string command)
@@ -227,9 +233,9 @@ namespace Agent.Sdk
             Output($"##[command]{Escape(command)}");
         }
 
-        public void UpdateRepositoryPath(string alias, string path)
+        public void UpdateSelfRepositoryPath(string path)
         {
-            Output($"##vso[plugininternal.updaterepositorypath alias={Escape(alias)};]{path}");
+            Output($"##[internal-set-self-path]{path}");
         }
 
         public AgentCertificateSettings GetCertConfiguration()

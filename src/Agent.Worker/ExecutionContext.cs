@@ -38,8 +38,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         PlanFeatures Features { get; }
         Variables Variables { get; }
-        Variables TaskVariables { get; }
+        // Variables TaskVariables { get; }
         HashSet<string> OutputVariables { get; }
+        IDictionary<String, String> EnvironmentVariables { get; }
         IDictionary<String, PipelineContextData> ExpressionValues { get; }
         List<IAsyncCommandContext> AsyncCommands { get; }
         List<string> PrependPath { get; }
@@ -59,6 +60,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         // timeline record update methods
         void Start(string currentOperation = null);
         TaskResult Complete(TaskResult? result = null, string currentOperation = null, string resultCode = null);
+        void SetRunnerContext(string name, string value);
+        void SetGitHubContext(string name, string value);
         void SetVariable(string name, string value, bool isSecret = false, bool isOutput = false, bool isFilePath = false);
         void SetOutput(string name, string value, out string reference);
         void SetTimeout(TimeSpan? timeout);
@@ -103,8 +106,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         public List<SecureFile> SecureFiles { get; private set; }
         public List<Pipelines.RepositoryResource> Repositories { get; private set; }
         public Variables Variables { get; private set; }
-        public Variables TaskVariables { get; private set; }
+        // public Variables TaskVariables { get; private set; }
         public HashSet<string> OutputVariables => _outputvariables;
+        public IDictionary<String, String> EnvironmentVariables { get; private set; }
         public IDictionary<String, PipelineContextData> ExpressionValues { get; private set; }
         public bool WriteDebug { get; private set; }
         public List<string> PrependPath { get; private set; }
@@ -176,7 +180,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             child.Endpoints = Endpoints;
             child.Repositories = Repositories;
             child.SecureFiles = SecureFiles;
-            child.TaskVariables = taskVariables;
+            // child.TaskVariables = taskVariables;
+            child.EnvironmentVariables = EnvironmentVariables;
             child.ExpressionValues = ExpressionValues;
             child._cancellationTokenSource = new CancellationTokenSource();
             child.WriteDebug = WriteDebug;
@@ -271,6 +276,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             {
                 Variables.Set(name, value, secret: isSecret);
             }
+        }
+
+        public void SetRunnerContext(string name, string value)
+        {
+            ArgUtil.NotNullOrEmpty(name, nameof(name));
+            var runnerContext = ExpressionValues["runner"] as RunnerContext;
+            runnerContext[name] = new StringContextData(value);
+        }
+
+        public void SetGitHubContext(string name, string value)
+        {
+            ArgUtil.NotNullOrEmpty(name, nameof(name));
+            var githubContext = ExpressionValues["github"] as GitHubContext;
+            githubContext[name] = new StringContextData(value);
         }
 
         public void SetOutput(string name, string value, out string reference)
@@ -415,7 +434,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
             // Variables (constructor performs initial recursive expansion)
             List<string> warnings;
-            Variables = new Variables(HostContext, message.Variables, out warnings);
+            Variables = new Variables(HostContext, message.Variables, out warnings); // We no longer using variables
+
+            // Environment variables shared across all actions
+            EnvironmentVariables = new Dictionary<string, string>(VarUtil.EnvironmentVariableKeyComparer);
 
             // Expression values
             ExpressionValues = new Dictionary<String, PipelineContextData>();
@@ -445,6 +467,54 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             }
 
             ExpressionValues["actions"] = new ActionsContext();
+            ExpressionValues["runner"] = new RunnerContext();
+
+            if (!ExpressionValues.ContainsKey("github"))
+            {
+                var githubContext = new GitHubContext();
+                ExpressionValues["github"] = githubContext;
+
+                // Populate action environment variables
+                var selfRepo = message.Resources.Repositories.Single(x => string.Equals(x.Alias, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase));
+
+                // GITHUB_ACTOR=ericsciple
+                githubContext["actor"] = new StringContextData(selfRepo.Properties.Get<Pipelines.VersionInfo>(Pipelines.RepositoryPropertyNames.VersionInfo)?.Author ?? string.Empty);
+
+                // GITHUB_REPOSITORY=bryanmacfarlane/actionstest
+                githubContext["repository"] = new StringContextData(selfRepo.Properties.Get<string>(Pipelines.RepositoryPropertyNames.Name, string.Empty));
+
+                // GITHUB_WORKSPACE=/github/workspace
+
+                // GITHUB_SHA=1a204f473f6001b7fac9c6453e76702f689a41a9
+                githubContext["sha"] = new StringContextData(selfRepo.Version);
+
+                // GITHUB_REF=refs/heads/master
+                githubContext["ref"] = new StringContextData(selfRepo.Properties.Get<string>(Pipelines.RepositoryPropertyNames.Ref, string.Empty));
+
+                // GITHUB_TOKEN=TOKEN
+                if (selfRepo.Endpoint != null)
+                {
+                    var repoEndpoint = message.Resources.Endpoints.FirstOrDefault(x => x.Id == selfRepo.Endpoint.Id);
+                    if (repoEndpoint?.Authorization?.Parameters != null && repoEndpoint.Authorization.Parameters.ContainsKey("accessToken"))
+                    {
+                        githubContext["token"] = new StringContextData(repoEndpoint.Authorization.Parameters["accessToken"]);
+                    }
+                }
+
+                // HOME=/github/home
+                // Environment["HOME"] = "/github/home";
+
+                // GITHUB_WORKFLOW=test on push
+                githubContext["workflow"] = new StringContextData(Variables.Build_DefinitionName);
+
+                // GITHUB_EVENT_NAME=push
+                githubContext["event_name"] = new StringContextData(Variables.Get(TeamFoundation.Build.WebApi.BuildVariables.Reason));
+
+                // GITHUB_ACTION=dump.env
+                githubContext["action"] = new StringContextData(Variables.Build_Number);
+
+                // GITHUB_EVENT_PATH=/github/workflow/event.json
+            }
 
             // Prepend Path
             PrependPath = new List<string>();
@@ -490,24 +560,29 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             var agentWebProxy = HostContext.GetService<IVstsAgentWebProxy>();
             if (!string.IsNullOrEmpty(agentWebProxy.ProxyAddress))
             {
-                Variables.Set(Constants.Variables.Agent.ProxyUrl, agentWebProxy.ProxyAddress);
+                SetRunnerContext("proxyurl", agentWebProxy.ProxyAddress);
+                // Variables.Set(Constants.Variables.Agent.ProxyUrl, agentWebProxy.ProxyAddress);
                 Environment.SetEnvironmentVariable("VSTS_HTTP_PROXY", string.Empty);
 
                 if (!string.IsNullOrEmpty(agentWebProxy.ProxyUsername))
                 {
-                    Variables.Set(Constants.Variables.Agent.ProxyUsername, agentWebProxy.ProxyUsername);
+                    SetRunnerContext("proxyusername", agentWebProxy.ProxyUsername);
+                    // Variables.Set(Constants.Variables.Agent.ProxyUsername, agentWebProxy.ProxyUsername);
                     Environment.SetEnvironmentVariable("VSTS_HTTP_PROXY_USERNAME", string.Empty);
                 }
 
                 if (!string.IsNullOrEmpty(agentWebProxy.ProxyPassword))
                 {
-                    Variables.Set(Constants.Variables.Agent.ProxyPassword, agentWebProxy.ProxyPassword, true);
+                    HostContext.SecretMasker.AddValue(agentWebProxy.ProxyPassword);
+                    SetRunnerContext("proxypassword", agentWebProxy.ProxyPassword);
+                    // Variables.Set(Constants.Variables.Agent.ProxyPassword, agentWebProxy.ProxyPassword, true);
                     Environment.SetEnvironmentVariable("VSTS_HTTP_PROXY_PASSWORD", string.Empty);
                 }
 
                 if (agentWebProxy.ProxyBypassList.Count > 0)
                 {
-                    Variables.Set(Constants.Variables.Agent.ProxyBypassList, JsonUtility.ToString(agentWebProxy.ProxyBypassList));
+                    SetRunnerContext("proxybypasslist", JsonUtility.ToString(agentWebProxy.ProxyBypassList));
+                    // Variables.Set(Constants.Variables.Agent.ProxyBypassList, JsonUtility.ToString(agentWebProxy.ProxyBypassList));
                 }
             }
 
@@ -515,25 +590,33 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             var agentCert = HostContext.GetService<IAgentCertificateManager>();
             if (agentCert.SkipServerCertificateValidation)
             {
-                Variables.Set(Constants.Variables.Agent.SslSkipCertValidation, bool.TrueString);
+                SetRunnerContext("sslskipcertvalidation", bool.TrueString);
+                // Variables.Set(Constants.Variables.Agent.SslSkipCertValidation, bool.TrueString);
             }
 
             if (!string.IsNullOrEmpty(agentCert.CACertificateFile))
             {
-                Variables.Set(Constants.Variables.Agent.SslCAInfo, agentCert.CACertificateFile);
+                SetRunnerContext("sslcainfo", agentCert.CACertificateFile);
+                // Variables.Set(Constants.Variables.Agent.SslCAInfo, agentCert.CACertificateFile);
             }
 
             if (!string.IsNullOrEmpty(agentCert.ClientCertificateFile) &&
                 !string.IsNullOrEmpty(agentCert.ClientCertificatePrivateKeyFile) &&
                 !string.IsNullOrEmpty(agentCert.ClientCertificateArchiveFile))
             {
-                Variables.Set(Constants.Variables.Agent.SslClientCert, agentCert.ClientCertificateFile);
-                Variables.Set(Constants.Variables.Agent.SslClientCertKey, agentCert.ClientCertificatePrivateKeyFile);
-                Variables.Set(Constants.Variables.Agent.SslClientCertArchive, agentCert.ClientCertificateArchiveFile);
+                SetRunnerContext("clientcertfile", agentCert.ClientCertificateFile);
+                SetRunnerContext("clientcertprivatekey", agentCert.ClientCertificatePrivateKeyFile);
+                SetRunnerContext("clientcertarchive", agentCert.ClientCertificateArchiveFile);
+
+                // Variables.Set(Constants.Variables.Agent.SslClientCert, agentCert.ClientCertificateFile);
+                // Variables.Set(Constants.Variables.Agent.SslClientCertKey, agentCert.ClientCertificatePrivateKeyFile);
+                // Variables.Set(Constants.Variables.Agent.SslClientCertArchive, agentCert.ClientCertificateArchiveFile);
 
                 if (!string.IsNullOrEmpty(agentCert.ClientCertificatePassword))
                 {
-                    Variables.Set(Constants.Variables.Agent.SslClientCertPassword, agentCert.ClientCertificatePassword, true);
+                    HostContext.SecretMasker.AddValue(agentCert.ClientCertificatePassword);
+                    SetRunnerContext("clientcertpassword", agentCert.ClientCertificatePassword);
+                    // Variables.Set(Constants.Variables.Agent.SslClientCertPassword, agentCert.ClientCertificatePassword, true);
                 }
             }
 
@@ -544,7 +627,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 #if OS_WINDOWS
                 if (runtimeOptions.GitUseSecureChannel)
                 {
-                    Variables.Set(Constants.Variables.Agent.GitUseSChannel, runtimeOptions.GitUseSecureChannel.ToString());
+                    SetRunnerContext("gituseschannel", runtimeOptions.GitUseSecureChannel.ToString());
+                    // Variables.Set(Constants.Variables.Agent.GitUseSChannel, runtimeOptions.GitUseSecureChannel.ToString());
                 }
 #endif                
             }

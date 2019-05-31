@@ -54,11 +54,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
                 // Start.
                 step.ExecutionContext.Start();
-                var taskStep = step as ITaskRunner;
-                if (taskStep != null)
-                {
-                    HostContext.WritePerfCounter($"TaskStart_{taskStep.Task.Reference.Name}_{stepIndex}");
-                }
+                // var taskStep = step as ITaskRunner;
+                // if (taskStep != null)
+                // {
+                //     HostContext.WritePerfCounter($"TaskStart_{taskStep.Task.Reference.Name}_{stepIndex}");
+                // }
 
                 // Variable expansion.
                 List<string> expansionWarnings;
@@ -185,10 +185,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     Trace.Info($"No need for updating job result with current step result '{step.ExecutionContext.Result}'.");
                 }
 
-                if (taskStep != null)
-                {
-                    HostContext.WritePerfCounter($"TaskCompleted_{taskStep.Task.Reference.Name}_{stepIndex}");
-                }
+                // if (taskStep != null)
+                // {
+                //     HostContext.WritePerfCounter($"TaskCompleted_{taskStep.Task.Reference.Name}_{stepIndex}");
+                // }
 
                 Trace.Info($"Current state: job state = '{jobContext.Result}'");
             }

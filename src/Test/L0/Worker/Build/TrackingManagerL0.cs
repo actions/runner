@@ -123,9 +123,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
                     Path.Combine("1", Constants.Build.Path.SourcesDirectory),
                     config.SourcesDirectory);
                 Assert.Equal("build", config.System);
-                Assert.Equal(
-                    Path.Combine("1", Constants.Build.Path.TestResultsDirectory),
-                    config.TestResultsDirectory);
             }
         }
 
@@ -275,7 +272,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
                 Assert.Equal(@"http://contoso:8080/tfs/DefaultCollection/_git/gitTest", config.RepositoryUrl);
                 Assert.Equal(@"b00335b6\gitTest", config.SourcesDirectory);
                 Assert.Equal(@"build", config.System);
-                Assert.Equal(@"b00335b6\TestResults", config.TestResultsDirectory);
             }
         }
 
@@ -326,7 +322,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
                 Assert.Equal(@"http://contoso:8080/tfs/DefaultCollection/_git/gitTest", config.RepositoryUrl);
                 Assert.Equal(@"b00335b6\gitTest", config.SourcesDirectory);
                 Assert.Equal(@"build", config.System);
-                Assert.Equal(@"b00335b6\TestResults", config.TestResultsDirectory);
             }
         }
 

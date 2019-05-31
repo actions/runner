@@ -13,49 +13,6 @@ using System.Text;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 {
-    public static class RepositoryResourceExtensions
-    {
-        public static string GetSourceDirectoryHashKey(this RepositoryResource repository, IExecutionContext executionContext)
-        {
-            // Validate parameters.
-            ArgUtil.NotNull(executionContext, nameof(executionContext));
-            ArgUtil.NotNull(executionContext.Variables, nameof(executionContext.Variables));
-            ArgUtil.NotNull(repository.Url, nameof(repository.Url));
-
-            // Calculate the hash key.
-            const string Format = "{{{{ \r\n    \"system\" : \"build\", \r\n    \"collectionId\" = \"{0}\", \r\n    \"definitionId\" = \"{1}\", \r\n    \"repositoryUrl\" = \"{2}\", \r\n    \"sourceFolder\" = \"{{0}}\",\r\n    \"hashKey\" = \"{{1}}\"\r\n}}}}";
-            string hashInput = string.Format(
-                CultureInfo.InvariantCulture,
-                Format,
-                executionContext.Variables.System_CollectionId,
-                executionContext.Variables.System_DefinitionId,
-                repository.Url.AbsoluteUri);
-            using (SHA1 sha1Hash = SHA1.Create())
-            {
-                byte[] data = sha1Hash.ComputeHash(Encoding.UTF8.GetBytes(hashInput));
-                StringBuilder hexString = new StringBuilder();
-                for (int i = 0; i < data.Length; i++)
-                {
-                    hexString.Append(data[i].ToString("x2"));
-                }
-
-                return hexString.ToString();
-            }
-        }
-
-        public static Boolean TestOverrideBuildDirectory(this RepositoryResource repository, AgentSettings settings)
-        {
-            if (repository.Type == TeamFoundation.DistributedTask.Pipelines.RepositoryTypes.Tfvc)
-            {
-                return settings.IsHosted;
-            }
-            else
-            {
-                return false;
-            }
-        }
-    }
-
     [ServiceLocator(Default = typeof(BuildDirectoryManager))]
     public interface IBuildDirectoryManager : IAgentService
     {
@@ -64,10 +21,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             RepositoryResource repository,
             WorkspaceOptions workspace);
 
-        void CreateDirectory(
-            IExecutionContext executionContext,
-            string description, string path,
-            bool deleteExisting);
+        // void CreateDirectory(
+        //     IExecutionContext executionContext,
+        //     string description, string path,
+        //     bool deleteExisting);
 
         TrackingConfig UpdateDirectory(
             IExecutionContext executionContext,
@@ -93,7 +50,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
             // Defer to the source provider to calculate the hash key.
             Trace.Verbose("Calculating build directory hash key.");
-            string hashKey = repository.GetSourceDirectoryHashKey(executionContext);
+            string hashKey = GetSourceDirectoryHashKey(executionContext);
             Trace.Verbose($"Hash key: {hashKey}");
 
             // Load the existing tracking file if one already exists.
@@ -131,7 +88,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                     repository,
                     hashKey,
                     trackingFile,
-                    repository.TestOverrideBuildDirectory(agentSetting));
+                    false);
+                // repository.TestOverrideBuildDirectory(agentSetting));
                 ArgUtil.NotNull(newConfig, nameof(newConfig));
             }
             else
@@ -176,11 +134,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 deleteExisting: true);
             CreateDirectory(
                 executionContext,
-                description: "test results directory",
-                path: Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), newConfig.TestResultsDirectory),
-                deleteExisting: true);
-            CreateDirectory(
-                executionContext,
                 description: "binaries directory",
                 path: Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), newConfig.BuildDirectory, Constants.Build.Path.BinariesDirectory),
                 deleteExisting: cleanOption == BuildCleanOption.Binary);
@@ -210,7 +163,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
             // Defer to the source provider to calculate the hash key.
             Trace.Verbose("Calculating build directory hash key.");
-            string hashKey = repository.GetSourceDirectoryHashKey(executionContext);
+            string hashKey = GetSourceDirectoryHashKey(executionContext);
             Trace.Verbose($"Hash key: {hashKey}");
 
             // Load the existing tracking file.
@@ -386,6 +339,32 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             }
         }
 
+        private string GetSourceDirectoryHashKey(IExecutionContext executionContext)
+        {
+            // Validate parameters.
+            ArgUtil.NotNull(executionContext, nameof(executionContext));
+            ArgUtil.NotNull(executionContext.Variables, nameof(executionContext.Variables));
+
+            // Calculate the hash key.
+            const string Format = "{{{{ \r\n    \"system\" : \"github\", \r\n    \"collectionId\" = \"{0}\", \r\n    \"definitionId\" = \"{1}\"\r\n}}}}";
+            string hashInput = string.Format(
+                CultureInfo.InvariantCulture,
+                Format,
+                executionContext.Variables.System_CollectionId,
+                executionContext.Variables.System_DefinitionId);
+            using (SHA1 sha1Hash = SHA1.Create())
+            {
+                byte[] data = sha1Hash.ComputeHash(Encoding.UTF8.GetBytes(hashInput));
+                StringBuilder hexString = new StringBuilder();
+                for (int i = 0; i < data.Length; i++)
+                {
+                    hexString.Append(data[i].ToString("x2"));
+                }
+
+                return hexString.ToString();
+            }
+        }
+
         private TrackingConfig ConvertToNewFormat(
             IExecutionContext executionContext,
             RepositoryResource repository,
@@ -395,48 +374,49 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
             // If it's already in the new format, return it.
             TrackingConfig newConfig = config as TrackingConfig;
-            if (newConfig != null)
-            {
-                return newConfig;
-            }
+            ArgUtil.NotNull(newConfig, nameof(newConfig));
+            // if (newConfig != null)
+            // {
+            return newConfig;
+            // }
 
             // Delete the legacy artifact/staging directories.
-            LegacyTrackingConfig legacyConfig = config as LegacyTrackingConfig;
-            DeleteDirectory(
-                executionContext,
-                description: "legacy artifacts directory",
-                path: Path.Combine(legacyConfig.BuildDirectory, Constants.Build.Path.LegacyArtifactsDirectory));
-            DeleteDirectory(
-                executionContext,
-                description: "legacy staging directory",
-                path: Path.Combine(legacyConfig.BuildDirectory, Constants.Build.Path.LegacyStagingDirectory));
+            // LegacyTrackingConfig legacyConfig = config as LegacyTrackingConfig;
+            // DeleteDirectory(
+            //     executionContext,
+            //     description: "legacy artifacts directory",
+            //     path: Path.Combine(legacyConfig.BuildDirectory, Constants.Build.Path.LegacyArtifactsDirectory));
+            // DeleteDirectory(
+            //     executionContext,
+            //     description: "legacy staging directory",
+            //     path: Path.Combine(legacyConfig.BuildDirectory, Constants.Build.Path.LegacyStagingDirectory));
 
-            // Determine the source directory name. Check if the directory is named "s" already.
-            // Convert the source directory to be named "s" if there is a problem with the old name.
-            string sourcesDirectoryNameOnly = Constants.Build.Path.SourcesDirectory;
-            string repositoryName = repository.Properties.Get<string>(RepositoryPropertyNames.Name);
-            if (!Directory.Exists(Path.Combine(legacyConfig.BuildDirectory, sourcesDirectoryNameOnly))
-                && !String.Equals(repositoryName, Constants.Build.Path.ArtifactsDirectory, StringComparison.OrdinalIgnoreCase)
-                && !String.Equals(repositoryName, Constants.Build.Path.LegacyArtifactsDirectory, StringComparison.OrdinalIgnoreCase)
-                && !String.Equals(repositoryName, Constants.Build.Path.LegacyStagingDirectory, StringComparison.OrdinalIgnoreCase)
-                && !String.Equals(repositoryName, Constants.Build.Path.TestResultsDirectory, StringComparison.OrdinalIgnoreCase)
-                && !repositoryName.Contains("\\")
-                && !repositoryName.Contains("/")
-                && Directory.Exists(Path.Combine(legacyConfig.BuildDirectory, repositoryName)))
-            {
-                sourcesDirectoryNameOnly = repositoryName;
-            }
+            // // Determine the source directory name. Check if the directory is named "s" already.
+            // // Convert the source directory to be named "s" if there is a problem with the old name.
+            // string sourcesDirectoryNameOnly = Constants.Build.Path.SourcesDirectory;
+            // string repositoryName = repository.Properties.Get<string>(RepositoryPropertyNames.Name);
+            // if (!Directory.Exists(Path.Combine(legacyConfig.BuildDirectory, sourcesDirectoryNameOnly))
+            //     && !String.Equals(repositoryName, Constants.Build.Path.ArtifactsDirectory, StringComparison.OrdinalIgnoreCase)
+            //     && !String.Equals(repositoryName, Constants.Build.Path.LegacyArtifactsDirectory, StringComparison.OrdinalIgnoreCase)
+            //     && !String.Equals(repositoryName, Constants.Build.Path.LegacyStagingDirectory, StringComparison.OrdinalIgnoreCase)
+            //     && !String.Equals(repositoryName, Constants.Build.Path.TestResultsDirectory, StringComparison.OrdinalIgnoreCase)
+            //     && !repositoryName.Contains("\\")
+            //     && !repositoryName.Contains("/")
+            //     && Directory.Exists(Path.Combine(legacyConfig.BuildDirectory, repositoryName)))
+            // {
+            //     sourcesDirectoryNameOnly = repositoryName;
+            // }
 
-            // Convert to the new format.
-            newConfig = new TrackingConfig(
-                executionContext,
-                legacyConfig,
-                sourcesDirectoryNameOnly,
-                repository.Type,
-                // The legacy artifacts directory has been deleted at this point - see above - so
-                // switch the configuration to using the new naming scheme.
-                useNewArtifactsDirectoryName: true);
-            return newConfig;
+            // // Convert to the new format.
+            // newConfig = new TrackingConfig(
+            //     executionContext,
+            //     legacyConfig,
+            //     sourcesDirectoryNameOnly,
+            //     repository.Type,
+            //     // The legacy artifacts directory has been deleted at this point - see above - so
+            //     // switch the configuration to using the new naming scheme.
+            //     useNewArtifactsDirectoryName: true);
+            // return newConfig;
         }
 
         public void CreateDirectory(IExecutionContext executionContext, string description, string path, bool deleteExisting)
@@ -475,7 +455,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
         //      Recreate source dir if clean=src is set.
         private BuildCleanOption GetBuildDirectoryCleanOption(IExecutionContext executionContext, WorkspaceOptions workspace)
         {
-            BuildCleanOption? cleanOption = executionContext.Variables.Build_Clean;
+            BuildCleanOption? cleanOption = null; //executionContext.Variables.Build_Clean;
             if (cleanOption != null)
             {
                 return cleanOption.Value;
@@ -487,11 +467,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             }
             else
             {
-                Dictionary<string, string> workspaceClean = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                workspaceClean["clean"] = workspace.Clean;
-                executionContext.Variables.ExpandValues(target: workspaceClean);
-                VarUtil.ExpandEnvironmentVariables(HostContext, target: workspaceClean);
-                string expandedClean = workspaceClean["clean"];
+                // Dictionary<string, string> workspaceClean = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                // workspaceClean["clean"] = workspace.Clean;
+                // executionContext.Variables.ExpandValues(target: workspaceClean);
+                // VarUtil.ExpandEnvironmentVariables(HostContext, target: workspaceClean);
+                string expandedClean = workspace.Clean; //workspaceClean["clean"];
                 if (string.Equals(expandedClean, PipelineConstants.WorkspaceCleanOptions.All, StringComparison.OrdinalIgnoreCase))
                 {
                     return BuildCleanOption.All;

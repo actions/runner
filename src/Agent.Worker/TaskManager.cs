@@ -15,6 +15,8 @@ using Microsoft.VisualStudio.Services.Agent.Worker.Container;
 using System.Net.Http;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
+using System.Net.Http.Headers;
+using System.Text;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
@@ -47,53 +49,55 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
             executionContext.Output(StringUtil.Loc("EnsureTasksExist"));
 
-            IEnumerable<Pipelines.TaskStep> tasks = steps.OfType<Pipelines.TaskStep>();
+            // IEnumerable<Pipelines.TaskStep> tasks = steps.OfType<Pipelines.TaskStep>();
             IEnumerable<Pipelines.ActionStep> actions = steps.OfType<Pipelines.ActionStep>();
 
             //remove duplicate, disabled and built-in tasks
-            IEnumerable<Pipelines.TaskStep> uniqueTasks =
-                from task in tasks
-                group task by new
-                {
-                    task.Reference.Id,
-                    task.Reference.Version
-                }
-                into taskGrouping
-                select taskGrouping.First();
+            // IEnumerable<Pipelines.TaskStep> uniqueTasks =
+            //     from task in tasks
+            //     group task by new
+            //     {
+            //         task.Reference.Id,
+            //         task.Reference.Version
+            //     }
+            //     into taskGrouping
+            //     select taskGrouping.First();
 
             HashSet<string> actionContainers = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var containerAction in actions.Where(x => x.Reference.Type == Pipelines.ActionSourceType.ContainerRegistry))
             {
-                var container = containerAction.Reference as Pipelines.ContainerRegistryActionDefinitionReference;
+                var container = containerAction.Reference as Pipelines.ContainerRegistryReference;
                 actionContainers.Add(container.Image);
             }
 
             HashSet<string> actionRepositories = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var repositoryAction in actions.Where(x => x.Reference.Type == Pipelines.ActionSourceType.Repository))
             {
-                var repository = repositoryAction.Reference as Pipelines.RepositoryActionDefinitionReference;
+                var repository = repositoryAction.Reference as Pipelines.RepositoryPathReference;
                 if (!string.IsNullOrEmpty(repository.Name))
                 {
                     actionRepositories.Add($"{repository.Type}:{repository.Name}@{repository.Ref}");
                 }
             }
 
-            if (uniqueTasks.Count() == 0 && actionContainers.Count() == 0 && actionRepositories.Count() == 0)
+            if (actionContainers.Count() == 0 &&
+                // &&uniqueTasks.Count() == 0 
+                actionRepositories.Count() == 0)
             {
                 executionContext.Debug("There is no required tasks/actions need to download.");
                 return;
             }
 
-            foreach (var task in uniqueTasks.Select(x => x.Reference))
-            {
-                if (task.Id == Pipelines.PipelineConstants.CheckoutTask.Id && task.Version == Pipelines.PipelineConstants.CheckoutTask.Version)
-                {
-                    Trace.Info("Skip download checkout task.");
-                    continue;
-                }
+            // foreach (var task in uniqueTasks.Select(x => x.Reference))
+            // {
+            //     if (task.Id == Pipelines.PipelineConstants.CheckoutTask.Id && task.Version == Pipelines.PipelineConstants.CheckoutTask.Version)
+            //     {
+            //         Trace.Info("Skip download checkout task.");
+            //         continue;
+            //     }
 
-                await DownloadAsync(executionContext, task);
-            }
+            //     await DownloadAsync(executionContext, task);
+            // }
 
             foreach (var containerAction in actions.Where(x => x.Reference.Type == Pipelines.ActionSourceType.ContainerRegistry))
             {
@@ -112,7 +116,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             ArgUtil.NotNull(executionContext, nameof(executionContext));
             ArgUtil.NotNull(containerAction, nameof(containerAction));
 
-            var containerReference = containerAction.Reference as Pipelines.ContainerRegistryActionDefinitionReference;
+            var containerReference = containerAction.Reference as Pipelines.ContainerRegistryReference;
             ArgUtil.NotNull(containerReference, nameof(containerReference));
             ArgUtil.NotNullOrEmpty(containerReference.Image, nameof(containerReference.Image));
 
@@ -154,7 +158,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             Trace.Entering();
             ArgUtil.NotNull(executionContext, nameof(executionContext));
 
-            var repositoryReference = repositoryAction.Reference as Pipelines.RepositoryActionDefinitionReference;
+            var repositoryReference = repositoryAction.Reference as Pipelines.RepositoryPathReference;
 
             ArgUtil.NotNull(repositoryReference, nameof(repositoryReference));
 
@@ -228,6 +232,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                             using (var httpClientHandler = HostContext.CreateHttpClientHandler())
                             using (var httpClient = new HttpClient(httpClientHandler))
                             {
+                                var authToken = Environment.GetEnvironmentVariable("_GITHUB_ACTION_TOKEN");
+                                if (!string.IsNullOrEmpty(authToken))
+                                {
+                                    HostContext.SecretMasker.AddValue(authToken);
+                                    var base64EncodingToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"PAT:{authToken}"));
+                                    httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", base64EncodingToken);
+                                }
+
                                 httpClient.DefaultRequestHeaders.UserAgent.Add(HostContext.UserAgent);
                                 using (var result = await httpClient.GetStreamAsync(archiveLink))
                                 {
@@ -373,10 +385,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             }
             else
             {
-                var actionManifest = Path.Combine(actionEntryDirectory, "manifest.yml");
+                var actionManifest = Path.Combine(actionEntryDirectory, "action.yml");
                 if (File.Exists(actionManifest))
                 {
-                    executionContext.Output($"manifest.yml for action: '{actionManifest}'.");
+                    executionContext.Output($"action.yml for action: '{actionManifest}'.");
                 }
                 else
                 {
@@ -411,12 +423,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 };
                 Trace.Info($"Using action container image: {container.ContainerImage}.");
             }
-            else
+            else if (action.Reference.Type == Pipelines.ActionSourceType.Repository)
             {
                 string actionDirectory = null;
                 if (action.Reference.Type == Pipelines.ActionSourceType.Repository)
                 {
-                    var repoAction = action.Reference as Pipelines.RepositoryActionDefinitionReference;
+                    var repoAction = action.Reference as Pipelines.RepositoryPathReference;
                     if (string.Equals(repoAction.RepositoryType, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase))
                     {
                         var selfRepo = executionContext.Repositories.Single(x => string.Equals(x.Alias, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase));
@@ -443,7 +455,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 Trace.Info($"Load action that reference repository from '{actionDirectory}'");
                 definition.Directory = actionDirectory;
 
-                string manifestFile = Path.Combine(actionDirectory, "manifest.yml");
+                string manifestFile = Path.Combine(actionDirectory, "action.yml");
                 string dockerFile = Path.Combine(actionDirectory, "Dockerfile");
                 if (File.Exists(manifestFile))
                 {
@@ -545,6 +557,32 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 {
                     throw new NotSupportedException($"'{actionDirectory}' doesn't contain a valid action entrypoint.");
                 }
+            }
+            else if (action.Reference.Type == Pipelines.ActionSourceType.Script)
+            {
+                definition.Data.Execution.ScriptAction = new ScriptActionHandlerData();
+                definition.Data.FriendlyName = "Run";
+                definition.Data.Description = "Execute a script";
+                definition.Data.Author = "GitHub";
+            }
+            else if (action.Reference.Type == Pipelines.ActionSourceType.AgentPlugin)
+            {
+                var pluginAction = action.Reference as Pipelines.PluginReference;
+                var pluginManager = HostContext.GetService<IAgentPluginManager>();
+                var plugin = pluginManager.GetPluginAction(pluginAction.Plugin);
+
+                ArgUtil.NotNull(plugin, pluginAction.Plugin);
+                ArgUtil.NotNullOrEmpty(plugin.PluginTypeName, pluginAction.Plugin);
+
+                definition.Data.Execution.AgentPlugin = new AgentPluginHandlerData()
+                {
+                    Target = plugin.PluginTypeName
+                };
+
+                definition.Data.FriendlyName = plugin.FriendlyName;
+                definition.Data.Description = plugin.Description;
+                definition.Data.Author = plugin.Author;
+                definition.Data.HelpUrl = plugin.HelpUrl;
             }
 
             return definition;
@@ -874,6 +912,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         private AzurePowerShellHandlerData _azurePowerShell;
         private ContainerActionHandlerData _containerAction;
         private NodeScriptActionHandlerData _nodeScriptAction;
+        private ScriptActionHandlerData _scriptAction;
         private NodeHandlerData _node;
         private Node10HandlerData _node10;
         private PowerShellHandlerData _powerShell;
@@ -954,6 +993,20 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             set
             {
                 _nodeScriptAction = value;
+                Add(value);
+            }
+        }
+
+        public ScriptActionHandlerData ScriptAction
+        {
+            get
+            {
+                return _scriptAction;
+            }
+
+            set
+            {
+                _scriptAction = value;
                 Add(value);
             }
         }
@@ -1370,6 +1423,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
     }
 
     public sealed class AgentPluginHandlerData : HandlerData
+    {
+        public override int Priority => 0;
+    }
+
+    public sealed class ScriptActionHandlerData : HandlerData
     {
         public override int Priority => 0;
     }

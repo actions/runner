@@ -12,6 +12,9 @@ using Microsoft.VisualStudio.Services.Agent.Util;
 using Newtonsoft.Json.Linq;
 using Pipelines = Microsoft.TeamFoundation.DistributedTask.Pipelines;
 using System.IO;
+using Microsoft.TeamFoundation.DistributedTask.Pipelines.ContextData;
+using Microsoft.VisualStudio.Services.WebApi;
+using System.Text.RegularExpressions;
 
 namespace Agent.Plugins.Repository
 {
@@ -90,6 +93,8 @@ namespace Agent.Plugins.Repository
 
     public class CheckoutTask : RepositoryTask
     {
+        private readonly Regex _validSha1 = new Regex(@"\b[0-9a-f]{40}\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled, TimeSpan.FromSeconds(2));
+
         public CheckoutTask()
         {
         }
@@ -103,44 +108,85 @@ namespace Agent.Plugins.Repository
 
         public override async Task RunAsync(AgentTaskPluginExecutionContext executionContext, CancellationToken token)
         {
-            var sourceSkipVar = StringUtil.ConvertToBoolean(executionContext.Variables.GetValueOrDefault("agent.source.skip")?.Value) ||
-                                !StringUtil.ConvertToBoolean(executionContext.Variables.GetValueOrDefault("build.syncSources")?.Value ?? bool.TrueString);
-            if (sourceSkipVar)
+            var runnerContext = executionContext.Context["runner"] as DictionaryContextData;
+            string pipelineWorkspace = runnerContext.GetValueOrDefault("pipelineWorkspace") as StringContextData;
+            ArgUtil.Directory(pipelineWorkspace, nameof(pipelineWorkspace));
+            var repoAlias = executionContext.GetInput(Pipelines.PipelineConstants.CheckoutTaskInputs.Repository, true);
+
+            Pipelines.RepositoryResource repo = null;
+            if (string.Equals(repoAlias, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase))
             {
-                executionContext.Output($"Skip sync source for repository.");
-                return;
+                repo = executionContext.Repositories.Single(x => string.Equals(x.Alias, repoAlias, StringComparison.OrdinalIgnoreCase));
+            }
+            else
+            {
+                var repoSplit = repoAlias.Split("@", StringSplitOptions.RemoveEmptyEntries);
+                if (repoSplit.Length != 2)
+                {
+                    throw new ArgumentOutOfRangeException(repoAlias);
+                }
+
+                var repoNameSplit = repoSplit[0].Split("/", StringSplitOptions.RemoveEmptyEntries);
+                if (repoNameSplit.Length != 2)
+                {
+                    throw new ArgumentOutOfRangeException(repoSplit[0]);
+                }
+
+                repo = new Pipelines.RepositoryResource()
+                {
+                    Id = repoSplit[0],
+                    Type = Pipelines.RepositoryTypes.GitHub,
+                    Alias = Guid.NewGuid().ToString(),
+                    Url = new Uri($"https://github.com/{repoSplit[0]}")
+                };
+
+                if (_validSha1.IsMatch(repoSplit[1]))
+                {
+                    repo.Version = repoSplit[1];
+                }
+                else
+                {
+                    repo.Properties.Set(Pipelines.RepositoryPropertyNames.Ref, repoSplit[1]);
+                }
+
+                repo.Properties.Set(Pipelines.RepositoryPropertyNames.Name, repoSplit[0]);
+                repo.Properties.Set(Pipelines.RepositoryPropertyNames.Path, Path.Combine(pipelineWorkspace, repoNameSplit[1]));
             }
 
-            var repoAlias = executionContext.GetInput(Pipelines.PipelineConstants.CheckoutTaskInputs.Repository, true);
-            var repo = executionContext.Repositories.Single(x => string.Equals(x.Alias, repoAlias, StringComparison.OrdinalIgnoreCase));
-
-            MergeCheckoutOptions(executionContext, repo);
-
             var currentRepoPath = repo.Properties.Get<string>(Pipelines.RepositoryPropertyNames.Path);
-            var buildDirectory = executionContext.Variables.GetValueOrDefault("agent.builddirectory")?.Value;
-            var tempDirectory = executionContext.Variables.GetValueOrDefault("agent.tempdirectory")?.Value;
+            string tempDirectory = runnerContext.GetValueOrDefault("tempdirectory") as StringContextData;
 
             ArgUtil.NotNullOrEmpty(currentRepoPath, nameof(currentRepoPath));
-            ArgUtil.NotNullOrEmpty(buildDirectory, nameof(buildDirectory));
             ArgUtil.NotNullOrEmpty(tempDirectory, nameof(tempDirectory));
 
             string expectRepoPath;
             var path = executionContext.GetInput("path");
             if (!string.IsNullOrEmpty(path))
             {
-                expectRepoPath = IOUtil.ResolvePath(buildDirectory, path);
-                if (!expectRepoPath.StartsWith(buildDirectory.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar))
+                expectRepoPath = IOUtil.ResolvePath(pipelineWorkspace, path);
+                if (!expectRepoPath.StartsWith(pipelineWorkspace.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar))
                 {
-                    throw new ArgumentException($"Input path '{path}' should resolve to a directory under '{buildDirectory}', current resolved path '{expectRepoPath}'.");
+                    throw new ArgumentException($"Input path '{path}' should resolve to a directory under '{pipelineWorkspace}', current resolved path '{expectRepoPath}'.");
                 }
             }
             else
             {
-                // When repository doesn't has path set, default to sources directory 1/s
-                expectRepoPath = Path.Combine(buildDirectory, "s");
+                // When repository doesn't has path set, default to sources directory 1/repoName
+                var repoName = repo.Properties.Get<String>(Pipelines.RepositoryPropertyNames.Name);
+                var repoNameSplit = repoName.Split("/", StringSplitOptions.RemoveEmptyEntries);
+                if (repoNameSplit.Length != 2)
+                {
+                    throw new ArgumentOutOfRangeException(repoName);
+                }
+
+                expectRepoPath = Path.Combine(pipelineWorkspace, repoNameSplit[1]);
             }
 
-            executionContext.UpdateRepositoryPath(repoAlias, expectRepoPath);
+            // for self repository, we need to let the agent knows where it is after checkout.
+            if (string.Equals(repoAlias, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase))
+            {
+                executionContext.UpdateSelfRepositoryPath(expectRepoPath);
+            }
 
             executionContext.Debug($"Repository requires to be placed at '{expectRepoPath}', current location is '{currentRepoPath}'");
             if (!string.Equals(currentRepoPath.Trim(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar), expectRepoPath.Trim(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar), IOUtil.FilePathStringComparison))
@@ -171,8 +217,7 @@ namespace Agent.Plugins.Repository
                 repo.Properties.Set<string>(Pipelines.RepositoryPropertyNames.Path, expectRepoPath);
             }
 
-            ISourceProvider sourceProvider = SourceProviderFactory.GetSourceProvider(repo.Type);
-            await sourceProvider.GetSourceAsync(executionContext, repo, token);
+            await new GitHubSourceProvider().GetSourceAsync(executionContext, repo, token);
         }
     }
 

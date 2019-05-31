@@ -121,12 +121,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
             // This flag can be false for jobs like cleanup artifacts.
             // If syncSources = false, we will not set source related build variable, not create build folder, not sync source.
-            bool syncSources = executionContext.Variables.Build_SyncSources ?? true;
-            if (!syncSources)
-            {
-                Trace.Info($"{Constants.Variables.Build.SyncSources} = false, we will not set source related build variable, not create build folder and not sync source");
-                return;
-            }
+            // bool syncSources = executionContext.Variables.Build_SyncSources ?? true;
+            // if (!syncSources)
+            // {
+            //     Trace.Info($"{Constants.Variables.Build.SyncSources} = false, we will not set source related build variable, not create build folder and not sync source");
+            //     return;
+            // }
 
             // We only support checkout one repository at this time.
             if (!TrySetPrimaryRepositoryAndProviderInfo(executionContext))
@@ -137,45 +137,45 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             executionContext.Debug($"Primary repository: {Repository.Properties.Get<string>(Pipelines.RepositoryPropertyNames.Name)}. repository type: {Repository.Type}");
 
             // Set the repo variables.
-            if (!string.IsNullOrEmpty(Repository.Id)) // TODO: Move to const after source artifacts PR is merged.
-            {
-                executionContext.Variables.Set(Constants.Variables.Build.RepoId, Repository.Id);
-            }
+            // if (!string.IsNullOrEmpty(Repository.Id)) // TODO: Move to const after source artifacts PR is merged.
+            // {
+            //     executionContext.Variables.Set(Constants.Variables.Build.RepoId, Repository.Id);
+            // }
 
-            executionContext.Variables.Set(Constants.Variables.Build.RepoName, Repository.Properties.Get<string>(Pipelines.RepositoryPropertyNames.Name));
-            executionContext.Variables.Set(Constants.Variables.Build.RepoProvider, ConvertToLegacyRepositoryType(Repository.Type));
-            executionContext.Variables.Set(Constants.Variables.Build.RepoUri, Repository.Url?.AbsoluteUri);
+            // executionContext.Variables.Set(Constants.Variables.Build.RepoName, Repository.Properties.Get<string>(Pipelines.RepositoryPropertyNames.Name));
+            // executionContext.Variables.Set(Constants.Variables.Build.RepoProvider, ConvertToLegacyRepositoryType(Repository.Type));
+            // executionContext.Variables.Set(Constants.Variables.Build.RepoUri, Repository.Url?.AbsoluteUri);
 
-            var checkoutTask = steps.SingleOrDefault(x => x.IsCheckoutTask()) as Pipelines.TaskStep;
-            if (checkoutTask != null)
-            {
-                if (checkoutTask.Inputs.ContainsKey(Pipelines.PipelineConstants.CheckoutTaskInputs.Submodules))
-                {
-                    executionContext.Variables.Set(Constants.Variables.Build.RepoGitSubmoduleCheckout, Boolean.TrueString);
-                }
-                else
-                {
-                    executionContext.Variables.Set(Constants.Variables.Build.RepoGitSubmoduleCheckout, Boolean.FalseString);
-                }
+            // var checkoutTask = steps.SingleOrDefault(x => x.IsCheckoutTask()) as Pipelines.TaskStep;
+            // if (checkoutTask != null)
+            // {
+            //     if (checkoutTask.Inputs.ContainsKey(Pipelines.PipelineConstants.CheckoutTaskInputs.Submodules))
+            //     {
+            //         executionContext.Variables.Set(Constants.Variables.Build.RepoGitSubmoduleCheckout, Boolean.TrueString);
+            //     }
+            //     else
+            //     {
+            //         executionContext.Variables.Set(Constants.Variables.Build.RepoGitSubmoduleCheckout, Boolean.FalseString);
+            //     }
 
-                // overwrite primary repository's clean value if build.repository.clean is sent from server. this is used by tfvc gated check-in
-                bool? repoClean = executionContext.Variables.GetBoolean(Constants.Variables.Build.RepoClean);
-                if (repoClean != null)
-                {
-                    checkoutTask.Inputs[Pipelines.PipelineConstants.CheckoutTaskInputs.Clean] = repoClean.Value.ToString();
-                }
-                else
-                {
-                    if (checkoutTask.Inputs.ContainsKey(Pipelines.PipelineConstants.CheckoutTaskInputs.Clean))
-                    {
-                        executionContext.Variables.Set(Constants.Variables.Build.RepoClean, checkoutTask.Inputs[Pipelines.PipelineConstants.CheckoutTaskInputs.Clean]);
-                    }
-                    else
-                    {
-                        executionContext.Variables.Set(Constants.Variables.Build.RepoClean, Boolean.FalseString);
-                    }
-                }
-            }
+            //     // overwrite primary repository's clean value if build.repository.clean is sent from server. this is used by tfvc gated check-in
+            //     bool? repoClean = executionContext.Variables.GetBoolean(Constants.Variables.Build.RepoClean);
+            //     if (repoClean != null)
+            //     {
+            //         checkoutTask.Inputs[Pipelines.PipelineConstants.CheckoutTaskInputs.Clean] = repoClean.Value.ToString();
+            //     }
+            //     else
+            //     {
+            //         if (checkoutTask.Inputs.ContainsKey(Pipelines.PipelineConstants.CheckoutTaskInputs.Clean))
+            //         {
+            //             executionContext.Variables.Set(Constants.Variables.Build.RepoClean, checkoutTask.Inputs[Pipelines.PipelineConstants.CheckoutTaskInputs.Clean]);
+            //         }
+            //         else
+            //         {
+            //             executionContext.Variables.Set(Constants.Variables.Build.RepoClean, Boolean.FalseString);
+            //         }
+            //     }
+            // }
 
             // Prepare the build directory.
             executionContext.Output(StringUtil.Loc("PrepareBuildDir"));
@@ -188,16 +188,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             // Set the directory variables.
             executionContext.Output(StringUtil.Loc("SetBuildVars"));
             string _workDirectory = HostContext.GetDirectory(WellKnownDirectory.Work);
-            executionContext.SetVariable(Constants.Variables.Agent.BuildDirectory, Path.Combine(_workDirectory, trackingConfig.BuildDirectory), isFilePath: true);
-            executionContext.SetVariable(Constants.Variables.System.ArtifactsDirectory, Path.Combine(_workDirectory, trackingConfig.ArtifactsDirectory), isFilePath: true);
-            executionContext.SetVariable(Constants.Variables.System.DefaultWorkingDirectory, Path.Combine(_workDirectory, trackingConfig.SourcesDirectory), isFilePath: true);
-            executionContext.SetVariable(Constants.Variables.Common.TestResultsDirectory, Path.Combine(_workDirectory, trackingConfig.TestResultsDirectory), isFilePath: true);
-            executionContext.SetVariable(Constants.Variables.Build.BinariesDirectory, Path.Combine(_workDirectory, trackingConfig.BuildDirectory, Constants.Build.Path.BinariesDirectory), isFilePath: true);
-            executionContext.SetVariable(Constants.Variables.Build.SourcesDirectory, Path.Combine(_workDirectory, trackingConfig.SourcesDirectory), isFilePath: true);
-            executionContext.SetVariable(Constants.Variables.Build.StagingDirectory, Path.Combine(_workDirectory, trackingConfig.ArtifactsDirectory), isFilePath: true);
-            executionContext.SetVariable(Constants.Variables.Build.ArtifactStagingDirectory, Path.Combine(_workDirectory, trackingConfig.ArtifactsDirectory), isFilePath: true);
-            executionContext.SetVariable(Constants.Variables.Build.RepoLocalPath, Path.Combine(_workDirectory, trackingConfig.SourcesDirectory), isFilePath: true);
-            executionContext.SetVariable(Constants.Variables.Pipeline.Workspace, Path.Combine(_workDirectory, trackingConfig.BuildDirectory), isFilePath: true);
+
+            executionContext.SetRunnerContext("pipelineWorkspace", Path.Combine(_workDirectory, trackingConfig.BuildDirectory));
+            executionContext.SetGitHubContext("workspace", Path.Combine(_workDirectory, trackingConfig.SourcesDirectory));
+            // executionContext.SetVariable(Constants.Variables.Agent.BuildDirectory, Path.Combine(_workDirectory, trackingConfig.BuildDirectory), isFilePath: true);
+            // executionContext.SetVariable(Constants.Variables.System.ArtifactsDirectory, Path.Combine(_workDirectory, trackingConfig.ArtifactsDirectory), isFilePath: true);
+            // executionContext.SetVariable(Constants.Variables.System.DefaultWorkingDirectory, Path.Combine(_workDirectory, trackingConfig.SourcesDirectory), isFilePath: true);
+            // executionContext.SetVariable(Constants.Variables.Common.TestResultsDirectory, Path.Combine(_workDirectory, trackingConfig.TestResultsDirectory), isFilePath: true);
+            // executionContext.SetVariable(Constants.Variables.Build.BinariesDirectory, Path.Combine(_workDirectory, trackingConfig.BuildDirectory, Constants.Build.Path.BinariesDirectory), isFilePath: true);
+            // executionContext.SetVariable(Constants.Variables.Build.SourcesDirectory, Path.Combine(_workDirectory, trackingConfig.SourcesDirectory), isFilePath: true);
+            // executionContext.SetVariable(Constants.Variables.Build.StagingDirectory, Path.Combine(_workDirectory, trackingConfig.ArtifactsDirectory), isFilePath: true);
+            // executionContext.SetVariable(Constants.Variables.Build.ArtifactStagingDirectory, Path.Combine(_workDirectory, trackingConfig.ArtifactsDirectory), isFilePath: true);
+            // executionContext.SetVariable(Constants.Variables.Build.RepoLocalPath, Path.Combine(_workDirectory, trackingConfig.SourcesDirectory), isFilePath: true);
+            // executionContext.SetVariable(Constants.Variables.Pipeline.Workspace, Path.Combine(_workDirectory, trackingConfig.BuildDirectory), isFilePath: true);
         }
 
         private bool TrySetPrimaryRepositoryAndProviderInfo(IExecutionContext executionContext)
@@ -220,40 +223,40 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             return false;
         }
 
-        private string ConvertToLegacyRepositoryType(string pipelineRepositoryType)
-        {
-            if (String.Equals(pipelineRepositoryType, Pipelines.RepositoryTypes.Bitbucket, StringComparison.OrdinalIgnoreCase))
-            {
-                return "Bitbucket";
-            }
-            else if (String.Equals(pipelineRepositoryType, Pipelines.RepositoryTypes.ExternalGit, StringComparison.OrdinalIgnoreCase))
-            {
-                return "Git";
-            }
-            else if (String.Equals(pipelineRepositoryType, Pipelines.RepositoryTypes.Git, StringComparison.OrdinalIgnoreCase))
-            {
-                return "TfsGit";
-            }
-            else if (String.Equals(pipelineRepositoryType, Pipelines.RepositoryTypes.GitHub, StringComparison.OrdinalIgnoreCase))
-            {
-                return "GitHub";
-            }
-            else if (String.Equals(pipelineRepositoryType, Pipelines.RepositoryTypes.GitHubEnterprise, StringComparison.OrdinalIgnoreCase))
-            {
-                return "GitHubEnterprise";
-            }
-            else if (String.Equals(pipelineRepositoryType, Pipelines.RepositoryTypes.Svn, StringComparison.OrdinalIgnoreCase))
-            {
-                return "Svn";
-            }
-            else if (String.Equals(pipelineRepositoryType, Pipelines.RepositoryTypes.Tfvc, StringComparison.OrdinalIgnoreCase))
-            {
-                return "TfsVersionControl";
-            }
-            else
-            {
-                throw new NotSupportedException(pipelineRepositoryType);
-            }
-        }
+        // private string ConvertToLegacyRepositoryType(string pipelineRepositoryType)
+        // {
+        //     if (String.Equals(pipelineRepositoryType, Pipelines.RepositoryTypes.Bitbucket, StringComparison.OrdinalIgnoreCase))
+        //     {
+        //         return "Bitbucket";
+        //     }
+        //     else if (String.Equals(pipelineRepositoryType, Pipelines.RepositoryTypes.ExternalGit, StringComparison.OrdinalIgnoreCase))
+        //     {
+        //         return "Git";
+        //     }
+        //     else if (String.Equals(pipelineRepositoryType, Pipelines.RepositoryTypes.Git, StringComparison.OrdinalIgnoreCase))
+        //     {
+        //         return "TfsGit";
+        //     }
+        //     else if (String.Equals(pipelineRepositoryType, Pipelines.RepositoryTypes.GitHub, StringComparison.OrdinalIgnoreCase))
+        //     {
+        //         return "GitHub";
+        //     }
+        //     else if (String.Equals(pipelineRepositoryType, Pipelines.RepositoryTypes.GitHubEnterprise, StringComparison.OrdinalIgnoreCase))
+        //     {
+        //         return "GitHubEnterprise";
+        //     }
+        //     else if (String.Equals(pipelineRepositoryType, Pipelines.RepositoryTypes.Svn, StringComparison.OrdinalIgnoreCase))
+        //     {
+        //         return "Svn";
+        //     }
+        //     else if (String.Equals(pipelineRepositoryType, Pipelines.RepositoryTypes.Tfvc, StringComparison.OrdinalIgnoreCase))
+        //     {
+        //         return "TfsVersionControl";
+        //     }
+        //     else
+        //     {
+        //         throw new NotSupportedException(pipelineRepositoryType);
+        //     }
+        // }
     }
 }

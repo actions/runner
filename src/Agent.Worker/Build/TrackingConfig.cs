@@ -1,5 +1,6 @@
 ﻿using Microsoft.TeamFoundation.DistributedTask.Pipelines;
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
+using Microsoft.VisualStudio.Services.Agent.Util;
 using Newtonsoft.Json;
 using System;
 using System.ComponentModel;
@@ -30,7 +31,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 useNewArtifactsDirectoryName ? Constants.Build.Path.ArtifactsDirectory : Constants.Build.Path.LegacyArtifactsDirectory;
             ArtifactsDirectory = Path.Combine(BuildDirectory, artifactsDirectoryNameOnly);
             SourcesDirectory = Path.Combine(BuildDirectory, sourcesDirectoryNameOnly);
-            TestResultsDirectory = Path.Combine(BuildDirectory, Constants.Build.Path.TestResultsDirectory);
+            // TestResultsDirectory = Path.Combine(BuildDirectory, Constants.Build.Path.TestResultsDirectory);
 
             // Set the other properties.
             CollectionId = copy.CollectionId;
@@ -48,11 +49,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             int buildDirectory,
             string hashKey)
         {
+            var repoFullName = repository.Properties.Get<string>(RepositoryPropertyNames.Name);
+            ArgUtil.NotNullOrEmpty(repoFullName, nameof(repoFullName));
+
+            var repoName = repoFullName.Substring(repoFullName.LastIndexOf('/') + 1);
+            ArgUtil.NotNullOrEmpty(repoName, nameof(repoName));
             // Set the directories.
             BuildDirectory = buildDirectory.ToString(CultureInfo.InvariantCulture);
             ArtifactsDirectory = Path.Combine(BuildDirectory, Constants.Build.Path.ArtifactsDirectory);
-            SourcesDirectory = Path.Combine(BuildDirectory, Constants.Build.Path.SourcesDirectory);
-            TestResultsDirectory = Path.Combine(BuildDirectory, Constants.Build.Path.TestResultsDirectory);
+            SourcesDirectory = Path.Combine(BuildDirectory, repoName);
+            // TestResultsDirectory = Path.Combine(BuildDirectory, Constants.Build.Path.TestResultsDirectory);
 
             // Set the other properties.
             CollectionId = executionContext.Variables.System_CollectionId;
@@ -175,9 +181,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 
         [JsonProperty("build_sourcesdirectory")]
         public string SourcesDirectory { get; set; }
-
-        [JsonProperty("common_testresultsdirectory")]
-        public string TestResultsDirectory { get; set; }
 
         public void UpdateJobRunProperties(IExecutionContext executionContext)
         {

@@ -189,14 +189,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 // the BuildDirectoryManager to re-create the source directory earlier,
                 // let's do it now explicitly.
 
-                IBuildDirectoryManager buildDirectoryManager = HostContext.GetService<IBuildDirectoryManager>();
-                BuildCleanOption? cleanOption = _context.Variables.Build_Clean;
+                // IBuildDirectoryManager buildDirectoryManager = HostContext.GetService<IBuildDirectoryManager>();
+                // BuildCleanOption? cleanOption = _context.Variables.Build_Clean;
 
-                buildDirectoryManager.CreateDirectory(
-                _context,
-                description: "source directory",
-                path: rootPath,
-                deleteExisting: !(cleanOption == BuildCleanOption.All || cleanOption == BuildCleanOption.Source));
+                // buildDirectoryManager.CreateDirectory(
+                // _context,
+                // description: "source directory",
+                // path: rootPath,
+                // deleteExisting: !(cleanOption == BuildCleanOption.All || cleanOption == BuildCleanOption.Source));
             }
 
             Dictionary<string, Uri> oldMappings = await GetOldMappings(rootPath);

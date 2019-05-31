@@ -10,6 +10,7 @@ using System.IO;
 using Agent.Sdk;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using Microsoft.VisualStudio.Services.Common;
+using Microsoft.TeamFoundation.DistributedTask.Pipelines.ContextData;
 
 namespace Agent.Plugins.Repository
 {
@@ -471,11 +472,12 @@ namespace Agent.Plugins.Repository
         public async Task<Version> GitVersion(AgentTaskPluginExecutionContext context)
         {
             context.Debug("Get git version.");
-            string workingDir = context.Variables.GetValueOrDefault("agent.workfolder")?.Value;
-            ArgUtil.Directory(workingDir, "agent.workfolder");
+            var runnerContext = context.Context["runner"] as DictionaryContextData;
+            string pipelineWorkspace = runnerContext.GetValueOrDefault("pipelineWorkspace") as StringContextData;
+            ArgUtil.Directory(pipelineWorkspace, "pipelineWorkspace");
             Version version = null;
             List<string> outputStrings = new List<string>();
-            int exitCode = await ExecuteGitCommandAsync(context, workingDir, "version", null, outputStrings);
+            int exitCode = await ExecuteGitCommandAsync(context, pipelineWorkspace, "version", null, outputStrings);
             context.Output($"{string.Join(Environment.NewLine, outputStrings)}");
             if (exitCode == 0)
             {
@@ -504,11 +506,12 @@ namespace Agent.Plugins.Repository
         public async Task<Version> GitLfsVersion(AgentTaskPluginExecutionContext context)
         {
             context.Debug("Get git-lfs version.");
-            string workingDir = context.Variables.GetValueOrDefault("agent.workfolder")?.Value;
-            ArgUtil.Directory(workingDir, "agent.workfolder");
+            var runnerContext = context.Context["runner"] as DictionaryContextData;
+            string pipelineWorkspace = runnerContext.GetValueOrDefault("pipelineWorkspace") as StringContextData;
+            ArgUtil.Directory(pipelineWorkspace, "pipelineWorkspace");
             Version version = null;
             List<string> outputStrings = new List<string>();
-            int exitCode = await ExecuteGitCommandAsync(context, workingDir, "lfs version", null, outputStrings);
+            int exitCode = await ExecuteGitCommandAsync(context, pipelineWorkspace, "lfs version", null, outputStrings);
             context.Output($"{string.Join(Environment.NewLine, outputStrings)}");
             if (exitCode == 0)
             {

@@ -549,7 +549,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 }
             }
 
-            context.TaskVariables.Set(name, data, isSecret);
+            // context.TaskVariables.Set(name, data, isSecret);
         }
 
         private void ProcessTaskSetEndpointCommand(IExecutionContext context, Dictionary<string, string> eventProperties, string data)
