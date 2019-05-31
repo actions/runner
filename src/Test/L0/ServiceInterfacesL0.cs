@@ -2,20 +2,12 @@ using Microsoft.VisualStudio.Services.Agent.Listener;
 using Microsoft.VisualStudio.Services.Agent.Capabilities;
 using Microsoft.VisualStudio.Services.Agent.Listener.Configuration;
 using Microsoft.VisualStudio.Services.Agent.Worker;
-using Microsoft.VisualStudio.Services.Agent.Worker.Build;
 using Microsoft.VisualStudio.Services.Agent.Worker.Handlers;
-using Microsoft.VisualStudio.Services.Agent.Worker.Release;
-using Microsoft.VisualStudio.Services.Agent.Worker.TestResults;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using Xunit;
-using Microsoft.VisualStudio.Services.Agent.Worker.CodeCoverage;
-using Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts.Definition;
-using Microsoft.VisualStudio.Services.Agent.Worker.Release.ContainerFetchEngine;
-using Microsoft.VisualStudio.Services.Agent.Worker.Maintenance;
-using Microsoft.TeamFoundation.TestManagement.WebApi;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests
 {
@@ -70,25 +62,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             var whitelist = new[]
             {
                 typeof(IActionCommandExtension),
-                typeof(IArtifactDetails),
-                typeof(IArtifactExtension),
-                typeof(ICodeCoverageSummaryReader),
                 typeof(IExecutionContext),
                 typeof(IHandler),
                 typeof(IJobExtension),
-                typeof(IResultReader),
-                typeof(ISourceProvider),
                 typeof(IStep),
                 typeof(IStepHost),
-                typeof(ITfsVCMapping),
-                typeof(ITfsVCPendingChange),
-                typeof(ITfsVCShelveset),
-                typeof(ITfsVCStatus),
-                typeof(ITfsVCWorkspace),
-                typeof(IWorkerCommandExtension),
-                typeof(IContainerProvider),
-                typeof(INUnitResultsXmlReader),
-                typeof(IMaintenanceServiceProvider),
                 typeof(IDiagnosticLogManager)
             };
             Validate(

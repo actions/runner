@@ -53,7 +53,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.LogPluginHost
                 return Task.FromResult(true);
             }
 
-            public Task ProcessLineAsync(IAgentLogPluginContext context, Pipelines.TaskStepDefinitionReference step, string line)
+            public Task ProcessLineAsync(IAgentLogPluginContext context, Pipelines.ActionStepDefinitionReference step, string line)
             {
                 context.Output(line);
                 return Task.CompletedTask;
@@ -75,7 +75,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.LogPluginHost
                 return Task.FromResult(true);
             }
 
-            public Task ProcessLineAsync(IAgentLogPluginContext context, Pipelines.TaskStepDefinitionReference step, string line)
+            public Task ProcessLineAsync(IAgentLogPluginContext context, Pipelines.ActionStepDefinitionReference step, string line)
             {
                 context.Output(line);
                 return Task.CompletedTask;
@@ -97,7 +97,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.LogPluginHost
                 return Task.FromResult(true);
             }
 
-            public async Task ProcessLineAsync(IAgentLogPluginContext context, Pipelines.TaskStepDefinitionReference step, string line)
+            public async Task ProcessLineAsync(IAgentLogPluginContext context, Pipelines.ActionStepDefinitionReference step, string line)
             {
                 context.Output("BLOCK");
                 await Task.Delay(-1);
@@ -120,7 +120,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.LogPluginHost
                 return Task.FromResult(true);
             }
 
-            public async Task ProcessLineAsync(IAgentLogPluginContext context, Pipelines.TaskStepDefinitionReference step, string line)
+            public async Task ProcessLineAsync(IAgentLogPluginContext context, Pipelines.ActionStepDefinitionReference step, string line)
             {
                 if (_counter++ < 1)
                 {
@@ -149,7 +149,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.LogPluginHost
                 return Task.FromResult(false);
             }
 
-            public Task ProcessLineAsync(IAgentLogPluginContext context, Pipelines.TaskStepDefinitionReference step, string line)
+            public Task ProcessLineAsync(IAgentLogPluginContext context, Pipelines.ActionStepDefinitionReference step, string line)
             {
                 context.Output(line);
                 return Task.CompletedTask;
@@ -185,7 +185,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.LogPluginHost
                 }
             }
 
-            public Task ProcessLineAsync(IAgentLogPluginContext context, Pipelines.TaskStepDefinitionReference step, string line)
+            public Task ProcessLineAsync(IAgentLogPluginContext context, Pipelines.ActionStepDefinitionReference step, string line)
             {
                 if (context.Variables.ContainsKey("throw_process"))
                 {
@@ -515,14 +515,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.LogPluginHost
                 PluginAssemblies = new List<string>(),
                 Repositories = new List<Pipelines.RepositoryResource>(),
                 Variables = new Dictionary<string, VariableValue>(),
-                Steps = new Dictionary<string, Pipelines.TaskStepDefinitionReference>()
+                Steps = new Dictionary<string, Pipelines.ActionStepDefinitionReference>()
             };
 
-            hostContext.Steps[Guid.Empty.ToString("D")] = new Pipelines.TaskStepDefinitionReference()
+            hostContext.Steps[Guid.Empty.ToString("D")] = new Pipelines.RepositoryPathReference()
             {
-                Id = Guid.NewGuid(),
-                Name = "Test",
-                Version = "1.0.0."
+                RepositoryType = "GitHub",
+                Repository = "actions/test",
+                Ref = "master"
             };
 
             var systemConnection = new ServiceEndpoint()

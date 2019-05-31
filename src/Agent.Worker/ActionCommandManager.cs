@@ -285,26 +285,22 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             {
                 issue.Category = "Code";
 
-                var extensionManager = HostContext.GetService<IExtensionManager>();
-                var hostType = context.Variables.System_HostType;
-                IJobExtension extension =
-                    (extensionManager.GetExtensions<IJobExtension>() ?? new List<IJobExtension>())
-                    .Where(x => x.HostType.HasFlag(hostType))
-                    .FirstOrDefault();
-                if (extension != null)
+                if (context.Container != null)
                 {
-                    if (context.Container != null)
-                    {
-                        // Translate file path back from container path
-                        file = context.Container.TranslateToHostPath(file);
-                        command.Properties[IssueCommandProperties.File] = file;
-                    }
+                    // Translate file path back from container path
+                    file = context.Container.TranslateToHostPath(file);
+                    command.Properties[IssueCommandProperties.File] = file;
+                }
 
-                    // Get the values that represent the server path given a local path
-                    string repoName;
-                    string relativeSourcePath;
-                    extension.ConvertLocalPath(context, file, out repoName, out relativeSourcePath);
+                // Get the values that represent the server path given a local path
+                var selfRepo = context.Repositories.Single(x => x.Alias == PipelineConstants.SelfAlias);
+                string repoName = selfRepo.Properties.Get<string>(RepositoryPropertyNames.Name);
+                var repoPath = selfRepo.Properties.Get<string>(RepositoryPropertyNames.Path);
 
+
+                string relativeSourcePath = IOUtil.MakeRelative(file, repoPath);
+                if (!string.Equals(relativeSourcePath, file, IOUtil.FilePathStringComparison))
+                {
                     // add repo info
                     if (!string.IsNullOrEmpty(repoName))
                     {

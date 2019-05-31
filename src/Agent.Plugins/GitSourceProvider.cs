@@ -17,181 +17,7 @@ using Microsoft.VisualStudio.Services.Agent;
 
 namespace Agent.Plugins.Repository
 {
-    public class ExternalGitSourceProvider : GitSourceProvider
-    {
-        public override bool GitSupportsFetchingCommitBySha1Hash
-        {
-            get
-            {
-                return false;
-            }
-        }
-
-        // external git repository won't use auth header cmdline arg, since we don't know the auth scheme.
-        public override bool GitSupportUseAuthHeader(AgentTaskPluginExecutionContext executionContext, GitCliManager gitCommandManager)
-        {
-            return false;
-        }
-
-        public override bool GitLfsSupportUseAuthHeader(AgentTaskPluginExecutionContext executionContext, GitCliManager gitCommandManager)
-        {
-            return false;
-        }
-
-        public override void RequirementCheck(AgentTaskPluginExecutionContext executionContext, Pipelines.RepositoryResource repository, GitCliManager gitCommandManager)
-        {
-#if OS_WINDOWS
-            // check git version for SChannel SSLBackend (Windows Only)
-            bool schannelSslBackend = StringUtil.ConvertToBoolean(executionContext.Variables.GetValueOrDefault("agent.gituseschannel")?.Value);
-            if (schannelSslBackend)
-            {
-                gitCommandManager.EnsureGitVersion(_minGitVersionSupportSSLBackendOverride, throwOnNotMatch: true);
-            }
-#endif
-        }
-
-        public override string GenerateAuthHeader(AgentTaskPluginExecutionContext executionContext, string username, string password)
-        {
-            // can't generate auth header for external git. 
-            throw new NotSupportedException(nameof(ExternalGitSourceProvider.GenerateAuthHeader));
-        }
-    }
-
-    public abstract class AuthenticatedGitSourceProvider : GitSourceProvider
-    {
-        public override bool GitSupportUseAuthHeader(AgentTaskPluginExecutionContext executionContext, GitCliManager gitCommandManager)
-        {
-            // v2.9 git exist use auth header.
-            return gitCommandManager.EnsureGitVersion(_minGitVersionSupportAuthHeader, throwOnNotMatch: false);
-        }
-
-        public override bool GitLfsSupportUseAuthHeader(AgentTaskPluginExecutionContext executionContext, GitCliManager gitCommandManager)
-        {
-            // v2.1 git-lfs exist use auth header.
-            return gitCommandManager.EnsureGitLFSVersion(_minGitLfsVersionSupportAuthHeader, throwOnNotMatch: false);
-        }
-
-        public override void RequirementCheck(AgentTaskPluginExecutionContext executionContext, Pipelines.RepositoryResource repository, GitCliManager gitCommandManager)
-        {
-#if OS_WINDOWS
-            // check git version for SChannel SSLBackend (Windows Only)
-            bool schannelSslBackend = StringUtil.ConvertToBoolean(executionContext.Variables.GetValueOrDefault("agent.gituseschannel")?.Value);
-            if (schannelSslBackend)
-            {
-                gitCommandManager.EnsureGitVersion(_minGitVersionSupportSSLBackendOverride, throwOnNotMatch: true);
-            }
-#endif
-        }
-
-        public override string GenerateAuthHeader(AgentTaskPluginExecutionContext executionContext, string username, string password)
-        {
-            // use basic auth header with username:password in base64encoding. 
-            string authHeader = $"{username ?? string.Empty}:{password ?? string.Empty}";
-            string base64encodedAuthHeader = Convert.ToBase64String(Encoding.UTF8.GetBytes(authHeader));
-
-            // add base64 encoding auth header into secretMasker.
-            executionContext.SetSecret(base64encodedAuthHeader);
-            return $"basic {base64encodedAuthHeader}";
-        }
-    }
-
-    public sealed class BitbucketGitSourceProvider : AuthenticatedGitSourceProvider
-    {
-        public override bool GitSupportsFetchingCommitBySha1Hash
-        {
-            get
-            {
-                return true;
-            }
-        }
-    }
-
-    public sealed class GitHubSourceProvider : AuthenticatedGitSourceProvider
-    {
-        public override bool GitSupportsFetchingCommitBySha1Hash
-        {
-            get
-            {
-                return false;
-            }
-        }
-    }
-
-    public sealed class TfsGitSourceProvider : GitSourceProvider
-    {
-        public override bool GitSupportsFetchingCommitBySha1Hash
-        {
-            get
-            {
-                return true;
-            }
-        }
-
-        public override bool GitSupportUseAuthHeader(AgentTaskPluginExecutionContext executionContext, GitCliManager gitCommandManager)
-        {
-            // v2.9 git exist use auth header for tfsgit repository.
-            return gitCommandManager.EnsureGitVersion(_minGitVersionSupportAuthHeader, throwOnNotMatch: false);
-        }
-
-        public override bool GitLfsSupportUseAuthHeader(AgentTaskPluginExecutionContext executionContext, GitCliManager gitCommandManager)
-        {
-            // v2.1 git-lfs exist use auth header for github repository.
-            return gitCommandManager.EnsureGitLFSVersion(_minGitLfsVersionSupportAuthHeader, throwOnNotMatch: false);
-        }
-
-        // When the repository is a TfsGit, figure out the endpoint is hosted vsts git or on-prem tfs git
-        // if repository is on-prem tfs git, make sure git version greater than 2.9
-        // we have to use http.extraheader option to provide auth header for on-prem tfs git
-        public override void RequirementCheck(AgentTaskPluginExecutionContext executionContext, Pipelines.RepositoryResource repository, GitCliManager gitCommandManager)
-        {
-            var selfManageGitCreds = StringUtil.ConvertToBoolean(executionContext.Variables.GetValueOrDefault("system.selfmanagegitcreds")?.Value);
-            if (selfManageGitCreds)
-            {
-                // Customer choose to own git creds by themselves, we don't have to worry about git version anymore.
-                return;
-            }
-
-            // Since that variable is added around TFS 2015 Qu2.
-            // Old TFS AT will not send this variable to build agent, and VSTS will always send it to build agent.
-            bool onPremTfsGit = !String.Equals(executionContext.Variables.GetValueOrDefault(WellKnownDistributedTaskVariables.ServerType)?.Value, "Hosted", StringComparison.OrdinalIgnoreCase);
-
-            // ensure git version and git-lfs version for on-prem tfsgit.
-            if (onPremTfsGit)
-            {
-                gitCommandManager.EnsureGitVersion(_minGitVersionSupportAuthHeader, throwOnNotMatch: true);
-
-                bool gitLfsSupport = StringUtil.ConvertToBoolean(executionContext.GetInput(Pipelines.PipelineConstants.CheckoutTaskInputs.Lfs));
-                // prefer feature variable over endpoint data
-                if (executionContext.Variables.GetValueOrDefault("agent.source.git.lfs") != null)
-                {
-                    gitLfsSupport = StringUtil.ConvertToBoolean(executionContext.Variables.GetValueOrDefault("agent.source.git.lfs")?.Value);
-                }
-
-                if (gitLfsSupport)
-                {
-                    gitCommandManager.EnsureGitLFSVersion(_minGitLfsVersionSupportAuthHeader, throwOnNotMatch: true);
-                }
-            }
-
-#if OS_WINDOWS
-            // check git version for SChannel SSLBackend (Windows Only)
-            bool schannelSslBackend = StringUtil.ConvertToBoolean(executionContext.Variables.GetValueOrDefault("agent.gituseschannel")?.Value);
-            if (schannelSslBackend)
-            {
-                gitCommandManager.EnsureGitVersion(_minGitVersionSupportSSLBackendOverride, throwOnNotMatch: true);
-            }
-#endif
-        }
-
-        public override string GenerateAuthHeader(AgentTaskPluginExecutionContext executionContext, string username, string password)
-        {
-            // tfsgit use bearer auth header with JWToken from systemconnection.
-            ArgUtil.NotNullOrEmpty(password, nameof(password));
-            return $"bearer {password}";
-        }
-    }
-
-    public abstract class GitSourceProvider : ISourceProvider
+    public sealed class GitHubSourceProvider : ISourceProvider
     {
         // refs prefix
         // TODO: how to deal with limited refs?
@@ -201,22 +27,58 @@ namespace Agent.Plugins.Repository
         private const string _remotePullRefsPrefix = "refs/remotes/pull/";
 
         // min git version that support add extra auth header.
-        protected Version _minGitVersionSupportAuthHeader = new Version(2, 9);
+        private Version _minGitVersionSupportAuthHeader = new Version(2, 9);
 
 #if OS_WINDOWS
         // min git version that support override sslBackend setting.
-        protected Version _minGitVersionSupportSSLBackendOverride = new Version(2, 14, 2);
+        private Version _minGitVersionSupportSSLBackendOverride = new Version(2, 14, 2);
 #endif
 
         // min git-lfs version that support add extra auth header.
-        protected Version _minGitLfsVersionSupportAuthHeader = new Version(2, 1);
+        private Version _minGitLfsVersionSupportAuthHeader = new Version(2, 1);
 
-        public abstract bool GitSupportUseAuthHeader(AgentTaskPluginExecutionContext executionContext, GitCliManager gitCommandManager);
-        public abstract bool GitLfsSupportUseAuthHeader(AgentTaskPluginExecutionContext executionContext, GitCliManager gitCommandManager);
-        public abstract void RequirementCheck(AgentTaskPluginExecutionContext executionContext, Pipelines.RepositoryResource repository, GitCliManager gitCommandManager);
-        public abstract string GenerateAuthHeader(AgentTaskPluginExecutionContext executionContext, string username, string password);
+        private bool GitSupportUseAuthHeader(AgentTaskPluginExecutionContext executionContext, GitCliManager gitCommandManager)
+        {
+            // v2.9 git exist use auth header.
+            return gitCommandManager.EnsureGitVersion(_minGitVersionSupportAuthHeader, throwOnNotMatch: false);
+        }
 
-        public abstract bool GitSupportsFetchingCommitBySha1Hash { get; }
+        private bool GitLfsSupportUseAuthHeader(AgentTaskPluginExecutionContext executionContext, GitCliManager gitCommandManager)
+        {
+            // v2.1 git-lfs exist use auth header.
+            return gitCommandManager.EnsureGitLFSVersion(_minGitLfsVersionSupportAuthHeader, throwOnNotMatch: false);
+        }
+
+        private void RequirementCheck(AgentTaskPluginExecutionContext executionContext, Pipelines.RepositoryResource repository, GitCliManager gitCommandManager)
+        {
+#if OS_WINDOWS
+            // check git version for SChannel SSLBackend (Windows Only)
+            bool schannelSslBackend = StringUtil.ConvertToBoolean(executionContext.Variables.GetValueOrDefault("agent.gituseschannel")?.Value);
+            if (schannelSslBackend)
+            {
+                gitCommandManager.EnsureGitVersion(_minGitVersionSupportSSLBackendOverride, throwOnNotMatch: true);
+            }
+#endif
+        }
+
+        private string GenerateAuthHeader(AgentTaskPluginExecutionContext executionContext, string username, string password)
+        {
+            // use basic auth header with username:password in base64encoding. 
+            string authHeader = $"{username ?? string.Empty}:{password ?? string.Empty}";
+            string base64encodedAuthHeader = Convert.ToBase64String(Encoding.UTF8.GetBytes(authHeader));
+
+            // add base64 encoding auth header into secretMasker.
+            executionContext.SetSecret(base64encodedAuthHeader);
+            return $"basic {base64encodedAuthHeader}";
+        }
+
+        private bool GitSupportsFetchingCommitBySha1Hash
+        {
+            get
+            {
+                return false;
+            }
+        }
 
         public async Task GetSourceAsync(
             AgentTaskPluginExecutionContext executionContext,
@@ -328,34 +190,11 @@ namespace Agent.Plugins.Repository
             executionContext.Debug($"gitLfsSupport={gitLfsSupport}");
             executionContext.Debug($"acceptUntrustedCerts={acceptUntrustedCerts}");
 
-            bool preferGitFromPath;
+            bool preferGitFromPath = true;
 #if OS_WINDOWS
             bool schannelSslBackend = StringUtil.ConvertToBoolean(executionContext.Variables.GetValueOrDefault("agent.gituseschannel")?.Value);
             executionContext.Debug($"schannelSslBackend={schannelSslBackend}");
-
-            // Determine which git will be use
-            // On windows, we prefer the built-in portable git within the agent's externals folder, 
-            // set system.prefergitfrompath=true can change the behavior, agent will find git.exe from %PATH%
-            var definitionSetting = executionContext.Variables.GetValueOrDefault("system.prefergitfrompath");
-            if (definitionSetting != null)
-            {
-                preferGitFromPath = StringUtil.ConvertToBoolean(definitionSetting.Value);
-            }
-            else
-            {
-                bool.TryParse(Environment.GetEnvironmentVariable("system.prefergitfrompath"), out preferGitFromPath);
-            }
-#else
-            // On Linux, we will always use git find in %PATH% regardless of system.prefergitfrompath
-            preferGitFromPath = true;
-#endif
-
-            // we don't package git with for github action
-            if (BuildConstants.AgentPackage.Product == "Github")
-            {
-                preferGitFromPath = true;
-            }
-
+#endif            
             // Determine do we need to provide creds to git operation
             selfManageGitCreds = StringUtil.ConvertToBoolean(executionContext.Variables.GetValueOrDefault("system.selfmanagegitcreds")?.Value);
             if (selfManageGitCreds)

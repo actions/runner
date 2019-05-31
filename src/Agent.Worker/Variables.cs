@@ -157,8 +157,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         public bool? System_EnableAccessToken => GetBoolean(Constants.Variables.System.EnableAccessToken);
 
-        public HostTypes System_HostType => GetEnum<HostTypes>(Constants.Variables.System.HostType) ?? HostTypes.None;
-
         public string System_PhaseDisplayName => Get(Constants.Variables.System.PhaseDisplayName);
 
         public string System_PullRequest_TargetBranch => Get(Constants.Variables.System.PullRequestTargetBranchName);

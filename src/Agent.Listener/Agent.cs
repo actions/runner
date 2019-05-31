@@ -193,21 +193,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 Trace.Info($"Set agent startup type - {startType}");
                 HostContext.StartupType = startType;
 
-#if OS_WINDOWS
-                if (store.IsAutoLogonConfigured())
-                {
-                    if (HostContext.StartupType != StartupType.Service)
-                    {
-                        Trace.Info($"Autologon is configured on the machine, dumping all the autologon related registry settings");
-                        var autoLogonRegManager = HostContext.GetService<IAutoLogonRegistryManager>();
-                        autoLogonRegManager.DumpAutoLogonRegistrySettings();
-                    }
-                    else
-                    {
-                        Trace.Info($"Autologon is configured on the machine but current Agent.Listner.exe is launched from the windows service");
-                    }
-                }
-#endif
                 // Run the agent interactively or as service
                 return await RunAsync(settings, command.RunOnce);
             }
@@ -290,10 +275,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     {
                         notification.StartClient(settings.NotificationPipeName, settings.MonitorSocketAddress, HostContext.AgentShutdownToken);
                     }
-                    // this is not a reliable way to disable auto update.
-                    // we need server side work to really enable the feature
-                    // https://github.com/Microsoft/vsts-agent/issues/446 (Feature: Allow agent / pool to opt out of automatic updates)
-                    bool disableAutoUpdate = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("agent.disableupdate"));
+
                     bool autoUpdateInProgress = false;
                     Task<bool> selfUpdateTask = null;
                     bool runOnceJobReceived = false;
@@ -369,24 +351,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                             HostContext.WritePerfCounter($"MessageReceived_{message.MessageType}");
                             if (string.Equals(message.MessageType, AgentRefreshMessage.MessageType, StringComparison.OrdinalIgnoreCase))
                             {
-                                if (disableAutoUpdate)
+                                if (autoUpdateInProgress == false)
                                 {
-                                    Trace.Info("Refresh message received, skip autoupdate since environment variable agent.disableupdate is set.");
+                                    autoUpdateInProgress = true;
+                                    var agentUpdateMessage = JsonUtility.FromString<AgentRefreshMessage>(message.Body);
+                                    var selfUpdater = HostContext.GetService<ISelfUpdater>();
+                                    selfUpdateTask = selfUpdater.SelfUpdate(agentUpdateMessage, jobDispatcher, !runOnce && HostContext.StartupType != StartupType.Service, HostContext.AgentShutdownToken);
+                                    Trace.Info("Refresh message received, kick-off selfupdate background process.");
                                 }
                                 else
                                 {
-                                    if (autoUpdateInProgress == false)
-                                    {
-                                        autoUpdateInProgress = true;
-                                        var agentUpdateMessage = JsonUtility.FromString<AgentRefreshMessage>(message.Body);
-                                        var selfUpdater = HostContext.GetService<ISelfUpdater>();
-                                        selfUpdateTask = selfUpdater.SelfUpdate(agentUpdateMessage, jobDispatcher, !runOnce && HostContext.StartupType != StartupType.Service, HostContext.AgentShutdownToken);
-                                        Trace.Info("Refresh message received, kick-off selfupdate background process.");
-                                    }
-                                    else
-                                    {
-                                        Trace.Info("Refresh message received, skip autoupdate since a previous autoupdate is already running.");
-                                    }
+                                    Trace.Info("Refresh message received, skip autoupdate since a previous autoupdate is already running.");
                                 }
                             }
                             else if (string.Equals(message.MessageType, JobRequestMessageTypes.AgentJobRequest, StringComparison.OrdinalIgnoreCase) ||

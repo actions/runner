@@ -33,7 +33,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
         private const int _environmentVariableMaximumSize = 32766;
 #endif
 
-        protected IWorkerCommandManager CommandManager { get; private set; }
         protected IActionCommandManager ActionCommandManager { get; private set; }
 
         public List<ServiceEndpoint> Endpoints { get; set; }
@@ -49,120 +48,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
-            CommandManager = hostContext.GetService<IWorkerCommandManager>();
             ActionCommandManager = hostContext.CreateService<IActionCommandManager>();
-        }
-
-        protected void AddEndpointsToEnvironment()
-        {
-            Trace.Entering();
-            ArgUtil.NotNull(Endpoints, nameof(Endpoints));
-            ArgUtil.NotNull(ExecutionContext, nameof(ExecutionContext));
-            ArgUtil.NotNull(ExecutionContext.Endpoints, nameof(ExecutionContext.Endpoints));
-
-            List<ServiceEndpoint> endpoints;
-            if ((RuntimeVariables.GetBoolean(Constants.Variables.Agent.AllowAllEndpoints) ?? false) ||
-                string.Equals(System.Environment.GetEnvironmentVariable("AGENT_ALLOWALLENDPOINTS") ?? string.Empty, bool.TrueString, StringComparison.OrdinalIgnoreCase))
-            {
-                endpoints = ExecutionContext.Endpoints; // todo: remove after sprint 120 or so
-            }
-            else
-            {
-                endpoints = Endpoints;
-            }
-
-            // Add the endpoints to the environment variable dictionary.
-            foreach (ServiceEndpoint endpoint in endpoints)
-            {
-                ArgUtil.NotNull(endpoint, nameof(endpoint));
-
-                string partialKey = null;
-                if (endpoint.Id != Guid.Empty)
-                {
-                    partialKey = endpoint.Id.ToString();
-                }
-                else if (string.Equals(endpoint.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase))
-                {
-                    partialKey = WellKnownServiceEndpointNames.SystemVssConnection.ToUpperInvariant();
-                }
-                else if (endpoint.Data == null ||
-                    !endpoint.Data.TryGetValue(EndpointData.RepositoryId, out partialKey) ||
-                    string.IsNullOrEmpty(partialKey))
-                {
-                    continue; // This should never happen.
-                }
-
-                AddEnvironmentVariable(
-                    key: $"ENDPOINT_URL_{partialKey}",
-                    value: endpoint.Url?.ToString());
-                AddEnvironmentVariable(
-                    key: $"ENDPOINT_AUTH_{partialKey}",
-                    // Note, JsonUtility.ToString will not null ref if the auth object is null.
-                    value: JsonUtility.ToString(endpoint.Authorization));
-                if (endpoint.Authorization != null && endpoint.Authorization.Scheme != null)
-                {
-                    AddEnvironmentVariable(
-                        key: $"ENDPOINT_AUTH_SCHEME_{partialKey}",
-                        value: endpoint.Authorization.Scheme);
-
-                    foreach (KeyValuePair<string, string> pair in endpoint.Authorization.Parameters)
-                    {
-                        AddEnvironmentVariable(
-                            key: $"ENDPOINT_AUTH_PARAMETER_{partialKey}_{pair.Key?.Replace(' ', '_').ToUpperInvariant()}",
-                            value: pair.Value);
-                    }
-                }
-                if (endpoint.Id != Guid.Empty)
-                {
-                    AddEnvironmentVariable(
-                        key: $"ENDPOINT_DATA_{partialKey}",
-                        // Note, JsonUtility.ToString will not null ref if the data object is null.
-                        value: JsonUtility.ToString(endpoint.Data));
-
-                    if (endpoint.Data != null)
-                    {
-                        foreach (KeyValuePair<string, string> pair in endpoint.Data)
-                        {
-                            AddEnvironmentVariable(
-                                key: $"ENDPOINT_DATA_{partialKey}_{pair.Key?.Replace(' ', '_').ToUpperInvariant()}",
-                                value: pair.Value);
-                        }
-                    }
-                }
-            }
-        }
-
-        protected void AddSecureFilesToEnvironment()
-        {
-            Trace.Entering();
-            ArgUtil.NotNull(ExecutionContext, nameof(ExecutionContext));
-            ArgUtil.NotNull(SecureFiles, nameof(SecureFiles));
-
-            List<SecureFile> secureFiles;
-            if ((RuntimeVariables.GetBoolean(Constants.Variables.Agent.AllowAllSecureFiles) ?? false) ||
-                string.Equals(System.Environment.GetEnvironmentVariable("AGENT_ALLOWALLSECUREFILES") ?? string.Empty, bool.TrueString, StringComparison.OrdinalIgnoreCase))
-            {
-                secureFiles = ExecutionContext.SecureFiles ?? new List<SecureFile>(0); // todo: remove after sprint 121 or so
-            }
-            else
-            {
-                secureFiles = SecureFiles;
-            }
-
-            // Add the secure files to the environment variable dictionary.
-            foreach (SecureFile secureFile in secureFiles)
-            {
-                if (secureFile != null && secureFile.Id != Guid.Empty)
-                {
-                    string partialKey = secureFile.Id.ToString();
-                    AddEnvironmentVariable(
-                        key: $"SECUREFILE_NAME_{partialKey}",
-                        value: secureFile.Name);
-                    AddEnvironmentVariable(
-                        key: $"SECUREFILE_TICKET_{partialKey}",
-                        value: secureFile.Ticket);
-                }
-            }
         }
 
         protected void AddInputsToEnvironment()
@@ -180,79 +66,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
             }
         }
 
-        protected void AddAgentVariablesToEnvironment()
-        {
-            // Validate args.
-            Trace.Entering();
-            ArgUtil.NotNull(Environment, nameof(Environment));
-            ArgUtil.NotNull(RuntimeVariables, nameof(RuntimeVariables));
-
-            // Add the public variables.
-            var names = new List<string>();
-            foreach (KeyValuePair<string, string> pair in RuntimeVariables.Public)
-            {
-                if (pair.Key.StartsWith("Agent.", StringComparison.OrdinalIgnoreCase))
-                {
-                    // Add the variable using the formatted name.
-                    string formattedKey = (pair.Key ?? string.Empty).Replace('.', '_').Replace(' ', '_').ToUpperInvariant();
-                    AddEnvironmentVariable(formattedKey, pair.Value);
-                }
-            }
-        }
-
-        protected void AddVariablesToEnvironment(bool excludeNames = false, bool excludeSecrets = false)
-        {
-            // Validate args.
-            Trace.Entering();
-            ArgUtil.NotNull(Environment, nameof(Environment));
-            ArgUtil.NotNull(RuntimeVariables, nameof(RuntimeVariables));
-
-            // Add the public variables.
-            var names = new List<string>();
-            foreach (KeyValuePair<string, string> pair in RuntimeVariables.Public)
-            {
-                // Add "agent.jobstatus" using the unformatted name and formatted name.
-                if (string.Equals(pair.Key, Constants.Variables.Agent.JobStatus, StringComparison.OrdinalIgnoreCase))
-                {
-                    AddEnvironmentVariable(pair.Key, pair.Value);
-                }
-
-                // Add the variable using the formatted name.
-                string formattedKey = (pair.Key ?? string.Empty).Replace('.', '_').Replace(' ', '_').ToUpperInvariant();
-                AddEnvironmentVariable(formattedKey, pair.Value);
-
-                // Store the name.
-                names.Add(pair.Key ?? string.Empty);
-            }
-
-            // Add the public variable names.
-            if (!excludeNames)
-            {
-                AddEnvironmentVariable("VSTS_PUBLIC_VARIABLES", JsonUtility.ToString(names));
-            }
-
-            if (!excludeSecrets)
-            {
-                // Add the secret variables.
-                var secretNames = new List<string>();
-                foreach (KeyValuePair<string, string> pair in RuntimeVariables.Private)
-                {
-                    // Add the variable using the formatted name.
-                    string formattedKey = (pair.Key ?? string.Empty).Replace('.', '_').Replace(' ', '_').ToUpperInvariant();
-                    AddEnvironmentVariable($"SECRET_{formattedKey}", pair.Value);
-
-                    // Store the name.
-                    secretNames.Add(pair.Key ?? string.Empty);
-                }
-
-                // Add the secret variable names.
-                if (!excludeNames)
-                {
-                    AddEnvironmentVariable("VSTS_SECRET_VARIABLES", JsonUtility.ToString(secretNames));
-                }
-            }
-        }
-
         protected void AddEnvironmentVariable(string key, string value)
         {
             ArgUtil.NotNullOrEmpty(key, nameof(key));
@@ -266,27 +79,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
                 ExecutionContext.Warning(StringUtil.Loc("EnvironmentVariableExceedsMaximumLength", key, value.Length, _environmentVariableMaximumSize));
             }
 #endif
-        }
-
-        protected void AddTaskVariablesToEnvironment()
-        {
-            // Validate args.
-            // Trace.Entering();
-            // ArgUtil.NotNull(ExecutionContext.TaskVariables, nameof(ExecutionContext.TaskVariables));
-
-            // foreach (KeyValuePair<string, string> pair in ExecutionContext.TaskVariables.Public)
-            // {
-            //     // Add the variable using the formatted name.
-            //     string formattedKey = (pair.Key ?? string.Empty).Replace('.', '_').Replace(' ', '_').ToUpperInvariant();
-            //     AddEnvironmentVariable($"VSTS_TASKVARIABLE_{formattedKey}", pair.Value);
-            // }
-
-            // foreach (KeyValuePair<string, string> pair in ExecutionContext.TaskVariables.Private)
-            // {
-            //     // Add the variable using the formatted name.
-            //     string formattedKey = (pair.Key ?? string.Empty).Replace('.', '_').Replace(' ', '_').ToUpperInvariant();
-            //     AddEnvironmentVariable($"VSTS_TASKVARIABLE_{formattedKey}", pair.Value);
-            // }
         }
 
         protected void AddPrependPathToEnvironment()

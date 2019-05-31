@@ -85,28 +85,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     return Constants.Agent.ReturnCode.TerminatedError;
                 }
 
-#if OS_WINDOWS
-                // Validate PowerShell 3.0 or higher is installed.
-                var powerShellExeUtil = context.GetService<IPowerShellExeUtil>();
-                try
-                {
-                    powerShellExeUtil.GetPath();
-                }
-                catch (Exception e)
-                {
-                    terminal.WriteError(StringUtil.Loc("ErrorOccurred", e.Message));
-                    trace.Error(e);
-                    return Constants.Agent.ReturnCode.TerminatedError;
-                }
-
-                // Validate .NET Framework 4.5 or higher is installed.
-                if (!NetFrameworkUtil.Test(new Version(4, 5), trace))
-                {
-                    terminal.WriteError(StringUtil.Loc("MinimumNetFramework"));
-                    return Constants.Agent.ReturnCode.TerminatedError;
-                }
-#endif
-
                 // Add environment variables from .env file
                 string envFile = Path.Combine(context.GetDirectory(WellKnownDirectory.Root), ".env");
                 if (File.Exists(envFile))

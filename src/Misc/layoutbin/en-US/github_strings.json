@@ -1,6 +1,0 @@
-﻿{
-  "MissingEnvName": "Required field 'name' is missing in ##[set-env] command.",
-  "MissingOutputName": "Required field 'name' is missing in ##[set-output] command.",
-  "MissingSecretName": "Required field 'name' is missing in ##[set-secret] command.",
-  "ServerUrl": "GitHub organization URL"
-}

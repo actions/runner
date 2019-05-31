@@ -139,57 +139,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
             AgentSettings agentSettings = new AgentSettings();
 
-            if (BuildConstants.AgentPackage.Product == Constants.Agent.Product.AzurePipelines)
-            {
-                // TEE EULA
-                agentSettings.AcceptTeeEula = false;
-                switch (Constants.Agent.Platform)
-                {
-                    case Constants.OSPlatform.OSX:
-                    case Constants.OSPlatform.Linux:
-                        // Write the section header.
-                        WriteSection(StringUtil.Loc("EulasSectionHeader"));
-
-                        // Verify the EULA exists on disk in the expected location.
-                        string eulaFile = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), Constants.Path.TeeDirectory, "license.html");
-                        ArgUtil.File(eulaFile, nameof(eulaFile));
-
-                        // Write elaborate verbiage about the TEE EULA.
-                        _term.WriteLine(StringUtil.Loc("TeeEula", eulaFile));
-                        _term.WriteLine();
-
-                        // Prompt to acccept the TEE EULA.
-                        agentSettings.AcceptTeeEula = command.GetAcceptTeeEula();
-                        break;
-                    case Constants.OSPlatform.Windows:
-                        // Warn and continue if .NET 4.6 is not installed.
-                        if (!NetFrameworkUtil.Test(new Version(4, 6), Trace))
-                        {
-                            WriteSection(StringUtil.Loc("PrerequisitesSectionHeader")); // Section header.
-                            _term.WriteLine(StringUtil.Loc("MinimumNetFrameworkTfvc")); // Warning.
-                        }
-
-                        break;
-                    default:
-                        throw new NotSupportedException();
-                }
-            }
-
             // Create the configuration provider as per agent type.
-            string agentType;
-            if (command.DeploymentGroup)
-            {
-                agentType = Constants.Agent.AgentConfigurationProvider.DeploymentAgentConfiguration;
-            }
-            else if (command.DeploymentPool)
-            {
-                agentType = Constants.Agent.AgentConfigurationProvider.SharedDeploymentAgentConfiguration;
-            }
-            else
-            {
-                agentType = Constants.Agent.AgentConfigurationProvider.BuildReleasesAgentConfiguration;
-            }
-
+            string agentType = Constants.Agent.AgentConfigurationProvider.BuildReleasesAgentConfiguration;
             var extensionManager = HostContext.GetService<IExtensionManager>();
             IConfigurationProvider agentProvider =
                 (extensionManager.GetExtensions<IConfigurationProvider>())
@@ -458,15 +409,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                 var serviceControlManager = HostContext.GetService<IWindowsServiceControlManager>();
                 serviceControlManager.ConfigureService(agentSettings, command);
             }
-            // config auto logon
-            else if (command.GetRunAsAutoLogon())
-            {
-                Trace.Info("Agent is going to run as process setting up the 'AutoLogon' capability for the agent.");
-                var autoLogonConfigManager = HostContext.GetService<IAutoLogonManager>();
-                await autoLogonConfigManager.ConfigureAsync(command);
-                //Important: The machine may restart if the autologon user is not same as the current user
-                //if you are adding code after this, keep that in mind
-            }
 
 #elif OS_LINUX || OS_OSX
             // generate service config script for OSX and Linux, GenerateScripts() will no-opt on windows.
@@ -498,24 +440,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                     throw new Exception(StringUtil.Loc("UnconfigureOSXService"));
 #endif
                 }
-                else
-                {
-#if OS_WINDOWS
-                    //running as process, unconfigure autologon if it was configured                    
-                    if (_store.IsAutoLogonConfigured())
-                    {
-                        currentAction = StringUtil.Loc("UnconfigAutologon");
-                        _term.WriteLine(currentAction);
-                        var autoLogonConfigManager = HostContext.GetService<IAutoLogonManager>();
-                        autoLogonConfigManager.Unconfigure();
-                        _term.WriteLine(StringUtil.Loc("Success") + currentAction);
-                    }
-                    else
-                    {
-                        Trace.Info("AutoLogon was not configured on the agent.");
-                    }
-#endif
-                }
 
                 //delete agent from the server
                 currentAction = StringUtil.Loc("UnregisteringAgent");
@@ -532,14 +456,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
                     VssCredentials creds = credProvider.GetVssCredentials(HostContext);
                     Trace.Info("cred retrieved");
 
-                    bool isDeploymentGroup = (settings.MachineGroupId > 0) || (settings.DeploymentGroupId > 0);
-
-                    Trace.Info("Agent configured for deploymentGroup : {0}", isDeploymentGroup.ToString());
-
-                    string agentType = isDeploymentGroup
-                   ? Constants.Agent.AgentConfigurationProvider.DeploymentAgentConfiguration
-                   : Constants.Agent.AgentConfigurationProvider.BuildReleasesAgentConfiguration;
-
+                    string agentType = Constants.Agent.AgentConfigurationProvider.BuildReleasesAgentConfiguration;
                     var extensionManager = HostContext.GetService<IExtensionManager>();
                     IConfigurationProvider agentProvider = (extensionManager.GetExtensions<IConfigurationProvider>()).FirstOrDefault(x => x.ConfigurationProviderType == agentType);
                     ArgUtil.NotNull(agentProvider, agentType);
