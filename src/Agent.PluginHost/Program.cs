@@ -78,37 +78,6 @@ namespace Agent.PluginHost
 
                     return 0;
                 }
-                else if (string.Equals("command", pluginType, StringComparison.OrdinalIgnoreCase))
-                {
-                    string assemblyQualifiedName = args[1];
-                    ArgUtil.NotNullOrEmpty(assemblyQualifiedName, nameof(assemblyQualifiedName));
-
-                    string serializedContext = Console.ReadLine();
-                    ArgUtil.NotNullOrEmpty(serializedContext, nameof(serializedContext));
-
-                    AgentCommandPluginExecutionContext executionContext = StringUtil.ConvertFromJson<AgentCommandPluginExecutionContext>(serializedContext);
-                    ArgUtil.NotNull(executionContext, nameof(executionContext));
-
-                    AssemblyLoadContext.Default.Resolving += ResolveAssembly;
-                    try
-                    {
-                        Type type = Type.GetType(assemblyQualifiedName, throwOnError: true);
-                        var commandPlugin = Activator.CreateInstance(type) as IAgentCommandPlugin;
-                        ArgUtil.NotNull(commandPlugin, nameof(commandPlugin));
-                        commandPlugin.ProcessCommandAsync(executionContext, tokenSource.Token).GetAwaiter().GetResult();
-                    }
-                    catch (Exception ex)
-                    {
-                        // any exception throw from plugin will fail the command.
-                        executionContext.Error(ex.ToString());
-                    }
-                    finally
-                    {
-                        AssemblyLoadContext.Default.Resolving -= ResolveAssembly;
-                    }
-
-                    return 0;
-                }
                 else if (string.Equals("log", pluginType, StringComparison.OrdinalIgnoreCase))
                 {
                     // read commandline arg to get the instance id

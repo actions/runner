@@ -129,105 +129,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public void LoadsTrackingConfig_FileFormatVersion1()
-        {
-            using (TestHostContext hc = Setup())
-            {
-                // Arrange.
-                // It doesn't matter for this test whether the line endings are CRLF or just LF.
-                const string Contents = @"{ 
-    ""system"" : ""build"", 
-    ""collectionId"" = ""7aee6dde-6381-4098-93e7-50a8264cf066"", 
-    ""definitionId"" = ""7"", 
-    ""repositoryUrl"" = ""http://contoso:8080/tfs/DefaultCollection/_git/gitTest"", 
-    ""sourceFolder"" = ""C:\VsoTest\onprem\Agent\_work\b00335b6"",
-    ""hashKey"" = ""b00335b6923adfa64f46f3abb7da1cdc0d9bae6c""
-}";
-                Directory.CreateDirectory(_workFolder);
-                string filePath = Path.Combine(_workFolder, "trackingconfig.json");
-                File.WriteAllText(filePath, Contents);
-
-                // Act.
-                TrackingConfigBase config = _trackingManager.LoadIfExists(_ec.Object, filePath);
-
-                // Assert.
-                Assert.NotNull(config);
-                var legacyConfig = config as LegacyTrackingConfig;
-                Assert.NotNull(legacyConfig);
-                Assert.Equal(@"C:\VsoTest\onprem\Agent\_work\b00335b6", legacyConfig.BuildDirectory);
-                Assert.Equal(@"7aee6dde-6381-4098-93e7-50a8264cf066", legacyConfig.CollectionId);
-                Assert.Equal(@"7", legacyConfig.DefinitionId);
-                Assert.Equal(@"b00335b6923adfa64f46f3abb7da1cdc0d9bae6c", legacyConfig.HashKey);
-                Assert.Equal(@"http://contoso:8080/tfs/DefaultCollection/_git/gitTest", legacyConfig.RepositoryUrl);
-                Assert.Equal(@"build", legacyConfig.System);
-            }
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Worker")]
-        public void LoadsTrackingConfig_FileFormatVersion1_MissingProperty()
-        {
-            using (TestHostContext hc = Setup())
-            {
-                // Arrange.
-                // It doesn't matter for this test whether the line endings are CRLF or just LF.
-                const string Contents = @"{ 
-    ""system"" : ""build"", 
-    ""collectionId"" = ""7aee6dde-6381-4098-93e7-50a8264cf066"", 
-    ""definitionId"" = ""7"", 
-    ""repositoryUrl"" = ""http://contoso:8080/tfs/DefaultCollection/_git/gitTest"", 
-    ""sourceFolder"" = ""C:\VsoTest\onprem\Agent\_work\b00335b6"",
-    ""hashKey"" = """"
-}";
-                // An expected property is missing from the legacy content - the hash key - so the
-                // file should fail to parse properly.
-                Directory.CreateDirectory(_workFolder);
-                string filePath = Path.Combine(_workFolder, "trackingconfig.json");
-                File.WriteAllText(filePath, Contents);
-
-                // Act.
-                TrackingConfigBase config = _trackingManager.LoadIfExists(_ec.Object, filePath);
-
-                // Assert.
-                Assert.Null(config);
-            }
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Worker")]
-        public void LoadsTrackingConfig_FileFormatVersion1_InvalidJson()
-        {
-            using (TestHostContext hc = Setup())
-            {
-                // Arrange.
-                // It doesn't matter for this test whether the line endings are CRLF or just LF.
-                string contents = @"{ 
-    ""system"" : ""build"", 
-    ""collectionId"" = ""7aee6dde-6381-4098-93e7-50a8264cf066"", 
-    ""definitionId"" = ""7"", 
-    ""repositoryUrl"" = ""http://contoso:8080/tfs/DefaultCollection/_git/gitTest"", 
-    ""sourceFolder"" = ""C:\VsoTest\onprem\Agent\_work\b00335b6"",
-    ""hashKey"" = ""b00335b6923adfa64f46f3abb7da1cdc0d9bae6c""
-}";
-                // Trim the trailing curly brace to make the legacy parser throw an exception.
-                contents = contents.TrimEnd('}');
-                Directory.CreateDirectory(_workFolder);
-                string filePath = Path.Combine(_workFolder, "trackingconfig.json");
-                File.WriteAllText(filePath, contents);
-
-                // Act.
-                TrackingConfigBase config = _trackingManager.LoadIfExists(_ec.Object, filePath);
-
-                // Assert.
-                Assert.Null(config);
-            }
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Worker")]
         public void LoadsTrackingConfig_FileFormatVersion2()
         {
             using (TestHostContext hc = Setup())
@@ -254,7 +155,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
                 File.WriteAllText(filePath, Contents);
 
                 // Act.
-                TrackingConfigBase baseConfig = _trackingManager.LoadIfExists(_ec.Object, filePath);
+                TrackingConfig baseConfig = _trackingManager.LoadIfExists(_ec.Object, filePath);
 
                 // Assert.
                 Assert.NotNull(baseConfig);
@@ -304,7 +205,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
                 File.WriteAllText(filePath, Contents);
 
                 // Act.
-                TrackingConfigBase baseConfig = _trackingManager.LoadIfExists(_ec.Object, filePath);
+                TrackingConfig baseConfig = _trackingManager.LoadIfExists(_ec.Object, filePath);
 
                 // Assert.
                 Assert.NotNull(baseConfig);
@@ -333,7 +234,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
             using (TestHostContext hc = Setup())
             {
                 // Act.
-                TrackingConfigBase config = _trackingManager.LoadIfExists(
+                TrackingConfig config = _trackingManager.LoadIfExists(
                     _ec.Object,
                     Path.Combine(_workFolder, "foo.json"));
 
@@ -393,67 +294,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
                 Assert.True(Regex.IsMatch(Path.GetFileNameWithoutExtension(gcFile), "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"));
                 // File name should not be the default GUID.
                 Assert.NotEqual("00000000-0000-0000-0000-000000000000", Path.GetFileNameWithoutExtension(gcFile));
-            }
-        }
-
-#if OS_WINDOWS
-        // Legacy config back-compat is required for Windows only.
-        // The legacy config files never existed on xplat in this form.
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Worker")]
-#endif
-        public void MarksTrackingConfigForGarbageCollection_Legacy()
-        {
-            using (TestHostContext hc = Setup())
-            {
-                // Arrange.
-                // It doesn't matter for this test whether the line endings are CRLF or just LF.
-                const string TrackingContents = @"{
-    ""system"" : ""build"", 
-    ""collectionId"" = ""7aee6dde-6381-4098-93e7-50a8264cf066"", 
-    ""definitionId"" = ""7"", 
-    ""repositoryUrl"" = ""http://contoso:8080/tfs/DefaultCollection/_git/gitTest"", 
-    ""sourceFolder"" = ""C:\VsoTest\onprem\Agent\_work\b00335b6"",
-    ""hashKey"" = ""b00335b6923adfa64f46f3abb7da1cdc0d9bae6c""
-}";
-                Directory.CreateDirectory(_workFolder);
-                string trackingFile = Path.Combine(_workFolder, "trackingconfig.json");
-                File.WriteAllText(trackingFile, TrackingContents);
-                LegacyTrackingConfig config = _trackingManager.LoadIfExists(_ec.Object, trackingFile) as LegacyTrackingConfig;
-                Assert.NotNull(config);
-
-                // Act.
-                _trackingManager.MarkForGarbageCollection(_ec.Object, config);
-
-                // Assert.
-                string gcDirectory = Path.Combine(
-                    _workFolder,
-                    Constants.Build.Path.SourceRootMappingDirectory,
-                    Constants.Build.Path.GarbageCollectionDirectory);
-                Assert.True(Directory.Exists(gcDirectory));
-                string[] gcFiles = Directory.GetFiles(gcDirectory);
-                Assert.Equal(1, gcFiles.Length);
-                string gcContents = File.ReadAllText(gcFiles.Single());
-                const string ExpectedGCContents = @"{
-  ""build_artifactstagingdirectory"": ""b00335b6\\artifacts"",
-  ""agent_builddirectory"": ""b00335b6"",
-  ""collectionUrl"": ""http://contoso:8080/tfs/DefaultCollection/"",
-  ""definitionName"": null,
-  ""fileFormatVersion"": 3,
-  ""lastRunOn"": """",
-  ""repositoryType"": """",
-  ""lastMaintenanceAttemptedOn"": """",
-  ""lastMaintenanceCompletedOn"": """",
-  ""build_sourcesdirectory"": ""b00335b6\\s"",
-  ""common_testresultsdirectory"": ""b00335b6\\TestResults"",
-  ""collectionId"": ""7aee6dde-6381-4098-93e7-50a8264cf066"",
-  ""definitionId"": ""7"",
-  ""hashKey"": ""b00335b6923adfa64f46f3abb7da1cdc0d9bae6c"",
-  ""repositoryUrl"": ""http://contoso:8080/tfs/DefaultCollection/_git/gitTest"",
-  ""system"": ""build""
-}";
-                Assert.Equal(ExpectedGCContents, gcContents);
             }
         }
 

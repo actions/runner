@@ -80,13 +80,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
             ServiceEndpoint systemConnection = message.Resources.Endpoints.Single(x => string.Equals(x.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
 
-            // System.AccessToken
-            if (message.Variables.ContainsKey(Constants.Variables.System.EnableAccessToken) &&
-                StringUtil.ConvertToBoolean(message.Variables[Constants.Variables.System.EnableAccessToken].Value))
-            {
-                message.Variables[Constants.Variables.System.AccessToken] = new VariableValue(systemConnection.Authorization.Parameters["AccessToken"], false);
-            }
-
             // back compat TfsServerUrl
             message.Variables[Constants.Variables.System.TFServerUrl] = systemConnection.Url.AbsoluteUri;
 
@@ -159,104 +152,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     return await CompleteJobAsync(jobServer, jobContext, message, TaskResult.Failed);
                 }
 
-                // Set agent variables.
-//                 AgentSettings settings = HostContext.GetService<IConfigurationStore>().GetSettings();
-//                 jobContext.Variables.Set(Constants.Variables.Agent.Id, settings.AgentId.ToString(CultureInfo.InvariantCulture));
-//                 jobContext.SetVariable(Constants.Variables.Agent.HomeDirectory, HostContext.GetDirectory(WellKnownDirectory.Root), isFilePath: true);
-//                 jobContext.Variables.Set(Constants.Variables.Agent.JobName, message.JobDisplayName);
-//                 jobContext.Variables.Set(Constants.Variables.Agent.MachineName, Environment.MachineName);
-//                 jobContext.Variables.Set(Constants.Variables.Agent.Name, settings.AgentName);
-//                 jobContext.Variables.Set(Constants.Variables.Agent.OS, VarUtil.OS);
-//                 jobContext.Variables.Set(Constants.Variables.Agent.OSArchitecture, VarUtil.OSArchitecture);
-//                 jobContext.SetVariable(Constants.Variables.Agent.RootDirectory, HostContext.GetDirectory(WellKnownDirectory.Work), isFilePath: true);
-// #if OS_WINDOWS
-//                 jobContext.SetVariable(Constants.Variables.Agent.ServerOMDirectory, HostContext.GetDirectory(WellKnownDirectory.ServerOM), isFilePath: true);
-// #else
-//                 jobContext.Variables.Set(Constants.Variables.Agent.AcceptTeeEula, settings.AcceptTeeEula.ToString());
-// #endif
-//                 jobContext.SetVariable(Constants.Variables.Agent.WorkFolder, HostContext.GetDirectory(WellKnownDirectory.Work), isFilePath: true);
-//                 jobContext.SetVariable(Constants.Variables.System.WorkFolder, HostContext.GetDirectory(WellKnownDirectory.Work), isFilePath: true);
-
                 string toolsDirectory = HostContext.GetDirectory(WellKnownDirectory.Tools);
                 Directory.CreateDirectory(toolsDirectory);
                 jobContext.SetRunnerContext("toolsdirectory", toolsDirectory);
                 jobContext.SetRunnerContext("workfolder", HostContext.GetDirectory(WellKnownDirectory.Work));
                 jobContext.SetRunnerContext("version", BuildConstants.AgentPackage.Version);
 
-                // jobContext.SetVariable(Constants.Variables.Agent.ToolsDirectory, toolsDirectory, isFilePath: true);
-
-                // bool disableGitPrompt = jobContext.Variables.GetBoolean("VSTS_DISABLE_GIT_PROMPT") ?? StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("VSTS_DISABLE_GIT_PROMPT"), true);
-                // if (disableGitPrompt &&
-                //     string.IsNullOrEmpty(jobContext.Variables.Get("GIT_TERMINAL_PROMPT")))
-                // {
-                //     jobContext.SetVariable("GIT_TERMINAL_PROMPT", "0");
-                // }
-
                 // Setup TEMP directories
                 _tempDirectoryManager = HostContext.GetService<ITempDirectoryManager>();
                 _tempDirectoryManager.InitializeTempDirectory(jobContext);
-
-                // todo: task server can throw. try/catch and fail job gracefully.
-                // prefer task definitions url, then TFS collection url, then TFS account url
-                // var taskServer = HostContext.GetService<ITaskServer>();
-                // Uri taskServerUri = null;
-                // if (!string.IsNullOrEmpty(jobContext.Variables.System_TaskDefinitionsUri))
-                // {
-                //     taskServerUri = new Uri(jobContext.Variables.System_TaskDefinitionsUri);
-                // }
-                // else if (!string.IsNullOrEmpty(jobContext.Variables.System_TFCollectionUrl))
-                // {
-                //     taskServerUri = new Uri(jobContext.Variables.System_TFCollectionUrl);
-                // }
-
-                // var taskServerCredential = VssUtil.GetVssCredential(systemConnection);
-                // if (taskServerUri != null)
-                // {
-                //     Trace.Info($"Creating task server with {taskServerUri}");
-                //     await taskServer.ConnectAsync(VssUtil.CreateConnection(taskServerUri, taskServerCredential));
-                // }
-
-                // // for back compat TFS 2015 RTM/QU1, we may need to switch the task server url to agent config url
-                // if (!string.Equals(message.Variables.GetValueOrDefault(Constants.Variables.System.ServerType)?.Value, "Hosted", StringComparison.OrdinalIgnoreCase))
-                // {
-                //     if (taskServerUri == null || !await taskServer.TaskDefinitionEndpointExist())
-                //     {
-                //         Trace.Info($"Can't determine task download url from JobMessage or the endpoint doesn't exist.");
-                //         var configStore = HostContext.GetService<IConfigurationStore>();
-                //         taskServerUri = new Uri(configStore.GetSettings().ServerUrl);
-                //         Trace.Info($"Recreate task server with configuration server url: {taskServerUri}");
-                //         await taskServer.ConnectAsync(VssUtil.CreateConnection(taskServerUri, taskServerCredential));
-                //     }
-                // }
-
-                // Expand the endpoint data values.
-                // foreach (ServiceEndpoint endpoint in jobContext.Endpoints)
-                // {
-                //     jobContext.Variables.ExpandValues(target: endpoint.Data);
-                //     VarUtil.ExpandEnvironmentVariables(HostContext, target: endpoint.Data);
-                // }
-
-                // // Expand the repository property values.
-                // foreach (var repository in jobContext.Repositories)
-                // {
-                //     // expand checkout option
-                //     var checkoutOptions = repository.Properties.Get<JToken>(Pipelines.RepositoryPropertyNames.CheckoutOptions);
-                //     if (checkoutOptions != null)
-                //     {
-                //         checkoutOptions = jobContext.Variables.ExpandValues(target: checkoutOptions);
-                //         checkoutOptions = VarUtil.ExpandEnvironmentVariables(HostContext, target: checkoutOptions);
-                //         repository.Properties.Set<JToken>(Pipelines.RepositoryPropertyNames.CheckoutOptions, checkoutOptions); ;
-                //     }
-
-                //     // expand workspace mapping
-                //     var mappings = repository.Properties.Get<JToken>(Pipelines.RepositoryPropertyNames.Mappings);
-                //     if (mappings != null)
-                //     {
-                //         mappings = jobContext.Variables.ExpandValues(target: mappings);
-                //         mappings = VarUtil.ExpandEnvironmentVariables(HostContext, target: mappings);
-                //         repository.Properties.Set<JToken>(Pipelines.RepositoryPropertyNames.Mappings, mappings);
-                //     }
-                // }
 
                 // // Expand container properties
                 // jobContext.Container?.ExpandProperties(jobContext.Variables);
@@ -267,13 +171,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
                 // Get the job extension.
                 Trace.Info("Getting job extension.");
-                // var hostType = jobContext.Variables.System_HostType;
-                // var extensionManager = HostContext.GetService<IExtensionManager>();
-                // We should always have one job extension
-                // IJobExtension jobExtension = 
-                //     (extensionManager.GetExtensions<IJobExtension>() ?? new List<IJobExtension>())
-                //     .Where(x => x.HostType.HasFlag(hostType))
-                //     .FirstOrDefault();
                 IJobExtension jobExtension = new BuildJobExtension();
                 jobExtension.Initialize(HostContext);
                 ArgUtil.NotNull(jobExtension, nameof(jobExtension));

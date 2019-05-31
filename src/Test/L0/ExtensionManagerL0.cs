@@ -48,18 +48,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 AssertContains<Microsoft.VisualStudio.Services.Agent.Worker.IJobExtension>(
                     manager,
                     concreteType: typeof(Microsoft.VisualStudio.Services.Agent.Worker.Build.BuildJobExtension));
-                AssertContains<Microsoft.VisualStudio.Services.Agent.Worker.IWorkerCommandExtension>(
-                    manager,
-                    concreteType: typeof(Microsoft.VisualStudio.Services.Agent.Worker.TaskCommandExtension));
-                AssertContains<Microsoft.VisualStudio.Services.Agent.Worker.Build.ISourceProvider>(
-                    manager,
-                    concreteType: typeof(Microsoft.VisualStudio.Services.Agent.Worker.Build.ExternalGitSourceProvider));
-                AssertContains<Microsoft.VisualStudio.Services.Agent.Worker.Release.IArtifactExtension>(
-                    manager,
-                    concreteType: typeof(Microsoft.VisualStudio.Services.Agent.Worker.Release.Artifacts.BuildArtifact));
-                AssertContains<Microsoft.VisualStudio.Services.Agent.Worker.TestResults.IResultReader>(
-                    manager,
-                    concreteType: typeof(Microsoft.VisualStudio.Services.Agent.Worker.TestResults.JUnitResultReader));
             }
         }
 

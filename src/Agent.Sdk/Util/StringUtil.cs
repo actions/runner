@@ -201,23 +201,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
                     }
                 }
 
-                if (BuildConstants.AgentPackage.Product == "Github")
-                {
-                    foreach (string cultureName in cultureNames)
-                    {
-                        // Merge the strings from the file into the instance dictionary.
-                        string assemblyLocation = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
-                        string file = Path.Combine(assemblyLocation, cultureName, "github_strings.json");
-                        if (File.Exists(file))
-                        {
-                            foreach (KeyValuePair<string, object> pair in IOUtil.LoadObject<Dictionary<string, object>>(file))
-                            {
-                                locStrings[pair.Key] = pair.Value;
-                            }
-                        }
-                    }
-                }
-
                 // Store the instance.
                 s_locStrings = locStrings;
             }

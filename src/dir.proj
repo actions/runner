@@ -19,7 +19,6 @@
         <BuildConstants Include="%20%20%20%20%20%20%20%20{"/>
         <BuildConstants Include="%20%20%20%20%20%20%20%20%20%20%20%20public static readonly string PackageName = %22$(PackageRuntime)%22%3B"/>
         <BuildConstants Include="%20%20%20%20%20%20%20%20%20%20%20%20public static readonly string Version = %22$(Version)%22%3B"/>
-        <BuildConstants Include="%20%20%20%20%20%20%20%20%20%20%20%20public static readonly string Product = %22$(Product)%22%3B"/>
         <BuildConstants Include="%20%20%20%20%20%20%20%20}"/>
         <BuildConstants Include="%20%20%20%20}"/>
         <BuildConstants Include="}"/>

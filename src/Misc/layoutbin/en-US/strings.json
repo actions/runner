@@ -61,6 +61,9 @@
   "CodeCoverageDataIsNull": "No coverage data found. Check the build errors/warnings for more details.",
   "CodeCoveragePublishIsValidOnlyForBuild": "Publishing code coverage works only for 'build'.",
   "CollectionName": "Collection Name",
+  "MissingEnvName": "Required field 'name' is missing in ##[set-env] command.",
+  "MissingOutputName": "Required field 'name' is missing in ##[set-output] command.",
+  "MissingSecretName": "Required field 'name' is missing in ##[set-secret] command.",
   "CommandKeywordDetected": "'{0}' contains logging command keyword '##vso', but it's not a legal command. Please see the list of accepted commands: https://go.microsoft.com/fwlink/?LinkId=817296",
   "CommandLineHelp": [
     "CLI-WIDTH-TOTAL-(105-CHARS)------------------------------------------------------------------------------",
@@ -515,7 +518,7 @@
   "ServerTarpit": "The job is currently being throttled by the server. You may experience delays in console line output, job status reporting, and task log uploads.",
   "ServerTarpitUrl": "Link to resource utilization page (global 1-hour view): {0}.",
   "ServerTarpitUrlScoped": "Link to resource utilization page (1-hour view by pipeline): {0}.",
-  "ServerUrl": "server URL",
+  "ServerUrl": "GitHub organization URL",
   "ServiceAlreadyExists": "The service already exists: {0}, it will be replaced",
   "ServiceConfigured": "Service {0} successfully configured",
   "ServiceDelayedStartOptionSet": "Service {0} successfully set to delayed auto start",

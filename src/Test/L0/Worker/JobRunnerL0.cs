@@ -25,7 +25,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
         private Mock<IVstsAgentWebProxy> _proxyConfig;
         private Mock<IAgentCertificateManager> _cert;
         private Mock<IConfigurationStore> _config;
-        private Mock<ITaskServer> _taskServer;
         private Mock<IExtensionManager> _extensions;
         private Mock<IStepsRunner> _stepRunner;
 
@@ -46,7 +45,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             _jobServerQueue = new Mock<IJobServerQueue>();
             _proxyConfig = new Mock<IVstsAgentWebProxy>();
             _cert = new Mock<IAgentCertificateManager>();
-            _taskServer = new Mock<ITaskServer>();
             _stepRunner = new Mock<IStepsRunner>();
             _logger = new Mock<IPagingLogger>();
             _temp = new Mock<ITempDirectoryManager>();
@@ -92,8 +90,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
 
             _jobExtension.Setup(x => x.InitializeJob(It.IsAny<IExecutionContext>(), It.IsAny<Pipelines.AgentJobRequestMessage>())).
                 Returns(Task.FromResult(_initResult));
-            _jobExtension.Setup(x => x.HostType)
-                .Returns<string>(null);
 
             _proxyConfig.Setup(x => x.ProxyAddress)
                 .Returns(string.Empty);
@@ -116,7 +112,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             hc.SetSingleton(_jobServerQueue.Object);
             hc.SetSingleton(_proxyConfig.Object);
             hc.SetSingleton(_cert.Object);
-            hc.SetSingleton(_taskServer.Object);
             hc.SetSingleton(_stepRunner.Object);
             hc.SetSingleton(_extensions.Object);
             hc.SetSingleton(_temp.Object);

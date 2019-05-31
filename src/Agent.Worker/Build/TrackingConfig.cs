@@ -9,38 +9,13 @@ using System.IO;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
 {
-    public sealed class TrackingConfig : TrackingConfigBase
+    public sealed class TrackingConfig
     {
         public const string FileFormatVersionJsonProperty = "fileFormatVersion";
 
         // The parameterless constructor is required for deserialization.
         public TrackingConfig()
         {
-        }
-
-        public TrackingConfig(
-            IExecutionContext executionContext,
-            LegacyTrackingConfig copy,
-            string sourcesDirectoryNameOnly,
-            string repositoryType,
-            bool useNewArtifactsDirectoryName = false)
-        {
-            // Set the directories.
-            BuildDirectory = Path.GetFileName(copy.BuildDirectory); // Just take the portion after _work folder.
-            string artifactsDirectoryNameOnly =
-                useNewArtifactsDirectoryName ? Constants.Build.Path.ArtifactsDirectory : Constants.Build.Path.LegacyArtifactsDirectory;
-            ArtifactsDirectory = Path.Combine(BuildDirectory, artifactsDirectoryNameOnly);
-            SourcesDirectory = Path.Combine(BuildDirectory, sourcesDirectoryNameOnly);
-            // TestResultsDirectory = Path.Combine(BuildDirectory, Constants.Build.Path.TestResultsDirectory);
-
-            // Set the other properties.
-            CollectionId = copy.CollectionId;
-            CollectionUrl = executionContext.Variables.System_TFCollectionUrl;
-            DefinitionId = copy.DefinitionId;
-            HashKey = copy.HashKey;
-            RepositoryType = repositoryType;
-            RepositoryUrl = copy.RepositoryUrl;
-            System = copy.System;
         }
 
         public TrackingConfig(
@@ -69,6 +44,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             System = BuildSystem;
             UpdateJobRunProperties(executionContext);
         }
+
+        protected static readonly string BuildSystem = "build";
+
+        public string CollectionId { get; set; }
+
+        public string DefinitionId { get; set; }
+
+        public string HashKey { get; set; }
+
+        public string RepositoryUrl { get; set; }
+
+        public string System { get; set; }
 
         [JsonProperty("build_artifactstagingdirectory")]
         public string ArtifactsDirectory { get; set; }

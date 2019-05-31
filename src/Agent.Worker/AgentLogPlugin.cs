@@ -128,7 +128,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                     Repositories = context.Repositories,
                     Endpoints = context.Endpoints,
                     Variables = new Dictionary<string, VariableValue>(),
-                    Steps = new Dictionary<string, Pipelines.TaskStepDefinitionReference>()
+                    Steps = new Dictionary<string, Pipelines.ActionStepDefinitionReference>()
                 };
 
                 // plugins 
@@ -147,10 +147,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 // steps
                 foreach (var step in steps)
                 {
-                    var taskStep = step as ITaskRunner;
+                    var taskStep = step as IActionRunner;
                     if (taskStep != null)
                     {
-                        pluginContext.Steps[taskStep.ExecutionContext.Id.ToString("D")] = taskStep.Task.Reference;
+                        pluginContext.Steps[taskStep.ExecutionContext.Id.ToString("D")] = taskStep.Action.Reference;
                     }
                 }
 

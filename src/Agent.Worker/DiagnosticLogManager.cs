@@ -256,9 +256,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             // firewall on/off
             builder.AppendLine($"Firewall enabled: {IsFirewallEnabled()}");
 
-            // $psversiontable
-            builder.AppendLine("Powershell Version Info:");
-            builder.AppendLine(await GetPsVersionInfo());
             return builder.ToString();
         }
 
@@ -289,38 +286,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
             {
                 return false;
             }
-        }
-
-        private async Task<string> GetPsVersionInfo()
-        {
-            var builder = new StringBuilder();
-
-            string powerShellExe = HostContext.GetService<IPowerShellExeUtil>().GetPath();
-            string arguments = @"Write-Host ($PSVersionTable | Out-String)";
-            using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
-            {
-                processInvoker.OutputDataReceived += (object sender, ProcessDataReceivedEventArgs args) =>
-                {
-                    builder.AppendLine(args.Data);
-                };
-
-                processInvoker.ErrorDataReceived += (object sender, ProcessDataReceivedEventArgs args) =>
-                {
-                    builder.AppendLine(args.Data);
-                };
-
-                await processInvoker.ExecuteAsync(
-                    workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Bin),
-                    fileName: powerShellExe,
-                    arguments: arguments,
-                    environment: null,
-                    requireExitCodeZero: false,
-                    outputEncoding: null,
-                    killProcessOnCancel: false,
-                    cancellationToken: default(CancellationToken));
-            }
-
-            return builder.ToString();
         }
 #else
         private string GetEnvironmentContent(int agentId, string agentName, IList<Pipelines.JobStep> steps)

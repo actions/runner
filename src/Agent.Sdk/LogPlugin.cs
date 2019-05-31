@@ -27,7 +27,7 @@ namespace Agent.Sdk
         Task<bool> InitializeAsync(IAgentLogPluginContext context);
 
         // Get called by plugin host on every log line.
-        Task ProcessLineAsync(IAgentLogPluginContext context, Pipelines.TaskStepDefinitionReference step, string line);
+        Task ProcessLineAsync(IAgentLogPluginContext context, Pipelines.ActionStepDefinitionReference step, string line);
 
         // Get called by plugin host when all step execute finish.
         Task FinalizeAsync(IAgentLogPluginContext context);
@@ -48,7 +48,7 @@ namespace Agent.Sdk
         VssConnection VssConnection { get; }
 
         // task info for all steps
-        IList<Pipelines.TaskStepDefinitionReference> Steps { get; }
+        IList<Pipelines.ActionStepDefinitionReference> Steps { get; }
 
         // all endpoints
         IList<ServiceEndpoint> Endpoints { get; }
@@ -91,7 +91,7 @@ namespace Agent.Sdk
         public VssConnection VssConnection { get; }
 
         // task info for all steps
-        public IList<Pipelines.TaskStepDefinitionReference> Steps { get; }
+        public IList<Pipelines.ActionStepDefinitionReference> Steps { get; }
 
         // all endpoints
         public IList<ServiceEndpoint> Endpoints { get; }
@@ -105,7 +105,7 @@ namespace Agent.Sdk
         public AgentLogPluginContext(
             string pluginNme,
             VssConnection connection,
-            IList<Pipelines.TaskStepDefinitionReference> steps,
+            IList<Pipelines.ActionStepDefinitionReference> steps,
             IList<ServiceEndpoint> endpoints,
             IList<Pipelines.RepositoryResource> repositories,
             IDictionary<string, VariableValue> variables,
@@ -141,7 +141,7 @@ namespace Agent.Sdk
         public List<ServiceEndpoint> Endpoints { get; set; }
         public List<Pipelines.RepositoryResource> Repositories { get; set; }
         public Dictionary<string, VariableValue> Variables { get; set; }
-        public Dictionary<string, Pipelines.TaskStepDefinitionReference> Steps { get; set; }
+        public Dictionary<string, Pipelines.ActionStepDefinitionReference> Steps { get; set; }
 
         [JsonIgnore]
         public VssConnection VssConnection
@@ -265,7 +265,7 @@ namespace Agent.Sdk
         private readonly Dictionary<string, ConcurrentQueue<string>> _outputQueue = new Dictionary<string, ConcurrentQueue<string>>();
         private readonly Dictionary<string, IAgentLogPluginContext> _pluginContexts = new Dictionary<string, IAgentLogPluginContext>();
         private readonly Dictionary<string, TaskCompletionSource<int>> _shortCircuited = new Dictionary<string, TaskCompletionSource<int>>();
-        private Dictionary<string, Pipelines.TaskStepDefinitionReference> _steps;
+        private Dictionary<string, Pipelines.ActionStepDefinitionReference> _steps;
         private List<IAgentLogPlugin> _plugins;
         private IAgentLogPluginTrace _trace;
         private int _shortCircuitThreshold;

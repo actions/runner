@@ -21,9 +21,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             string file,
             bool overrideBuildDirectory);
 
-        TrackingConfigBase LoadIfExists(IExecutionContext executionContext, string file);
+        TrackingConfig LoadIfExists(IExecutionContext executionContext, string file);
 
-        void MarkForGarbageCollection(IExecutionContext executionContext, TrackingConfigBase config);
+        void MarkForGarbageCollection(IExecutionContext executionContext, TrackingConfig config);
 
         void UpdateJobRunProperties(IExecutionContext executionContext, TrackingConfig config, string file);
 
@@ -119,7 +119,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
             return config;
         }
 
-        public TrackingConfigBase LoadIfExists(IExecutionContext executionContext, string file)
+        public TrackingConfig LoadIfExists(IExecutionContext executionContext, string file)
         {
             Trace.Entering();
 
@@ -129,49 +129,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 return null;
             }
 
-            // Load the content and distinguish between tracking config file
-            // version 1 and file version 2.
-            string content = File.ReadAllText(file);
-            string fileFormatVersionJsonProperty = StringUtil.Format(
-                @"""{0}""",
-                TrackingConfig.FileFormatVersionJsonProperty);
-            if (content.Contains(fileFormatVersionJsonProperty))
-            {
-                // The config is the new format.
-                Trace.Verbose("Parsing new tracking config format.");
-                return JsonConvert.DeserializeObject<TrackingConfig>(content);
-            }
-
-            // Attempt to parse the legacy format.
-            Trace.Verbose("Parsing legacy tracking config format.");
-            LegacyTrackingConfig config = LegacyTrackingConfig.TryParse(content);
-            if (config == null)
-            {
-                executionContext.Warning(StringUtil.Loc("UnableToParseBuildTrackingConfig0", content));
-            }
-
-            return config;
+            return IOUtil.LoadObject<TrackingConfig>(file);
         }
 
-        public void MarkForGarbageCollection(IExecutionContext executionContext, TrackingConfigBase config)
+        public void MarkForGarbageCollection(IExecutionContext executionContext, TrackingConfig config)
         {
             Trace.Entering();
-
-            // Convert legacy format to the new format.
-            LegacyTrackingConfig legacyConfig = config as LegacyTrackingConfig;
-            if (legacyConfig != null)
-            {
-                // Convert legacy format to the new format.
-                config = new TrackingConfig(
-                    executionContext,
-                    legacyConfig,
-                    // The repository type and sources folder wasn't stored in the legacy format - only the
-                    // build folder was stored. Since the hash key has changed, it is
-                    // unknown what the source folder was named. Just set the folder name
-                    // to "s" so the property isn't left blank. 
-                    repositoryType: string.Empty,
-                    sourcesDirectoryNameOnly: Constants.Build.Path.SourcesDirectory);
-            }
 
             // Write a copy of the tracking config to the GC folder.
             string gcDirectory = Path.Combine(
@@ -233,32 +196,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Build
                 try
                 {
                     executionContext.Output(StringUtil.Loc("EvaluateTrackingFile", trackingFile));
-                    TrackingConfigBase tracking = LoadIfExists(executionContext, trackingFile);
-
-                    // detect whether the tracking file is in new format.
-                    TrackingConfig newTracking = tracking as TrackingConfig;
-                    if (newTracking == null)
+                    TrackingConfig tracking = LoadIfExists(executionContext, trackingFile);
+                    Trace.Verbose($"{trackingFile} is a new format tracking file.");
+                    ArgUtil.NotNull(tracking.LastRunOn, nameof(tracking.LastRunOn));
+                    executionContext.Output(StringUtil.Loc("BuildDirLastUseTIme", Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), tracking.BuildDirectory), tracking.LastRunOnString));
+                    if (DateTime.UtcNow - expiration > tracking.LastRunOn)
                     {
-                        LegacyTrackingConfig legacyConfig = tracking as LegacyTrackingConfig;
-                        ArgUtil.NotNull(legacyConfig, nameof(LegacyTrackingConfig));
-
-                        Trace.Verbose($"{trackingFile} is a old format tracking file.");
-
-                        executionContext.Output(StringUtil.Loc("GCOldFormatTrackingFile", trackingFile));
-                        MarkForGarbageCollection(executionContext, legacyConfig);
+                        executionContext.Output(StringUtil.Loc("GCUnusedTrackingFile", trackingFile, expiration.TotalDays));
+                        MarkForGarbageCollection(executionContext, tracking);
                         IOUtil.DeleteFile(trackingFile);
-                    }
-                    else
-                    {
-                        Trace.Verbose($"{trackingFile} is a new format tracking file.");
-                        ArgUtil.NotNull(newTracking.LastRunOn, nameof(newTracking.LastRunOn));
-                        executionContext.Output(StringUtil.Loc("BuildDirLastUseTIme", Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), newTracking.BuildDirectory), newTracking.LastRunOnString));
-                        if (DateTime.UtcNow - expiration > newTracking.LastRunOn)
-                        {
-                            executionContext.Output(StringUtil.Loc("GCUnusedTrackingFile", trackingFile, expiration.TotalDays));
-                            MarkForGarbageCollection(executionContext, newTracking);
-                            IOUtil.DeleteFile(trackingFile);
-                        }
                     }
                 }
                 catch (Exception ex)
