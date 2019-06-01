@@ -1,18 +1,10 @@
 ﻿using Microsoft.VisualStudio.Services.Agent.Util;
 using System.Collections.Generic;
 using System.IO;
-using System.Text;
 using System.Threading.Tasks;
-using System.Linq;
 using System;
-using Newtonsoft.Json.Linq;
-using System.Text.RegularExpressions;
 using Microsoft.VisualStudio.Services.Agent.Worker.Container;
-using Agent.Sdk;
-using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Pipelines = Microsoft.TeamFoundation.DistributedTask.Pipelines;
-using Microsoft.VisualStudio.Services.WebApi;
-using Microsoft.TeamFoundation.Build.WebApi;
 using Microsoft.TeamFoundation.DistributedTask.Pipelines.ContextData;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers

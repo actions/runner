@@ -1,14 +1,9 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.TeamFoundation.DistributedTask.Pipelines.ContextData;
 using Microsoft.VisualStudio.Services.Agent.Util;
-using Build = Microsoft.TeamFoundation.Build.WebApi;
-using DistributedTask = Microsoft.TeamFoundation.DistributedTask.WebApi;
-using Pipelines = Microsoft.TeamFoundation.DistributedTask.Pipelines;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Handlers
 {

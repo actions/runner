@@ -10,8 +10,8 @@ using System.Runtime.Loader;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Text;
-using Microsoft.TeamFoundation.Framework.Common;
 using Microsoft.TeamFoundation.DistributedTask.Pipelines.ContextData;
+using System.Threading.Channels;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
@@ -178,8 +178,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
             using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
             {
-                var redirectStandardIn = new InputQueue<string>();
-                redirectStandardIn.Enqueue(JsonUtility.ToString(pluginContext));
+                var redirectStandardIn = Channel.CreateUnbounded<string>(new UnboundedChannelOptions() { SingleReader = true, SingleWriter = true });
+                redirectStandardIn.Writer.TryWrite(JsonUtility.ToString(pluginContext));
 
                 processInvoker.OutputDataReceived += outputHandler;
                 processInvoker.ErrorDataReceived += outputHandler;

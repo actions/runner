@@ -11,14 +11,16 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\GitHub.Pipelines.Sdk\GitHub.Pipelines.Sdk.csproj" />
     <ProjectReference Include="..\Microsoft.VisualStudio.Services.Agent\Microsoft.VisualStudio.Services.Agent.csproj" />
     <ProjectReference Include="..\Agent.Sdk\Agent.Sdk.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="vss-api-netcore" Version="0.5.120-private" />
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="4.4.0" />
     <PackageReference Include="System.ServiceProcess.ServiceController" Version="4.4.0" />
+    <PackageReference Include="System.Threading.Channels" Version="4.4.0" />
+    <PackageReference Include="YamlDotNet.Signed" Version="5.3.0" />
   </ItemGroup>
 
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">

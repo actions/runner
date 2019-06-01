@@ -1,0 +1,286 @@
+﻿{
+  "version": "workflow-v1.0",
+
+  "definitions": {
+    "root": {
+      "one-of": [
+        "root-workflow",
+        "root-jobs"
+      ]
+    },
+
+    "root-workflow": {
+      "mapping": {
+        "properties": {
+          "on": "any",
+          "name": "scalar",
+          "workflow": "jobs"
+        }
+      }
+    },
+
+    "root-jobs": {
+      "mapping": {
+        "properties": {
+          "on": "any",
+          "name": "scalar",
+          "jobs": "jobs"
+        }
+      }
+    },
+
+    "jobs": {
+      "mapping": {
+        "loose-key-type": "non-empty-scalar",
+        "loose-value-type": "job"
+      }
+    },
+
+    "job": {
+      "mapping": {
+        "properties": {
+          "needs": "needs",
+          "strategy": "strategy",
+          "name": "scalar-strategy-context",
+          "runs-on": "runs-on",
+          "timeout": "scalar-strategy-context",
+          "cancel-timeout": "scalar-strategy-context",
+          "continue-on-error": "non-empty-scalar",
+          "actions": "actions"
+        }
+      }
+    },
+
+    "needs": {
+      "one-of": [
+        "sequence-of-non-empty-scalar",
+        "scalar"
+      ]
+    },
+
+    "strategy": {
+      "mapping": {
+        "properties": {
+          "fail-fast": "boolean",
+          "max-parallel": "non-empty-scalar",
+          "matrix": "matrix",
+          "parallel": "non-empty-scalar"
+        }
+      }
+    },
+
+    "matrix": {
+      "mapping": {
+        "properties": {
+          "include": "matrix-include",
+          "exclude": "matrix-exclude"
+        },
+        "loose-key-type": "non-empty-scalar",
+        "loose-value-type": "sequence"
+      }
+    },
+
+    "matrix-include": {
+      "sequence": {
+        "item-type": "matrix-include-item"
+      }
+    },
+
+    "matrix-include-item": {
+      "mapping": {
+        "loose-key-type": "non-empty-scalar",
+        "loose-value-type": "any"
+      }
+    },
+
+    "matrix-exclude": {
+      "sequence": {
+        "item-type": "matrix-exclude-item"
+      }
+    },
+
+    "matrix-exclude-item": {
+      "mapping": {
+        "loose-key-type": "non-empty-scalar",
+        "loose-value-type": "matrix-exclude-filter-item"
+      }
+    },
+
+    "matrix-exclude-filter-item": {
+      "one-of": [
+        "scalar",
+        "matrix-exclude-mapping-filter"
+      ]
+    },
+
+    "matrix-exclude-mapping-filter": {
+      "mapping": {
+        "loose-key-type": "non-empty-scalar",
+        "loose-value-type": "matrix-exclude-filter-item"
+      }
+    },
+
+    "runs-on": {
+      "context": [
+        "strategy",
+        "matrix",
+        "parallel"
+      ],
+      "one-of": [
+        "runs-on-scalar",
+        "runs-on-mapping"
+      ]
+    },
+
+    "runs-on-scalar": {
+      "scalar": {
+        "require-non-empty": true
+      }
+    },
+
+    "runs-on-mapping": {
+      "mapping": {
+        "properties": {
+          "pool": "non-empty-scalar"
+        }
+      }
+    },
+
+    "actions": {
+      "sequence": {
+        "item-type": "actions-item"
+      }
+    },
+
+    "actions-item": {
+      "one-of": [
+        "run-action",
+        "action",
+        "checkout"
+      ]
+    },
+
+    "run-action": {
+      "mapping": {
+        "properties": {
+          "name": "scalar-actions-context",
+          "id": "non-empty-scalar",
+          "if": "scalar",
+          "timeout": "non-empty-scalar",
+          "run": "scalar-actions-context",
+          "env": "action-env",
+          "working-directory": "scalar-actions-context"
+        }
+      }
+    },
+
+    "action": {
+      "mapping": {
+        "properties": {
+          "name": "scalar-actions-context",
+          "id": "non-empty-scalar",
+          "if": "scalar",
+          "timeout": "non-empty-scalar",
+          "uses": "non-empty-scalar",
+          "with": "action-with",
+          "env": "action-env"
+        }
+      }
+    },
+
+    "checkout": {
+      "mapping": {
+        "properties": {
+          "name": "scalar-actions-context",
+          "id": "non-empty-scalar",
+          "if": "scalar",
+          "timeout": "non-empty-scalar",
+          "checkout": "non-empty-scalar",
+          "path": "scalar-actions-context",
+          "clean": "scalar-actions-context",
+          "fetch-depth": "scalar-actions-context",
+          "lfs": "scalar-actions-context",
+          "submodules": "scalar-actions-context"
+        }
+      }
+    },
+
+    "action-env": {
+      "context": [
+        "strategy",
+        "matrix",
+        "parallel",
+        "actions"
+      ],
+      "mapping": {
+        "loose-key-type": "non-empty-scalar",
+        "loose-value-type": "scalar"
+      }
+    },
+
+    "action-with": {
+      "context": [
+        "strategy",
+        "matrix",
+        "parallel",
+        "actions"
+      ],
+      "mapping": {
+        "loose-key-type": "non-empty-scalar",
+        "loose-value-type": "scalar"
+      }
+    },
+
+    "boolean": {
+      "one-of": [
+        "true",
+        "false"
+      ]
+    },
+
+    "true": {
+      "scalar": {
+        "constant": true,
+        "ignore-case": true
+      }
+    },
+
+    "false": {
+      "scalar": {
+        "constant": false,
+        "ignore-case": true
+      }
+    },
+
+    "non-empty-scalar": {
+      "scalar": {
+        "require-non-empty": true
+      }
+    },
+
+    "sequence-of-non-empty-scalar": {
+      "sequence": {
+        "item-type": "non-empty-scalar"
+      }
+    },
+
+    "scalar-strategy-context": {
+      "context": [
+        "strategy",
+        "matrix",
+        "parallel"
+      ],
+      "scalar": {}
+    },
+
+    "scalar-actions-context": {
+      "context": [
+        "strategy",
+        "matrix",
+        "parallel",
+        "actions"
+      ],
+      "scalar": {}
+    }
+  }
+}

@@ -1,4 +1,3 @@
-using Microsoft.TeamFoundation.Build.WebApi;
 using Pipelines = Microsoft.TeamFoundation.DistributedTask.Pipelines;
 using System;
 using System.Collections.Generic;
@@ -144,7 +143,7 @@ namespace Agent.Plugins.Repository
                     (repository.Endpoint.Id == Guid.Empty && string.Equals(x.Name, repository.Endpoint.Name.ToString(), StringComparison.OrdinalIgnoreCase)));
             }
 
-            if (endpoint != null && endpoint.Data.TryGetValue(EndpointData.AcceptUntrustedCertificates, out string endpointAcceptUntrustedCerts))
+            if (endpoint != null && endpoint.Data.TryGetValue("acceptUntrustedCerts", out string endpointAcceptUntrustedCerts))
             {
                 acceptUntrustedCerts = StringUtil.ConvertToBoolean(endpointAcceptUntrustedCerts);
             }

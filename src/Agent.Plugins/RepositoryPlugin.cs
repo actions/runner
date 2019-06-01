@@ -1,19 +1,13 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Agent.Sdk;
-using Microsoft.TeamFoundation.Build.WebApi;
-using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Util;
-using Newtonsoft.Json.Linq;
 using Pipelines = Microsoft.TeamFoundation.DistributedTask.Pipelines;
 using System.IO;
 using Microsoft.TeamFoundation.DistributedTask.Pipelines.ContextData;
-using Microsoft.VisualStudio.Services.WebApi;
 using System.Text.RegularExpressions;
 
 namespace Agent.Plugins.Repository

@@ -9,11 +9,15 @@
     <NoWarn>NU1701;NU1603</NoWarn>
     <Version>$(Version)</Version>
   </PropertyGroup>
+  
+  <ItemGroup>
+    <ProjectReference Include="..\GitHub.Pipelines.Sdk\GitHub.Pipelines.Sdk.csproj" />
+  </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="vss-api-netcore" Version="0.5.120-private" />
     <PackageReference Include="System.Text.Encoding.CodePages" Version="4.4.0" />
     <PackageReference Include="Microsoft.Win32.Registry" Version="4.4.0" />
+    <PackageReference Include="System.Threading.Channels" Version="4.4.0" />
   </ItemGroup>
 
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">

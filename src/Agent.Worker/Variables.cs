@@ -5,7 +5,6 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using BuildWebApi = Microsoft.TeamFoundation.Build.WebApi;
 using Microsoft.TeamFoundation.DistributedTask.Logging;
 using Microsoft.VisualStudio.Services.Agent.Worker.Container;
 using Newtonsoft.Json.Linq;
@@ -101,13 +100,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         public string Agent_ProxyPassword => Get(Constants.Variables.Agent.ProxyPassword);
 
-        public int? Build_BuildId => GetInt(BuildWebApi.BuildVariables.BuildId);
-
-        public string Build_BuildUri => Get(BuildWebApi.BuildVariables.BuildUri);
-
         public BuildCleanOption? Build_Clean => GetEnum<BuildCleanOption>(Constants.Variables.Features.BuildDirectoryClean) ?? GetEnum<BuildCleanOption>(Constants.Variables.Build.Clean);
-
-        public long? Build_ContainerId => GetLong(BuildWebApi.BuildVariables.ContainerId);
 
         public string Build_DefinitionName => Get(Constants.Variables.Build.DefinitionName);
 
@@ -118,8 +111,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         public string Build_Number => Get(Constants.Variables.Build.Number);
 
         public string Build_RepoTfvcWorkspace => Get(Constants.Variables.Build.RepoTfvcWorkspace);
-
-        public string Build_RequestedFor => Get((BuildWebApi.BuildVariables.RequestedFor));
 
         public string Build_SourceBranch => Get(Constants.Variables.Build.SourceBranch);
 
@@ -162,10 +153,6 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
         public string System_PullRequest_TargetBranch => Get(Constants.Variables.System.PullRequestTargetBranchName);
 
         public string System_TaskDefinitionsUri => Get(WellKnownDistributedTaskVariables.TaskDefinitionsUrl);
-
-        public string System_TeamProject => Get(BuildWebApi.BuildVariables.TeamProject);
-
-        public Guid? System_TeamProjectId => GetGuid(BuildWebApi.BuildVariables.TeamProjectId);
 
         public string System_TFCollectionUrl => Get(WellKnownDistributedTaskVariables.TFCollectionUrl);
 

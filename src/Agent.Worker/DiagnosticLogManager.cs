@@ -10,7 +10,6 @@ using Microsoft.VisualStudio.Services.Agent.Worker;
 using Microsoft.VisualStudio.Services.Agent.Worker.Build;
 using Microsoft.VisualStudio.Services.Agent.Capabilities;
 using Microsoft.VisualStudio.Services.WebApi;
-using Build2 = Microsoft.TeamFoundation.Build.WebApi;
 using Microsoft.Win32;
 using System.Diagnostics;
 using System.Linq;

@@ -4,8 +4,8 @@ using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
-using Microsoft.TeamFoundation.Framework.Common;
 using Microsoft.VisualStudio.Services.Agent.Util;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker.Container
@@ -356,13 +356,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker.Container
                 context.Output(message.Data);
             };
 
-            InputQueue<string> redirectStandardIn = null;
+            Channel<string> redirectStandardIn = null;
             if (standardIns != null)
             {
-                redirectStandardIn = new InputQueue<string>();
+                redirectStandardIn = Channel.CreateUnbounded<string>(new UnboundedChannelOptions() { SingleReader = true, SingleWriter = true });
                 foreach (var input in standardIns)
                 {
-                    redirectStandardIn.Enqueue(input);
+                    redirectStandardIn.Writer.TryWrite(input);
                 }
             }
 

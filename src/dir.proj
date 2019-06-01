@@ -32,6 +32,7 @@
   </Target>
 
   <Target Name="Build" DependsOnTargets="GenerateConstant">
+    <Exec Command="dotnet publish GitHub.Pipelines.Sdk/GitHub.Pipelines.Sdk.csproj --output %22$(MSBuildProjectDirectory)/../_layout/bin%22 --runtime $(PackageRuntime) -c $(BUILDCONFIG) /p:PackageRuntime=$(PackageRuntime) /p:Version=$(Version)" ConsoleToMSBuild="true" />
     <Exec Command="dotnet publish Microsoft.VisualStudio.Services.Agent/Microsoft.VisualStudio.Services.Agent.csproj --output %22$(MSBuildProjectDirectory)/../_layout/bin%22 --runtime $(PackageRuntime) -c $(BUILDCONFIG) /p:PackageRuntime=$(PackageRuntime) /p:Version=$(Version)" ConsoleToMSBuild="true" />
     <Exec Command="dotnet publish Agent.Listener/Agent.Listener.csproj --output %22$(MSBuildProjectDirectory)/../_layout/bin%22 --runtime $(PackageRuntime) -c $(BUILDCONFIG) /p:PackageRuntime=$(PackageRuntime) /p:Version=$(Version)" ConsoleToMSBuild="true" />
     <Exec Command="dotnet publish Agent.Worker/Agent.Worker.csproj --output %22$(MSBuildProjectDirectory)/../_layout/bin%22 --runtime $(PackageRuntime) -c $(BUILDCONFIG) /p:PackageRuntime=$(PackageRuntime) /p:Version=$(Version)" ConsoleToMSBuild="true" />

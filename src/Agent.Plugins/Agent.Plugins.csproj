@@ -11,12 +11,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\GitHub.Pipelines.Sdk\GitHub.Pipelines.Sdk.csproj" />
     <ProjectReference Include="..\Agent.Sdk\Agent.Sdk.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="vss-api-netcore" Version="0.5.120-private" />
-    <PackageReference Include="azuredevops-testresultparser" Version="1.0.1" />
   </ItemGroup>
 
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">

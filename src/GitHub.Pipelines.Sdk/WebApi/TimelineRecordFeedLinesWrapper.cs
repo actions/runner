@@ -1,0 +1,35 @@
+﻿using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.Serialization;
+
+namespace Microsoft.TeamFoundation.DistributedTask.WebApi
+{
+    [DataContract]
+    public sealed class TimelineRecordFeedLinesWrapper
+    {
+        public TimelineRecordFeedLinesWrapper()
+        {
+        }
+
+        public TimelineRecordFeedLinesWrapper(Guid stepId, IList<string> lines)
+        {
+            this.StepId = stepId;
+            this.Value = lines.ToList();
+            this.Count = lines.Count;
+        }
+
+        [DataMember(Order = 0)]
+        public Int32 Count { get; private set; }
+
+        [DataMember]
+        public List<string> Value
+        {
+            get; private set;
+        }
+
+        [DataMember(EmitDefaultValue = false)]
+        public Guid StepId { get; set; }
+    }
+}

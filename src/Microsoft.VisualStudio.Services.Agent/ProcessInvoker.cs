@@ -3,8 +3,8 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
-using Microsoft.TeamFoundation.Framework.Common;
 
 namespace Microsoft.VisualStudio.Services.Agent
 {
@@ -56,7 +56,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             bool requireExitCodeZero,
             Encoding outputEncoding,
             bool killProcessOnCancel,
-            InputQueue<string> redirectStandardIn,
+            Channel<string> redirectStandardIn,
             CancellationToken cancellationToken);
 
         Task<int> ExecuteAsync(
@@ -67,7 +67,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             bool requireExitCodeZero,
             Encoding outputEncoding,
             bool killProcessOnCancel,
-            InputQueue<string> redirectStandardIn,
+            Channel<string> redirectStandardIn,
             bool inheritConsoleHandler,
             CancellationToken cancellationToken);
 
@@ -79,7 +79,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             bool requireExitCodeZero,
             Encoding outputEncoding,
             bool killProcessOnCancel,
-            InputQueue<string> redirectStandardIn,
+            Channel<string> redirectStandardIn,
             bool inheritConsoleHandler,
             bool keepStandardInOpen,
             CancellationToken cancellationToken);
@@ -92,7 +92,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             bool requireExitCodeZero,
             Encoding outputEncoding,
             bool killProcessOnCancel,
-            InputQueue<string> redirectStandardIn,
+            Channel<string> redirectStandardIn,
             bool inheritConsoleHandler,
             bool keepStandardInOpen,
             bool highPriorityProcess,
@@ -203,7 +203,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             bool requireExitCodeZero,
             Encoding outputEncoding,
             bool killProcessOnCancel,
-            InputQueue<string> redirectStandardIn,
+            Channel<string> redirectStandardIn,
             CancellationToken cancellationToken)
         {
             return ExecuteAsync(
@@ -228,7 +228,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             bool requireExitCodeZero,
             Encoding outputEncoding,
             bool killProcessOnCancel,
-            InputQueue<string> redirectStandardIn,
+            Channel<string> redirectStandardIn,
             bool inheritConsoleHandler,
             CancellationToken cancellationToken)
         {
@@ -255,7 +255,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             bool requireExitCodeZero,
             Encoding outputEncoding,
             bool killProcessOnCancel,
-            InputQueue<string> redirectStandardIn,
+            Channel<string> redirectStandardIn,
             bool inheritConsoleHandler,
             bool keepStandardInOpen,
             CancellationToken cancellationToken)
@@ -284,7 +284,7 @@ namespace Microsoft.VisualStudio.Services.Agent
             bool requireExitCodeZero,
             Encoding outputEncoding,
             bool killProcessOnCancel,
-            InputQueue<string> redirectStandardIn,
+            Channel<string> redirectStandardIn,
             bool inheritConsoleHandler,
             bool keepStandardInOpen,
             bool highPriorityProcess,

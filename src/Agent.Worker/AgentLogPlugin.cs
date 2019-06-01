@@ -5,13 +5,13 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 using Agent.Sdk;
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Util;
 using Microsoft.VisualStudio.Services.WebApi;
 using Pipelines = Microsoft.TeamFoundation.DistributedTask.Pipelines;
-using Microsoft.TeamFoundation.Framework.Common;
 
 namespace Microsoft.VisualStudio.Services.Agent.Worker
 {
@@ -29,7 +29,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
 
         private Task<int> _pluginHostProcess = null;
 
-        private readonly InputQueue<string> _redirectedStdin = new InputQueue<string>();
+        private readonly Channel<string> _redirectedStdin = Channel.CreateUnbounded<string>(new UnboundedChannelOptions() { SingleReader = true, SingleWriter = true });
 
         private readonly ConcurrentQueue<string> _outputs = new ConcurrentQueue<string>();
 
@@ -155,7 +155,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 }
 
                 Trace.Info("Send serialized context through STDIN");
-                _redirectedStdin.Enqueue(JsonUtility.ToString(pluginContext));
+                _redirectedStdin.Writer.TryWrite(JsonUtility.ToString(pluginContext));
 
                 foreach (var plugin in _logPlugins)
                 {
@@ -175,7 +175,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 Trace.Info("Send instruction code through STDIN to stop plugin host");
 
                 // plugin host will stop the routine process and give every plugin a chance to participate into job finalization
-                _redirectedStdin.Enqueue($"##vso[logplugin.finish]{_instanceId.ToString("D")}");
+                _redirectedStdin.Writer.TryWrite($"##vso[logplugin.finish]{_instanceId.ToString("D")}");
 
                 // print out outputs from plugin host and wait for plugin finish
                 Trace.Info("Waiting for plugin host exit");
@@ -227,7 +227,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 {
                     if (line != null)
                     {
-                        _redirectedStdin.Enqueue($"{stepId}:{line}");
+                        _redirectedStdin.Writer.TryWrite($"{stepId}:{line}");
                     }
                 }
             }

@@ -8,9 +8,9 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 using Agent.Sdk;
-using Microsoft.TeamFoundation.Framework.Common;
 
 namespace Microsoft.VisualStudio.Services.Agent.Util
 {
@@ -26,6 +26,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
         private bool _waitingOnStreams = false;
         private readonly AsyncManualResetEvent _outputProcessEvent = new AsyncManualResetEvent();
         private readonly TaskCompletionSource<bool> _processExitedCompletionSource = new TaskCompletionSource<bool>();
+        private readonly CancellationTokenSource _processStandardInWriteCancellationTokenSource = new CancellationTokenSource();
         private readonly ConcurrentQueue<string> _errorData = new ConcurrentQueue<string>();
         private readonly ConcurrentQueue<string> _outputData = new ConcurrentQueue<string>();
         private readonly TimeSpan _sigintTimeout = TimeSpan.FromMilliseconds(7500);
@@ -150,7 +151,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             bool requireExitCodeZero,
             Encoding outputEncoding,
             bool killProcessOnCancel,
-            InputQueue<string> redirectStandardIn,
+            Channel<string> redirectStandardIn,
             CancellationToken cancellationToken)
         {
             return ExecuteAsync(
@@ -174,7 +175,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             bool requireExitCodeZero,
             Encoding outputEncoding,
             bool killProcessOnCancel,
-            InputQueue<string> redirectStandardIn,
+            Channel<string> redirectStandardIn,
             bool inheritConsoleHandler,
             CancellationToken cancellationToken)
         {
@@ -201,7 +202,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
             bool requireExitCodeZero,
             Encoding outputEncoding,
             bool killProcessOnCancel,
-            InputQueue<string> redirectStandardIn,
+            Channel<string> redirectStandardIn,
             bool inheritConsoleHandler,
             bool keepStandardInOpen,
             bool highPriorityProcess,
@@ -463,11 +464,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
                     await Task.Delay(TimeSpan.FromSeconds(5));
                     KillProcessTree();
                     _processExitedCompletionSource.TrySetResult(true);
+                    _processStandardInWriteCancellationTokenSource.Cancel();
                 });
             }
             else
             {
                 _processExitedCompletionSource.TrySetResult(true);
+                _processStandardInWriteCancellationTokenSource.Cancel();
             }
         }
 
@@ -490,11 +493,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
                 if (Interlocked.Decrement(ref _asyncStreamReaderCount) == 0 && _waitingOnStreams)
                 {
                     _processExitedCompletionSource.TrySetResult(true);
+                    _processStandardInWriteCancellationTokenSource.Cancel();
                 }
             });
         }
 
-        private void StartWriteStream(InputQueue<string> redirectStandardIn, StreamWriter standardIn, bool keepStandardInOpen)
+        private void StartWriteStream(Channel<string> redirectStandardIn, StreamWriter standardIn, bool keepStandardInOpen)
         {
             Task.Run(async () =>
             {
@@ -503,23 +507,19 @@ namespace Microsoft.VisualStudio.Services.Agent.Util
 
                 while (!_processExitedCompletionSource.Task.IsCompleted)
                 {
-                    Task<string> dequeueTask = redirectStandardIn.DequeueAsync();
-                    var completedTask = await Task.WhenAny(dequeueTask, _processExitedCompletionSource.Task);
-                    if (completedTask == dequeueTask)
+                    ValueTask<string> dequeueTask = redirectStandardIn.Reader.ReadAsync(_processStandardInWriteCancellationTokenSource.Token);
+                    string input = await dequeueTask;
+                    if (input != null)
                     {
-                        string input = await dequeueTask;
-                        if (input != null)
-                        {
-                            utf8Writer.WriteLine(input);
-                            utf8Writer.Flush();
+                        utf8Writer.WriteLine(input);
+                        utf8Writer.Flush();
 
-                            if (!keepStandardInOpen)
-                            {
-                                Trace.Info("Close STDIN after the first redirect finished.");
-                                standardIn.Close();
-                                break;
-                            }
-                    }
+                        if (!keepStandardInOpen)
+                        {
+                            Trace.Info("Close STDIN after the first redirect finished.");
+                            standardIn.Close();
+                            break;
+                        }
                     }
                 }
 

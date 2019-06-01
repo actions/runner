@@ -508,7 +508,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 githubContext["workflow"] = new StringContextData(Variables.Build_DefinitionName);
 
                 // GITHUB_EVENT_NAME=push
-                githubContext["event_name"] = new StringContextData(Variables.Get(TeamFoundation.Build.WebApi.BuildVariables.Reason));
+                githubContext["event_name"] = new StringContextData(Variables.Get("build.reason"));
 
                 // GITHUB_ACTION=dump.env
                 githubContext["action"] = new StringContextData(Variables.Build_Number);
