@@ -6,7 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 using Microsoft.VisualStudio.Services.Agent.Util;
-using Microsoft.TeamFoundation.Framework.Common;
+using System.Threading.Channels;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests
 {
@@ -142,9 +142,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 Tracing trace = hc.GetTrace();
                 CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
                 Int32 exitCode = -1;
-                InputQueue<string> redirectSTDIN = new InputQueue<string>();
+                Channel<string> redirectSTDIN = Channel.CreateUnbounded<string>(new UnboundedChannelOptions() { SingleReader = true, SingleWriter = true });
                 List<string> stdout = new List<string>();
-                redirectSTDIN.Enqueue("Single line of STDIN");
+                redirectSTDIN.Writer.TryWrite("Single line of STDIN");
 
                 var processInvoker = new ProcessInvokerWrapper();
                 processInvoker.OutputDataReceived += (object sender, ProcessDataReceivedEventArgs e) =>
@@ -158,13 +158,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
 #else
                 var proc = processInvoker.ExecuteAsync("", "bash", "-c \"read input; echo $input; read input; echo $input; read input; echo $input;\"", null, false, null, false, redirectSTDIN, false, false, cancellationTokenSource.Token);
 #endif
-                redirectSTDIN.Enqueue("More line of STDIN");
-                redirectSTDIN.Enqueue("More line of STDIN");
+                redirectSTDIN.Writer.TryWrite("More line of STDIN");
+                redirectSTDIN.Writer.TryWrite("More line of STDIN");
                 await Task.Delay(100);
-                redirectSTDIN.Enqueue("More line of STDIN");
-                redirectSTDIN.Enqueue("More line of STDIN");
+                redirectSTDIN.Writer.TryWrite("More line of STDIN");
+                redirectSTDIN.Writer.TryWrite("More line of STDIN");
                 await Task.Delay(100);
-                redirectSTDIN.Enqueue("More line of STDIN");
+                redirectSTDIN.Writer.TryWrite("More line of STDIN");
                 cancellationTokenSource.CancelAfter(100);
 
                 try
@@ -192,9 +192,9 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 Tracing trace = hc.GetTrace();
                 CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
                 Int32 exitCode = -1;
-                InputQueue<string> redirectSTDIN = new InputQueue<string>();
+                Channel<string> redirectSTDIN = Channel.CreateUnbounded<string>(new UnboundedChannelOptions() { SingleReader = true, SingleWriter = true });
                 List<string> stdout = new List<string>();
-                redirectSTDIN.Enqueue("Single line of STDIN");
+                redirectSTDIN.Writer.TryWrite("Single line of STDIN");
 
                 var processInvoker = new ProcessInvokerWrapper();
                 processInvoker.OutputDataReceived += (object sender, ProcessDataReceivedEventArgs e) =>
@@ -208,13 +208,13 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
 #else
                 var proc = processInvoker.ExecuteAsync("", "bash", "-c \"read input; echo $input; read input; echo $input; read input; echo $input;\"", null, false, null, false, redirectSTDIN, false, true, cancellationTokenSource.Token);
 #endif
-                redirectSTDIN.Enqueue("More line of STDIN");
-                redirectSTDIN.Enqueue("More line of STDIN");
+                redirectSTDIN.Writer.TryWrite("More line of STDIN");
+                redirectSTDIN.Writer.TryWrite("More line of STDIN");
                 await Task.Delay(100);
-                redirectSTDIN.Enqueue("More line of STDIN");
-                redirectSTDIN.Enqueue("More line of STDIN");
+                redirectSTDIN.Writer.TryWrite("More line of STDIN");
+                redirectSTDIN.Writer.TryWrite("More line of STDIN");
                 await Task.Delay(100);
-                redirectSTDIN.Enqueue("More line of STDIN");
+                redirectSTDIN.Writer.TryWrite("More line of STDIN");
                 cancellationTokenSource.CancelAfter(100);
 
                 try
