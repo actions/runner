@@ -1,762 +1,288 @@
-$vsoRepo = "C:\VSO\src"
-$sourceFolders = @(
-    "Vssf\Client\Common",
-    "Vssf\Client\WebApi",
-    "DistributedTask\Shared\Common\Contracts",
-    "DistributedTask\Client\WebApi\Generated",
-    "DistributedTask\Client\WebApi\Logging",
-    "DistributedTask\Client\WebApi\Expressions",
-    "DistributedTask\Client\WebApi\ObjectTemplating"
-    "DistributedTask\Client\WebApi\Pipelines",
-    "DistributedTask\Client\WebApi\WebApi",
-    "..\obj\Debug.AnyCPU\Vssf.Client\MS.VS.Services.Common\EmbeddedVersionInfo.cs"
+$ErrorActionPreference = "Stop"
+
+$vsoRepo = Read-Host -Prompt "VSO repository root"
+if (!(Test-Path -LiteralPath "$vsoRepo/init.cmd")) {
+    Write-Error "$vsoRepo should contains the Skyrise V2 init.cmd"
+    return 1
+}
+
+$targetFolders = @(
+    "VssfCommon"   
+    "VssfWebApi"
+    "VssfAadAuthentication"
+    "DTContracts"
+    "DTGenerated"
+    "DTLogging"
+    "DTExpressions"
+    "DTObjectTemplating"
+    "DTPipelines"
+    "DTWebApi"
+    "Resources"
 )
 
-$gitHubSdkFolder = Join-Path -Path $PWD -ChildPath ".\GitHub.Pipelines.Sdk"
+$sourceFolders = @{
+    "Vssf\Client\Common"                                                           = "VssfCommon";
+    "Vssf\Client\WebApi"                                                           = "VssfWebApi";
+    "DistributedTask\Shared\Common\Contracts"                                      = "DTContracts";
+    "DistributedTask\Client\WebApi\Generated"                                      = "DTGenerated";
+    "DistributedTask\Client\WebApi\Logging"                                        = "DTLogging";
+    "DistributedTask\Client\WebApi\Expressions"                                    = "DTExpressions";
+    "DistributedTask\Client\WebApi\ObjectTemplating"                               = "DTObjectTemplating";
+    "DistributedTask\Client\WebApi\Pipelines"                                      = "DTPipelines";
+    "DistributedTask\Client\WebApi\WebApi"                                         = "DTWebApi";
+    "..\obj\Debug.AnyCPU\Vssf.Client\MS.VS.Services.Common\EmbeddedVersionInfo.cs" = "VssfCommon\EmbeddedVersionInfo.cs";
+    "Vssf\InteractiveClient\Client\Authentication\VssAadToken.cs"                  = "VssfAadAuthentication";
+    "Vssf\InteractiveClient\Client\Authentication\VssAadTokenProvider.cs"          = "VssfAadAuthentication";
+    "Vssf\InteractiveClient\Client\Authentication\VssAadCredential.cs"             = "VssfAadAuthentication";
+    "Vssf\InteractiveClient\Client\VssAadSettings.cs"                              = "VssfAadAuthentication";
+    "Vssf\InteractiveClient\Client\Authentication\VssFederatedCredential.cs"       = "VssfAadAuthentication";
+    "Vssf\InteractiveClient\Client\Authentication\VssFederatedToken.cs"            = "VssfAadAuthentication";
+    "Vssf\InteractiveClient\Client\Authentication\VssFederatedTokenProvider.cs"    = "VssfAadAuthentication";
+    "Vssf\InteractiveClient\Client\Authentication\Utility\CookieUtility.cs"        = "VssfAadAuthentication";
+    "DistributedTask\Client\WebApi\Pipelines\ObjectTemplating\workflow-v1.0.json"  = "DTPipelines";
+}
 
-# foreach ($sourceFolder in $sourceFolders) {
-#     $sourceFolder = Join-Path -Path $vsoRepo -ChildPath $sourceFolder
+$extraFiles = @(
+    "VssfCommon\Common\CommandLine\Argument.cs"
+    "VssfCommon\Common\CommandLine\AttributeBasedOperationModeHandlerFactory.cs"    
+    "VssfCommon\Common\CommandLine\AttributeBasedOptionParserAdapter.cs"
+    "VssfCommon\Common\CommandLine\BasicParser.cs"
+    "VssfCommon\Common\CommandLine\CommandLineLexer.cs"
+    "VssfCommon\Common\CommandLine\Enumerations.cs"
+    "VssfCommon\Common\CommandLine\Exceptions.cs"
+    "VssfCommon\Common\CommandLine\Extensions.cs"
+    "VssfCommon\Common\CommandLine\IEnumerable.cs"
+    "VssfCommon\Common\CommandLine\OperationHandler.cs"
+    "VssfCommon\Common\CommandLine\OperationHandlerFactory.cs"
+    "VssfCommon\Common\CommandLine\OperationModeAttribute.cs"
+    "VssfCommon\Common\CommandLine\Option.cs"
+    "VssfCommon\Common\CommandLine\OptionAttribute.cs"
+    "VssfCommon\Common\CommandLine\OptionParser.cs"
+    "VssfCommon\Common\CommandLine\OptionReader.cs"
+    "VssfCommon\Common\CommandLine\ResponseFileOptionReader.cs"
+    "VssfCommon\Common\CommandLine\Validation\DefaultValidation.cs"
+    "VssfCommon\Common\CommandLine\Validation\IOptionValidation.cs"
+    "VssfCommon\Common\CommandLine\Validation\OptionExistsFilter.cs"
+    "VssfCommon\Common\CommandLine\Validation\OptionMustExist.cs"
+    "VssfCommon\Common\CommandLine\Validation\OptionRequiresSpecificValue.cs"
+    "VssfCommon\Common\CommandLine\Validation\OptionsAreMutuallyExclusive.cs"
+    "VssfCommon\Common\CommandLine\Validation\OptionsAreMutuallyInclusive.cs"
+    "VssfCommon\Common\CommandLine\Validation\OptionValidation.cs"
+    "VssfCommon\Common\CommandLine\Validation\OptionValidationFilter.cs"
+    "VssfCommon\Common\CommandLine\Validation\OptionValueFilter.cs"
+    "VssfCommon\Common\CommandLine\ValueConverters\CsvCollectionConverter.cs"
+    "VssfCommon\Common\CommandLine\ValueConverters\EnumConverter.cs"
+    "VssfCommon\Common\CommandLine\ValueConverters\IValueConvertible.cs"
+    "VssfCommon\Common\CommandLine\ValueConverters\UriConverter.cs"
+    "VssfCommon\Common\CommandLine\ValueConverters\ValueConverter.cs"
+    "VssfCommon\Common\ExternalProviders\IExternalProviderHttpRequester.cs"
+    "VssfCommon\Common\Performance\PerformanceNativeMethods.cs"
+    "VssfCommon\Common\TokenStorage\RegistryToken.cs"
+    "VssfCommon\Common\TokenStorage\RegistryTokenStorage.cs"
+    "VssfCommon\Common\TokenStorage\RegistryTokenStorageHelper.cs"
+    "VssfCommon\Common\TokenStorage\VssTokenStorageFactory.cs"
+    "VssfCommon\Common\Utility\CredentialsCacheManager.cs"
+    "VssfCommon\Common\Utility\EncryptionUtility.cs"
+    "VssfCommon\Common\Utility\EnumerableUtility.cs"
+    "VssfCommon\Common\Utility\EnvironmentWrapper.cs"
+    "VssfCommon\Common\Utility\ExceptionExtentions.cs"
+    "VssfCommon\Common\Utility\NativeMethods.cs"
+    "VssfCommon\Common\Utility\OSDetails.cs"
+    "VssfCommon\Common\Utility\DateTimeUtility.cs"
+    "VssfCommon\Common\Utility\PasswordUtility.cs"
+    "VssfCommon\Common\Utility\RegistryHelper.cs"
+    "VssfCommon\Common\Utility\SerializationHelper.cs"
+    "VssfCommon\Common\Utility\Csv\CsvException.cs"
+    "VssfCommon\Common\Utility\Csv\CsvConfiguration.cs"
+    "VssfCommon\Common\Utility\Csv\CsvWriter.cs"
+    "VssfCommon\Common\VssEnvironment.cs"
+    "VssfWebApi\WebApi\AssemblyAttributes.cs"
+    "VssfWebApi\WebApi\Contracts\DelegatedAuthorization\ExpiringToken.cs"
+    "VssfWebApi\WebApi\Contracts\ExternalEvent\Comparers\ExternalGitIssueComparer.cs"
+    "VssfWebApi\WebApi\Contracts\ExternalEvent\ExternalGitExtensions.cs"
+    "VssfWebApi\WebApi\Contracts\ExternalEvent\Comparers\ExternalGitPullRequestComparer.cs"
+    "VssfWebApi\WebApi\Contracts\ExternalEvent\Comparers\ExternalGitCommitComparer.cs"
+    "VssfWebApi\WebApi\Contracts\ExternalEvent\ExternalGitIssueEvent.cs"
+    "VssfWebApi\WebApi\Contracts\ExternalEvent\Comparers\ExternalGitRepoComparer.cs"
+    "VssfWebApi\WebApi\Contracts\ExternalEvent\ExternalGitCommitCommentEvent.cs"
+    "VssfWebApi\WebApi\Contracts\PermissionLevel\Client\PagedPermissionLevelAssignment.cs"
+    "VssfWebApi\WebApi\Contracts\PermissionLevel\Client\PermissionLevelAssignment.cs"
+    "VssfWebApi\WebApi\Contracts\PermissionLevel\Enumerations.cs"
+    "VssfWebApi\WebApi\Contracts\PermissionLevel\Client\PermissionLevelDefinition.cs"
+    "VssfWebApi\WebApi\Contracts\Tokens\PATAddedEvent.cs"
+    "VssfWebApi\WebApi\Contracts\Tokens\SshKeyAddedEvent.cs"
+    "VssfWebApi\WebApi\Contracts\Tokens\ExpiringTokenEvent.cs"
+    "VssfWebApi\WebApi\Contracts\DelegatedAuthorization\PATAddedEvent.cs"
+    "VssfWebApi\WebApi\Contracts\DelegatedAuthorization\SshKeyAddedEvent.cs"
+    "VssfWebApi\WebApi\Contracts\DelegatedAuthorization\ExpiringTokenEvent.cs"
+    "VssfWebApi\WebApi\Contracts\DelegatedAuthorization\Migration\DelegatedAuthMigrationStatus.cs"
+    "VssfWebApi\WebApi\Contracts\DelegatedAuthorization\Migration\DelegatedAuthorizationMigrationBase.cs"
+    "VssfWebApi\WebApi\Contracts\DelegatedAuthorization\Migration\TokenDelegatedAuthorizationAccessKeyPublicDataMigration.cs"
+    "VssfWebApi\WebApi\Contracts\DelegatedAuthorization\Migration\TokenDelegatedAuthorizationAccessMigration.cs"
+    "VssfWebApi\WebApi\Contracts\DelegatedAuthorization\Migration\TokenDelegatedAuthorizationMigration.cs"
+    "VssfWebApi\WebApi\Contracts\DelegatedAuthorization\Migration\TokenDelegatedAuthorizationAccessKeyMigration.cs"
+    "VssfWebApi\WebApi\Contracts\DelegatedAuthorization\Migration\TokenDelegatedAuthorizationRegistrationMigration.cs"
+    "VssfWebApi\WebApi\Contracts\DelegatedAuthorization\Migration\TokenDelegatedAuthorizationRegistrationRedirectLocationMigration.cs"
+    "VssfWebApi\WebApi\Contracts\DelegatedAuthorization\Migration\TokenDelegatedHostAuthorizationMigration.cs"
+    "VssfWebApi\WebApi\Contracts\OAuthWhitelist\OAuthWhitelistEntry.cs"
+    "VssfWebApi\WebApi\Contracts\TokenAdmin\PatRevokedEvent.cs"
+    "VssfWebApi\WebApi\Contracts\TokenAdmin\TokenAdministrationRevocation.cs"
+    "VssfWebApi\WebApi\Contracts\TokenAdmin\TokenAdminPagedSessionTokens.cs"
+    "VssfWebApi\WebApi\Contracts\TokenAdmin\TokenAdminRevocation.cs"
+    "VssfWebApi\WebApi\Contracts\TokenAdmin\TokenAdminRevocationRule.cs"
+    "VssfWebApi\WebApi\Exceptions\AuditLogExceptions.cs"
+    "VssfWebApi\WebApi\Exceptions\AadExceptions.cs"    
+    "VssfWebApi\WebApi\Exceptions\PermissionLevelExceptions.cs"
+    "VssfWebApi\WebApi\HttpClients\CsmResourceProviderHttpClient.cs"    
+    "VssfWebApi\WebApi\HttpClients\Generated\CsmResourceProviderHttpClientBase.cs"
+    "VssfWebApi\WebApi\HttpClients\Generated\OAuthWhitelistHttpClient.cs"    
+    "VssfWebApi\WebApi\HttpClients\Generated\TokenAdminHttpClient.cs"
+    "VssfWebApi\WebApi\HttpClients\Generated\TokenAdministrationHttpClient.cs"    
+    "VssfWebApi\WebApi\HttpClients\Generated\TokenExpirationHttpClient.cs"
+    "VssfWebApi\WebApi\HttpClients\Generated\TokenMigrationHttpClient.cs"    
+    "VssfWebApi\WebApi\HttpClients\Generated\PermissionLevelHttpClient.cs"    
+    "VssfWebApi\WebApi\HttpClients\CommerceHostHelperHttpClient.cs"    
+    "VssfWebApi\WebApi\Utilities\DelegatedAuthComparers.cs"    
+    "VssfWebApi\WebApi\Utilities\HttpHeadersExtensions.cs"    
+    "VssfWebApi\WebApi\VssClientCertificateManager.cs"    
+    "VssfWebApi\WebApi\VssClientEnvironment.cs"    
+    "VssfWebApi\WebApi\VssSoapMediaTypeFormatter.cs"    
+)
 
-#     $sourceFolder
+$resourceFiles = @{
+    "ExpressionResources"     = "DistributedTask\Client\WebApi\Expressions\ExpressionResources.resx";
+    "PipelineStrings"         = "DistributedTask\Client\WebApi\Pipelines\PipelineStrings.resx";
+    "CommonResources"         = "Vssf\Client\Common\Resources.resx";
+    "IdentityResources"       = "Vssf\Client\WebApi\Resources\IdentityResources.resx";
+    "JwtResources"            = "Vssf\Client\WebApi\Resources\JwtResources.resx";
+    "WebApiResources"         = "Vssf\Client\WebApi\Resources\WebApiResources.resx";
+    "DataImportResources"     = "Vssf\Client\WebApi\Resources\DataImportResources.resx";
+    "PatchResources"          = "Vssf\Client\WebApi\Resources\PatchResources.resx";
+    "AccountResources"        = "Vssf\Client\WebApi\Resources\AccountResources.resx";
+    "TemplateStrings"         = "DistributedTask\Client\WebApi\ObjectTemplating\TemplateStrings.resx";
+    "GraphResources"          = "Vssf\Client\WebApi\Resources\GraphResources.resx";
+    "FileContainerResources"  = "Vssf\Client\WebApi\Resources\FileContainerResources.resx";
+    "LocationResources"       = "Vssf\Client\WebApi\Resources\LocationResources.resx";
+    "CommerceResources"       = "Vssf\Client\WebApi\Resources\CommerceResources.resx";
+    "SecurityResources"       = "Vssf\Client\WebApi\Resources\SecurityResources.resx";
+    "WebPlatformResources"    = "Vssf\Client\WebApi\Resources\WebPlatformResources.resx";
+    "ZeusWebApiResources"     = "Vssf\Client\WebApi\Resources\ZeusWebApiResources.resx";
+    "NameResolutionResources" = "Vssf\Client\WebApi\Resources\NameResolutionResources.resx";
+    "PartitioningResources"   = "Vssf\Client\WebApi\Resources\PartitioningResources.resx";
+}
 
-#     # Get-ChildItem -Path $sourceFolder -Recurse 
+$resourceNamespace = @{
+    "ExpressionResources"     = "Microsoft.TeamFoundation.DistributedTask.Expressions";
+    "PipelineStrings"         = "Microsoft.TeamFoundation.DistributedTask.Pipelines";
+    "CommonResources"         = "Microsoft.VisualStudio.Services.Common.Internal";
+    "IdentityResources"       = "Microsoft.VisualStudio.Services.WebApi";
+    "JwtResources"            = "Microsoft.VisualStudio.Services.WebApi";
+    "WebApiResources"         = "Microsoft.VisualStudio.Services.WebApi";
+    "DataImportResources"     = "Microsoft.VisualStudio.Services.WebApi";
+    "PatchResources"          = "Microsoft.VisualStudio.Services.WebApi";
+    "AccountResources"        = "Microsoft.VisualStudio.Services.WebApi";
+    "TemplateStrings"         = "Microsoft.TeamFoundation.DistributedTask.ObjectTemplating";
+    "GraphResources"          = "Microsoft.VisualStudio.Services.WebApi";
+    "FileContainerResources"  = "Microsoft.VisualStudio.Services.WebApi";
+    "LocationResources"       = "Microsoft.VisualStudio.Services.WebApi";
+    "CommerceResources"       = "Microsoft.VisualStudio.Services.WebApi";
+    "SecurityResources"       = "Microsoft.VisualStudio.Services.WebApi";
+    "WebPlatformResources"    = "Microsoft.VisualStudio.Services.WebApi";
+    "ZeusWebApiResources"     = "Microsoft.VisualStudio.Services.WebApi";
+    "NameResolutionResources" = "Microsoft.VisualStudio.Services.WebApi";
+    "PartitioningResources"   = "Microsoft.VisualStudio.Services.WebApi";
+}
+
+$gitHubSdkFolder = Join-Path -Path $PWD -ChildPath "GitHub.Pipelines.Sdk"
+
+foreach ($folder in $targetFolders) {
+    Write-Host "Recreate $gitHubSdkFolder\$folder"
+
+    Remove-Item -LiteralPath "$gitHubSdkFolder\$folder" -Force -Recurse
+    New-Item -Path $gitHubSdkFolder -Name $folder -ItemType "directory" -Force
+}
+
+foreach ($sourceFolder in $sourceFolders.Keys) {
+    $copySource = Join-Path -Path $vsoRepo -ChildPath $sourceFolder
+    $copyDest = Join-Path -Path $gitHubSdkFolder -ChildPath $sourceFolders[$sourceFolder]
     
-
-#     Copy-Item -Path $sourceFolder -Destination $gitHubSdkFolder -Filter "*.cs" -Recurse -Force
-# }
-
-Copy-Item -Path "$vsoRepo/Vssf/InteractiveClient/Client/Authentication/VssAadToken.cs" -Destination $gitHubSdkFolder -Force
-Copy-Item -Path "$vsoRepo/Vssf/InteractiveClient/Client/Authentication/VssAadTokenProvider.cs" -Destination $gitHubSdkFolder -Force
-Copy-Item -Path "$vsoRepo/Vssf/InteractiveClient/Client/Authentication/VssAadCredential.cs" -Destination $gitHubSdkFolder -Force
-Copy-Item -Path "$vsoRepo/Vssf/InteractiveClient/Client/VssAadSettings.cs" -Destination $gitHubSdkFolder -Force
-Copy-Item -Path "$vsoRepo/Vssf/InteractiveClient/Client/Authentication/VssFederatedCredential.cs" -Destination $gitHubSdkFolder -Force
-Copy-Item -Path "$vsoRepo/Vssf/InteractiveClient/Client/Authentication/VssFederatedToken.cs" -Destination $gitHubSdkFolder -Force
-Copy-Item -Path "$vsoRepo/Vssf/InteractiveClient/Client/Authentication/VssFederatedTokenProvider.cs" -Destination $gitHubSdkFolder -Force
-Copy-Item -Path "$vsoRepo/Vssf/InteractiveClient/Client/Authentication/Utility/CookieUtility.cs" -Destination $gitHubSdkFolder -Force
-
-Copy-Item -Path "$vsoRepo/DistributedTask/Client/WebApi/Pipelines/ObjectTemplating/workflow-v1.0.json" -Destination $gitHubSdkFolder -Force
-
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "Common\CommandLine\Argument.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "Common\CommandLine\AttributeBasedOperationModeHandlerFactory.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "Common\CommandLine\AttributeBasedOptionParserAdapter.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "Common\CommandLine\BasicParser.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "Common\CommandLine\CommandLineLexer.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "Common\CommandLine\Enumerations.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "Common\CommandLine\Exceptions.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "Common\CommandLine\Extensions.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "Common\CommandLine\IEnumerable.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "Common\CommandLine\OperationHandler.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "Common\CommandLine\OperationHandlerFactory.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "Common\CommandLine\OperationModeAttribute.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "Common\CommandLine\Option.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "Common\CommandLine\OptionAttribute.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "Common\CommandLine\OptionParser.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "Common\CommandLine\OptionReader.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "Common\CommandLine\ResponseFileOptionReader.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "Common\CommandLine\Validation\DefaultValidation.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "Common\CommandLine\Validation\IOptionValidation.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "Common\CommandLine\Validation\OptionExistsFilter.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "Common\CommandLine\Validation\OptionMustExist.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "Common\CommandLine\Validation\OptionRequiresSpecificValue.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "Common\CommandLine\Validation\OptionsAreMutuallyExclusive.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "Common\CommandLine\Validation\OptionsAreMutuallyInclusive.cs") -Force
-
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "Common\CommandLine\Validation\OptionValidation.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "Common\CommandLine\Validation\OptionValidationFilter.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "Common\CommandLine\Validation\OptionValueFilter.cs") -Force
-
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "Common\CommandLine\ValueConverters\CsvCollectionConverter.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "Common\CommandLine\ValueConverters\EnumConverter.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "Common\CommandLine\ValueConverters\IValueConvertible.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "Common\CommandLine\ValueConverters\UriConverter.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "Common\CommandLine\ValueConverters\ValueConverter.cs") -Force
-
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "Common\ExternalProviders\IExternalProviderHttpRequester.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "Common\Performance\PerformanceNativeMethods.cs") -Force
-
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "Common\TokenStorage\RegistryToken.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "Common\TokenStorage\RegistryTokenStorage.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "Common\TokenStorage\RegistryTokenStorageHelper.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "Common\TokenStorage\VssTokenStorageFactory.cs") -Force
-
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "Common\Utility\CredentialsCacheManager.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "Common\Utility\EncryptionUtility.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "Common\Utility\EnumerableUtility.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "Common\Utility\EnvironmentWrapper.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "Common\Utility\ExceptionExtentions.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "Common\Utility\NativeMethods.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "Common\Utility\OSDetails.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "Common\Utility\DateTimeUtility.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "Common\Utility\PasswordUtility.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "Common\Utility\RegistryHelper.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "Common\Utility\SerializationHelper.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "Common\Utility\Csv\CsvException.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "Common\Utility\Csv\CsvConfiguration.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "Common\Utility\Csv\CsvWriter.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "Common\VssEnvironment.cs") -Force
-
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "WebApi\AssemblyAttributes.cs") -Force
-
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "WebApi\Contracts\DelegatedAuthorization\ExpiringToken.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "WebApi\Contracts\ExternalEvent\Comparers\ExternalGitIssueComparer.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "WebApi\Contracts\ExternalEvent\ExternalGitExtensions.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "WebApi\Contracts\ExternalEvent\Comparers\ExternalGitPullRequestComparer.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "WebApi\Contracts\ExternalEvent\Comparers\ExternalGitCommitComparer.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "WebApi\Contracts\ExternalEvent\ExternalGitIssueEvent.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "WebApi\Contracts\ExternalEvent\Comparers\ExternalGitRepoComparer.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "WebApi\Contracts\ExternalEvent\ExternalGitCommitCommentEvent.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "WebApi\Contracts\PermissionLevel\Client\PagedPermissionLevelAssignment.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "WebApi\Contracts\PermissionLevel\Client\PermissionLevelAssignment.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "WebApi\Contracts\PermissionLevel\Enumerations.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "WebApi\Contracts\PermissionLevel\Client\PermissionLevelDefinition.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "WebApi\Contracts\Tokens\PATAddedEvent.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "WebApi\Contracts\Tokens\SshKeyAddedEvent.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "WebApi\Contracts\Tokens\ExpiringTokenEvent.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "WebApi\Contracts\DelegatedAuthorization\PATAddedEvent.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "WebApi\Contracts\DelegatedAuthorization\SshKeyAddedEvent.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "WebApi\Contracts\DelegatedAuthorization\ExpiringTokenEvent.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "WebApi\Contracts\DelegatedAuthorization\Migration\DelegatedAuthMigrationStatus.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "WebApi\Contracts\DelegatedAuthorization\Migration\DelegatedAuthorizationMigrationBase.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "WebApi\Contracts\DelegatedAuthorization\Migration\TokenDelegatedAuthorizationAccessKeyPublicDataMigration.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "WebApi\Contracts\DelegatedAuthorization\Migration\TokenDelegatedAuthorizationAccessMigration.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "WebApi\Contracts\DelegatedAuthorization\Migration\TokenDelegatedAuthorizationMigration.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "WebApi\Contracts\DelegatedAuthorization\Migration\TokenDelegatedAuthorizationAccessKeyMigration.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "WebApi\Contracts\DelegatedAuthorization\Migration\TokenDelegatedAuthorizationRegistrationMigration.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "WebApi\Contracts\DelegatedAuthorization\Migration\TokenDelegatedAuthorizationRegistrationRedirectLocationMigration.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "WebApi\Contracts\DelegatedAuthorization\Migration\TokenDelegatedHostAuthorizationMigration.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "WebApi\Contracts\OAuthWhitelist\OAuthWhitelistEntry.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "WebApi\Contracts\TokenAdmin\PatRevokedEvent.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "WebApi\Contracts\TokenAdmin\TokenAdministrationRevocation.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "WebApi\Contracts\TokenAdmin\TokenAdminPagedSessionTokens.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "WebApi\Contracts\TokenAdmin\TokenAdminRevocation.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "WebApi\Contracts\TokenAdmin\TokenAdminRevocationRule.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "WebApi\Exceptions\AuditLogExceptions.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "WebApi\Exceptions\AadExceptions.cs") -Force    
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "WebApi\Exceptions\PermissionLevelExceptions.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "WebApi\HttpClients\CsmResourceProviderHttpClient.cs") -Force    
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "WebApi\HttpClients\Generated\CsmResourceProviderHttpClientBase.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "WebApi\HttpClients\Generated\OAuthWhitelistHttpClient.cs") -Force    
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "WebApi\HttpClients\Generated\TokenAdminHttpClient.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "WebApi\HttpClients\Generated\TokenAdministrationHttpClient.cs") -Force    
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "WebApi\HttpClients\Generated\TokenExpirationHttpClient.cs") -Force
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "WebApi\HttpClients\Generated\TokenMigrationHttpClient.cs") -Force    
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "WebApi\HttpClients\Generated\PermissionLevelHttpClient.cs") -Force    
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "WebApi\HttpClients\CommerceHostHelperHttpClient.cs") -Force    
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "WebApi\Utilities\DelegatedAuthComparers.cs") -Force    
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "WebApi\Utilities\HttpHeadersExtensions.cs") -Force    
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "WebApi\VssClientCertificateManager.cs") -Force    
-
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "WebApi\VssClientEnvironment.cs") -Force    
-# Remove-Item -Path (Join-Path -Path $gitHubSdkFolder -ChildPath "WebApi\VssSoapMediaTypeFormatter.cs") -Force    
-
-
-
-# $stringBuilder = New-Object System.Text.StringBuilder
-# $xml = [xml](Get-Content -LiteralPath "$vsoRepo\DistributedTask\Client\WebApi\Expressions\ExpressionResources.resx")
-# $null = $stringBuilder.AppendLine('using System.Globalization;')
-# $null = $stringBuilder.AppendLine('')
-# $null = $stringBuilder.AppendLine('namespace Microsoft.TeamFoundation.DistributedTask.Expressions')
-# $null = $stringBuilder.AppendLine('{')
-# $null = $stringBuilder.AppendLine('    public static class ExpressionResources')
-# $null = $stringBuilder.AppendLine('    {')
-# foreach ($data in $xml.root.data) {
-#     $null = $stringBuilder.AppendLine(@"
-#         public static string $($data.name)(params object[] args)
-#         {
-#             const string Format = @"$($data.value.Replace('"', '""'))";
-#             if (args == null || args.Length == 0)
-#             {
-#                 return Format;
-#             }
-#             return string.Format(CultureInfo.CurrentCulture, Format, args);
-#         }
-# "@)
-# }
-
-# $null = $stringBuilder.AppendLine('    }')
-# $null = $stringBuilder.AppendLine('}')
-
-# # Write Resources.g.cs.
-# $genResourceFile = Join-Path -Path $gitHubSdkFolder -ChildPath "ExpressionResources.g.cs"
-# [System.IO.File]::WriteAllText($genResourceFile, ($stringBuilder.ToString()), ([System.Text.Encoding]::UTF8))
-
-# ###########################################################
-
-# $stringBuilder = New-Object System.Text.StringBuilder
-# $xml = [xml](Get-Content -LiteralPath "$vsoRepo\DistributedTask\Client\WebApi\Pipelines\PipelineStrings.resx")
-# $null = $stringBuilder.AppendLine('using System.Globalization;')
-# $null = $stringBuilder.AppendLine('')
-# $null = $stringBuilder.AppendLine('namespace Microsoft.TeamFoundation.DistributedTask.Pipelines')
-# $null = $stringBuilder.AppendLine('{')
-# $null = $stringBuilder.AppendLine('    public static class PipelineStrings')
-# $null = $stringBuilder.AppendLine('    {')
-# foreach ($data in $xml.root.data) {
-#     $null = $stringBuilder.AppendLine(@"
-#         public static string $($data.name)(params object[] args)
-#         {
-#             const string Format = @"$($data.value.Replace('"', '""'))";
-#             if (args == null || args.Length == 0)
-#             {
-#                 return Format;
-#             }
-#             return string.Format(CultureInfo.CurrentCulture, Format, args);
-#         }
-# "@)
-# }
-
-# $null = $stringBuilder.AppendLine('    }')
-# $null = $stringBuilder.AppendLine('}')
-
-# # Write Resources.g.cs.
-# $genResourceFile = Join-Path -Path $gitHubSdkFolder -ChildPath "PipelineStrings.g.cs"
-# [System.IO.File]::WriteAllText($genResourceFile, ($stringBuilder.ToString()), ([System.Text.Encoding]::UTF8))
-
-# ###########################################################
-
-# $stringBuilder = New-Object System.Text.StringBuilder
-# $xml = [xml](Get-Content -LiteralPath "$vsoRepo\Vssf\Client\Common\Resources.resx")
-# $null = $stringBuilder.AppendLine('using System.Globalization;')
-# $null = $stringBuilder.AppendLine('')
-# $null = $stringBuilder.AppendLine('namespace Microsoft.VisualStudio.Services.Common.Internal')
-# $null = $stringBuilder.AppendLine('{')
-# $null = $stringBuilder.AppendLine('    public static class CommonResources')
-# $null = $stringBuilder.AppendLine('    {')
-# foreach ($data in $xml.root.data) {
-#     $null = $stringBuilder.AppendLine(@"
-#         public static string $($data.name)(params object[] args)
-#         {
-#             const string Format = @"$($data.value.Replace('"', '""'))";
-#             if (args == null || args.Length == 0)
-#             {
-#                 return Format;
-#             }
-#             return string.Format(CultureInfo.CurrentCulture, Format, args);
-#         }
-# "@)
-# }
-
-# $null = $stringBuilder.AppendLine('    }')
-# $null = $stringBuilder.AppendLine('}')
-
-# # Write Resources.g.cs.
-# $genResourceFile = Join-Path -Path $gitHubSdkFolder -ChildPath "CommonResources.g.cs"
-# [System.IO.File]::WriteAllText($genResourceFile, ($stringBuilder.ToString()), ([System.Text.Encoding]::UTF8))
-
-
-# ###########################################################
-
-# $stringBuilder = New-Object System.Text.StringBuilder
-# $xml = [xml](Get-Content -LiteralPath "$vsoRepo\Vssf\Client\WebApi\Resources\IdentityResources.resx")
-# $null = $stringBuilder.AppendLine('using System.Globalization;')
-# $null = $stringBuilder.AppendLine('')
-# $null = $stringBuilder.AppendLine('namespace Microsoft.VisualStudio.Services.WebApi')
-# $null = $stringBuilder.AppendLine('{')
-# $null = $stringBuilder.AppendLine('    public static class IdentityResources')
-# $null = $stringBuilder.AppendLine('    {')
-# foreach ($data in $xml.root.data) {
-#     $null = $stringBuilder.AppendLine(@"
-#         public static string $($data.name)(params object[] args)
-#         {
-#             const string Format = @"$($data.value.Replace('"', '""'))";
-#             if (args == null || args.Length == 0)
-#             {
-#                 return Format;
-#             }
-#             return string.Format(CultureInfo.CurrentCulture, Format, args);
-#         }
-# "@)
-# }
-
-# $null = $stringBuilder.AppendLine('    }')
-# $null = $stringBuilder.AppendLine('}')
-
-# # Write Resources.g.cs.
-# $genResourceFile = Join-Path -Path $gitHubSdkFolder -ChildPath "IdentityResources.g.cs"
-# [System.IO.File]::WriteAllText($genResourceFile, ($stringBuilder.ToString()), ([System.Text.Encoding]::UTF8))
-
-
-# ###########################################################
-
-# $stringBuilder = New-Object System.Text.StringBuilder
-# $xml = [xml](Get-Content -LiteralPath "$vsoRepo\Vssf\Client\WebApi\Resources\JwtResources.resx")
-# $null = $stringBuilder.AppendLine('using System.Globalization;')
-# $null = $stringBuilder.AppendLine('')
-# $null = $stringBuilder.AppendLine('namespace Microsoft.VisualStudio.Services.WebApi')
-# $null = $stringBuilder.AppendLine('{')
-# $null = $stringBuilder.AppendLine('    public static class JwtResources')
-# $null = $stringBuilder.AppendLine('    {')
-# foreach ($data in $xml.root.data) {
-#     $null = $stringBuilder.AppendLine(@"
-#         public static string $($data.name)(params object[] args)
-#         {
-#             const string Format = @"$($data.value.Replace('"', '""'))";
-#             if (args == null || args.Length == 0)
-#             {
-#                 return Format;
-#             }
-#             return string.Format(CultureInfo.CurrentCulture, Format, args);
-#         }
-# "@)
-# }
-
-# $null = $stringBuilder.AppendLine('    }')
-# $null = $stringBuilder.AppendLine('}')
-
-# # Write Resources.g.cs.
-# $genResourceFile = Join-Path -Path $gitHubSdkFolder -ChildPath "JwtResources.g.cs"
-# [System.IO.File]::WriteAllText($genResourceFile, ($stringBuilder.ToString()), ([System.Text.Encoding]::UTF8))
-
-
-
-# ###########################################################
-
-# $stringBuilder = New-Object System.Text.StringBuilder
-# $xml = [xml](Get-Content -LiteralPath "$vsoRepo\Vssf\Client\WebApi\Resources\WebApiResources.resx")
-# $null = $stringBuilder.AppendLine('using System.Globalization;')
-# $null = $stringBuilder.AppendLine('')
-# $null = $stringBuilder.AppendLine('namespace Microsoft.VisualStudio.Services.WebApi')
-# $null = $stringBuilder.AppendLine('{')
-# $null = $stringBuilder.AppendLine('    public static class WebApiResources')
-# $null = $stringBuilder.AppendLine('    {')
-# foreach ($data in $xml.root.data) {
-#     $null = $stringBuilder.AppendLine(@"
-#         public static string $($data.name)(params object[] args)
-#         {
-#             const string Format = @"$($data.value.Replace('"', '""'))";
-#             if (args == null || args.Length == 0)
-#             {
-#                 return Format;
-#             }
-#             return string.Format(CultureInfo.CurrentCulture, Format, args);
-#         }
-# "@)
-# }
-
-# $null = $stringBuilder.AppendLine('    }')
-# $null = $stringBuilder.AppendLine('}')
-
-# # Write Resources.g.cs.
-# $genResourceFile = Join-Path -Path $gitHubSdkFolder -ChildPath "WebApiResources.g.cs"
-# [System.IO.File]::WriteAllText($genResourceFile, ($stringBuilder.ToString()), ([System.Text.Encoding]::UTF8))
-
-
-
-# ###########################################################
-
-# $stringBuilder = New-Object System.Text.StringBuilder
-# $xml = [xml](Get-Content -LiteralPath "$vsoRepo\Vssf\Client\WebApi\Resources\DataImportResources.resx")
-# $null = $stringBuilder.AppendLine('using System.Globalization;')
-# $null = $stringBuilder.AppendLine('')
-# $null = $stringBuilder.AppendLine('namespace Microsoft.VisualStudio.Services.WebApi')
-# $null = $stringBuilder.AppendLine('{')
-# $null = $stringBuilder.AppendLine('    public static class DataImportResources')
-# $null = $stringBuilder.AppendLine('    {')
-# foreach ($data in $xml.root.data) {
-#     $null = $stringBuilder.AppendLine(@"
-#         public static string $($data.name)(params object[] args)
-#         {
-#             const string Format = @"$($data.value.Replace('"', '""'))";
-#             if (args == null || args.Length == 0)
-#             {
-#                 return Format;
-#             }
-#             return string.Format(CultureInfo.CurrentCulture, Format, args);
-#         }
-# "@)
-# }
-
-# $null = $stringBuilder.AppendLine('    }')
-# $null = $stringBuilder.AppendLine('}')
-
-# # Write Resources.g.cs.
-# $genResourceFile = Join-Path -Path $gitHubSdkFolder -ChildPath "DataImportResources.g.cs"
-# [System.IO.File]::WriteAllText($genResourceFile, ($stringBuilder.ToString()), ([System.Text.Encoding]::UTF8))
-
-
-# ###########################################################
-
-# $stringBuilder = New-Object System.Text.StringBuilder
-# $xml = [xml](Get-Content -LiteralPath "$vsoRepo\Vssf\Client\WebApi\Resources\PatchResources.resx")
-# $null = $stringBuilder.AppendLine('using System.Globalization;')
-# $null = $stringBuilder.AppendLine('')
-# $null = $stringBuilder.AppendLine('namespace Microsoft.VisualStudio.Services.WebApi')
-# $null = $stringBuilder.AppendLine('{')
-# $null = $stringBuilder.AppendLine('    public static class PatchResources')
-# $null = $stringBuilder.AppendLine('    {')
-# foreach ($data in $xml.root.data) {
-#     $null = $stringBuilder.AppendLine(@"
-#         public static string $($data.name)(params object[] args)
-#         {
-#             const string Format = @"$($data.value.Replace('"', '""'))";
-#             if (args == null || args.Length == 0)
-#             {
-#                 return Format;
-#             }
-#             return string.Format(CultureInfo.CurrentCulture, Format, args);
-#         }
-# "@)
-# }
-
-# $null = $stringBuilder.AppendLine('    }')
-# $null = $stringBuilder.AppendLine('}')
-
-# # Write Resources.g.cs.
-# $genResourceFile = Join-Path -Path $gitHubSdkFolder -ChildPath "PatchResources.g.cs"
-# [System.IO.File]::WriteAllText($genResourceFile, ($stringBuilder.ToString()), ([System.Text.Encoding]::UTF8))
-
-
-
-# ###########################################################
-
-# $stringBuilder = New-Object System.Text.StringBuilder
-# $xml = [xml](Get-Content -LiteralPath "$vsoRepo\Vssf\Client\WebApi\Resources\AccountResources.resx")
-# $null = $stringBuilder.AppendLine('using System.Globalization;')
-# $null = $stringBuilder.AppendLine('')
-# $null = $stringBuilder.AppendLine('namespace Microsoft.VisualStudio.Services.WebApi')
-# $null = $stringBuilder.AppendLine('{')
-# $null = $stringBuilder.AppendLine('    public static class AccountResources')
-# $null = $stringBuilder.AppendLine('    {')
-# foreach ($data in $xml.root.data) {
-#     $null = $stringBuilder.AppendLine(@"
-#         public static string $($data.name)(params object[] args)
-#         {
-#             const string Format = @"$($data.value.Replace('"', '""'))";
-#             if (args == null || args.Length == 0)
-#             {
-#                 return Format;
-#             }
-#             return string.Format(CultureInfo.CurrentCulture, Format, args);
-#         }
-# "@)
-# }
-
-# $null = $stringBuilder.AppendLine('    }')
-# $null = $stringBuilder.AppendLine('}')
-
-# # Write Resources.g.cs.
-# $genResourceFile = Join-Path -Path $gitHubSdkFolder -ChildPath "AccountResources.g.cs"
-# [System.IO.File]::WriteAllText($genResourceFile, ($stringBuilder.ToString()), ([System.Text.Encoding]::UTF8))
-
-
-
-# ###########################################################
-
-# $stringBuilder = New-Object System.Text.StringBuilder
-# $xml = [xml](Get-Content -LiteralPath "$vsoRepo\DistributedTask\Client\WebApi\ObjectTemplating\TemplateStrings.resx")
-# $null = $stringBuilder.AppendLine('using System.Globalization;')
-# $null = $stringBuilder.AppendLine('')
-# $null = $stringBuilder.AppendLine('namespace Microsoft.TeamFoundation.DistributedTask.ObjectTemplating')
-# $null = $stringBuilder.AppendLine('{')
-# $null = $stringBuilder.AppendLine('    public static class TemplateStrings')
-# $null = $stringBuilder.AppendLine('    {')
-# foreach ($data in $xml.root.data) {
-#     $null = $stringBuilder.AppendLine(@"
-#         public static string $($data.name)(params object[] args)
-#         {
-#             const string Format = @"$($data.value.Replace('"', '""'))";
-#             if (args == null || args.Length == 0)
-#             {
-#                 return Format;
-#             }
-#             return string.Format(CultureInfo.CurrentCulture, Format, args);
-#         }
-# "@)
-# }
-
-# $null = $stringBuilder.AppendLine('    }')
-# $null = $stringBuilder.AppendLine('}')
-
-# # Write Resources.g.cs.
-# $genResourceFile = Join-Path -Path $gitHubSdkFolder -ChildPath "TemplateStrings.g.cs"
-# [System.IO.File]::WriteAllText($genResourceFile, ($stringBuilder.ToString()), ([System.Text.Encoding]::UTF8))
-
-
-
-
-# ###########################################################
-
-# $stringBuilder = New-Object System.Text.StringBuilder
-# $xml = [xml](Get-Content -LiteralPath "$vsoRepo\Vssf\Client\WebApi\Resources\GraphResources.resx")
-# $null = $stringBuilder.AppendLine('using System.Globalization;')
-# $null = $stringBuilder.AppendLine('')
-# $null = $stringBuilder.AppendLine('namespace Microsoft.VisualStudio.Services.WebApi')
-# $null = $stringBuilder.AppendLine('{')
-# $null = $stringBuilder.AppendLine('    public static class GraphResources')
-# $null = $stringBuilder.AppendLine('    {')
-# foreach ($data in $xml.root.data) {
-#     $null = $stringBuilder.AppendLine(@"
-#         public static string $($data.name)(params object[] args)
-#         {
-#             const string Format = @"$($data.value.Replace('"', '""'))";
-#             if (args == null || args.Length == 0)
-#             {
-#                 return Format;
-#             }
-#             return string.Format(CultureInfo.CurrentCulture, Format, args);
-#         }
-# "@)
-# }
-
-# $null = $stringBuilder.AppendLine('    }')
-# $null = $stringBuilder.AppendLine('}')
-
-# # Write Resources.g.cs.
-# $genResourceFile = Join-Path -Path $gitHubSdkFolder -ChildPath "GraphResources.g.cs"
-# [System.IO.File]::WriteAllText($genResourceFile, ($stringBuilder.ToString()), ([System.Text.Encoding]::UTF8))
-
-
-# ###########################################################
-
-# $stringBuilder = New-Object System.Text.StringBuilder
-# $xml = [xml](Get-Content -LiteralPath "$vsoRepo\Vssf\Client\WebApi\Resources\FileContainerResources.resx")
-# $null = $stringBuilder.AppendLine('using System.Globalization;')
-# $null = $stringBuilder.AppendLine('')
-# $null = $stringBuilder.AppendLine('namespace Microsoft.VisualStudio.Services.WebApi')
-# $null = $stringBuilder.AppendLine('{')
-# $null = $stringBuilder.AppendLine('    public static class FileContainerResources')
-# $null = $stringBuilder.AppendLine('    {')
-# foreach ($data in $xml.root.data) {
-#     $null = $stringBuilder.AppendLine(@"
-#         public static string $($data.name)(params object[] args)
-#         {
-#             const string Format = @"$($data.value.Replace('"', '""'))";
-#             if (args == null || args.Length == 0)
-#             {
-#                 return Format;
-#             }
-#             return string.Format(CultureInfo.CurrentCulture, Format, args);
-#         }
-# "@)
-# }
-
-# $null = $stringBuilder.AppendLine('    }')
-# $null = $stringBuilder.AppendLine('}')
-
-# # Write Resources.g.cs.
-# $genResourceFile = Join-Path -Path $gitHubSdkFolder -ChildPath "FileContainerResources.g.cs"
-# [System.IO.File]::WriteAllText($genResourceFile, ($stringBuilder.ToString()), ([System.Text.Encoding]::UTF8))
-
-
-# ###########################################################
-
-# $stringBuilder = New-Object System.Text.StringBuilder
-# $xml = [xml](Get-Content -LiteralPath "$vsoRepo\Vssf\Client\WebApi\Resources\LocationResources.resx")
-# $null = $stringBuilder.AppendLine('using System.Globalization;')
-# $null = $stringBuilder.AppendLine('')
-# $null = $stringBuilder.AppendLine('namespace Microsoft.VisualStudio.Services.WebApi')
-# $null = $stringBuilder.AppendLine('{')
-# $null = $stringBuilder.AppendLine('    public static class LocationResources')
-# $null = $stringBuilder.AppendLine('    {')
-# foreach ($data in $xml.root.data) {
-#     $null = $stringBuilder.AppendLine(@"
-#         public static string $($data.name)(params object[] args)
-#         {
-#             const string Format = @"$($data.value.Replace('"', '""'))";
-#             if (args == null || args.Length == 0)
-#             {
-#                 return Format;
-#             }
-#             return string.Format(CultureInfo.CurrentCulture, Format, args);
-#         }
-# "@)
-# }
-
-# $null = $stringBuilder.AppendLine('    }')
-# $null = $stringBuilder.AppendLine('}')
-
-# # Write Resources.g.cs.
-# $genResourceFile = Join-Path -Path $gitHubSdkFolder -ChildPath "LocationResources.g.cs"
-# [System.IO.File]::WriteAllText($genResourceFile, ($stringBuilder.ToString()), ([System.Text.Encoding]::UTF8))
-
-
-# ###########################################################
-
-# $stringBuilder = New-Object System.Text.StringBuilder
-# $xml = [xml](Get-Content -LiteralPath "$vsoRepo\Vssf\Client\WebApi\Resources\CommerceResources.resx")
-# $null = $stringBuilder.AppendLine('using System.Globalization;')
-# $null = $stringBuilder.AppendLine('')
-# $null = $stringBuilder.AppendLine('namespace Microsoft.VisualStudio.Services.WebApi')
-# $null = $stringBuilder.AppendLine('{')
-# $null = $stringBuilder.AppendLine('    public static class CommerceResources')
-# $null = $stringBuilder.AppendLine('    {')
-# foreach ($data in $xml.root.data) {
-#     $null = $stringBuilder.AppendLine(@"
-#         public static string $($data.name)(params object[] args)
-#         {
-#             const string Format = @"$($data.value.Replace('"', '""'))";
-#             if (args == null || args.Length == 0)
-#             {
-#                 return Format;
-#             }
-#             return string.Format(CultureInfo.CurrentCulture, Format, args);
-#         }
-# "@)
-# }
-
-# $null = $stringBuilder.AppendLine('    }')
-# $null = $stringBuilder.AppendLine('}')
-
-# # Write Resources.g.cs.
-# $genResourceFile = Join-Path -Path $gitHubSdkFolder -ChildPath "CommerceResources.g.cs"
-# [System.IO.File]::WriteAllText($genResourceFile, ($stringBuilder.ToString()), ([System.Text.Encoding]::UTF8))
-
-
-# ###########################################################
-
-# $stringBuilder = New-Object System.Text.StringBuilder
-# $xml = [xml](Get-Content -LiteralPath "$vsoRepo\Vssf\Client\WebApi\Resources\SecurityResources.resx")
-# $null = $stringBuilder.AppendLine('using System.Globalization;')
-# $null = $stringBuilder.AppendLine('')
-# $null = $stringBuilder.AppendLine('namespace Microsoft.VisualStudio.Services.WebApi')
-# $null = $stringBuilder.AppendLine('{')
-# $null = $stringBuilder.AppendLine('    public static class SecurityResources')
-# $null = $stringBuilder.AppendLine('    {')
-# foreach ($data in $xml.root.data) {
-#     $null = $stringBuilder.AppendLine(@"
-#         public static string $($data.name)(params object[] args)
-#         {
-#             const string Format = @"$($data.value.Replace('"', '""'))";
-#             if (args == null || args.Length == 0)
-#             {
-#                 return Format;
-#             }
-#             return string.Format(CultureInfo.CurrentCulture, Format, args);
-#         }
-# "@)
-# }
-
-# $null = $stringBuilder.AppendLine('    }')
-# $null = $stringBuilder.AppendLine('}')
-
-# # Write Resources.g.cs.
-# $genResourceFile = Join-Path -Path $gitHubSdkFolder -ChildPath "SecurityResources.g.cs"
-# [System.IO.File]::WriteAllText($genResourceFile, ($stringBuilder.ToString()), ([System.Text.Encoding]::UTF8))
-
-
-# ###########################################################
-
-# $stringBuilder = New-Object System.Text.StringBuilder
-# $xml = [xml](Get-Content -LiteralPath "$vsoRepo\Vssf\Client\WebApi\Resources\WebPlatformResources.resx")
-# $null = $stringBuilder.AppendLine('using System.Globalization;')
-# $null = $stringBuilder.AppendLine('')
-# $null = $stringBuilder.AppendLine('namespace Microsoft.VisualStudio.Services.WebApi')
-# $null = $stringBuilder.AppendLine('{')
-# $null = $stringBuilder.AppendLine('    public static class WebPlatformResources')
-# $null = $stringBuilder.AppendLine('    {')
-# foreach ($data in $xml.root.data) {
-#     $null = $stringBuilder.AppendLine(@"
-#         public static string $($data.name)(params object[] args)
-#         {
-#             const string Format = @"$($data.value.Replace('"', '""'))";
-#             if (args == null || args.Length == 0)
-#             {
-#                 return Format;
-#             }
-#             return string.Format(CultureInfo.CurrentCulture, Format, args);
-#         }
-# "@)
-# }
-
-# $null = $stringBuilder.AppendLine('    }')
-# $null = $stringBuilder.AppendLine('}')
-
-# # Write Resources.g.cs.
-# $genResourceFile = Join-Path -Path $gitHubSdkFolder -ChildPath "WebPlatformResources.g.cs"
-# [System.IO.File]::WriteAllText($genResourceFile, ($stringBuilder.ToString()), ([System.Text.Encoding]::UTF8))
-
-# ###########################################################
-
-# $stringBuilder = New-Object System.Text.StringBuilder
-# $xml = [xml](Get-Content -LiteralPath "$vsoRepo\Vssf\Client\WebApi\Resources\ZeusWebApiResources.resx")
-# $null = $stringBuilder.AppendLine('using System.Globalization;')
-# $null = $stringBuilder.AppendLine('')
-# $null = $stringBuilder.AppendLine('namespace Microsoft.VisualStudio.Services.WebApi')
-# $null = $stringBuilder.AppendLine('{')
-# $null = $stringBuilder.AppendLine('    public static class ZeusWebApiResources')
-# $null = $stringBuilder.AppendLine('    {')
-# foreach ($data in $xml.root.data) {
-#     $null = $stringBuilder.AppendLine(@"
-#         public static string $($data.name)(params object[] args)
-#         {
-#             const string Format = @"$($data.value.Replace('"', '""'))";
-#             if (args == null || args.Length == 0)
-#             {
-#                 return Format;
-#             }
-#             return string.Format(CultureInfo.CurrentCulture, Format, args);
-#         }
-# "@)
-# }
-
-# $null = $stringBuilder.AppendLine('    }')
-# $null = $stringBuilder.AppendLine('}')
-
-# # Write Resources.g.cs.
-# $genResourceFile = Join-Path -Path $gitHubSdkFolder -ChildPath "ZeusWebApiResources.g.cs"
-# [System.IO.File]::WriteAllText($genResourceFile, ($stringBuilder.ToString()), ([System.Text.Encoding]::UTF8))
-
-
-
-# ###########################################################
-
-# $stringBuilder = New-Object System.Text.StringBuilder
-# $xml = [xml](Get-Content -LiteralPath "$vsoRepo\Vssf\Client\WebApi\Resources\NameResolutionResources.resx")
-# $null = $stringBuilder.AppendLine('using System.Globalization;')
-# $null = $stringBuilder.AppendLine('')
-# $null = $stringBuilder.AppendLine('namespace Microsoft.VisualStudio.Services.WebApi')
-# $null = $stringBuilder.AppendLine('{')
-# $null = $stringBuilder.AppendLine('    public static class NameResolutionResources')
-# $null = $stringBuilder.AppendLine('    {')
-# foreach ($data in $xml.root.data) {
-#     $null = $stringBuilder.AppendLine(@"
-#         public static string $($data.name)(params object[] args)
-#         {
-#             const string Format = @"$($data.value.Replace('"', '""'))";
-#             if (args == null || args.Length == 0)
-#             {
-#                 return Format;
-#             }
-#             return string.Format(CultureInfo.CurrentCulture, Format, args);
-#         }
-# "@)
-# }
-
-# $null = $stringBuilder.AppendLine('    }')
-# $null = $stringBuilder.AppendLine('}')
-
-# # Write Resources.g.cs.
-# $genResourceFile = Join-Path -Path $gitHubSdkFolder -ChildPath "NameResolutionResources.g.cs"
-# [System.IO.File]::WriteAllText($genResourceFile, ($stringBuilder.ToString()), ([System.Text.Encoding]::UTF8))
-
-
-# ###########################################################
-
-# $stringBuilder = New-Object System.Text.StringBuilder
-# $xml = [xml](Get-Content -LiteralPath "$vsoRepo\Vssf\Client\WebApi\Resources\PartitioningResources.resx")
-# $null = $stringBuilder.AppendLine('using System.Globalization;')
-# $null = $stringBuilder.AppendLine('')
-# $null = $stringBuilder.AppendLine('namespace Microsoft.VisualStudio.Services.WebApi')
-# $null = $stringBuilder.AppendLine('{')
-# $null = $stringBuilder.AppendLine('    public static class PartitioningResources')
-# $null = $stringBuilder.AppendLine('    {')
-# foreach ($data in $xml.root.data) {
-#     $null = $stringBuilder.AppendLine(@"
-#         public static string $($data.name)(params object[] args)
-#         {
-#             const string Format = @"$($data.value.Replace('"', '""'))";
-#             if (args == null || args.Length == 0)
-#             {
-#                 return Format;
-#             }
-#             return string.Format(CultureInfo.CurrentCulture, Format, args);
-#         }
-# "@)
-# }
-
-# $null = $stringBuilder.AppendLine('    }')
-# $null = $stringBuilder.AppendLine('}')
-
-# # Write Resources.g.cs.
-# $genResourceFile = Join-Path -Path $gitHubSdkFolder -ChildPath "PartitioningResources.g.cs"
-# [System.IO.File]::WriteAllText($genResourceFile, ($stringBuilder.ToString()), ([System.Text.Encoding]::UTF8))
-
+    Write-Host "Copy $copySource to $copyDest"
+
+    Copy-Item -Path $copySource -Destination $copyDest -Filter "*.cs" -Recurse -Force 
+}
+
+Write-Host "Delete extra none NetStandard files"
+foreach ($extraFile in $extraFiles) {
+    Remove-Item -LiteralPath "$gitHubSdkFolder\$extraFile" -Force
+}
+
+Write-Host "Generate C# file for resx files"
+foreach ($resourceFile in $resourceFiles.Keys) {
+    Write-Host "Generate file for $resourceFile"
+    $stringBuilder = New-Object System.Text.StringBuilder
+    $file = $resourceFiles[$resourceFile]
+    $xml = [xml](Get-Content -LiteralPath "$vsoRepo\$file")
+    $null = $stringBuilder.AppendLine('using System.Globalization;')
+    $null = $stringBuilder.AppendLine('')
+    $namespace = $resourceNamespace[$resourceFile]
+    $null = $stringBuilder.AppendLine("namespace $namespace")
+    $null = $stringBuilder.AppendLine('{')
+    $null = $stringBuilder.AppendLine("    public static class $resourceFile")
+    $null = $stringBuilder.AppendLine('    {')
+    foreach ($data in $xml.root.data) {
+        $i = 0
+        $args = ""
+        $inputs = ""
+        while ($true) {
+            if ($data.value.Contains("{$i}") -or $data.value.Contains("{$i" + ":")) {
+                if ($i -eq 0) {
+                    $args = "object arg$i"
+                    $inputs = "arg$i"
+                }
+                else {
+                    $args = $args + ", " + "object arg$i"    
+                    $inputs = $inputs + ", " + "arg$i"
+                }
+                $i++
+            }
+            else {
+                break
+            }
+        }
+        
+        $null = $stringBuilder.AppendLine("")
+        $null = $stringBuilder.AppendLine("        public static string $($data.name)($($args))")
+        $null = $stringBuilder.AppendLine("        {")
+        $null = $stringBuilder.AppendLine(@"
+            const string Format = @"$($data.value.Replace('"', '""'))";
+"@)
+        if ($i -eq 0) {
+            $null = $stringBuilder.AppendLine("            return Format;")
+        }
+        else {
+            $null = $stringBuilder.AppendLine("            return string.Format(CultureInfo.CurrentCulture, Format, $inputs);")
+        }
+        $null = $stringBuilder.AppendLine("        }")
+        
+        #         $null = $stringBuilder.AppendLine(@"
+        #         public static string $($data.name)($($args))
+        #         {
+        #             const string Format = @"$($data.value.Replace('"', '""'))";
+        #             if (args == null || args.Length == 0)
+        #             {
+        #                 return Format;
+        #             }
+        #             return string.Format(CultureInfo.CurrentCulture, Format, args);
+        #         }
+        # "@)
+    }
+
+    $null = $stringBuilder.AppendLine("    }")
+    $null = $stringBuilder.AppendLine("}")
+
+    # Write Resources.g.cs.
+    $genResourceFile = Join-Path -Path $gitHubSdkFolder -ChildPath "Resources\$resourceFile.g.cs"
+    [System.IO.File]::WriteAllText($genResourceFile, ($stringBuilder.ToString()), ([System.Text.Encoding]::UTF8))
+}
+
+Write-Host "Done"
