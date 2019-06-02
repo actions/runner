@@ -6,6 +6,9 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.Expressions;
+using GitHub.DistributedTask.Pipelines;
+using GitHub.DistributedTask.Pipelines.ContextData;
+using GitHub.DistributedTask.Pipelines.ObjectTemplating;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
 
@@ -44,133 +47,132 @@ namespace GitHub.Runner.Worker
             //  Succeeded
             //  SucceededWithIssues
             CancellationTokenRegistration? jobCancelRegister = null;
-            int stepIndex = 0;
             jobContext.Variables.Agent_JobStatus = jobContext.Result ?? TaskResult.Succeeded;
-            foreach (IStep step in steps)
+            var scopeInputs = new Dictionary<string, PipelineContextData>(StringComparer.OrdinalIgnoreCase);
+            for (var stepIndex = 0; stepIndex < steps.Count; stepIndex++)
             {
+                var step = steps[stepIndex];
+                var nextStep = stepIndex + 1 < steps.Count ? steps[stepIndex + 1] : null;
                 Trace.Info($"Processing step: DisplayName='{step.DisplayName}', ContinueOnError={step.ContinueOnError}, Enabled={step.Enabled}");
                 ArgUtil.Equal(true, step.Enabled, nameof(step.Enabled));
                 ArgUtil.NotNull(step.ExecutionContext, nameof(step.ExecutionContext));
                 ArgUtil.NotNull(step.ExecutionContext.Variables, nameof(step.ExecutionContext.Variables));
-                stepIndex++;
 
-                // Start.
+                // Start
                 step.ExecutionContext.Start();
-                // var taskStep = step as ITaskRunner;
-                // if (taskStep != null)
-                // {
-                //     HostContext.WritePerfCounter($"TaskStart_{taskStep.Task.Reference.Name}_{stepIndex}");
-                // }
 
-                // Variable expansion.
-                List<string> expansionWarnings;
-                step.ExecutionContext.Variables.RecalculateExpanded(out expansionWarnings);
-                expansionWarnings?.ForEach(x => step.ExecutionContext.Warning(x));
-
-                var expressionManager = HostContext.GetService<IExpressionManager>();
-                try
+                // Initialize scope
+                if (InitializeScope(step, scopeInputs))
                 {
-                    // Register job cancellation call back only if job cancellation token not been fire before each step run
-                    if (!jobContext.CancellationToken.IsCancellationRequested)
-                    {
-                        // Test the condition again. The job was canceled after the condition was originally evaluated.
-                        jobCancelRegister = jobContext.CancellationToken.Register(() =>
-                        {
-                            // mark job as cancelled
-                            jobContext.Result = TaskResult.Canceled;
-                            jobContext.Variables.Agent_JobStatus = jobContext.Result;
+                    // Variable expansion
+                    List<string> expansionWarnings;
+                    step.ExecutionContext.Variables.RecalculateExpanded(out expansionWarnings);
+                    expansionWarnings?.ForEach(x => step.ExecutionContext.Warning(x));
 
-                            step.ExecutionContext.Debug($"Re-evaluate condition on job cancellation for step: '{step.DisplayName}'.");
-                            ConditionResult conditionReTestResult;
-                            if (HostContext.AgentShutdownToken.IsCancellationRequested)
+                    var expressionManager = HostContext.GetService<IExpressionManager>();
+                    try
+                    {
+                        // Register job cancellation call back only if job cancellation token not been fire before each step run
+                        if (!jobContext.CancellationToken.IsCancellationRequested)
+                        {
+                            // Test the condition again. The job was canceled after the condition was originally evaluated.
+                            jobCancelRegister = jobContext.CancellationToken.Register(() =>
                             {
-                                step.ExecutionContext.Debug($"Skip Re-evaluate condition on agent shutdown.");
-                                conditionReTestResult = false;
-                            }
-                            else
-                            {
-                                try
+                                // mark job as cancelled
+                                jobContext.Result = TaskResult.Canceled;
+                                jobContext.Variables.Agent_JobStatus = jobContext.Result;
+
+                                step.ExecutionContext.Debug($"Re-evaluate condition on job cancellation for step: '{step.DisplayName}'.");
+                                ConditionResult conditionReTestResult;
+                                if (HostContext.AgentShutdownToken.IsCancellationRequested)
                                 {
-                                    conditionReTestResult = expressionManager.Evaluate(step.ExecutionContext, step.Condition, hostTracingOnly: true);
-                                }
-                                catch (Exception ex)
-                                {
-                                    // Cancel the step since we get exception while re-evaluate step condition.
-                                    Trace.Info("Caught exception from expression when re-test condition on job cancellation.");
-                                    step.ExecutionContext.Error(ex);
+                                    step.ExecutionContext.Debug($"Skip Re-evaluate condition on agent shutdown.");
                                     conditionReTestResult = false;
                                 }
-                            }
+                                else
+                                {
+                                    try
+                                    {
+                                        conditionReTestResult = expressionManager.Evaluate(step.ExecutionContext, step.Condition, hostTracingOnly: true);
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        // Cancel the step since we get exception while re-evaluate step condition.
+                                        Trace.Info("Caught exception from expression when re-test condition on job cancellation.");
+                                        step.ExecutionContext.Error(ex);
+                                        conditionReTestResult = false;
+                                    }
+                                }
 
-                            if (!conditionReTestResult.Value)
+                                if (!conditionReTestResult.Value)
+                                {
+                                    // Cancel the step.
+                                    Trace.Info("Cancel current running step.");
+                                    step.ExecutionContext.CancelToken();
+                                }
+                            });
+                        }
+                        else
+                        {
+                            if (jobContext.Result != TaskResult.Canceled)
                             {
-                                // Cancel the step.
-                                Trace.Info("Cancel current running step.");
-                                step.ExecutionContext.CancelToken();
+                                // mark job as cancelled
+                                jobContext.Result = TaskResult.Canceled;
+                                jobContext.Variables.Agent_JobStatus = jobContext.Result;
                             }
-                        });
-                    }
-                    else
-                    {
-                        if (jobContext.Result != TaskResult.Canceled)
-                        {
-                            // mark job as cancelled
-                            jobContext.Result = TaskResult.Canceled;
-                            jobContext.Variables.Agent_JobStatus = jobContext.Result;
                         }
-                    }
 
-                    // Evaluate condition.
-                    step.ExecutionContext.Debug($"Evaluating condition for step: '{step.DisplayName}'");
-                    Exception conditionEvaluateError = null;
-                    ConditionResult conditionResult;
-                    if (HostContext.AgentShutdownToken.IsCancellationRequested)
-                    {
-                        step.ExecutionContext.Debug($"Skip evaluate condition on agent shutdown.");
-                        conditionResult = false;
-                    }
-                    else
-                    {
-                        try
+                        // Evaluate condition.
+                        step.ExecutionContext.Debug($"Evaluating condition for step: '{step.DisplayName}'");
+                        Exception conditionEvaluateError = null;
+                        ConditionResult conditionResult;
+                        if (HostContext.AgentShutdownToken.IsCancellationRequested)
                         {
-                            conditionResult = expressionManager.Evaluate(step.ExecutionContext, step.Condition);
-                        }
-                        catch (Exception ex)
-                        {
-                            Trace.Info("Caught exception from expression.");
-                            Trace.Error(ex);
+                            step.ExecutionContext.Debug($"Skip evaluate condition on agent shutdown.");
                             conditionResult = false;
-                            conditionEvaluateError = ex;
+                        }
+                        else
+                        {
+                            try
+                            {
+                                conditionResult = expressionManager.Evaluate(step.ExecutionContext, step.Condition);
+                            }
+                            catch (Exception ex)
+                            {
+                                Trace.Info("Caught exception from expression.");
+                                Trace.Error(ex);
+                                conditionResult = false;
+                                conditionEvaluateError = ex;
+                            }
+                        }
+
+                        // no evaluate error but condition is false
+                        if (!conditionResult.Value && conditionEvaluateError == null)
+                        {
+                            // Condition == false
+                            Trace.Info("Skipping step due to condition evaluation.");
+                            CompleteStep(step, nextStep, TaskResult.Skipped, resultCode: conditionResult.Trace);
+                        }
+                        else if (conditionEvaluateError != null)
+                        {
+                            // fail the step since there is an evaluate error.
+                            step.ExecutionContext.Error(conditionEvaluateError);
+                            CompleteStep(step, nextStep, TaskResult.Failed);
+                        }
+                        else
+                        {
+                            // Run the step.
+                            await RunStepAsync(step, jobContext.CancellationToken);
+                            CompleteStep(step, nextStep);
                         }
                     }
-
-                    // no evaluate error but condition is false
-                    if (!conditionResult.Value && conditionEvaluateError == null)
+                    finally
                     {
-                        // Condition == false
-                        Trace.Info("Skipping step due to condition evaluation.");
-                        step.ExecutionContext.Complete(TaskResult.Skipped, resultCode: conditionResult.Trace);
-                        continue;
-                    }
-
-                    if (conditionEvaluateError != null)
-                    {
-                        // fail the step since there is an evaluate error.
-                        step.ExecutionContext.Error(conditionEvaluateError);
-                        step.ExecutionContext.Complete(TaskResult.Failed);
-                    }
-                    else
-                    {
-                        // Run the step.
-                        await RunStepAsync(step, jobContext.CancellationToken);
-                    }
-                }
-                finally
-                {
-                    if (jobCancelRegister != null)
-                    {
-                        jobCancelRegister?.Dispose();
-                        jobCancelRegister = null;
+                        if (jobCancelRegister != null)
+                        {
+                            jobCancelRegister?.Dispose();
+                            jobCancelRegister = null;
+                        }
                     }
                 }
 
@@ -308,7 +310,7 @@ namespace GitHub.Runner.Worker
                 }
             }
 
-            // Merge executioncontext result with command result
+            // Merge execution context result with command result
             if (step.ExecutionContext.CommandResult != null)
             {
                 step.ExecutionContext.Result = TaskResultUtil.MergeTaskResults(step.ExecutionContext.Result, step.ExecutionContext.CommandResult.Value);
@@ -327,7 +329,125 @@ namespace GitHub.Runner.Worker
 
             // Complete the step context.
             step.ExecutionContext.Section(StringUtil.Loc("StepFinishing", step.DisplayName));
-            step.ExecutionContext.Complete();
+        }
+
+        private bool InitializeScope(IStep step, Dictionary<string, PipelineContextData> scopeInputs)
+        {
+            var executionContext = step.ExecutionContext;
+            var actionsContext = executionContext.ActionsContext;
+            if (!string.IsNullOrEmpty(executionContext.ScopeName))
+            {
+                // Gather uninitialized current and ancestor scopes
+                var scope = executionContext.Scopes[executionContext.ScopeName];
+                var scopesToInitialize = default(Stack<ContextScope>);
+                while (scope != null && !scopeInputs.ContainsKey(scope.Name))
+                {
+                    if (scopesToInitialize == null)
+                    {
+                        scopesToInitialize = new Stack<ContextScope>();
+                    }
+                    scopesToInitialize.Push(scope);
+                    scope = string.IsNullOrEmpty(scope.ParentName) ? null : executionContext.Scopes[scope.ParentName];
+                }
+
+                // Initialize current and ancestor scopes
+                while (scopesToInitialize?.Count > 0)
+                {
+                    scope = scopesToInitialize.Pop();
+                    executionContext.Output($"{WellKnownTags.Debug}Initializing scope '{scope.Name}'");
+                    executionContext.ExpressionValues["actions"] = actionsContext.GetScope(scope.ParentName);
+                    executionContext.ExpressionValues["inputs"] = !String.IsNullOrEmpty(scope.ParentName) ? scopeInputs[scope.ParentName] : null;
+                    var templateTrace = executionContext.ToTemplateTraceWriter();
+                    var schema = new PipelineTemplateSchemaFactory().CreateSchema();
+                    var templateEvaluator = new PipelineTemplateEvaluator(templateTrace, schema);
+                    var inputs = default(DictionaryContextData);
+                    try
+                    {
+                        inputs = templateEvaluator.EvaluateStepScopeInputs(scope.Inputs, executionContext.ExpressionValues);
+                    }
+                    catch (Exception ex)
+                    {
+                        Trace.Info($"Caught exception from initialize scope '{scope.Name}'");
+                        Trace.Error(ex);
+                        executionContext.Error(ex);
+                        executionContext.Complete(TaskResult.Failed);
+                        return false;
+                    }
+
+                    scopeInputs[scope.Name] = inputs;
+                }
+            }
+
+            // Setup expression values
+            var scopeName = executionContext.ScopeName;
+            executionContext.ExpressionValues["actions"] = actionsContext.GetScope(scopeName);
+            executionContext.ExpressionValues["inputs"] = string.IsNullOrEmpty(scopeName) ? null : scopeInputs[scopeName];
+
+            return true;
+        }
+
+        private void CompleteStep(IStep step, IStep nextStep, TaskResult? result = null, string resultCode = null)
+        {
+            var executionContext = step.ExecutionContext;
+            if (!string.IsNullOrEmpty(executionContext.ScopeName))
+            {
+                // Gather current and ancestor scopes to finalize
+                var scope = executionContext.Scopes[executionContext.ScopeName];
+                var scopesToFinalize = default(Queue<ContextScope>);
+                var nextStepScopeName = nextStep?.ExecutionContext.ScopeName;
+                while (scope != null &&
+                    !string.Equals(nextStep.ExecutionContext.ScopeName, scope.Name, StringComparison.OrdinalIgnoreCase) &&
+                    !(nextStep.ExecutionContext.ScopeName ?? string.Empty).StartsWith($"{scope.Name}.", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (scopesToFinalize == null)
+                    {
+                        scopesToFinalize = new Queue<ContextScope>();
+                    }
+                    scopesToFinalize.Enqueue(scope);
+                    scope = string.IsNullOrEmpty(scope.ParentName) ? null : executionContext.Scopes[scope.ParentName];
+                }
+
+                // Finalize current and ancestor scopes
+                var actionsContext = step.ExecutionContext.ActionsContext;
+                while (scopesToFinalize?.Count > 0)
+                {
+                    scope = scopesToFinalize.Dequeue();
+                    executionContext.Output($"{WellKnownTags.Debug}Finalizing scope '{scope.Name}'");
+                    executionContext.ExpressionValues["actions"] = actionsContext.GetScope(scope.Name);
+                    executionContext.ExpressionValues["inputs"] = null;
+                    var templateTrace = executionContext.ToTemplateTraceWriter();
+                    var schema = new PipelineTemplateSchemaFactory().CreateSchema();
+                    var templateEvaluator = new PipelineTemplateEvaluator(templateTrace, schema);
+                    var outputs = default(DictionaryContextData);
+                    try
+                    {
+                        outputs = templateEvaluator.EvaluateStepScopeOutputs(scope.Outputs, executionContext.ExpressionValues);
+                    }
+                    catch (Exception ex)
+                    {
+                        Trace.Info($"Caught exception from finalize scope '{scope.Name}'");
+                        Trace.Error(ex);
+                        executionContext.Error(ex);
+                        executionContext.Complete(TaskResult.Failed);
+                        return;
+                    }
+
+                    if (outputs?.Count > 0)
+                    {
+                        var parentScopeName = scope.ParentName;
+                        var contextName = scope.ContextName;
+                        foreach (var pair in outputs)
+                        {
+                            var outputName = pair.Key;
+                            var outputValue = pair.Value.ToString();
+                            actionsContext.SetOutput(parentScopeName, contextName, outputName, outputValue, out var reference);
+                            executionContext.Output($"{WellKnownTags.Debug}{reference}='{outputValue}'");
+                        }
+                    }
+                }
+            }
+
+            executionContext.Complete(result, resultCode: resultCode);
         }
     }
 }

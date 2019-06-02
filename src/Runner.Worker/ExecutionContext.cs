@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using System.Web;
 using GitHub.Runner.Worker.Container;
 using GitHub.Services.WebApi;
+using GitHub.DistributedTask.Pipelines;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.WebApi;
 using Pipelines = GitHub.DistributedTask.Pipelines;
@@ -29,6 +30,8 @@ namespace GitHub.Runner.Worker
     public interface IExecutionContext : IAgentService
     {
         Guid Id { get; }
+        string ScopeName { get; }
+        string ContextName { get; }
         Task ForceCompleted { get; }
         TaskResult? Result { get; set; }
         string ResultCode { get; set; }
@@ -43,6 +46,8 @@ namespace GitHub.Runner.Worker
         // Variables TaskVariables { get; }
         HashSet<string> OutputVariables { get; }
         IDictionary<String, String> EnvironmentVariables { get; }
+        IDictionary<String, ContextScope> Scopes { get; }
+        ActionsContext ActionsContext { get; }
         IDictionary<String, PipelineContextData> ExpressionValues { get; }
         List<IAsyncCommandContext> AsyncCommands { get; }
         List<string> PrependPath { get; }
@@ -52,7 +57,7 @@ namespace GitHub.Runner.Worker
         // Initialize
         void InitializeJob(Pipelines.AgentJobRequestMessage message, CancellationToken token);
         void CancelToken();
-        IExecutionContext CreateChild(Guid recordId, string displayName, string refName, Variables taskVariables = null, bool outputForward = false);
+        IExecutionContext CreateChild(Guid recordId, string displayName, string refName, string scopeName, string contextName, Variables taskVariables = null, bool outputForward = false);
 
         // logging
         bool WriteDebug { get; }
@@ -102,6 +107,8 @@ namespace GitHub.Runner.Worker
         private long _totalThrottlingDelayInMilliseconds = 0;
 
         public Guid Id => _record.Id;
+        public string ScopeName { get; private set; }
+        public string ContextName { get; private set; }
         public Task ForceCompleted => _forceCompleted.Task;
         public CancellationToken CancellationToken => _cancellationTokenSource.Token;
         public List<ServiceEndpoint> Endpoints { get; private set; }
@@ -111,7 +118,9 @@ namespace GitHub.Runner.Worker
         // public Variables TaskVariables { get; private set; }
         public HashSet<string> OutputVariables => _outputvariables;
         public IDictionary<String, String> EnvironmentVariables { get; private set; }
-        public IDictionary<String, PipelineContextData> ExpressionValues { get; private set; }
+        public IDictionary<String, ContextScope> Scopes { get; private set; }
+        public ActionsContext ActionsContext { get; private set; }
+        public IDictionary<String, PipelineContextData> ExpressionValues { get; } = new Dictionary<String, PipelineContextData>();
         public bool WriteDebug { get; private set; }
         public List<string> PrependPath { get; private set; }
         public ContainerInfo Container { get; private set; }
@@ -171,12 +180,14 @@ namespace GitHub.Runner.Worker
             });
         }
 
-        public IExecutionContext CreateChild(Guid recordId, string displayName, string refName, Variables taskVariables = null, bool outputForward = false)
+        public IExecutionContext CreateChild(Guid recordId, string displayName, string refName, string scopeName, string contextName, Variables taskVariables = null, bool outputForward = false)
         {
             Trace.Entering();
 
             var child = new ExecutionContext();
             child.Initialize(HostContext);
+            child.ScopeName = scopeName;
+            child.ContextName = contextName;
             child.Features = Features;
             child.Variables = Variables;
             child.Endpoints = Endpoints;
@@ -184,7 +195,12 @@ namespace GitHub.Runner.Worker
             child.SecureFiles = SecureFiles;
             // child.TaskVariables = taskVariables;
             child.EnvironmentVariables = EnvironmentVariables;
-            child.ExpressionValues = ExpressionValues;
+            child.Scopes = Scopes;
+            child.ActionsContext = ActionsContext;
+            foreach (var pair in ExpressionValues)
+            {
+                child.ExpressionValues[pair.Key] = pair.Value;
+            }
             child._cancellationTokenSource = new CancellationTokenSource();
             child.WriteDebug = WriteDebug;
             child._parentExecutionContext = this;
@@ -298,10 +314,15 @@ namespace GitHub.Runner.Worker
         {
             ArgUtil.NotNullOrEmpty(name, nameof(name));
 
+            if (String.IsNullOrEmpty(ContextName))
+            {
+                reference = null;
+                return;
+            }
+
             // todo: restrict multiline?
 
-            var actionsContext = ExpressionValues["actions"] as ActionsContext;
-            actionsContext.SetOutput(_record.RefName, name, value, out reference);
+            ActionsContext.SetOutput(ScopeName, ContextName, name, value, out reference);
         }
 
         public void SetTimeout(TimeSpan? timeout)
@@ -442,7 +463,6 @@ namespace GitHub.Runner.Worker
             EnvironmentVariables = new Dictionary<string, string>(VarUtil.EnvironmentVariableKeyComparer);
 
             // Expression values
-            ExpressionValues = new Dictionary<String, PipelineContextData>();
             // todo: delete in master during m154
             if (message.ExpressionValues?.Count > 0)
             {
@@ -468,7 +488,15 @@ namespace GitHub.Runner.Worker
                 }
             }
 
-            ExpressionValues["actions"] = new ActionsContext();
+            ActionsContext = new ActionsContext();
+            Scopes = new Dictionary<String, ContextScope>(StringComparer.OrdinalIgnoreCase);
+            if (message.Scopes?.Count > 0)
+            {
+                foreach (var scope in message.Scopes)
+                {
+                    Scopes[scope.Name] = scope;
+                }
+            }
             ExpressionValues["runner"] = new RunnerContext();
 
             if (!ExpressionValues.ContainsKey("github"))

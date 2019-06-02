@@ -39,7 +39,7 @@ namespace GitHub.Runner.Worker
             ArgUtil.NotNull(message, nameof(message));
 
             // create a new timeline record node for 'Initialize job'
-            IExecutionContext context = jobContext.CreateChild(Guid.NewGuid(), StringUtil.Loc("InitializeJob"), $"{nameof(JobExtension)}_Init");
+            IExecutionContext context = jobContext.CreateChild(Guid.NewGuid(), StringUtil.Loc("InitializeJob"), $"{nameof(JobExtension)}_Init", null, null);
 
             List<IStep> preJobSteps = new List<IStep>();
             List<IStep> jobSteps = new List<IStep>();
@@ -147,18 +147,17 @@ namespace GitHub.Runner.Worker
                             JobExtensionRunner extensionStep = step as JobExtensionRunner;
                             ArgUtil.NotNull(extensionStep, extensionStep.DisplayName);
                             Guid stepId = Guid.NewGuid();
-                            extensionStep.ExecutionContext = jobContext.CreateChild(stepId, extensionStep.DisplayName, stepId.ToString("N"));
+                            extensionStep.ExecutionContext = jobContext.CreateChild(stepId, extensionStep.DisplayName, null, null, stepId.ToString("N"));
                         }
                     }
 
                     // create task execution context for all job steps from task
                     foreach (var step in jobSteps)
                     {
-                        if (step is IActionRunner)
+                        if (step is IActionRunner actionStep)
                         {
-                            IActionRunner actionStep = step as IActionRunner;
                             ArgUtil.NotNull(actionStep, step.DisplayName);
-                            actionStep.ExecutionContext = jobContext.CreateChild(actionStep.Action.Id, actionStep.DisplayName, actionStep.Action.Name, outputForward: true);
+                            actionStep.ExecutionContext = jobContext.CreateChild(actionStep.Action.Id, actionStep.DisplayName, actionStep.Action.Name, actionStep.Action.ScopeName, actionStep.Action.ContextName, outputForward: true);
                         }
                     }
 
@@ -177,7 +176,7 @@ namespace GitHub.Runner.Worker
                             JobExtensionRunner extensionStep = step as JobExtensionRunner;
                             ArgUtil.NotNull(extensionStep, extensionStep.DisplayName);
                             Guid stepId = Guid.NewGuid();
-                            extensionStep.ExecutionContext = jobContext.CreateChild(stepId, extensionStep.DisplayName, stepId.ToString("N"));
+                            extensionStep.ExecutionContext = jobContext.CreateChild(stepId, extensionStep.DisplayName, stepId.ToString("N"), null, null);
                         }
                     }
 
@@ -239,7 +238,7 @@ namespace GitHub.Runner.Worker
             ArgUtil.NotNull(jobContext, nameof(jobContext));
 
             // create a new timeline record node for 'Finalize job'
-            IExecutionContext context = jobContext.CreateChild(Guid.NewGuid(), StringUtil.Loc("FinalizeJob"), $"{nameof(JobExtension)}_Final");
+            IExecutionContext context = jobContext.CreateChild(Guid.NewGuid(), StringUtil.Loc("FinalizeJob"), $"{nameof(JobExtension)}_Final", null, null);
             using (var register = jobContext.CancellationToken.Register(() => { context.CancelToken(); }))
             {
                 try

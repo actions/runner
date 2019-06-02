@@ -206,6 +206,58 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             return result ?? PipelineConstants.DefaultJobCancelTimeoutInMinutes;
         }
 
+        public DictionaryContextData EvaluateStepScopeInputs(
+            TemplateToken token,
+            IDictionary<String, PipelineContextData> contextData)
+        {
+            var result = default(DictionaryContextData);
+
+            if (token != null)
+            {
+                var context = CreateContext(contextData);
+                try
+                {
+                    token = TemplateEvaluator.Evaluate(context, PipelineTemplateConstants.ActionsScopeInputs, token, 0, null, omitHeader: true);
+                    context.Errors.Check();
+                    result = token.ToContextData().AssertDictionary("actions scope inputs");
+                }
+                catch (Exception ex) when (!(ex is TemplateValidationException))
+                {
+                    context.Errors.Add(ex);
+                }
+
+                context.Errors.Check();
+            }
+
+            return result ?? new DictionaryContextData();
+        }
+
+        public DictionaryContextData EvaluateStepScopeOutputs(
+            TemplateToken token,
+            IDictionary<String, PipelineContextData> contextData)
+        {
+            var result = default(DictionaryContextData);
+
+            if (token != null)
+            {
+                var context = CreateContext(contextData);
+                try
+                {
+                    token = TemplateEvaluator.Evaluate(context, PipelineTemplateConstants.ActionsScopeOutputs, token, 0, null, omitHeader: true);
+                    context.Errors.Check();
+                    result = token.ToContextData().AssertDictionary("actions scope outputs");
+                }
+                catch (Exception ex) when (!(ex is TemplateValidationException))
+                {
+                    context.Errors.Add(ex);
+                }
+
+                context.Errors.Check();
+            }
+
+            return result ?? new DictionaryContextData();
+        }
+
         public Dictionary<String, String> EvaluateStepEnvironment(
             TemplateToken token,
             IDictionary<String, PipelineContextData> contextData,

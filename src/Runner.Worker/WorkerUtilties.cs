@@ -92,7 +92,8 @@ namespace GitHub.Runner.Worker
                 jobResources: scrubbedJobResources,
                 contextData: message.ContextData,
                 workspaceOptions: message.Workspace,
-                steps: message.Steps);
+                steps: message.Steps,
+                scopes: message.Scopes);
         }
     }
 }

@@ -48,6 +48,10 @@ namespace GitHub.DistributedTask.ObjectTemplating
             {
                 objectWriter.WriteString(expr.ToString());
             }
+            else if (value is null)
+            {
+                objectWriter.WriteString(String.Empty);
+            }
             else
             {
                 throw new NotSupportedException($"Unexpected type '{value.GetType()}'");

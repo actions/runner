@@ -173,14 +173,14 @@ namespace GitHub.DistributedTask.Pipelines
             {
                 {
                     "agentPlugin",
-                    JObject.FromObject(new Dictionary<String, String>(){ { "target", "Runner.Plugins.Repository.CheckoutTask, Runner.Plugins"} })
+                    JObject.FromObject(new Dictionary<String, String>(){ { "target", "Agent.Plugins.Repository.CheckoutTask, Agent.Plugins"} })
                 }
             },
             PostJobExecution =
             {
                 {
                     "agentPlugin",
-                    JObject.FromObject(new Dictionary<String, String>(){ { "target", "Runner.Plugins.Repository.CleanupTask, Runner.Plugins"} })
+                    JObject.FromObject(new Dictionary<String, String>(){ { "target", "Agent.Plugins.Repository.CleanupTask, Agent.Plugins"} })
                 }
             }
         };

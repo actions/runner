@@ -36,6 +36,18 @@ namespace GitHub.DistributedTask.Pipelines
         [DataMember(EmitDefaultValue = false)]
         public override PhaseType Type => PhaseType.JobFactory;
 
+        public IList<ContextScope> Scopes
+        {
+            get
+            {
+                if (m_scopes == null)
+                {
+                    m_scopes = new List<ContextScope>();
+                }
+                return m_scopes;
+            }
+        }
+
         /// <summary>
         /// Gets the list of steps associated with this phase. At runtime the steps will be used as a template for
         /// the execution of a job.
@@ -327,12 +339,22 @@ namespace GitHub.DistributedTask.Pipelines
                 }
             }
 
+            foreach (var scope in Scopes)
+            {
+                job.Scopes.Add(scope);
+            }
+
             return jobContext;
         }
 
         [OnSerializing]
         private void OnSerializing(StreamingContext context)
         {
+            if (m_scopes?.Count == 0)
+            {
+                m_scopes = null;
+            }
+
             if (m_steps?.Count == 0)
             {
                 m_steps = null;
@@ -389,6 +411,9 @@ namespace GitHub.DistributedTask.Pipelines
 
             private DistributedTask.Expressions.ITraceWriter m_trace;
         }
+
+        [DataMember(Name = "Scopes", EmitDefaultValue = false)]
+        private IList<ContextScope> m_scopes;
 
         [DataMember(Name = "Steps", EmitDefaultValue = false)]
         private IList<Step> m_steps;

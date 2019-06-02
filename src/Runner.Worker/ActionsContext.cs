@@ -10,56 +10,78 @@ using GitHub.Runner.Sdk;
 
 namespace GitHub.Runner.Worker
 {
-    public sealed class ActionsContext : DictionaryContextData
+    public sealed class ActionsContext
     {
         private static readonly Regex _propertyRegex = new Regex("^[a-zA-Z_][a-zA-Z0-9_]*$", RegexOptions.Compiled);
+        private readonly DictionaryContextData _contextData = new DictionaryContextData();
 
-        public void SetOutput(
-            string stepName,
-            string key,
-            string value,
-            out string reference)
+        public DictionaryContextData GetScope(string scopeName)
         {
-            var action = GetAction(stepName);
-            var outputs = action["outputs"].AssertDictionary("outputs");
-            outputs[key] = new StringContextData(value);
-            if (_propertyRegex.IsMatch(key))
+            if (scopeName == null)
             {
-                reference = $"actions.{stepName}.outputs.{key}";
+                scopeName = string.Empty;
+            }
+
+            var scope = default(DictionaryContextData);
+            if (_contextData.TryGetValue(scopeName, out var scopeValue))
+            {
+                scope = scopeValue.AssertDictionary("scope");
             }
             else
             {
-                reference = $"actions['{stepName}']['outputs']['{key}']";
+                scope = new DictionaryContextData();
+                _contextData.Add(scopeName, scope);
+            }
+
+            return scope;
+        }
+
+        public void SetOutput(
+            string scopeName,
+            string actionName,
+            string outputName,
+            string value,
+            out string reference)
+        {
+            var action = GetAction(scopeName, actionName);
+            var outputs = action["outputs"].AssertDictionary("outputs");
+            outputs[outputName] = new StringContextData(value);
+            if (_propertyRegex.IsMatch(outputName))
+            {
+                reference = $"actions.{actionName}.outputs.{outputName}";
+            }
+            else
+            {
+                reference = $"actions['{actionName}']['outputs']['{outputName}']";
             }
         }
 
         public void SetResult(
-            string stepName,
+            string scopeName,
+            string actionName,
             string result)
         {
-            var action = GetAction(stepName);
+            var action = GetAction(scopeName, actionName);
             action["result"] = new StringContextData(result);
         }
 
-        private DictionaryContextData GetAction(string stepName)
+        private DictionaryContextData GetAction(string scopeName, string actionName)
         {
-            if (TryGetValue(stepName, out var actionObject))
+            var scope = GetScope(scopeName);
+            var action = default(DictionaryContextData);
+            if (scope.TryGetValue(actionName, out var actionValue))
             {
-                return actionObject.AssertDictionary("action");
+                action = actionValue.AssertDictionary("action");
+            }
+            else
+            {
+                action = new DictionaryContextData
+                {
+                    { "outputs", new DictionaryContextData() },
+                };
+                scope.Add(actionName, action);
             }
 
-            var action = new DictionaryContextData
-            {
-                {
-                    "result",
-                    null
-                },
-                {
-                    "outputs",
-                    new DictionaryContextData()
-                }
-            };
-            Add(stepName, action);
             return action;
         }
     }
