@@ -573,7 +573,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 
                         case PipelineTemplateConstants.If:
                             var ifCondition = TemplateUtil.AssertLiteral(jobFactoryProperty.Value, $"job {PipelineTemplateConstants.If}");
-                            result.Condition = ConvertToIfCondition(context, ifCondition, isJob: true);
+                            result.Condition = ConvertToIfCondition(context, ifCondition, true, true);
                             break;
 
                         case PipelineTemplateConstants.Name:
@@ -610,6 +610,13 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                             result.JobTarget = jobFactoryProperty.Value.Clone(true);
                             break;
 
+                        case PipelineTemplateConstants.Scopes:
+                            foreach (var scope in ConvertToScopes(context, jobFactoryProperty.Value))
+                            {
+                                result.Scopes.Add(scope);
+                            }
+                            break;
+
                         case PipelineTemplateConstants.Strategy:
                             ConvertToStrategy(context, jobFactoryProperty.Value, null, allowExpressions: true); // Validate early if possible
                             result.Strategy = jobFactoryProperty.Value.Clone(true);
@@ -640,6 +647,73 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 if (String.IsNullOrEmpty(result.DisplayName))
                 {
                     result.DisplayName = result.Name;
+                }
+
+                if (result.Scopes.Count > 0)
+                {
+                    result.Steps.Insert(
+                        0,
+                        new ActionStep
+                        {
+                            Reference = new ScriptReference(),
+                            DisplayName = "WARNING: TEMPLATES ARE HIGHLY EXPERIMENTAL",
+                            Inputs = new MappingToken(null, null, null)
+                            {
+                                {
+                                    new LiteralToken(null, null, null, PipelineConstants.ScriptStepInputs.Script),
+                                    new LiteralToken(null, null, null, "echo WARNING: TEMPLATES ARE HIGHLY EXPERIMENTAL")
+                                }
+                            }
+                        });
+                    result.Steps.Add(
+                        new ActionStep
+                        {
+                            Reference = new ScriptReference(),
+                            DisplayName = "WARNING: TEMPLATES ARE HIGHLY EXPERIMENTAL",
+                            Inputs = new MappingToken(null, null, null)
+                            {
+                                {
+                                    new LiteralToken(null, null, null, PipelineConstants.ScriptStepInputs.Script),
+                                    new LiteralToken(null, null, null, "echo WARNING: TEMPLATES ARE HIGHLY EXPERIMENTAL")
+                                }
+                            }
+                        });
+                }
+
+                yield return result;
+            }
+        }
+
+        private static IEnumerable<ContextScope> ConvertToScopes(
+            TemplateContext context,
+            TemplateToken scopes)
+        {
+            var scopesSequence = TemplateUtil.AssertSequence(scopes, $"job {PipelineTemplateConstants.Scopes}");
+
+            foreach (var scopesItem in scopesSequence)
+            {
+                var result = new ContextScope();
+                var scope = TemplateUtil.AssertMapping(scopesItem, $"{PipelineTemplateConstants.Scopes} item");
+
+                foreach (var scopeProperty in scope)
+                {
+                    var propertyName = TemplateUtil.AssertLiteral(scopeProperty.Key, $"{PipelineTemplateConstants.Scopes} item key");
+
+                    switch (propertyName.Value)
+                    {
+                        case PipelineTemplateConstants.Name:
+                            var nameLiteral = TemplateUtil.AssertLiteral(scopeProperty.Value, $"{PipelineTemplateConstants.Scopes} item {PipelineTemplateConstants.Name}");
+                            result.Name = nameLiteral.Value;
+                            break;
+
+                        case PipelineTemplateConstants.Inputs:
+                            result.Inputs = TemplateUtil.AssertMapping(scopeProperty.Value, $"{PipelineTemplateConstants.Scopes} item {PipelineTemplateConstants.Inputs}");
+                            break;
+
+                        case PipelineTemplateConstants.Outputs:
+                            result.Outputs = TemplateUtil.AssertMapping(scopeProperty.Value, $"{PipelineTemplateConstants.Scopes} item {PipelineTemplateConstants.Outputs}");
+                            break;
+                    }
                 }
 
                 yield return result;
@@ -704,8 +778,10 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             var env = default(TemplateToken);
             var id = default(LiteralToken);
             var ifCondition = default(String);
+            var ifToken = default(LiteralToken);
             var name = default(LiteralToken);
             var run = default(ScalarToken);
+            var scope = default(LiteralToken);
             var timeout = default(LiteralToken);
             var uses = default(LiteralToken);
             var with = default(TemplateToken);
@@ -748,8 +824,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                         break;
 
                     case PipelineTemplateConstants.If:
-                        var ifToken = TemplateUtil.AssertLiteral(actionProperty.Value, $"{PipelineTemplateConstants.Actions} item {PipelineTemplateConstants.If}");
-                        ifCondition = ConvertToIfCondition(context, ifToken, isJob: false);
+                        ifToken = TemplateUtil.AssertLiteral(actionProperty.Value, $"{PipelineTemplateConstants.Actions} item {PipelineTemplateConstants.If}");
                         break;
 
                     case PipelineTemplateConstants.Lfs:
@@ -766,6 +841,10 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 
                     case PipelineTemplateConstants.Run:
                         run = TemplateUtil.AssertScalar(actionProperty.Value, $"{PipelineTemplateConstants.Actions} item {PipelineTemplateConstants.Run}");
+                        break;
+
+                    case PipelineTemplateConstants.Scope:
+                        scope = TemplateUtil.AssertLiteral(actionProperty.Value, $"{PipelineTemplateConstants.Actions} item {PipelineTemplateConstants.Scope}");
                         break;
 
                     case PipelineTemplateConstants.Submodules:
@@ -795,11 +874,18 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 }
             }
 
+            if (ifToken != null)
+            {
+                var isDefaultScope = String.IsNullOrEmpty(scope?.Value);
+                ifCondition = ConvertToIfCondition(context, ifToken, false, isDefaultScope);
+            }
+
             if (run != null)
             {
                 var result = new ActionStep
                 {
-                    Name = id?.Value,
+                    ScopeName = scope?.Value,
+                    ContextName = id?.Value,
                     DisplayName = name?.Value,
                     Condition = ifCondition,
                     TimeoutInMinutes = timeout != null ? Int32.Parse(timeout.Value) : 0,
@@ -834,7 +920,8 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             {
                 var result = new ActionStep
                 {
-                    Name = id?.Value,
+                    ScopeName = scope?.Value,
+                    ContextName = id?.Value,
                     DisplayName = name?.Value,
                     Condition = ifCondition,
                     TimeoutInMinutes = timeout != null ? Int32.Parse(timeout.Value) : 0,
@@ -899,7 +986,8 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             {
                 var result = new ActionStep
                 {
-                    Name = id?.Value,
+                    ScopeName = scope?.Value,
+                    ContextName = id?.Value,
                     DisplayName = name?.Value,
                     Condition = ifCondition,
                     TimeoutInMinutes = timeout != null ? Int32.Parse(timeout.Value) : 0,
@@ -969,19 +1057,24 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         private static String ConvertToIfCondition(
             TemplateContext context,
             LiteralToken ifCondition,
-            Boolean isJob)
+            Boolean isJob,
+            Boolean isDefaultScope)
         {
             if (String.IsNullOrWhiteSpace(ifCondition.Value))
             {
                 return "succeeded()";
-
             }
 
             var condition = ifCondition.Value;
 
             var parserOptions = new ExpressionParserOptions() { AllowHyphens = true };
             var expressionParser = new ExpressionParser(parserOptions);
-            var namedValues = isJob ? null : s_actionNamedValues;
+            var namedValues = default(INamedValueInfo[]);
+            if (!isJob)
+            {
+                namedValues = isDefaultScope ? s_actionNamedValues : s_actionInTemplateNamedValues;
+            }
+
             var node = default(ExpressionNode);
             try
             {
@@ -1053,7 +1146,16 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         {
             new NamedValueInfo<NoOpValue>(PipelineTemplateConstants.Strategy),
             new NamedValueInfo<NoOpValue>(PipelineTemplateConstants.Matrix),
+            new NamedValueInfo<NoOpValue>(PipelineTemplateConstants.Parallel),
             new NamedValueInfo<NoOpValue>(PipelineTemplateConstants.Actions),
+        };
+        private static readonly INamedValueInfo[] s_actionInTemplateNamedValues = new INamedValueInfo[]
+        {
+            new NamedValueInfo<NoOpValue>(PipelineTemplateConstants.Strategy),
+            new NamedValueInfo<NoOpValue>(PipelineTemplateConstants.Matrix),
+            new NamedValueInfo<NoOpValue>(PipelineTemplateConstants.Parallel),
+            new NamedValueInfo<NoOpValue>(PipelineTemplateConstants.Actions),
+            new NamedValueInfo<NoOpValue>(PipelineTemplateConstants.Inputs),
         };
         private static readonly IFunctionInfo[] s_conditionFunctions = new IFunctionInfo[]
         {

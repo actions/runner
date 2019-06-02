@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 using System.Runtime.Serialization;
 using GitHub.Services.WebApi.Internal;
 using Newtonsoft.Json;
@@ -99,6 +100,18 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
             }
 
             m_items.Insert(index, item);
+        }
+
+        public void InsertRange(
+            Int32 index,
+            IEnumerable<TemplateToken> items)
+        {
+            if (m_items == null)
+            {
+                m_items = new List<TemplateToken>();
+            }
+
+            m_items.InsertRange(index, items);
         }
 
         public void RemoveAt(Int32 index)

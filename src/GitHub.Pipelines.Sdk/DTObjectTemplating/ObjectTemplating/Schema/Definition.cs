@@ -28,6 +28,10 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
                         .Distinct()
                         .ToArray();
                 }
+                else if (String.Equals(definitionKey.Value, TemplateConstants.Description, StringComparison.Ordinal))
+                {
+                    definition.RemoveAt(i);
+                }
                 else
                 {
                     i++;

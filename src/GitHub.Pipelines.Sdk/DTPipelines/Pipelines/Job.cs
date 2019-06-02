@@ -147,6 +147,18 @@ namespace GitHub.DistributedTask.Pipelines
             }
         }
 
+        public IList<ContextScope> Scopes
+        {
+            get
+            {
+                if (m_scopes == null)
+                {
+                    m_scopes = new List<ContextScope>();
+                }
+                return m_scopes;
+            }
+        }
+
         public IDictionary<String, String> SidecarContainers
         {
             get
@@ -233,6 +245,11 @@ namespace GitHub.DistributedTask.Pipelines
                 m_steps = null;
             }
 
+            if (m_scopes?.Count == 0)
+            {
+                m_scopes = null;
+            }
+
             if (m_variables?.Count == 0)
             {
                 m_variables = null;
@@ -244,6 +261,9 @@ namespace GitHub.DistributedTask.Pipelines
 
         [DataMember(Name = "Steps", EmitDefaultValue = false)]
         private List<JobStep> m_steps;
+
+        [DataMember(Name = "Scopes", EmitDefaultValue = false)]
+        private List<ContextScope> m_scopes;
 
         [DataMember(Name = "Variables", EmitDefaultValue = false)]
         private List<IVariable> m_variables;

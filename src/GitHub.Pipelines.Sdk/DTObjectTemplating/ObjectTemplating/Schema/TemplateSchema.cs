@@ -81,6 +81,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
                                             break;
 
                                         case TemplateConstants.Context:
+                                        case TemplateConstants.Description:
                                             continue;
 
                                         default:
@@ -303,6 +304,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
 
                     // scalar-definition
                     mappingDefinition = new MappingDefinition();
+                    mappingDefinition.Properties.Add(TemplateConstants.Description, new PropertyValue(TemplateConstants.Scalar));
                     mappingDefinition.Properties.Add(TemplateConstants.Context, new PropertyValue(TemplateConstants.SequenceOfNonEmptyScalar));
                     mappingDefinition.Properties.Add(TemplateConstants.Scalar, new PropertyValue(TemplateConstants.ScalarDefinitionProperties));
                     schema.Definitions.Add(TemplateConstants.ScalarDefinition, mappingDefinition);
@@ -316,6 +318,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
 
                     // sequence-definition
                     mappingDefinition = new MappingDefinition();
+                    mappingDefinition.Properties.Add(TemplateConstants.Description, new PropertyValue(TemplateConstants.Scalar));
                     mappingDefinition.Properties.Add(TemplateConstants.Context, new PropertyValue(TemplateConstants.SequenceOfNonEmptyScalar));
                     mappingDefinition.Properties.Add(TemplateConstants.Sequence, new PropertyValue(TemplateConstants.SequenceDefinitionProperties));
                     schema.Definitions.Add(TemplateConstants.SequenceDefinition, mappingDefinition);
@@ -327,6 +330,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
 
                     // mapping-definition
                     mappingDefinition = new MappingDefinition();
+                    mappingDefinition.Properties.Add(TemplateConstants.Description, new PropertyValue(TemplateConstants.Scalar));
                     mappingDefinition.Properties.Add(TemplateConstants.Context, new PropertyValue(TemplateConstants.SequenceOfNonEmptyScalar));
                     mappingDefinition.Properties.Add(TemplateConstants.Mapping, new PropertyValue(TemplateConstants.MappingDefinitionProperties));
                     schema.Definitions.Add(TemplateConstants.MappingDefinition, mappingDefinition);
@@ -346,6 +350,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
 
                     // one-of-definition
                     mappingDefinition = new MappingDefinition();
+                    mappingDefinition.Properties.Add(TemplateConstants.Description, new PropertyValue(TemplateConstants.Scalar));
                     mappingDefinition.Properties.Add(TemplateConstants.Context, new PropertyValue(TemplateConstants.SequenceOfNonEmptyScalar));
                     mappingDefinition.Properties.Add(TemplateConstants.OneOf, new PropertyValue(TemplateConstants.SequenceOfNonEmptyScalar));
                     schema.Definitions.Add(TemplateConstants.OneOfDefinition, mappingDefinition);

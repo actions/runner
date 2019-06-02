@@ -2,14 +2,111 @@
   "version": "workflow-v1.0",
 
   "definitions": {
-    "root": {
+
+    "workflow-root": {
+      "description": "Workflow file",
       "one-of": [
-        "root-workflow",
-        "root-jobs"
+        "workflow-root-legacy",
+        "workflow-root-new"
       ]
     },
 
-    "root-workflow": {
+    "actions-template-root": {
+      "description": "Actions template file",
+      "mapping": {
+        "properties": {
+          "inputs": "actions-template-inputs",
+          "outputs": "actions-template-outputs",
+          "actions": "actions-in-template"
+        }
+      }
+    },
+
+    "actions-scope-inputs": {
+      "description": "Used when evaluating actions scope inputs",
+      "mapping": {
+        "loose-key-type": "non-empty-scalar",
+        "loose-value-type": "actions-scope-input-value"
+      }
+    },
+
+    "actions-scope-input-value": {
+      "context": [
+        "strategy",
+        "matrix",
+        "parallel",
+        "actions",
+        "inputs"
+      ],
+      "one-of": [
+        "scalar",
+        "sequence",
+        "mapping"
+      ]
+    },
+
+    "actions-scope-outputs": {
+      "description": "Used when evaluating actions scope outputs",
+      "mapping": {
+        "loose-key-type": "non-empty-scalar",
+        "loose-value-type": "actions-scope-output-value"
+      }
+    },
+
+    "actions-scope-output-value": {
+      "context": [
+        "strategy",
+        "matrix",
+        "parallel",
+        "actions",
+        "inputs"
+      ],
+      "scalar": {}
+    },
+
+    "actions-template-inputs": {
+      "description": "Allowed inputs in an actions template",
+      "mapping": {
+        "loose-key-type": "non-empty-scalar",
+        "loose-value-type": "actions-template-input-value"
+      }
+    },
+
+    "actions-template-input-value": {
+      "description": "Default input values for an actions template",
+      "context": [
+        "strategy",
+        "matrix",
+        "parallel"
+      ],
+      "one-of": [
+        "scalar",
+        "sequence",
+        "mapping"
+      ]
+    },
+
+    "actions-template-outputs": {
+      "description": "Output mapping for an actions template",
+      "mapping": {
+        "loose-key-type": "non-empty-scalar",
+        "loose-value-type": "actions-template-output-value"
+      }
+    },
+
+    "actions-template-output-value": {
+      "description": "Output values for an actions template",
+      "context": [
+        "strategy",
+        "matrix",
+        "parallel",
+        "actions"
+      ],
+      "scalar": {}
+    },
+
+    "workflow-root-legacy": {
+      "description": "Legacy 'workflow' keyword. TODO: Remove in master during M154.",
       "mapping": {
         "properties": {
           "on": "any",
@@ -19,7 +116,8 @@
       }
     },
 
-    "root-jobs": {
+    "workflow-root-new": {
+      "description": "New 'jobs' keyword. Merge into 'workflow-root' when 'workflow-root-legacy' is removed",
       "mapping": {
         "properties": {
           "on": "any",
@@ -152,43 +250,31 @@
       }
     },
 
+    "actions-in-template": {
+      "sequence": {
+        "item-type": "actions-item-in-template"
+      }
+    },
+
     "actions-item": {
       "one-of": [
+        "checkout-action",
         "run-action",
-        "action",
-        "checkout"
+        "regular-action",
+        "actions-template-reference"
       ]
     },
 
-    "run-action": {
-      "mapping": {
-        "properties": {
-          "name": "scalar-actions-context",
-          "id": "non-empty-scalar",
-          "if": "scalar",
-          "timeout": "non-empty-scalar",
-          "run": "scalar-actions-context",
-          "env": "action-env",
-          "working-directory": "scalar-actions-context"
-        }
-      }
+    "actions-item-in-template": {
+      "one-of": [
+        "checkout-action-in-template",
+        "run-action-in-template",
+        "regular-action-in-template",
+        "actions-template-reference-in-template"
+      ]
     },
 
-    "action": {
-      "mapping": {
-        "properties": {
-          "name": "scalar-actions-context",
-          "id": "non-empty-scalar",
-          "if": "scalar",
-          "timeout": "non-empty-scalar",
-          "uses": "non-empty-scalar",
-          "with": "action-with",
-          "env": "action-env"
-        }
-      }
-    },
-
-    "checkout": {
+    "checkout-action": {
       "mapping": {
         "properties": {
           "name": "scalar-actions-context",
@@ -205,6 +291,126 @@
       }
     },
 
+    "checkout-action-in-template": {
+      "mapping": {
+        "properties": {
+          "name": "scalar-actions-context-in-template",
+          "id": "non-empty-scalar",
+          "if": "scalar",
+          "timeout": "non-empty-scalar",
+          "checkout": "non-empty-scalar",
+          "path": "scalar-actions-context-in-template",
+          "clean": "scalar-actions-context-in-template",
+          "fetch-depth": "scalar-actions-context-in-template",
+          "lfs": "scalar-actions-context-in-template",
+          "submodules": "scalar-actions-context-in-template"
+        }
+      }
+    },
+
+    "run-action": {
+      "mapping": {
+        "properties": {
+          "name": "scalar-actions-context",
+          "id": "non-empty-scalar",
+          "if": "scalar",
+          "timeout": "non-empty-scalar",
+          "run": "scalar-actions-context",
+          "env": "action-env",
+          "working-directory": "scalar-actions-context"
+        }
+      }
+    },
+
+    "run-action-in-template": {
+      "mapping": {
+        "properties": {
+          "name": "scalar-actions-context-in-template",
+          "id": "non-empty-scalar",
+          "if": "scalar",
+          "timeout": "non-empty-scalar",
+          "run": "scalar-actions-context-in-template",
+          "env": "action-env-in-template",
+          "working-directory": "scalar-actions-context-in-template"
+        }
+      }
+    },
+
+    "regular-action": {
+      "mapping": {
+        "properties": {
+          "name": "scalar-actions-context",
+          "id": "non-empty-scalar",
+          "if": "scalar",
+          "timeout": "non-empty-scalar",
+          "uses": "non-empty-scalar",
+          "with": "action-with",
+          "env": "action-env"
+        }
+      }
+    },
+
+    "regular-action-in-template": {
+      "mapping": {
+        "properties": {
+          "name": "scalar-actions-context-in-template",
+          "id": "non-empty-scalar",
+          "if": "scalar",
+          "timeout": "non-empty-scalar",
+          "uses": "non-empty-scalar",
+          "with": "action-with-in-template",
+          "env": "action-env-in-template"
+        }
+      }
+    },
+
+    "actions-template-reference": {
+      "mapping": {
+        "properties": {
+          "template": "non-empty-scalar",
+          "id": "non-empty-scalar",
+          "inputs": "actions-template-reference-inputs"
+        }
+      }
+    },
+
+    "actions-template-reference-in-template": {
+      "mapping": {
+        "properties": {
+          "template": "non-empty-scalar",
+          "id": "non-empty-scalar",
+          "inputs": "actions-template-reference-inputs-in-template"
+        }
+      }
+    },
+
+    "actions-template-reference-inputs": {
+      "context": [
+        "strategy",
+        "matrix",
+        "parallel",
+        "actions"
+      ],
+      "mapping": {
+        "loose-key-type": "non-empty-scalar",
+        "loose-value-type": "scalar"
+      }
+    },
+
+    "actions-template-reference-inputs-in-template": {
+      "context": [
+        "strategy",
+        "matrix",
+        "parallel",
+        "actions",
+        "inputs"
+      ],
+      "mapping": {
+        "loose-key-type": "non-empty-scalar",
+        "loose-value-type": "scalar"
+      }
+    },
+
     "action-env": {
       "context": [
         "strategy",
@@ -218,12 +424,40 @@
       }
     },
 
+    "action-env-in-template": {
+      "context": [
+        "strategy",
+        "matrix",
+        "parallel",
+        "actions",
+        "inputs"
+      ],
+      "mapping": {
+        "loose-key-type": "non-empty-scalar",
+        "loose-value-type": "scalar"
+      }
+    },
+
     "action-with": {
       "context": [
         "strategy",
         "matrix",
         "parallel",
         "actions"
+      ],
+      "mapping": {
+        "loose-key-type": "non-empty-scalar",
+        "loose-value-type": "scalar"
+      }
+    },
+
+    "action-with-in-template": {
+      "context": [
+        "strategy",
+        "matrix",
+        "parallel",
+        "actions",
+        "inputs"
       ],
       "mapping": {
         "loose-key-type": "non-empty-scalar",
@@ -279,6 +513,17 @@
         "matrix",
         "parallel",
         "actions"
+      ],
+      "scalar": {}
+    },
+
+    "scalar-actions-context-in-template": {
+      "context": [
+        "strategy",
+        "matrix",
+        "parallel",
+        "actions",
+        "inputs"
       ],
       "scalar": {}
     }

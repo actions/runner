@@ -23,6 +23,8 @@ namespace GitHub.DistributedTask.Pipelines
 
             Environment = actionToClone.Environment?.Clone();
             Inputs = actionToClone.Inputs?.Clone();
+            ContextName = actionToClone?.ContextName;
+            ScopeName = actionToClone?.ScopeName;
         }
 
         public override StepType Type => StepType.Action;
@@ -33,6 +35,12 @@ namespace GitHub.DistributedTask.Pipelines
             get;
             set;
         }
+
+        [DataMember(EmitDefaultValue = false)]
+        public String ScopeName { get; set; }
+
+        [DataMember(EmitDefaultValue = false)]
+        public String ContextName { get; set; }
 
         [DataMember(EmitDefaultValue = false)]
         public TemplateToken Environment { get; set; }

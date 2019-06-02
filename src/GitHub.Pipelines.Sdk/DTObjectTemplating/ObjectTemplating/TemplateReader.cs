@@ -195,6 +195,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                     {
                         var anyDefinition = new DefinitionInfo(definition, TemplateConstants.Any);
                         mapping.Add(nextKeyScalar, ReadValue(anyDefinition));
+                        m_memory.AddBytes(nextKeyScalar);
                     }
                     // Illegal
                     else
@@ -220,6 +221,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                     var nextValueDefinition = new DefinitionInfo(definition, nextValueType);
                     var nextValue = ReadValue(nextValueDefinition);
                     mapping.Add(nextKey, nextValue);
+                    m_memory.AddBytes(nextKey);
                     continue;
                 }
 
@@ -235,6 +237,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                     Validate(nextKey, looseKeyDefinition.Value);
                     var nextValue = ReadValue(looseValueDefinition.Value);
                     mapping.Add(nextKey, nextValue);
+                    m_memory.AddBytes(nextKey);
                     continue;
                 }
 
@@ -299,6 +302,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                     {
                         var nextValue = ReadValue(valueDefinition);
                         mapping.Add(nextKeyScalar, nextValue);
+                        m_memory.AddBytes(nextKeyScalar);
                     }
                     // Illegal
                     else
@@ -322,6 +326,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                         Validate(nextKey, keyDefinition);
                         var nextValue = ReadValue(valueDefinition);
                         mapping.Add(nextKey, nextValue);
+                        m_memory.AddBytes(nextKey);
                     }
                 }
             }

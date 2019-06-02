@@ -54,7 +54,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             {
                 ["nginx"] = "nginx"
             };
-            var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, JobId, jobName, jobName, "ubuntu", sidecarContainers, variables, new List<MaskHint>(), resources, null, null, tasks);
+            var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, JobId, jobName, jobName, "ubuntu", sidecarContainers, variables, new List<MaskHint>(), resources, null, null, tasks, null);
             return jobRequest;
         }
 

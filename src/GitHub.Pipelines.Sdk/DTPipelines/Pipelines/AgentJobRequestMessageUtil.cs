@@ -223,7 +223,7 @@ namespace GitHub.DistributedTask.Pipelines
                 }
             }
 
-            AgentJobRequestMessage agentRequestMessage = new AgentJobRequestMessage(message.Plan, message.Timeline, message.JobId, message.JobName, message.JobRefName, null, null, variables, maskHints.ToList(), jobResources, null, workspace, jobSteps)
+            AgentJobRequestMessage agentRequestMessage = new AgentJobRequestMessage(message.Plan, message.Timeline, message.JobId, message.JobName, message.JobRefName, null, null, variables, maskHints.ToList(), jobResources, null, workspace, jobSteps, null)
             {
                 RequestId = message.RequestId
             };
