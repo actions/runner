@@ -1,10 +1,11 @@
-﻿using Runner.Common.Util;
+﻿using GitHub.Runner.Common.Util;
 using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using GitHub.DistributedTask.Logging;
+using GitHub.Runner.Sdk;
 
-namespace Runner.Common
+namespace GitHub.Runner.Common
 {
     public interface ITraceManager : IDisposable
     {

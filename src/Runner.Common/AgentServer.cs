@@ -3,11 +3,12 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using Runner.Common.Util;
+using GitHub.Runner.Common.Util;
 using GitHub.Services.WebApi;
 using GitHub.Services.Common;
+using GitHub.Runner.Sdk;
 
-namespace Runner.Common
+namespace GitHub.Runner.Common
 {
     public enum AgentConnectionType
     {

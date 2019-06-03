@@ -1,12 +1,13 @@
 ﻿using GitHub.DistributedTask.WebApi;
-using Runner.Common.Util;
-using Runner.Common.Worker;
+using GitHub.Runner.Common.Util;
+using GitHub.Runner.Sdk;
+using GitHub.Runner.Worker;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using Xunit;
 
-namespace Runner.Common.Tests.Worker
+namespace GitHub.Runner.Common.Tests.Worker
 {
     public sealed class VariablesL0
     {

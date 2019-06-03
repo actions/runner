@@ -1,14 +1,16 @@
 ﻿using GitHub.DistributedTask.WebApi;
 using Pipelines = GitHub.DistributedTask.Pipelines;
-using Runner.Common.Util;
+using GitHub.Runner.Common.Util;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using GitHub.Services.WebApi;
+using GitHub.Runner.Common;
+using GitHub.Runner.Sdk;
 
-namespace Runner.Common.Worker
+namespace GitHub.Runner.Worker
 {
     [ServiceLocator(Default = typeof(Worker))]
     public interface IWorker : IAgentService

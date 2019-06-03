@@ -2,7 +2,7 @@
 // using System.Linq;
 // using Xunit;
 
-// namespace Runner.Common.Tests.Worker
+// namespace GitHub.Runner.Common.Tests.Worker
 // {
 //     public class LoggingCommandL0
 //     {

@@ -1,7 +1,7 @@
 ﻿using GitHub.DistributedTask.WebApi;
 using Pipelines = GitHub.DistributedTask.Pipelines;
-using Runner.Common.Worker;
-using Runner.Common.Worker.Build;
+using GitHub.Runner.Worker;
+using GitHub.Runner.Worker.Build;
 using Moq;
 using Newtonsoft.Json;
 using System;
@@ -13,7 +13,7 @@ using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using Xunit;
 
-namespace Runner.Common.Tests.Worker.Build
+namespace GitHub.Runner.Common.Tests.Worker.Build
 {
     public sealed class TrackingManagerL0
     {

@@ -2,11 +2,11 @@
 // using System.Collections.Generic;
 // using System.Runtime.CompilerServices;
 // using GitHub.DistributedTask.WebApi;
-// using Runner.Common.Worker;
+// using GitHub.Runner.Worker;
 // using Moq;
 // using Xunit;
 
-// namespace Runner.Common.Tests.Worker
+// namespace GitHub.Runner.Common.Tests.Worker
 // {
 //     public sealed class TaskCommandExtensionL0
 //     {

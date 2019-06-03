@@ -8,13 +8,14 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
-using Runner.Common.Util;
+using GitHub.Runner.Common.Util;
 using Newtonsoft.Json;
 using System.IO;
 using System.Runtime.Serialization;
 using System.Security.Cryptography;
+using GitHub.Runner.Sdk;
 
-namespace Runner.Common
+namespace GitHub.Runner.Common
 {
     // The purpose of this class is to store user's credential during agent configuration and retrive the credential back at runtime.
 #if OS_WINDOWS

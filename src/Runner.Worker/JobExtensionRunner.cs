@@ -2,15 +2,15 @@
 using System.Threading.Tasks;
 using GitHub.DistributedTask.Expressions;
 using GitHub.DistributedTask.Pipelines.ObjectTemplating;
-using Runner.Common.Util;
+using GitHub.Runner.Common.Util;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 using System.Linq;
 using GitHub.DistributedTask.WebApi;
-using Runner.Common.Worker.Handlers;
+using GitHub.Runner.Worker.Handlers;
 using System.Collections.Generic;
 using System.IO;
 
-namespace Runner.Common.Worker
+namespace GitHub.Runner.Worker
 {
     public sealed class JobExtensionRunner : IStep
     {

@@ -7,15 +7,17 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
-using Runner.Common.Worker.Container;
+using GitHub.Runner.Worker.Container;
 using GitHub.Services.WebApi;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.WebApi;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 using ObjectTemplating = GitHub.DistributedTask.ObjectTemplating;
-using Runner.Common.Util;
+using GitHub.Runner.Common.Util;
+using GitHub.Runner.Common;
+using GitHub.Runner.Sdk;
 
-namespace Runner.Common.Worker
+namespace GitHub.Runner.Worker
 {
     public class ExecutionContextType
     {

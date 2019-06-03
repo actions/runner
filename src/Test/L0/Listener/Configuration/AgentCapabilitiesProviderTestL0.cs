@@ -1,5 +1,5 @@
-﻿using Runner.Common.Capabilities;
-using Runner.Common.Listener.Configuration;
+﻿using GitHub.Runner.Common.Capabilities;
+using GitHub.Runner.Listener.Configuration;
 using Moq;
 using System;
 using System.Collections.Generic;
@@ -8,7 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 
-namespace Runner.Common.Tests.Listener
+namespace GitHub.Runner.Common.Tests.Listener
 {
     public sealed class AgentCapabilitiesProviderTestL0
     {

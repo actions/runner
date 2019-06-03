@@ -5,13 +5,15 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.WebApi;
-using Runner.Common.Util;
+using GitHub.Runner.Common.Util;
 using GitHub.Services.WebApi;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 using System.Linq;
 using GitHub.Services.Common;
+using GitHub.Runner.Common;
+using GitHub.Runner.Sdk;
 
-namespace Runner.Common.Listener
+namespace GitHub.Runner.Listener
 {
     [ServiceLocator(Default = typeof(JobDispatcher))]
     public interface IJobDispatcher : IAgentService

@@ -1,6 +1,6 @@
 ﻿using GitHub.DistributedTask.WebApi;
-using Runner.Common.Capabilities;
-using Runner.Common.Util;
+using GitHub.Runner.Common.Capabilities;
+using GitHub.Runner.Common.Util;
 using GitHub.Services.Common;
 using GitHub.Services.OAuth;
 using GitHub.Services.WebApi;
@@ -14,8 +14,10 @@ using System.Security.Principal;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Runtime.InteropServices;
+using GitHub.Runner.Common;
+using GitHub.Runner.Sdk;
 
-namespace Runner.Common.Listener.Configuration
+namespace GitHub.Runner.Listener.Configuration
 {
     [ServiceLocator(Default = typeof(ConfigurationManager))]
     public interface IConfigurationManager : IAgentService

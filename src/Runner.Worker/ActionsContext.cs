@@ -1,12 +1,14 @@
 ﻿using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.WebApi;
-using Runner.Common.Util;
+using GitHub.Runner.Common.Util;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
+using GitHub.Runner.Common;
+using GitHub.Runner.Sdk;
 
-namespace Runner.Common.Worker
+namespace GitHub.Runner.Worker
 {
     public sealed class ActionsContext : DictionaryContextData
     {

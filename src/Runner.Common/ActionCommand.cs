@@ -1,8 +1,9 @@
-﻿using Runner.Common.Util;
+﻿using GitHub.Runner.Common.Util;
+using GitHub.Runner.Sdk;
 using System;
 using System.Collections.Generic;
 
-namespace Runner.Common
+namespace GitHub.Runner.Common
 {
     public sealed class ActionCommand
     {

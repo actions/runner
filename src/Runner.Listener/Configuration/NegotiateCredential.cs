@@ -1,10 +1,12 @@
-﻿using Runner.Common.Util;
+﻿using GitHub.Runner.Common;
+using GitHub.Runner.Common.Util;
+using GitHub.Runner.Sdk;
 using GitHub.Services.Client;
 using GitHub.Services.Common;
 using System;
 using System.Net;
 
-namespace Runner.Common.Listener.Configuration
+namespace GitHub.Runner.Listener.Configuration
 {
     public sealed class NegotiateCredential : CredentialProvider
     {

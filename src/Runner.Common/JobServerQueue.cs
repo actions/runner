@@ -1,5 +1,5 @@
 ﻿using GitHub.DistributedTask.WebApi;
-using Runner.Common.Util;
+using GitHub.Runner.Common.Util;
 using System;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
@@ -8,8 +8,9 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Pipelines = GitHub.DistributedTask.Pipelines;
+using GitHub.Runner.Sdk;
 
-namespace Runner.Common
+namespace GitHub.Runner.Common
 {
     [ServiceLocator(Default = typeof(JobServerQueue))]
     public interface IJobServerQueue : IAgentService, IThrottlingReporter

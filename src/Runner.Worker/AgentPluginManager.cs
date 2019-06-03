@@ -1,6 +1,6 @@
 ﻿using GitHub.DistributedTask.WebApi;
-using Runner.Sdk;
-using Runner.Common.Util;
+using GitHub.Runner.Sdk;
+using GitHub.Runner.Common.Util;
 using GitHub.Services.WebApi;
 using System;
 using System.Collections.Generic;
@@ -12,8 +12,9 @@ using System.Threading.Tasks;
 using System.Text;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using System.Threading.Channels;
+using GitHub.Runner.Common;
 
-namespace Runner.Common.Worker
+namespace GitHub.Runner.Worker
 {
     [ServiceLocator(Default = typeof(AgentPluginManager))]
     public interface IAgentPluginManager : IAgentService
@@ -29,7 +30,7 @@ namespace Runner.Common.Worker
 
         private readonly HashSet<string> _taskPlugins = new HashSet<string>()
         {
-            "Runner.Plugins.Repository.CheckoutTask, Runner.Plugins"
+            "GitHub.Runner.Plugins.Repository.CheckoutTask, Runner.Plugins"
         };
 
         private readonly Dictionary<string, AgentActionPluginInfo> _actionPlugins = new Dictionary<string, AgentActionPluginInfo>(StringComparer.OrdinalIgnoreCase)
@@ -41,7 +42,7 @@ namespace Runner.Common.Worker
                     Author = "GitHub",
                     Description = "Get sources from a Git repository",
                     FriendlyName = "Get sources",
-                    PluginTypeName = "Runner.Plugins.Repository.CheckoutTask, Runner.Plugins"
+                    PluginTypeName = "GitHub.Runner.Plugins.Repository.CheckoutTask, Runner.Plugins"
                 }
             }
         };
@@ -137,8 +138,8 @@ namespace Runner.Common.Worker
             ArgUtil.Directory(workingDirectory, nameof(workingDirectory));
 
             // Runner.PluginHost
-            string file = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Bin), $"Runner.PluginHost{Util.IOUtil.ExeExtension}");
-            ArgUtil.File(file, $"Runner.PluginHost{Util.IOUtil.ExeExtension}");
+            string file = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Bin), $"Runner.PluginHost{IOUtil.ExeExtension}");
+            ArgUtil.File(file, $"Runner.PluginHost{IOUtil.ExeExtension}");
 
             // Runner.PluginHost's arguments
             string arguments = $"task \"{plugin}\"";

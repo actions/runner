@@ -1,9 +1,9 @@
 ﻿using System;
 using System.IO;
 using System.Linq;
-using Runner.Sdk;
+using GitHub.Runner.Sdk;
 
-namespace Runner.Common.Util
+namespace GitHub.Runner.Sdk
 {
     public static class WhichUtil
     {

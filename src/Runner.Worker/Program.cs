@@ -1,9 +1,11 @@
-﻿using Runner.Common.Util;
+﻿using GitHub.Runner.Common.Util;
 using System;
 using System.Globalization;
 using System.Threading.Tasks;
+using GitHub.Runner.Common;
+using GitHub.Runner.Sdk;
 
-namespace Runner.Common.Worker
+namespace GitHub.Runner.Worker
 {
     public static class Program
     {

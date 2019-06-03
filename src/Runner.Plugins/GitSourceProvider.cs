@@ -7,14 +7,12 @@ using System.IO;
 using System.Text.RegularExpressions;
 using System.Text;
 using System.Diagnostics;
-using Runner.Sdk;
+using GitHub.Runner.Sdk;
 using System.Linq;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Services.WebApi;
-using Runner.Common.Util;
-using Runner.Common;
 
-namespace Runner.Plugins.Repository
+namespace GitHub.Runner.Plugins.Repository
 {
     public sealed class GitHubSourceProvider : ISourceProvider
     {

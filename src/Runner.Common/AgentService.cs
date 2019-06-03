@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Runner.Common
+namespace GitHub.Runner.Common
 {
 
     [AttributeUsage(AttributeTargets.Interface, Inherited = false, AllowMultiple = false)]

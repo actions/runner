@@ -1,6 +1,6 @@
 ﻿// using GitHub.DistributedTask.WebApi;
-// using Runner.Common.Util;
-// using Runner.Common.Worker;
+// using GitHub.Runner.Common.Util;
+// using GitHub.Runner.Worker;
 // using Moq;
 // using System;
 // using System.Collections.Generic;
@@ -12,7 +12,7 @@
 // using Xunit;
 // using Pipelines = GitHub.DistributedTask.Pipelines;
 
-// namespace Runner.Common.Tests.Worker
+// namespace GitHub.Runner.Common.Tests.Worker
 // {
 //     public sealed class TaskManagerL0
 //     {

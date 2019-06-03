@@ -1,6 +1,6 @@
 ﻿using GitHub.DistributedTask.WebApi;
-using Runner.Common.Listener.Configuration;
-using Runner.Common.Util;
+using GitHub.Runner.Listener.Configuration;
+using GitHub.Runner.Common.Util;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
@@ -9,8 +9,10 @@ using Pipelines = GitHub.DistributedTask.Pipelines;
 using System.IO;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using GitHub.Runner.Common;
+using GitHub.Runner.Sdk;
 
-namespace Runner.Common.Listener
+namespace GitHub.Runner.Listener
 {
     [ServiceLocator(Default = typeof(Agent))]
     public interface IAgent : IAgentService

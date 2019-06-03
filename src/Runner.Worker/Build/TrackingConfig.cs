@@ -1,13 +1,15 @@
 ﻿using GitHub.DistributedTask.Pipelines;
 using GitHub.DistributedTask.WebApi;
-using Runner.Common.Util;
+using GitHub.Runner.Common.Util;
 using Newtonsoft.Json;
 using System;
 using System.ComponentModel;
 using System.Globalization;
 using System.IO;
+using GitHub.Runner.Common;
+using GitHub.Runner.Sdk;
 
-namespace Runner.Common.Worker.Build
+namespace GitHub.Runner.Worker.Build
 {
     public sealed class TrackingConfig
     {

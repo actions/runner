@@ -1,4 +1,4 @@
-﻿using Runner.Common.Util;
+﻿using GitHub.Runner.Common.Util;
 using System;
 using System.IO;
 using System.Linq;
@@ -9,8 +9,10 @@ using GitHub.DistributedTask.Pipelines;
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
+using GitHub.Runner.Common;
+using GitHub.Runner.Sdk;
 
-namespace Runner.Common.Worker.Build
+namespace GitHub.Runner.Worker.Build
 {
     [ServiceLocator(Default = typeof(BuildDirectoryManager))]
     public interface IBuildDirectoryManager : IAgentService

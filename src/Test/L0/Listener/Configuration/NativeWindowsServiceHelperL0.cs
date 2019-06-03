@@ -2,12 +2,12 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Runner.Common.Listener.Configuration;
+using GitHub.Runner.Listener.Configuration;
 using Moq;
 using Xunit;
 using System.Security.Principal;
-using Runner.Common;
-using Runner.Common.Tests;
+using GitHub.Runner.Common;
+using GitHub.Runner.Common.Tests;
 
 namespace Test.L0.Listener.Configuration
 {

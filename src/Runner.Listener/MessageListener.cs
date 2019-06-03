@@ -1,7 +1,7 @@
 ﻿using GitHub.DistributedTask.WebApi;
-using Runner.Common.Capabilities;
-using Runner.Common.Listener.Configuration;
-using Runner.Common.Util;
+using GitHub.Runner.Common.Capabilities;
+using GitHub.Runner.Listener.Configuration;
+using GitHub.Runner.Common.Util;
 using GitHub.Services.Common;
 using System;
 using System.Collections.Generic;
@@ -14,8 +14,10 @@ using GitHub.Services.WebApi;
 using GitHub.Services.OAuth;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using GitHub.Runner.Common;
+using GitHub.Runner.Sdk;
 
-namespace Runner.Common.Listener
+namespace GitHub.Runner.Listener
 {
     [ServiceLocator(Default = typeof(MessageListener))]
     public interface IMessageListener : IAgentService

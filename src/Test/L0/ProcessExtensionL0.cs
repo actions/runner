@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using System.Linq;
 using Xunit;
 
-namespace Runner.Common.Tests
+namespace GitHub.Runner.Common.Tests
 {
     public sealed class ProcessExtensionL0
     {

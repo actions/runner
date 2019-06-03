@@ -7,7 +7,7 @@
     <Message Text="Building $(Product): $(GitInfoCommitHash) --- $(PackageRuntime)" Importance="high"/>
 
     <ItemGroup>
-        <BuildConstants Include="namespace Runner.Common"/>
+        <BuildConstants Include="namespace GitHub.Runner.Sdk"/>
         <BuildConstants Include="{"/>
         <BuildConstants Include="%20%20%20%20public static class BuildConstants"/>
         <BuildConstants Include="%20%20%20%20{"/>

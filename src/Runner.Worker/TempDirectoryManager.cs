@@ -1,9 +1,11 @@
-﻿using Runner.Common.Util;
+﻿using GitHub.Runner.Common.Util;
 using System;
 using System.IO;
 using System.Threading;
+using GitHub.Runner.Common;
+using GitHub.Runner.Sdk;
 
-namespace Runner.Common.Worker
+namespace GitHub.Runner.Worker
 {
     [ServiceLocator(Default = typeof(TempDirectoryManager))]
     public interface ITempDirectoryManager : IAgentService

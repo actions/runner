@@ -7,12 +7,11 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.IO;
-using Runner.Sdk;
-using Runner.Common.Util;
+using GitHub.Runner.Sdk;
 using GitHub.Services.Common;
 using GitHub.DistributedTask.Pipelines.ContextData;
 
-namespace Runner.Plugins.Repository
+namespace GitHub.Runner.Plugins.Repository
 {
     public class GitCliManager
     {

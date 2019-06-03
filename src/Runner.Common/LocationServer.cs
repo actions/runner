@@ -4,7 +4,7 @@ using GitHub.Services.WebApi;
 using GitHub.Services.Location.Client;
 using GitHub.Services.Location;
 
-namespace Runner.Common
+namespace GitHub.Runner.Common
 {
     [ServiceLocator(Default = typeof(LocationServer))]
     public interface ILocationServer : IAgentService

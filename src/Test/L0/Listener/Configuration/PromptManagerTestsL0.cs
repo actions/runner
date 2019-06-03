@@ -1,11 +1,12 @@
-﻿using Runner.Common.Listener.Configuration;
-using Runner.Common.Util;
+﻿using GitHub.Runner.Listener.Configuration;
+using GitHub.Runner.Common.Util;
 using Moq;
 using System;
 using System.Collections.Generic;
 using Xunit;
+using GitHub.Runner.Sdk;
 
-namespace Runner.Common.Tests.Listener.Configuration
+namespace GitHub.Runner.Common.Tests.Listener.Configuration
 {
     public class PromptManagerTestsL0
     {

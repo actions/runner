@@ -1,7 +1,9 @@
-﻿using Runner.Common.Util;
+﻿using GitHub.Runner.Common;
+using GitHub.Runner.Common.Util;
+using GitHub.Runner.Sdk;
 using GitHub.Services.Common;
 
-namespace Runner.Common.Listener.Configuration
+namespace GitHub.Runner.Listener.Configuration
 {
     public sealed class IntegratedCredential : CredentialProvider
     {

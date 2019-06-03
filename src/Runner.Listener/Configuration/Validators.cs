@@ -1,9 +1,10 @@
-﻿using Runner.Common.Util;
+﻿using GitHub.Runner.Common.Util;
+using GitHub.Runner.Sdk;
 using System;
 using System.IO;
 using System.Security.Principal;
 
-namespace Runner.Common.Listener.Configuration
+namespace GitHub.Runner.Listener.Configuration
 {
     public static class Validators
     {

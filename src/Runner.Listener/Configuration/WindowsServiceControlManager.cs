@@ -5,9 +5,11 @@ using System.Linq;
 using System.Security;
 using System.Security.Principal;
 using System.Text;
-using Runner.Common.Util;
+using GitHub.Runner.Common.Util;
+using GitHub.Runner.Common;
+using GitHub.Runner.Sdk;
 
-namespace Runner.Common.Listener.Configuration
+namespace GitHub.Runner.Listener.Configuration
 {
     public class WindowsServiceControlManager : ServiceControlManager, IWindowsServiceControlManager
     {

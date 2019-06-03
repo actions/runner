@@ -1,5 +1,5 @@
 ﻿using GitHub.DistributedTask.WebApi;
-using Runner.Common.Util;
+using GitHub.Runner.Common.Util;
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -9,8 +9,10 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using GitHub.Services.WebApi;
+using GitHub.Runner.Common;
+using GitHub.Runner.Sdk;
 
-namespace Runner.Common.Listener
+namespace GitHub.Runner.Listener
 {
     [ServiceLocator(Default = typeof(SelfUpdater))]
     public interface ISelfUpdater : IAgentService

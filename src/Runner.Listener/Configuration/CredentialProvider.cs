@@ -4,12 +4,14 @@ using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using Microsoft.IdentityModel.Clients.ActiveDirectory;
-using Runner.Common.Util;
+using GitHub.Runner.Common.Util;
 using GitHub.Services.Client;
 using GitHub.Services.Common;
 using GitHub.Services.WebApi;
+using GitHub.Runner.Common;
+using GitHub.Runner.Sdk;
 
-namespace Runner.Common.Listener.Configuration
+namespace GitHub.Runner.Listener.Configuration
 {
     public interface ICredentialProvider
     {

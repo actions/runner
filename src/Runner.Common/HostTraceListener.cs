@@ -1,11 +1,12 @@
-﻿using Runner.Common.Util;
+﻿using GitHub.Runner.Common.Util;
+using GitHub.Runner.Sdk;
 using System;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Text;
 
-namespace Runner.Common
+namespace GitHub.Runner.Common
 {
     public sealed class HostTraceListener : TextWriterTraceListener
     {

@@ -8,13 +8,12 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.WebApi;
-using Runner.Common.Util;
 using GitHub.Services.Common;
 using GitHub.Services.WebApi;
 using Newtonsoft.Json;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 
-namespace Runner.Sdk
+namespace GitHub.Runner.Sdk
 {
     public interface IAgentLogPlugin
     {

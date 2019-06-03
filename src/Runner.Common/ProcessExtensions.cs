@@ -1,4 +1,5 @@
-﻿using Runner.Common.Util;
+﻿using GitHub.Runner.Common.Util;
+using GitHub.Runner.Sdk;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -11,7 +12,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Runner.Common
+namespace GitHub.Runner.Common
 {
 #if OS_WINDOWS
     public static class WindowsProcessExtensions

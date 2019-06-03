@@ -26,7 +26,7 @@
 
 using GitHub.DistributedTask.WebApi;
 using Pipelines = GitHub.DistributedTask.Pipelines;
-using Runner.Common.Util;
+using GitHub.Runner.Common.Util;
 using GitHub.Services.Common;
 using GitHub.Services.WebApi;
 using System;
@@ -39,12 +39,14 @@ using System.Threading.Tasks;
 using System.Net.Http;
 using System.Text;
 using System.IO.Compression;
-using Runner.Common.Worker.Build;
+using GitHub.Runner.Worker.Build;
 using System.Diagnostics;
 using Newtonsoft.Json.Linq;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
+using GitHub.Runner.Common;
+using GitHub.Runner.Sdk;
 
-namespace Runner.Common.Worker
+namespace GitHub.Runner.Worker
 {
     [ServiceLocator(Default = typeof(JobRunner))]
     public interface IJobRunner : IAgentService

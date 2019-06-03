@@ -11,10 +11,12 @@ using System.Security.AccessControl;
 using System.Security.Principal;
 using System.ServiceProcess;
 using System.Threading;
-using Runner.Common.Util;
+using GitHub.Runner.Common.Util;
 using Microsoft.Win32;
+using GitHub.Runner.Common;
+using GitHub.Runner.Sdk;
 
-namespace Runner.Common.Listener.Configuration
+namespace GitHub.Runner.Listener.Configuration
 {
     [ServiceLocator(Default = typeof(NativeWindowsServiceHelper))]
     public interface INativeWindowsServiceHelper : IAgentService

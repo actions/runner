@@ -1,4 +1,4 @@
-﻿using Runner.Common.Util;
+﻿using GitHub.Runner.Common.Util;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
@@ -7,12 +7,13 @@ using System.Linq;
 using System;
 using Newtonsoft.Json.Linq;
 using System.Text.RegularExpressions;
-using Runner.Common.Worker.Container;
-using Runner.Sdk;
+using GitHub.Runner.Worker.Container;
+using GitHub.Runner.Sdk;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Services.WebApi;
+using GitHub.Runner.Common;
 
-namespace Runner.Common.Worker.Handlers
+namespace GitHub.Runner.Worker.Handlers
 {
     [ServiceLocator(Default = typeof(AgentPluginHandler))]
     public interface IAgentPluginHandler : IHandler

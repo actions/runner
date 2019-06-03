@@ -1,8 +1,9 @@
-﻿using Runner.Common.Util;
+﻿using GitHub.Runner.Common.Util;
+using GitHub.Runner.Sdk;
 using System;
 using Xunit;
 
-namespace Runner.Common.Tests.Util
+namespace GitHub.Runner.Common.Tests.Util
 {
     public sealed class ArgUtilL0
     {

@@ -3,9 +3,9 @@ using System;
 using System.IO;
 using System.Collections.Generic;
 using System.Linq;
-using Runner.Common.Util;
+using GitHub.Runner.Common.Util;
 
-namespace Runner.Common.Listener.Configuration
+namespace GitHub.Runner.Listener.Configuration
 {
     public class OsxServiceControlManager : ServiceControlManager, ILinuxServiceControlManager
     {

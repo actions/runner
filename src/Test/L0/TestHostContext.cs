@@ -1,4 +1,4 @@
-﻿using Runner.Common.Util;
+﻿using GitHub.Runner.Common.Util;
 using System;
 using System.Collections.Concurrent;
 using System.Globalization;
@@ -11,8 +11,9 @@ using System.Reflection;
 using System.Collections.Generic;
 using GitHub.DistributedTask.Logging;
 using System.Net.Http.Headers;
+using GitHub.Runner.Sdk;
 
-namespace Runner.Common.Tests
+namespace GitHub.Runner.Common.Tests
 {
     public sealed class TestHostContext : IHostContext, IDisposable
     {

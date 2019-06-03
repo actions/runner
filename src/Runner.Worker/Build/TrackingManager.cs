@@ -1,5 +1,5 @@
 ﻿using GitHub.DistributedTask.WebApi;
-using Runner.Common.Util;
+using GitHub.Runner.Common.Util;
 using Newtonsoft.Json;
 using System;
 using System.IO;
@@ -8,8 +8,10 @@ using System.Linq;
 using System.Threading;
 using System.Globalization;
 using GitHub.DistributedTask.Pipelines;
+using GitHub.Runner.Common;
+using GitHub.Runner.Sdk;
 
-namespace Runner.Common.Worker.Build
+namespace GitHub.Runner.Worker.Build
 {
     [ServiceLocator(Default = typeof(TrackingManager))]
     public interface ITrackingManager : IAgentService

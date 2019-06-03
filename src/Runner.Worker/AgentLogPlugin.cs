@@ -7,13 +7,14 @@ using System.Text;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
-using Runner.Sdk;
+using GitHub.Runner.Sdk;
 using GitHub.DistributedTask.WebApi;
-using Runner.Common.Util;
+using GitHub.Runner.Common.Util;
 using GitHub.Services.WebApi;
 using Pipelines = GitHub.DistributedTask.Pipelines;
+using GitHub.Runner.Common;
 
-namespace Runner.Common.Worker
+namespace GitHub.Runner.Worker
 {
     [ServiceLocator(Default = typeof(AgentLogPlugin))]
     public interface IAgentLogPlugin : IAgentService
@@ -86,8 +87,8 @@ namespace Runner.Common.Worker
                 ArgUtil.Directory(workingDirectory, nameof(workingDirectory));
 
                 // Runner.PluginHost
-                string file = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Bin), $"Runner.PluginHost{Util.IOUtil.ExeExtension}");
-                ArgUtil.File(file, $"Runner.PluginHost{Util.IOUtil.ExeExtension}");
+                string file = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Bin), $"Runner.PluginHost{IOUtil.ExeExtension}");
+                ArgUtil.File(file, $"Runner.PluginHost{IOUtil.ExeExtension}");
 
                 // Runner.PluginHost's arguments
                 string arguments = $"log \"{_instanceId.ToString("D")}\"";

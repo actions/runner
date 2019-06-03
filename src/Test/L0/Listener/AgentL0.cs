@@ -1,6 +1,6 @@
 ﻿using GitHub.DistributedTask.WebApi;
-using Runner.Common.Listener;
-using Runner.Common.Listener.Configuration;
+using GitHub.Runner.Listener;
+using GitHub.Runner.Listener.Configuration;
 using Moq;
 using System;
 using System.Collections.Generic;
@@ -9,9 +9,9 @@ using System.Threading.Tasks;
 using Xunit;
 using GitHub.Services.WebApi;
 using Pipelines = GitHub.DistributedTask.Pipelines;
-using Runner.Common.Util;
+using GitHub.Runner.Common.Util;
 
-namespace Runner.Common.Tests.Listener
+namespace GitHub.Runner.Common.Tests.Listener
 {
     public sealed class AgentL0
     {

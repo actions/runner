@@ -10,9 +10,9 @@ using System.Text;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
-using Runner.Sdk;
+using GitHub.Runner.Sdk;
 
-namespace Runner.Common.Util
+namespace GitHub.Runner.Sdk
 {
 
     // The implementation of the process invoker does not hook up DataReceivedEvent and ErrorReceivedEvent of Process,

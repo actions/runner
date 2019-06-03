@@ -1,8 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using GitHub.Runner.Common;
 using GitHub.Services.Common;
 
-namespace Runner.Common.Listener.Configuration
+namespace GitHub.Runner.Listener.Configuration
 {
     // TODO: Refactor extension manager to enable using it from the agent process.
     [ServiceLocator(Default = typeof(CredentialManager))]

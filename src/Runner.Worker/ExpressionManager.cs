@@ -5,10 +5,12 @@ using System.Linq;
 using System.Text;
 using GitHub.DistributedTask.Expressions;
 using GitHub.DistributedTask.WebApi;
-using Runner.Common.Util;
+using GitHub.Runner.Common.Util;
 using ObjectTemplating = GitHub.DistributedTask.ObjectTemplating;
+using GitHub.Runner.Common;
+using GitHub.Runner.Sdk;
 
-namespace Runner.Common.Worker
+namespace GitHub.Runner.Worker
 {
     [ServiceLocator(Default = typeof(ExpressionManager))]
     public interface IExpressionManager : IAgentService
@@ -71,7 +73,7 @@ namespace Runner.Common.Worker
             return result;
         }
 
-        private sealed class TraceWriter : ITraceWriter
+        private sealed class TraceWriter : DistributedTask.Expressions.ITraceWriter
         {
             private readonly IExecutionContext _executionContext;
             private readonly Tracing _trace;

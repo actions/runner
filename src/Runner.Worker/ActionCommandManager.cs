@@ -1,12 +1,14 @@
 ﻿using GitHub.DistributedTask.Pipelines;
 using GitHub.DistributedTask.WebApi;
-using Runner.Common.Util;
-using Runner.Common.Worker.Build;
+using GitHub.Runner.Common.Util;
+using GitHub.Runner.Worker.Build;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using GitHub.Runner.Common;
+using GitHub.Runner.Sdk;
 
-namespace Runner.Common.Worker
+namespace GitHub.Runner.Worker
 {
     [ServiceLocator(Default = typeof(ActionCommandManager))]
     public interface IActionCommandManager : IAgentService

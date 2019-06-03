@@ -1,12 +1,13 @@
-﻿using Runner.Common.Util;
+﻿using GitHub.Runner.Common.Util;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using Xunit;
 using System;
+using GitHub.Runner.Sdk;
 
-namespace Runner.Common.Tests
+namespace GitHub.Runner.Common.Tests
 {
     public sealed class LocStringsL0
     {
@@ -17,7 +18,7 @@ namespace Runner.Common.Tests
         [Trait("Category", "Common")]
         public void IsNotMissingCommonLocStrings()
         {
-            ValidateLocStrings(new TestHostContext(this), project: "Runner.Common");
+            ValidateLocStrings(new TestHostContext(this), project: "GitHub.Runner.Common");
         }
 
         [Fact]
@@ -79,7 +80,7 @@ namespace Runner.Common.Tests
             // when recursively searching due to parallel tests are deleting temp folders (DirectoryNotFoundException).
             var keys = new List<string>();
             string[] sourceFiles =
-                Directory.GetFiles(TestUtil.GetProjectPath("Runner.Common"), "*.cs", SearchOption.AllDirectories)
+                Directory.GetFiles(TestUtil.GetProjectPath("GitHub.Runner.Common"), "*.cs", SearchOption.AllDirectories)
                 .Concat(Directory.GetFiles(TestUtil.GetProjectPath("Runner.Listener"), "*.cs", SearchOption.AllDirectories))
                 .Concat(Directory.GetFiles(TestUtil.GetProjectPath("Runner.Worker"), "*.cs", SearchOption.AllDirectories))
                 .Concat(Directory.GetFiles(TestUtil.GetProjectPath("Runner.Plugins"), "*.cs", SearchOption.AllDirectories))

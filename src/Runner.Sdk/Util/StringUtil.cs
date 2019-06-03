@@ -8,7 +8,7 @@ using System.IO;
 using System.Reflection;
 using System.Text;
 
-namespace Runner.Common.Util
+namespace GitHub.Runner.Sdk
 {
     public static class StringUtil
     {

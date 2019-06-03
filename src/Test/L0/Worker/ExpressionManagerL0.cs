@@ -2,12 +2,12 @@
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using GitHub.DistributedTask.WebApi;
-using Runner.Common.Worker;
+using GitHub.Runner.Worker;
 using Moq;
 using Xunit;
 using GitHub.DistributedTask.Expressions;
 
-namespace Runner.Common.Tests.Worker
+namespace GitHub.Runner.Common.Tests.Worker
 {
     public sealed class ExpressionManagerL0
     {

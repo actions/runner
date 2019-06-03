@@ -6,14 +6,15 @@ using System.Threading.Tasks;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 using System.Linq;
 using System.Threading;
-using Runner.Common.Util;
-using Runner.Common.Worker.Container;
-using Runner.Common.Worker.Handlers;
+using GitHub.Runner.Common.Util;
+using GitHub.Runner.Worker.Container;
+using GitHub.Runner.Worker.Handlers;
 using GitHub.Services.Common;
 using Microsoft.Win32;
+using GitHub.Runner.Common;
+using GitHub.Runner.Sdk;
 
-
-namespace Runner.Common.Worker
+namespace GitHub.Runner.Worker
 {
     [ServiceLocator(Default = typeof(ContainerOperationProvider))]
     public interface IContainerOperationProvider : IAgentService

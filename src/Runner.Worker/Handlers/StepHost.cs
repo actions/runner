@@ -6,12 +6,14 @@ using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.WebApi;
-using Runner.Common.Util;
-using Runner.Common.Worker.Container;
+using GitHub.Runner.Common.Util;
+using GitHub.Runner.Worker.Container;
 using GitHub.Services.WebApi;
 using Newtonsoft.Json;
+using GitHub.Runner.Common;
+using GitHub.Runner.Sdk;
 
-namespace Runner.Common.Worker.Handlers
+namespace GitHub.Runner.Worker.Handlers
 {
     public interface IStepHost : IAgentService
     {

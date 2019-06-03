@@ -4,11 +4,13 @@ using System.Threading.Tasks;
 using GitHub.DistributedTask.Expressions;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.Pipelines.ObjectTemplating;
-using Runner.Common.Util;
-using Runner.Common.Worker.Handlers;
+using GitHub.Runner.Common.Util;
+using GitHub.Runner.Worker.Handlers;
 using Pipelines = GitHub.DistributedTask.Pipelines;
+using GitHub.Runner.Common;
+using GitHub.Runner.Sdk;
 
-namespace Runner.Common.Worker
+namespace GitHub.Runner.Worker
 {
     [ServiceLocator(Default = typeof(ActionRunner))]
     public interface IActionRunner : IStep, IAgentService

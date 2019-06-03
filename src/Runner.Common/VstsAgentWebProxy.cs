@@ -1,13 +1,13 @@
-﻿using Runner.Common.Util;
+﻿using GitHub.Runner.Common.Util;
 using System;
 using System.Linq;
 using System.Net;
 using System.IO;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
-using Runner.Sdk;
+using GitHub.Runner.Sdk;
 
-namespace Runner.Common
+namespace GitHub.Runner.Common
 {
     [ServiceLocator(Default = typeof(VstsAgentWebProxy))]
     public interface IVstsAgentWebProxy : IAgentService

@@ -9,9 +9,9 @@ using Xunit;
 using System.Threading;
 using System.Collections.ObjectModel;
 using Pipelines = GitHub.DistributedTask.Pipelines;
-using Runner.Sdk;
+using GitHub.Runner.Sdk;
 
-namespace Runner.Common.Tests.LogPluginHost
+namespace GitHub.Runner.Common.Tests.LogPluginHost
 {
     public sealed class LogPluginHostL0
     {

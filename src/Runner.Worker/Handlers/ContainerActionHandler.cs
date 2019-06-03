@@ -1,13 +1,15 @@
-﻿using Runner.Common.Util;
+﻿using GitHub.Runner.Common.Util;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using System;
-using Runner.Common.Worker.Container;
+using GitHub.Runner.Worker.Container;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 using GitHub.DistributedTask.Pipelines.ContextData;
+using GitHub.Runner.Common;
+using GitHub.Runner.Sdk;
 
-namespace Runner.Common.Worker.Handlers
+namespace GitHub.Runner.Worker.Handlers
 {
     [ServiceLocator(Default = typeof(ContainerActionHandler))]
     public interface IContainerActionHandler : IHandler

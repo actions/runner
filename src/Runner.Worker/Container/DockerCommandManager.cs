@@ -6,9 +6,11 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
-using Runner.Common.Util;
+using GitHub.Runner.Common.Util;
+using GitHub.Runner.Common;
+using GitHub.Runner.Sdk;
 
-namespace Runner.Common.Worker.Container
+namespace GitHub.Runner.Worker.Container
 {
     [ServiceLocator(Default = typeof(DockerCommandManager))]
     public interface IDockerCommandManager : IAgentService

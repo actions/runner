@@ -1,6 +1,6 @@
 ﻿using GitHub.DistributedTask.WebApi;
 using Pipelines = GitHub.DistributedTask.Pipelines;
-using Runner.Common.Util;
+using GitHub.Runner.Common.Util;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -11,14 +11,16 @@ using System.Threading;
 using System.Threading.Tasks;
 using GitHub.Services.Common;
 using Newtonsoft.Json.Linq;
-using Runner.Common.Worker.Container;
+using GitHub.Runner.Worker.Container;
 using System.Net.Http;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
 using System.Net.Http.Headers;
 using System.Text;
+using GitHub.Runner.Common;
+using GitHub.Runner.Sdk;
 
-namespace Runner.Common.Worker
+namespace GitHub.Runner.Worker
 {
     [ServiceLocator(Default = typeof(TaskManager))]
     public interface ITaskManager : IAgentService

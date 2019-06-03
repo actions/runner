@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Net;
 using System.Text.RegularExpressions;
 
-namespace Runner.Sdk
+namespace GitHub.Runner.Sdk
 {
     public class AgentWebProxySettings
     {

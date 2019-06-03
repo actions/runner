@@ -1,11 +1,12 @@
-﻿using Runner.Common.Util;
+﻿using GitHub.Runner.Common.Util;
+using GitHub.Runner.Sdk;
 using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Runner.Common.Capabilities
+namespace GitHub.Runner.Common.Capabilities
 {
     public sealed class AgentCapabilitiesProvider : AgentService, ICapabilitiesProvider
     {

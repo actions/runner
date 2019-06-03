@@ -1,7 +1,7 @@
 ﻿using System;
 using System.IO;
 
-namespace Runner.Common.Util
+namespace GitHub.Runner.Sdk
 {
     public static class ArgUtil
     {

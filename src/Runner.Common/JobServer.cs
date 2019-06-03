@@ -6,7 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using GitHub.Services.WebApi;
 
-namespace Runner.Common
+namespace GitHub.Runner.Common
 {
     [ServiceLocator(Default = typeof(JobServer))]
     public interface IJobServer : IAgentService

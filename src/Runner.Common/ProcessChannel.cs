@@ -4,7 +4,7 @@ using System.IO.Pipes;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Runner.Common
+namespace GitHub.Runner.Common
 {
     public delegate void StartProcessDelegate(string pipeHandleOut, string pipeHandleIn);
 

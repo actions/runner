@@ -1,12 +1,13 @@
-﻿using Runner.Common.Util;
+﻿using GitHub.Runner.Common.Util;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using Xunit;
 using System;
+using GitHub.Runner.Sdk;
 
-namespace Runner.Common.Tests
+namespace GitHub.Runner.Common.Tests
 {
     public sealed class ProxyConfigL0
     {
@@ -14,8 +15,8 @@ namespace Runner.Common.Tests
         private static readonly Regex NewHttpClientRegex = new Regex("New\\s+HttpClient\\s*\\(\\s*\\)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private static readonly List<string> SkippedFiles = new List<string>()
         {
-            "Runner.Common\\HostContext.cs",
-            "Runner.Common/HostContext.cs"
+            "GitHub.Runner.Common\\HostContext.cs",
+            "GitHub.Runner.Common/HostContext.cs"
         };
 
         [Fact]
@@ -24,7 +25,7 @@ namespace Runner.Common.Tests
         public void IsNotUseRawHttpClientHandler()
         {
             List<string> sourceFiles = Directory.GetFiles(
-                    TestUtil.GetProjectPath("Runner.Common"),
+                    TestUtil.GetProjectPath("GitHub.Runner.Common"),
                     "*.cs",
                     SearchOption.AllDirectories).ToList();
             sourceFiles.AddRange(Directory.GetFiles(
@@ -71,7 +72,7 @@ namespace Runner.Common.Tests
         public void IsNotUseRawHttpClient()
         {
             List<string> sourceFiles = Directory.GetFiles(
-                    TestUtil.GetProjectPath("Runner.Common"),
+                    TestUtil.GetProjectPath("GitHub.Runner.Common"),
                     "*.cs",
                     SearchOption.AllDirectories).ToList();
             sourceFiles.AddRange(Directory.GetFiles(

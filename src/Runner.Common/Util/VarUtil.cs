@@ -3,10 +3,11 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using GitHub.Runner.Sdk;
 using GitHub.Services.WebApi;
 using Newtonsoft.Json.Linq;
 
-namespace Runner.Common.Util
+namespace GitHub.Runner.Common.Util
 {
     public static class VarUtil
     {

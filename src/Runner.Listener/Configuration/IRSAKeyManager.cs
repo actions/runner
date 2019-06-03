@@ -1,8 +1,9 @@
 ﻿using System;
 using System.Runtime.Serialization;
 using System.Security.Cryptography;
+using GitHub.Runner.Common;
 
-namespace Runner.Common.Listener.Configuration
+namespace GitHub.Runner.Listener.Configuration
 {
     /// <summary>
     /// Manages an RSA key for the agent using the most appropriate store for the target platform.

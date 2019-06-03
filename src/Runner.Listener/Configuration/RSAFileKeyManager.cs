@@ -3,9 +3,11 @@ using System;
 using System.IO;
 using System.Security.Cryptography;
 using System.Threading;
-using Runner.Common.Util;
+using GitHub.Runner.Common.Util;
+using GitHub.Runner.Common;
+using GitHub.Runner.Sdk;
 
-namespace Runner.Common.Listener.Configuration
+namespace GitHub.Runner.Listener.Configuration
 {
     public class RSAFileKeyManager : AgentService, IRSAKeyManager
     {

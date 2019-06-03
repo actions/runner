@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Linq;
-using Runner.Common.Util;
+using GitHub.Runner.Common;
+using GitHub.Runner.Common.Util;
+using GitHub.Runner.Sdk;
 
-namespace Runner.Common.Listener.Configuration
+namespace GitHub.Runner.Listener.Configuration
 {
 #if OS_WINDOWS
     [ServiceLocator(Default = typeof(WindowsServiceControlManager))]

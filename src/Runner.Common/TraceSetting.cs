@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.Serialization;
 
-namespace Runner.Common
+namespace GitHub.Runner.Common
 {
     [DataContract]
     public class TraceSetting

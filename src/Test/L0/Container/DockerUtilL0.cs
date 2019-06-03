@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using Runner.Common.Worker.Container;
+using GitHub.Runner.Worker.Container;
 using Xunit;
 
-namespace Runner.Common.Tests.Worker.Container
+namespace GitHub.Runner.Common.Tests.Worker.Container
 {
     public sealed class DockerUtilL0
     {

@@ -2,7 +2,7 @@
 using System.Runtime.CompilerServices;
 using Xunit;
 
-namespace Runner.Common.Tests
+namespace GitHub.Runner.Common.Tests
 {
     public sealed class CommandLineParserL0
     {

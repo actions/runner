@@ -1,13 +1,14 @@
 ﻿using GitHub.DistributedTask.WebApi;
-using Runner.Common.Util;
+using GitHub.Runner.Common.Util;
 using GitHub.Services.Common;
 using GitHub.Services.WebApi;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using GitHub.Runner.Sdk;
 
-namespace Runner.Common.Worker
+namespace GitHub.Runner.Worker
 {
     public class WorkerUtilities
     {

@@ -2,9 +2,11 @@
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
-using Runner.Common.Util;
+using GitHub.Runner.Common.Util;
+using GitHub.Runner.Common;
+using GitHub.Runner.Sdk;
 
-namespace Runner.Common.Listener.Configuration
+namespace GitHub.Runner.Listener.Configuration
 {
     public class RSAEncryptedFileKeyManager : AgentService, IRSAKeyManager
     {

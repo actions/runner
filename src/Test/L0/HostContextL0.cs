@@ -1,11 +1,11 @@
-﻿using Runner.Common.Util;
+﻿using GitHub.Runner.Common.Util;
 using System.IO;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using Xunit;
 
-namespace Runner.Common.Tests
+namespace GitHub.Runner.Common.Tests
 {
     public sealed class HostContextL0
     {

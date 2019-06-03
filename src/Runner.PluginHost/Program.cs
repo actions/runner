@@ -8,11 +8,10 @@ using System.Runtime.Loader;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Runner.Sdk;
+using GitHub.Runner.Sdk;
 using GitHub.DistributedTask.WebApi;
-using Runner.Common.Util;
 
-namespace Runner.PluginHost
+namespace GitHub.Runner.PluginHost
 {
     public static class Program
     {

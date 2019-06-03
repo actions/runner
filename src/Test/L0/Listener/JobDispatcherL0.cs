@@ -4,14 +4,14 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.WebApi;
-using Runner.Common.Listener;
+using GitHub.Runner.Listener;
 using GitHub.Services.WebApi;
 using Moq;
 using Xunit;
 
 using Pipelines = GitHub.DistributedTask.Pipelines;
 
-namespace Runner.Common.Tests.Listener
+namespace GitHub.Runner.Common.Tests.Listener
 {
     public sealed class JobDispatcherL0
     {

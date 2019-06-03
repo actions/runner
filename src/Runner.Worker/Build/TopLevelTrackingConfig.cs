@@ -3,7 +3,7 @@ using System.ComponentModel;
 using System.Globalization;
 using Newtonsoft.Json;
 
-namespace Runner.Common.Worker.Build
+namespace GitHub.Runner.Worker.Build
 {
     public sealed class TopLevelTrackingConfig
     {

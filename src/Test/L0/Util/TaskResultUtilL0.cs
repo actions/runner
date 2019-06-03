@@ -1,8 +1,8 @@
 ﻿using GitHub.DistributedTask.WebApi;
-using Runner.Common.Util;
+using GitHub.Runner.Common.Util;
 using Xunit;
 
-namespace Runner.Common.Tests.Util
+namespace GitHub.Runner.Common.Tests.Util
 {
     public class TaskResultUtilL0
     {

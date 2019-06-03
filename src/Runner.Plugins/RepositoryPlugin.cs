@@ -3,14 +3,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Runner.Sdk;
-using Runner.Common.Util;
+using GitHub.Runner.Sdk;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 using System.IO;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using System.Text.RegularExpressions;
 
-namespace Runner.Plugins.Repository
+namespace GitHub.Runner.Plugins.Repository
 {
     public interface ISourceProvider
     {

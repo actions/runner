@@ -3,9 +3,11 @@ using System.IO;
 using System.Text;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.Pipelines.ContextData;
-using Runner.Common.Util;
+using GitHub.Runner.Common.Util;
+using GitHub.Runner.Common;
+using GitHub.Runner.Sdk;
 
-namespace Runner.Common.Worker.Handlers
+namespace GitHub.Runner.Worker.Handlers
 {
     [ServiceLocator(Default = typeof(ScriptHandler))]
     public interface IScriptHandler : IHandler

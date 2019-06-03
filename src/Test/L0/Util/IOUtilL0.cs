@@ -1,11 +1,12 @@
-﻿using Runner.Common.Util;
+﻿using GitHub.Runner.Common.Util;
+using GitHub.Runner.Sdk;
 using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 
-namespace Runner.Common.Tests.Util
+namespace GitHub.Runner.Common.Tests.Util
 {
     public sealed class IOUtilL0
     {

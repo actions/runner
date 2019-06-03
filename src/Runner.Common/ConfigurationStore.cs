@@ -1,10 +1,11 @@
-﻿using Runner.Common.Util;
+﻿using GitHub.Runner.Common.Util;
+using GitHub.Runner.Sdk;
 using System.IO;
 using System.Runtime.Serialization;
 using System.Text;
 using System.Threading;
 
-namespace Runner.Common
+namespace GitHub.Runner.Common
 {
     //
     // Settings are persisted in this structure

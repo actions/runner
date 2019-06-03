@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace Runner.Common
+namespace GitHub.Runner.Common
 {
     public sealed class CredentialData
     {

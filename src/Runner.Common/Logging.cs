@@ -1,8 +1,8 @@
-﻿using Runner.Common.Util;
+﻿using GitHub.Runner.Common.Util;
 using System;
 using System.IO;
 
-namespace Runner.Common
+namespace GitHub.Runner.Common
 {
     [ServiceLocator(Default = typeof(PagingLogger))]
     public interface IPagingLogger : IAgentService

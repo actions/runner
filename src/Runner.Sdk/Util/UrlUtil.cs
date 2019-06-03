@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Runner.Common.Util
+namespace GitHub.Runner.Sdk
 {
     public static class UrlUtil
     {

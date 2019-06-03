@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using Runner.Common.Util;
+using GitHub.Runner.Common.Util;
 using Pipelines = GitHub.DistributedTask.Pipelines;
+using GitHub.Runner.Common;
+using GitHub.Runner.Sdk;
 
-namespace Runner.Common.Worker.Container
+namespace GitHub.Runner.Worker.Container
 {
     public class ContainerInfo
     {

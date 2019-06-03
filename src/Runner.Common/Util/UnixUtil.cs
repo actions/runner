@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Runner.Sdk;
+using GitHub.Runner.Sdk;
 
-namespace Runner.Common.Util
+namespace GitHub.Runner.Common.Util
 {
     [ServiceLocator(Default = typeof(UnixUtil))]
     public interface IUnixUtil : IAgentService

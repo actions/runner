@@ -1,7 +1,9 @@
 ﻿using GitHub.DistributedTask.WebApi;
-using Runner.Common.Listener;
-using Runner.Common.Capabilities;
-using Runner.Common.Listener.Configuration;
+using GitHub.Services.Common;
+using GitHub.Services.WebApi;
+using GitHub.Runner.Listener;
+using GitHub.Runner.Common.Capabilities;
+using GitHub.Runner.Listener.Configuration;
 using Moq;
 using System;
 using System.Runtime.CompilerServices;
@@ -11,7 +13,7 @@ using System.Threading;
 using System.Reflection;
 using System.Collections.Generic;
 
-namespace Runner.Common.Tests.Listener
+namespace GitHub.Runner.Common.Tests.Listener
 {
     public sealed class MessageListenerL0
     {
@@ -62,7 +64,7 @@ namespace Runner.Common.Tests.Listener
 
                 _capabilitiesManager.Setup(x => x.GetCapabilitiesAsync(_settings, It.IsAny<CancellationToken>())).Returns(Task.FromResult(new Dictionary<string, string>()));
 
-                _credMgr.Setup(x => x.LoadCredentials()).Returns(new Common.VssCredentials());
+                _credMgr.Setup(x => x.LoadCredentials()).Returns(new VssCredentials());
 
                 // Act.
                 MessageListener listener = new MessageListener();
@@ -106,7 +108,7 @@ namespace Runner.Common.Tests.Listener
 
                 _capabilitiesManager.Setup(x => x.GetCapabilitiesAsync(_settings, It.IsAny<CancellationToken>())).Returns(Task.FromResult(new Dictionary<string, string>()));
 
-                _credMgr.Setup(x => x.LoadCredentials()).Returns(new Common.VssCredentials());
+                _credMgr.Setup(x => x.LoadCredentials()).Returns(new VssCredentials());
 
                 // Act.
                 MessageListener listener = new MessageListener();
@@ -153,7 +155,7 @@ namespace Runner.Common.Tests.Listener
 
                 _capabilitiesManager.Setup(x => x.GetCapabilitiesAsync(_settings, It.IsAny<CancellationToken>())).Returns(Task.FromResult(new Dictionary<string, string>()));
 
-                _credMgr.Setup(x => x.LoadCredentials()).Returns(new Common.VssCredentials());
+                _credMgr.Setup(x => x.LoadCredentials()).Returns(new VssCredentials());
 
                 // Act.
                 MessageListener listener = new MessageListener();

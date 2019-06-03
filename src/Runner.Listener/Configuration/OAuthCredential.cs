@@ -1,10 +1,12 @@
 ﻿using System;
-using Runner.Common.Util;
+using GitHub.Runner.Common;
+using GitHub.Runner.Common.Util;
+using GitHub.Runner.Sdk;
 using GitHub.Services.Common;
 using GitHub.Services.OAuth;
 using GitHub.Services.WebApi;
 
-namespace Runner.Common.Listener.Configuration
+namespace GitHub.Runner.Listener.Configuration
 {
     public class OAuthCredential : CredentialProvider
     {

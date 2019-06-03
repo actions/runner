@@ -8,7 +8,7 @@ using System.Threading;
 using Xunit;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 
-namespace Runner.Common.Tests.Worker
+namespace GitHub.Runner.Common.Tests.Worker
 {
     public sealed class ExecutionContextL0
     {

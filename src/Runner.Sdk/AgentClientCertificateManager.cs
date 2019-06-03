@@ -2,7 +2,7 @@
 using System.Security.Cryptography.X509Certificates;
 using GitHub.Services.Common;
 
-namespace Runner.Sdk
+namespace GitHub.Runner.Sdk
 {
     public class AgentCertificateSettings
     {

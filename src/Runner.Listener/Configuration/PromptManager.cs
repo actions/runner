@@ -1,7 +1,9 @@
-﻿using Runner.Common.Util;
+﻿using GitHub.Runner.Common;
+using GitHub.Runner.Common.Util;
+using GitHub.Runner.Sdk;
 using System;
 
-namespace Runner.Common.Listener.Configuration
+namespace GitHub.Runner.Listener.Configuration
 {
     [ServiceLocator(Default = typeof(PromptManager))]
     public interface IPromptManager : IAgentService

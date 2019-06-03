@@ -4,11 +4,13 @@ using System.Threading.Tasks;
 using GitHub.DistributedTask.Expressions;
 using GitHub.DistributedTask.WebApi;
 using Pipelines = GitHub.DistributedTask.Pipelines;
-using Runner.Common.Util;
+using GitHub.Runner.Common.Util;
 using System.Linq;
 using System.Diagnostics;
+using GitHub.Runner.Common;
+using GitHub.Runner.Sdk;
 
-namespace Runner.Common.Worker
+namespace GitHub.Runner.Worker
 {
     public interface IJobExtension : IExtension
     {

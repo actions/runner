@@ -4,10 +4,11 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using Runner.Common.Util;
+using GitHub.Runner.Common.Util;
+using GitHub.Runner.Sdk;
 using GitHub.Services.Common.Internal;
 
-namespace Runner.Common
+namespace GitHub.Runner.Common
 {
     public class ThrottlingEventArgs : EventArgs
     {

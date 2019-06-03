@@ -5,10 +5,11 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
-using Runner.Common.Util;
+using GitHub.Runner.Common.Util;
 using System.Threading.Channels;
+using GitHub.Runner.Sdk;
 
-namespace Runner.Common.Tests
+namespace GitHub.Runner.Common.Tests
 {
     public sealed class ProcessInvokerL0
     {

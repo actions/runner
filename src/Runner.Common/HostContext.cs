@@ -1,4 +1,4 @@
-﻿using Runner.Common.Util;
+﻿using GitHub.Runner.Common.Util;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -14,8 +14,9 @@ using System.Net.Http;
 using System.Diagnostics.Tracing;
 using GitHub.DistributedTask.Logging;
 using System.Net.Http.Headers;
+using GitHub.Runner.Sdk;
 
-namespace Runner.Common
+namespace GitHub.Runner.Common
 {
     public interface IHostContext : IDisposable
     {

@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Runner.Common
+namespace GitHub.Runner.Common
 {
     public class NonRetryableException : Exception
     {

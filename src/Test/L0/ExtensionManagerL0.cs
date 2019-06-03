@@ -1,11 +1,11 @@
-﻿using Runner.Common.Worker;
-using Runner.Common.Worker.Build;
+﻿using GitHub.Runner.Worker;
+using GitHub.Runner.Worker.Build;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using Xunit;
 
-namespace Runner.Common.Tests
+namespace GitHub.Runner.Common.Tests
 {
     public sealed class ExtensionManagerL0
     {
@@ -42,12 +42,12 @@ namespace Runner.Common.Tests
                 manager.Initialize(tc);
 
                 // Act/Assert.
-                AssertContains<Runner.Common.Capabilities.ICapabilitiesProvider>(
+                AssertContains<GitHub.Runner.Common.Capabilities.ICapabilitiesProvider>(
                     manager,
-                    concreteType: typeof(Runner.Common.Capabilities.AgentCapabilitiesProvider));
-                AssertContains<Runner.Common.Worker.IJobExtension>(
+                    concreteType: typeof(GitHub.Runner.Common.Capabilities.AgentCapabilitiesProvider));
+                AssertContains<GitHub.Runner.Worker.IJobExtension>(
                     manager,
-                    concreteType: typeof(Runner.Common.Worker.Build.BuildJobExtension));
+                    concreteType: typeof(GitHub.Runner.Worker.Build.BuildJobExtension));
             }
         }
 

@@ -1,13 +1,13 @@
 ﻿
-using Runner.Common.Util;
+using GitHub.Runner.Common.Util;
 using Newtonsoft.Json;
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using GitHub.DistributedTask.Logging;
-using Runner.Sdk;
+using GitHub.Runner.Sdk;
 
-namespace Runner.Common
+namespace GitHub.Runner.Common
 {
     public sealed class Tracing : ITraceWriter, IDisposable
     {

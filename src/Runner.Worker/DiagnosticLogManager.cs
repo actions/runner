@@ -5,10 +5,10 @@ using System.IO.Compression;
 using System.Text;
 using System.Runtime.InteropServices;
 using GitHub.DistributedTask.WebApi;
-using Runner.Common.Util;
-using Runner.Common.Worker;
-using Runner.Common.Worker.Build;
-using Runner.Common.Capabilities;
+using GitHub.Runner.Common.Util;
+using GitHub.Runner.Worker;
+using GitHub.Runner.Worker.Build;
+using GitHub.Runner.Common.Capabilities;
 using GitHub.Services.WebApi;
 using Microsoft.Win32;
 using System.Diagnostics;
@@ -18,8 +18,10 @@ using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
 using Pipelines = GitHub.DistributedTask.Pipelines;
+using GitHub.Runner.Common;
+using GitHub.Runner.Sdk;
 
-namespace Runner.Common.Worker
+namespace GitHub.Runner.Worker
 {
     [ServiceLocator(Default = typeof(DiagnosticLogManager))]
     public interface IDiagnosticLogManager : IAgentService

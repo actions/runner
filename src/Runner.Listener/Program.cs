@@ -1,4 +1,6 @@
-﻿using Runner.Common.Util;
+﻿using GitHub.Runner.Common;
+using GitHub.Runner.Common.Util;
+using GitHub.Runner.Sdk;
 using System;
 using System.Globalization;
 using System.IO;
@@ -6,7 +8,7 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Runner.Common.Listener
+namespace GitHub.Runner.Listener
 {
     public static class Program
     {

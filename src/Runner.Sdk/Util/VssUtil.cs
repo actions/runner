@@ -10,7 +10,7 @@ using System.Net.Http.Headers;
 using System.Runtime.InteropServices;
 using System.Net;
 
-namespace Runner.Common.Util
+namespace GitHub.Runner.Sdk
 {
     public static class VssUtil
     {

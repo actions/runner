@@ -1,14 +1,15 @@
-﻿using Runner.Common.Util;
+﻿using GitHub.Runner.Common.Util;
 using System;
 using System.Collections.Generic;
 using GitHub.DistributedTask.Logging;
+using GitHub.Runner.Sdk;
 
 //
 // Pattern:
 // cmd1 cmd2 --arg1 arg1val --aflag --arg2 arg2val
 //
 
-namespace Runner.Common
+namespace GitHub.Runner.Common
 {
     public sealed class CommandLineParser
     {

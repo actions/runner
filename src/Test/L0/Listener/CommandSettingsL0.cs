@@ -1,12 +1,13 @@
-﻿using Runner.Common.Listener;
-using Runner.Common.Listener.Configuration;
-using Runner.Common.Util;
+﻿using GitHub.Runner.Listener;
+using GitHub.Runner.Listener.Configuration;
+using GitHub.Runner.Common.Util;
 using Moq;
 using System;
 using System.Runtime.CompilerServices;
 using Xunit;
+using GitHub.Runner.Sdk;
 
-namespace Runner.Common.Tests
+namespace GitHub.Runner.Common.Tests
 {
     public sealed class CommandSettingsL0
     {

@@ -1,7 +1,7 @@
-﻿using Runner.Common.Listener.Configuration;
+﻿using GitHub.Runner.Listener.Configuration;
 using Xunit;
 
-namespace Runner.Common.Tests.Listener.Configuration
+namespace GitHub.Runner.Common.Tests.Listener.Configuration
 {
     public sealed class ArgumentValidatorTestsL0
     {

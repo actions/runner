@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace Runner.Common
+namespace GitHub.Runner.Common
 {
     //
     // Abstracts away interactions with the terminal which allows:

@@ -1,8 +1,8 @@
 ﻿using GitHub.DistributedTask.WebApi;
-using Runner.Common.Listener;
-using Runner.Common.Capabilities;
-using Runner.Common.Listener.Configuration;
-using Runner.Common.Util;
+using GitHub.Runner.Listener;
+using GitHub.Runner.Common.Capabilities;
+using GitHub.Runner.Listener.Configuration;
+using GitHub.Runner.Common.Util;
 using GitHub.Services.WebApi;
 using Moq;
 using Newtonsoft.Json;
@@ -17,7 +17,7 @@ using Xunit;
 using GitHub.Services.Location;
 using GitHub.Services.Common;
 
-namespace Runner.Common.Tests.Listener.Configuration
+namespace GitHub.Runner.Common.Tests.Listener.Configuration
 {
     public class ConfigurationManagerL0
     {

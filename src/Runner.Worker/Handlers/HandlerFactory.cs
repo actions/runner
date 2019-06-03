@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using GitHub.DistributedTask.WebApi;
-using Runner.Common.Util;
+using GitHub.Runner.Common.Util;
 using Pipelines = GitHub.DistributedTask.Pipelines;
+using GitHub.Runner.Common;
+using GitHub.Runner.Sdk;
 
-namespace Runner.Common.Worker.Handlers
+namespace GitHub.Runner.Worker.Handlers
 {
     [ServiceLocator(Default = typeof(HandlerFactory))]
     public interface IHandlerFactory : IAgentService

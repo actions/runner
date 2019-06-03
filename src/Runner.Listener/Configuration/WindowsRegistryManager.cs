@@ -1,11 +1,13 @@
 ﻿#if OS_WINDOWS
 using Microsoft.Win32;
-using Runner.Common.Util;
+using GitHub.Runner.Common.Util;
 using System;
 using System.Collections.Generic;
 using System.Security.Principal;
+using GitHub.Runner.Common;
+using GitHub.Runner.Sdk;
 
-namespace Runner.Common.Listener.Configuration
+namespace GitHub.Runner.Listener.Configuration
 {
     [ServiceLocator(Default = typeof(WindowsRegistryManager))]
     public interface IWindowsRegistryManager : IAgentService

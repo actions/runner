@@ -1,8 +1,9 @@
 ﻿using System.Collections.Generic;
+using GitHub.Runner.Sdk;
 using Xunit;
 
 
-namespace Runner.Common.Tests
+namespace GitHub.Runner.Common.Tests
 {
     public sealed class ConstantGenerationL0
     {

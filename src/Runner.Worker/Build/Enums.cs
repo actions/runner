@@ -1,4 +1,4 @@
-﻿namespace Runner.Common.Worker.Build
+﻿namespace GitHub.Runner.Worker.Build
 {
     public enum BuildCleanOption
     {

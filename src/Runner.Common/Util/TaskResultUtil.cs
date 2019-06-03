@@ -1,7 +1,7 @@
 ﻿using GitHub.DistributedTask.WebApi;
 using System;
 
-namespace Runner.Common.Util
+namespace GitHub.Runner.Common.Util
 {
     public static class TaskResultUtil
     {

@@ -3,9 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Runner.Common.Util;
+using GitHub.Runner.Common.Util;
+using GitHub.Runner.Sdk;
 
-namespace Runner.Common.Capabilities
+namespace GitHub.Runner.Common.Capabilities
 {
     [ServiceLocator(Default = typeof(CapabilitiesManager))]
     public interface ICapabilitiesManager : IAgentService

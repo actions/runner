@@ -4,9 +4,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-using Runner.Common.Util;
+using GitHub.Runner.Common.Util;
 
-namespace Runner.Common.Listener.Configuration
+namespace GitHub.Runner.Listener.Configuration
 {
     public class SystemDControlManager : ServiceControlManager, ILinuxServiceControlManager
     {

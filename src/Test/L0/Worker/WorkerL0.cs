@@ -1,5 +1,5 @@
 ﻿using GitHub.DistributedTask.WebApi;
-using Runner.Common.Worker;
+using GitHub.Runner.Worker;
 using Moq;
 using System;
 using System.Collections.Generic;
@@ -9,7 +9,7 @@ using Xunit;
 using GitHub.Services.WebApi;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 
-namespace Runner.Common.Tests.Worker
+namespace GitHub.Runner.Common.Tests.Worker
 {
     public sealed class WorkerL0
     {
@@ -72,7 +72,7 @@ namespace Runner.Common.Tests.Worker
             using (var hc = new TestHostContext(this))
             using (var tokenSource = new CancellationTokenSource())
             {
-                var worker = new Runner.Common.Worker.Worker();
+                var worker = new GitHub.Runner.Worker.Worker();
                 hc.EnqueueInstance<IProcessChannel>(_processChannel.Object);
                 hc.EnqueueInstance<IJobRunner>(_jobRunner.Object);
                 hc.SetSingleton<IVstsAgentWebProxy>(_proxy.Object);
@@ -125,7 +125,7 @@ namespace Runner.Common.Tests.Worker
             //Arrange
             using (var hc = new TestHostContext(this))
             {
-                var worker = new Runner.Common.Worker.Worker();
+                var worker = new GitHub.Runner.Worker.Worker();
                 hc.EnqueueInstance<IProcessChannel>(_processChannel.Object);
                 hc.EnqueueInstance<IJobRunner>(_jobRunner.Object);
                 hc.SetSingleton<IVstsAgentWebProxy>(_proxy.Object);

@@ -1,12 +1,14 @@
-﻿using Runner.Common.Listener.Configuration;
-using Runner.Common.Util;
+﻿using GitHub.Runner.Listener.Configuration;
+using GitHub.Runner.Common.Util;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using GitHub.DistributedTask.Logging;
+using GitHub.Runner.Common;
+using GitHub.Runner.Sdk;
 
-namespace Runner.Common.Listener
+namespace GitHub.Runner.Listener
 {
     public sealed class CommandSettings
     {

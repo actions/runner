@@ -1,14 +1,16 @@
 ﻿using Pipelines = GitHub.DistributedTask.Pipelines;
 using GitHub.DistributedTask.WebApi;
-using Runner.Common.Util;
+using GitHub.Runner.Common.Util;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.Pipelines;
+using GitHub.Runner.Common;
+using GitHub.Runner.Sdk;
 
-namespace Runner.Common.Worker.Build
+namespace GitHub.Runner.Worker.Build
 {
     public sealed class BuildJobExtension : JobExtension
     {

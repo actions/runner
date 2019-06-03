@@ -1,15 +1,15 @@
-﻿using Runner.Common.Listener;
-using Runner.Common.Capabilities;
-using Runner.Common.Listener.Configuration;
-using Runner.Common.Worker;
-using Runner.Common.Worker.Handlers;
+﻿using GitHub.Runner.Listener;
+using GitHub.Runner.Common.Capabilities;
+using GitHub.Runner.Listener.Configuration;
+using GitHub.Runner.Worker;
+using GitHub.Runner.Worker.Handlers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using Xunit;
 
-namespace Runner.Common.Tests
+namespace GitHub.Runner.Common.Tests
 {
     public sealed class ServiceInterfacesL0
     {

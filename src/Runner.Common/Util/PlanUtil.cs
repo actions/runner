@@ -8,8 +8,9 @@ using GitHub.Services.WebApi;
 using GitHub.Services.OAuth;
 using System.Net.Http.Headers;
 using System.Runtime.InteropServices;
+using GitHub.Runner.Sdk;
 
-namespace Runner.Common.Util
+namespace GitHub.Runner.Common.Util
 {
     public static class PlanUtil
     {

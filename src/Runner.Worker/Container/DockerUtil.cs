@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 
-namespace Runner.Common.Worker.Container
+namespace GitHub.Runner.Worker.Container
 {
     public class DockerUtil
     {

@@ -8,7 +8,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 
-namespace Runner.Common.Util
+namespace GitHub.Runner.Sdk
 {
     public static class IOUtil
     {

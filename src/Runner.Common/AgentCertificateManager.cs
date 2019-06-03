@@ -1,5 +1,5 @@
 ﻿using System;
-using Runner.Common.Util;
+using GitHub.Runner.Common.Util;
 using System.IO;
 using System.Runtime.Serialization;
 using GitHub.Services.Common;
@@ -8,9 +8,9 @@ using System.Net;
 using System.Net.Security;
 using System.Net.Http;
 using GitHub.Services.WebApi;
-using Runner.Sdk;
+using GitHub.Runner.Sdk;
 
-namespace Runner.Common
+namespace GitHub.Runner.Common
 {
     [ServiceLocator(Default = typeof(AgentCertificateManager))]
     public interface IAgentCertificateManager : IAgentService

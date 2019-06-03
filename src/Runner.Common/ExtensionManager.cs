@@ -1,10 +1,11 @@
-﻿using Runner.Common.Util;
+﻿using GitHub.Runner.Common.Util;
+using GitHub.Runner.Sdk;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Runner.Common
+namespace GitHub.Runner.Common
 {
     [ServiceLocator(Default = typeof(ExtensionManager))]
     public interface IExtensionManager : IAgentService
@@ -39,26 +40,26 @@ namespace Runner.Common
             switch (typeof(T).FullName)
             {
                 // Listener capabilities providers.
-                case "Runner.Common.Capabilities.ICapabilitiesProvider":
-                    Add<T>(extensions, "Runner.Common.Capabilities.AgentCapabilitiesProvider, Runner.Common");
+                case "GitHub.Runner.Common.Capabilities.ICapabilitiesProvider":
+                    Add<T>(extensions, "GitHub.Runner.Common.Capabilities.AgentCapabilitiesProvider, Runner.Common");
                     break;
                 // Listener agent configuration providers
-                case "Runner.Common.Listener.Configuration.IConfigurationProvider":
-                    Add<T>(extensions, "Runner.Common.Listener.Configuration.BuildReleasesAgentConfigProvider, Runner.Listener");
+                case "GitHub.Runner.Listener.Configuration.IConfigurationProvider":
+                    Add<T>(extensions, "GitHub.Runner.Listener.Configuration.BuildReleasesAgentConfigProvider, Runner.Listener");
                     break;
                 // Worker job extensions.
-                case "Runner.Common.Worker.IJobExtension":
-                    Add<T>(extensions, "Runner.Common.Worker.Build.BuildJobExtension, Runner.Worker");
+                case "GitHub.Runner.Worker.IJobExtension":
+                    Add<T>(extensions, "GitHub.Runner.Worker.Build.BuildJobExtension, Runner.Worker");
                     break;
                 // Action command extensions.
-                case "Runner.Common.Worker.IActionCommandExtension":
-                    Add<T>(extensions, "Runner.Common.Worker.InternalPluginSetRepoPathCommandExtension, Runner.Worker");
-                    Add<T>(extensions, "Runner.Common.Worker.SetEnvCommandExtension, Runner.Worker");
-                    Add<T>(extensions, "Runner.Common.Worker.SetOutputCommandExtension, Runner.Worker");
-                    Add<T>(extensions, "Runner.Common.Worker.SetSecretCommandExtension, Runner.Worker");
-                    Add<T>(extensions, "Runner.Common.Worker.AddPathCommandExtension, Runner.Worker");
-                    Add<T>(extensions, "Runner.Common.Worker.WarningCommandExtension, Runner.Worker");
-                    Add<T>(extensions, "Runner.Common.Worker.ErrorCommandExtension, Runner.Worker");
+                case "GitHub.Runner.Worker.IActionCommandExtension":
+                    Add<T>(extensions, "GitHub.Runner.Worker.InternalPluginSetRepoPathCommandExtension, Runner.Worker");
+                    Add<T>(extensions, "GitHub.Runner.Worker.SetEnvCommandExtension, Runner.Worker");
+                    Add<T>(extensions, "GitHub.Runner.Worker.SetOutputCommandExtension, Runner.Worker");
+                    Add<T>(extensions, "GitHub.Runner.Worker.SetSecretCommandExtension, Runner.Worker");
+                    Add<T>(extensions, "GitHub.Runner.Worker.AddPathCommandExtension, Runner.Worker");
+                    Add<T>(extensions, "GitHub.Runner.Worker.WarningCommandExtension, Runner.Worker");
+                    Add<T>(extensions, "GitHub.Runner.Worker.ErrorCommandExtension, Runner.Worker");
                     break;
                 default:
                     // This should never happen.
