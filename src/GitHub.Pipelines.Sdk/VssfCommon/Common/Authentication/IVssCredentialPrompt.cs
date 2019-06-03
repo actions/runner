@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace Microsoft.VisualStudio.Services.Common
+namespace GitHub.Services.Common
 {
     /// <summary>
     /// Provide an interface to get a new token for the credentials.

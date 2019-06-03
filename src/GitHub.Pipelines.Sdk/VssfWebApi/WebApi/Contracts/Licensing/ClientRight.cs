@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace Microsoft.VisualStudio.Services.Licensing
+namespace GitHub.Services.Licensing
 {
     public class ClientRight : IClientRight
     {

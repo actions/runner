@@ -1,10 +1,10 @@
-// --------------------------------------------------------------------------------------------------------------------
+﻿// --------------------------------------------------------------------------------------------------------------------
 // <copyright file="TaskGroupQueryOrder.cs" company="Microsoft Corporation">
 //   2012-2023, All rights reserved.
 // </copyright>
 // --------------------------------------------------------------------------------------------------------------------
 
-namespace Microsoft.TeamFoundation.DistributedTask.WebApi
+namespace GitHub.DistributedTask.WebApi
 {
     using System.Runtime.Serialization;
 

@@ -4,9 +4,9 @@ using System.ComponentModel;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
-using Microsoft.TeamFoundation.DistributedTask.ObjectTemplating.Tokens;
+using GitHub.DistributedTask.ObjectTemplating.Tokens;
 
-namespace Microsoft.TeamFoundation.DistributedTask.ObjectTemplating.Schema
+namespace GitHub.DistributedTask.ObjectTemplating.Schema
 {
     /// <summary>
     /// This models the root schema object and contains definitions

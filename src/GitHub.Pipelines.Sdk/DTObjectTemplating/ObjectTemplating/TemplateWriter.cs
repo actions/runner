@@ -1,7 +1,7 @@
 ﻿using System;
-using Microsoft.TeamFoundation.DistributedTask.ObjectTemplating.Tokens;
+using GitHub.DistributedTask.ObjectTemplating.Tokens;
 
-namespace Microsoft.TeamFoundation.DistributedTask.ObjectTemplating
+namespace GitHub.DistributedTask.ObjectTemplating
 {
     /// <summary>
     /// Converts from a TemplateToken into another object format

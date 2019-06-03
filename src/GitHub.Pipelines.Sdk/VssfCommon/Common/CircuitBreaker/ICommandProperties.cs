@@ -13,7 +13,7 @@
 // limitations under the License.
 using System;
 
-namespace Microsoft.VisualStudio.Services.CircuitBreaker
+namespace GitHub.Services.CircuitBreaker
 {
     /// <summary>
     /// Provides properties for <see cref="Command"/> instances. The instances of <see cref="ICommandProperties"/>

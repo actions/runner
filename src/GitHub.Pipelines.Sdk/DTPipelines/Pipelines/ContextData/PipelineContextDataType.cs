@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Pipelines.ContextData
+namespace GitHub.DistributedTask.Pipelines.ContextData
 {
     internal static class PipelineContextDataType
     {

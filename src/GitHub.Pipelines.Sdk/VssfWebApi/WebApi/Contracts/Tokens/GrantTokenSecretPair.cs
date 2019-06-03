@@ -1,4 +1,4 @@
-﻿namespace Microsoft.VisualStudio.Services.Tokens
+﻿namespace GitHub.Services.Tokens
 {
     public class GrantTokenSecretPair
     {

@@ -1,12 +1,12 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
-using Microsoft.TeamFoundation.DistributedTask.ObjectTemplating.Tokens;
-using Microsoft.TeamFoundation.DistributedTask.Pipelines.ContextData;
-using Microsoft.TeamFoundation.DistributedTask.WebApi;
+using GitHub.DistributedTask.ObjectTemplating.Tokens;
+using GitHub.DistributedTask.Pipelines.ContextData;
+using GitHub.DistributedTask.WebApi;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Pipelines.Runtime
+namespace GitHub.DistributedTask.Pipelines.Runtime
 {
     [EditorBrowsable(EditorBrowsableState.Never)]
     public sealed class JobExecutionContext : PipelineExecutionContext

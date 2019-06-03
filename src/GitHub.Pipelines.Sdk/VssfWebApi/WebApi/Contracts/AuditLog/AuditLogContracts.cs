@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Runtime.Serialization;
-using Microsoft.VisualStudio.Services.Notifications;
-using Microsoft.VisualStudio.Services.WebApi;
+using GitHub.Services.Notifications;
+using GitHub.Services.WebApi;
 
-namespace Microsoft.VisualStudio.Services.Audit
+namespace GitHub.Services.Audit
 {
     /// <summary>
     /// The type of scope from where the event is originated

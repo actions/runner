@@ -1,6 +1,6 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
-namespace Microsoft.VisualStudio.Services.Commerce
+namespace GitHub.Services.Commerce
 {
     /// <summary>
     /// Container for a list of operations supported by a resource provider.
@@ -57,7 +57,7 @@ namespace Microsoft.VisualStudio.Services.Commerce
 
         public static Operation GetOperationDescriptorForRPandAction(ResourceProvider rootResourceProvider, ResourceProvider childResourceProvider, OperationAction action)
         {
-            const string name = "Microsoft.VisualStudio/{0}/{1}";
+            const string name = "GitHub/{0}/{1}";
             const string provider = "Visual Studio";
             string description;
             string operationText;
@@ -90,8 +90,8 @@ namespace Microsoft.VisualStudio.Services.Commerce
                     operationText = $"Read {resourceProvider}";
                     break;
                 case OperationAction.Action:
-                    description = $"Registers the Azure Subscription with Microsoft.VisualStudio provider";
-                    operationText = $"Register Azure Subscription with Microsoft.VisualStudio provider";
+                    description = $"Registers the Azure Subscription with GitHub provider";
+                    operationText = $"Register Azure Subscription with GitHub provider";
                     break;
                 default:
                     description = string.Empty;

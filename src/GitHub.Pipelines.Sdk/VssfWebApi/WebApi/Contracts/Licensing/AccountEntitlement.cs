@@ -1,11 +1,11 @@
-﻿using Microsoft.VisualStudio.Services.Account;
+﻿using GitHub.Services.Account;
 using System;
 
 using System.Runtime.Serialization;
-using Microsoft.VisualStudio.Services.WebApi;
+using GitHub.Services.WebApi;
 using System.Collections.Generic;
 
-namespace Microsoft.VisualStudio.Services.Licensing
+namespace GitHub.Services.Licensing
 {
     /// <summary>
     /// Represents a license granted to a user in an account

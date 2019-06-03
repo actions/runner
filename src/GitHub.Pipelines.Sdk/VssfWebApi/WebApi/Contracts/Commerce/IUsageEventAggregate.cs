@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Microsoft.VisualStudio.Services.Commerce
+namespace GitHub.Services.Commerce
 {
     /// <summary>
     /// Represents the aggregated usage of a resource over a time span

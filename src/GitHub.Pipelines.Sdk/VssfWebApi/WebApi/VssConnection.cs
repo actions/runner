@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -9,13 +9,13 @@ using System.Net.Http;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.Location;
-using Microsoft.VisualStudio.Services.WebApi.Internal;
-using Microsoft.VisualStudio.Services.WebApi.Location;
-using Microsoft.VisualStudio.Services.WebApi.Utilities;
+using GitHub.Services.Common;
+using GitHub.Services.Location;
+using GitHub.Services.WebApi.Internal;
+using GitHub.Services.WebApi.Location;
+using GitHub.Services.WebApi.Utilities;
 
-namespace Microsoft.VisualStudio.Services.WebApi
+namespace GitHub.Services.WebApi
 {
     public class VssConnection : IDisposable
     {
@@ -859,7 +859,7 @@ namespace Microsoft.VisualStudio.Services.WebApi
     /// <summary>
     /// 
     /// </summary>
-    [ExceptionMapping("0.0", "3.0", "ExtensibleServiceTypeNotRegisteredException", "Microsoft.VisualStudio.Services.Client.ExtensibleServiceTypeNotRegisteredException, Microsoft.VisualStudio.Services.Client, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "ExtensibleServiceTypeNotRegisteredException", "GitHub.Services.Client.ExtensibleServiceTypeNotRegisteredException, GitHub.Services.Client, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class ExtensibleServiceTypeNotRegisteredException : VssException
     {
         public ExtensibleServiceTypeNotRegisteredException(Type managedType)
@@ -876,7 +876,7 @@ namespace Microsoft.VisualStudio.Services.WebApi
     /// <summary>
     /// 
     /// </summary>
-    [ExceptionMapping("0.0", "3.0", "ExtensibleServiceTypeNotValidException", "Microsoft.VisualStudio.Services.Client.ExtensibleServiceTypeNotValidException, Microsoft.VisualStudio.Services.Client, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "ExtensibleServiceTypeNotValidException", "GitHub.Services.Client.ExtensibleServiceTypeNotValidException, GitHub.Services.Client, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class ExtensibleServiceTypeNotValidException : VssException
     {
         public ExtensibleServiceTypeNotValidException(Type managedType, Type extensibleType)

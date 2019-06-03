@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.Invitation
+namespace GitHub.Services.Invitation
 {
     /// <summary>
     /// User invitation response

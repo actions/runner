@@ -1,6 +1,6 @@
-using System.Runtime.Serialization;
+﻿using System.Runtime.Serialization;
 
-namespace Microsoft.TeamFoundation.DistributedTask.WebApi
+namespace GitHub.DistributedTask.WebApi
 {
     /// <summary>
     /// The type of agent pool.

@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Runtime.Serialization;
-using Microsoft.VisualStudio.Services.Common;
+using GitHub.Services.Common;
 
-namespace Microsoft.VisualStudio.Services.Identity.Mru
+namespace GitHub.Services.Identity.Mru
 {
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "IdentityMruException", "Microsoft.VisualStudio.Services.Identity.Mru.IdentityMruException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "IdentityMruException", "GitHub.Services.Identity.Mru.IdentityMruException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class IdentityMruException : VssServiceException
     {
         public IdentityMruException()
@@ -25,7 +25,7 @@ namespace Microsoft.VisualStudio.Services.Identity.Mru
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "IdentityMruBadRequestException", "Microsoft.VisualStudio.Services.Identity.Mru.IdentityMruBadRequestException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "IdentityMruBadRequestException", "GitHub.Services.Identity.Mru.IdentityMruBadRequestException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class IdentityMruBadRequestException : IdentityMruException
     {
         protected IdentityMruBadRequestException()
@@ -45,7 +45,7 @@ namespace Microsoft.VisualStudio.Services.Identity.Mru
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "IdentityMruResourceExistsException", "Microsoft.VisualStudio.Services.Identity.Mru.IdentityMruResourceExistsException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "IdentityMruResourceExistsException", "GitHub.Services.Identity.Mru.IdentityMruResourceExistsException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class IdentityMruResourceExistsException : IdentityMruException
     {
         public IdentityMruResourceExistsException()
@@ -65,7 +65,7 @@ namespace Microsoft.VisualStudio.Services.Identity.Mru
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "IdentityMruResourceNotFoundException", "Microsoft.VisualStudio.Services.Identity.Mru.IdentityMruResourceNotFoundException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "IdentityMruResourceNotFoundException", "GitHub.Services.Identity.Mru.IdentityMruResourceNotFoundException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class IdentityMruResourceNotFoundException : IdentityMruException
     {
         protected IdentityMruResourceNotFoundException()
@@ -85,7 +85,7 @@ namespace Microsoft.VisualStudio.Services.Identity.Mru
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "IdentityMruUnauthorizedException", "Microsoft.VisualStudio.Services.Identity.Mru.IdentityMruUnauthorizedException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "IdentityMruUnauthorizedException", "GitHub.Services.Identity.Mru.IdentityMruUnauthorizedException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class IdentityMruUnauthorizedException : IdentityMruException
     {
         protected IdentityMruUnauthorizedException()

@@ -24,10 +24,10 @@ using System.Net.Http;
 using System.Net.Http.Formatting;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.WebApi;
+using GitHub.Services.Common;
+using GitHub.Services.WebApi;
 
-namespace Microsoft.VisualStudio.Services.UserAccountMapping.Client
+namespace GitHub.Services.UserAccountMapping.Client
 {
     [ResourceArea(UserAccountMappingResourceIds.AreaId)]
     public abstract class UserAccountMappingHttpClientBase : VssHttpClientBase

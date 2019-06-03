@@ -4,10 +4,10 @@ using System.Linq;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text.RegularExpressions;
-using Microsoft.VisualStudio.Services.Common;
+using GitHub.Services.Common;
 using Newtonsoft.Json;
 
-namespace Microsoft.VisualStudio.Services.WebApi
+namespace GitHub.Services.WebApi
 {
     public class VssResponseContext
     {

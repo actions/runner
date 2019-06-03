@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Diagnostics;
-using Microsoft.VisualStudio.Services.WebApi;
-using Microsoft.VisualStudio.Services.WebApi.Internal;
+using GitHub.Services.WebApi;
+using GitHub.Services.WebApi.Internal;
 
-namespace Microsoft.VisualStudio.Services.Client
+namespace GitHub.Services.Client
 {
     internal static class VssAadSettings
     {

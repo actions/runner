@@ -1,10 +1,10 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Runtime.Serialization;
-using Microsoft.VisualStudio.Services.WebApi;
+using GitHub.Services.WebApi;
 
-namespace Microsoft.VisualStudio.Services.Account
+namespace GitHub.Services.Account
 {
     //NOTE: On data contract types, make all setters
     //for properties that are intended to be read-only on the client

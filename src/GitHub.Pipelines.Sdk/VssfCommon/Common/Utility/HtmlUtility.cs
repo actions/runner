@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
@@ -13,7 +13,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Net.Sockets;
 
-namespace Microsoft.VisualStudio.Services.Common.Internal
+namespace GitHub.Services.Common.Internal
 {
     /// <summary>
     /// Utility class for general Uri actions.  See LinkingUtilities for artifact uri specific methods.

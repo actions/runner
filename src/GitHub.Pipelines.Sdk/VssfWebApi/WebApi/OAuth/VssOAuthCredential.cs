@@ -2,9 +2,9 @@
 using System.Linq;
 using System.Net;
 using System.Net.Http;
-using Microsoft.VisualStudio.Services.Common;
+using GitHub.Services.Common;
 
-namespace Microsoft.VisualStudio.Services.OAuth
+namespace GitHub.Services.OAuth
 {
     /// <summary>
     /// Provides authentication with a secure token service using the OAuth 2.0 protocol.

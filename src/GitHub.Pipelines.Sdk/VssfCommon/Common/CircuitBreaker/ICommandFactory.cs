@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Threading.Tasks;
 
-namespace Microsoft.VisualStudio.Services.CircuitBreaker
+namespace GitHub.Services.CircuitBreaker
 {
     /// <summary>
     /// Command factory for instantiating the commands. This factory is used by the client to instantiate the different commands.

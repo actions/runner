@@ -4,10 +4,10 @@ using System.Net.Http;
 using System.Runtime.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.WebApi;
+using GitHub.Services.Common;
+using GitHub.Services.WebApi;
 
-namespace Microsoft.VisualStudio.Services.Security.Client
+namespace GitHub.Services.Security.Client
 {
     public class SecurityBackingStoreHttpClient : VssHttpClientBase
     {

@@ -1,4 +1,4 @@
-﻿namespace Microsoft.VisualStudio.Services.Directories.Telemetry
+﻿namespace GitHub.Services.Directories.Telemetry
 {
     public static class DirectoryEntityTelemetryProperty
     {

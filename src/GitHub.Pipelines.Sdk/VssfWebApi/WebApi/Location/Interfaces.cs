@@ -2,9 +2,9 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.VisualStudio.Services.Location;
+using GitHub.Services.Location;
 
-namespace Microsoft.VisualStudio.Services.WebApi.Location
+namespace GitHub.Services.WebApi.Location
 {
     /// <summary>
     /// The service responsible for providing a connection to a Team 

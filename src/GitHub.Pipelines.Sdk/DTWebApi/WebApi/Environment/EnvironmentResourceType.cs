@@ -2,7 +2,7 @@
 using System.ComponentModel;
 
 
-namespace Microsoft.TeamFoundation.DistributedTask.WebApi
+namespace GitHub.DistributedTask.WebApi
 {
     /// <summary>
     /// EnvironmentResourceType.

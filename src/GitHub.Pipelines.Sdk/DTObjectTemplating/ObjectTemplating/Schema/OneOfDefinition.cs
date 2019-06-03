@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using Microsoft.TeamFoundation.DistributedTask.ObjectTemplating.Tokens;
+using GitHub.DistributedTask.ObjectTemplating.Tokens;
 
-namespace Microsoft.TeamFoundation.DistributedTask.ObjectTemplating.Schema
+namespace GitHub.DistributedTask.ObjectTemplating.Schema
 {
     /// <summary>
     /// Must resolve to exactly one of the referenced definitions

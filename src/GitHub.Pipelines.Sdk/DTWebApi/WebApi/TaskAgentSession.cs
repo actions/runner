@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Runtime.Serialization;
 
-namespace Microsoft.TeamFoundation.DistributedTask.WebApi
+namespace GitHub.DistributedTask.WebApi
 {
     /// <summary>
     /// Represents a session for performing message exchanges from an agent.

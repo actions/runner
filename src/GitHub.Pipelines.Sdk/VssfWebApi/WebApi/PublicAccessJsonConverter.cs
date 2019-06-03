@@ -3,7 +3,7 @@ using System.ComponentModel;
 using System.Reflection;
 using Newtonsoft.Json;
 
-namespace Microsoft.VisualStudio.Services.WebApi
+namespace GitHub.Services.WebApi
 {
     /// <summary>
     /// A JsonConverter that sets the value of a property or field to its type's default value if the value is not null

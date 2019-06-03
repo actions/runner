@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Runtime.Serialization;
-using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.WebApi;
+using GitHub.Services.Common;
+using GitHub.Services.WebApi;
 
-namespace Microsoft.VisualStudio.Services.Security
+namespace GitHub.Services.Security
 {
     /// <summary>
     /// Represents a set of evaluated permissions.

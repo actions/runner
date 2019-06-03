@@ -5,7 +5,7 @@ using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Microsoft.VisualStudio.Services.FormInput
+namespace GitHub.Services.FormInput
 {
     [DataContract]
     public class InputValuesQuery

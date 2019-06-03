@@ -3,7 +3,7 @@ using System.Runtime.Serialization;
 using Newtonsoft.Json;
 using System.ComponentModel;
 
-namespace Microsoft.VisualStudio.Services.Graph.Client
+namespace GitHub.Services.Graph.Client
 {
     /// <summary>
     /// Do not attempt to use this type to update user. Use

@@ -4,11 +4,11 @@ using System.Diagnostics.CodeAnalysis;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.VisualStudio.Services.Account;
-using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.WebApi;
+using GitHub.Services.Account;
+using GitHub.Services.Common;
+using GitHub.Services.WebApi;
 
-namespace Microsoft.VisualStudio.Services.Commerce.Client
+namespace GitHub.Services.Commerce.Client
 {
     /// <summary>
     /// Class that represents methods communicating with the platform service via REST controller.

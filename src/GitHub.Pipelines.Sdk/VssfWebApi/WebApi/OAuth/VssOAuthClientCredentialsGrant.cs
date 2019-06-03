@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace Microsoft.VisualStudio.Services.OAuth
+namespace GitHub.Services.OAuth
 {
     /// <summary>
     /// Represents the client credentials grant for OAuth 2.0 token exchanges.

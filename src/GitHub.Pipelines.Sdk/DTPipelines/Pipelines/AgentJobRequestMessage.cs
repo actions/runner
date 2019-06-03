@@ -3,13 +3,13 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.Serialization;
-using Microsoft.TeamFoundation.DistributedTask.ObjectTemplating.Tokens;
-using Microsoft.TeamFoundation.DistributedTask.Pipelines.ContextData;
-using Microsoft.TeamFoundation.DistributedTask.WebApi;
-using Microsoft.VisualStudio.Services.WebApi;
+using GitHub.DistributedTask.ObjectTemplating.Tokens;
+using GitHub.DistributedTask.Pipelines.ContextData;
+using GitHub.DistributedTask.WebApi;
+using GitHub.Services.WebApi;
 using Newtonsoft.Json;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Pipelines
+namespace GitHub.DistributedTask.Pipelines
 {
     [DataContract]
     [EditorBrowsable(EditorBrowsableState.Never)]

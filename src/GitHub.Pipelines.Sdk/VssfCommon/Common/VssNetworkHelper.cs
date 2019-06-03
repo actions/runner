@@ -1,10 +1,10 @@
-using System;
+﻿using System;
 using System.ComponentModel;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
 
-namespace Microsoft.VisualStudio.Services.Common
+namespace GitHub.Services.Common
 {
     [EditorBrowsable(EditorBrowsableState.Never)]
     public static class VssNetworkHelper

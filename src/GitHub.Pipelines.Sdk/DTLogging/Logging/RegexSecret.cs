@@ -1,9 +1,9 @@
-﻿using Microsoft.VisualStudio.Services.Common;
+﻿using GitHub.Services.Common;
 using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Logging
+namespace GitHub.DistributedTask.Logging
 {
     internal sealed class RegexSecret : ISecret
     {

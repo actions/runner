@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.CompilerServices;
 
-namespace Microsoft.VisualStudio.Services.Common
+namespace GitHub.Services.Common
 {
     [CompilerGenerated]
     internal static class GeneratedVersionInfo

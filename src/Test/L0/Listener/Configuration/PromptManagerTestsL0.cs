@@ -1,11 +1,11 @@
-using Microsoft.VisualStudio.Services.Agent.Listener.Configuration;
-using Microsoft.VisualStudio.Services.Agent.Util;
+﻿using Runner.Common.Listener.Configuration;
+using Runner.Common.Util;
 using Moq;
 using System;
 using System.Collections.Generic;
 using Xunit;
 
-namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
+namespace Runner.Common.Tests.Listener.Configuration
 {
     public class PromptManagerTestsL0
     {

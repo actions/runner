@@ -2,15 +2,15 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Runtime.Serialization;
-using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.WebApi;
-using Microsoft.VisualStudio.Services.Identity;
+using GitHub.Services.Common;
+using GitHub.Services.WebApi;
+using GitHub.Services.Identity;
 
-namespace Microsoft.VisualStudio.Services.Security
+namespace GitHub.Services.Security
 {
     [Serializable]
     [SuppressMessage("Microsoft.Usage", "CA2214:DoNotCallOverridableMethodsInConstructors")]
-    [ExceptionMapping("0.0", "3.0", "SecurityException", "Microsoft.VisualStudio.Services.Security.SecurityException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "SecurityException", "GitHub.Services.Security.SecurityException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public abstract class SecurityException : VssServiceException
     {
         public SecurityException(String message)
@@ -28,7 +28,7 @@ namespace Microsoft.VisualStudio.Services.Security
     /// An exception which is thrown when a permission check fails in the security service.
     /// </summary>
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "AccessCheckException", "Microsoft.TeamFoundation.Framework.Server.AccessCheckException, Microsoft.TeamFoundation.Framework.Server, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "AccessCheckException", "GitHub.Framework.Server.AccessCheckException, GitHub.Framework.Server, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class AccessCheckException : SecurityException
     {
         /// <summary>
@@ -117,7 +117,7 @@ namespace Microsoft.VisualStudio.Services.Security
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "InvalidAclStoreException", "Microsoft.VisualStudio.Services.Security.InvalidAclStoreException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "InvalidAclStoreException", "GitHub.Services.Security.InvalidAclStoreException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class InvalidAclStoreException : SecurityException
     {
         public InvalidAclStoreException(Guid namespaceId, Guid aclStoreId)

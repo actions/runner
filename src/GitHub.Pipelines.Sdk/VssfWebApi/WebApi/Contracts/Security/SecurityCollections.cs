@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.Security
+namespace GitHub.Services.Security
 {
     [CollectionDataContract(Name = "AccessControlEntries", ItemName = "AccessControlEntry")]
     public sealed class AccessControlEntriesCollection : List<AccessControlEntry>

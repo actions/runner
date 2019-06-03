@@ -4,12 +4,12 @@ using System.IO;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.Common.Diagnostics;
-using Microsoft.VisualStudio.Services.WebApi;
+using GitHub.Services.Common;
+using GitHub.Services.Common.Diagnostics;
+using GitHub.Services.WebApi;
 using Newtonsoft.Json;
 
-namespace Microsoft.VisualStudio.Services.OAuth
+namespace GitHub.Services.OAuth
 {
     /// <summary>
     /// Provides functionality to acquire access tokens for OAuth 2.0.

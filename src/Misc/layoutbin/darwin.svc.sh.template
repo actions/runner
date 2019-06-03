@@ -5,19 +5,19 @@ SVC_DESCRIPTION="{{SvcDescription}}"
 
 user_id=`id -u`
 
-# launchctl should not run as sudo for launch agents
+# launchctl should not run as sudo for launch runners
 if [ $user_id -eq 0 ]; then
     echo "Must not run with sudo"
     exit 1
 fi
 
 SVC_CMD=$1
-AGENT_ROOT=`pwd`
+RUNNER_ROOT=`pwd`
 
 LAUNCH_PATH="${HOME}/Library/LaunchAgents"
 PLIST_PATH="${LAUNCH_PATH}/${SVC_NAME}.plist"
-TEMPLATE_PATH=./bin/vsts.agent.plist.template
-TEMP_PATH=./bin/vsts.agent.plist.temp
+TEMPLATE_PATH=./bin/action.runner.plist.template
+TEMP_PATH=./bin/action.runner.plist.temp
 CONFIG_PATH=.service
 
 function failed()
@@ -28,12 +28,12 @@ function failed()
 }
 
 if [ ! -f "${TEMPLATE_PATH}" ]; then
-    failed "Must run from agent root or install is corrupt"
+    failed "Must run from runner root or install is corrupt"
 fi
 
 function install()
 {
-    echo "Creating launch agent in ${PLIST_PATH}"
+    echo "Creating launch runner in ${PLIST_PATH}"
 
     if [ ! -d  "${LAUNCH_PATH}" ]; then
         mkdir ${LAUNCH_PATH}
@@ -52,7 +52,7 @@ function install()
     mkdir -p "${log_path}" || failed "failed to create ${log_path}"
 
     echo Creating ${PLIST_PATH}
-    sed "s/{{User}}/${SUDO_USER:-$USER}/g; s/{{SvcName}}/$SVC_NAME/g; s@{{AgentRoot}}@${AGENT_ROOT}@g; s@{{UserHome}}@$HOME@g;" "${TEMPLATE_PATH}" > "${TEMP_PATH}" || failed "failed to create replacement temp file"
+    sed "s/{{User}}/${SUDO_USER:-$USER}/g; s/{{SvcName}}/$SVC_NAME/g; s@{{RunnerRoot}}@${RUNNER_ROOT}@g; s@{{UserHome}}@$HOME@g;" "${TEMPLATE_PATH}" > "${TEMP_PATH}" || failed "failed to create replacement temp file"
     mv "${TEMP_PATH}" "${PLIST_PATH}" || failed "failed to copy plist"
 
     # Since we started with sudo, runsvc.sh will be owned by root. Change this to current login user.

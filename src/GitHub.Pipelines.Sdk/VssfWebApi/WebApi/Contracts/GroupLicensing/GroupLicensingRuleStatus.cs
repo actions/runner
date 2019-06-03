@@ -2,7 +2,7 @@
 using System.Linq;
 using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.GroupLicensingRule
+namespace GitHub.Services.GroupLicensingRule
 {
     [DataContract]
     public enum GroupLicensingRuleStatus

@@ -1,6 +1,6 @@
 ﻿using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.CentralizedFeature
+namespace GitHub.Services.CentralizedFeature
 {
     [DataContract]
     public enum CentralizedFeatureFlags

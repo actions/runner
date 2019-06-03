@@ -2,10 +2,10 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
-using Microsoft.TeamFoundation.DistributedTask.Pipelines.Artifacts;
-using Microsoft.TeamFoundation.DistributedTask.WebApi;
+using GitHub.DistributedTask.Pipelines.Artifacts;
+using GitHub.DistributedTask.WebApi;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Pipelines
+namespace GitHub.DistributedTask.Pipelines
 {
     /// <summary>
     /// Provides a mechanism for efficient resolution of task specifications to specific versions of the tasks.

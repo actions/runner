@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Expressions
+namespace GitHub.DistributedTask.Expressions
 {
     /// <summary>
     /// This is an internal class only.

@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Runtime.Serialization;
-using Microsoft.TeamFoundation.DistributedTask.WebApi;
+using GitHub.DistributedTask.WebApi;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Pipelines.Runtime
+namespace GitHub.DistributedTask.Pipelines.Runtime
 {
     [DataContract]
     public sealed class AgentJobStartedData

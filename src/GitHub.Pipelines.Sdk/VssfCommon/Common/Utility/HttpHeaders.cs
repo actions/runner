@@ -2,7 +2,7 @@
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 
-namespace Microsoft.VisualStudio.Services.Common.Internal
+namespace GitHub.Services.Common.Internal
 {
     [EditorBrowsable(EditorBrowsableState.Never)]
     public static class HttpHeaders

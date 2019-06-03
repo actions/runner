@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.Users
+namespace GitHub.Services.Users
 {
     [DataContract]
     public class MailConfirmationParameters

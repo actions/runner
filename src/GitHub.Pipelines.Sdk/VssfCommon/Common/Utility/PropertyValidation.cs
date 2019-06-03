@@ -1,10 +1,10 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Globalization;
 using System.Reflection;
 
-namespace Microsoft.VisualStudio.Services.Common.Internal
+namespace GitHub.Services.Common.Internal
 {
     [EditorBrowsable(EditorBrowsableState.Never)]
     public class PropertyValidation

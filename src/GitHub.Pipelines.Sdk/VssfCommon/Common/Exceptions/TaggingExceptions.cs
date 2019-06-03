@@ -2,14 +2,14 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.Common
+namespace GitHub.Services.Common
 {
     /// <summary>
     /// Thrown when a tag definition cannot be found.
     /// </summary>
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "TagNotFoundException", "Microsoft.VisualStudio.Services.Common.TagNotFoundException, Microsoft.VisualStudio.Services.Common, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "TagNotFoundException", "GitHub.Services.Common.TagNotFoundException, GitHub.Services.Common, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class TagNotFoundException : VssServiceException
     {
         public TagNotFoundException()
@@ -34,7 +34,7 @@ namespace Microsoft.VisualStudio.Services.Common
     /// </summary>
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "TagOperationFailed", "Microsoft.VisualStudio.Services.Common.TagOperationFailed, Microsoft.VisualStudio.Services.Common, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "TagOperationFailed", "GitHub.Services.Common.TagOperationFailed, GitHub.Services.Common, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class TagOperationFailed : VssServiceException
     {
         public TagOperationFailed()

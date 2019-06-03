@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Logging
+namespace GitHub.DistributedTask.Logging
 {
     [EditorBrowsable(EditorBrowsableState.Never)]
     public sealed class SecretMasker : ISecretMasker, IDisposable

@@ -1,4 +1,4 @@
-//*************************************************************************************************
+﻿//*************************************************************************************************
 // ArrayUtil.cs
 //
 // A class with random array processing helper routines.
@@ -9,7 +9,7 @@ using System;
 using System.Diagnostics;
 using System.Text;
 
-namespace Microsoft.VisualStudio.Services.Common
+namespace GitHub.Services.Common
 {
     //********************************************************************************************
     /// <summary>

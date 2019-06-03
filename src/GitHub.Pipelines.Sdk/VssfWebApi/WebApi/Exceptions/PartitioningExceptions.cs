@@ -1,10 +1,10 @@
-﻿using Microsoft.VisualStudio.Services.Common;
+﻿using GitHub.Services.Common;
 using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.Serialization;
-using Microsoft.VisualStudio.Services.WebApi;
+using GitHub.Services.WebApi;
 
-namespace Microsoft.VisualStudio.Services.Partitioning
+namespace GitHub.Services.Partitioning
 {
     [Serializable]
     [SuppressMessageAttribute("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]

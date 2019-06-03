@@ -14,9 +14,9 @@
 using System;
 using System.ComponentModel;
 using System.Collections.Concurrent;
-using Microsoft.VisualStudio.Services.Common;
+using GitHub.Services.Common;
 
-namespace Microsoft.VisualStudio.Services.CircuitBreaker
+namespace GitHub.Services.CircuitBreaker
 {
     /// <summary>
     /// Circuit-breaker logic that is hooked into <see cref="Command"/> execution and will stop allowing executions if 

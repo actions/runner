@@ -2,7 +2,7 @@
 using System.ComponentModel;
 using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.FileContainer
+namespace GitHub.Services.FileContainer
 {
     /// <summary>
     /// Represents a container that encapsulates a hierarchical file system.

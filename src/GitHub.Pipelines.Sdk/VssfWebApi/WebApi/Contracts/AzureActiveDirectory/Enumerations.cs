@@ -1,6 +1,6 @@
 ﻿using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.AadMemberAccessStatus
+namespace GitHub.Services.AadMemberAccessStatus
 {
     [DataContract]
     public enum AadMemberAccessState

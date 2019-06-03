@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.Security
+namespace GitHub.Services.Security
 {
     [DataContract]
     public sealed class SetAccessControlEntriesInfo

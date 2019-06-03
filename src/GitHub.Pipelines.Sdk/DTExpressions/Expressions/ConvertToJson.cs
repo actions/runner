@@ -1,10 +1,10 @@
-﻿using Microsoft.VisualStudio.Services.WebApi;
+﻿using GitHub.Services.WebApi;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Text;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Expressions
+namespace GitHub.DistributedTask.Expressions
 {
     internal sealed class ConvertToJsonNode : FunctionNode
     {

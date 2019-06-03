@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Microsoft.VisualStudio.Services.Security
+namespace GitHub.Services.Security
 {
     /// <summary>
     /// Contains identifiers for well-known ACL (access control list) stores

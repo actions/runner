@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Microsoft.VisualStudio.Services.Licensing
+namespace GitHub.Services.Licensing
 {
     /// <summary>
     /// Performs type conversion for a License

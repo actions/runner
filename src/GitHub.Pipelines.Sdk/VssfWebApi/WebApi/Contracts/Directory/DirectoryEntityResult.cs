@@ -2,7 +2,7 @@
 using System.Runtime.Serialization;
 using Newtonsoft.Json;
 
-namespace Microsoft.VisualStudio.Services.Directories
+namespace GitHub.Services.Directories
 {
     [DataContract]
     public class DirectoryEntityResult

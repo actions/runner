@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Pipelines.Artifacts
+namespace GitHub.DistributedTask.Pipelines.Artifacts
 {
     /// <summary>
     /// Provides a mechanism to resolve the artifacts

@@ -14,7 +14,7 @@
 using System;
 using System.Threading;
 
-namespace Microsoft.VisualStudio.Services.CircuitBreaker
+namespace GitHub.Services.CircuitBreaker
 {
     public interface IRollingNumber
     {

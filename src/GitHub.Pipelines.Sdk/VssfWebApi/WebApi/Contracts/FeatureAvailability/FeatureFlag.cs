@@ -1,6 +1,6 @@
 ﻿using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.FeatureAvailability
+namespace GitHub.Services.FeatureAvailability
 {
     [DataContract]
     public class FeatureFlag

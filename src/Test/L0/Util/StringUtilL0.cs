@@ -1,8 +1,8 @@
-using Microsoft.VisualStudio.Services.Agent.Util;
+﻿using Runner.Common.Util;
 using System.Globalization;
 using Xunit;
 
-namespace Microsoft.VisualStudio.Services.Agent.Tests.Util
+namespace Runner.Common.Tests.Util
 {
     public class StringUtilL0
     {

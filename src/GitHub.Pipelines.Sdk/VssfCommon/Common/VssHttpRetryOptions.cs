@@ -1,4 +1,4 @@
-﻿using Microsoft.VisualStudio.Services.Common.Internal;
+﻿using GitHub.Services.Common.Internal;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -7,7 +7,7 @@ using System.Net;
 using System.Net.Http;
 using System.Threading;
 
-namespace Microsoft.VisualStudio.Services.Common
+namespace GitHub.Services.Common
 {
     /// <summary>
     /// Defines the options used for configuring the retry policy.

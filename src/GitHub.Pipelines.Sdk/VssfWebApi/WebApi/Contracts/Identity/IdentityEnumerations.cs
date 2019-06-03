@@ -3,7 +3,7 @@ using System;
 using System.Runtime.Serialization;
 using System.Xml.Serialization;
 
-namespace Microsoft.VisualStudio.Services.Identity
+namespace GitHub.Services.Identity
 {
     [DataContract]
     public enum GroupScopeType

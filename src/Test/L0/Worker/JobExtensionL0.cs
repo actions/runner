@@ -1,5 +1,5 @@
-// using Microsoft.TeamFoundation.DistributedTask.WebApi;
-// using Microsoft.VisualStudio.Services.Agent.Worker;
+﻿// using GitHub.DistributedTask.WebApi;
+// using Runner.Common.Worker;
 // using Moq;
 // using System;
 // using System.Collections.Generic;
@@ -8,9 +8,9 @@
 // using System.Threading.Tasks;
 // using Xunit;
 // using System.Threading;
-// using Pipelines = Microsoft.TeamFoundation.DistributedTask.Pipelines;
+// using Pipelines = GitHub.DistributedTask.Pipelines;
 
-// namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
+// namespace Runner.Common.Tests.Worker
 // {
 //     public sealed class JobExtensionL0
 //     {
@@ -62,7 +62,7 @@
 //         private TestHostContext CreateTestContext([CallerMemberName] String testName = "")
 //         {
 //             var hc = new TestHostContext(this, testName);
-//             _jobEc = new Agent.Worker.ExecutionContext();
+//             _jobEc = new Runner.Worker.ExecutionContext();
 //             _taskManager = new Mock<ITaskManager>();
 //             _jobServerQueue = new Mock<IJobServerQueue>();
 //             _config = new Mock<IConfigurationStore>();

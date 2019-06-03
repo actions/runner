@@ -1,11 +1,11 @@
-using System;
+﻿using System;
 using System.IO;
-using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.Common.ClientStorage;
-using Microsoft.VisualStudio.Services.WebApi.Internal;
+using GitHub.Services.Common;
+using GitHub.Services.Common.ClientStorage;
+using GitHub.Services.WebApi.Internal;
 using Microsoft.Win32;
 
-namespace Microsoft.VisualStudio.Services.WebApi
+namespace GitHub.Services.WebApi
 {
     /// <summary>
     /// Helper for retrieving client settings which are environment-specific or retrieved from the Windows Registry

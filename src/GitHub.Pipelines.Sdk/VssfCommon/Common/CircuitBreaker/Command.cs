@@ -18,7 +18,7 @@ using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Microsoft.VisualStudio.Services.CircuitBreaker
+namespace GitHub.Services.CircuitBreaker
 {
     /// <summary>
     /// Provides an asynchronous CircuitBreaker command with support for Run and Fallback Tasks.  

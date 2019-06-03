@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace Microsoft.VisualStudio.Services.WebApi.Patch
+namespace GitHub.Services.WebApi.Patch
 {
     /// <summary>
     /// Event args for the applying patch operation.

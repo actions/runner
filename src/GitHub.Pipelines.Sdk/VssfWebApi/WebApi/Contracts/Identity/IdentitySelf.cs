@@ -4,7 +4,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.Identity
+namespace GitHub.Services.Identity
 {
     /// <summary>
     /// Identity information.

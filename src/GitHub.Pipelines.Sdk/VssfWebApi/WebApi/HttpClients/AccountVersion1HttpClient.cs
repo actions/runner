@@ -6,11 +6,11 @@ using System.Net.Http;
 using System.Runtime.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.Identity;
-using Microsoft.VisualStudio.Services.WebApi;
+using GitHub.Services.Common;
+using GitHub.Services.Identity;
+using GitHub.Services.WebApi;
 
-namespace Microsoft.VisualStudio.Services.Account.Client
+namespace GitHub.Services.Account.Client
 {
     [ResourceArea(AccountResourceIds.AreaId)]
     public class AccountVersion1HttpClient : VssHttpClientBase
@@ -58,7 +58,7 @@ namespace Microsoft.VisualStudio.Services.Account.Client
             CurrentApiVersion = new ApiResourceVersion(c_apiVersion);
         }
 
-        [Obsolete("Please use appropriate method on Microsoft.VisualStudio.Services.Organization.Client.OrganizationHttpClient instead. See https://vsowiki.com/index.php?title=SDK_M113#AccountService_obsolescence for more details.")]
+        [Obsolete("Please use appropriate method on GitHub.Services.Organization.Client.OrganizationHttpClient instead. See https://vsowiki.com/index.php?title=SDK_M113#AccountService_obsolescence for more details.")]
         public async Task<Account> CreateAccountAsync(
             string name,
             string organization,
@@ -93,7 +93,7 @@ namespace Microsoft.VisualStudio.Services.Account.Client
             }
         }
 
-        [Obsolete("Please use appropriate method on Microsoft.VisualStudio.Services.UserMapping.Client.UserMappingHttpClient instead. See https://vsowiki.com/index.php?title=SDK_M112#AccountService_obsolescence for more details.")]
+        [Obsolete("Please use appropriate method on GitHub.Services.UserMapping.Client.UserMappingHttpClient instead. See https://vsowiki.com/index.php?title=SDK_M112#AccountService_obsolescence for more details.")]
         public async Task<List<Account>> GetAccountsAsync(
             bool includeDisabledAccounts = false,
             IEnumerable<string> propertyNameFilter = null,
@@ -117,7 +117,7 @@ namespace Microsoft.VisualStudio.Services.Account.Client
             }
         }
 
-        [Obsolete("Please use appropriate method on Microsoft.VisualStudio.Services.Organization.Client.OrganizationHttpClient instead. See https://vsowiki.com/index.php?title=SDK_M113#AccountService_obsolescence for more details.")]
+        [Obsolete("Please use appropriate method on GitHub.Services.Organization.Client.OrganizationHttpClient instead. See https://vsowiki.com/index.php?title=SDK_M113#AccountService_obsolescence for more details.")]
         internal async Task<List<Account>> GetAccountsByCreatorAsync(
             Guid creatorId,
             bool includeDisabledAccounts = false,
@@ -217,7 +217,7 @@ namespace Microsoft.VisualStudio.Services.Account.Client
             }
         }
 
-        [Obsolete("Please use appropriate method on Microsoft.VisualStudio.Services.Organization.Client.OrganizationHttpClient instead. See https://vsowiki.com/index.php?title=SDK_M113#AccountService_obsolescence for more details.")]
+        [Obsolete("Please use appropriate method on GitHub.Services.Organization.Client.OrganizationHttpClient instead. See https://vsowiki.com/index.php?title=SDK_M113#AccountService_obsolescence for more details.")]
         public async Task<Account> GetAccountAsync(
             string accountId,
             IEnumerable<string> propertyNameFilter = null,
@@ -241,7 +241,7 @@ namespace Microsoft.VisualStudio.Services.Account.Client
             }
         }
 
-        [Obsolete("Please use appropriate method on Microsoft.VisualStudio.Services.Organization.Client.OrganizationHttpClient instead. See https://vsowiki.com/index.php?title=SDK_M113#AccountService_obsolescence for more details.")]
+        [Obsolete("Please use appropriate method on GitHub.Services.Organization.Client.OrganizationHttpClient instead. See https://vsowiki.com/index.php?title=SDK_M113#AccountService_obsolescence for more details.")]
         public Account GetAccount(string accountId, IEnumerable<string> propertyNameFilter = null, object userState = null)
         {
             try
@@ -268,7 +268,7 @@ namespace Microsoft.VisualStudio.Services.Account.Client
             }
         }
 
-        [Obsolete("Please use appropriate method on Microsoft.VisualStudio.Services.Organization.Client.OrganizationHttpClient instead. See https://vsowiki.com/index.php?title=SDK_M113#AccountService_obsolescence for more details.")]
+        [Obsolete("Please use appropriate method on GitHub.Services.Organization.Client.OrganizationHttpClient instead. See https://vsowiki.com/index.php?title=SDK_M113#AccountService_obsolescence for more details.")]
         public async Task<IEnumerable<AccountRegion>> GetRegionsAsync(
             object userState = null,
             CancellationToken cancellationToken = default(CancellationToken))
@@ -286,7 +286,7 @@ namespace Microsoft.VisualStudio.Services.Account.Client
             }
         }
 
-        [Obsolete("Please use appropriate method on Microsoft.VisualStudio.Services.Organization.Client.OrganizationHttpClient instead. See https://vsowiki.com/index.php?title=SDK_M113#AccountService_obsolescence for more details.")]
+        [Obsolete("Please use appropriate method on GitHub.Services.Organization.Client.OrganizationHttpClient instead. See https://vsowiki.com/index.php?title=SDK_M113#AccountService_obsolescence for more details.")]
         public async Task<AccountNameAvailability> GetAccountNameAvailabilityAsync(
             string accountName,
             object userState = null,
@@ -307,7 +307,7 @@ namespace Microsoft.VisualStudio.Services.Account.Client
             }
         }
 
-        [Obsolete("Please use appropriate method on Microsoft.VisualStudio.Services.Organization.Client.OrganizationHttpClient instead. See https://vsowiki.com/index.php?title=SDK_M113#AccountService_obsolescence for more details.")]
+        [Obsolete("Please use appropriate method on GitHub.Services.Organization.Client.OrganizationHttpClient instead. See https://vsowiki.com/index.php?title=SDK_M113#AccountService_obsolescence for more details.")]
         public async Task<IDictionary<string, string>> GetAccountSettingsAsync(
             object userState = null,
             CancellationToken cancellationToken = default(CancellationToken))

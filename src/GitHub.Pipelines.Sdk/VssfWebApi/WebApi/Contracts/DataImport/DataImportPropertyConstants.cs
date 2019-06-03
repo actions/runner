@@ -1,7 +1,7 @@
-using System;
+﻿using System;
 using System.ComponentModel;
 
-namespace Microsoft.VisualStudio.Services.WebApi
+namespace GitHub.Services.WebApi
 {
     public static class DataImportPropertyConstants
     {

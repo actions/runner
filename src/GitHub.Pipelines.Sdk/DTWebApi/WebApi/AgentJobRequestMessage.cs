@@ -2,10 +2,10 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Runtime.Serialization;
-using Microsoft.VisualStudio.Services.WebApi;
+using GitHub.Services.WebApi;
 using Newtonsoft.Json;
 
-namespace Microsoft.TeamFoundation.DistributedTask.WebApi
+namespace GitHub.DistributedTask.WebApi
 {
     [DataContract]
 

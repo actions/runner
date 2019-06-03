@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.Users
+namespace GitHub.Services.Users
 {
     [DataContract]
     public class UserAttributes

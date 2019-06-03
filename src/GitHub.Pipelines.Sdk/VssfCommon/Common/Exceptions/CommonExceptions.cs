@@ -2,14 +2,14 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.Common
+namespace GitHub.Services.Common
 {
     /// <summary>
     /// Thrown when a config file fails to load
     /// </summary
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "ConfigFileException", "Microsoft.VisualStudio.Services.Common.ConfigFileException, Microsoft.VisualStudio.Services.Common, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "ConfigFileException", "GitHub.Services.Common.ConfigFileException, GitHub.Services.Common, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class ConfigFileException : VssException
     {
         public ConfigFileException(String message)
@@ -30,7 +30,7 @@ namespace Microsoft.VisualStudio.Services.Common
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "VssServiceException", "Microsoft.VisualStudio.Services.Common.VssServiceException, Microsoft.VisualStudio.Services.Common, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "VssServiceException", "GitHub.Services.Common.VssServiceException, GitHub.Services.Common, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class VssServiceException : VssException
     {
         public VssServiceException()

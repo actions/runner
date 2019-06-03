@@ -1,17 +1,17 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Runtime.Serialization;
 using System.Text;
-using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.WebApi;
+using GitHub.Services.Common;
+using GitHub.Services.WebApi;
 
-namespace Microsoft.VisualStudio.Services.Identity
+namespace GitHub.Services.Identity
 {
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "IdentityServiceException", "Microsoft.VisualStudio.Services.Identity.IdentityServiceException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "IdentityServiceException", "GitHub.Services.Identity.IdentityServiceException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class IdentityServiceException : VssServiceException
     {
         public IdentityServiceException()
@@ -42,7 +42,7 @@ namespace Microsoft.VisualStudio.Services.Identity
     /// </summary>
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "GroupCreationException", "Microsoft.VisualStudio.Services.Identity.GroupCreationException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "GroupCreationException", "GitHub.Services.Identity.GroupCreationException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class GroupCreationException : IdentityServiceException
     {
         public GroupCreationException(string displayName, string projectName)
@@ -61,7 +61,7 @@ namespace Microsoft.VisualStudio.Services.Identity
     /// </summary>
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "IdentityDomainMismatchException", "Microsoft.VisualStudio.Services.Identity.IdentityDomainMismatchException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "IdentityDomainMismatchException", "GitHub.Services.Identity.IdentityDomainMismatchException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class IdentityDomainMismatchException : IdentityServiceException
     {
         public IdentityDomainMismatchException(string incorrectHost, string correctHost)
@@ -86,7 +86,7 @@ namespace Microsoft.VisualStudio.Services.Identity
     /// </summary>
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "AddMemberCyclicMembershipException", "Microsoft.VisualStudio.Services.Identity.AddMemberCyclicMembershipException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "AddMemberCyclicMembershipException", "GitHub.Services.Identity.AddMemberCyclicMembershipException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class AddMemberCyclicMembershipException : IdentityServiceException
     {
         public AddMemberCyclicMembershipException()
@@ -114,7 +114,7 @@ namespace Microsoft.VisualStudio.Services.Identity
     /// </summary>
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "GroupScopeCreationException", "Microsoft.VisualStudio.Services.Identity.GroupScopeCreationException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "GroupScopeCreationException", "GitHub.Services.Identity.GroupScopeCreationException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class GroupScopeCreationException : IdentityServiceException
     {
         public GroupScopeCreationException()
@@ -172,7 +172,7 @@ namespace Microsoft.VisualStudio.Services.Identity
     /// </summary>
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "AddMemberIdentityAlreadyMemberException", "Microsoft.VisualStudio.Services.Identity.AddMemberIdentityAlreadyMemberException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "AddMemberIdentityAlreadyMemberException", "GitHub.Services.Identity.AddMemberIdentityAlreadyMemberException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class AddMemberIdentityAlreadyMemberException : IdentityServiceException
     {
         public AddMemberIdentityAlreadyMemberException(string groupName, string memberName)
@@ -193,7 +193,7 @@ namespace Microsoft.VisualStudio.Services.Identity
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "RemoveAccountOwnerFromAdminGroupException", "Microsoft.VisualStudio.Services.Identity.RemoveAccountOwnerFromAdminGroupException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "RemoveAccountOwnerFromAdminGroupException", "GitHub.Services.Identity.RemoveAccountOwnerFromAdminGroupException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class RemoveAccountOwnerFromAdminGroupException : IdentityServiceException
     {      
         public RemoveAccountOwnerFromAdminGroupException() 
@@ -209,7 +209,7 @@ namespace Microsoft.VisualStudio.Services.Identity
     /// </summary>
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "RemoveSelfFromAdminGroupException", "Microsoft.VisualStudio.Services.Identity.RemoveSelfFromAdminGroupException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "RemoveSelfFromAdminGroupException", "GitHub.Services.Identity.RemoveSelfFromAdminGroupException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class RemoveSelfFromAdminGroupException : IdentityServiceException
     {
         public RemoveSelfFromAdminGroupException()
@@ -227,7 +227,7 @@ namespace Microsoft.VisualStudio.Services.Identity
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "RemoveOrganizationAdminFromAdminGroupException", "Microsoft.VisualStudio.Services.Identity.RemoveOrganizationAdminFromAdminGroupException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "RemoveOrganizationAdminFromAdminGroupException", "GitHub.Services.Identity.RemoveOrganizationAdminFromAdminGroupException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     class RemoveOrganizationAdminFromAdminGroupException : IdentityServiceException
     {
         public RemoveOrganizationAdminFromAdminGroupException(string message) : base(message) { }
@@ -237,7 +237,7 @@ namespace Microsoft.VisualStudio.Services.Identity
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "RemoveServiceAccountsFromAdminGroupException", "Microsoft.VisualStudio.Services.Identity.RemoveServiceAccountsFromAdminGroupException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "RemoveServiceAccountsFromAdminGroupException", "GitHub.Services.Identity.RemoveServiceAccountsFromAdminGroupException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     class RemoveServiceAccountsFromAdminGroupException : IdentityServiceException
     {
         public RemoveServiceAccountsFromAdminGroupException(string message) : base(message) { }
@@ -249,7 +249,7 @@ namespace Microsoft.VisualStudio.Services.Identity
     /// </summary>
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "RemoveGroupMemberNotMemberException", "Microsoft.VisualStudio.Services.Identity.RemoveGroupMemberNotMemberException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "RemoveGroupMemberNotMemberException", "GitHub.Services.Identity.RemoveGroupMemberNotMemberException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class RemoveGroupMemberNotMemberException : IdentityServiceException
     {
         public RemoveGroupMemberNotMemberException(string sid)
@@ -268,7 +268,7 @@ namespace Microsoft.VisualStudio.Services.Identity
     /// is not legal for some reason related to identity X
     /// </summary>
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "AddGroupMemberIllegalMemberException", "Microsoft.VisualStudio.Services.Identity.AddGroupMemberIllegalMemberException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "AddGroupMemberIllegalMemberException", "GitHub.Services.Identity.AddGroupMemberIllegalMemberException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class AddGroupMemberIllegalMemberException : IdentityServiceException
     {
         public AddGroupMemberIllegalMemberException()
@@ -295,7 +295,7 @@ namespace Microsoft.VisualStudio.Services.Identity
     /// Cannot add windows identity to hosted deployment
     /// </summary>
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "AddGroupMemberIllegalWindowsIdentityException", "Microsoft.VisualStudio.Services.Identity.AddGroupMemberIllegalWindowsIdentityException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "AddGroupMemberIllegalWindowsIdentityException", "GitHub.Services.Identity.AddGroupMemberIllegalWindowsIdentityException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class AddGroupMemberIllegalWindowsIdentityException : IdentityServiceException
     {
         public AddGroupMemberIllegalWindowsIdentityException(Identity member)
@@ -313,7 +313,7 @@ namespace Microsoft.VisualStudio.Services.Identity
     /// Cannot add internet identity to on premise deployment
     /// </summary>
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "AddGroupMemberIllegalInternetIdentityException", "Microsoft.VisualStudio.Services.Identity.AddGroupMemberIllegalInternetIdentityException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "AddGroupMemberIllegalInternetIdentityException", "GitHub.Services.Identity.AddGroupMemberIllegalInternetIdentityException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class AddGroupMemberIllegalInternetIdentityException : IdentityServiceException
     {
         public AddGroupMemberIllegalInternetIdentityException(Identity member)
@@ -332,7 +332,7 @@ namespace Microsoft.VisualStudio.Services.Identity
     /// </summary>
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "RemoveNonexistentGroupException", "Microsoft.VisualStudio.Services.Identity.RemoveNonexistentGroupException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "RemoveNonexistentGroupException", "GitHub.Services.Identity.RemoveNonexistentGroupException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class RemoveNonexistentGroupException : IdentityServiceException
     {
         public RemoveNonexistentGroupException(string sid)
@@ -353,7 +353,7 @@ namespace Microsoft.VisualStudio.Services.Identity
     /// </summary>
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "RemoveSpecialGroupException", "Microsoft.VisualStudio.Services.Identity.RemoveSpecialGroupException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "RemoveSpecialGroupException", "GitHub.Services.Identity.RemoveSpecialGroupException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class RemoveSpecialGroupException : IdentityServiceException
     {
         public RemoveSpecialGroupException(string sid, SpecialGroupType specialType)
@@ -390,7 +390,7 @@ namespace Microsoft.VisualStudio.Services.Identity
     /// </summary>
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "FindGroupSidDoesNotExistException", "Microsoft.VisualStudio.Services.Identity.FindGroupSidDoesNotExistException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "FindGroupSidDoesNotExistException", "GitHub.Services.Identity.FindGroupSidDoesNotExistException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class FindGroupSidDoesNotExistException : IdentityServiceException
     {
         public FindGroupSidDoesNotExistException(string sid)
@@ -414,7 +414,7 @@ namespace Microsoft.VisualStudio.Services.Identity
     /// </summary>
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "GroupRenameException", "Microsoft.VisualStudio.Services.Identity.GroupRenameException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "GroupRenameException", "GitHub.Services.Identity.GroupRenameException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class GroupRenameException : IdentityServiceException
     {
         public GroupRenameException(string displayName)
@@ -433,7 +433,7 @@ namespace Microsoft.VisualStudio.Services.Identity
     /// </summary>
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "AddProjectGroupProjectMismatchException", "Microsoft.VisualStudio.Services.Identity.AddProjectGroupProjectMismatchException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "AddProjectGroupProjectMismatchException", "GitHub.Services.Identity.AddProjectGroupProjectMismatchException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class AddProjectGroupProjectMismatchException : IdentityServiceException
     {
         public AddProjectGroupProjectMismatchException()
@@ -458,7 +458,7 @@ namespace Microsoft.VisualStudio.Services.Identity
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "AddProjectGroupToGlobalGroupException", "Microsoft.VisualStudio.Services.Identity.AddProjectGroupToGlobalGroupException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "AddProjectGroupToGlobalGroupException", "GitHub.Services.Identity.AddProjectGroupToGlobalGroupException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class AddProjectGroupToGlobalGroupException : IdentityServiceException
     {
         public AddProjectGroupToGlobalGroupException()
@@ -486,7 +486,7 @@ namespace Microsoft.VisualStudio.Services.Identity
     /// </summary>
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "GroupScopeDoesNotExistException", "Microsoft.VisualStudio.Services.Identity.GroupScopeDoesNotExistException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "GroupScopeDoesNotExistException", "GitHub.Services.Identity.GroupScopeDoesNotExistException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class GroupScopeDoesNotExistException : IdentityServiceException
     {
         [SuppressMessage("Microsoft.Design", "CA1054:UriParametersShouldNotBeStrings", MessageId = "0#")]
@@ -517,7 +517,7 @@ namespace Microsoft.VisualStudio.Services.Identity
     /// </summary>
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "NotApplicationGroupException", "Microsoft.VisualStudio.Services.Identity.NotApplicationGroupException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "NotApplicationGroupException", "GitHub.Services.Identity.NotApplicationGroupException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class NotApplicationGroupException : IdentityServiceException
     {
         public NotApplicationGroupException()
@@ -536,7 +536,7 @@ namespace Microsoft.VisualStudio.Services.Identity
     /// </summary>
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "ModifyEveryoneGroupException", "Microsoft.VisualStudio.Services.Identity.ModifyEveryoneGroupException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "ModifyEveryoneGroupException", "GitHub.Services.Identity.ModifyEveryoneGroupException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class ModifyEveryoneGroupException : IdentityServiceException
     {
         public ModifyEveryoneGroupException()
@@ -555,7 +555,7 @@ namespace Microsoft.VisualStudio.Services.Identity
     /// </summary>
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "IdentityNotFoundException", "Microsoft.VisualStudio.Services.Identity.IdentityNotFoundException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "IdentityNotFoundException", "GitHub.Services.Identity.IdentityNotFoundException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class IdentityNotFoundException : IdentityServiceException
     {
         public IdentityNotFoundException()
@@ -617,7 +617,7 @@ namespace Microsoft.VisualStudio.Services.Identity
     /// </summary>
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "IdentityNotServiceIdentityException", "Microsoft.VisualStudio.Services.Identity.IdentityNotServiceIdentityException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "IdentityNotServiceIdentityException", "GitHub.Services.Identity.IdentityNotServiceIdentityException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class IdentityNotServiceIdentityException : IdentityServiceException
     {
         public IdentityNotServiceIdentityException(String message)
@@ -633,7 +633,7 @@ namespace Microsoft.VisualStudio.Services.Identity
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "InvalidServiceIdentityNameException", "Microsoft.VisualStudio.Services.Identity.InvalidServiceIdentityNameException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "InvalidServiceIdentityNameException", "GitHub.Services.Identity.InvalidServiceIdentityNameException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class InvalidServiceIdentityNameException : IdentityServiceException
     {
         public InvalidServiceIdentityNameException(String identityName)
@@ -652,7 +652,7 @@ namespace Microsoft.VisualStudio.Services.Identity
     /// </summary>
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "IdentityAlreadyExistsException", "Microsoft.VisualStudio.Services.Identity.IdentityAlreadyExistsException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "IdentityAlreadyExistsException", "GitHub.Services.Identity.IdentityAlreadyExistsException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class IdentityAlreadyExistsException : IdentityServiceException
     {
         public IdentityAlreadyExistsException(String message)
@@ -672,7 +672,7 @@ namespace Microsoft.VisualStudio.Services.Identity
     /// </summary>
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "NotASecurityGroupException", "Microsoft.VisualStudio.Services.Identity.NotASecurityGroupException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "NotASecurityGroupException", "GitHub.Services.Identity.NotASecurityGroupException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class NotASecurityGroupException : IdentityServiceException
     {
         public NotASecurityGroupException(String displayName)
@@ -688,7 +688,7 @@ namespace Microsoft.VisualStudio.Services.Identity
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "RemoveMemberServiceAccountException", "Microsoft.VisualStudio.Services.Identity.RemoveMemberServiceAccountException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "RemoveMemberServiceAccountException", "GitHub.Services.Identity.RemoveMemberServiceAccountException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class RemoveMemberServiceAccountException : IdentityServiceException
     {
         public RemoveMemberServiceAccountException()
@@ -704,7 +704,7 @@ namespace Microsoft.VisualStudio.Services.Identity
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "IllegalAliasException", "Microsoft.VisualStudio.Services.Identity.IllegalAliasException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "IllegalAliasException", "GitHub.Services.Identity.IllegalAliasException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class IllegalAliasException : IdentityServiceException
     {
         public IllegalAliasException(string name) :
@@ -720,7 +720,7 @@ namespace Microsoft.VisualStudio.Services.Identity
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "IllegalIdentityException", "Microsoft.VisualStudio.Services.Identity.IllegalIdentityException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "IllegalIdentityException", "GitHub.Services.Identity.IllegalIdentityException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class IllegalIdentityException : IdentityServiceException
     {
         public IllegalIdentityException(string name) :
@@ -736,7 +736,7 @@ namespace Microsoft.VisualStudio.Services.Identity
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "IdentitySyncException", "Microsoft.VisualStudio.Services.Identity.IdentitySyncException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "IdentitySyncException", "GitHub.Services.Identity.IdentitySyncException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class IdentitySyncException : IdentityServiceException
     {
         public IdentitySyncException(string message, Exception innerException) :
@@ -750,7 +750,7 @@ namespace Microsoft.VisualStudio.Services.Identity
     /// </summary>
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "IdentityProviderUnavailableException", "Microsoft.VisualStudio.Services.Identity.IdentityProviderUnavailableException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "IdentityProviderUnavailableException", "GitHub.Services.Identity.IdentityProviderUnavailableException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class IdentityProviderUnavailableException : IdentityServiceException
     {
         public IdentityProviderUnavailableException(IdentityDescriptor descriptor)
@@ -766,7 +766,7 @@ namespace Microsoft.VisualStudio.Services.Identity
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "IdentityPropertyRequiredException", "Microsoft.VisualStudio.Services.Identity.IdentityPropertyRequiredException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "IdentityPropertyRequiredException", "GitHub.Services.Identity.IdentityPropertyRequiredException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class IdentityPropertyRequiredException : IdentityServiceException
     {
         public IdentityPropertyRequiredException(String message)
@@ -782,7 +782,7 @@ namespace Microsoft.VisualStudio.Services.Identity
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "IdentityAccountNameAlreadyInUseException", "Microsoft.VisualStudio.Services.Identity.IdentityAccountNameAlreadyInUseException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "IdentityAccountNameAlreadyInUseException", "GitHub.Services.Identity.IdentityAccountNameAlreadyInUseException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class IdentityAccountNameAlreadyInUseException : IdentityServiceException
     {
         public IdentityAccountNameAlreadyInUseException(String oneAccountName, Int32 collisionCount)
@@ -812,7 +812,7 @@ namespace Microsoft.VisualStudio.Services.Identity
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "IdentityAccountNameCollisionRepairFailedException", "Microsoft.VisualStudio.Services.Identity.IdentityAccountNameCollisionRepairFailedException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "IdentityAccountNameCollisionRepairFailedException", "GitHub.Services.Identity.IdentityAccountNameCollisionRepairFailedException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class IdentityAccountNameCollisionRepairFailedException : IdentityServiceException
     {
         public IdentityAccountNameCollisionRepairFailedException(String accountName)
@@ -828,7 +828,7 @@ namespace Microsoft.VisualStudio.Services.Identity
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "IdentityAccountNameCollisionRepairUnsafeException", "Microsoft.VisualStudio.Services.Identity.IdentityAccountNameCollisionRepairUnsafeException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "IdentityAccountNameCollisionRepairUnsafeException", "GitHub.Services.Identity.IdentityAccountNameCollisionRepairUnsafeException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class IdentityAccountNameCollisionRepairUnsafeException : IdentityServiceException
     {
         public IdentityAccountNameCollisionRepairUnsafeException(String accountName)
@@ -844,7 +844,7 @@ namespace Microsoft.VisualStudio.Services.Identity
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "IdentityAliasAlreadyInUseException", "Microsoft.VisualStudio.Services.Identity.IdentityAliasAlreadyInUseException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "IdentityAliasAlreadyInUseException", "GitHub.Services.Identity.IdentityAliasAlreadyInUseException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class IdentityAliasAlreadyInUseException : IdentityServiceException
     {
         public IdentityAliasAlreadyInUseException(String conflictingAlias)
@@ -860,7 +860,7 @@ namespace Microsoft.VisualStudio.Services.Identity
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "DynamicIdentityTypeCreationNotSupportedException", "Microsoft.VisualStudio.Services.Identity.DynamicIdentityTypeCreationNotSupportedException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "DynamicIdentityTypeCreationNotSupportedException", "GitHub.Services.Identity.DynamicIdentityTypeCreationNotSupportedException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class DynamicIdentityTypeCreationNotSupportedException : IdentityServiceException
     {
         public DynamicIdentityTypeCreationNotSupportedException()
@@ -876,7 +876,7 @@ namespace Microsoft.VisualStudio.Services.Identity
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "TooManyIdentitiesReturnedException", "Microsoft.VisualStudio.Services.Identity.TooManyIdentitiesReturnedException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "TooManyIdentitiesReturnedException", "GitHub.Services.Identity.TooManyIdentitiesReturnedException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class TooManyIdentitiesReturnedException : IdentityServiceException
     {
         public TooManyIdentitiesReturnedException()
@@ -892,7 +892,7 @@ namespace Microsoft.VisualStudio.Services.Identity
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "MultipleIdentitiesFoundException", "Microsoft.VisualStudio.Services.Identity.MultipleIdentitiesFoundException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "MultipleIdentitiesFoundException", "GitHub.Services.Identity.MultipleIdentitiesFoundException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class MultipleIdentitiesFoundException : IdentityServiceException
     {
         public MultipleIdentitiesFoundException(string identityName, IEnumerable<Identity> matchingIdentities)
@@ -927,7 +927,7 @@ namespace Microsoft.VisualStudio.Services.Identity
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "HistoricalIdentityNotFoundException", "Microsoft.VisualStudio.Services.Identity.HistoricalIdentityNotFoundException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "HistoricalIdentityNotFoundException", "GitHub.Services.Identity.HistoricalIdentityNotFoundException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class HistoricalIdentityNotFoundException : IdentityServiceException
     {
         public HistoricalIdentityNotFoundException()
@@ -943,7 +943,7 @@ namespace Microsoft.VisualStudio.Services.Identity
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "InvalidIdentityIdTranslationException", "Microsoft.VisualStudio.Services.Identity.InvalidIdentityIdTranslationException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "InvalidIdentityIdTranslationException", "GitHub.Services.Identity.InvalidIdentityIdTranslationException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class InvalidIdentityIdTranslationException : IdentityServiceException
     {
         public InvalidIdentityIdTranslationException()
@@ -959,7 +959,7 @@ namespace Microsoft.VisualStudio.Services.Identity
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "IdTranslationsAreMigratedException", "Microsoft.VisualStudio.Services.Identity.IdTranslationsAreMigratedException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "IdTranslationsAreMigratedException", "GitHub.Services.Identity.IdTranslationsAreMigratedException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class IdTranslationsAreMigratedException : IdentityServiceException
     {
         public IdTranslationsAreMigratedException()
@@ -975,7 +975,7 @@ namespace Microsoft.VisualStudio.Services.Identity
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "InvalidIdentityStorageKeyTranslationException", "Microsoft.VisualStudio.Services.Identity.InvalidIdentityStorageKeyTranslationException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "InvalidIdentityStorageKeyTranslationException", "GitHub.Services.Identity.InvalidIdentityStorageKeyTranslationException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class InvalidIdentityStorageKeyTranslationException : IdentityServiceException
     {
         public InvalidIdentityStorageKeyTranslationException()
@@ -991,7 +991,7 @@ namespace Microsoft.VisualStudio.Services.Identity
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "InvalidIdentityKeyMapsException", "Microsoft.VisualStudio.Services.Identity.InvalidIdentityKeyMapsException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "InvalidIdentityKeyMapsException", "GitHub.Services.Identity.InvalidIdentityKeyMapsException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class InvalidIdentityKeyMapException : IdentityServiceException
     {
         public InvalidIdentityKeyMapException()
@@ -1007,7 +1007,7 @@ namespace Microsoft.VisualStudio.Services.Identity
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "InvalidTypeIdForIdentityStorageKeyException", "Microsoft.VisualStudio.Services.Identity.InvalidTypeIdForIdentityStorageKeyException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "InvalidTypeIdForIdentityStorageKeyException", "GitHub.Services.Identity.InvalidTypeIdForIdentityStorageKeyException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class InvalidTypeIdForIdentityKeyMapException : IdentityServiceException
     {
         public InvalidTypeIdForIdentityKeyMapException()
@@ -1023,7 +1023,7 @@ namespace Microsoft.VisualStudio.Services.Identity
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "DuplicateIdentitiesFoundException", "Microsoft.VisualStudio.Services.Identity.DuplicateIdentitiesFoundException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "DuplicateIdentitiesFoundException", "GitHub.Services.Identity.DuplicateIdentitiesFoundException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class DuplicateIdentitiesFoundException : IdentityServiceException
     {
         public DuplicateIdentitiesFoundException()
@@ -1044,7 +1044,7 @@ namespace Microsoft.VisualStudio.Services.Identity
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "IdentityExpressionException", "Microsoft.VisualStudio.Services.Identity.IdentityExpressionException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "IdentityExpressionException", "GitHub.Services.Identity.IdentityExpressionException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class IdentityExpressionException : IdentityServiceException
     {
         public IdentityExpressionException(String message)
@@ -1060,7 +1060,7 @@ namespace Microsoft.VisualStudio.Services.Identity
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "InvalidDisplayNameException", "Microsoft.VisualStudio.Services.Identity.InvalidDisplayNameException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "InvalidDisplayNameException", "GitHub.Services.Identity.InvalidDisplayNameException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class InvalidDisplayNameException : IdentityServiceException
     {
         public InvalidDisplayNameException(String message)
@@ -1075,7 +1075,7 @@ namespace Microsoft.VisualStudio.Services.Identity
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "GroupNameNotRecognizedException", "Microsoft.VisualStudio.Services.Identity.GroupNameNotRecognizedException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "GroupNameNotRecognizedException", "GitHub.Services.Identity.GroupNameNotRecognizedException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class GroupNameNotRecognizedException : IdentityServiceException
     {
         public GroupNameNotRecognizedException()
@@ -1100,7 +1100,7 @@ namespace Microsoft.VisualStudio.Services.Identity
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "AccountPreferencesAlreadyExistException", "Microsoft.VisualStudio.Services.Identity.AccountPreferencesAlreadyExistException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "AccountPreferencesAlreadyExistException", "GitHub.Services.Identity.AccountPreferencesAlreadyExistException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class AccountPreferencesAlreadyExistException : IdentityServiceException
     {
         public AccountPreferencesAlreadyExistException()
@@ -1115,7 +1115,7 @@ namespace Microsoft.VisualStudio.Services.Identity
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "IdentityMapReadOnlyException", "Microsoft.VisualStudio.Services.Identity.IdentityMapReadOnlyException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "IdentityMapReadOnlyException", "GitHub.Services.Identity.IdentityMapReadOnlyException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class IdentityMapReadOnlyException : IdentityServiceException
     {
         public IdentityMapReadOnlyException()
@@ -1140,7 +1140,7 @@ namespace Microsoft.VisualStudio.Services.Identity
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "IdentityStoreNotAvailableException", "Microsoft.VisualStudio.Services.Identity.IdentityStoreNotAvailableException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "IdentityStoreNotAvailableException", "GitHub.Services.Identity.IdentityStoreNotAvailableException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class IdentityStoreNotAvailableException : IdentityServiceException
     {
         public IdentityStoreNotAvailableException() : base() { }
@@ -1149,7 +1149,7 @@ namespace Microsoft.VisualStudio.Services.Identity
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "InvalidDisplayNameException", "Microsoft.VisualStudio.Services.Identity.InvalidChangedIdentityException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "InvalidDisplayNameException", "GitHub.Services.Identity.InvalidChangedIdentityException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class InvalidChangedIdentityException : IdentityServiceException
     {
         public InvalidChangedIdentityException(String message)
@@ -1165,7 +1165,7 @@ namespace Microsoft.VisualStudio.Services.Identity
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "IdenittyInvalidTypeIdException", "Microsoft.VisualStudio.Services.Identity.IdenittyInvalidTypeIdException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "IdenittyInvalidTypeIdException", "GitHub.Services.Identity.IdenittyInvalidTypeIdException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     [Obsolete("This exception has been renamed to IdentityInvalidTypeIdException")]
     public class IdenittyInvalidTypeIdException : IdentityServiceException
     {
@@ -1177,7 +1177,7 @@ namespace Microsoft.VisualStudio.Services.Identity
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "IdentityInvalidTypeIdException", "Microsoft.VisualStudio.Services.Identity.IdentityInvalidTypeIdException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "IdentityInvalidTypeIdException", "GitHub.Services.Identity.IdentityInvalidTypeIdException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
 #pragma warning disable 618
     public class IdentityInvalidTypeIdException : IdenittyInvalidTypeIdException
 #pragma warning restore 618
@@ -1190,7 +1190,7 @@ namespace Microsoft.VisualStudio.Services.Identity
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "InvalidIdentityKeyException", "Microsoft.VisualStudio.Services.Identity.InvalidIdentityKeyException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "InvalidIdentityKeyException", "GitHub.Services.Identity.InvalidIdentityKeyException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class InvalidIdentityKeyException : IdentityServiceException
     {
         public InvalidIdentityKeyException() : base() { }
@@ -1202,7 +1202,7 @@ namespace Microsoft.VisualStudio.Services.Identity
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "IdentityMaterializationFailedException", "Microsoft.VisualStudio.Services.Identity.IdentityMaterializationFailedException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "IdentityMaterializationFailedException", "GitHub.Services.Identity.IdentityMaterializationFailedException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class IdentityMaterializationFailedException : IdentityServiceException
     {
         public IdentityMaterializationFailedException()
@@ -1511,7 +1511,7 @@ namespace Microsoft.VisualStudio.Services.Identity
     /// </summary>
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "RestoreGroupScopeValidationException", "Microsoft.VisualStudio.Services.Identity.RestoreGroupScopeValidationException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "RestoreGroupScopeValidationException", "GitHub.Services.Identity.RestoreGroupScopeValidationException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class RestoreGroupScopeValidationException : IdentityServiceException
     {
         [SuppressMessage("Microsoft.Design", "CA1054:UriParametersShouldNotBeStrings", MessageId = "0#")]

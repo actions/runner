@@ -1,6 +1,6 @@
 ﻿using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.HostAcquisition
+namespace GitHub.Services.HostAcquisition
 {
     [DataContract]
     public sealed class NameAvailability

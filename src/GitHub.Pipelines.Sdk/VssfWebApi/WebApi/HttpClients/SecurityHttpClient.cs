@@ -5,12 +5,12 @@ using System.Globalization;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
-using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.Identity;
-using Microsoft.VisualStudio.Services.WebApi;
+using GitHub.Services.Common;
+using GitHub.Services.Identity;
+using GitHub.Services.WebApi;
 using System.Threading;
 
-namespace Microsoft.VisualStudio.Services.Security.Client
+namespace GitHub.Services.Security.Client
 {
     [ClientCancellationTimeout(timeoutSeconds: 60)]
     [ClientCircuitBreakerSettings(timeoutSeconds: 10, failurePercentage: 50)]

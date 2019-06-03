@@ -1,6 +1,6 @@
 ﻿using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.Graph.Client
+namespace GitHub.Services.Graph.Client
 {
     [DataContract]
     public class GraphCachePolicies

@@ -1,10 +1,10 @@
-using System;
+﻿using System;
 using System.Linq;
 using System.Net;
-using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.Common.Internal;
+using GitHub.Services.Common;
+using GitHub.Services.Common.Internal;
 
-namespace Microsoft.VisualStudio.Services.Client
+namespace GitHub.Services.Client
 {
     /// <summary>
     /// Provides federated authentication with a hosted <c>VssConnection</c> instance using cookies.

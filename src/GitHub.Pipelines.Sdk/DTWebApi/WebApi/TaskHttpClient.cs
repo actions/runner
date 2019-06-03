@@ -1,6 +1,6 @@
-﻿using Microsoft.TeamFoundation.DistributedTask.Pipelines.Runtime;
-using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.WebApi;
+﻿using GitHub.DistributedTask.Pipelines.Runtime;
+using GitHub.Services.Common;
+using GitHub.Services.WebApi;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -8,7 +8,7 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Microsoft.TeamFoundation.DistributedTask.WebApi
+namespace GitHub.DistributedTask.WebApi
 {
     public sealed class TaskHttpClient : TaskHttpClientBase
     {

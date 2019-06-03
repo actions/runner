@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Linq;
 using System.Text;
-using Microsoft.VisualStudio.Services.Common.Internal;
+using GitHub.Services.Common.Internal;
 using System.ComponentModel;
 
-namespace Microsoft.VisualStudio.Services.Common
+namespace GitHub.Services.Common
 {
     internal static class StringExtensions
     {

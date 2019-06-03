@@ -2,13 +2,13 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
-using Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Artifacts;
-using Microsoft.TeamFoundation.DistributedTask.Pipelines.Artifacts;
-using Microsoft.TeamFoundation.DistributedTask.Pipelines.Runtime;
-using Microsoft.TeamFoundation.DistributedTask.WebApi;
-using Microsoft.VisualStudio.Services.Common;
+using GitHub.DistributedTask.Orchestration.Server.Artifacts;
+using GitHub.DistributedTask.Pipelines.Artifacts;
+using GitHub.DistributedTask.Pipelines.Runtime;
+using GitHub.DistributedTask.WebApi;
+using GitHub.Services.Common;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Pipelines
+namespace GitHub.DistributedTask.Pipelines
 {
     /// <summary>
     /// Provides a default implementation of a resource store.

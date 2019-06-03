@@ -1,4 +1,4 @@
-using Microsoft.VisualStudio.Services.Agent.Util;
+﻿using Runner.Common.Util;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -6,7 +6,7 @@ using System.Text.RegularExpressions;
 using Xunit;
 using System;
 
-namespace Microsoft.VisualStudio.Services.Agent.Tests
+namespace Runner.Common.Tests
 {
     public sealed class ProxyConfigL0
     {
@@ -14,8 +14,8 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         private static readonly Regex NewHttpClientRegex = new Regex("New\\s+HttpClient\\s*\\(\\s*\\)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private static readonly List<string> SkippedFiles = new List<string>()
         {
-            "Microsoft.VisualStudio.Services.Agent\\HostContext.cs",
-            "Microsoft.VisualStudio.Services.Agent/HostContext.cs"
+            "Runner.Common\\HostContext.cs",
+            "Runner.Common/HostContext.cs"
         };
 
         [Fact]
@@ -24,15 +24,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         public void IsNotUseRawHttpClientHandler()
         {
             List<string> sourceFiles = Directory.GetFiles(
-                    TestUtil.GetProjectPath("Microsoft.VisualStudio.Services.Agent"),
+                    TestUtil.GetProjectPath("Runner.Common"),
                     "*.cs",
                     SearchOption.AllDirectories).ToList();
             sourceFiles.AddRange(Directory.GetFiles(
-                     TestUtil.GetProjectPath("Agent.Listener"),
+                     TestUtil.GetProjectPath("Runner.Listener"),
                      "*.cs",
                      SearchOption.AllDirectories));
             sourceFiles.AddRange(Directory.GetFiles(
-                    TestUtil.GetProjectPath("Agent.Worker"),
+                    TestUtil.GetProjectPath("Runner.Worker"),
                     "*.cs",
                     SearchOption.AllDirectories));
 
@@ -71,15 +71,15 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         public void IsNotUseRawHttpClient()
         {
             List<string> sourceFiles = Directory.GetFiles(
-                    TestUtil.GetProjectPath("Microsoft.VisualStudio.Services.Agent"),
+                    TestUtil.GetProjectPath("Runner.Common"),
                     "*.cs",
                     SearchOption.AllDirectories).ToList();
             sourceFiles.AddRange(Directory.GetFiles(
-                     TestUtil.GetProjectPath("Agent.Listener"),
+                     TestUtil.GetProjectPath("Runner.Listener"),
                      "*.cs",
                      SearchOption.AllDirectories));
             sourceFiles.AddRange(Directory.GetFiles(
-                    TestUtil.GetProjectPath("Agent.Worker"),
+                    TestUtil.GetProjectPath("Runner.Worker"),
                     "*.cs",
                     SearchOption.AllDirectories));
 

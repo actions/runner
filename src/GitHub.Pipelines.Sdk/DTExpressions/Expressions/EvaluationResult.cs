@@ -1,5 +1,5 @@
-﻿using Microsoft.TeamFoundation.DistributedTask.Expressions.CollectionAccessors;
-using Microsoft.VisualStudio.Services.WebApi;
+﻿using GitHub.DistributedTask.Expressions.CollectionAccessors;
+using GitHub.Services.WebApi;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json.Serialization;
@@ -9,7 +9,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Expressions
+namespace GitHub.DistributedTask.Expressions
 {
     [EditorBrowsable(EditorBrowsableState.Never)]
     public sealed class EvaluationResult

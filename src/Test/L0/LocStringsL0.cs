@@ -1,4 +1,4 @@
-using Microsoft.VisualStudio.Services.Agent.Util;
+﻿using Runner.Common.Util;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -6,7 +6,7 @@ using System.Text.RegularExpressions;
 using Xunit;
 using System;
 
-namespace Microsoft.VisualStudio.Services.Agent.Tests
+namespace Runner.Common.Tests
 {
     public sealed class LocStringsL0
     {
@@ -17,7 +17,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Trait("Category", "Common")]
         public void IsNotMissingCommonLocStrings()
         {
-            ValidateLocStrings(new TestHostContext(this), project: "Microsoft.VisualStudio.Services.Agent");
+            ValidateLocStrings(new TestHostContext(this), project: "Runner.Common");
         }
 
         [Fact]
@@ -25,7 +25,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Trait("Category", "Agent")]
         public void IsNotMissingListenerLocStrings()
         {
-            ValidateLocStrings(new TestHostContext(this), project: "Agent.Listener");
+            ValidateLocStrings(new TestHostContext(this), project: "Runner.Listener");
         }
 
         [Fact]
@@ -33,7 +33,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
         [Trait("Category", "Worker")]
         public void IsNotMissingWorkerLocStrings()
         {
-            ValidateLocStrings(new TestHostContext(this), project: "Agent.Worker");
+            ValidateLocStrings(new TestHostContext(this), project: "Runner.Worker");
         }
 
         [Fact]
@@ -79,11 +79,11 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             // when recursively searching due to parallel tests are deleting temp folders (DirectoryNotFoundException).
             var keys = new List<string>();
             string[] sourceFiles =
-                Directory.GetFiles(TestUtil.GetProjectPath("Microsoft.VisualStudio.Services.Agent"), "*.cs", SearchOption.AllDirectories)
-                .Concat(Directory.GetFiles(TestUtil.GetProjectPath("Agent.Listener"), "*.cs", SearchOption.AllDirectories))
-                .Concat(Directory.GetFiles(TestUtil.GetProjectPath("Agent.Worker"), "*.cs", SearchOption.AllDirectories))
-                .Concat(Directory.GetFiles(TestUtil.GetProjectPath("Agent.Plugins"), "*.cs", SearchOption.AllDirectories))
-                .Concat(Directory.GetFiles(TestUtil.GetProjectPath("Agent.Sdk"), "*.cs", SearchOption.AllDirectories))
+                Directory.GetFiles(TestUtil.GetProjectPath("Runner.Common"), "*.cs", SearchOption.AllDirectories)
+                .Concat(Directory.GetFiles(TestUtil.GetProjectPath("Runner.Listener"), "*.cs", SearchOption.AllDirectories))
+                .Concat(Directory.GetFiles(TestUtil.GetProjectPath("Runner.Worker"), "*.cs", SearchOption.AllDirectories))
+                .Concat(Directory.GetFiles(TestUtil.GetProjectPath("Runner.Plugins"), "*.cs", SearchOption.AllDirectories))
+                .Concat(Directory.GetFiles(TestUtil.GetProjectPath("Runner.Sdk"), "*.cs", SearchOption.AllDirectories))
                 .ToArray();
             foreach (string sourceFile in sourceFiles)
             {

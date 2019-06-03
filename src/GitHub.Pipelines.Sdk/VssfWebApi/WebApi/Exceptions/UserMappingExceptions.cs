@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Runtime.Serialization;
-using Microsoft.VisualStudio.Services.Common;
+using GitHub.Services.Common;
 
-namespace Microsoft.VisualStudio.Services.UserMapping
+namespace GitHub.Services.UserMapping
 {
     [Serializable]
     public class UserMappingException : VssServiceException

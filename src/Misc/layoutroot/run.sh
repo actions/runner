@@ -22,9 +22,9 @@ DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
 # Run
 shopt -s nocasematch
 if [[ "$1" == "localRun" ]]; then
-    "$DIR"/bin/Agent.Listener $*
+    "$DIR"/bin/Runner.Listener $*
 else
-    "$DIR"/bin/Agent.Listener run $*
+    "$DIR"/bin/Runner.Listener run $*
 
 # Return code 4 means the run once agent received an update message.
 # Sleep 5 seconds to wait for the update process finish and run the agent again.
@@ -44,7 +44,7 @@ else
             sleep 5 >nul
         fi
         
-        "$DIR"/bin/Agent.Listener run $*
+        "$DIR"/bin/Runner.Listener run $*
     else
         exit $returnCode
     fi

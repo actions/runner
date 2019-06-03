@@ -2,13 +2,13 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
-using Microsoft.TeamFoundation.DistributedTask.Expressions;
-using Microsoft.TeamFoundation.DistributedTask.Logging;
-using Microsoft.TeamFoundation.DistributedTask.WebApi;
-using Microsoft.VisualStudio.Services.Common;
+using GitHub.DistributedTask.Expressions;
+using GitHub.DistributedTask.Logging;
+using GitHub.DistributedTask.WebApi;
+using GitHub.Services.Common;
 using Newtonsoft.Json.Linq;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Pipelines
+namespace GitHub.DistributedTask.Pipelines
 {
     /// <summary>
     /// Provides base functionality for all contexts used during build and execution if a pipeline.

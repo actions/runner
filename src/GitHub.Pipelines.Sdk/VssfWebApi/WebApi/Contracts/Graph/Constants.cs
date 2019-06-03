@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using Microsoft.VisualStudio.Services.Common;
+using GitHub.Services.Common;
 
-namespace Microsoft.VisualStudio.Services.Graph
+namespace GitHub.Services.Graph
 {
     public static class Constants
     {

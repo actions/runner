@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using Microsoft.VisualStudio.Services.Common;
+using GitHub.Services.Common;
 
-namespace Microsoft.VisualStudio.Services.OAuth
+namespace GitHub.Services.OAuth
 {
     /// <summary>
     /// Provides client credentials for proof of identity in OAuth 2.0 token exchanges.

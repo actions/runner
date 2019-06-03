@@ -1,14 +1,14 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.WebApi;
-using Microsoft.VisualStudio.Services.WebApi.Contracts.Licensing;
+using GitHub.Services.Common;
+using GitHub.Services.WebApi;
+using GitHub.Services.WebApi.Contracts.Licensing;
 
-namespace Microsoft.VisualStudio.Services.Licensing.Client
+namespace GitHub.Services.Licensing.Client
 {
     [ResourceArea(LicensingResourceIds.AreaId)]
     public class LicensingHttpClient : LicensingCompatHttpClientBase

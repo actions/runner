@@ -1,6 +1,6 @@
 ﻿using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.Profile.Model
+namespace GitHub.Services.Profile.Model
 {
     [DataContract]
     public class RemoteProfile

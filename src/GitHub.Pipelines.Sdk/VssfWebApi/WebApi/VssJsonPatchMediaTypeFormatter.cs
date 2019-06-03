@@ -7,11 +7,11 @@ using System.Net.Http.Headers;
 using System.Reflection;
 using System.Runtime.ExceptionServices;
 using System.Threading.Tasks;
-using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.WebApi.Patch;
-using Microsoft.VisualStudio.Services.WebApi.Patch.Json;
+using GitHub.Services.Common;
+using GitHub.Services.WebApi.Patch;
+using GitHub.Services.WebApi.Patch.Json;
 
-namespace Microsoft.VisualStudio.Services.WebApi
+namespace GitHub.Services.WebApi
 {
     /// <summary>
     /// The media type formatter for json-patch.  It deserializes the incoming json

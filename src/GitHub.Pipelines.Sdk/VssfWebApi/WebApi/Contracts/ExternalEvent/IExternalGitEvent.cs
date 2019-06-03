@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Microsoft.VisualStudio.Services.ExternalEvent
+namespace GitHub.Services.ExternalEvent
 {
     /// <summary>
     /// This interface is used to group external Git events (push, pull request).

@@ -1,9 +1,9 @@
-﻿using Microsoft.VisualStudio.Services.WebApi;
+﻿using GitHub.Services.WebApi;
 using System;
 using System.Collections.Generic;
 using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.ExternalEvent
+namespace GitHub.Services.ExternalEvent
 {
     [DataContract]
     public class ExternalGitComment : IExternalArtifact, IAdditionalProperties

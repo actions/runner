@@ -4,9 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-using CommonContracts = Microsoft.TeamFoundation.DistributedTask.Common.Contracts;
+using CommonContracts = GitHub.DistributedTask.Common.Contracts;
 
-namespace Microsoft.TeamFoundation.DistributedTask.WebApi
+namespace GitHub.DistributedTask.WebApi
 {
     public class DataSourceBinding : CommonContracts.DataSourceBindingBase
     {

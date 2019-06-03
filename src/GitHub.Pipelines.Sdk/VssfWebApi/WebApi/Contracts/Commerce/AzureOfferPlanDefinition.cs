@@ -1,7 +1,7 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 
-namespace Microsoft.VisualStudio.Services.Commerce
+namespace GitHub.Services.Commerce
 {
     /// <summary>
     /// Encapsulates azure specific plan structure, using a publisher defined publisher name, offer name, and plan name

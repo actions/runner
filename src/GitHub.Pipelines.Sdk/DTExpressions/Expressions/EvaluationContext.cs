@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using Microsoft.TeamFoundation.DistributedTask.Logging;
-using Microsoft.VisualStudio.Services.Common;
+using GitHub.DistributedTask.Logging;
+using GitHub.Services.Common;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Expressions
+namespace GitHub.DistributedTask.Expressions
 {
     [EditorBrowsable(EditorBrowsableState.Never)]
     public sealed class EvaluationContext

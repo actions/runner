@@ -1,8 +1,8 @@
 ﻿using System;
-using Microsoft.TeamFoundation.DistributedTask.Expressions;
-using Microsoft.TeamFoundation.DistributedTask.Pipelines.Validation;
+using GitHub.DistributedTask.Expressions;
+using GitHub.DistributedTask.Pipelines.Validation;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Pipelines.Expressions
+namespace GitHub.DistributedTask.Pipelines.Expressions
 {
     internal class InputValueNode : NamedValueNode
     {

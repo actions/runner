@@ -1,4 +1,4 @@
-﻿namespace Microsoft.VisualStudio.Services.Directories
+﻿namespace GitHub.Services.Directories
 {
     /// <summary>
     /// This a view that describes an entity which may or may not exist in a backing directory.

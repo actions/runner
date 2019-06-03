@@ -1,8 +1,8 @@
-﻿using Microsoft.VisualStudio.Services.WebApi;
+﻿using GitHub.Services.WebApi;
 using System;
 using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.Operations
+namespace GitHub.Services.Operations
 {
     /// <summary>
     /// Contains information about the progress or result of an async operation.

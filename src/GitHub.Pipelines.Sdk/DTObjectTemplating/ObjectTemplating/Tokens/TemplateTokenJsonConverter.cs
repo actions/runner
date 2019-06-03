@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Reflection;
-using Microsoft.VisualStudio.Services.WebApi;
+using GitHub.Services.WebApi;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-namespace Microsoft.TeamFoundation.DistributedTask.ObjectTemplating.Tokens
+namespace GitHub.DistributedTask.ObjectTemplating.Tokens
 {
     /// <summary>
     /// JSON serializer for TemplateToken objects

@@ -1,8 +1,8 @@
-using System;
+﻿using System;
 using System.Runtime.Serialization;
-using Microsoft.VisualStudio.Services.Notifications;
+using GitHub.Services.Notifications;
 
-namespace Microsoft.VisualStudio.Services.BasicAuthorization
+namespace GitHub.Services.BasicAuthorization
 {
     [DataContract]
     [NotificationEventBindings(EventSerializerType.Json, "ms.vss-sps-notifications.basic-auth-password-changed-event")]

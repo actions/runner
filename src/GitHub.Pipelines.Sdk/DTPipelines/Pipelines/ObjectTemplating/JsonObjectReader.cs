@@ -1,9 +1,9 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
-using Microsoft.TeamFoundation.DistributedTask.ObjectTemplating;
+using GitHub.DistributedTask.ObjectTemplating;
 using Newtonsoft.Json.Linq;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Pipelines.ObjectTemplating
+namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 {
     internal sealed class JsonObjectReader : IObjectReader
     {

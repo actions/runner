@@ -1,14 +1,14 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Runtime.Serialization;
-using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.Common.Internal;
+using GitHub.Services.Common;
+using GitHub.Services.Common.Internal;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-namespace Microsoft.VisualStudio.Services.WebApi
+namespace GitHub.Services.WebApi
 {
     //extended properties are serialized with many core types,
     //so a single contract to deal with them

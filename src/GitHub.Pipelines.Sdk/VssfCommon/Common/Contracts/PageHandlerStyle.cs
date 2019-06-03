@@ -1,4 +1,4 @@
-﻿namespace Microsoft.VisualStudio.Services.Common.Contracts
+﻿namespace GitHub.Services.Common.Contracts
 {
     public class PageHandlerStyle
     {

@@ -1,8 +1,8 @@
 ﻿using System;
 using Microsoft.IdentityModel.Clients.ActiveDirectory;
-using Microsoft.VisualStudio.Services.Common;
+using GitHub.Services.Common;
 
-namespace Microsoft.VisualStudio.Services.Client
+namespace GitHub.Services.Client
 {
     [Serializable]
     public class VssAadToken : IssuedToken

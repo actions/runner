@@ -1,11 +1,11 @@
 ﻿using System.ComponentModel;
 using System.Runtime.Serialization;
-using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.WebApi;
-using GroupScopeType = Microsoft.VisualStudio.Services.Identity.GroupScopeType;
-using IdentityDescriptor = Microsoft.VisualStudio.Services.Identity.IdentityDescriptor;
+using GitHub.Services.Common;
+using GitHub.Services.WebApi;
+using GroupScopeType = GitHub.Services.Identity.GroupScopeType;
+using IdentityDescriptor = GitHub.Services.Identity.IdentityDescriptor;
 
-namespace Microsoft.VisualStudio.Services.Graph.Client
+namespace GitHub.Services.Graph.Client
 {
     /// <summary>
     /// Container where a graph entity is defined (organization, project, team)

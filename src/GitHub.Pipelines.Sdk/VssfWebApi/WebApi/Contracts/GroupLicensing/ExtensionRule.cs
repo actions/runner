@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.GroupLicensingRule
+namespace GitHub.Services.GroupLicensingRule
 {
     /// <summary>
     /// Represents an Extension Rule

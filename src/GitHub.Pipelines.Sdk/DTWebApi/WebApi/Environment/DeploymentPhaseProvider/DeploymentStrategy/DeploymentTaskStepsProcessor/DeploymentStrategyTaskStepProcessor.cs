@@ -1,12 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using Microsoft.TeamFoundation.DistributedTask.Expressions;
-using Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Artifacts;
-using Microsoft.TeamFoundation.DistributedTask.Pipelines;
-using Microsoft.TeamFoundation.DistributedTask.Pipelines.Validation;
+using GitHub.DistributedTask.Expressions;
+using GitHub.DistributedTask.Orchestration.Server.Artifacts;
+using GitHub.DistributedTask.Pipelines;
+using GitHub.DistributedTask.Pipelines.Validation;
 
-namespace Microsoft.TeamFoundation.DistributedTask.WebApi
+namespace GitHub.DistributedTask.WebApi
 {
     internal static class DeploymentStrategyTaskStepProcessor
     {

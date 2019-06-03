@@ -1,9 +1,9 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Linq;
 using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.WebApi
+namespace GitHub.Services.WebApi
 {
 
     [DataContract]

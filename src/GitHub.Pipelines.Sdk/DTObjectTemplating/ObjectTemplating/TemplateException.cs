@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.Serialization;
-using Microsoft.VisualStudio.Services.Common;
+using GitHub.Services.Common;
 
-namespace Microsoft.TeamFoundation.DistributedTask.ObjectTemplating
+namespace GitHub.DistributedTask.ObjectTemplating
 {
     [EditorBrowsable(EditorBrowsableState.Never)]
     public class TemplateException : VssServiceException

@@ -1,6 +1,6 @@
-﻿using Microsoft.VisualStudio.Services.WebApi.Jwt;
+﻿using GitHub.Services.WebApi.Jwt;
 
-namespace Microsoft.VisualStudio.Services.DelegatedAuthorization
+namespace GitHub.Services.DelegatedAuthorization
 {
     public class RefreshTokenGrant : AuthorizationGrant
     {

@@ -1,11 +1,11 @@
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.VisualStudio.Services.Common.Internal;
-using Microsoft.VisualStudio.Services.Location;
+using GitHub.Services.Common.Internal;
+using GitHub.Services.Location;
 
-namespace Microsoft.VisualStudio.Services.WebApi.Location
+namespace GitHub.Services.WebApi.Location
 {
     /// <summary>
     /// 

@@ -1,9 +1,9 @@
-﻿using Microsoft.VisualStudio.Services.Common;
+﻿using GitHub.Services.Common;
 using System;
 using System.ComponentModel;
 using System.Threading;
 
-namespace Microsoft.VisualStudio.Services.WebApi
+namespace GitHub.Services.WebApi
 {
     [EditorBrowsable(EditorBrowsableState.Never)]
     public class HttpRetryHelper

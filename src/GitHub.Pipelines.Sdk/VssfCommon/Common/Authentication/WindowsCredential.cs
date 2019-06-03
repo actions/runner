@@ -2,7 +2,7 @@
 using System.Linq;
 using System.Net;
 
-namespace Microsoft.VisualStudio.Services.Common
+namespace GitHub.Services.Common
 {
     /// <summary>
     /// Provides a credential for windows authentication against a Visual Studio Service.

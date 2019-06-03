@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using Microsoft.TeamFoundation.DistributedTask.Logging;
+using GitHub.DistributedTask.Logging;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Expressions
+namespace GitHub.DistributedTask.Expressions
 {
     [EditorBrowsable(EditorBrowsableState.Never)]
     public interface IExpressionNode

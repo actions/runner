@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Runtime.Serialization;
-using Microsoft.VisualStudio.Services.Common;
+using GitHub.Services.Common;
 
-namespace Microsoft.VisualStudio.Services.OAuth
+namespace GitHub.Services.OAuth
 {
     /// <summary>
     /// Provides a base class for all OAuth exceptions.

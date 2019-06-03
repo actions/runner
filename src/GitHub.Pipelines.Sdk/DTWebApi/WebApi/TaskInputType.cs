@@ -1,8 +1,8 @@
-﻿using CommonContracts = Microsoft.TeamFoundation.DistributedTask.Common.Contracts;
+﻿using CommonContracts = GitHub.DistributedTask.Common.Contracts;
 using System.Runtime.Serialization;
 using System;
 
-namespace Microsoft.TeamFoundation.DistributedTask.WebApi
+namespace GitHub.DistributedTask.WebApi
 {
     public static class TaskInputType
     {

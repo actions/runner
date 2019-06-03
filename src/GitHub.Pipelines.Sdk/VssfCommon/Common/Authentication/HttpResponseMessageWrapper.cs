@@ -4,7 +4,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 
-namespace Microsoft.VisualStudio.Services.Common
+namespace GitHub.Services.Common
 {
     internal struct HttpResponseMessageWrapper : IHttpResponse, IHttpHeaders
     {

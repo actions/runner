@@ -27,12 +27,12 @@ using System.Net.Http;
 using System.Net.Http.Formatting;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.Profile;
-using Microsoft.VisualStudio.Services.WebApi;
-using Microsoft.VisualStudio.Services.WebApi.Patch.Json;
+using GitHub.Services.Common;
+using GitHub.Services.Profile;
+using GitHub.Services.WebApi;
+using GitHub.Services.WebApi.Patch.Json;
 
-namespace Microsoft.VisualStudio.Services.Graph.Client
+namespace GitHub.Services.Graph.Client
 {
     [ResourceArea(GraphResourceIds.AreaId)]
     [ClientCircuitBreakerSettings(timeoutSeconds: 20, failurePercentage: 80, MaxConcurrentRequests = 55)]

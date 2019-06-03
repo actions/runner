@@ -10,10 +10,10 @@
 
   <ItemGroup>
     <ProjectReference Include="..\GitHub.Pipelines.Sdk\GitHub.Pipelines.Sdk.csproj" />
-    <ProjectReference Include="..\Agent.Listener\Agent.Listener.csproj" />
-    <ProjectReference Include="..\Microsoft.VisualStudio.Services.Agent\Microsoft.VisualStudio.Services.Agent.csproj" />
-    <ProjectReference Include="..\Agent.Worker\Agent.Worker.csproj" />
-    <ProjectReference Include="..\Agent.Plugins\Agent.Plugins.csproj" />
+    <ProjectReference Include="..\Runner.Listener\Runner.Listener.csproj" />
+    <ProjectReference Include="..\Runner.Common\Runner.Common.csproj" />
+    <ProjectReference Include="..\Runner.Worker\Runner.Worker.csproj" />
+    <ProjectReference Include="..\Runner.Plugins\Runner.Plugins.csproj" />
   </ItemGroup>
 
   <ItemGroup>

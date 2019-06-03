@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Linq;
-using Microsoft.TeamFoundation.DistributedTask.Pipelines;
+using GitHub.DistributedTask.Pipelines;
 
-namespace Microsoft.TeamFoundation.DistributedTask.WebApi
+namespace GitHub.DistributedTask.WebApi
 {
     public static class EnvironmentInstanceExtension
     {
@@ -16,7 +16,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.WebApi
                 {
                     switch (linkedResource.TypeName)
                     {
-                        case "Microsoft.TeamFoundation.DistributedTask.Pipelines.ServiceEndpointReference":
+                        case "GitHub.DistributedTask.Pipelines.ServiceEndpointReference":
                             pipelineResources.AddEndpointReference(new ServiceEndpointReference { Id = new Guid(linkedResource.Id) });
                             break;
 

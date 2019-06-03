@@ -1,4 +1,4 @@
-﻿namespace Microsoft.TeamFoundation.DistributedTask.ObjectTemplating.Schema
+﻿namespace GitHub.DistributedTask.ObjectTemplating.Schema
 {
     internal enum DefinitionType
     {

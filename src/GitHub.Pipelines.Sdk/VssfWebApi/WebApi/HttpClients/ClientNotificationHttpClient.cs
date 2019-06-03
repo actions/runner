@@ -4,10 +4,10 @@ using System.ComponentModel;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.WebApi;
+using GitHub.Services.Common;
+using GitHub.Services.WebApi;
 
-namespace Microsoft.VisualStudio.Services.ClientNotification.Client
+namespace GitHub.Services.ClientNotification.Client
 {
     [ResourceArea(ClientNotificationResourceIds.AreaId)]
     [ClientCircuitBreakerSettings(timeoutSeconds: 10, failurePercentage: 80, MaxConcurrentRequests = 40)]

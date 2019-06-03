@@ -1,12 +1,12 @@
-﻿using Microsoft.VisualStudio.Services.Agent.Util;
-using Microsoft.VisualStudio.Services.Common;
+﻿using Runner.Common.Util;
+using GitHub.Services.Common;
 using System;
 using System.Collections.Generic;
 using System.Net.Http.Headers;
 using Xunit;
 using System.Text.RegularExpressions;
 
-namespace Microsoft.VisualStudio.Services.Agent.Tests.Util
+namespace Runner.Common.Tests.Util
 {
     public sealed class VssUtilL0
     {

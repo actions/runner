@@ -1,8 +1,8 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Runtime.Serialization;
-using Microsoft.VisualStudio.Services.WebApi;
+using GitHub.Services.WebApi;
 
-namespace Microsoft.VisualStudio.Services.Account
+namespace GitHub.Services.Account
 {
     [DataContract]
     public enum AccountType
@@ -178,7 +178,7 @@ namespace Microsoft.VisualStudio.Services.Account
     [EditorBrowsable(EditorBrowsableState.Never)]
     public static class PropertyConstants
     {
-        public const string ServiceUrlPrefix = "Microsoft.VisualStudio.Services.Account.ServiceUrl.";
+        public const string ServiceUrlPrefix = "GitHub.Services.Account.ServiceUrl.";
     }
 
     [EditorBrowsable(EditorBrowsableState.Never)]

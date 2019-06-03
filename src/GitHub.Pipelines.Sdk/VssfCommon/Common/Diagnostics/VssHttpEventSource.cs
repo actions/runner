@@ -9,7 +9,7 @@ using System.Net.Sockets;
 using System.Diagnostics.Eventing;
 #endif
 
-namespace Microsoft.VisualStudio.Services.Common.Diagnostics
+namespace GitHub.Services.Common.Diagnostics
 {
     [EventSource(Name = VssEventSources.Http)]
     internal sealed class VssHttpEventSource : EventSource

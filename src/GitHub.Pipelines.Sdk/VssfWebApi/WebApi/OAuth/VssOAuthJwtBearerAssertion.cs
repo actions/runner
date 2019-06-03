@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Security.Claims;
-using Microsoft.VisualStudio.Services.WebApi;
-using Microsoft.VisualStudio.Services.WebApi.Jwt;
+using GitHub.Services.WebApi;
+using GitHub.Services.WebApi.Jwt;
 
-namespace Microsoft.VisualStudio.Services.OAuth
+namespace GitHub.Services.OAuth
 {
     /// <summary>
     /// Represents a bearer token assertion for either JWT Bearer Token Profile for OAuth 2.0 Client Authentication 

@@ -1,9 +1,9 @@
-using System;
+﻿using System;
 using System.Runtime.Serialization;
 using System.Collections.Generic;
-using Microsoft.VisualStudio.Services.WebApi;
+using GitHub.Services.WebApi;
 
-namespace Microsoft.TeamFoundation.DistributedTask.WebApi
+namespace GitHub.DistributedTask.WebApi
 {
     /// <summary>
     /// Resources include Service Connections, Variable Groups and Secure Files.

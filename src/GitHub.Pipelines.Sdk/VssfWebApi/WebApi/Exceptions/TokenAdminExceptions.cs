@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Runtime.Serialization;
-using Microsoft.VisualStudio.Services.Common;
+using GitHub.Services.Common;
 
-namespace Microsoft.VisualStudio.Services.TokenAdmin.Client
+namespace GitHub.Services.TokenAdmin.Client
 {
     [Serializable]
     public class TokenAdminException : VssServiceException

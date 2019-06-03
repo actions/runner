@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 
-namespace Microsoft.VisualStudio.Services.Common
+namespace GitHub.Services.Common
 {
     public static class AdminConstants
     {
@@ -46,24 +46,24 @@ namespace Microsoft.VisualStudio.Services.Common
         }
 
         public const string WindowsType = "System.Security.Principal.WindowsIdentity"; // hard coding to make PCL compliant.  typeof(WindowsIdentity).FullName
-        public const string TeamFoundationType = "Microsoft.TeamFoundation.Identity";
+        public const string TeamFoundationType = "GitHub.Identity";
         public const string ClaimsType = "Microsoft.IdentityModel.Claims.ClaimsIdentity";
         // In WIF 4.5, Microsoft.IdentityModel.Claims.ClaimsIdentity was moved to System.Security.Claims namespace
         [EditorBrowsable(EditorBrowsableState.Never)]
         public const string Wif45ClaimsIdentityType = "System.Security.Claims.ClaimsIdentity";
-        public const string AlternateLoginType = "Microsoft.VisualStudio.Services.Cloud.AlternateLoginIdentity";
-        public const string BindPendingIdentityType = "Microsoft.TeamFoundation.BindPendingIdentity";
-        public const string ServerTestIdentity = "Microsoft.VisualStudio.Services.Identity.ServerTestIdentity";
-        public const string UnauthenticatedIdentityType = "Microsoft.TeamFoundation.UnauthenticatedIdentity";
-        public const string ServiceIdentityType = "Microsoft.TeamFoundation.ServiceIdentity";
-        public const string AggregateIdentityType = "Microsoft.TeamFoundation.AggregateIdentity";
-        public const string ImportedIdentityType = "Microsoft.TeamFoundation.ImportedIdentity";
-        public const string UnknownIdentityType = "Microsoft.VisualStudio.Services.Identity.UnknownIdentity";
-        public const string CspPartnerIdentityType = "Microsoft.TeamFoundation.Claims.CspPartnerIdentity";
-        public const string PermissionLevelDefinitionType = "Microsoft.VisualStudio.Services.PermissionLevel.PermissionLevelIdentity";
+        public const string AlternateLoginType = "GitHub.Services.Cloud.AlternateLoginIdentity";
+        public const string BindPendingIdentityType = "GitHub.BindPendingIdentity";
+        public const string ServerTestIdentity = "GitHub.Services.Identity.ServerTestIdentity";
+        public const string UnauthenticatedIdentityType = "GitHub.UnauthenticatedIdentity";
+        public const string ServiceIdentityType = "GitHub.ServiceIdentity";
+        public const string AggregateIdentityType = "GitHub.AggregateIdentity";
+        public const string ImportedIdentityType = "GitHub.ImportedIdentity";
+        public const string UnknownIdentityType = "GitHub.Services.Identity.UnknownIdentity";
+        public const string CspPartnerIdentityType = "GitHub.Claims.CspPartnerIdentity";
+        public const string PermissionLevelDefinitionType = "GitHub.Services.PermissionLevel.PermissionLevelIdentity";
 
         // this is used to represent scopes in the new Graph Rest Api
-        public const string GroupScopeType = "Microsoft.VisualStudio.Services.Graph.GraphScope";
+        public const string GroupScopeType = "GitHub.Services.Graph.GraphScope";
 
         // These are used with the System Subject Store
         public const string SystemPrefix = "System:";
@@ -218,7 +218,7 @@ namespace Microsoft.VisualStudio.Services.Common
         public const string ProvData = "prov_data";
 
         public const string AadRefreshToken = "vss:AadRefreshToken";
-        public const string AadRefreshTokenUpdated = "Microsoft.VisualStudio.Aad.AadRefreshTokenUpdateDate";
+        public const string AadRefreshTokenUpdated = "GitHub.Aad.AadRefreshTokenUpdateDate";
         public const string AadUserPrincipalName = "AadUserPrincipalName";
         public const string AcsIdentityProvider = "http://schemas.microsoft.com/accesscontrolservice/2010/07/claims/identityprovider";
         public const string AadIdentityProvider = "http://schemas.microsoft.com/identity/claims/identityprovider";
@@ -238,12 +238,12 @@ namespace Microsoft.VisualStudio.Services.Common
         public const string IsDeletedInOrigin = "IsDeletedInOrigin";
 
         // Extended properties, currently used only for Group images
-        public const string ImageId = "Microsoft.TeamFoundation.Identity.Image.Id";
-        public const string ImageData = @"Microsoft.TeamFoundation.Identity.Image.Data";
-        public const string ImageType = @"Microsoft.TeamFoundation.Identity.Image.Type";
-        public const string ImageUploadDate = @"Microsoft.TeamFoundation.Identity.Image.UploadDate";
-        public const string CandidateImageData = @"Microsoft.TeamFoundation.Identity.CandidateImage.Data";
-        public const string CandidateImageUploadDate = @"Microsoft.TeamFoundation.Identity.CandidateImage.UploadDate";
+        public const string ImageId = "GitHub.Identity.Image.Id";
+        public const string ImageData = @"GitHub.Identity.Image.Data";
+        public const string ImageType = @"GitHub.Identity.Image.Type";
+        public const string ImageUploadDate = @"GitHub.Identity.Image.UploadDate";
+        public const string CandidateImageData = @"GitHub.Identity.CandidateImage.Data";
+        public const string CandidateImageUploadDate = @"GitHub.Identity.CandidateImage.UploadDate";
 
         // Extended Properties used On Prem
         public const string LastAccessedTime = "LastAccessedTime";
@@ -258,12 +258,12 @@ namespace Microsoft.VisualStudio.Services.Common
         // Obsolete extended properties, which should be removed with the next major version (whichever version follows Dev15/TFS 2017)
         [Obsolete] public const string EmailConfirmationSendDates = "EmailConfirmationSendDates";
         [Obsolete] public const string MsdnLicense = "MSDNLicense";
-        [Obsolete] public const string BasicAuthPwdKey = "Microsoft.TeamFoundation.Identity.BasicAuthPwd";
-        [Obsolete] public const string BasicAuthSaltKey = "Microsoft.TeamFoundation.Identity.BasicAuthSalt";
+        [Obsolete] public const string BasicAuthPwdKey = "GitHub.Identity.BasicAuthPwd";
+        [Obsolete] public const string BasicAuthSaltKey = "GitHub.Identity.BasicAuthSalt";
         [Obsolete] public const string BasicAuthAlgorithm = "Microsoft.TeaFoundation.Identity.BasicAuthAlgorithm";
         [Obsolete] public const string BasicAuthFailures = "Microsoft.TeaFoundation.Identity.BasicAuthFailures";
         [Obsolete] public const string BasicAuthDisabled = "Microsoft.TeaFoundation.Identity.BasicAuthDisabled";
-        [Obsolete] public const string BasicAuthPasswordChanges = "Microsoft.TeamFoundation.Identity.BasicAuthSettingsChanges";
+        [Obsolete] public const string BasicAuthPasswordChanges = "GitHub.Identity.BasicAuthSettingsChanges";
 
 
         [SuppressMessage("Microsoft.Security", "CA2104:DoNotDeclareReadOnlyMutableReferenceTypes", Justification = "When the target .NET framework is revisioned to 4, change return to ISet<String>")]
@@ -493,49 +493,49 @@ namespace Microsoft.VisualStudio.Services.Common
         /// <summary>
         /// Macro used in subscriptions which will be replaced by the project name when evaluated
         /// </summary>
-        [Obsolete("Moved to Microsoft.VisualStudio.Services.Notifications.Common.NotificationFrameworkConstants.MyProjectNameMacro in assembly MS.VS.Services.Notifications.WebApi")]
+        [Obsolete("Moved to GitHub.Services.Notifications.Common.NotificationFrameworkConstants.MyProjectNameMacro in assembly MS.VS.Services.Notifications.WebApi")]
         public const String MyProjectNameMacro = "@@MyProjectName@@";
 
         /// <summary>
         /// Macro used in subscriptions which will be replaced by the subscriber's Display Name when evaluated
         /// </summary>
-        [Obsolete("Moved to Microsoft.VisualStudio.Services.Notifications.Common.NotificationFrameworkConstants.MyDisplayNameMacro in assembly MS.VS.Services.Notifications.WebApi")]
+        [Obsolete("Moved to GitHub.Services.Notifications.Common.NotificationFrameworkConstants.MyDisplayNameMacro in assembly MS.VS.Services.Notifications.WebApi")]
         public const String MyDisplayNameMacro = "@@MyDisplayName@@";
 
         /// <summary>
         /// Macro used in subscriptions which will be replaced by the subscriber's Unique User Name when evaluated
         /// </summary>
-        [Obsolete("Moved to Microsoft.VisualStudio.Services.Notifications.Common.NotificationFrameworkConstants.MyUniqueNameMacro in assembly MS.VS.Services.Notifications.WebApi")]
+        [Obsolete("Moved to GitHub.Services.Notifications.Common.NotificationFrameworkConstants.MyUniqueNameMacro in assembly MS.VS.Services.Notifications.WebApi")]
         public const String MyUniqueNameMacro = "@@MyUniqueName@@";
 
-        [Obsolete("Moved to Microsoft.VisualStudio.Services.Notifications.Common.NotificationFrameworkConstants.SingleQuoteNameMacro in assembly MS.VS.Services.Notifications.WebApi")]
+        [Obsolete("Moved to GitHub.Services.Notifications.Common.NotificationFrameworkConstants.SingleQuoteNameMacro in assembly MS.VS.Services.Notifications.WebApi")]
         public const String SingleQuoteNameMacro = "@@SQBDQ@@"; //SingleQuoteBetweenDoubleQuotes
 
         [Obsolete]
         public const String SingleQuoteValue = "\"'\""; //"'"
 
-        [Obsolete("Moved to Microsoft.VisualStudio.Services.Notifications.Common.NotificationFrameworkConstants.DoubleQuoteNameMacro in assembly MS.VS.Services.Notifications.WebApi")]
+        [Obsolete("Moved to GitHub.Services.Notifications.Common.NotificationFrameworkConstants.DoubleQuoteNameMacro in assembly MS.VS.Services.Notifications.WebApi")]
         public const String DoubleQuoteNameMacro = "@@DQBSQ@@"; //DoubleQuoteBetweenSingleQuotes
 
         [Obsolete]
         public const String DoubleQuoteValue = "'\"'"; //'"'
 
-        [Obsolete("Moved to Microsoft.VisualStudio.Services.Notifications.Common.NotificationFrameworkConstants.SingleQuoteCharMacro in assembly MS.VS.Services.Notifications.WebApi")]
+        [Obsolete("Moved to GitHub.Services.Notifications.Common.NotificationFrameworkConstants.SingleQuoteCharMacro in assembly MS.VS.Services.Notifications.WebApi")]
         public const String SingleQuoteCharMacro = "@@SingleQuote@@";
 
         [Obsolete]
         public const String SingleQuoteCharValue = "'";
 
-        [Obsolete("Moved to Microsoft.VisualStudio.Services.Notifications.Common.NotificationFrameworkConstants.DoubleQuoteCharMacro in assembly MS.VS.Services.Notifications.WebApi")]
+        [Obsolete("Moved to GitHub.Services.Notifications.Common.NotificationFrameworkConstants.DoubleQuoteCharMacro in assembly MS.VS.Services.Notifications.WebApi")]
         public const String DoubleQuoteCharMacro = "@@DoubleQuote@@";
 
-        [Obsolete("Moved to Microsoft.VisualStudio.Services.Notifications.Common.NotificationFrameworkConstants.DoubleQuoteCharValue in assembly MS.VS.Services.Notifications.WebApi")]
+        [Obsolete("Moved to GitHub.Services.Notifications.Common.NotificationFrameworkConstants.DoubleQuoteCharValue in assembly MS.VS.Services.Notifications.WebApi")]
         public const String DoubleQuoteCharValue = "\"";
 
         /// <summary>
         /// Token used in subscription addresses to identify dynamic delivery targets computed from the source event
         /// </summary>
-        [Obsolete("Moved to Microsoft.VisualStudio.Services.Notifications.Common.NotificationFrameworkConstants.DynamicTargetsToken in assembly MS.VS.Services.Notifications.WebApi")]
+        [Obsolete("Moved to GitHub.Services.Notifications.Common.NotificationFrameworkConstants.DynamicTargetsToken in assembly MS.VS.Services.Notifications.WebApi")]
         public const String DynamicTargetsToken = "@@";
 
         /// <summary>
@@ -551,61 +551,61 @@ namespace Microsoft.VisualStudio.Services.Common
         /// <summary>
         /// The name of the WorkItemChangedEvent
         /// </summary>
-        [Obsolete("Moved to Microsoft.VisualStudio.Services.Notifications.Common.LegacyNames.WorkItemChangedEvent in assembly MS.VS.Services.Notifications.WebApi")]
+        [Obsolete("Moved to GitHub.Services.Notifications.Common.LegacyNames.WorkItemChangedEvent in assembly MS.VS.Services.Notifications.WebApi")]
         public const string WorkItemChangedEventTypeName = "WorkItemChangedEvent";
 
         /// <summary>
         /// The name of the BuildStatusChangedEvent type
         /// </summary>
-        [Obsolete("Moved to Microsoft.VisualStudio.Services.Notifications.Common.LegacyNames.BuildStatusChangeEvent in assembly MS.VS.Services.Notifications.WebApi")]
+        [Obsolete("Moved to GitHub.Services.Notifications.Common.LegacyNames.BuildStatusChangeEvent in assembly MS.VS.Services.Notifications.WebApi")]
         public const String BuildStatusChangeEventName = "BuildStatusChangeEvent";
 
         /// <summary>
         /// The name of the BuildCompletedEvent type
         /// </summary>
-        [Obsolete("Moved to Microsoft.VisualStudio.Services.Notifications.Common.LegacyNames.BuildCompletedEvent in assembly MS.VS.Services.Notifications.WebApi")]
+        [Obsolete("Moved to GitHub.Services.Notifications.Common.LegacyNames.BuildCompletedEvent in assembly MS.VS.Services.Notifications.WebApi")]
         public const String BuildCompletedEventName = "BuildCompletedEvent";
 
         /// <summary>
         /// The name of the CheckinEvent type
         /// </summary>
-        [Obsolete("Moved to Microsoft.VisualStudio.Services.Notifications.Common.LegacyNames.CheckinEvent in assembly MS.VS.Services.Notifications.WebApi")]
+        [Obsolete("Moved to GitHub.Services.Notifications.Common.LegacyNames.CheckinEvent in assembly MS.VS.Services.Notifications.WebApi")]
         public const String CheckinEventName = "CheckinEvent";
 
         /// <summary>
         /// The name of the CodeReviewChangedEvent type
         /// </summary>
-        [Obsolete("Moved to Microsoft.VisualStudio.Services.Notifications.Common.LegacyNames.CodeReviewChangedEvent in assembly MS.VS.Services.Notifications.WebApi")]
+        [Obsolete("Moved to GitHub.Services.Notifications.Common.LegacyNames.CodeReviewChangedEvent in assembly MS.VS.Services.Notifications.WebApi")]
         public const String CodeReviewChangedEventName = "CodeReviewChangedEvent";
 
         /// <summary>
         /// The name of the GitPushEvent type
         /// </summary>
-        [Obsolete("Moved to Microsoft.VisualStudio.Services.Notifications.Common.LegacyNames.GitPushEvent in assembly MS.VS.Services.Notifications.WebApi")]
+        [Obsolete("Moved to GitHub.Services.Notifications.Common.LegacyNames.GitPushEvent in assembly MS.VS.Services.Notifications.WebApi")]
         public const String GitPushEventName = "GitPushEvent";
 
         /// <summary>
         /// The name of the GitPullRequestEvent type
         /// </summary>
-        [Obsolete("Moved to Microsoft.VisualStudio.Services.Notifications.Common.LegacyNames.GitPullRequestEvent in assembly MS.VS.Services.Notifications.WebApi")]
+        [Obsolete("Moved to GitHub.Services.Notifications.Common.LegacyNames.GitPullRequestEvent in assembly MS.VS.Services.Notifications.WebApi")]
         public const String GitPullRequestEventName = "GitPullRequestEvent";
 
         /// <summary>
         /// The relative path to the alerts admin web page
         /// </summary>
-        [Obsolete("Moved to Microsoft.VisualStudio.Services.Notifications.Common.NotificationUrlConstants.AlertsPageRelativePath in assembly MS.VS.Services.Notifications.WebApi")]
+        [Obsolete("Moved to GitHub.Services.Notifications.Common.NotificationUrlConstants.AlertsPageRelativePath in assembly MS.VS.Services.Notifications.WebApi")]
         public const String AlertsPageRelativePath = "{0}#id={1}&showteams={2}";
 
         /// <summary>
         /// The alerts page name
         /// </summary>
-        [Obsolete("Moved to Microsoft.VisualStudio.Services.Notifications.Common.NotificationUrlConstants.AlertsPage in assembly MS.VS.Services.Notifications.WebApi")]
+        [Obsolete("Moved to GitHub.Services.Notifications.Common.NotificationUrlConstants.AlertsPage in assembly MS.VS.Services.Notifications.WebApi")]
         public const String AlertsPage = "_Alerts";
 
         /// <summary>
         /// The admin alerts page
         /// </summary>
-        [Obsolete("Moved to Microsoft.VisualStudio.Services.Notifications.Common.NotificationUrlConstants.AlertsAdminPage in assembly MS.VS.Services.Notifications.WebApi")]
+        [Obsolete("Moved to GitHub.Services.Notifications.Common.NotificationUrlConstants.AlertsAdminPage in assembly MS.VS.Services.Notifications.WebApi")]
         public const String AlertsAdminPage = "_admin/_Alerts";
 
         /// <summary>
@@ -618,101 +618,101 @@ namespace Microsoft.VisualStudio.Services.Common
         /// <summary>
         /// Prefix to denote that identity field value have been processed
         /// </summary>
-        [Obsolete("Moved to Microsoft.VisualStudio.Services.Notifications.Common.NotificationFrameworkConstants.ProcessedFlagCharacter in assembly MS.VS.Services.Notifications.WebApi")]
+        [Obsolete("Moved to GitHub.Services.Notifications.Common.NotificationFrameworkConstants.ProcessedFlagCharacter in assembly MS.VS.Services.Notifications.WebApi")]
         public const Char ProcessedFlagCharacter = (Char)7;
 
         /// <summary>
         /// Prefix to denote that identity field value have been processed and converted to TFID
         /// </summary>
-        /// [Obsolete("Moved to Microsoft.VisualStudio.Services.Notifications.Common.NotificationFrameworkConstants.ProcessedTfIdFlagCharacter in assembly MS.VS.Services.Notifications.WebApi")]
+        /// [Obsolete("Moved to GitHub.Services.Notifications.Common.NotificationFrameworkConstants.ProcessedTfIdFlagCharacter in assembly MS.VS.Services.Notifications.WebApi")]
         public const Char ProcessedTfIdFlagCharacter = (Char)11;
 
         /// <summary>
         /// Prefix to denote that this is the start of displayname value for this identity field
         /// </summary>
-        [Obsolete("Moved to Microsoft.VisualStudio.Services.Notifications.Common.NotificationFrameworkConstants.DisplayNameFlagCharacter in assembly MS.VS.Services.Notifications.WebApi")]
+        [Obsolete("Moved to GitHub.Services.Notifications.Common.NotificationFrameworkConstants.DisplayNameFlagCharacter in assembly MS.VS.Services.Notifications.WebApi")]
         public const Char DisplayNameFlagCharacter = '|';
 
         /// <summary>
         /// Prefix to denote that this is the start of TFID value for this identity field
         /// </summary>
-        [Obsolete("Moved to Microsoft.VisualStudio.Services.Notifications.Common.NotificationFrameworkConstants.TfIdFlagCharacter in assembly MS.VS.Services.Notifications.WebApi")]
+        [Obsolete("Moved to GitHub.Services.Notifications.Common.NotificationFrameworkConstants.TfIdFlagCharacter in assembly MS.VS.Services.Notifications.WebApi")]
         public const Char TfIdFlagCharacter = '%';
 
         /// <summary>
         /// Optional Feature flag to enable escaping Regex expressions when creating Notification subscriptions.
         /// </summary>
-        [Obsolete("Moved to Microsoft.VisualStudio.Services.Notifications.Common.FeatureFlags.AllowUserRegexInMatchConditionFeatureFlag in assembly MS.VS.Services.Notifications.WebApi")]
+        [Obsolete("Moved to GitHub.Services.Notifications.Common.FeatureFlags.AllowUserRegexInMatchConditionFeatureFlag in assembly MS.VS.Services.Notifications.WebApi")]
         public const string AllowUserRegexInMatchConditionFeatureFlag = "VisualStudio.Services.Notifications.AllowUserRegexInMatchCondition";
 
         /// <summary>
         /// The MDM scope name for the notification job
         /// </summary>
-        [Obsolete("Moved to Microsoft.VisualStudio.Services.Notifications.Common.MDMConstants.MDMNotificationJobScope in assembly MS.VS.Services.Notifications.WebApi")]
+        [Obsolete("Moved to GitHub.Services.Notifications.Common.MDMConstants.MDMNotificationJobScope in assembly MS.VS.Services.Notifications.WebApi")]
         public const string MDMNotificationJobScope = "NotificationJob";
 
         /// <summary>
         /// Event processing delay KPI name
         /// </summary>
-        [Obsolete("Moved to Microsoft.VisualStudio.Services.Notifications.Common.MDMConstants.EventProcessingDelayKPI in assembly MS.VS.Services.Notifications.WebApi")]
+        [Obsolete("Moved to GitHub.Services.Notifications.Common.MDMConstants.EventProcessingDelayKPI in assembly MS.VS.Services.Notifications.WebApi")]
         public const string EventProcessingDelayKPI = "EventProcessingDelayInMs";
 
         /// <summary>
         /// Event processing delay KPI description
         /// </summary>
-        [Obsolete("Moved to Microsoft.VisualStudio.Services.Notifications.Common.MDMConstants.EventProcessingDelayKPIDesc in assembly MS.VS.Services.Notifications.WebApi")]
+        [Obsolete("Moved to GitHub.Services.Notifications.Common.MDMConstants.EventProcessingDelayKPIDesc in assembly MS.VS.Services.Notifications.WebApi")]
         public const string EventProcessingDelayKPIDesc = "Time taken to start processing an event";
 
         /// <summary>
         /// The MDM scope name for the delivery job
         /// </summary>
-        [Obsolete("Moved to Microsoft.VisualStudio.Services.Notifications.Common.MDMConstants.MDMDeliveryJobscope in assembly MS.VS.Services.Notifications.WebApi")]
+        [Obsolete("Moved to GitHub.Services.Notifications.Common.MDMConstants.MDMDeliveryJobscope in assembly MS.VS.Services.Notifications.WebApi")]
         public const string MDMDeliveryJobscope = "NotificationDeliveryJob";
 
         /// <summary>
         /// Notification delivery delay KPI name
         /// </summary>
-        [Obsolete("Moved to Microsoft.VisualStudio.Services.Notifications.Common.MDMConstants.DeliveryDelayKPI in assembly MS.VS.Services.Notifications.WebApi")]
+        [Obsolete("Moved to GitHub.Services.Notifications.Common.MDMConstants.DeliveryDelayKPI in assembly MS.VS.Services.Notifications.WebApi")]
         public const string DeliveryDelayKPI = "NotificationDeliveryDelayInMs";
 
         /// <summary>
         /// Notification delivery delay with retries KPI name
         /// </summary>
-        [Obsolete("Moved to Microsoft.VisualStudio.Services.Notifications.Common.MDMConstants.DeliveryDelayWithRetriesKPI in assembly MS.VS.Services.Notifications.WebApi")]
+        [Obsolete("Moved to GitHub.Services.Notifications.Common.MDMConstants.DeliveryDelayWithRetriesKPI in assembly MS.VS.Services.Notifications.WebApi")]
         public const string DeliveryDelayWithRetriesKPI = "NotificationDeliveryDelayWithRetriesInMs";
 
         /// <summary>
         /// Total time taken between the event creation till the notification delivery
         /// </summary>
-        [Obsolete("Moved to Microsoft.VisualStudio.Services.Notifications.Common.MDMConstants.TotalProcessingTimeKPI in assembly MS.VS.Services.Notifications.WebApi")]
+        [Obsolete("Moved to GitHub.Services.Notifications.Common.MDMConstants.TotalProcessingTimeKPI in assembly MS.VS.Services.Notifications.WebApi")]
         public const string TotalProcessingTimeKPI = "EventProcessingTimeInMs";
 
         /// <summary>
         /// Total time taken between the event creation till the notification delivery
         /// </summary>
-        [Obsolete("Moved to Microsoft.VisualStudio.Services.Notifications.Common.MDMConstants.TotalProcessingTimeWithRetriesKPI in assembly MS.VS.Services.Notifications.WebApi")]
+        [Obsolete("Moved to GitHub.Services.Notifications.Common.MDMConstants.TotalProcessingTimeWithRetriesKPI in assembly MS.VS.Services.Notifications.WebApi")]
         public const string TotalProcessingTimeWithRetriesKPI = "EventProcessingTimeWithRetriesInMs";
 
         /// <summary>
         /// Notification delivery delay KPI description
         /// </summary>
-        [Obsolete("Moved to Microsoft.VisualStudio.Services.Notifications.Common.MDMConstants.DeliveryDelayKPIDesc in assembly MS.VS.Services.Notifications.WebApi")]
+        [Obsolete("Moved to GitHub.Services.Notifications.Common.MDMConstants.DeliveryDelayKPIDesc in assembly MS.VS.Services.Notifications.WebApi")]
         public const string DeliveryDelayKPIDesc = "Time taken to start deliverying a notification";
 
         // caching key for our notification bridge interface
-        [Obsolete("Moved to Microsoft.VisualStudio.Services.Notifications.Common.NotificationFrameworkConstants.BridgeKey in assembly MS.VS.Services.Notifications.WebApi")]
+        [Obsolete("Moved to GitHub.Services.Notifications.Common.NotificationFrameworkConstants.BridgeKey in assembly MS.VS.Services.Notifications.WebApi")]
         public const String BridgeKey = "@NotifBridge";
 
         // delivery retry count registryKey
-        [Obsolete("Moved to Microsoft.VisualStudio.Services.Notifications.Common.NotificationFrameworkConstants.RetryCountRegistryKey in assembly MS.VS.Services.Notifications.WebApi")]
+        [Obsolete("Moved to GitHub.Services.Notifications.Common.NotificationFrameworkConstants.RetryCountRegistryKey in assembly MS.VS.Services.Notifications.WebApi")]
         public const string RetryCountRegistryKey = "NotificationRetryCount";
 
         // delivery retry count default value
-        [Obsolete("Moved to Microsoft.VisualStudio.Services.Notifications.Common.NotificationFrameworkConstants.RetryCountDefaultValue in assembly MS.VS.Services.Notifications.WebApi")]
+        [Obsolete("Moved to GitHub.Services.Notifications.Common.NotificationFrameworkConstants.RetryCountDefaultValue in assembly MS.VS.Services.Notifications.WebApi")]
         public const Int32 RetryCountDefaultValue = 5;
 
         // the collection scope Guid
-        [Obsolete("Moved to Microsoft.VisualStudio.Services.Notifications.Common.NotificationFrameworkConstants.CollectionScope in assembly MS.VS.Services.Notifications.WebApi")]
+        [Obsolete("Moved to GitHub.Services.Notifications.Common.NotificationFrameworkConstants.CollectionScope in assembly MS.VS.Services.Notifications.WebApi")]
         public static Guid CollectionScope = new Guid("00000000-0000-636f-6c6c-656374696f6e");
     }
     

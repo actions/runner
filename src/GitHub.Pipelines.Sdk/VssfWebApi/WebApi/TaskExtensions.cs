@@ -2,7 +2,7 @@
 using System.Net.Http;
 using System.Threading.Tasks;
 
-namespace Microsoft.VisualStudio.Services.WebApi
+namespace GitHub.Services.WebApi
 {
     //This class should be used by callers of derivatives of HttpClientBase to deal with
     //getting a proper exception from a task, when you want to get a synchronous result

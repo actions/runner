@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Net.Http;
-using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.WebApi.Jwt;
+using GitHub.Services.Common;
+using GitHub.Services.WebApi.Jwt;
 
-namespace Microsoft.VisualStudio.Services.OAuth
+namespace GitHub.Services.OAuth
 {
     /// <summary>
     /// Provides authentication for OAuth 2.0 access tokens issued without credentials.

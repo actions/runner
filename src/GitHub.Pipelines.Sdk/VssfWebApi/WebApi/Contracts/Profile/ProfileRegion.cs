@@ -1,6 +1,6 @@
 ﻿using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.Profile
+namespace GitHub.Services.Profile
 {
     /// <summary>
     /// Country/region information

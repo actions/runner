@@ -1,42 +1,42 @@
 #!/bin/bash
 
-# agent will replace key words in the template and generate a batch script to run.
+# runner will replace key words in the template and generate a batch script to run.
 # Keywords: 
 #  PROCESSID = pid
-#  AGENTPROCESSNAME = agent.listener[.exe]
+#  RUNNERPROCESSNAME = Runner.Listener[.exe]
 #  ROOTFOLDER = ./
-#  EXISTAGENTVERSION = 2.100.0
-#  DOWNLOADAGENTVERSION = 2.101.0 
+#  EXISTRUNNERVERSION = 2.100.0
+#  DOWNLOADRUNNERVERSION = 2.101.0 
 #  UPDATELOG = _diag/SelfUpdate-UTC.log
-#  RESTARTINTERACTIVEAGENT = 0/1
+#  RESTARTINTERACTIVERUNNER = 0/1
 
-agentpid=_PROCESS_ID_
-agentprocessname=_AGENT_PROCESS_NAME_
+runnerpid=_PROCESS_ID_
+runnerprocessname=_RUNNER_PROCESS_NAME_
 rootfolder="_ROOT_FOLDER_"
-existagentversion=_EXIST_AGENT_VERSION_
-downloadagentversion=_DOWNLOAD_AGENT_VERSION_
+existrunnerversion=_EXIST_RUNNER_VERSION_
+downloadrunnerversion=_DOWNLOAD_RUNNER_VERSION_
 logfile="_UPDATE_LOG_"
-restartinteractiveagent=_RESTART_INTERACTIVE_AGENT_
+restartinteractiverunner=_RESTART_INTERACTIVE_RUNNER_
 
 # log user who run the script
 date "+[%F %T-%4N] --------whoami--------" >> "$logfile" 2>&1
 whoami >> "$logfile" 2>&1
 date "+[%F %T-%4N] --------whoami--------" >> "$logfile" 2>&1
 
-# wait for agent process to exit.
-date "+[%F %T-%4N] Waiting for $agentprocessname ($agentpid) to complete" >> "$logfile" 2>&1
-while [ -e /proc/$agentpid ]
+# wait for runner process to exit.
+date "+[%F %T-%4N] Waiting for $runnerprocessname ($runnerpid) to complete" >> "$logfile" 2>&1
+while [ -e /proc/$runnerpid ]
 do
-    date "+[%F %T-%4N] Process $agentpid still running" >> "$logfile" 2>&1
+    date "+[%F %T-%4N] Process $runnerpid still running" >> "$logfile" 2>&1
     ping -c 2 127.0.0.1 >nul
 done
-date "+[%F %T-%4N] Process $agentpid finished running" >> "$logfile" 2>&1
+date "+[%F %T-%4N] Process $runnerpid finished running" >> "$logfile" 2>&1
 
 # start re-organize folders
 date "+[%F %T-%4N] Sleep 1 more second to make sure process exited" >> "$logfile" 2>&1
 ping -c 2 127.0.0.1 >nul
 
-# the folder structure under agent root will be
+# the folder structure under runner root will be
 # ./bin -> bin.2.100.0 (junction folder)
 # ./externals -> externals.2.100.0 (junction folder)
 # ./bin.2.100.0
@@ -63,11 +63,11 @@ then
     fi
 else
    # otherwise, we need to move the current bin folder to bin.2.99.0 folder.
-    date "+[%F %T-%4N] move $rootfolder/bin $rootfolder/bin.$existagentversion" >> "$logfile" 2>&1
-    mv -fv "$rootfolder/bin" "$rootfolder/bin.$existagentversion" >> "$logfile" 2>&1
+    date "+[%F %T-%4N] move $rootfolder/bin $rootfolder/bin.$existrunnerversion" >> "$logfile" 2>&1
+    mv -fv "$rootfolder/bin" "$rootfolder/bin.$existrunnerversion" >> "$logfile" 2>&1
     if [ $? -ne 0 ]
     then
-        date "+[%F %T-%4N] Can't move $rootfolder/bin to $rootfolder/bin.$existagentversion" >> "$logfile" 2>&1
+        date "+[%F %T-%4N] Can't move $rootfolder/bin to $rootfolder/bin.$existrunnerversion" >> "$logfile" 2>&1
         mv -fv "$logfile" "$logfile.failed"
         exit 1
     fi
@@ -88,11 +88,11 @@ then
     fi
 else
     # otherwise, we need to move the current externals folder to externals.2.99.0 folder.
-    date "+[%F %T-%4N] move $rootfolder/externals $rootfolder/externals.$existagentversion" >> "$logfile" 2>&1
-    mv -fv "$rootfolder/externals" "$rootfolder/externals.$existagentversion" >> "$logfile" 2>&1
+    date "+[%F %T-%4N] move $rootfolder/externals $rootfolder/externals.$existrunnerversion" >> "$logfile" 2>&1
+    mv -fv "$rootfolder/externals" "$rootfolder/externals.$existrunnerversion" >> "$logfile" 2>&1
     if [ $? -ne 0 ]
     then
-        date "+[%F %T-%4N] Can't move $rootfolder/externals to $rootfolder/externals.$existagentversion" >> "$logfile" 2>&1
+        date "+[%F %T-%4N] Can't move $rootfolder/externals to $rootfolder/externals.$existrunnerversion" >> "$logfile" 2>&1
         mv -fv "$logfile" "$logfile.failed"
         exit 1
     fi
@@ -100,7 +100,7 @@ fi
 
 # create junction bin folder
 date "+[%F %T-%4N] Create junction bin folder" >> "$logfile" 2>&1
-ln -s "$rootfolder/bin.$downloadagentversion" "$rootfolder/bin" >> "$logfile" 2>&1
+ln -s "$rootfolder/bin.$downloadrunnerversion" "$rootfolder/bin" >> "$logfile" 2>&1
 if [ $? -ne 0 ]
 then
     date "+[%F %T-%4N] Can't create junction bin folder" >> "$logfile" 2>&1
@@ -110,7 +110,7 @@ fi
 
 # create junction externals folder
 date "+[%F %T-%4N] Create junction externals folder" >> "$logfile" 2>&1
-ln -s "$rootfolder/externals.$downloadagentversion" "$rootfolder/externals" >> "$logfile" 2>&1
+ln -s "$rootfolder/externals.$downloadrunnerversion" "$rootfolder/externals" >> "$logfile" 2>&1
 if [ $? -ne 0 ]
 then
     date "+[%F %T-%4N] Can't create junction externals folder" >> "$logfile" 2>&1
@@ -121,13 +121,13 @@ fi
 date "+[%F %T-%4N] Update succeed" >> "$logfile"
 
 # rename the update log file with %logfile%.succeed/.failed/succeedneedrestart
-# agent service host can base on the log file name determin the result of the agent update
+# runner service host can base on the log file name determin the result of the runner update
 date "+[%F %T-%4N] Rename $logfile to be $logfile.succeed" >> "$logfile" 2>&1
 mv -fv "$logfile" "$logfile.succeed" >> "$logfile" 2>&1
 
-# restart interactive agent if needed
-if [ $restartinteractiveagent -ne 0 ]
+# restart interactive runner if needed
+if [ $restartinteractiverunner -ne 0 ]
 then
-    date "+[%F %T-%4N] Restarting interactive agent"  >> "$logfile.succeed" 2>&1
+    date "+[%F %T-%4N] Restarting interactive runner"  >> "$logfile.succeed" 2>&1
     "$rootfolder/run.sh" &
 fi

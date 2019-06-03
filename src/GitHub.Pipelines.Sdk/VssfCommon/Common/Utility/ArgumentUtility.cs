@@ -6,9 +6,9 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
-using Microsoft.VisualStudio.Services.Common.Internal;
+using GitHub.Services.Common.Internal;
 
-namespace Microsoft.VisualStudio.Services.Common
+namespace GitHub.Services.Common
 {
     [EditorBrowsable(EditorBrowsableState.Never)]
     public static class ArgumentUtility

@@ -1,6 +1,6 @@
-using System;
+﻿using System;
 
-namespace Microsoft.VisualStudio.Services.WebApi
+namespace GitHub.Services.WebApi
 {
     /// <summary>Define event log id ranges</summary>
     /// This corresponds with values in Framework\Server\Common\EventLog.cs

@@ -1,9 +1,9 @@
-﻿using Microsoft.VisualStudio.Services.Common;
+﻿using GitHub.Services.Common;
 using System;
 using System.Collections.Generic;
 using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.Profile
+namespace GitHub.Services.Profile
 {
     /// <summary>
     /// Identifies an attribute with a name and a container.

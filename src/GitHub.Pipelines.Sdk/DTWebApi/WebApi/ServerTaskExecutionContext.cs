@@ -1,7 +1,7 @@
 ﻿using System;
 using System.ComponentModel;
 
-namespace Microsoft.TeamFoundation.DistributedTask.WebApi
+namespace GitHub.DistributedTask.WebApi
 {
     [EditorBrowsable(EditorBrowsableState.Never)]
     public class ServerTaskExecutionContext

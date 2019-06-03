@@ -1,14 +1,14 @@
 ﻿using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
-using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.WebApi;
+using GitHub.Services.Common;
+using GitHub.Services.WebApi;
 
-namespace Microsoft.VisualStudio.Services.Account
+namespace GitHub.Services.Account
 {
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "AccountException", "Microsoft.VisualStudio.Services.Account.AccountException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "AccountException", "GitHub.Services.Account.AccountException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class AccountException : VssServiceException
     {
         public AccountException(String message) : base(message)
@@ -28,7 +28,7 @@ namespace Microsoft.VisualStudio.Services.Account
     /// </summary>
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "AccountNotFoundException", "Microsoft.VisualStudio.Services.Account.AccountNotFoundException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "AccountNotFoundException", "GitHub.Services.Account.AccountNotFoundException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class AccountNotFoundException : AccountException
     {
         public AccountNotFoundException()
@@ -60,7 +60,7 @@ namespace Microsoft.VisualStudio.Services.Account
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "AccountExistsException", "Microsoft.VisualStudio.Services.Account.AccountExistsException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "AccountExistsException", "GitHub.Services.Account.AccountExistsException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class AccountExistsException : AccountException
     {
         public AccountExistsException(String accountName)
@@ -76,7 +76,7 @@ namespace Microsoft.VisualStudio.Services.Account
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "AccountNameTemporarilyReservedException", "Microsoft.VisualStudio.Services.Account.AccountNameTemporarilyReservedException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "AccountNameTemporarilyReservedException", "GitHub.Services.Account.AccountNameTemporarilyReservedException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class AccountNameTemporarilyReservedException : AccountExistsException
     {
         public AccountNameTemporarilyReservedException(String accountName, TimeSpan duration)
@@ -90,7 +90,7 @@ namespace Microsoft.VisualStudio.Services.Account
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "AccountNameReservedException", "Microsoft.VisualStudio.Services.Account.AccountNameReservedException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "AccountNameReservedException", "GitHub.Services.Account.AccountNameReservedException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class AccountNameReservedException : AccountException
     {
         public AccountNameReservedException(String accountName)
@@ -106,7 +106,7 @@ namespace Microsoft.VisualStudio.Services.Account
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "AccountPropertyException", "Microsoft.VisualStudio.Services.Account.AccountPropertyException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "AccountPropertyException", "GitHub.Services.Account.AccountPropertyException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class AccountPropertyException : AccountException
     {
         public AccountPropertyException(String message)
@@ -126,7 +126,7 @@ namespace Microsoft.VisualStudio.Services.Account
     /// </summary>
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "AccountMarkedForDeletionException", "Microsoft.VisualStudio.Services.Account.CollectionMarkedForDeletionException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "AccountMarkedForDeletionException", "GitHub.Services.Account.CollectionMarkedForDeletionException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class AccountMarkedForDeletionException : AccountException
     {
         public AccountMarkedForDeletionException(String accountId)
@@ -145,7 +145,7 @@ namespace Microsoft.VisualStudio.Services.Account
     /// </summary>
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "AccountNotMarkedForDeletionException", "Microsoft.VisualStudio.Services.Account.CollectionNotMarkedForDeletionException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "AccountNotMarkedForDeletionException", "GitHub.Services.Account.CollectionNotMarkedForDeletionException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class AccountNotMarkedForDeletionException : AccountException
     {
         public AccountNotMarkedForDeletionException(String accountId)
@@ -161,7 +161,7 @@ namespace Microsoft.VisualStudio.Services.Account
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "AccountTrialException", "Microsoft.VisualStudio.Services.Account.AccountTrialException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "AccountTrialException", "GitHub.Services.Account.AccountTrialException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class AccountTrialException : AccountException
     {
         public AccountTrialException(string message)
@@ -177,7 +177,7 @@ namespace Microsoft.VisualStudio.Services.Account
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "AccountIsNotActiveException", "Microsoft.VisualStudio.Services.Account.AccountIsNotActiveException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "AccountIsNotActiveException", "GitHub.Services.Account.AccountIsNotActiveException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class AccountIsNotActiveException : AccountException
     {
         public AccountIsNotActiveException(string message)
@@ -193,7 +193,7 @@ namespace Microsoft.VisualStudio.Services.Account
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "AccountFeatureNotAvailableException", "Microsoft.VisualStudio.Services.Account.AccountFeatureNotAvailableException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "AccountFeatureNotAvailableException", "GitHub.Services.Account.AccountFeatureNotAvailableException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class AccountFeatureNotAvailableException : AccountException
     {
         public AccountFeatureNotAvailableException(string message)
@@ -209,7 +209,7 @@ namespace Microsoft.VisualStudio.Services.Account
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "AccountAlreadyInTrialException", "Microsoft.VisualStudio.Services.Account.AccountAlreadyInTrialException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "AccountAlreadyInTrialException", "GitHub.Services.Account.AccountAlreadyInTrialException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class AccountAlreadyInTrialException : AccountException
     {
         public AccountAlreadyInTrialException(string message)
@@ -225,7 +225,7 @@ namespace Microsoft.VisualStudio.Services.Account
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "AccountTrialExpiredException", "Microsoft.VisualStudio.Services.Account.AccountTrialExpiredException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "AccountTrialExpiredException", "GitHub.Services.Account.AccountTrialExpiredException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class AccountTrialExpiredException : AccountException
     {
         public AccountTrialExpiredException(string message)
@@ -241,7 +241,7 @@ namespace Microsoft.VisualStudio.Services.Account
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "MaxNumberAccountsException", "Microsoft.VisualStudio.Services.Account.MaxNumberAccountsException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "MaxNumberAccountsException", "GitHub.Services.Account.MaxNumberAccountsException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class MaxNumberAccountsException : AccountException
     {
         public MaxNumberAccountsException()
@@ -257,7 +257,7 @@ namespace Microsoft.VisualStudio.Services.Account
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "MaxNumberAccountsPerUserException", "Microsoft.VisualStudio.Services.Account.MaxNumberAccountsPerUserException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "MaxNumberAccountsPerUserException", "GitHub.Services.Account.MaxNumberAccountsPerUserException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class MaxNumberAccountsPerUserException : AccountException
     {
         public MaxNumberAccountsPerUserException()
@@ -276,7 +276,7 @@ namespace Microsoft.VisualStudio.Services.Account
     /// </summary>
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "AccountHostMappingNotFoundException", "Microsoft.VisualStudio.Services.Account.AccountHostMappingNotFoundException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "AccountHostMappingNotFoundException", "GitHub.Services.Account.AccountHostMappingNotFoundException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class AccountHostMappingNotFoundException : AccountException
     {
         public AccountHostMappingNotFoundException(Guid hostId)
@@ -297,7 +297,7 @@ namespace Microsoft.VisualStudio.Services.Account
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "AccountServiceLockDownModeException", "Microsoft.VisualStudio.Services.Account.AccountServiceLockDownModeException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "AccountServiceLockDownModeException", "GitHub.Services.Account.AccountServiceLockDownModeException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class AccountServiceLockDownModeException : AccountException
     {
         public AccountServiceLockDownModeException()
@@ -318,7 +318,7 @@ namespace Microsoft.VisualStudio.Services.Account
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "AccountServiceUnavailableException", "Microsoft.VisualStudio.Services.Account.AccountServiceUnavailableException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "AccountServiceUnavailableException", "GitHub.Services.Account.AccountServiceUnavailableException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class AccountServiceUnavailableException : AccountException
     {
         public AccountServiceUnavailableException()
@@ -342,7 +342,7 @@ namespace Microsoft.VisualStudio.Services.Account
     /// </summary>
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "AccountUserNotFoundException", "Microsoft.VisualStudio.Services.Account.AccountUserNotFoundException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "AccountUserNotFoundException", "GitHub.Services.Account.AccountUserNotFoundException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class AccountUserNotFoundException : AccountException
     {
         public AccountUserNotFoundException(String userId, String accountId)
@@ -357,7 +357,7 @@ namespace Microsoft.VisualStudio.Services.Account
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "BadServiceSettingNameException", "Microsoft.VisualStudio.Services.Account.BadServiceSettingNameException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "BadServiceSettingNameException", "GitHub.Services.Account.BadServiceSettingNameException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class BadServiceSettingNameException : AccountException
     {
         public BadServiceSettingNameException(string message)
@@ -372,7 +372,7 @@ namespace Microsoft.VisualStudio.Services.Account
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "InvalidAccountOwnerException", "Microsoft.VisualStudio.Services.Account.InvalidAccountOwnerException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "InvalidAccountOwnerException", "GitHub.Services.Account.InvalidAccountOwnerException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class InvalidAccountOwnerException : AccountException
     {
         public InvalidAccountOwnerException(string message)
@@ -387,7 +387,7 @@ namespace Microsoft.VisualStudio.Services.Account
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "AADGuestUserCannotBeAnAccountOwnerException", "Microsoft.VisualStudio.Services.Account.AADGuestUserCannotBeAnAccountOwnerException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "AADGuestUserCannotBeAnAccountOwnerException", "GitHub.Services.Account.AADGuestUserCannotBeAnAccountOwnerException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class AADGuestUserCannotBeAnAccountOwnerException : AccountException
     {
         public AADGuestUserCannotBeAnAccountOwnerException(string message)
@@ -406,7 +406,7 @@ namespace Microsoft.VisualStudio.Services.Account
     /// </summary>
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "AccountAlreadyLinkedException", "Microsoft.VisualStudio.Services.Account.AccountAlreadyLinkedException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "AccountAlreadyLinkedException", "GitHub.Services.Account.AccountAlreadyLinkedException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class AccountAlreadyLinkedException : AccountException
     {
         public AccountAlreadyLinkedException(string message) : base(message) { }
@@ -419,7 +419,7 @@ namespace Microsoft.VisualStudio.Services.Account
     /// </summary>
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "AccountNotLinkedException", "Microsoft.VisualStudio.Services.Account.AccountNotLinkedException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "AccountNotLinkedException", "GitHub.Services.Account.AccountNotLinkedException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class AccountNotLinkedException : AccountException
     {
         public AccountNotLinkedException(string message) : base(message) { }
@@ -432,7 +432,7 @@ namespace Microsoft.VisualStudio.Services.Account
     /// </summary>
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "AccountStateNotValidException", "Microsoft.VisualStudio.Services.Account.AccountStateNotValidException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "AccountStateNotValidException", "GitHub.Services.Account.AccountStateNotValidException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class AccountStateNotValidException : AccountException
     {
         public AccountStateNotValidException(string message) : base(message) { }
@@ -442,7 +442,7 @@ namespace Microsoft.VisualStudio.Services.Account
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "InvalidUserTypeException", "Microsoft.VisualStudio.Services.Account.InvalidUserTypeException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "InvalidUserTypeException", "GitHub.Services.Account.InvalidUserTypeException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class InvalidUserTypeException : AccountException
     {
         public InvalidUserTypeException(string message) : base(message) { }
@@ -455,7 +455,7 @@ namespace Microsoft.VisualStudio.Services.Account
     /// </summary>
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "UnableToDeleteAzureLinkedAccountException", "Microsoft.VisualStudio.Services.Account.UnableToDeleteAzureLinkedAccountException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "UnableToDeleteAzureLinkedAccountException", "GitHub.Services.Account.UnableToDeleteAzureLinkedAccountException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class UnableToDeleteAzureLinkedAccountException : AccountException
     {
         public UnableToDeleteAzureLinkedAccountException() : base(AccountResources.AccountMustBeUnlinkedBeforeDeletion()) { }
@@ -466,7 +466,7 @@ namespace Microsoft.VisualStudio.Services.Account
     /// </summary>
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "AadTenantNotFoundException", "Microsoft.VisualStudio.Services.Account.AadTenantNotFoundException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "AadTenantNotFoundException", "GitHub.Services.Account.AadTenantNotFoundException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class AadTenantNotFoundException : AccountException
     {
         public AadTenantNotFoundException(string message) : base(message) { }

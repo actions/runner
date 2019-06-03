@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Microsoft.VisualStudio.Services.Licensing
+namespace GitHub.Services.Licensing
 {
     /// <summary>
     /// Container for client licensing rights

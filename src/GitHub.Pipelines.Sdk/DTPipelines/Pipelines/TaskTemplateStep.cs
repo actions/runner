@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.Serialization;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Pipelines
+namespace GitHub.DistributedTask.Pipelines
 {
     [DataContract]
     [EditorBrowsable(EditorBrowsableState.Never)]

@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using Microsoft.TeamFoundation.DistributedTask.ObjectTemplating.Tokens;
+using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using Newtonsoft.Json.Linq;
 
-namespace Microsoft.TeamFoundation.DistributedTask.ObjectTemplating
+namespace GitHub.DistributedTask.ObjectTemplating
 {
     internal static class TemplateUtil
     {

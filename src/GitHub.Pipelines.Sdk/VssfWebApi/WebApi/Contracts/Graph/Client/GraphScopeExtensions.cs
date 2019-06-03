@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Microsoft.VisualStudio.Services.Graph.Client
+namespace GitHub.Services.Graph.Client
 {
     public static class GraphScopeExtensions
     {

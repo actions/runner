@@ -1,10 +1,10 @@
 ﻿using System;
 using System.ComponentModel;
 using System.Runtime.Serialization;
-using Microsoft.TeamFoundation.DistributedTask.ObjectTemplating.Tokens;
+using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using Newtonsoft.Json;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Pipelines
+namespace GitHub.DistributedTask.Pipelines
 {
     [DataContract]
     [Obsolete("Deprecated", false)]

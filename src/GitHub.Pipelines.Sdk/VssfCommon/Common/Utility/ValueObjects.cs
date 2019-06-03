@@ -1,4 +1,4 @@
-// ************************************************************************************************
+﻿// ************************************************************************************************
 // Microsoft Team Foundation
 //
 // Microsoft Confidential
@@ -6,13 +6,13 @@
 //
 // Contents:    Type definitions for artifact linking.
 // ************************************************************************************************
-using Microsoft.VisualStudio.Services.Common.Internal;
+using GitHub.Services.Common.Internal;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Xml;
 
-namespace Microsoft.VisualStudio.Services.Common
+namespace GitHub.Services.Common
 {
     public class LinkFilter
     {

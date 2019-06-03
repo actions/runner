@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.Aad
+namespace GitHub.Services.Aad
 {
     /// <summary>
     /// Immutable data transfer object for AAD user details.

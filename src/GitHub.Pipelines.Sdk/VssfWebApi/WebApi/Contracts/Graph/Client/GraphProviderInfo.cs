@@ -1,8 +1,8 @@
-﻿using Microsoft.VisualStudio.Services.Common;
+﻿using GitHub.Services.Common;
 using Newtonsoft.Json;
 using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.Graph.Client
+namespace GitHub.Services.Graph.Client
 {
     /// <summary>
     /// Who is the provider for this user and what is the identifier and 

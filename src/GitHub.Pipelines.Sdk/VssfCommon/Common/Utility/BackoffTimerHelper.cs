@@ -1,7 +1,7 @@
 ﻿using System;
 using System.ComponentModel;
 
-namespace Microsoft.VisualStudio.Services.Common
+namespace GitHub.Services.Common
 {
     [EditorBrowsable(EditorBrowsableState.Never)]
     public static class BackoffTimerHelper

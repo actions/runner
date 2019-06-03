@@ -1,7 +1,7 @@
 ﻿using System;
 using System.ComponentModel;
 
-namespace Microsoft.VisualStudio.Services.WebApi.Utilities.Internal
+namespace GitHub.Services.WebApi.Utilities.Internal
 {
     [EditorBrowsable(EditorBrowsableState.Never)]
     public static class ClientSkuNames

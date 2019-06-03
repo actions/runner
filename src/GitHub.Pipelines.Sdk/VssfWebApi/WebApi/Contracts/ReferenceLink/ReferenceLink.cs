@@ -1,8 +1,8 @@
-﻿using Microsoft.VisualStudio.Services.Common;
+﻿using GitHub.Services.Common;
 using System;
 using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.WebApi
+namespace GitHub.Services.WebApi
 {
     /// <summary>
     /// The class to represent a REST reference link.

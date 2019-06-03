@@ -1,7 +1,7 @@
-﻿using Microsoft.VisualStudio.Services.WebApi;
+﻿using GitHub.Services.WebApi;
 using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.Profile
+namespace GitHub.Services.Profile
 {
     [DataContract]
     [ClientIncludeModel]

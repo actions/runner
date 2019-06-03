@@ -1,11 +1,11 @@
-using Microsoft.VisualStudio.Services.Agent.Util;
+﻿using Runner.Common.Util;
 using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 
-namespace Microsoft.VisualStudio.Services.Agent.Tests.Util
+namespace Runner.Common.Tests.Util
 {
     public sealed class IOUtilL0
     {

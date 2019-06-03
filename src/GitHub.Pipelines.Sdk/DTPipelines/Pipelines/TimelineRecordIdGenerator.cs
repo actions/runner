@@ -2,7 +2,7 @@
 using System.ComponentModel;
 using System.Text;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Pipelines
+namespace GitHub.DistributedTask.Pipelines
 {
     [EditorBrowsable(EditorBrowsableState.Never)]
     public static class TimelineRecordIdGenerator

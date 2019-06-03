@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 
-using Microsoft.TeamFoundation.DistributedTask.Pipelines;
-using Microsoft.TeamFoundation.DistributedTask.Pipelines.Artifacts;
-namespace Microsoft.TeamFoundation.DistributedTask.Orchestration.Server.Artifacts
+using GitHub.DistributedTask.Pipelines;
+using GitHub.DistributedTask.Pipelines.Artifacts;
+namespace GitHub.DistributedTask.Orchestration.Server.Artifacts
 {
     public static class DownloadStepExtensions
     {

@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.Serialization;
 
-namespace Microsoft.TeamFoundation.DistributedTask.ObjectTemplating
+namespace GitHub.DistributedTask.ObjectTemplating
 {
     /// <summary>
     /// Provides information about an error which occurred during validation.

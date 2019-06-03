@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Reflection;
 
-namespace Microsoft.VisualStudio.Services.Users
+namespace GitHub.Services.Users
 {
     public static class UserAttributeExtensions
     {

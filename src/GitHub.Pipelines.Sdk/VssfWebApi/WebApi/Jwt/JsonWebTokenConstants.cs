@@ -1,6 +1,6 @@
 ﻿using System.Security.Claims;
 
-namespace Microsoft.VisualStudio.Services.WebApi.Jwt
+namespace GitHub.Services.WebApi.Jwt
 {
     public static class JsonWebTokenClaims
     {

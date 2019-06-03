@@ -1,9 +1,9 @@
-﻿using Microsoft.VisualStudio.Services.Common;
+﻿using GitHub.Services.Common;
 using System;
 using System.Globalization;
 using System.Runtime.Serialization;
 
-namespace Microsoft.TeamFoundation.DistributedTask.WebApi
+namespace GitHub.DistributedTask.WebApi
 {
     [DataContract]
     public class TaskVersion : IComparable<TaskVersion>, IEquatable<TaskVersion>

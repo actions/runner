@@ -1,4 +1,4 @@
-﻿namespace Microsoft.VisualStudio.Services.OAuth
+﻿namespace GitHub.Services.OAuth
 {
     /// <summary>
     /// Lists the supported authorization grant types

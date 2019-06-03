@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 
-namespace Microsoft.VisualStudio.Services.Common.ClientStorage
+namespace GitHub.Services.Common.ClientStorage
 {
     /// <summary>
     /// An interface for accessing client data stored locally.

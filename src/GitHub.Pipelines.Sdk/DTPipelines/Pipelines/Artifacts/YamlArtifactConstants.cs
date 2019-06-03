@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Pipelines.Artifacts
+namespace GitHub.DistributedTask.Pipelines.Artifacts
 {
     public static class YamlArtifactConstants
     {

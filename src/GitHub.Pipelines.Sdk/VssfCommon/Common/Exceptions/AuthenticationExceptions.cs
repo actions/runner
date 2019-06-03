@@ -1,13 +1,13 @@
-﻿using Microsoft.VisualStudio.Services.Common.Internal;
+﻿using GitHub.Services.Common.Internal;
 using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.Common
+namespace GitHub.Services.Common
 {
     [Serializable]
     [SuppressMessage("Microsoft.Usage", "CA2214:DoNotCallOverridableMethodsInConstructors")]
-    [ExceptionMapping("0.0", "3.0", "VssAuthenticationException", "Microsoft.VisualStudio.Services.Common.VssAuthenticationException, Microsoft.VisualStudio.Services.Common, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "VssAuthenticationException", "GitHub.Services.Common.VssAuthenticationException, GitHub.Services.Common, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class VssAuthenticationException : VssException
     {
         public VssAuthenticationException()
@@ -32,7 +32,7 @@ namespace Microsoft.VisualStudio.Services.Common
 
     [Serializable]
     [SuppressMessage("Microsoft.Usage", "CA2214:DoNotCallOverridableMethodsInConstructors")]
-    [ExceptionMapping("0.0", "3.0", "VssUnauthorizedException", "Microsoft.VisualStudio.Services.Common.VssUnauthorizedException, Microsoft.VisualStudio.Services.Common, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "VssUnauthorizedException", "GitHub.Services.Common.VssUnauthorizedException, GitHub.Services.Common, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class VssUnauthorizedException : VssException
     {
         public VssUnauthorizedException()

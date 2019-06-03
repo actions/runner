@@ -16,9 +16,9 @@ LAYOUT_DIR="$SCRIPT_DIR/../_layout"
 DOWNLOAD_DIR="$SCRIPT_DIR/../_downloads/netcore2x"
 PACKAGE_DIR="$SCRIPT_DIR/../_package"
 DOTNETSDK_ROOT="$SCRIPT_DIR/../_dotnetsdk"
-DOTNETSDK_VERSION="2.1.403"
+DOTNETSDK_VERSION="2.2.300"
 DOTNETSDK_INSTALLDIR="$DOTNETSDK_ROOT/$DOTNETSDK_VERSION"
-AGENT_VERSION=$(cat agentversion)
+RUNNER_VERSION=$(cat runnerversion)
 
 pushd "$SCRIPT_DIR"
 
@@ -112,7 +112,7 @@ function heading()
 function build ()
 {
     heading "Building ..."
-    dotnet msbuild -t:Build -p:PackageRuntime="${RUNTIME_ID}" -p:BUILDCONFIG="${BUILD_CONFIG}" -p:Version="${AGENT_VERSION}" || failed build
+    dotnet msbuild -t:Build -p:PackageRuntime="${RUNTIME_ID}" -p:BUILDCONFIG="${BUILD_CONFIG}" -p:Version="${RUNNER_VERSION}" || failed build
 
     mkdir -p "${LAYOUT_DIR}/bin/en-US"
     grep --invert-match '^ *"CLI-WIDTH-' ./Misc/layoutbin/en-US/strings.json > "${LAYOUT_DIR}/bin/en-US/strings.json"
@@ -121,16 +121,16 @@ function build ()
 function layout ()
 {
     heading "Create layout ..."
-    dotnet msbuild -t:layout -p:PackageRuntime="${RUNTIME_ID}" -p:BUILDCONFIG="${BUILD_CONFIG}" -p:Version="${AGENT_VERSION}" || failed build
+    dotnet msbuild -t:layout -p:PackageRuntime="${RUNTIME_ID}" -p:BUILDCONFIG="${BUILD_CONFIG}" -p:Version="${RUNNER_VERSION}" || failed build
 
     mkdir -p "${LAYOUT_DIR}/bin/en-US"
     grep --invert-match '^ *"CLI-WIDTH-' ./Misc/layoutbin/en-US/strings.json > "${LAYOUT_DIR}/bin/en-US/strings.json"
 
     #change execution flag to allow running with sudo
     if [[ ("$CURRENT_PLATFORM" == "linux") || ("$CURRENT_PLATFORM" == "darwin") ]]; then
-        chmod +x "${LAYOUT_DIR}/bin/Agent.Listener"
-        chmod +x "${LAYOUT_DIR}/bin/Agent.Worker"
-        chmod +x "${LAYOUT_DIR}/bin/Agent.PluginHost"
+        chmod +x "${LAYOUT_DIR}/bin/Runner.Listener"
+        chmod +x "${LAYOUT_DIR}/bin/Runner.Worker"
+        chmod +x "${LAYOUT_DIR}/bin/Runner.PluginHost"
         chmod +x "${LAYOUT_DIR}/bin/installdependencies.sh"
     fi
 
@@ -146,9 +146,9 @@ function runtest ()
         ulimit -n 1024
     fi
 
-    export VSTS_AGENT_SRC_DIR=${SCRIPT_DIR}
+    export GITHUB_RUNNER_SRC_DIR=${SCRIPT_DIR}
 
-    dotnet msbuild -t:test -p:PackageRuntime="${RUNTIME_ID}" -p:BUILDCONFIG="${BUILD_CONFIG}" -p:Version="${AGENT_VERSION}" || failed "failed tests" 
+    dotnet msbuild -t:test -p:PackageRuntime="${RUNTIME_ID}" -p:BUILDCONFIG="${BUILD_CONFIG}" -p:Version="${RUNNER_VERSION}" || failed "failed tests" 
 }
 
 function package ()
@@ -157,10 +157,10 @@ function package ()
         echo "You must build first.  Expecting to find ${LAYOUT_DIR}/bin"
     fi
 
-    agent_ver=$("${LAYOUT_DIR}/bin/Agent.Listener" --version) || failed "version"
-    agent_pkg_name="action-runner-${RUNTIME_ID}-${agent_ver}"
+    runner_ver=$("${LAYOUT_DIR}/bin/Runner.Listener" --version) || failed "version"
+    runner_pkg_name="action-runner-${RUNTIME_ID}-${runner_ver}"
 
-    heading "Packaging ${agent_pkg_name}"
+    heading "Packaging ${runner_pkg_name}"
 
     rm -Rf "${LAYOUT_DIR:?}/_diag"
     find "${LAYOUT_DIR}/bin" -type f -name '*.pdb' -delete
@@ -171,11 +171,11 @@ function package ()
     pushd "$PACKAGE_DIR" > /dev/null
 
     if [[ ("$CURRENT_PLATFORM" == "linux") || ("$CURRENT_PLATFORM" == "darwin") ]]; then
-        tar_name="${agent_pkg_name}.tar.gz"
+        tar_name="${runner_pkg_name}.tar.gz"
         echo "Creating $tar_name in ${LAYOUT_DIR}"
         tar -czf "${tar_name}" -C "${LAYOUT_DIR}" .
     elif [[ ("$CURRENT_PLATFORM" == "windows") ]]; then
-        zip_name="${agent_pkg_name}.zip"
+        zip_name="${runner_pkg_name}.zip"
         echo "Convert ${LAYOUT_DIR} to Windows style path"
         window_path=${LAYOUT_DIR:1}
         window_path=${window_path:0:1}:${window_path:1}

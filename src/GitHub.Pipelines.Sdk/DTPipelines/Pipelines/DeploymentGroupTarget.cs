@@ -2,11 +2,11 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Serialization;
-using Microsoft.TeamFoundation.DistributedTask.Pipelines.Runtime;
-using Microsoft.TeamFoundation.DistributedTask.Pipelines.Validation;
-using Microsoft.TeamFoundation.DistributedTask.WebApi;
+using GitHub.DistributedTask.Pipelines.Runtime;
+using GitHub.DistributedTask.Pipelines.Validation;
+using GitHub.DistributedTask.WebApi;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Pipelines
+namespace GitHub.DistributedTask.Pipelines
 {
     [DataContract]
     internal class DeploymentGroupTarget : PhaseTarget

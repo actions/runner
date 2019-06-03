@@ -1,11 +1,11 @@
 ﻿using System.ComponentModel;
 using System.Runtime.Serialization;
-using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.WebApi;
+using GitHub.Services.Common;
+using GitHub.Services.WebApi;
 using Newtonsoft.Json;
-using IdentityDescriptor = Microsoft.VisualStudio.Services.Identity.IdentityDescriptor;
+using IdentityDescriptor = GitHub.Services.Identity.IdentityDescriptor;
 
-namespace Microsoft.VisualStudio.Services.Graph.Client
+namespace GitHub.Services.Graph.Client
 {
     /// <summary>
     /// Top-level graph entity

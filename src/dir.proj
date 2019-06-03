@@ -7,7 +7,7 @@
     <Message Text="Building $(Product): $(GitInfoCommitHash) --- $(PackageRuntime)" Importance="high"/>
 
     <ItemGroup>
-        <BuildConstants Include="namespace Microsoft.VisualStudio.Services.Agent"/>
+        <BuildConstants Include="namespace Runner.Common"/>
         <BuildConstants Include="{"/>
         <BuildConstants Include="%20%20%20%20public static class BuildConstants"/>
         <BuildConstants Include="%20%20%20%20{"/>
@@ -15,7 +15,7 @@
         <BuildConstants Include="%20%20%20%20%20%20%20%20{"/>
         <BuildConstants Include="%20%20%20%20%20%20%20%20%20%20%20%20public static readonly string CommitHash = %22$(GitInfoCommitHash)%22%3B"/>
         <BuildConstants Include="%20%20%20%20%20%20%20%20}%0A"/>
-        <BuildConstants Include="%20%20%20%20%20%20%20%20public static class AgentPackage"/>
+        <BuildConstants Include="%20%20%20%20%20%20%20%20public static class RunnerPackage"/>
         <BuildConstants Include="%20%20%20%20%20%20%20%20{"/>
         <BuildConstants Include="%20%20%20%20%20%20%20%20%20%20%20%20public static readonly string PackageName = %22$(PackageRuntime)%22%3B"/>
         <BuildConstants Include="%20%20%20%20%20%20%20%20%20%20%20%20public static readonly string Version = %22$(Version)%22%3B"/>
@@ -25,7 +25,7 @@
     </ItemGroup>
 
     <WriteLinesToFile  
-            File="Agent.Sdk/BuildConstants.cs"
+            File="Runner.Sdk/BuildConstants.cs"
             Lines="@(BuildConstants)"
             Overwrite="true"  
             Encoding="Unicode"/>
@@ -33,13 +33,13 @@
 
   <Target Name="Build" DependsOnTargets="GenerateConstant">
     <Exec Command="dotnet publish GitHub.Pipelines.Sdk/GitHub.Pipelines.Sdk.csproj --output %22$(MSBuildProjectDirectory)/../_layout/bin%22 --runtime $(PackageRuntime) -c $(BUILDCONFIG) /p:PackageRuntime=$(PackageRuntime) /p:Version=$(Version)" ConsoleToMSBuild="true" />
-    <Exec Command="dotnet publish Microsoft.VisualStudio.Services.Agent/Microsoft.VisualStudio.Services.Agent.csproj --output %22$(MSBuildProjectDirectory)/../_layout/bin%22 --runtime $(PackageRuntime) -c $(BUILDCONFIG) /p:PackageRuntime=$(PackageRuntime) /p:Version=$(Version)" ConsoleToMSBuild="true" />
-    <Exec Command="dotnet publish Agent.Listener/Agent.Listener.csproj --output %22$(MSBuildProjectDirectory)/../_layout/bin%22 --runtime $(PackageRuntime) -c $(BUILDCONFIG) /p:PackageRuntime=$(PackageRuntime) /p:Version=$(Version)" ConsoleToMSBuild="true" />
-    <Exec Command="dotnet publish Agent.Worker/Agent.Worker.csproj --output %22$(MSBuildProjectDirectory)/../_layout/bin%22 --runtime $(PackageRuntime) -c $(BUILDCONFIG) /p:PackageRuntime=$(PackageRuntime) /p:Version=$(Version)" ConsoleToMSBuild="true" />
-    <Exec Command="dotnet publish Agent.PluginHost/Agent.PluginHost.csproj --output %22$(MSBuildProjectDirectory)/../_layout/bin%22 --runtime $(PackageRuntime) -c $(BUILDCONFIG) /p:PackageRuntime=$(PackageRuntime) /p:Version=$(Version)" ConsoleToMSBuild="true" />
-    <Exec Command="dotnet publish Agent.Sdk/Agent.Sdk.csproj --output %22$(MSBuildProjectDirectory)/../_layout/bin%22 --runtime $(PackageRuntime) -c $(BUILDCONFIG) /p:PackageRuntime=$(PackageRuntime) /p:Version=$(Version)" ConsoleToMSBuild="true" />
-    <Exec Command="dotnet publish Agent.Plugins/Agent.Plugins.csproj --output %22$(MSBuildProjectDirectory)/../_layout/bin%22 --runtime $(PackageRuntime) -c $(BUILDCONFIG) /p:PackageRuntime=$(PackageRuntime) /p:Version=$(Version)" ConsoleToMSBuild="true" />
-    <Exec Command="%22$(DesktopMSBuild)%22 Agent.Service/Windows/AgentService.csproj /p:Configuration=$(BUILDCONFIG) /p:OutputPath=%22$(MSBuildProjectDirectory)/../_layout/bin%22" ConsoleToMSBuild="true" Condition="'$(PackageRuntime)' == 'win-x64' Or '$(PackageRuntime)' == 'win-x86'" />
+    <Exec Command="dotnet publish Runner.Common/Runner.Common.csproj --output %22$(MSBuildProjectDirectory)/../_layout/bin%22 --runtime $(PackageRuntime) -c $(BUILDCONFIG) /p:PackageRuntime=$(PackageRuntime) /p:Version=$(Version)" ConsoleToMSBuild="true" />
+    <Exec Command="dotnet publish Runner.Listener/Runner.Listener.csproj --output %22$(MSBuildProjectDirectory)/../_layout/bin%22 --runtime $(PackageRuntime) -c $(BUILDCONFIG) /p:PackageRuntime=$(PackageRuntime) /p:Version=$(Version)" ConsoleToMSBuild="true" />
+    <Exec Command="dotnet publish Runner.Worker/Runner.Worker.csproj --output %22$(MSBuildProjectDirectory)/../_layout/bin%22 --runtime $(PackageRuntime) -c $(BUILDCONFIG) /p:PackageRuntime=$(PackageRuntime) /p:Version=$(Version)" ConsoleToMSBuild="true" />
+    <Exec Command="dotnet publish Runner.PluginHost/Runner.PluginHost.csproj --output %22$(MSBuildProjectDirectory)/../_layout/bin%22 --runtime $(PackageRuntime) -c $(BUILDCONFIG) /p:PackageRuntime=$(PackageRuntime) /p:Version=$(Version)" ConsoleToMSBuild="true" />
+    <Exec Command="dotnet publish Runner.Sdk/Runner.Sdk.csproj --output %22$(MSBuildProjectDirectory)/../_layout/bin%22 --runtime $(PackageRuntime) -c $(BUILDCONFIG) /p:PackageRuntime=$(PackageRuntime) /p:Version=$(Version)" ConsoleToMSBuild="true" />
+    <Exec Command="dotnet publish Runner.Plugins/Runner.Plugins.csproj --output %22$(MSBuildProjectDirectory)/../_layout/bin%22 --runtime $(PackageRuntime) -c $(BUILDCONFIG) /p:PackageRuntime=$(PackageRuntime) /p:Version=$(Version)" ConsoleToMSBuild="true" />
+    <Exec Command="%22$(DesktopMSBuild)%22 Runner.Service/Windows/RunnerService.csproj /p:Configuration=$(BUILDCONFIG) /p:OutputPath=%22$(MSBuildProjectDirectory)/../_layout/bin%22" ConsoleToMSBuild="true" Condition="'$(PackageRuntime)' == 'win-x64' Or '$(PackageRuntime)' == 'win-x86'" />
   </Target>
    
   <Target Name="Test" DependsOnTargets="GenerateConstant">
@@ -58,7 +58,7 @@
     <ItemGroup>
         <LayoutRootFilesToDelete Include="$(MSBuildProjectDirectory)/../_layout/*.cmd" Condition="'$(PackageRuntime)' != 'win-x64' And '$(PackageRuntime)' != 'win-x86'"/>
         <LayoutRootFilesToDelete Include="$(MSBuildProjectDirectory)/../_layout/*.sh" Condition="'$(PackageRuntime)' == 'win-x64' Or '$(PackageRuntime)' == 'win-x86'"/>
-        <LayoutRootFilesToDelete Include="$(MSBuildProjectDirectory)/../_layout/bin/AgentService.js" Condition="'$(PackageRuntime)' == 'win-x64' Or '$(PackageRuntime)' == 'win-x86'"/>
+        <LayoutRootFilesToDelete Include="$(MSBuildProjectDirectory)/../_layout/bin/RunnerService.js" Condition="'$(PackageRuntime)' == 'win-x64' Or '$(PackageRuntime)' == 'win-x86'"/>
     </ItemGroup>
 
     <Delete Files="@(LayoutRootFilesToDelete)" />
@@ -67,18 +67,18 @@
 
   <Target Name="Clean">
     <RemoveDir  Directories="$(MSBuildProjectDirectory)/../_layout" ContinueOnError="WarnAndContinue" />
-    <RemoveDir  Directories="Microsoft.VisualStudio.Services.Agent/bin" />
-    <RemoveDir  Directories="Microsoft.VisualStudio.Services.Agent/obj" />
-    <RemoveDir  Directories="Agent.Listener/bin" />
-    <RemoveDir  Directories="Agent.Listener/obj" />
-    <RemoveDir  Directories="Agent.Worker/bin" />
-    <RemoveDir  Directories="Agent.Worker/obj" />
-    <RemoveDir  Directories="Agent.PluginHost/bin" />
-    <RemoveDir  Directories="Agent.PluginHost/obj" />
-    <RemoveDir  Directories="Agent.Sdk/bin" />
-    <RemoveDir  Directories="Agent.Sdk/obj" />
-    <RemoveDir  Directories="Agent.Plugins/bin" />
-    <RemoveDir  Directories="Agent.Plugins/obj" />
+    <RemoveDir  Directories="Runner.Common/bin" />
+    <RemoveDir  Directories="Runner.Common/obj" />
+    <RemoveDir  Directories="Runner.Listener/bin" />
+    <RemoveDir  Directories="Runner.Listener/obj" />
+    <RemoveDir  Directories="Runner.Worker/bin" />
+    <RemoveDir  Directories="Runner.Worker/obj" />
+    <RemoveDir  Directories="Runner.PluginHost/bin" />
+    <RemoveDir  Directories="Runner.PluginHost/obj" />
+    <RemoveDir  Directories="Runner.Sdk/bin" />
+    <RemoveDir  Directories="Runner.Sdk/obj" />
+    <RemoveDir  Directories="Runner.Plugins/bin" />
+    <RemoveDir  Directories="Runner.Plugins/obj" />
     <RemoveDir  Directories="Test/bin" />
     <RemoveDir  Directories="Test/obj" />
   </Target>

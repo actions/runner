@@ -1,6 +1,6 @@
 ﻿using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.FormInput
+namespace GitHub.Services.FormInput
 {
     /// <summary>
     /// Enumerates data types that are supported as subscription input values.

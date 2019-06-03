@@ -25,10 +25,10 @@ using System.Net.Http;
 using System.Net.Http.Formatting;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.WebApi;
+using GitHub.Services.Common;
+using GitHub.Services.WebApi;
 
-namespace Microsoft.VisualStudio.Services.MarketingPreferences.Client
+namespace GitHub.Services.MarketingPreferences.Client
 {
     [ResourceArea(MarketingPreferencesResourceIds.AreaId)]
     [ClientCircuitBreakerSettings(timeoutSeconds: 15, failurePercentage: 50, MaxConcurrentRequests = 40)]

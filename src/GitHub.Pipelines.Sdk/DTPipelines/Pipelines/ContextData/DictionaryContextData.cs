@@ -2,11 +2,11 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.Serialization;
-using Microsoft.VisualStudio.Services.WebApi.Internal;
+using GitHub.Services.WebApi.Internal;
 using Newtonsoft.Json;
-using Expressions = Microsoft.TeamFoundation.DistributedTask.Expressions;
+using Expressions = GitHub.DistributedTask.Expressions;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Pipelines.ContextData
+namespace GitHub.DistributedTask.Pipelines.ContextData
 {
     [DataContract]
     [JsonObject]

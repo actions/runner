@@ -1,4 +1,4 @@
-﻿namespace Microsoft.VisualStudio.Services.Commerce
+﻿namespace GitHub.Services.Commerce
 {
     /// <summary>
     /// Plan data for an extension resource.

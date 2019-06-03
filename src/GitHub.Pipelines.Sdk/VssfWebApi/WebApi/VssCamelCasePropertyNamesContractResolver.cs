@@ -1,7 +1,7 @@
-using System;
+﻿using System;
 using Newtonsoft.Json.Serialization;
 
-namespace Microsoft.VisualStudio.Services.WebApi
+namespace GitHub.Services.WebApi
 {
     internal class VssCamelCasePropertyNamesContractResolver : CamelCasePropertyNamesContractResolver
     {

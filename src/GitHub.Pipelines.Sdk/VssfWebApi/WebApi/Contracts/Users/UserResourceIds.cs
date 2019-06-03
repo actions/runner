@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Microsoft.VisualStudio.Services.Users
+namespace GitHub.Services.Users
 {
     /// <summary>
     /// Constants specific to the User Service

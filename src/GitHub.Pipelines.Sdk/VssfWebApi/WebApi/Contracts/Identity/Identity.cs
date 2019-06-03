@@ -7,15 +7,15 @@ using System.Globalization;
 using System.Linq;
 using System.Runtime.Serialization;
 using System.Xml;
-using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.WebApi;
-using Microsoft.VisualStudio.Services.Common.Internal;
+using GitHub.Services.Common;
+using GitHub.Services.WebApi;
+using GitHub.Services.Common.Internal;
 
-namespace Microsoft.VisualStudio.Services.Identity
+namespace GitHub.Services.Identity
 {
     //The only PATCH-able property on this class is CustomDisplayName, however there are more read/write properties
     //because they get set by various providers in the Framework dll, in general Framework should not have internalsvisibleto to this dll
-    //CONSIDER: Should providers be in Microsoft.VisualStudio.Services.Identity instead?
+    //CONSIDER: Should providers be in GitHub.Services.Identity instead?
     [DataContract]
     public sealed class Identity : IdentityBase, ISecuredObject
     {

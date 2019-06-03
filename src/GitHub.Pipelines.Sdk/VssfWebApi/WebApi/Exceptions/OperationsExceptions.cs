@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Runtime.Serialization;
-using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.Security;
-using Microsoft.VisualStudio.Services.WebApi;
+using GitHub.Services.Common;
+using GitHub.Services.Security;
+using GitHub.Services.WebApi;
 
-namespace Microsoft.VisualStudio.Services.Operations
+namespace GitHub.Services.Operations
 {
     /// <summary>
     /// This exception is thrown when multiple plugin have the same Id.

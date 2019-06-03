@@ -5,7 +5,7 @@ using System.Linq;
 using System.Reflection;
 using Newtonsoft.Json.Serialization;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Expressions.CollectionAccessors
+namespace GitHub.DistributedTask.Expressions.CollectionAccessors
 {
     internal sealed class JsonDictionaryContractAccessor : IReadOnlyObject
     {

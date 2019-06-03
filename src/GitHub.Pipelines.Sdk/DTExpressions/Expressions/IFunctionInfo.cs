@@ -1,6 +1,6 @@
-using System;
+﻿using System;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Expressions
+namespace GitHub.DistributedTask.Expressions
 {
     public interface IFunctionInfo
     {

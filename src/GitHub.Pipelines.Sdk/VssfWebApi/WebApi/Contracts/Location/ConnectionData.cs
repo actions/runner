@@ -1,15 +1,15 @@
-﻿using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.Common.Internal;
-using Microsoft.VisualStudio.Services.WebApi;
+﻿using GitHub.Services.Common;
+using GitHub.Services.Common.Internal;
+using GitHub.Services.WebApi;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.Serialization;
 using System.Xml;
-using IC = Microsoft.VisualStudio.Services.Identity;
+using IC = GitHub.Services.Identity;
 
-namespace Microsoft.VisualStudio.Services.Location
+namespace GitHub.Services.Location
 {
     /// <summary>
     /// Data transfer class that holds information needed to set up a 

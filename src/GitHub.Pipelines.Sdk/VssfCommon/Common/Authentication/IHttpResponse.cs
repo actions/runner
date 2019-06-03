@@ -1,6 +1,6 @@
 ﻿using System.Net;
 
-namespace Microsoft.VisualStudio.Services.Common
+namespace GitHub.Services.Common
 {
     public interface IHttpResponse
     {

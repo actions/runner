@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Runtime.Serialization;
-using Microsoft.VisualStudio.Services.WebApi;
+using GitHub.Services.WebApi;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Common.Contracts
+namespace GitHub.DistributedTask.Common.Contracts
 {
     [DataContract]
     public class TaskInputDefinitionBase : BaseSecuredObject

@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Microsoft.VisualStudio.Services.Common.TokenStorage
+namespace GitHub.Services.Common.TokenStorage
 {
     /// <summary>
     /// Represents a token in the system which is used to connect to a resource.

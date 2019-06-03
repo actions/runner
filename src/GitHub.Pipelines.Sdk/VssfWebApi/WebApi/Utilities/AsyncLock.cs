@@ -1,8 +1,8 @@
-using System;
+﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Microsoft.VisualStudio.Services.WebApi.Utilities
+namespace GitHub.Services.WebApi.Utilities
 {
     /// <summary>
     /// From: http://blogs.msdn.com/b/pfxteam/archive/2012/02/12/10266988.aspx

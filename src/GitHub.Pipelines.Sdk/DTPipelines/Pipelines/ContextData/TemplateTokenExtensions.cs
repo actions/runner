@@ -1,9 +1,9 @@
 ﻿using System;
 using System.ComponentModel;
-using Microsoft.TeamFoundation.DistributedTask.ObjectTemplating;
-using Microsoft.TeamFoundation.DistributedTask.ObjectTemplating.Tokens;
+using GitHub.DistributedTask.ObjectTemplating;
+using GitHub.DistributedTask.ObjectTemplating.Tokens;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Pipelines.ContextData
+namespace GitHub.DistributedTask.Pipelines.ContextData
 {
     [EditorBrowsable(EditorBrowsableState.Never)]
     public static class TemplateTokenExtensions

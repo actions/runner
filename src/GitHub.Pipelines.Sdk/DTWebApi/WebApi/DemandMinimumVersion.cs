@@ -1,12 +1,12 @@
-﻿using Microsoft.TeamFoundation.DistributedTask.Pipelines;
-using Microsoft.VisualStudio.Services.Common;
+﻿using GitHub.DistributedTask.Pipelines;
+using GitHub.Services.Common;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Runtime.Serialization;
 
-namespace Microsoft.TeamFoundation.DistributedTask.WebApi
+namespace GitHub.DistributedTask.WebApi
 {
     [DataContract]
     public sealed class DemandMinimumVersion : Demand

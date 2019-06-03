@@ -1,13 +1,13 @@
-using Microsoft.TeamFoundation.DistributedTask.WebApi;
-using Pipelines = Microsoft.TeamFoundation.DistributedTask.Pipelines;
-using Microsoft.VisualStudio.Services.Agent.Worker;
-using Microsoft.VisualStudio.Services.Agent.Worker.Build;
+﻿using GitHub.DistributedTask.WebApi;
+using Pipelines = GitHub.DistributedTask.Pipelines;
+using Runner.Common.Worker;
+using Runner.Common.Worker.Build;
 using Moq;
 using System;
 using System.Collections.Generic;
 using Xunit;
 
-namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
+namespace Runner.Common.Tests.Worker.Build
 {
     public sealed class SourceProviderL0
     {

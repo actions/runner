@@ -1,10 +1,10 @@
 ﻿using System;
 using System.ComponentModel;
-using Microsoft.TeamFoundation.DistributedTask.Expressions;
-using Microsoft.TeamFoundation.DistributedTask.Pipelines.Expressions;
-using Microsoft.TeamFoundation.DistributedTask.WebApi;
+using GitHub.DistributedTask.Expressions;
+using GitHub.DistributedTask.Pipelines.Expressions;
+using GitHub.DistributedTask.WebApi;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Pipelines.Validation
+namespace GitHub.DistributedTask.Pipelines.Validation
 {
     /// <summary>
     /// Provides n validator implementation for task inputs.

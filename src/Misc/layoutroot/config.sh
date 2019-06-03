@@ -80,7 +80,7 @@ source ./env.sh
 
 shopt -s nocasematch
 if [[ "$1" == "remove" ]]; then
-    ./bin/Agent.Listener "$@"
+    ./bin/Runner.Listener "$@"
 else
-    ./bin/Agent.Listener configure "$@"
+    ./bin/Runner.Listener configure "$@"
 fi

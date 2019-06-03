@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Microsoft.VisualStudio.Services.Identity
+namespace GitHub.Services.Identity
 {
     public interface IReadOnlyVssIdentity
     {

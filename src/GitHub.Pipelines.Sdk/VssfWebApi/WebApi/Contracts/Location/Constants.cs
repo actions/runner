@@ -1,9 +1,9 @@
-using Microsoft.VisualStudio.Services.Common;
+﻿using GitHub.Services.Common;
 using System;
 using System.ComponentModel;
 using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.Location
+namespace GitHub.Services.Location
 {
     /// <summary>
     /// 

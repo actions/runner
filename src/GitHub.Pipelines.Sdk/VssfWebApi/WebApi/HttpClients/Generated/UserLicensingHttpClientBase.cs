@@ -25,11 +25,11 @@ using System.Net.Http;
 using System.Net.Http.Formatting;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.Licensing;
-using Microsoft.VisualStudio.Services.WebApi;
+using GitHub.Services.Common;
+using GitHub.Services.Licensing;
+using GitHub.Services.WebApi;
 
-namespace Microsoft.VisualStudio.Services.UserLicensing.Client
+namespace GitHub.Services.UserLicensing.Client
 {
     [ResourceArea(UserLicensingResourceIds.AreaId)]
     public abstract class UserLicensingHttpClientBase : VssHttpClientBase

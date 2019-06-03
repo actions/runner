@@ -1,4 +1,4 @@
-﻿namespace Microsoft.VisualStudio.Services.ExternalEvent
+﻿namespace GitHub.Services.ExternalEvent
 {
     /// <summary>
     /// This interface is used to group external artifacts.

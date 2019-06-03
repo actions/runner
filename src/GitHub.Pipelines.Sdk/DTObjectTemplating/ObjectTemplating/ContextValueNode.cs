@@ -1,7 +1,7 @@
-using System;
-using Microsoft.TeamFoundation.DistributedTask.Expressions;
+﻿using System;
+using GitHub.DistributedTask.Expressions;
 
-namespace Microsoft.TeamFoundation.DistributedTask.ObjectTemplating
+namespace GitHub.DistributedTask.ObjectTemplating
 {
     /// <summary>
     /// This expression node retrieves a user-defined named-value. This is used during expression evaluation.

@@ -1,4 +1,4 @@
-﻿using Microsoft.VisualStudio.Services.Common;
+﻿using GitHub.Services.Common;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -8,7 +8,7 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.WebApi
+namespace GitHub.Services.WebApi
 {
     [DataContract(IsReference=true)]
     public class WrappedException : ISecuredObject
@@ -315,10 +315,10 @@ namespace Microsoft.VisualStudio.Services.WebApi
         {
             // For rest api version < 3.0, the server transmits the fulllAssemblyQualifiedName of exception at time that version was initially released,
             // which means normal loading will fail due to version mismatch, as the version will alwyas be <= 14.0.0.0.
-            // Example: typeName=Microsoft.TeamFoundation.Core.WebApi.ProjectDoesNotExistWithNameException, Microsoft.TeamFoundation.Core.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a
+            // Example: typeName=GitHub.Core.WebApi.ProjectDoesNotExistWithNameException, GitHub.Core.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a
 
             // For rest api version >= 3.0 (dev15), it just sends an assembly qualified type name without Version and PublicKeyToken, so it is version agnostic.
-            // Example: typeName=Microsoft.TeamFoundation.Core.WebApi.ProjectDoesNotExistWithNameException, Microsoft.TeamFoundation.Core.WebApi
+            // Example: typeName=GitHub.Core.WebApi.ProjectDoesNotExistWithNameException, GitHub.Core.WebApi
 
             // Order of precedence, 
             //  1. Standard .net type loading

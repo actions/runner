@@ -1,9 +1,9 @@
 ﻿using System;
-using Microsoft.VisualStudio.Services.Common;
+using GitHub.Services.Common;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 
-namespace Microsoft.VisualStudio.Services.WebApi.Jwt
+namespace GitHub.Services.WebApi.Jwt
 {
     class UnixEpochDateTimeConverter : DateTimeConverterBase
     {

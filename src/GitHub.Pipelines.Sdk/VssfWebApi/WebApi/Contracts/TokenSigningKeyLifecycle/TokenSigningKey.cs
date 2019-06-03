@@ -1,4 +1,4 @@
-﻿namespace Microsoft.VisualStudio.Services.TokenSigningKeyLifecycle
+﻿namespace GitHub.Services.TokenSigningKeyLifecycle
 {
     /// <summary>
     /// Represents a SigningKey object containing Key Id, pre-registered namespace of key and secretKeyData.

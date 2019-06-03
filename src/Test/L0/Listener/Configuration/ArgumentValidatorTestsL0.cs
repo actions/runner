@@ -1,7 +1,7 @@
-using Microsoft.VisualStudio.Services.Agent.Listener.Configuration;
+﻿using Runner.Common.Listener.Configuration;
 using Xunit;
 
-namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
+namespace Runner.Common.Tests.Listener.Configuration
 {
     public sealed class ArgumentValidatorTestsL0
     {

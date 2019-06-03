@@ -1,11 +1,11 @@
-using System;
+﻿using System;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.Serialization;
-using Microsoft.TeamFoundation.DistributedTask.Pipelines.Runtime;
-using Microsoft.TeamFoundation.DistributedTask.WebApi;
+using GitHub.DistributedTask.Pipelines.Runtime;
+using GitHub.DistributedTask.WebApi;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Pipelines
+namespace GitHub.DistributedTask.Pipelines
 {
     [DataContract]
     [EditorBrowsable(EditorBrowsableState.Never)]

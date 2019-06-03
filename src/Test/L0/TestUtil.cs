@@ -1,9 +1,9 @@
-using Microsoft.VisualStudio.Services.Agent.Util;
+﻿using Runner.Common.Util;
 using System.IO;
 using Xunit;
 using System;
 
-namespace Microsoft.VisualStudio.Services.Agent.Tests
+namespace Runner.Common.Tests
 {
     public static class TestUtil
     {
@@ -22,7 +22,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
 
         public static string GetSrcPath()
         {
-            string srcDir = Environment.GetEnvironmentVariable("VSTS_AGENT_SRC_DIR");
+            string srcDir = Environment.GetEnvironmentVariable("GITHUB_RUNNER_SRC_DIR");
             ArgUtil.Directory(srcDir, nameof(srcDir));
             Assert.Equal(Src, Path.GetFileName(srcDir));
             return srcDir;

@@ -1,10 +1,10 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using Microsoft.TeamFoundation.DistributedTask.WebApi;
+using GitHub.DistributedTask.WebApi;
 using Newtonsoft.Json.Linq;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Pipelines
+namespace GitHub.DistributedTask.Pipelines
 {
     /// <summary>
     /// Provides constant values for constructs used in the pipeline APIs.
@@ -173,14 +173,14 @@ namespace Microsoft.TeamFoundation.DistributedTask.Pipelines
             {
                 {
                     "agentPlugin",
-                    JObject.FromObject(new Dictionary<String, String>(){ { "target", "Agent.Plugins.Repository.CheckoutTask, Agent.Plugins"} })
+                    JObject.FromObject(new Dictionary<String, String>(){ { "target", "Runner.Plugins.Repository.CheckoutTask, Runner.Plugins"} })
                 }
             },
             PostJobExecution =
             {
                 {
                     "agentPlugin",
-                    JObject.FromObject(new Dictionary<String, String>(){ { "target", "Agent.Plugins.Repository.CleanupTask, Agent.Plugins"} })
+                    JObject.FromObject(new Dictionary<String, String>(){ { "target", "Runner.Plugins.Repository.CleanupTask, Runner.Plugins"} })
                 }
             }
         };

@@ -1,7 +1,7 @@
 ﻿using System;
 using System.ComponentModel;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Logging
+namespace GitHub.DistributedTask.Logging
 {
     [EditorBrowsable(EditorBrowsableState.Never)]
     public interface ISecretMasker

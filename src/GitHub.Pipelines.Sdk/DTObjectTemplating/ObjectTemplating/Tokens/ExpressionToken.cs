@@ -2,10 +2,10 @@
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.Serialization;
-using Microsoft.TeamFoundation.DistributedTask.Expressions;
-using Microsoft.VisualStudio.Services.WebApi.Internal;
+using GitHub.DistributedTask.Expressions;
+using GitHub.Services.WebApi.Internal;
 
-namespace Microsoft.TeamFoundation.DistributedTask.ObjectTemplating.Tokens
+namespace GitHub.DistributedTask.ObjectTemplating.Tokens
 {
     /// <summary>
     /// Base class for all template expression tokens

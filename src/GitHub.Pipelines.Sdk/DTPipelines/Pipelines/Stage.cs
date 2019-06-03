@@ -2,9 +2,9 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.Serialization;
-using Microsoft.TeamFoundation.DistributedTask.Pipelines.Validation;
+using GitHub.DistributedTask.Pipelines.Validation;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Pipelines
+namespace GitHub.DistributedTask.Pipelines
 {
     [DataContract]
     [EditorBrowsable(EditorBrowsableState.Never)]

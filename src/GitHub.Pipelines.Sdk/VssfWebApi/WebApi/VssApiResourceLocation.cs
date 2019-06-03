@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Runtime.Serialization;
 using System.ComponentModel;
-using Microsoft.VisualStudio.Services.Location;
-using Microsoft.VisualStudio.Services.Common;
+using GitHub.Services.Location;
+using GitHub.Services.Common;
 
-namespace Microsoft.VisualStudio.Services.WebApi
+namespace GitHub.Services.WebApi
 {
     /// <summary>
     /// Information about the location of a REST API resource

@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Runtime.Serialization;
-using Microsoft.VisualStudio.Services.Common;
+using GitHub.Services.Common;
 
-namespace Microsoft.VisualStudio.Services.WebApi.Exceptions
+namespace GitHub.Services.WebApi.Exceptions
 {
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "MissingRequiredParameterException", "Microsoft.VisualStudio.Services.WebApi.Exceptions.MissingRequiredParameterException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "MissingRequiredParameterException", "GitHub.Services.WebApi.Exceptions.MissingRequiredParameterException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class MissingRequiredParameterException : VssServiceException
     {
         public MissingRequiredParameterException()

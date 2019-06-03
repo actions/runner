@@ -1,12 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using Microsoft.TeamFoundation.DistributedTask.Pipelines;
-using Microsoft.TeamFoundation.DistributedTask.Pipelines.Validation;
-using Microsoft.VisualStudio.Services.Common;
+using GitHub.DistributedTask.Pipelines;
+using GitHub.DistributedTask.Pipelines.Validation;
+using GitHub.Services.Common;
 using Newtonsoft.Json.Linq;
 
-namespace Microsoft.TeamFoundation.DistributedTask.WebApi
+namespace GitHub.DistributedTask.WebApi
 {
     internal static class DeploymentStrategyBuilder
     {

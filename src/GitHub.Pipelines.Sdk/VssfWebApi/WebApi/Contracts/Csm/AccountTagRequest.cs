@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace Microsoft.VisualStudio.Services.Commerce
+namespace GitHub.Services.Commerce
 {
     /// <summary>
     /// The body of a PATCH request to save tags for Visual Studio account resource.

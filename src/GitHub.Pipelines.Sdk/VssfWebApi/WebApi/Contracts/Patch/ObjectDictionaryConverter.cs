@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 
-namespace Microsoft.VisualStudio.Services.WebApi.Patch
+namespace GitHub.Services.WebApi.Patch
 {
     internal class ObjectDictionaryConverter : CustomCreationConverter<IDictionary<string, object>>
     {

@@ -3,7 +3,7 @@ using Newtonsoft.Json.Converters;
 using System;
 using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.DelegatedAuthorization
+namespace GitHub.Services.DelegatedAuthorization
 {
     [KnownType(typeof(RefreshTokenGrant))]
     [KnownType(typeof(JwtBearerAuthorizationGrant))]

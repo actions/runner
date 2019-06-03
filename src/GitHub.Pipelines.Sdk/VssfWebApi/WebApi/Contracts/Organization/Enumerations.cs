@@ -1,6 +1,6 @@
 ﻿using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.Organization
+namespace GitHub.Services.Organization
 {
     [DataContract]
     public enum CollectionSearchKind

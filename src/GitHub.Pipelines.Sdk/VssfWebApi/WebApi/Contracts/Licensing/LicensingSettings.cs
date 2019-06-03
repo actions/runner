@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace Microsoft.Azure.DevOps.Licensing.WebApi
+namespace GitHub.Licensing.WebApi
 {
     public class LicensingSettings
     {

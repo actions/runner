@@ -1,7 +1,7 @@
-using System;
-using Microsoft.TeamFoundation.DistributedTask.Logging;
+﻿using System;
+using GitHub.DistributedTask.Logging;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Expressions
+namespace GitHub.DistributedTask.Expressions
 {
     public class ExpressionException : Exception
     {

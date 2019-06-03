@@ -1,9 +1,9 @@
 ﻿using System.ComponentModel;
 using System.Runtime.Serialization;
-using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.WebApi;
+using GitHub.Services.Common;
+using GitHub.Services.WebApi;
 
-namespace Microsoft.VisualStudio.Services.Graph
+namespace GitHub.Services.Graph
 {
     /// <summary>
     /// Represents a set of data used to communicate with a federated provider on behalf of a particular user.

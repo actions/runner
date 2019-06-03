@@ -2,9 +2,9 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Serialization;
-using Microsoft.VisualStudio.Services.WebApi;
+using GitHub.Services.WebApi;
 
-namespace Microsoft.VisualStudio.Services.FormInput
+namespace GitHub.Services.FormInput
 {
     /// <summary>
     /// Information about the possible/allowed values for a given subscription input

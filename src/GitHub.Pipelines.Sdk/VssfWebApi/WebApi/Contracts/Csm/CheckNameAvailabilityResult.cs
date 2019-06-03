@@ -1,4 +1,4 @@
-﻿namespace Microsoft.VisualStudio.Services.Commerce
+﻿namespace GitHub.Services.Commerce
 {
     /// <summary>
     /// The response to a name availability request.

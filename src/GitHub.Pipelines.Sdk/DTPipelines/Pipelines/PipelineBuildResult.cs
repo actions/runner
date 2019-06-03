@@ -1,8 +1,8 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.ComponentModel;
-using Microsoft.TeamFoundation.DistributedTask.Pipelines.Validation;
+using GitHub.DistributedTask.Pipelines.Validation;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Pipelines
+namespace GitHub.DistributedTask.Pipelines
 {
     [EditorBrowsable(EditorBrowsableState.Never)]
     public class PipelineBuildResult

@@ -1,11 +1,11 @@
-﻿using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.WebApi;
+﻿using GitHub.Services.Common;
+using GitHub.Services.WebApi;
 using System;
 using System.Runtime.Serialization;
 using System.Linq;
 using System.Globalization;
 
-namespace Microsoft.VisualStudio.Services.Users
+namespace GitHub.Services.Users
 {
     /// <summary>
     /// Used for updating a user's data.

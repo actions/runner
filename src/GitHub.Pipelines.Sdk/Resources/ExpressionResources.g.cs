@@ -1,6 +1,6 @@
 ﻿using System.Globalization;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Expressions
+namespace GitHub.DistributedTask.Expressions
 {
     public static class ExpressionResources
     {

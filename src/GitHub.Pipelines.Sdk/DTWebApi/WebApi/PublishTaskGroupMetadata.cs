@@ -1,4 +1,4 @@
-// --------------------------------------------------------------------------------------------------------------------
+﻿// --------------------------------------------------------------------------------------------------------------------
 // <copyright file="PublishTaskGroupMetadata.cs" company="Microsoft Corporation">
 //   2012-2023, All rights reserved.
 // </copyright>
@@ -6,7 +6,7 @@
 
 using System;
 
-namespace Microsoft.TeamFoundation.DistributedTask.WebApi
+namespace GitHub.DistributedTask.WebApi
 {
     public class PublishTaskGroupMetadata
     {

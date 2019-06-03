@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.Notification
+namespace GitHub.Services.Notification
 {
     [DataContract]
     public class Notification

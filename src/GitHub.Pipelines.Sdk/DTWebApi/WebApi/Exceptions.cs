@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Runtime.Serialization;
-using Microsoft.VisualStudio.Services.Common;
+using GitHub.Services.Common;
 
-namespace Microsoft.TeamFoundation.DistributedTask.WebApi
+namespace GitHub.DistributedTask.WebApi
 {
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "DistributedTaskException", "Microsoft.TeamFoundation.DistributedTask.WebApi.DistributedTaskException, Microsoft.TeamFoundation.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "DistributedTaskException", "GitHub.DistributedTask.WebApi.DistributedTaskException, GitHub.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class DistributedTaskException : VssServiceException
     {
         public DistributedTaskException(String message)
@@ -82,7 +82,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.WebApi
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "TaskJsonNotFoundException", "Microsoft.TeamFoundation.DistributedTask.WebApi.TaskJsonNotFoundException, Microsoft.TeamFoundation.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "TaskJsonNotFoundException", "GitHub.DistributedTask.WebApi.TaskJsonNotFoundException, GitHub.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class InvalidBuildContributionsTarget : DistributedTaskException
     {
         public InvalidBuildContributionsTarget(String message)
@@ -101,7 +101,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.WebApi
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "SecurityException", "Microsoft.TeamFoundation.DistributedTask.WebApi.SecurityException, Microsoft.TeamFoundation.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "SecurityException", "GitHub.DistributedTask.WebApi.SecurityException, GitHub.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class SecurityException : DistributedTaskException
     {
         public SecurityException(String message)
@@ -121,7 +121,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.WebApi
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "AccessDeniedException", "Microsoft.TeamFoundation.DistributedTask.WebApi.AccessDeniedException, Microsoft.TeamFoundation.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "AccessDeniedException", "GitHub.DistributedTask.WebApi.AccessDeniedException, GitHub.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class AccessDeniedException : SecurityException
     {
         public AccessDeniedException(String message)
@@ -141,7 +141,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.WebApi
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "DataNotFoundException", "Microsoft.TeamFoundation.DistributedTask.WebApi.DataNotFoundException, Microsoft.TeamFoundation.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "DataNotFoundException", "GitHub.DistributedTask.WebApi.DataNotFoundException, GitHub.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class DataNotFoundException : DistributedTaskException
     {
         public DataNotFoundException(String message)
@@ -161,7 +161,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.WebApi
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "DataSourceNotFoundException", "Microsoft.TeamFoundation.DistributedTask.WebApi.DataSourceNotFoundException, Microsoft.TeamFoundation.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "DataSourceNotFoundException", "GitHub.DistributedTask.WebApi.DataSourceNotFoundException, GitHub.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class DataSourceNotFoundException : DistributedTaskException
     {
         public DataSourceNotFoundException(string message) : base(message)
@@ -178,7 +178,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.WebApi
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "InvalidDataSourceBindingException", "Microsoft.TeamFoundation.DistributedTask.WebApi.InvalidDataSourceBindingException, Microsoft.TeamFoundation.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "InvalidDataSourceBindingException", "GitHub.DistributedTask.WebApi.InvalidDataSourceBindingException, GitHub.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class InvalidDataSourceBindingException : DistributedTaskException
     {
         public InvalidDataSourceBindingException(string message) : base(message)
@@ -195,7 +195,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.WebApi
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "InvalidServiceEndpointRequestException", "Microsoft.TeamFoundation.DistributedTask.WebApi.InvalidServiceEndpointRequestException, Microsoft.TeamFoundation.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "InvalidServiceEndpointRequestException", "GitHub.DistributedTask.WebApi.InvalidServiceEndpointRequestException, GitHub.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class InvalidServiceEndpointRequestException : DistributedTaskException
     {
         public InvalidServiceEndpointRequestException(string message) : base(message)
@@ -212,7 +212,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.WebApi
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "EndpointNotFoundException", "Microsoft.TeamFoundation.DistributedTask.WebApi.EndpointNotFoundException, Microsoft.TeamFoundation.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "EndpointNotFoundException", "GitHub.DistributedTask.WebApi.EndpointNotFoundException, GitHub.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public sealed class EndpointNotFoundException : DistributedTaskException
     {
         public EndpointNotFoundException(String message)
@@ -270,7 +270,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.WebApi
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "InvalidAuthorizationDetailsException", "Microsoft.TeamFoundation.DistributedTask.WebApi.InvalidAuthorizationDetailsException, Microsoft.TeamFoundation.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "InvalidAuthorizationDetailsException", "GitHub.DistributedTask.WebApi.InvalidAuthorizationDetailsException, GitHub.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class InvalidAuthorizationDetailsException : DistributedTaskException
     {
         public InvalidAuthorizationDetailsException(string message) : base(message)
@@ -287,7 +287,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.WebApi
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "InvalidEndpointResponseException", "Microsoft.TeamFoundation.DistributedTask.WebApi.InvalidEndpointResponseException, Microsoft.TeamFoundation.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "InvalidEndpointResponseException", "GitHub.DistributedTask.WebApi.InvalidEndpointResponseException, GitHub.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class InvalidEndpointResponseException : DistributedTaskException
     {
         public InvalidEndpointResponseException(string message) : base(message)
@@ -507,7 +507,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.WebApi
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "PackageNotFoundException", "Microsoft.TeamFoundation.DistributedTask.WebApi.PackageNotFoundException, Microsoft.TeamFoundation.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "PackageNotFoundException", "GitHub.DistributedTask.WebApi.PackageNotFoundException, GitHub.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public sealed class PackageNotFoundException : DistributedTaskException
     {
         public PackageNotFoundException(String message)
@@ -527,7 +527,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.WebApi
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "PackagePropertyUnknownException", "Microsoft.TeamFoundation.DistributedTask.WebApi.PackagePropertyUnknownException, Microsoft.TeamFoundation.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "PackagePropertyUnknownException", "GitHub.DistributedTask.WebApi.PackagePropertyUnknownException, GitHub.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public sealed class PackagePropertyUnknownException : DistributedTaskException
     {
         public PackagePropertyUnknownException(String message)
@@ -598,7 +598,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.WebApi
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "ServiceEndpointNotFoundException", "Microsoft.TeamFoundation.DistributedTask.WebApi.ServiceEndpointNotFoundException, Microsoft.TeamFoundation.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "ServiceEndpointNotFoundException", "GitHub.DistributedTask.WebApi.ServiceEndpointNotFoundException, GitHub.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class ServiceEndpointNotFoundException : DistributedTaskException
     {
         public ServiceEndpointNotFoundException(String message)
@@ -618,7 +618,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.WebApi
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "ServiceEndpointQueryFailedException", "Microsoft.TeamFoundation.DistributedTask.WebApi.ServiceEndpointQueryFailedException, Microsoft.TeamFoundation.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "ServiceEndpointQueryFailedException", "GitHub.DistributedTask.WebApi.ServiceEndpointQueryFailedException, GitHub.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class ServiceEndpointQueryFailedException : DistributedTaskException
     {
         public ServiceEndpointQueryFailedException(String message)
@@ -657,7 +657,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.WebApi
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "TaskAgentExistsException", "Microsoft.TeamFoundation.DistributedTask.WebApi.TaskAgentExistsException, Microsoft.TeamFoundation.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "TaskAgentExistsException", "GitHub.DistributedTask.WebApi.TaskAgentExistsException, GitHub.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class TaskAgentExistsException : DistributedTaskException
     {
         public TaskAgentExistsException(String message)
@@ -677,7 +677,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.WebApi
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "TaskAgentJobFailedNotEnoughSubscriptionResourcesException", "Microsoft.TeamFoundation.DistributedTask.WebApi.TaskAgentJobFailedNotEnoughSubscriptionResourcesException, Microsoft.TeamFoundation.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "TaskAgentJobFailedNotEnoughSubscriptionResourcesException", "GitHub.DistributedTask.WebApi.TaskAgentJobFailedNotEnoughSubscriptionResourcesException, GitHub.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public sealed class TaskAgentJobFailedNotEnoughSubscriptionResourcesException : DistributedTaskException
     {
         public TaskAgentJobFailedNotEnoughSubscriptionResourcesException(String message)
@@ -697,7 +697,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.WebApi
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "TaskAgentJobNotFoundException", "Microsoft.TeamFoundation.DistributedTask.WebApi.TaskAgentJobNotFoundException, Microsoft.TeamFoundation.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "TaskAgentJobNotFoundException", "GitHub.DistributedTask.WebApi.TaskAgentJobNotFoundException, GitHub.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public sealed class TaskAgentJobNotFoundException : DistributedTaskException
     {
         public TaskAgentJobNotFoundException(String message)
@@ -717,7 +717,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.WebApi
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "TaskAgentJobStillRunningException", "Microsoft.TeamFoundation.DistributedTask.WebApi.TaskAgentJobStillRunningException, Microsoft.TeamFoundation.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "TaskAgentJobStillRunningException", "GitHub.DistributedTask.WebApi.TaskAgentJobStillRunningException, GitHub.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public sealed class TaskAgentJobStillRunningException : DistributedTaskException
     {
         public TaskAgentJobStillRunningException(String message)
@@ -737,7 +737,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.WebApi
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "TaskAgentJobTokenExpiredException", "Microsoft.TeamFoundation.DistributedTask.WebApi.TaskAgentJobTokenExpiredException, Microsoft.TeamFoundation.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "TaskAgentJobTokenExpiredException", "GitHub.DistributedTask.WebApi.TaskAgentJobTokenExpiredException, GitHub.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public sealed class TaskAgentJobTokenExpiredException : DistributedTaskException
     {
         public TaskAgentJobTokenExpiredException(String message)
@@ -757,7 +757,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.WebApi
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "TaskAgentNotFoundException", "Microsoft.TeamFoundation.DistributedTask.WebApi.TaskAgentNotFoundException, Microsoft.TeamFoundation.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "TaskAgentNotFoundException", "GitHub.DistributedTask.WebApi.TaskAgentNotFoundException, GitHub.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public sealed class TaskAgentNotFoundException : DistributedTaskException
     {
         public TaskAgentNotFoundException(String message)
@@ -777,7 +777,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.WebApi
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "TaskAgentVersionNotSupportedException", "Microsoft.TeamFoundation.DistributedTask.WebApi.TaskAgentVersionNotSupportedException, Microsoft.TeamFoundation.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "TaskAgentVersionNotSupportedException", "GitHub.DistributedTask.WebApi.TaskAgentVersionNotSupportedException, GitHub.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public sealed class TaskAgentVersionNotSupportedException : DistributedTaskException
     {
         public TaskAgentVersionNotSupportedException(String message)
@@ -797,7 +797,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.WebApi
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "TaskAgentPoolExistsException", "Microsoft.TeamFoundation.DistributedTask.WebApi.TaskAgentPoolExistsException, Microsoft.TeamFoundation.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "TaskAgentPoolExistsException", "GitHub.DistributedTask.WebApi.TaskAgentPoolExistsException, GitHub.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class TaskAgentPoolExistsException : DistributedTaskException
     {
         public TaskAgentPoolExistsException(String message)
@@ -817,7 +817,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.WebApi
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "TaskAgentPoolMaintenanceDefinitionNotFoundException", "Microsoft.TeamFoundation.DistributedTask.WebApi.TaskAgentPoolMaintenanceDefinitionNotFoundException, Microsoft.TeamFoundation.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "TaskAgentPoolMaintenanceDefinitionNotFoundException", "GitHub.DistributedTask.WebApi.TaskAgentPoolMaintenanceDefinitionNotFoundException, GitHub.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public sealed class TaskAgentPoolMaintenanceDefinitionNotFoundException : DistributedTaskException
     {
         public TaskAgentPoolMaintenanceDefinitionNotFoundException(String message)
@@ -837,7 +837,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.WebApi
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "TaskAgentPoolMaintenanceJobNotFoundException", "Microsoft.TeamFoundation.DistributedTask.WebApi.TaskAgentPoolMaintenanceJobNotFoundException, Microsoft.TeamFoundation.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "TaskAgentPoolMaintenanceJobNotFoundException", "GitHub.DistributedTask.WebApi.TaskAgentPoolMaintenanceJobNotFoundException, GitHub.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public sealed class TaskAgentPoolMaintenanceJobNotFoundException : DistributedTaskException
     {
         public TaskAgentPoolMaintenanceJobNotFoundException(String message)
@@ -857,7 +857,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.WebApi
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "TaskAgentPoolMaintenanceNotEnabledException", "Microsoft.TeamFoundation.DistributedTask.WebApi.TaskAgentPoolMaintenanceNotEnabledException, Microsoft.TeamFoundation.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "TaskAgentPoolMaintenanceNotEnabledException", "GitHub.DistributedTask.WebApi.TaskAgentPoolMaintenanceNotEnabledException, GitHub.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public sealed class TaskAgentPoolMaintenanceNotEnabledException : DistributedTaskException
     {
         public TaskAgentPoolMaintenanceNotEnabledException(String message)
@@ -877,7 +877,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.WebApi
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "TaskAgentPendingUpdateExistsException", "Microsoft.TeamFoundation.DistributedTask.WebApi.TaskAgentPendingUpdateExistsException, Microsoft.TeamFoundation.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "TaskAgentPendingUpdateExistsException", "GitHub.DistributedTask.WebApi.TaskAgentPendingUpdateExistsException, GitHub.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public sealed class TaskAgentPendingUpdateExistsException : DistributedTaskException
     {
         public TaskAgentPendingUpdateExistsException(String message)
@@ -897,7 +897,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.WebApi
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "TaskAgentPendingUpdateNotFoundException", "Microsoft.TeamFoundation.DistributedTask.WebApi.TaskAgentPendingUpdateNotFoundException, Microsoft.TeamFoundation.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "TaskAgentPendingUpdateNotFoundException", "GitHub.DistributedTask.WebApi.TaskAgentPendingUpdateNotFoundException, GitHub.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public sealed class TaskAgentPendingUpdateNotFoundException : DistributedTaskException
     {
         public TaskAgentPendingUpdateNotFoundException(String message)
@@ -917,7 +917,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.WebApi
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "TaskAgentPoolNotFoundException", "Microsoft.TeamFoundation.DistributedTask.WebApi.TaskAgentPoolNotFoundException, Microsoft.TeamFoundation.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "TaskAgentPoolNotFoundException", "GitHub.DistributedTask.WebApi.TaskAgentPoolNotFoundException, GitHub.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public sealed class TaskAgentPoolNotFoundException : DistributedTaskException
     {
         public TaskAgentPoolNotFoundException(String message)
@@ -994,7 +994,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.WebApi
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "TaskAgentQueueExistsException", "Microsoft.TeamFoundation.DistributedTask.WebApi.TaskAgentQueueExistsException, Microsoft.TeamFoundation.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "TaskAgentQueueExistsException", "GitHub.DistributedTask.WebApi.TaskAgentQueueExistsException, GitHub.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public sealed class TaskAgentQueueExistsException : DistributedTaskException
     {
         public TaskAgentQueueExistsException(String message)
@@ -1014,7 +1014,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.WebApi
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "TaskAgentQueueNotFoundException", "Microsoft.TeamFoundation.DistributedTask.WebApi.TaskAgentQueueNotFoundException, Microsoft.TeamFoundation.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "TaskAgentQueueNotFoundException", "GitHub.DistributedTask.WebApi.TaskAgentQueueNotFoundException, GitHub.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public sealed class TaskAgentQueueNotFoundException : DistributedTaskException
     {
         public TaskAgentQueueNotFoundException(String message)
@@ -1221,7 +1221,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.WebApi
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "TaskAgentSessionConflictException", "Microsoft.TeamFoundation.DistributedTask.WebApi.TaskAgentSessionConflictException, Microsoft.TeamFoundation.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "TaskAgentSessionConflictException", "GitHub.DistributedTask.WebApi.TaskAgentSessionConflictException, GitHub.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public sealed class TaskAgentSessionConflictException : DistributedTaskException
     {
         public TaskAgentSessionConflictException(String message)
@@ -1260,7 +1260,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.WebApi
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "TaskAgentSessionExpiredException", "Microsoft.TeamFoundation.DistributedTask.WebApi.TaskAgentSessionExpiredException, Microsoft.TeamFoundation.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "TaskAgentSessionExpiredException", "GitHub.DistributedTask.WebApi.TaskAgentSessionExpiredException, GitHub.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public sealed class TaskAgentSessionExpiredException : DistributedTaskException
     {
         public TaskAgentSessionExpiredException(String message)
@@ -1280,7 +1280,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.WebApi
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "TaskDefinitionExistsException", "Microsoft.TeamFoundation.DistributedTask.WebApi.TaskDefinitionExistsException, Microsoft.TeamFoundation.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "TaskDefinitionExistsException", "GitHub.DistributedTask.WebApi.TaskDefinitionExistsException, GitHub.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public sealed class TaskDefinitionExistsException : DistributedTaskException
     {
         public TaskDefinitionExistsException(String message)
@@ -1300,7 +1300,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.WebApi
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "TaskDefinitionExistsWithHigherVersionException", "Microsoft.TeamFoundation.DistributedTask.WebApi.TaskDefinitionExistsException, Microsoft.TeamFoundation.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "TaskDefinitionExistsWithHigherVersionException", "GitHub.DistributedTask.WebApi.TaskDefinitionExistsException, GitHub.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public sealed class TaskDefinitionExistsWithHigherVersionException : DistributedTaskException
     {
         public TaskDefinitionExistsWithHigherVersionException(String message)
@@ -1320,7 +1320,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.WebApi
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "TaskDefinitionHostContextMismatchException", "Microsoft.TeamFoundation.DistributedTask.WebApi.TaskDefinitionHostContextMismatchException, Microsoft.TeamFoundation.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "TaskDefinitionHostContextMismatchException", "GitHub.DistributedTask.WebApi.TaskDefinitionHostContextMismatchException, GitHub.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public sealed class TaskDefinitionHostContextMismatchException : DistributedTaskException
     {
         public TaskDefinitionHostContextMismatchException(String message)
@@ -1340,7 +1340,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.WebApi
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "TaskDefinitionInputRequiredException", "Microsoft.TeamFoundation.DistributedTask.WebApi.TaskDefinitionInputRequiredException, Microsoft.TeamFoundation.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "TaskDefinitionInputRequiredException", "GitHub.DistributedTask.WebApi.TaskDefinitionInputRequiredException, GitHub.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public sealed class TaskDefinitionInputRequiredException : DistributedTaskException
     {
         public TaskDefinitionInputRequiredException(String message)
@@ -1360,7 +1360,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.WebApi
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "TaskDefinitionInvalidException", "Microsoft.TeamFoundation.DistributedTask.WebApi.TaskDefinitionInvalidException, Microsoft.TeamFoundation.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "TaskDefinitionInvalidException", "GitHub.DistributedTask.WebApi.TaskDefinitionInvalidException, GitHub.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public sealed class TaskDefinitionInvalidException : DistributedTaskException
     {
         public TaskDefinitionInvalidException(String message)
@@ -1380,7 +1380,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.WebApi
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "TaskDefinitionNotFoundException", "Microsoft.TeamFoundation.DistributedTask.WebApi.TaskDefinitionNotFoundException, Microsoft.TeamFoundation.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "TaskDefinitionNotFoundException", "GitHub.DistributedTask.WebApi.TaskDefinitionNotFoundException, GitHub.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public sealed class TaskDefinitionNotFoundException : DistributedTaskException
     {
         public TaskDefinitionNotFoundException(String message)
@@ -1400,7 +1400,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.WebApi
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "TaskJsonNotFoundException", "Microsoft.TeamFoundation.DistributedTask.WebApi.TaskJsonNotFoundException, Microsoft.TeamFoundation.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "TaskJsonNotFoundException", "GitHub.DistributedTask.WebApi.TaskJsonNotFoundException, GitHub.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class TaskJsonNotFoundException : DistributedTaskException
     {
         public TaskJsonNotFoundException(String message)
@@ -1420,7 +1420,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.WebApi
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "TaskOrchestrationPlanAlreadyStartedException", "Microsoft.TeamFoundation.DistributedTask.WebApi.TaskOrchestrationPlanAlreadyStartedException, Microsoft.TeamFoundation.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "TaskOrchestrationPlanAlreadyStartedException", "GitHub.DistributedTask.WebApi.TaskOrchestrationPlanAlreadyStartedException, GitHub.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public sealed class TaskOrchestrationPlanAlreadyStartedException : DistributedTaskException
     {
         public TaskOrchestrationPlanAlreadyStartedException(String message)
@@ -1440,7 +1440,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.WebApi
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "TaskOrchestrationPlanCanceledException", "Microsoft.TeamFoundation.DistributedTask.WebApi.TaskOrchestrationPlanCanceledException, Microsoft.TeamFoundation.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "TaskOrchestrationPlanCanceledException", "GitHub.DistributedTask.WebApi.TaskOrchestrationPlanCanceledException, GitHub.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public sealed class TaskOrchestrationPlanCanceledException : DistributedTaskException
     {
         public TaskOrchestrationPlanCanceledException(String message)
@@ -1460,7 +1460,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.WebApi
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "TaskOrchestrationPlanNotFoundException", "Microsoft.TeamFoundation.DistributedTask.WebApi.TaskOrchestrationPlanNotFoundException, Microsoft.TeamFoundation.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "TaskOrchestrationPlanNotFoundException", "GitHub.DistributedTask.WebApi.TaskOrchestrationPlanNotFoundException, GitHub.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public sealed class TaskOrchestrationPlanNotFoundException : DistributedTaskException
     {
         public TaskOrchestrationPlanNotFoundException(String message)
@@ -1480,7 +1480,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.WebApi
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "TaskOrchestrationPlanNotFoundException", "Microsoft.TeamFoundation.DistributedTask.WebApi.TaskOrchestrationPlanNotFoundException, Microsoft.TeamFoundation.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "TaskOrchestrationPlanNotFoundException", "GitHub.DistributedTask.WebApi.TaskOrchestrationPlanNotFoundException, GitHub.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public sealed class InvalidLicenseHubException : DistributedTaskException
     {
         public InvalidLicenseHubException(String message)
@@ -1500,7 +1500,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.WebApi
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "TaskOrchestrationJobNotFoundException", "Microsoft.TeamFoundation.DistributedTask.WebApi.TaskOrchestrationJobNotFoundException, Microsoft.TeamFoundation.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "TaskOrchestrationJobNotFoundException", "GitHub.DistributedTask.WebApi.TaskOrchestrationJobNotFoundException, GitHub.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public sealed class TaskOrchestrationJobNotFoundException : DistributedTaskException
     {
         public TaskOrchestrationJobNotFoundException(String message)
@@ -1520,7 +1520,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.WebApi
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "TaskOrchestrationPlanSecurityException", "Microsoft.TeamFoundation.DistributedTask.WebApi.TaskOrchestrationPlanSecurityException, Microsoft.TeamFoundation.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "TaskOrchestrationPlanSecurityException", "GitHub.DistributedTask.WebApi.TaskOrchestrationPlanSecurityException, GitHub.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public sealed class TaskOrchestrationPlanSecurityException : DistributedTaskException
     {
         public TaskOrchestrationPlanSecurityException(String message)
@@ -1540,7 +1540,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.WebApi
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "TaskOrchestrationPlanTerminatedException", "Microsoft.TeamFoundation.DistributedTask.WebApi.TaskOrchestrationPlanTerminatedException, Microsoft.TeamFoundation.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "TaskOrchestrationPlanTerminatedException", "GitHub.DistributedTask.WebApi.TaskOrchestrationPlanTerminatedException, GitHub.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public sealed class TaskOrchestrationPlanTerminatedException : DistributedTaskException
     {
         public TaskOrchestrationPlanTerminatedException(String message)
@@ -1579,7 +1579,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.WebApi
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "TimelineNotFoundException", "Microsoft.TeamFoundation.DistributedTask.WebApi.TimelineNotFoundException, Microsoft.TeamFoundation.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "TimelineNotFoundException", "GitHub.DistributedTask.WebApi.TimelineNotFoundException, GitHub.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public sealed class TimelineNotFoundException : DistributedTaskException
     {
         public TimelineNotFoundException(String message)
@@ -1599,7 +1599,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.WebApi
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "TimelineRecordNotFoundException", "Microsoft.TeamFoundation.DistributedTask.WebApi.TimelineRecordNotFoundException, Microsoft.TeamFoundation.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "TimelineRecordNotFoundException", "GitHub.DistributedTask.WebApi.TimelineRecordNotFoundException, GitHub.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public sealed class TimelineRecordNotFoundException : DistributedTaskException
     {
         public TimelineRecordNotFoundException(String message)
@@ -1619,7 +1619,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.WebApi
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "TimelineRecordUpdateException", "Microsoft.TeamFoundation.DistributedTask.WebApi.TimelineRecordUpdateException, Microsoft.TeamFoundation.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "TimelineRecordUpdateException", "GitHub.DistributedTask.WebApi.TimelineRecordUpdateException, GitHub.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public sealed class TimelineRecordUpdateException : DistributedTaskException
     {
         public TimelineRecordUpdateException(String message)
@@ -1639,7 +1639,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.WebApi
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "InvalidTaskJsonException", "Microsoft.TeamFoundation.DistributedTask.WebApi.InvalidTaskJsonException, Microsoft.TeamFoundation.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "InvalidTaskJsonException", "GitHub.DistributedTask.WebApi.InvalidTaskJsonException, GitHub.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public sealed class InvalidTaskJsonException : DistributedTaskException
     {
         public InvalidTaskJsonException(String message)
@@ -1659,7 +1659,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.WebApi
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "InvalidTaskDefinitionInputs", "Microsoft.TeamFoundation.DistributedTask.WebApi.InvalidTaskDefinitionInputs, Microsoft.TeamFoundation.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "InvalidTaskDefinitionInputs", "GitHub.DistributedTask.WebApi.InvalidTaskDefinitionInputs, GitHub.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public sealed class InvalidTaskDefinitionInputsException : DistributedTaskException
     {
         public InvalidTaskDefinitionInputsException(String message)
@@ -1679,7 +1679,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.WebApi
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "InvalidExtensionException", "Microsoft.TeamFoundation.DistributedTask.WebApi.InvalidExtensionException, Microsoft.TeamFoundation.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "InvalidExtensionException", "GitHub.DistributedTask.WebApi.InvalidExtensionException, GitHub.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public sealed class InvalidExtensionException : DistributedTaskException
     {
         public InvalidExtensionException(String message)
@@ -1699,7 +1699,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.WebApi
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "ContributionDoesNotTargetBuildTask", "Microsoft.TeamFoundation.DistributedTask.WebApi.ContributionDoesNotTargetBuildTask, Microsoft.TeamFoundation.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "ContributionDoesNotTargetBuildTask", "GitHub.DistributedTask.WebApi.ContributionDoesNotTargetBuildTask, GitHub.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public sealed class ContributionDoesNotTargetBuildTaskException : DistributedTaskException
     {
         public ContributionDoesNotTargetBuildTaskException(String message)
@@ -1719,7 +1719,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.WebApi
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "ContributionDoesNotTargetServiceEndpointException", "Microsoft.TeamFoundation.DistributedTask.WebApi.ContributionDoesNotTargetServiceEndpointException, Microsoft.TeamFoundation.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "ContributionDoesNotTargetServiceEndpointException", "GitHub.DistributedTask.WebApi.ContributionDoesNotTargetServiceEndpointException, GitHub.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public sealed class ContributionDoesNotTargetServiceEndpointException : DistributedTaskException
     {
         public ContributionDoesNotTargetServiceEndpointException(String message)
@@ -1834,7 +1834,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.WebApi
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "TaskIdsDoNotMatch", "Microsoft.TeamFoundation.DistributedTask.WebApi.TaskIdsDoNotMatch, Microsoft.TeamFoundation.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "TaskIdsDoNotMatch", "GitHub.DistributedTask.WebApi.TaskIdsDoNotMatch, GitHub.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public sealed class TaskIdsDoNotMatchException : DistributedTaskException
     {
         public TaskIdsDoNotMatchException(String message)

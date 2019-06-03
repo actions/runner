@@ -2,10 +2,10 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.Serialization;
-using Microsoft.VisualStudio.Services.WebApi.Internal;
+using GitHub.Services.WebApi.Internal;
 using Newtonsoft.Json;
 
-namespace Microsoft.TeamFoundation.DistributedTask.ObjectTemplating.Tokens
+namespace GitHub.DistributedTask.ObjectTemplating.Tokens
 {
     [DataContract]
     [JsonObject]

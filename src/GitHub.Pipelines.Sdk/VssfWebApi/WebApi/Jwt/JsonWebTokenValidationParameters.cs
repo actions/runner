@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Security.Claims;
 
-namespace Microsoft.VisualStudio.Services.WebApi.Jwt
+namespace GitHub.Services.WebApi.Jwt
 {
     public sealed class JsonWebTokenValidationParameters
     {

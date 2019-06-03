@@ -24,11 +24,11 @@ using System.Net.Http;
 using System.Net.Http.Formatting;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.WebApi;
-using Microsoft.VisualStudio.Services.WebPlatform;
+using GitHub.Services.Common;
+using GitHub.Services.WebApi;
+using GitHub.Services.WebPlatform;
 
-namespace Microsoft.VisualStudio.Services.ClientTrace.WebApi
+namespace GitHub.Services.ClientTrace.WebApi
 {
     public class ClientTraceHttpClient : VssHttpClientBase
     {

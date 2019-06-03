@@ -1,6 +1,6 @@
-using System;
+﻿using System;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Expressions
+namespace GitHub.DistributedTask.Expressions
 {
     public class FunctionInfo<T> : IFunctionInfo
         where T : FunctionNode, new()

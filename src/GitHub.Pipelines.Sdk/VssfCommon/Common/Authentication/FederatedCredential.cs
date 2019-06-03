@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Linq;
 using System.Net;
-using Microsoft.VisualStudio.Services.Common.Internal;
+using GitHub.Services.Common.Internal;
 
-namespace Microsoft.VisualStudio.Services.Common
+namespace GitHub.Services.Common
 {
     /// <summary>
     /// Provides a common implementation for federated credentials.

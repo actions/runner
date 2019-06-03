@@ -2,12 +2,12 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
-using Microsoft.TeamFoundation.DistributedTask.Expressions;
-using Microsoft.TeamFoundation.DistributedTask.Pipelines.Validation;
-using Microsoft.TeamFoundation.DistributedTask.WebApi;
+using GitHub.DistributedTask.Expressions;
+using GitHub.DistributedTask.Pipelines.Validation;
+using GitHub.DistributedTask.WebApi;
 using Newtonsoft.Json.Linq;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Pipelines
+namespace GitHub.DistributedTask.Pipelines
 {
     [EditorBrowsable(EditorBrowsableState.Never)]
     public sealed class PipelineBuildContext : PipelineContextBase

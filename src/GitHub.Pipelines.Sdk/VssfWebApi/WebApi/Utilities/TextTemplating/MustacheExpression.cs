@@ -6,12 +6,12 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.Common.Internal;
+using GitHub.Services.Common;
+using GitHub.Services.Common.Internal;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-namespace Microsoft.VisualStudio.Services.WebApi
+namespace GitHub.Services.WebApi
 {
     /// <summary>
     /// Base exception for mustache parse and evaluation exceptions
@@ -27,7 +27,7 @@ namespace Microsoft.VisualStudio.Services.WebApi
     /// <summary>
     /// Exception thrown when parsing a mustache template that indicates it is an invalid expression
     /// </summary>
-    [ExceptionMapping("0.0", "3.0", "MustacheExpressionInvalidException", "Microsoft.VisualStudio.Services.WebApi.MustacheExpressionInvalidException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "MustacheExpressionInvalidException", "GitHub.Services.WebApi.MustacheExpressionInvalidException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class MustacheExpressionInvalidException : MustacheException
     {
         public MustacheExpressionInvalidException(String message)

@@ -1,8 +1,8 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.Notifications
+namespace GitHub.Services.Notifications
 {
     /// <summary>
     /// Defines a scope for an event.  

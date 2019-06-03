@@ -1,9 +1,9 @@
 ﻿using System;
 using System.ComponentModel;
-using Microsoft.TeamFoundation.DistributedTask.Expressions;
-using Microsoft.TeamFoundation.DistributedTask.Pipelines.Runtime;
+using GitHub.DistributedTask.Expressions;
+using GitHub.DistributedTask.Pipelines.Runtime;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Pipelines.Expressions
+namespace GitHub.DistributedTask.Pipelines.Expressions
 {
     [EditorBrowsable(EditorBrowsableState.Never)]
     internal sealed class DependenciesContextNode<TInstance> : NamedValueNode where TInstance : IGraphNodeInstance 

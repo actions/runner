@@ -1,6 +1,6 @@
-using System;
+﻿using System;
 
-namespace Microsoft.VisualStudio.Services.Licensing
+namespace GitHub.Services.Licensing
 {
     public class MsdnEntitlement : ICloneable
     {

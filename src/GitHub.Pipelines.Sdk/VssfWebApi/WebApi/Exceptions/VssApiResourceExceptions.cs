@@ -1,16 +1,16 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using Microsoft.VisualStudio.Services.Common;
+using GitHub.Services.Common;
 
-namespace Microsoft.VisualStudio.Services.WebApi
+namespace GitHub.Services.WebApi
 {
     /// <summary>
     /// Exception thrown when the requested API resource location was not found on the server
     /// </summary>
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "VssResourceNotFoundException", "Microsoft.VisualStudio.Services.WebApi.VssResourceNotFoundException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "VssResourceNotFoundException", "GitHub.Services.WebApi.VssResourceNotFoundException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class VssResourceNotFoundException : VssServiceException
     {
         public VssResourceNotFoundException(Guid locationId)
@@ -34,7 +34,7 @@ namespace Microsoft.VisualStudio.Services.WebApi
     /// </summary>
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "VssResourceVersionException", "Microsoft.VisualStudio.Services.WebApi.VssResourceVersionException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "VssResourceVersionException", "GitHub.Services.WebApi.VssResourceVersionException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public abstract class VssResourceVersionException : VssServiceException
     {
         public VssResourceVersionException(String message)
@@ -45,7 +45,7 @@ namespace Microsoft.VisualStudio.Services.WebApi
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "VssInvalidApiResourceVersionException", "Microsoft.VisualStudio.Services.WebApi.VssInvalidApiResourceVersionException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "VssInvalidApiResourceVersionException", "GitHub.Services.WebApi.VssInvalidApiResourceVersionException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class VssInvalidApiResourceVersionException : VssResourceVersionException
     {
         public VssInvalidApiResourceVersionException(String apiResourceVersionString)
@@ -56,7 +56,7 @@ namespace Microsoft.VisualStudio.Services.WebApi
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "VssApiResourceDuplicateIdException", "Microsoft.VisualStudio.Services.WebApi.VssApiResourceDuplicateIdException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "VssApiResourceDuplicateIdException", "GitHub.Services.WebApi.VssApiResourceDuplicateIdException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class VssApiResourceDuplicateIdException: VssApiRouteRegistrationException
     {
         public VssApiResourceDuplicateIdException(Guid locationId)
@@ -67,7 +67,7 @@ namespace Microsoft.VisualStudio.Services.WebApi
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "VssApiResourceDuplicateRouteNameException", "Microsoft.VisualStudio.Services.WebApi.VssApiResourceDuplicateRouteNameException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "VssApiResourceDuplicateRouteNameException", "GitHub.Services.WebApi.VssApiResourceDuplicateRouteNameException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class VssApiResourceDuplicateRouteNameException : VssApiRouteRegistrationException
     {
         public VssApiResourceDuplicateRouteNameException(string routeName)
@@ -78,7 +78,7 @@ namespace Microsoft.VisualStudio.Services.WebApi
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "VssApiRouteRegistrationException", "Microsoft.VisualStudio.Services.WebApi.VssApiRouteRegistrationException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "VssApiRouteRegistrationException", "GitHub.Services.WebApi.VssApiRouteRegistrationException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public abstract class VssApiRouteRegistrationException : VssResourceVersionException
     {
         public VssApiRouteRegistrationException(string message)
@@ -92,7 +92,7 @@ namespace Microsoft.VisualStudio.Services.WebApi
     /// </summary>
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "VssVersionNotSupportedException", "Microsoft.VisualStudio.Services.WebApi.VssVersionNotSupportedException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "VssVersionNotSupportedException", "GitHub.Services.WebApi.VssVersionNotSupportedException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class VssVersionNotSupportedException : VssResourceVersionException
     {
         public VssVersionNotSupportedException(ApiResourceLocation location, Version requestedVersion, Version minSupportedVersion, Uri serverBaseUri)
@@ -134,7 +134,7 @@ namespace Microsoft.VisualStudio.Services.WebApi
     /// </summary>
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "VssVersionNotSpecifiedException", "Microsoft.VisualStudio.Services.WebApi.VssVersionNotSpecifiedException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "VssVersionNotSpecifiedException", "GitHub.Services.WebApi.VssVersionNotSpecifiedException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class VssVersionNotSpecifiedException : VssResourceVersionException
     {
         public VssVersionNotSpecifiedException(String httpMethod)
@@ -148,7 +148,7 @@ namespace Microsoft.VisualStudio.Services.WebApi
     /// </summary>
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "VssInvalidPreviewVersionException", "Microsoft.VisualStudio.Services.WebApi.VssInvalidPreviewVersionException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "VssInvalidPreviewVersionException", "GitHub.Services.WebApi.VssInvalidPreviewVersionException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class VssInvalidPreviewVersionException : VssResourceVersionException
     {
         public VssInvalidPreviewVersionException(ApiResourceVersion requestedVersion)
@@ -162,7 +162,7 @@ namespace Microsoft.VisualStudio.Services.WebApi
     /// </summary>
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "VssRequestContentTypeNotSupportedException", "Microsoft.VisualStudio.Services.WebApi.VssRequestContentTypeNotSupportedException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "VssRequestContentTypeNotSupportedException", "GitHub.Services.WebApi.VssRequestContentTypeNotSupportedException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class VssRequestContentTypeNotSupportedException : VssServiceException
     {
         public VssRequestContentTypeNotSupportedException(String contentType, String httpMethod, IEnumerable<String> validContentTypes)

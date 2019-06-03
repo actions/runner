@@ -1,7 +1,7 @@
 ﻿using System;
-using Microsoft.VisualStudio.Services.Licensing;
+using GitHub.Services.Licensing;
 
-namespace Microsoft.VisualStudio.Services.Compliance
+namespace GitHub.Services.Compliance
 {
     [Obsolete("This type is no longer used.")]
     public class AccountRightsValidation

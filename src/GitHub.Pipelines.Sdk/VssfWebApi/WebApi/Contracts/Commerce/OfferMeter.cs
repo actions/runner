@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Microsoft.VisualStudio.Services.Commerce
+namespace GitHub.Services.Commerce
 {
     [DebuggerDisplay("{MeterId} | {Name} | {GalleryId}")]
     public class OfferMeter : IOfferMeter, IEquatable<OfferMeter>

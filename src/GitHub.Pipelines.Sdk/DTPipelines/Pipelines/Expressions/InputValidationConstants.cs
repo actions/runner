@@ -1,7 +1,7 @@
 ﻿using System;
-using Microsoft.TeamFoundation.DistributedTask.Expressions;
+using GitHub.DistributedTask.Expressions;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Pipelines.Expressions
+namespace GitHub.DistributedTask.Pipelines.Expressions
 {
     internal static class InputValidationConstants
     {

@@ -3,12 +3,12 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text;
-using Microsoft.TeamFoundation.DistributedTask.Expressions;
-using Microsoft.TeamFoundation.DistributedTask.ObjectTemplating.Tokens;
-using Microsoft.TeamFoundation.DistributedTask.ObjectTemplating.Schema;
+using GitHub.DistributedTask.Expressions;
+using GitHub.DistributedTask.ObjectTemplating.Tokens;
+using GitHub.DistributedTask.ObjectTemplating.Schema;
 using System.Collections;
 
-namespace Microsoft.TeamFoundation.DistributedTask.ObjectTemplating
+namespace GitHub.DistributedTask.ObjectTemplating
 {
     /// <summary>
     /// Converts a source object format into a TemplateToken

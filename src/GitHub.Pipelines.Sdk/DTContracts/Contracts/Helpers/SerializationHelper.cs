@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Common.Contracts
+namespace GitHub.DistributedTask.Common.Contracts
 {
     internal static class SerializationHelper
     {

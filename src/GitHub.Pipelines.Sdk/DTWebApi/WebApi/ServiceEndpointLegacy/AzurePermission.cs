@@ -1,12 +1,12 @@
 ﻿using System;
 using System.Reflection;
 using System.Runtime.Serialization;
-using Microsoft.VisualStudio.Services.WebApi;
+using GitHub.Services.WebApi;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json.Serialization;
 
-namespace Microsoft.TeamFoundation.DistributedTask.WebApi
+namespace GitHub.DistributedTask.WebApi
 {
     [JsonConverter(typeof(AzurePermissionJsonConverter))]
     [KnownType(typeof(AzureKeyVaultPermission))]

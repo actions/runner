@@ -1,8 +1,8 @@
 ﻿using System;
 using System.ComponentModel;
-using Microsoft.TeamFoundation.DistributedTask.Expressions;
+using GitHub.DistributedTask.Expressions;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Pipelines.Expressions
+namespace GitHub.DistributedTask.Pipelines.Expressions
 {
     [EditorBrowsable(EditorBrowsableState.Never)]
     public static class ExpressionConstants

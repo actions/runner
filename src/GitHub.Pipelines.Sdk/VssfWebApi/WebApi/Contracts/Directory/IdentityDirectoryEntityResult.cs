@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Runtime.Serialization;
-using Microsoft.VisualStudio.Services.Identity;
+using GitHub.Services.Identity;
 using Newtonsoft.Json;
 
-namespace Microsoft.VisualStudio.Services.Directories
+namespace GitHub.Services.Directories
 {
     [DataContract]
     public class IdentityDirectoryEntityResult<TIdentity> : DirectoryEntityResult

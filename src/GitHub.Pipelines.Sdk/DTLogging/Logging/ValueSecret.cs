@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using Microsoft.VisualStudio.Services.Common;
+using GitHub.Services.Common;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Logging
+namespace GitHub.DistributedTask.Logging
 {
     internal sealed class ValueSecret : ISecret
     {

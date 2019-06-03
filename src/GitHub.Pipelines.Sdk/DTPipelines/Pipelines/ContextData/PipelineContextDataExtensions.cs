@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using Microsoft.TeamFoundation.DistributedTask.ObjectTemplating.Tokens;
+using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using Newtonsoft.Json.Linq;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Pipelines.ContextData
+namespace GitHub.DistributedTask.Pipelines.ContextData
 {
     [EditorBrowsable(EditorBrowsableState.Never)]
     public static class PipelineContextDataExtensions

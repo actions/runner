@@ -2,10 +2,10 @@
 using System.ComponentModel;
 using System.Globalization;
 using System.Reflection;
-using Microsoft.TeamFoundation.DistributedTask.Logging;
+using GitHub.DistributedTask.Logging;
 using Newtonsoft.Json.Linq;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Expressions
+namespace GitHub.DistributedTask.Expressions
 {
     [EditorBrowsable(EditorBrowsableState.Never)]
     internal static class ExpressionUtil

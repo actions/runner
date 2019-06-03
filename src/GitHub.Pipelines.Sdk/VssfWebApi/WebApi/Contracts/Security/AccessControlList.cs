@@ -1,9 +1,9 @@
-﻿using Microsoft.VisualStudio.Services.Identity;
+﻿using GitHub.Services.Identity;
 using System;
 using System.Collections.Generic;
 using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.Security
+namespace GitHub.Services.Security
 {
     /// <summary>
     /// The AccessControlList class is meant to associate a set of AccessControlEntries with 

@@ -1,12 +1,12 @@
 ﻿using System;
 using System.Diagnostics.CodeAnalysis;
-using Microsoft.VisualStudio.Services.Common;
+using GitHub.Services.Common;
 
-namespace Microsoft.VisualStudio.Services.OAuthWhitelist
+namespace GitHub.Services.OAuthWhitelist
 {
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "OAuthWhitelistEntryAlreadyExistsException", "Microsoft.VisualStudio.Services.OAuthWhitelist.OAuthWhitelistEntryAlreadyExistsException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "OAuthWhitelistEntryAlreadyExistsException", "GitHub.Services.OAuthWhitelist.OAuthWhitelistEntryAlreadyExistsException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class OAuthWhitelistEntryAlreadyExistsException : VssServiceException
     {
 
@@ -28,7 +28,7 @@ namespace Microsoft.VisualStudio.Services.OAuthWhitelist
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "OAuthWhitelistEntryNotFoundException", "Microsoft.VisualStudio.Services.OAuthWhitelist.OAuthWhitelistEntryNotFoundException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "OAuthWhitelistEntryNotFoundException", "GitHub.Services.OAuthWhitelist.OAuthWhitelistEntryNotFoundException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class OAuthWhitelistEntryNotFoundException : VssServiceException
     {
 
@@ -50,7 +50,7 @@ namespace Microsoft.VisualStudio.Services.OAuthWhitelist
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "OAuthWhitelistUpdateNotSupportedException", "Microsoft.VisualStudio.Services.OAuthWhitelist.OAuthWhitelistUpdateNotSupportedException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "OAuthWhitelistUpdateNotSupportedException", "GitHub.Services.OAuthWhitelist.OAuthWhitelistUpdateNotSupportedException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class OAuthWhitelistUpdateNotSupportedException : VssServiceException
     {
 

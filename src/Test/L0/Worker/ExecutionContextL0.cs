@@ -1,4 +1,4 @@
-using Microsoft.TeamFoundation.DistributedTask.WebApi;
+﻿using GitHub.DistributedTask.WebApi;
 using Moq;
 using System;
 using System.Collections.Generic;
@@ -6,9 +6,9 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using Xunit;
-using Pipelines = Microsoft.TeamFoundation.DistributedTask.Pipelines;
+using Pipelines = GitHub.DistributedTask.Pipelines;
 
-namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
+namespace Runner.Common.Tests.Worker
 {
     public sealed class ExecutionContextL0
     {
@@ -35,7 +35,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                 var pagingLogger = new Mock<IPagingLogger>();
                 hc.EnqueueInstance(pagingLogger.Object);
 
-                var ec = new Agent.Worker.ExecutionContext();
+                var ec = new Runner.Worker.ExecutionContext();
                 ec.Initialize(hc);
 
                 // Act.
@@ -71,7 +71,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
                 hc.EnqueueInstance(pagingLogger.Object);
                 hc.SetSingleton(jobServerQueue.Object);
 
-                var ec = new Agent.Worker.ExecutionContext();
+                var ec = new Runner.Worker.ExecutionContext();
                 ec.Initialize(hc);
 
                 // Act.

@@ -1,8 +1,8 @@
 ﻿using System.Runtime.Serialization;
-using Microsoft.VisualStudio.Services.Common;
+using GitHub.Services.Common;
 using Newtonsoft.Json;
 
-namespace Microsoft.VisualStudio.Services.Directories
+namespace GitHub.Services.Directories
 {
     [DataContract]
     internal class DirectoryGroup : DirectoryEntity, IDirectoryGroup

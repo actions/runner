@@ -2,7 +2,7 @@
 using System.ComponentModel;
 using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.SignalR
+namespace GitHub.Services.SignalR
 {
     /// <summary>
     /// Containers of ISignalRObjects should implement this interface. If you implement this interface, all

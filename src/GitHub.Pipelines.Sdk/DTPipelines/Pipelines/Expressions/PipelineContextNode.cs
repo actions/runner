@@ -1,10 +1,10 @@
 ﻿using System;
 using System.ComponentModel;
 using System.Collections.Generic;
-using Microsoft.TeamFoundation.DistributedTask.Expressions;
-using Microsoft.TeamFoundation.DistributedTask.WebApi;
+using GitHub.DistributedTask.Expressions;
+using GitHub.DistributedTask.WebApi;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Pipelines.Expressions
+namespace GitHub.DistributedTask.Pipelines.Expressions
 {
     [EditorBrowsable(EditorBrowsableState.Never)]
     internal sealed class PipelineContextNode : NamedValueNode 

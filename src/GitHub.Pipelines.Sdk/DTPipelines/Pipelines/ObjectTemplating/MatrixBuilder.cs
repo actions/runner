@@ -1,11 +1,11 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
-using Microsoft.TeamFoundation.DistributedTask.Expressions;
-using Microsoft.TeamFoundation.DistributedTask.ObjectTemplating;
-using Microsoft.TeamFoundation.DistributedTask.ObjectTemplating.Tokens;
-using Microsoft.TeamFoundation.DistributedTask.Pipelines.ContextData;
+using GitHub.DistributedTask.Expressions;
+using GitHub.DistributedTask.ObjectTemplating;
+using GitHub.DistributedTask.ObjectTemplating.Tokens;
+using GitHub.DistributedTask.Pipelines.ContextData;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Pipelines.ObjectTemplating
+namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 {
     internal sealed class MatrixBuilder
     {

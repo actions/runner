@@ -2,9 +2,9 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
-using Microsoft.TeamFoundation.DistributedTask.Expressions;
+using GitHub.DistributedTask.Expressions;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Pipelines.Runtime
+namespace GitHub.DistributedTask.Pipelines.Runtime
 {
     /// <summary>
     /// Provides context necessary for the execution of a pipeline.

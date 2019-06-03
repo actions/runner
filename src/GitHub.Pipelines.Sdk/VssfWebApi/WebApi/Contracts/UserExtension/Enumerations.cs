@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.UserAccountMapping
+namespace GitHub.Services.UserAccountMapping
 {
     [Flags, DataContract]
     public enum UserRole

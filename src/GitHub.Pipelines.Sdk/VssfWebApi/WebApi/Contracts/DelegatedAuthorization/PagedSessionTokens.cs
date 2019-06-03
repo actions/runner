@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace Microsoft.VisualStudio.Services.DelegatedAuthorization
+namespace GitHub.Services.DelegatedAuthorization
 {
     public class PagedSessionTokens
     {

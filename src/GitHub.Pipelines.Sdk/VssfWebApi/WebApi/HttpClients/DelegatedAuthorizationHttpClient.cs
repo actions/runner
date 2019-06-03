@@ -1,17 +1,17 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.Tokens;
-using Microsoft.VisualStudio.Services.WebApi;
-using Microsoft.VisualStudio.Services.WebApi.Jwt;
+using GitHub.Services.Common;
+using GitHub.Services.Tokens;
+using GitHub.Services.WebApi;
+using GitHub.Services.WebApi.Jwt;
 
-namespace Microsoft.VisualStudio.Services.DelegatedAuthorization.Client
+namespace GitHub.Services.DelegatedAuthorization.Client
 {
     [ResourceArea(TokenResourceIds.AreaId)]
-    [Obsolete("This class has been deprecated. Please use Microsoft.VisualStudio.Services.DelegatedAuthorization.WebApi.DelegatedAuthorizationHttpClient or Microsoft.VisualStudio.Services.DelegatedAuthorization.WebApi.TokenHttpClient instead.")]
+    [Obsolete("This class has been deprecated. Please use GitHub.Services.DelegatedAuthorization.WebApi.DelegatedAuthorizationHttpClient or GitHub.Services.DelegatedAuthorization.WebApi.TokenHttpClient instead.")]
     public class DelegatedAuthorizationHttpClient : VssHttpClientBase
     {
         static DelegatedAuthorizationHttpClient()
@@ -47,13 +47,13 @@ namespace Microsoft.VisualStudio.Services.DelegatedAuthorization.Client
 
         #region Operations on access token controller
 
-        [Obsolete("This methos has been deprecated. Please use Microsoft.VisualStudio.Services.DelegatedAuthorization.WebApi.SessionTokenHttpClient.GetAccessTokenAsync instead.")]
+        [Obsolete("This methos has been deprecated. Please use GitHub.Services.DelegatedAuthorization.WebApi.SessionTokenHttpClient.GetAccessTokenAsync instead.")]
         public async Task<AccessToken> Exchange(string key, Object userState = null, CancellationToken cancellationToken = default(CancellationToken))
         {
             return await this.Exchange(false, key, userState, cancellationToken).ConfigureAwait(false);
         }
 
-        [Obsolete("This methos has been deprecated. Please use Microsoft.VisualStudio.Services.DelegatedAuthorization.WebApi.SessionTokenHttpClient.GetAccessTokenAsync instead.")]
+        [Obsolete("This methos has been deprecated. Please use GitHub.Services.DelegatedAuthorization.WebApi.SessionTokenHttpClient.GetAccessTokenAsync instead.")]
         public virtual async Task<AccessToken> Exchange(bool isPublic, string key, Object userState = null, CancellationToken cancellationToken = default(CancellationToken))
         {
             using (new OperationScope(TokenResourceIds.AreaName, "Exchange"))
@@ -76,7 +76,7 @@ namespace Microsoft.VisualStudio.Services.DelegatedAuthorization.Client
 
         #region Operations on session token controller
 
-        [Obsolete("This methos has been deprecated. Please use Microsoft.VisualStudio.Services.DelegatedAuthorization.WebApi.SessionTokenHttpClient.CreateSessionTokenAsync instead.")]
+        [Obsolete("This methos has been deprecated. Please use GitHub.Services.DelegatedAuthorization.WebApi.SessionTokenHttpClient.CreateSessionTokenAsync instead.")]
         public async Task<SessionToken> CreateSessionToken(
             Guid? clientId = null,
             Guid? userId = null,
@@ -91,7 +91,7 @@ namespace Microsoft.VisualStudio.Services.DelegatedAuthorization.Client
             return await this.CreateSessionToken(null, null, false, clientId, userId, displayName, validTo, scope, targetAccounts, tokenType, userState, cancellationToken).ConfigureAwait(false);
         }
 
-        [Obsolete("This methos has been deprecated. Please use Microsoft.VisualStudio.Services.DelegatedAuthorization.WebApi.SessionTokenHttpClient.CreateSessionTokenAsync instead.")]
+        [Obsolete("This methos has been deprecated. Please use GitHub.Services.DelegatedAuthorization.WebApi.SessionTokenHttpClient.CreateSessionTokenAsync instead.")]
         public async Task<SessionToken> CreateSessionToken(
             bool isPublic,
             Guid? clientId = null,
@@ -107,7 +107,7 @@ namespace Microsoft.VisualStudio.Services.DelegatedAuthorization.Client
             return await this.CreateSessionToken(null, null, isPublic, clientId, userId, displayName, validTo, scope, targetAccounts, tokenType, userState, cancellationToken).ConfigureAwait(false);
         }
 
-        [Obsolete("This methos has been deprecated. Please use Microsoft.VisualStudio.Services.DelegatedAuthorization.WebApi.SessionTokenHttpClient.CreateSessionTokenAsync instead.")]
+        [Obsolete("This methos has been deprecated. Please use GitHub.Services.DelegatedAuthorization.WebApi.SessionTokenHttpClient.CreateSessionTokenAsync instead.")]
         public async Task<SessionToken> CreateSessionToken(
             string source,
             bool isPublic,
@@ -124,7 +124,7 @@ namespace Microsoft.VisualStudio.Services.DelegatedAuthorization.Client
             return await this.CreateSessionToken(null, source, isPublic, clientId, userId, displayName, validTo, scope, targetAccounts, tokenType, userState, cancellationToken).ConfigureAwait(false);
         }
 
-        [Obsolete("This methos has been deprecated. Please use Microsoft.VisualStudio.Services.DelegatedAuthorization.WebApi.SessionTokenHttpClient.CreateSessionTokenAsync instead.")]
+        [Obsolete("This methos has been deprecated. Please use GitHub.Services.DelegatedAuthorization.WebApi.SessionTokenHttpClient.CreateSessionTokenAsync instead.")]
         public async Task<SessionToken> CreateSessionToken(
             string publicData,
             string source,
@@ -186,7 +186,7 @@ namespace Microsoft.VisualStudio.Services.DelegatedAuthorization.Client
             }
         }
 
-        [Obsolete("This methos has been deprecated. Please use Microsoft.VisualStudio.Services.DelegatedAuthorization.WebApi.SessionTokenHttpClient.CreateSessionTokenAsync instead.")]
+        [Obsolete("This methos has been deprecated. Please use GitHub.Services.DelegatedAuthorization.WebApi.SessionTokenHttpClient.CreateSessionTokenAsync instead.")]
         public async Task<SessionToken> UpdateSessionToken(
             Guid authorizationId,
             string displayName = null,
@@ -199,7 +199,7 @@ namespace Microsoft.VisualStudio.Services.DelegatedAuthorization.Client
             return await this.UpdateSessionToken(false, authorizationId, displayName, scope, validTo, targetAccounts, userState, cancellationToken).ConfigureAwait(false);
         }
 
-        [Obsolete("This methos has been deprecated. Please use Microsoft.VisualStudio.Services.DelegatedAuthorization.WebApi.SessionTokenHttpClient.CreateSessionTokenAsync instead.")]
+        [Obsolete("This methos has been deprecated. Please use GitHub.Services.DelegatedAuthorization.WebApi.SessionTokenHttpClient.CreateSessionTokenAsync instead.")]
         public async Task<SessionToken> UpdateSessionToken(
             bool isPublic,
             Guid authorizationId,
@@ -239,14 +239,14 @@ namespace Microsoft.VisualStudio.Services.DelegatedAuthorization.Client
             }
         }
 
-        [Obsolete("This methos has been deprecated. Please use Microsoft.VisualStudio.Services.DelegatedAuthorization.WebApi.SessionTokenHttpClient.GetSessionTokensAsync instead.")]
+        [Obsolete("This methos has been deprecated. Please use GitHub.Services.DelegatedAuthorization.WebApi.SessionTokenHttpClient.GetSessionTokensAsync instead.")]
         public async Task<List<SessionToken>> ListSessionTokens(
             Object userState = null, CancellationToken cancellationToken = default(CancellationToken))
         {
             return await this.ListSessionTokens(false, false, userState, cancellationToken).ConfigureAwait(false);
         }
 
-        [Obsolete("This methos has been deprecated. Please use Microsoft.VisualStudio.Services.DelegatedAuthorization.WebApi.SessionTokenHttpClient.GetSessionTokensAsync instead.")]
+        [Obsolete("This methos has been deprecated. Please use GitHub.Services.DelegatedAuthorization.WebApi.SessionTokenHttpClient.GetSessionTokensAsync instead.")]
         public async Task<List<SessionToken>> ListSessionTokens(
             bool isPublic,
             Object userState = null, CancellationToken cancellationToken = default(CancellationToken))
@@ -254,7 +254,7 @@ namespace Microsoft.VisualStudio.Services.DelegatedAuthorization.Client
             return await this.ListSessionTokens(false, isPublic, userState, cancellationToken).ConfigureAwait(false);
         }
 
-        [Obsolete("This methos has been deprecated. Please use Microsoft.VisualStudio.Services.DelegatedAuthorization.WebApi.SessionTokenHttpClient.GetSessionTokensAsync instead.")]
+        [Obsolete("This methos has been deprecated. Please use GitHub.Services.DelegatedAuthorization.WebApi.SessionTokenHttpClient.GetSessionTokensAsync instead.")]
         public async Task<List<SessionToken>> ListSessionTokens(
             bool includePublicData,
             bool isPublic,
@@ -276,7 +276,7 @@ namespace Microsoft.VisualStudio.Services.DelegatedAuthorization.Client
             }
         }
 
-        [Obsolete("This methos has been deprecated. Please use Microsoft.VisualStudio.Services.DelegatedAuthorization.WebApi.SessionTokenHttpClient.GetSessionTokenAsync instead.")]
+        [Obsolete("This methos has been deprecated. Please use GitHub.Services.DelegatedAuthorization.WebApi.SessionTokenHttpClient.GetSessionTokenAsync instead.")]
         public async Task<SessionToken> GetSessionToken(
             Guid authorizationId,
             Object userState = null, CancellationToken cancellationToken = default(CancellationToken))
@@ -284,7 +284,7 @@ namespace Microsoft.VisualStudio.Services.DelegatedAuthorization.Client
             return await this.GetSessionToken(false, authorizationId, userState, cancellationToken).ConfigureAwait(false);
         }
 
-        [Obsolete("This methos has been deprecated. Please use Microsoft.VisualStudio.Services.DelegatedAuthorization.WebApi.SessionTokenHttpClient.GetSessionTokenAsync instead.")]
+        [Obsolete("This methos has been deprecated. Please use GitHub.Services.DelegatedAuthorization.WebApi.SessionTokenHttpClient.GetSessionTokenAsync instead.")]
         public async Task<SessionToken> GetSessionToken(
             bool isPublic,
             Guid authorizationId,
@@ -306,7 +306,7 @@ namespace Microsoft.VisualStudio.Services.DelegatedAuthorization.Client
             }
         }
 
-        [Obsolete("This methos has been deprecated. Please use Microsoft.VisualStudio.Services.DelegatedAuthorization.WebApi.SessionTokenHttpClient.RemovePublicKeyAsync instead.")]
+        [Obsolete("This methos has been deprecated. Please use GitHub.Services.DelegatedAuthorization.WebApi.SessionTokenHttpClient.RemovePublicKeyAsync instead.")]
         public async Task RemovePublicKey(
             string publicKey,
             Object userState = null, CancellationToken cancellationToken = default(CancellationToken))
@@ -329,7 +329,7 @@ namespace Microsoft.VisualStudio.Services.DelegatedAuthorization.Client
             }
         }
 
-        [Obsolete("This methos has been deprecated. Please use Microsoft.VisualStudio.Services.DelegatedAuthorization.WebApi.SessionTokenHttpClient.RemovePublicKeyAsync instead.")]
+        [Obsolete("This methos has been deprecated. Please use GitHub.Services.DelegatedAuthorization.WebApi.SessionTokenHttpClient.RemovePublicKeyAsync instead.")]
         public async Task RevokeSessionToken(
             Guid authorizationId,
             Object userState = null, CancellationToken cancellationToken = default(CancellationToken))
@@ -337,7 +337,7 @@ namespace Microsoft.VisualStudio.Services.DelegatedAuthorization.Client
             await this.RevokeSessionToken(false, authorizationId, userState, cancellationToken).ConfigureAwait(false);
         }
 
-        [Obsolete("This methos has been deprecated. Please use Microsoft.VisualStudio.Services.DelegatedAuthorization.WebApi.SessionTokenHttpClient.RevokeSessionTokenAsync instead.")]
+        [Obsolete("This methos has been deprecated. Please use GitHub.Services.DelegatedAuthorization.WebApi.SessionTokenHttpClient.RevokeSessionTokenAsync instead.")]
         public async Task RevokeSessionToken(
             bool isPublic,
             Guid authorizationId,
@@ -363,7 +363,7 @@ namespace Microsoft.VisualStudio.Services.DelegatedAuthorization.Client
 
         #region Operations on authorizations controller
 
-        [Obsolete("This methos has been deprecated. Please use Microsoft.VisualStudio.Services.DelegatedAuthorization.WebApi.DelegatedAuthorizationHttpClient.InitiateAuthorizationAsync instead.")]
+        [Obsolete("This methos has been deprecated. Please use GitHub.Services.DelegatedAuthorization.WebApi.DelegatedAuthorizationHttpClient.InitiateAuthorizationAsync instead.")]
         public async Task<AuthorizationDescription> InitiateAuthorization(
             Guid userId,
             ResponseType responseType,
@@ -392,7 +392,7 @@ namespace Microsoft.VisualStudio.Services.DelegatedAuthorization.Client
             }
         }
 
-        [Obsolete("This methos has been deprecated. Please use Microsoft.VisualStudio.Services.DelegatedAuthorization.WebApi.DelegatedAuthorizationHttpClient.InitiateAuthorizationAsync instead.")]
+        [Obsolete("This methos has been deprecated. Please use GitHub.Services.DelegatedAuthorization.WebApi.DelegatedAuthorizationHttpClient.InitiateAuthorizationAsync instead.")]
         public async Task<AuthorizationDecision> Authorize(
             Guid userId,
             ResponseType responseType,
@@ -421,7 +421,7 @@ namespace Microsoft.VisualStudio.Services.DelegatedAuthorization.Client
             }
         }
 
-        [Obsolete("This methos has been deprecated. Please use Microsoft.VisualStudio.Services.DelegatedAuthorization.WebApi.DelegatedAuthorizationHttpClient.RevokeAuthorizationAsync instead.")]
+        [Obsolete("This methos has been deprecated. Please use GitHub.Services.DelegatedAuthorization.WebApi.DelegatedAuthorizationHttpClient.RevokeAuthorizationAsync instead.")]
         public async Task RevokeAuthorization(
             Guid userId,
             Guid authorizationId,
@@ -444,7 +444,7 @@ namespace Microsoft.VisualStudio.Services.DelegatedAuthorization.Client
             }
         }
 
-        [Obsolete("This methos has been deprecated. Please use Microsoft.VisualStudio.Services.DelegatedAuthorization.WebApi.DelegatedAuthorizationHttpClient.GetAuthorizationsAsync instead.")]
+        [Obsolete("This methos has been deprecated. Please use GitHub.Services.DelegatedAuthorization.WebApi.DelegatedAuthorizationHttpClient.GetAuthorizationsAsync instead.")]
         public async Task<IEnumerable<AuthorizationDetails>> GetAuthorizations(
             Guid userId,
             object userState = null,
@@ -464,7 +464,7 @@ namespace Microsoft.VisualStudio.Services.DelegatedAuthorization.Client
 
         #endregion
 
-        [Obsolete("This methos has been deprecated. Please use Microsoft.VisualStudio.Services.DelegatedAuthorization.WebApi.SessionTokenHttpClient.IssueAppSessionTokenAsync instead.")]
+        [Obsolete("This methos has been deprecated. Please use GitHub.Services.DelegatedAuthorization.WebApi.SessionTokenHttpClient.IssueAppSessionTokenAsync instead.")]
         public async Task<AppSessionTokenResult> IssueAppSessionToken(
            Guid clientId,
            Guid? userId,
@@ -490,7 +490,7 @@ namespace Microsoft.VisualStudio.Services.DelegatedAuthorization.Client
 
         #region Operations on HostAuthorization controller
 
-        [Obsolete("This methos has been deprecated. Please use Microsoft.VisualStudio.Services.DelegatedAuthorization.WebApi.DelegatedAuthorizationHttpClient.AuthorizeHostAsync instead.")]
+        [Obsolete("This methos has been deprecated. Please use GitHub.Services.DelegatedAuthorization.WebApi.DelegatedAuthorizationHttpClient.AuthorizeHostAsync instead.")]
         public async Task<HostAuthorizationDecision> AuthorizeHost(
         Guid clientId,
         Object userState = null, CancellationToken cancellationToken = default(CancellationToken))
@@ -510,7 +510,7 @@ namespace Microsoft.VisualStudio.Services.DelegatedAuthorization.Client
             }
         }
 
-        [Obsolete("This methos has been deprecated. Please use Microsoft.VisualStudio.Services.DelegatedAuthorization.WebApi.DelegatedAuthorizationHttpClient.RevokeHostAuthorizationAsync instead.")]
+        [Obsolete("This methos has been deprecated. Please use GitHub.Services.DelegatedAuthorization.WebApi.DelegatedAuthorizationHttpClient.RevokeHostAuthorizationAsync instead.")]
         public async Task<HttpResponseMessage> RevokeHostAuthorization(
             Guid clientId,
             Guid? hostId,
@@ -532,7 +532,7 @@ namespace Microsoft.VisualStudio.Services.DelegatedAuthorization.Client
             }
         }
 
-        [Obsolete("This methos has been deprecated. Please use Microsoft.VisualStudio.Services.DelegatedAuthorization.WebApi.DelegatedAuthorizationHttpClient.GetHostAuthorizationsAsync instead.")]
+        [Obsolete("This methos has been deprecated. Please use GitHub.Services.DelegatedAuthorization.WebApi.DelegatedAuthorizationHttpClient.GetHostAuthorizationsAsync instead.")]
         public async Task<IList<HostAuthorization>> GetHostAuthorizations(Guid hostId,
             Object userState = null, CancellationToken cancellationToken = default(CancellationToken))
         {
@@ -553,7 +553,7 @@ namespace Microsoft.VisualStudio.Services.DelegatedAuthorization.Client
 
         #endregion
 
-        [Obsolete("This methos has been deprecated. Please use Microsoft.VisualStudio.Services.DelegatedAuthorization.WebApi.SessionTokenHttpClient.ExchangeAppTokenAsync instead.")]
+        [Obsolete("This methos has been deprecated. Please use GitHub.Services.DelegatedAuthorization.WebApi.SessionTokenHttpClient.ExchangeAppTokenAsync instead.")]
         public async Task<AccessTokenResult> ExchangeAppToken(
             string appToken,
             string clientSecret,
@@ -582,7 +582,7 @@ namespace Microsoft.VisualStudio.Services.DelegatedAuthorization.Client
 
         #region - Registration
 
-        [Obsolete("This methos has been deprecated. Please use Microsoft.VisualStudio.Services.DelegatedAuthorization.WebApi.DelegatedAuthorizationHttpClient.CreateRegistrationAsync instead.")]
+        [Obsolete("This methos has been deprecated. Please use GitHub.Services.DelegatedAuthorization.WebApi.DelegatedAuthorizationHttpClient.CreateRegistrationAsync instead.")]
         public async Task<Registration> CreateRegistration(
             Registration registration,
             object userState = null,
@@ -591,7 +591,7 @@ namespace Microsoft.VisualStudio.Services.DelegatedAuthorization.Client
             return await CreateRegistration(registration, includeSecret: false, userState: userState, cancellationToken: cancellationToken).ConfigureAwait(false);
         }
 
-        [Obsolete("This methos has been deprecated. Please use Microsoft.VisualStudio.Services.DelegatedAuthorization.WebApi.DelegatedAuthorizationHttpClient.CreateRegistrationAsync instead.")]
+        [Obsolete("This methos has been deprecated. Please use GitHub.Services.DelegatedAuthorization.WebApi.DelegatedAuthorizationHttpClient.CreateRegistrationAsync instead.")]
         public async Task<Registration> CreateRegistration(
             Registration registration,
             bool includeSecret,
@@ -616,7 +616,7 @@ namespace Microsoft.VisualStudio.Services.DelegatedAuthorization.Client
             }
         }
 
-        [Obsolete("This methos has been deprecated. Please use Microsoft.VisualStudio.Services.DelegatedAuthorization.WebApi.DelegatedAuthorizationHttpClient.UpdateRegistrationAsync instead.")]
+        [Obsolete("This methos has been deprecated. Please use GitHub.Services.DelegatedAuthorization.WebApi.DelegatedAuthorizationHttpClient.UpdateRegistrationAsync instead.")]
         public async Task<Registration> UpdateRegistration(
             Registration registration,
             object userState = null,
@@ -625,7 +625,7 @@ namespace Microsoft.VisualStudio.Services.DelegatedAuthorization.Client
             return await UpdateRegistration(registration, includeSecret: false, userState: userState, cancellationToken: cancellationToken).ConfigureAwait(false);
         }
 
-        [Obsolete("This methos has been deprecated. Please use Microsoft.VisualStudio.Services.DelegatedAuthorization.WebApi.DelegatedAuthorizationHttpClient.UpdateRegistrationAsync instead.")]
+        [Obsolete("This methos has been deprecated. Please use GitHub.Services.DelegatedAuthorization.WebApi.DelegatedAuthorizationHttpClient.UpdateRegistrationAsync instead.")]
         public async Task<Registration> UpdateRegistration(
             Registration registration,
             bool includeSecret,
@@ -651,7 +651,7 @@ namespace Microsoft.VisualStudio.Services.DelegatedAuthorization.Client
             }
         }
 
-        [Obsolete("This methos has been deprecated. Please use Microsoft.VisualStudio.Services.DelegatedAuthorization.WebApi.DelegatedAuthorizationHttpClient.DeleteRegistrationAsync instead.")]
+        [Obsolete("This methos has been deprecated. Please use GitHub.Services.DelegatedAuthorization.WebApi.DelegatedAuthorizationHttpClient.DeleteRegistrationAsync instead.")]
         public async Task Delete(
             Guid registrationId,
             object userState = null,
@@ -669,7 +669,7 @@ namespace Microsoft.VisualStudio.Services.DelegatedAuthorization.Client
             }
         }
 
-        [Obsolete("This methos has been deprecated. Please use Microsoft.VisualStudio.Services.DelegatedAuthorization.WebApi.DelegatedAuthorizationHttpClient.GetRegistrationAsync instead.")]
+        [Obsolete("This methos has been deprecated. Please use GitHub.Services.DelegatedAuthorization.WebApi.DelegatedAuthorizationHttpClient.GetRegistrationAsync instead.")]
         public async Task<Registration> GetRegistration(
             Guid registrationId,
             object userState = null,
@@ -678,7 +678,7 @@ namespace Microsoft.VisualStudio.Services.DelegatedAuthorization.Client
             return await GetRegistration(registrationId, includeSecret: false, userState: userState, cancellationToken: cancellationToken).ConfigureAwait(false);
         }
 
-        [Obsolete("This methos has been deprecated. Please use Microsoft.VisualStudio.Services.DelegatedAuthorization.WebApi.DelegatedAuthorizationHttpClient.GetRegistrationAsync instead.")]
+        [Obsolete("This methos has been deprecated. Please use GitHub.Services.DelegatedAuthorization.WebApi.DelegatedAuthorizationHttpClient.GetRegistrationAsync instead.")]
         public async Task<Registration> GetRegistration(
             Guid registrationId,
             bool includeSecret,
@@ -701,7 +701,7 @@ namespace Microsoft.VisualStudio.Services.DelegatedAuthorization.Client
             }
         }
 
-        [Obsolete("This methos has been deprecated. Please use Microsoft.VisualStudio.Services.DelegatedAuthorization.WebApi.DelegatedAuthorizationHttpClient.GetSecretAsync instead.")]
+        [Obsolete("This methos has been deprecated. Please use GitHub.Services.DelegatedAuthorization.WebApi.DelegatedAuthorizationHttpClient.GetSecretAsync instead.")]
         public async Task<JsonWebToken> GetSecret(
             Guid registrationId,
             object userState = null,
@@ -719,7 +719,7 @@ namespace Microsoft.VisualStudio.Services.DelegatedAuthorization.Client
             }
         }
 
-        [Obsolete("This methos has been deprecated. Please use Microsoft.VisualStudio.Services.DelegatedAuthorization.WebApi.DelegatedAuthorizationHttpClient.GetRegistrationsAsync instead.")]
+        [Obsolete("This methos has been deprecated. Please use GitHub.Services.DelegatedAuthorization.WebApi.DelegatedAuthorizationHttpClient.GetRegistrationsAsync instead.")]
         public async Task<IList<Registration>> ListRegistrations(
             object userState = null,
             CancellationToken cancellationToken = default(CancellationToken))

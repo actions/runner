@@ -3,7 +3,7 @@ using System;
 using System.ComponentModel;
 using System.Runtime.Serialization;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Pipelines
+namespace GitHub.DistributedTask.Pipelines
 {
     /// <summary>
     /// Provides a base set of properties common to all pipeline resource types.

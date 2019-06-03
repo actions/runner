@@ -2,7 +2,7 @@
 using System.ComponentModel;
 using System.Net.Http;
 
-namespace Microsoft.VisualStudio.Services.Common.Diagnostics
+namespace GitHub.Services.Common.Diagnostics
 {
     [EditorBrowsable(EditorBrowsableState.Never)]
     internal static class HttpRequestMessageExtensions

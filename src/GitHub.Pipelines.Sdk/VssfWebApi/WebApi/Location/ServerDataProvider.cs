@@ -1,17 +1,17 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.Identity;
-using Microsoft.VisualStudio.Services.Location;
-using Microsoft.VisualStudio.Services.Location.Client;
-using Microsoft.VisualStudio.Services.WebApi.Utilities;
+using GitHub.Services.Common;
+using GitHub.Services.Identity;
+using GitHub.Services.Location;
+using GitHub.Services.Location.Client;
+using GitHub.Services.WebApi.Utilities;
 
-namespace Microsoft.VisualStudio.Services.WebApi.Location
+namespace GitHub.Services.WebApi.Location
 {
     /// <summary>
     /// 

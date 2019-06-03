@@ -2,11 +2,11 @@
 using System.Collections.Generic;
 using System.Security.Claims;
 using System.Text;
-using Microsoft.VisualStudio.Services.Common;
+using GitHub.Services.Common;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 
-namespace Microsoft.VisualStudio.Services.WebApi.Jwt
+namespace GitHub.Services.WebApi.Jwt
 {
     public static class JsonWebTokenUtilities
     {

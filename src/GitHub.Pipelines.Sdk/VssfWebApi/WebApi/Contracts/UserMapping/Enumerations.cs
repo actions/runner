@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.UserMapping
+namespace GitHub.Services.UserMapping
 {
     [Flags, DataContract]
     public enum UserType

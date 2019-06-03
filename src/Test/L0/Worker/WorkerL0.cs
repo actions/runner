@@ -1,15 +1,15 @@
-using Microsoft.TeamFoundation.DistributedTask.WebApi;
-using Microsoft.VisualStudio.Services.Agent.Worker;
+﻿using GitHub.DistributedTask.WebApi;
+using Runner.Common.Worker;
 using Moq;
 using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
-using Microsoft.VisualStudio.Services.WebApi;
-using Pipelines = Microsoft.TeamFoundation.DistributedTask.Pipelines;
+using GitHub.Services.WebApi;
+using Pipelines = GitHub.DistributedTask.Pipelines;
 
-namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
+namespace Runner.Common.Tests.Worker
 {
     public sealed class WorkerL0
     {
@@ -72,7 +72,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             using (var hc = new TestHostContext(this))
             using (var tokenSource = new CancellationTokenSource())
             {
-                var worker = new Microsoft.VisualStudio.Services.Agent.Worker.Worker();
+                var worker = new Runner.Common.Worker.Worker();
                 hc.EnqueueInstance<IProcessChannel>(_processChannel.Object);
                 hc.EnqueueInstance<IJobRunner>(_jobRunner.Object);
                 hc.SetSingleton<IVstsAgentWebProxy>(_proxy.Object);
@@ -125,7 +125,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
             //Arrange
             using (var hc = new TestHostContext(this))
             {
-                var worker = new Microsoft.VisualStudio.Services.Agent.Worker.Worker();
+                var worker = new Runner.Common.Worker.Worker();
                 hc.EnqueueInstance<IProcessChannel>(_processChannel.Object);
                 hc.EnqueueInstance<IJobRunner>(_jobRunner.Object);
                 hc.SetSingleton<IVstsAgentWebProxy>(_proxy.Object);

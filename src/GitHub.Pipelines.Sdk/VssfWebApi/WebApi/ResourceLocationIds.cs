@@ -1,10 +1,10 @@
-using System;
-using Microsoft.VisualStudio.Services.Common;
+﻿using System;
+using GitHub.Services.Common;
 
 //each resource (aka "controller") needs its own guid
 //for the location service. Defined here so we can use it on the client
 //to look it up.
-namespace Microsoft.VisualStudio.Services.Identity
+namespace GitHub.Services.Identity
 {
     public static class IdentityResourceIds
     {
@@ -54,7 +54,7 @@ namespace Microsoft.VisualStudio.Services.Identity
     }
 }
 
-namespace Microsoft.VisualStudio.Services.Graph
+namespace GitHub.Services.Graph
 {
     public class GraphResourceIds
     {
@@ -165,7 +165,7 @@ namespace Microsoft.VisualStudio.Services.Graph
     }
 }
 
-namespace Microsoft.TeamFoundation.GraphProfile.WebApi
+namespace GitHub.GraphProfile.WebApi
 {
     [GenerateAllConstants]
     public static class GraphProfileResourceIds
@@ -182,7 +182,7 @@ namespace Microsoft.TeamFoundation.GraphProfile.WebApi
     }
 }
 
-namespace Microsoft.VisualStudio.Services.OAuth
+namespace GitHub.Services.OAuth
 {
     public static class TokenOAuth2ResourceIds
     {
@@ -203,7 +203,7 @@ namespace Microsoft.VisualStudio.Services.OAuth
     }
 }
 
-namespace Microsoft.VisualStudio.Services.Tokens
+namespace GitHub.Services.Tokens
 {
     public static class TokenAuthResourceIds
     {
@@ -308,7 +308,7 @@ namespace Microsoft.VisualStudio.Services.Tokens
     }
 }
 
-namespace Microsoft.VisualStudio.Services.TokenAdmin.Client
+namespace GitHub.Services.TokenAdmin.Client
 {
     public static class TokenAdminResourceIds
     {
@@ -326,7 +326,7 @@ namespace Microsoft.VisualStudio.Services.TokenAdmin.Client
     }
 }
 
-namespace Microsoft.VisualStudio.Services.Tokens.TokenAdmin.Client
+namespace GitHub.Services.Tokens.TokenAdmin.Client
 {
     public static class TokenAdministrationResourceIds
     {
@@ -344,7 +344,7 @@ namespace Microsoft.VisualStudio.Services.Tokens.TokenAdmin.Client
     }
 }
 
-namespace Microsoft.VisualStudio.Services.Identity.Client
+namespace GitHub.Services.Identity.Client
 {
     public static class PropertyCacheResourceIds
     {
@@ -356,7 +356,7 @@ namespace Microsoft.VisualStudio.Services.Identity.Client
     }
 }
 
-namespace Microsoft.VisualStudio.Services.Security
+namespace GitHub.Services.Security
 {
     public static class LocationResourceIds
     {
@@ -399,7 +399,7 @@ namespace Microsoft.VisualStudio.Services.Security
     }
 }
 
-namespace Microsoft.VisualStudio.Services.Account
+namespace GitHub.Services.Account
 {
     public static class AccountResourceIds
     {
@@ -431,7 +431,7 @@ namespace Microsoft.VisualStudio.Services.Account
     }
 }
 
-namespace Microsoft.VisualStudio.Services.ClientNotification
+namespace GitHub.Services.ClientNotification
 {
     public static class ClientNotificationResourceIds
     {
@@ -446,7 +446,7 @@ namespace Microsoft.VisualStudio.Services.ClientNotification
     }
 }
 
-namespace Microsoft.VisualStudio.Services.Licensing
+namespace GitHub.Services.Licensing
 {
     public static class LicensingResourceIds
     {
@@ -545,7 +545,7 @@ namespace Microsoft.VisualStudio.Services.Licensing
     }
 }
 
-namespace Microsoft.VisualStudio.Services.GroupLicensingRule
+namespace GitHub.Services.GroupLicensingRule
 {
     public static class LicensingRuleResourceIds
     {
@@ -601,7 +601,7 @@ namespace Microsoft.VisualStudio.Services.GroupLicensingRule
     }
 }
 
-namespace Microsoft.VisualStudio.Services.Invitation
+namespace GitHub.Services.Invitation
 {
     public static class InvitationResourceVersions
     {
@@ -619,7 +619,7 @@ namespace Microsoft.VisualStudio.Services.Invitation
     }
 }
 
-namespace Microsoft.VisualStudio.Services.Compliance
+namespace GitHub.Services.Compliance
 {
     public static class ComplianceResourceVersions
     {
@@ -644,7 +644,7 @@ namespace Microsoft.VisualStudio.Services.Compliance
     }
 }
 
-namespace Microsoft.VisualStudio.Services.Profile
+namespace GitHub.Services.Profile
 {
     public static class ProfileResourceIds
     {
@@ -724,7 +724,7 @@ namespace Microsoft.VisualStudio.Services.Profile
     }
 }
 
-namespace Microsoft.VisualStudio.Services.FileContainer
+namespace GitHub.Services.FileContainer
 {
     public static class FileContainerResourceIds
     {
@@ -739,7 +739,7 @@ namespace Microsoft.VisualStudio.Services.FileContainer
     }
 }
 
-namespace Microsoft.VisualStudio.Services.WebApi
+namespace GitHub.Services.WebApi
 {
     public static class CvsFileDownloadResourceIds
     {
@@ -752,7 +752,7 @@ namespace Microsoft.VisualStudio.Services.WebApi
     }
 }
 
-namespace Microsoft.VisualStudio.Services.Commerce
+namespace GitHub.Services.Commerce
 {
     public static class CommerceResourceIds
     {
@@ -988,7 +988,7 @@ namespace Microsoft.VisualStudio.Services.Commerce
     }
 }
 
-namespace Microsoft.VisualStudio.Services.Health
+namespace GitHub.Services.Health
 {
     public static class HealthResourceIds
     {
@@ -998,7 +998,7 @@ namespace Microsoft.VisualStudio.Services.Health
     }
 }
 
-namespace Microsoft.VisualStudio.Services.ActivityStatistic
+namespace GitHub.Services.ActivityStatistic
 {
     public static class ActivityStatisticIds
     {
@@ -1008,7 +1008,7 @@ namespace Microsoft.VisualStudio.Services.ActivityStatistic
     }
 }
 
-namespace Microsoft.VisualStudio.Services.ContentSecurityPolicy
+namespace GitHub.Services.ContentSecurityPolicy
 {
     public static class ContentSecurityPolicyResourceIds
     {
@@ -1018,7 +1018,7 @@ namespace Microsoft.VisualStudio.Services.ContentSecurityPolicy
     }
 }
 
-namespace Microsoft.VisualStudio.Services.Location
+namespace GitHub.Services.Location
 {
     [GenerateAllConstants]
     public static class LocationResourceIds
@@ -1044,7 +1044,7 @@ namespace Microsoft.VisualStudio.Services.Location
     }
 }
 
-namespace Microsoft.VisualStudio.Services.Notification
+namespace GitHub.Services.Notification
 {
     public static class PersistedNotificationResourceIds
     {
@@ -1065,7 +1065,7 @@ namespace Microsoft.VisualStudio.Services.Notification
     }
 }
 
-namespace Microsoft.VisualStudio.Services.Operations
+namespace GitHub.Services.Operations
 {
     [GenerateAllConstants]
     public static class OperationsResourceIds
@@ -1082,7 +1082,7 @@ namespace Microsoft.VisualStudio.Services.Operations
     }
 }
 
-namespace Microsoft.VisualStudio.Services.Directories.DirectoryService
+namespace GitHub.Services.Directories.DirectoryService
 {
     public static class DirectoryResourceIds
     {
@@ -1095,7 +1095,7 @@ namespace Microsoft.VisualStudio.Services.Directories.DirectoryService
     }
 }
 
-namespace Microsoft.VisualStudio.Services.FeatureAvailability
+namespace GitHub.Services.FeatureAvailability
 {
     [GenerateAllConstants]
     public static class FeatureAvailabilityResourceIds
@@ -1106,7 +1106,7 @@ namespace Microsoft.VisualStudio.Services.FeatureAvailability
     }
 }
 
-namespace Microsoft.VisualStudio.Services.IdentityPicker
+namespace GitHub.Services.IdentityPicker
 {
     //Common identity picker in the framework
     [GenerateAllConstants]
@@ -1123,7 +1123,7 @@ namespace Microsoft.VisualStudio.Services.IdentityPicker
     }
 }
 
-namespace Microsoft.VisualStudio.Services.Settings
+namespace GitHub.Services.Settings
 {
     [GenerateAllConstants]
     public static class SettingsApiResourceIds
@@ -1138,7 +1138,7 @@ namespace Microsoft.VisualStudio.Services.Settings
     }
 }
 
-namespace Microsoft.VisualStudio.Services.WebPlatform
+namespace GitHub.Services.WebPlatform
 {
     [GenerateAllConstants]
     public static class AuthenticationResourceIds
@@ -1179,7 +1179,7 @@ namespace Microsoft.VisualStudio.Services.WebPlatform
     }
 }
 
-namespace Microsoft.VisualStudio.Services.Zeus
+namespace GitHub.Services.Zeus
 {
     [GenerateAllConstants]
     public static class BlobCopyLocationIds
@@ -1200,7 +1200,7 @@ namespace Microsoft.VisualStudio.Services.Zeus
     }
 }
 
-namespace Microsoft.VisualStudio.Services.Identity.Mru
+namespace GitHub.Services.Identity.Mru
 {
     [GenerateAllConstants]
     public static class IdentityMruResourceIds
@@ -1213,7 +1213,7 @@ namespace Microsoft.VisualStudio.Services.Identity.Mru
     }
 }
 
-namespace Microsoft.VisualStudio.Services.Servicing
+namespace GitHub.Services.Servicing
 {
     public static class ServicingResourceIds
     {
@@ -1229,7 +1229,7 @@ namespace Microsoft.VisualStudio.Services.Servicing
     }
 }
 
-namespace Microsoft.VisualStudio.Services.Auditing
+namespace GitHub.Services.Auditing
 {
     public static class AuditingResourceIds
     {
@@ -1240,7 +1240,7 @@ namespace Microsoft.VisualStudio.Services.Auditing
     }
 }
 
-namespace Microsoft.VisualStudio.Services.ServicePrincipal
+namespace GitHub.Services.ServicePrincipal
 {
     public static class ServicePrincipalResourceIds
     {
@@ -1250,7 +1250,7 @@ namespace Microsoft.VisualStudio.Services.ServicePrincipal
     }
 }
 
-namespace Microsoft.VisualStudio.Services.TokenSigningKeyLifecycle
+namespace GitHub.Services.TokenSigningKeyLifecycle
 {
     public static class TokenSigningKeyLifecycleResourceIds
     {
@@ -1265,7 +1265,7 @@ namespace Microsoft.VisualStudio.Services.TokenSigningKeyLifecycle
     }
 }
 
-namespace Microsoft.VisualStudio.Services.GitHubConnector
+namespace GitHub.Services.GitHubConnector
 {
     public static class GitHubConnectorResourceIds
     {
@@ -1290,7 +1290,7 @@ namespace Microsoft.VisualStudio.Services.GitHubConnector
     }
 }
 
-namespace Microsoft.VisualStudio.Services.Organization
+namespace GitHub.Services.Organization
 {
     public static class OrganizationResourceIds
     {
@@ -1361,7 +1361,7 @@ namespace Microsoft.VisualStudio.Services.Organization
     }
 }
 
-namespace Microsoft.VisualStudio.Services.UserMapping
+namespace GitHub.Services.UserMapping
 {
     public static class UserMappingResourceIds
     {
@@ -1373,7 +1373,7 @@ namespace Microsoft.VisualStudio.Services.UserMapping
     }
 }
 
-namespace Microsoft.VisualStudio.Services.TokenRevocation
+namespace GitHub.Services.TokenRevocation
 {
     public static class TokenRevocationResourceIds
     {
@@ -1385,7 +1385,7 @@ namespace Microsoft.VisualStudio.Services.TokenRevocation
     }
 }
 
-namespace Microsoft.VisualStudio.Services.MarketingPreferences
+namespace GitHub.Services.MarketingPreferences
 {
     public static class MarketingPreferencesResourceIds
     {
@@ -1405,7 +1405,7 @@ namespace Microsoft.VisualStudio.Services.MarketingPreferences
     }
 }
 
-namespace Microsoft.VisualStudio.Services.HostAcquisition
+namespace GitHub.Services.HostAcquisition
 {
     public static class HostAcquisitionResourceIds
     {
@@ -1433,7 +1433,7 @@ namespace Microsoft.VisualStudio.Services.HostAcquisition
     }
 }
 
-namespace Microsoft.VisualStudio.Services.OAuthWhitelist
+namespace GitHub.Services.OAuthWhitelist
 {
     public static class OAuthWhitelistResourceIds
     {
@@ -1445,7 +1445,7 @@ namespace Microsoft.VisualStudio.Services.OAuthWhitelist
     }
 }
 
-namespace Microsoft.VisualStudio.Services.CentralizedFeature
+namespace GitHub.Services.CentralizedFeature
 {
     public class CentralizedFeatureResourceIds
     {
@@ -1461,7 +1461,7 @@ namespace Microsoft.VisualStudio.Services.CentralizedFeature
     }
 }
 
-namespace Microsoft.VisualStudio.Services.AzureFrontDoor
+namespace GitHub.Services.AzureFrontDoor
 {
     public static class AfdResourceIds
     {
@@ -1472,7 +1472,7 @@ namespace Microsoft.VisualStudio.Services.AzureFrontDoor
     }
 }
 
-namespace Microsoft.VisualStudio.Services.WebApi
+namespace GitHub.Services.WebApi
 {
     public static class BasicAuthBatchResourceIds
     {
@@ -1484,7 +1484,7 @@ namespace Microsoft.VisualStudio.Services.WebApi
     }
 }
 
-namespace Microsoft.VisualStudio.Services.PermissionLevel
+namespace GitHub.Services.PermissionLevel
 {
     public static class PermissionLevelDefinitionResourceIds
     {

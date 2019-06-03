@@ -1,9 +1,9 @@
-﻿using Microsoft.VisualStudio.Services.Common.Internal;
+﻿using GitHub.Services.Common.Internal;
 using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.Common
+namespace GitHub.Services.Common
 {
     /// <summary>
     /// Thrown when EUII leak is detected.

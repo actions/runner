@@ -1,8 +1,8 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Pipelines.ObjectTemplating
+namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 {
     internal sealed class JobDisplayNameBuilder
     {

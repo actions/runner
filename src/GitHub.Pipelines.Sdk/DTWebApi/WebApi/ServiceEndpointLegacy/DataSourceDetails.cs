@@ -1,10 +1,10 @@
-﻿namespace Microsoft.TeamFoundation.DistributedTask.WebApi
+﻿namespace GitHub.DistributedTask.WebApi
 {
     using System;
     using System.Collections.Generic;
     using System.Runtime.Serialization;
 
-    using Microsoft.VisualStudio.Services.Common;
+    using GitHub.Services.Common;
     using System.Linq;
 
     [DataContract]

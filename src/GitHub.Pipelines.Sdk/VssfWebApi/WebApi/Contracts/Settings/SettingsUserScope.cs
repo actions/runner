@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Runtime.Serialization;
-using Microsoft.VisualStudio.Services.Common;
+using GitHub.Services.Common;
 
-namespace Microsoft.VisualStudio.Services.Settings
+namespace GitHub.Services.Settings
 {
     /// <summary>
     /// Whether a setting applies to a single user or to all users

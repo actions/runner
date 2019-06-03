@@ -1,10 +1,10 @@
 ﻿using System;
 using System.ComponentModel;
 using System.Runtime.Serialization;
-using Microsoft.TeamFoundation.DistributedTask.Expressions;
-using Microsoft.TeamFoundation.DistributedTask.Logging;
+using GitHub.DistributedTask.Expressions;
+using GitHub.DistributedTask.Logging;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Pipelines.Validation
+namespace GitHub.DistributedTask.Pipelines.Validation
 {
     /// <summary>
     /// Provides the necessary context for performing input value validation.

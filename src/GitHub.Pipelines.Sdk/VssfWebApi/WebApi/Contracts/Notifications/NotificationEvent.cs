@@ -6,7 +6,7 @@ using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Microsoft.VisualStudio.Services.Notifications
+namespace GitHub.Services.Notifications
 {
     public enum EventSerializerType
     {

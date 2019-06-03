@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel;
 
-namespace Microsoft.VisualStudio.Services.Common.ClientStorage
+namespace GitHub.Services.Common.ClientStorage
 {
     [EditorBrowsable(EditorBrowsableState.Never)] // for internal use
     public class VssClientStorage

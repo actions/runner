@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.Location
+namespace GitHub.Services.Location
 {
     [DataContract]
     public class ResourceAreaInfo

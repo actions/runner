@@ -1,9 +1,9 @@
 ﻿using System.Collections.Generic;
 using System.Runtime.Serialization;
-using Microsoft.VisualStudio.Services.Operations;
-using Microsoft.VisualStudio.Services.Licensing;
+using GitHub.Services.Operations;
+using GitHub.Services.Licensing;
 
-namespace Microsoft.VisualStudio.Services.GroupLicensingRule
+namespace GitHub.Services.GroupLicensingRule
 {
     [DataContract]
     public class ApplicationStatus

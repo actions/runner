@@ -5,7 +5,7 @@ using System.Runtime.Remoting.Messaging;
 #endif
 using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.Common.Diagnostics
+namespace GitHub.Services.Common.Diagnostics
 {
     /// <summary>
     /// Represents a trace activity for correlating diagnostic traces together. 

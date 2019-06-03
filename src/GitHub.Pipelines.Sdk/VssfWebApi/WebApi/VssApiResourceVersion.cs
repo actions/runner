@@ -2,9 +2,9 @@
 using System.Globalization;
 using System.Runtime.Serialization;
 using System.Text;
-using Microsoft.VisualStudio.Services.Common;
+using GitHub.Services.Common;
 
-namespace Microsoft.VisualStudio.Services.WebApi
+namespace GitHub.Services.WebApi
 {
     /// <summary>
     /// Represents version information for a REST Api resource

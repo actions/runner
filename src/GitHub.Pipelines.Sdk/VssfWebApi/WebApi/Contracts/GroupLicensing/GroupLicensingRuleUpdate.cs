@@ -1,9 +1,9 @@
 ﻿using System.Collections.Generic;
 using System.Runtime.Serialization;
-using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.Licensing;
+using GitHub.Services.Common;
+using GitHub.Services.Licensing;
 
-namespace Microsoft.VisualStudio.Services.GroupLicensingRule
+namespace GitHub.Services.GroupLicensingRule
 {
     /// <summary>
     /// Represents an GroupLicensingRuleUpdate Model

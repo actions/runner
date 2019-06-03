@@ -1,8 +1,8 @@
-using Moq;
+﻿using Moq;
 using System.Runtime.CompilerServices;
 using Xunit;
 
-namespace Microsoft.VisualStudio.Services.Agent.Tests
+namespace Runner.Common.Tests
 {
     public sealed class CommandLineParserL0
     {

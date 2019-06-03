@@ -2,7 +2,7 @@
 using System.Globalization;
 using System.Net;
 
-namespace Microsoft.VisualStudio.Services.Common
+namespace GitHub.Services.Common
 {
     internal sealed class WindowsTokenProvider : IssuedTokenProvider
     {

@@ -6,10 +6,10 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.WebApi;
+using GitHub.Services.Common;
+using GitHub.Services.WebApi;
 
-namespace Microsoft.VisualStudio.Services.Location.Client
+namespace GitHub.Services.Location.Client
 {
     [ClientCircuitBreakerSettings(timeoutSeconds: 15, failurePercentage: 80)]
     [ClientCancellationTimeout(timeoutSeconds: 30)]

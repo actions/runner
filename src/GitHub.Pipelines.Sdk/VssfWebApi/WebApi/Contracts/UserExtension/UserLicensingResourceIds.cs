@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Microsoft.VisualStudio.Services.UserLicensing
+namespace GitHub.Services.UserLicensing
 {
     public static class UserLicensingResourceIds
     {

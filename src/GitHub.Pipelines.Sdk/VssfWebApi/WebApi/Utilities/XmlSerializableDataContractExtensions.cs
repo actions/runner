@@ -7,10 +7,10 @@ using System.Reflection;
 using System.Runtime.Serialization;
 using System.Xml;
 using System.Xml.Serialization;
-using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.Graph.Client;
+using GitHub.Services.Common;
+using GitHub.Services.Graph.Client;
 
-namespace Microsoft.VisualStudio.Services.WebApi.Xml
+namespace GitHub.Services.WebApi.Xml
 {
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Enum, Inherited = true, AllowMultiple = false)]
     public class XmlSerializableDataContractAttribute : Attribute

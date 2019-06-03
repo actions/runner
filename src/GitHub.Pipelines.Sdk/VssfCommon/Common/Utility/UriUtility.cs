@@ -1,4 +1,4 @@
-// This #define is used by the HtmlEncode and HtmlDecode logic below. The original comment
+﻿// This #define is used by the HtmlEncode and HtmlDecode logic below. The original comment
 // from ndp/fx/src/net/system/net/webutility.cs follows.
 #define ENTITY_ENCODE_HIGH_ASCII_CHARS
 
@@ -17,7 +17,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Net.Sockets;
 
-namespace Microsoft.VisualStudio.Services.Common.Internal
+namespace GitHub.Services.Common.Internal
 {
     /// <summary>
     /// Utility class for general Uri actions.  See LinkingUtilities for artifact uri specific methods.

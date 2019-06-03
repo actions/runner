@@ -3,7 +3,7 @@ using System.ComponentModel;
 using System.Text;
 using Newtonsoft.Json;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Logging
+namespace GitHub.DistributedTask.Logging
 {
     [EditorBrowsable(EditorBrowsableState.Never)]
     public delegate String ValueEncoder(String value);

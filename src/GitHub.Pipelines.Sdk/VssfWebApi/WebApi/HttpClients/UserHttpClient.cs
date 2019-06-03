@@ -1,12 +1,12 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.WebApi;
+using GitHub.Services.Common;
+using GitHub.Services.WebApi;
 
-namespace Microsoft.VisualStudio.Services.Users.Client
+namespace GitHub.Services.Users.Client
 {
     [ResourceArea(UserResourceIds.AreaId)]
     [ClientCircuitBreakerSettings(timeoutSeconds: 100, failurePercentage: 80, MaxConcurrentRequests = 40)]

@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Text.RegularExpressions;
 
-namespace Microsoft.VisualStudio.Services.Common.Utility
+namespace GitHub.Services.Common.Utility
 {
     public enum SearchTermType
     {

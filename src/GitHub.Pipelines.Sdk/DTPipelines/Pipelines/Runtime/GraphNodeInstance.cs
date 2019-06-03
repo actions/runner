@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Runtime.Serialization;
-using Microsoft.TeamFoundation.DistributedTask.WebApi;
+using GitHub.DistributedTask.WebApi;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Pipelines.Runtime
+namespace GitHub.DistributedTask.Pipelines.Runtime
 {
     [DataContract]
     public abstract class GraphNodeInstance<TNode> : IGraphNodeInstance where TNode : IGraphNode

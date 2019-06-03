@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.FileContainer
+namespace GitHub.Services.FileContainer
 {
     /// <summary>
     /// Options a container can have.

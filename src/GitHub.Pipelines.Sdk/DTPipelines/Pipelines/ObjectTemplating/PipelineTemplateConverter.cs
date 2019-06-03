@@ -1,16 +1,16 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using Microsoft.TeamFoundation.DistributedTask.Expressions;
-using Microsoft.TeamFoundation.DistributedTask.ObjectTemplating;
-using Microsoft.TeamFoundation.DistributedTask.ObjectTemplating.Tokens;
-using Microsoft.TeamFoundation.DistributedTask.Pipelines.ContextData;
-using Microsoft.TeamFoundation.DistributedTask.Pipelines.Expressions;
-using Microsoft.TeamFoundation.DistributedTask.Pipelines.Validation;
-using Microsoft.VisualStudio.Services.Common;
+using GitHub.DistributedTask.Expressions;
+using GitHub.DistributedTask.ObjectTemplating;
+using GitHub.DistributedTask.ObjectTemplating.Tokens;
+using GitHub.DistributedTask.Pipelines.ContextData;
+using GitHub.DistributedTask.Pipelines.Expressions;
+using GitHub.DistributedTask.Pipelines.Validation;
+using GitHub.Services.Common;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Pipelines.ObjectTemplating
+namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 {
     internal static class PipelineTemplateConverter
     {

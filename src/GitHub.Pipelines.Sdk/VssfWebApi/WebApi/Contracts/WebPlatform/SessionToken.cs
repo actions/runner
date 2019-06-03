@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.WebPlatform
+namespace GitHub.Services.WebPlatform
 {
     [DataContract]
     public class WebSessionToken

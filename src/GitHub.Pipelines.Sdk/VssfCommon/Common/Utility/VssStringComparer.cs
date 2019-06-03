@@ -1,4 +1,4 @@
-// ************************************************************************************************
+﻿// ************************************************************************************************
 // Microsoft Team Foundation
 //
 // Microsoft Confidential
@@ -15,7 +15,7 @@
 using System;
 using System.Diagnostics;
 
-namespace Microsoft.VisualStudio.Services.Common
+namespace GitHub.Services.Common
 {
 
     // NOTE: Since the recommendations are for Ordinal and OrdinalIgnoreCase, no need to explain those, but

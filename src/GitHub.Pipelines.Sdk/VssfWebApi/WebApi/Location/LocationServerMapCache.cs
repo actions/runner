@@ -1,12 +1,12 @@
-// Copyright (c) Microsoft Corporation.  All rights reserved.
+﻿// Copyright (c) Microsoft Corporation.  All rights reserved.
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Xml;
-using Microsoft.VisualStudio.Services.Common.Internal;
+using GitHub.Services.Common.Internal;
 
-namespace Microsoft.VisualStudio.Services.WebApi.Location
+namespace GitHub.Services.WebApi.Location
 {
     /// <summary>
     /// 

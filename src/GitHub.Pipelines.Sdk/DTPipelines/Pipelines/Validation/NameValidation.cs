@@ -2,7 +2,7 @@
 using System.ComponentModel;
 using System.Text;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Pipelines.Validation
+namespace GitHub.DistributedTask.Pipelines.Validation
 {
     [EditorBrowsable(EditorBrowsableState.Never)]
     public static class NameValidation

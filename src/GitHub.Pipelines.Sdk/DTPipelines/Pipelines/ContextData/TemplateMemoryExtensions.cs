@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using Microsoft.TeamFoundation.DistributedTask.ObjectTemplating;
+using GitHub.DistributedTask.ObjectTemplating;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Pipelines.ContextData
+namespace GitHub.DistributedTask.Pipelines.ContextData
 {
     internal static class TemplateMemoryExtensions
     {

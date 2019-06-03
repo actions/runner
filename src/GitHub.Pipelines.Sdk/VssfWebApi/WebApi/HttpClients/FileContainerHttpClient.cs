@@ -10,10 +10,10 @@ using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.WebApi;
+using GitHub.Services.Common;
+using GitHub.Services.WebApi;
 
-namespace Microsoft.VisualStudio.Services.FileContainer.Client
+namespace GitHub.Services.FileContainer.Client
 {
     // until we figure out the TFS location service story for REST apis, we leave the serviceDefinition attribute off the class
     //[ServiceDefinition(ServiceInterfaces.FileContainerResource, ServiceIdentifiers.FileContainerResource)]

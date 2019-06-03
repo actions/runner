@@ -1,8 +1,8 @@
-﻿using Microsoft.VisualStudio.Services.Identity;
+﻿using GitHub.Services.Identity;
 using System;
 using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.Security
+namespace GitHub.Services.Security
 {
     /// <summary>
     /// Class for encapsulating the allowed and denied permissions for a given IdentityDescriptor.

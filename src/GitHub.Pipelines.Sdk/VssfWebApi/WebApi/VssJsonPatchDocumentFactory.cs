@@ -1,9 +1,9 @@
 ﻿using System.Collections.Generic;
-using Microsoft.VisualStudio.Services.Graph;
-using Microsoft.VisualStudio.Services.WebApi.Patch;
-using Microsoft.VisualStudio.Services.WebApi.Patch.Json;
+using GitHub.Services.Graph;
+using GitHub.Services.WebApi.Patch;
+using GitHub.Services.WebApi.Patch.Json;
 
-namespace Microsoft.VisualStudio.Services.WebApi
+namespace GitHub.Services.WebApi
 {
     public static class VssJsonPatchDocumentFactory
     {

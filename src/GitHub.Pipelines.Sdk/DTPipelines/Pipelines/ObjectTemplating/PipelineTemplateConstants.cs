@@ -1,6 +1,6 @@
-using System;
+﻿using System;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Pipelines.ObjectTemplating
+namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 {
     internal sealed class PipelineTemplateConstants
     {

@@ -7,11 +7,11 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
-using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.WebApi;
+using GitHub.Services.Common;
+using GitHub.Services.WebApi;
 using System.Threading;
 
-namespace Microsoft.VisualStudio.Services.Profile.Client
+namespace GitHub.Services.Profile.Client
 {
     [ResourceArea(ProfileResourceIds.AreaId)]
     public abstract class ProfileHttpClientBase : VssHttpClientBase

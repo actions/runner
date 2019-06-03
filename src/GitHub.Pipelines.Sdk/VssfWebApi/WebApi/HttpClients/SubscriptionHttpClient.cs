@@ -1,4 +1,4 @@
-//-----------------------------------------------------------------------
+﻿//-----------------------------------------------------------------------
 // <copyright file="SubscriptionController.cs" company="Microsoft">
 //     Copyright (c) Microsoft Corporation.  All rights reserved.
 // </copyright>
@@ -7,7 +7,7 @@
 // </summary>
 //-----------------------------------------------------------------------
 
-namespace Microsoft.VisualStudio.Services.Commerce.Client
+namespace GitHub.Services.Commerce.Client
 {
     using System;
     using System.Collections.Generic;
@@ -16,9 +16,9 @@ namespace Microsoft.VisualStudio.Services.Commerce.Client
     using System.Net.Http;
     using System.Threading;
     using System.Threading.Tasks;
-    using Microsoft.VisualStudio.Services.Account;
-    using Microsoft.VisualStudio.Services.Common;
-    using Microsoft.VisualStudio.Services.WebApi;
+    using GitHub.Services.Account;
+    using GitHub.Services.Common;
+    using GitHub.Services.WebApi;
 
     /// <summary>
     /// Class that represents methods communicating with the platform service via REST controller.

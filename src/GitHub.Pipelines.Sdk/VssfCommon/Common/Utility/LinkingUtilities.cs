@@ -1,4 +1,4 @@
-// ************************************************************************************************
+﻿// ************************************************************************************************
 // Microsoft Team Foundation
 //
 // Microsoft Confidential
@@ -11,9 +11,9 @@ using System.Collections;
 using System.ComponentModel;
 using System.Globalization;
 using System.Configuration;
-using Microsoft.VisualStudio.Services.Common.Internal;
+using GitHub.Services.Common.Internal;
 
-namespace Microsoft.VisualStudio.Services.Common
+namespace GitHub.Services.Common
 {
     public static class LinkingUtilities
     {

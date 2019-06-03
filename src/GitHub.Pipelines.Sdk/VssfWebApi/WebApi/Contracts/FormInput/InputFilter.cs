@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.FormInput
+namespace GitHub.Services.FormInput
 {
     [DataContract]
     public enum InputFilterOperator

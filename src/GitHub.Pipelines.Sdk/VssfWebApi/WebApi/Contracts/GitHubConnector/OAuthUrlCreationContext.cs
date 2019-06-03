@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Microsoft.VisualStudio.Services.GitHubConnector
+namespace GitHub.Services.GitHubConnector
 {
     public class OAuthUrlCreationContext
     {

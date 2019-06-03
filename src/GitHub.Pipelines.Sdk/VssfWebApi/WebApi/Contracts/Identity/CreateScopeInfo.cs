@@ -1,8 +1,8 @@
-using Microsoft.VisualStudio.Services.Common;
+﻿using GitHub.Services.Common;
 using System;
 using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.Identity
+namespace GitHub.Services.Identity
 {
     //Technically speaking, this is poor REST
     //a PUT or POST to a service to create an entity should

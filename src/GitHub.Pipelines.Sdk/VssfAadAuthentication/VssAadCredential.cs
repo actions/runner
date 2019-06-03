@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Net.Http;
 using System.Security;
-using Microsoft.VisualStudio.Services.Common;
+using GitHub.Services.Common;
 
-namespace Microsoft.VisualStudio.Services.Client
+namespace GitHub.Services.Client
 {
     /// <summary>
     /// Currently it is impossible to get whether prompting is allowed from the credential itself without reproducing the logic

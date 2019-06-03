@@ -1,6 +1,6 @@
-using System.Runtime.Serialization;
+﻿using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.Organization.Client
+namespace GitHub.Services.Organization.Client
 {
     [DataContract]
     public sealed class Logo

@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Microsoft.TeamFoundation.DistributedTask.ObjectTemplating
+namespace GitHub.DistributedTask.ObjectTemplating
 {
     /// <summary>
     /// Wraps an ITraceWriter so it can be passed for expression evaluation.

@@ -1,8 +1,8 @@
-﻿using Microsoft.VisualStudio.Services.Commerce;
+﻿using GitHub.Services.Commerce;
 using System;
 using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.Licensing
+namespace GitHub.Services.Licensing
 {
     [DataContract]
     public class AccountLicenseExtensionUsage

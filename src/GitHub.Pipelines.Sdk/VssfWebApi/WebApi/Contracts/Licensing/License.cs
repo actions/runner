@@ -4,7 +4,7 @@ using System.Diagnostics;
 using System.Text;
 using Newtonsoft.Json;
 
-namespace Microsoft.VisualStudio.Services.Licensing
+namespace GitHub.Services.Licensing
 {
     /// <summary>
     /// The base class for a specific license source and license

@@ -4,14 +4,14 @@ using System.ComponentModel;
 using System.Globalization;
 using System.Linq;
 using System.Runtime.Serialization;
-using Microsoft.TeamFoundation.DistributedTask.ObjectTemplating.Tokens;
-using Microsoft.TeamFoundation.DistributedTask.Pipelines.ContextData;
-using Microsoft.TeamFoundation.DistributedTask.Pipelines.ObjectTemplating;
-using Microsoft.TeamFoundation.DistributedTask.Pipelines.Runtime;
-using Microsoft.TeamFoundation.DistributedTask.Pipelines.Validation;
-using Microsoft.TeamFoundation.DistributedTask.WebApi;
+using GitHub.DistributedTask.ObjectTemplating.Tokens;
+using GitHub.DistributedTask.Pipelines.ContextData;
+using GitHub.DistributedTask.Pipelines.ObjectTemplating;
+using GitHub.DistributedTask.Pipelines.Runtime;
+using GitHub.DistributedTask.Pipelines.Validation;
+using GitHub.DistributedTask.WebApi;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Pipelines
+namespace GitHub.DistributedTask.Pipelines
 {
     [DataContract]
     [EditorBrowsable(EditorBrowsableState.Never)]

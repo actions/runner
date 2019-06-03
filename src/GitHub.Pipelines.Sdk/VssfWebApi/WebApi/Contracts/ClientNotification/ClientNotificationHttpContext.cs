@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel;
 
-namespace Microsoft.VisualStudio.Services.ClientNotification
+namespace GitHub.Services.ClientNotification
 {
     [EditorBrowsable(EditorBrowsableState.Never)]
     public class ClientNotificationHttpContext

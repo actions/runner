@@ -1,10 +1,10 @@
 ﻿using System;
 using System.ComponentModel;
 using System.Runtime.Serialization;
-using Microsoft.VisualStudio.Services.WebApi.Internal;
+using GitHub.Services.WebApi.Internal;
 using Newtonsoft.Json;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Pipelines.ContextData
+namespace GitHub.DistributedTask.Pipelines.ContextData
 {
     /// <summary>
     /// Base class for all template tokens

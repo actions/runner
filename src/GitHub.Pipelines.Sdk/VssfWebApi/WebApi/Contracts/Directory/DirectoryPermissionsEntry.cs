@@ -5,7 +5,7 @@ using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Microsoft.VisualStudio.Services.Directories
+namespace GitHub.Services.Directories
 {
     [DataContract]
     public class DirectoryPermissionsEntry

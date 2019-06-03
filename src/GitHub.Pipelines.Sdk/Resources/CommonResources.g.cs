@@ -1,6 +1,6 @@
 ﻿using System.Globalization;
 
-namespace Microsoft.VisualStudio.Services.Common.Internal
+namespace GitHub.Services.Common.Internal
 {
     public static class CommonResources
     {

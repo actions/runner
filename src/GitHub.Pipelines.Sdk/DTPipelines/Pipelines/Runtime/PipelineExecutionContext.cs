@@ -1,9 +1,9 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using Microsoft.TeamFoundation.DistributedTask.Expressions;
+using GitHub.DistributedTask.Expressions;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Pipelines.Runtime
+namespace GitHub.DistributedTask.Pipelines.Runtime
 {
     [EditorBrowsable(EditorBrowsableState.Never)]
     public abstract class PipelineExecutionContext : PipelineContextBase

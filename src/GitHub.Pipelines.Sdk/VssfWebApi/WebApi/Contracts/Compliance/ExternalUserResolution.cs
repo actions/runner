@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Microsoft.VisualStudio.Services.Compliance
+namespace GitHub.Services.Compliance
 {
     public class ExternalUserResolution
     {

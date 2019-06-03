@@ -1,14 +1,14 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Runtime.Serialization;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-namespace Microsoft.TeamFoundation.DistributedTask.WebApi
+namespace GitHub.DistributedTask.WebApi
 {
-    using Microsoft.VisualStudio.Services.WebApi;
-    using Microsoft.VisualStudio.Services.WebApi.Internal;
+    using GitHub.Services.WebApi;
+    using GitHub.Services.WebApi.Internal;
 
     [JsonConverter(typeof(EventsConfigJsonConverter))]
     [KnownType(typeof(JobEventsConfig))]

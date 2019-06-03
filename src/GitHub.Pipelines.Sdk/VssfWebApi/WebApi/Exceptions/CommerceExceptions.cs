@@ -1,13 +1,13 @@
 ﻿using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.Serialization;
-using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.WebApi;
+using GitHub.Services.Common;
+using GitHub.Services.WebApi;
 
-namespace Microsoft.VisualStudio.Services.Commerce
+namespace GitHub.Services.Commerce
 {
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "CommerceException", "Microsoft.VisualStudio.Services.Commerce.CommerceException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "CommerceException", "GitHub.Services.Commerce.CommerceException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class CommerceException : VssServiceException
     {
         public CommerceException()
@@ -33,7 +33,7 @@ namespace Microsoft.VisualStudio.Services.Commerce
     #region Authorization Exceptions
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "CommerceSecurityException", "Microsoft.VisualStudio.Services.Commerce.CommerceSecurityException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "CommerceSecurityException", "GitHub.Services.Commerce.CommerceSecurityException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class CommerceSecurityException : CommerceException
     {
         public CommerceSecurityException(string message)
@@ -50,7 +50,7 @@ namespace Microsoft.VisualStudio.Services.Commerce
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "AccountQuantityException", "Microsoft.VisualStudio.Services.Commerce.AccountQuantityException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "AccountQuantityException", "GitHub.Services.Commerce.AccountQuantityException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class AccountQuantityException : CommerceException
     {
         public int ErrorNumber
@@ -78,7 +78,7 @@ namespace Microsoft.VisualStudio.Services.Commerce
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "InvalidResourceException", "Microsoft.VisualStudio.Services.Commerce.InvalidResourceException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "InvalidResourceException", "GitHub.Services.Commerce.InvalidResourceException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class InvalidResourceException : CommerceException
     {
         public InvalidResourceException(string message)
@@ -94,7 +94,7 @@ namespace Microsoft.VisualStudio.Services.Commerce
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "OfferMeterNotFoundException", "Microsoft.VisualStudio.Services.Commerce.OfferMeterNotFoundException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "OfferMeterNotFoundException", "GitHub.Services.Commerce.OfferMeterNotFoundException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class OfferMeterNotFoundException : CommerceException
     {
         public OfferMeterNotFoundException(string nameOrGalleryId)
@@ -105,7 +105,7 @@ namespace Microsoft.VisualStudio.Services.Commerce
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "UnsupportedSubscriptionTypeException", "Microsoft.VisualStudio.Services.Commerce.UnsupportedSubscriptionTypeException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "UnsupportedSubscriptionTypeException", "GitHub.Services.Commerce.UnsupportedSubscriptionTypeException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class UnsupportedSubscriptionTypeException : CommerceException
     {
         public UnsupportedSubscriptionTypeException()
@@ -116,7 +116,7 @@ namespace Microsoft.VisualStudio.Services.Commerce
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "UserIsNotSubscriptionAdminException", "Microsoft.VisualStudio.Services.Commerce.UserIsNotSubscriptionAdminException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "UserIsNotSubscriptionAdminException", "GitHub.Services.Commerce.UserIsNotSubscriptionAdminException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class UserIsNotSubscriptionAdminException : CommerceException
     {
 
@@ -128,7 +128,7 @@ namespace Microsoft.VisualStudio.Services.Commerce
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "UserIsNotAccountOwnerException", "Microsoft.VisualStudio.Services.Commerce.UserIsNotAccountOwnerException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "UserIsNotAccountOwnerException", "GitHub.Services.Commerce.UserIsNotAccountOwnerException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class UserIsNotAccountOwnerException : CommerceException
     {
         public UserIsNotAccountOwnerException(Identity.Identity identity, string collectionName)
@@ -155,7 +155,7 @@ namespace Microsoft.VisualStudio.Services.Commerce
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "ReportingViewNotSupportedException", "Microsoft.VisualStudio.Services.Commerce.ReportingViewNotSupportedException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "ReportingViewNotSupportedException", "GitHub.Services.Commerce.ReportingViewNotSupportedException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class ReportingViewNotSupportedException : CommerceException
     {
         public ReportingViewNotSupportedException(string message)
@@ -171,7 +171,7 @@ namespace Microsoft.VisualStudio.Services.Commerce
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "ReportingViewInvalidFilterException", "Microsoft.VisualStudio.Services.Commerce.ReportingViewInvalidFilterException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "ReportingViewInvalidFilterException", "GitHub.Services.Commerce.ReportingViewInvalidFilterException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class ReportingViewInvalidFilterException : CommerceException
     {
         public ReportingViewInvalidFilterException(string message)

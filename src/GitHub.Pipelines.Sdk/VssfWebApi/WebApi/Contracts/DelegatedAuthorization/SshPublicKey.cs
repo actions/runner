@@ -1,4 +1,4 @@
-﻿namespace Microsoft.VisualStudio.Services.DelegatedAuthorization
+﻿namespace GitHub.Services.DelegatedAuthorization
 {
     /// <summary>
     /// Used to transmit an SSH public key in the RemovePublicKey API

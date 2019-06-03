@@ -1,12 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Runtime.Serialization;
-using Microsoft.VisualStudio.Services.WebApi;
-using Microsoft.VisualStudio.Services.Common.Internal;
+using GitHub.Services.WebApi;
+using GitHub.Services.Common.Internal;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json;
 
-namespace Microsoft.TeamFoundation.DistributedTask.WebApi
+namespace GitHub.DistributedTask.WebApi
 {
     /// <summary>
     /// Represents an endpoint which may be used by an orchestration job.

@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using Microsoft.TeamFoundation.DistributedTask.Pipelines.Runtime;
+using GitHub.DistributedTask.Pipelines.Runtime;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Pipelines
+namespace GitHub.DistributedTask.Pipelines
 {
     internal interface IJobFactory
     {

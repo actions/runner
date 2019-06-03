@@ -25,11 +25,11 @@ using System.Net.Http;
 using System.Net.Http.Formatting;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.DelegatedAuthorization;
-using Microsoft.VisualStudio.Services.WebApi;
+using GitHub.Services.Common;
+using GitHub.Services.DelegatedAuthorization;
+using GitHub.Services.WebApi;
 
-namespace Microsoft.VisualStudio.Services.Tokens.WebApi
+namespace GitHub.Services.Tokens.WebApi
 {
     [ResourceArea(TokenIssueResourceIds.AreaId)]
     public class TokenIssueHttpClient : VssHttpClientBase

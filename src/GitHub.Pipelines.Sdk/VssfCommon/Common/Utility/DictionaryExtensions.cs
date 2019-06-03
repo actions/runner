@@ -1,11 +1,11 @@
-﻿using Microsoft.VisualStudio.Services.Common.Internal;
+﻿using GitHub.Services.Common.Internal;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Reflection;
 using System.Linq;
 
-namespace Microsoft.VisualStudio.Services.Common
+namespace GitHub.Services.Common
 {
     public static class DictionaryExtensions
     {

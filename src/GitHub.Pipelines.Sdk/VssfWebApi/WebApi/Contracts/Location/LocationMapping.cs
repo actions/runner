@@ -3,10 +3,10 @@ using System.Diagnostics;
 using System.Runtime.Serialization;
 using System.Xml;
 using System.Xml.Serialization;
-using Microsoft.VisualStudio.Services.WebApi;
-using Microsoft.VisualStudio.Services.Common;
+using GitHub.Services.WebApi;
+using GitHub.Services.Common;
 
-namespace Microsoft.VisualStudio.Services.Location
+namespace GitHub.Services.Location
 {
     /// <summary>
     /// 

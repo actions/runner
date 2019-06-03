@@ -2,10 +2,10 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
-using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.WebApi.Patch.Json;
+using GitHub.Services.Common;
+using GitHub.Services.WebApi.Patch.Json;
 
-namespace Microsoft.VisualStudio.Services.WebApi.Patch
+namespace GitHub.Services.WebApi.Patch
 {
     public class PatchDocument<TModel> : IPatchDocument<TModel>
     {

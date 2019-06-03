@@ -2,12 +2,12 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Serialization;
-using Microsoft.VisualStudio.Services.Common;
+using GitHub.Services.Common;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
-using Microsoft.VisualStudio.Services.Directories.Telemetry;
+using GitHub.Services.Directories.Telemetry;
 
-namespace Microsoft.VisualStudio.Services.Directories
+namespace GitHub.Services.Directories
 {
     [DataContract]
     public class DirectoryEntityDescriptor : IDirectoryEntityDescriptor

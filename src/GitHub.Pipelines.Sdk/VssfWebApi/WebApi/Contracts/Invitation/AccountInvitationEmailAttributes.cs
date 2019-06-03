@@ -1,4 +1,4 @@
-﻿namespace Microsoft.VisualStudio.Services.Invitation
+﻿namespace GitHub.Services.Invitation
 {
     /// <summary>
     /// Well known attributes of Account Invite Email that can be overridden

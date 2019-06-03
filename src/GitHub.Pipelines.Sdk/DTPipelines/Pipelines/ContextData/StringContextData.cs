@@ -1,10 +1,10 @@
 ﻿using System;
 using System.ComponentModel;
 using System.Runtime.Serialization;
-using Microsoft.TeamFoundation.DistributedTask.Expressions;
-using Microsoft.VisualStudio.Services.WebApi.Internal;
+using GitHub.DistributedTask.Expressions;
+using GitHub.Services.WebApi.Internal;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Pipelines.ContextData
+namespace GitHub.DistributedTask.Pipelines.ContextData
 {
     [DataContract]
     [ClientIgnore]

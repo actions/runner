@@ -1,9 +1,9 @@
-﻿using Microsoft.VisualStudio.Services.WebApi;
-using Microsoft.VisualStudio.Services.WebApi.Jwt;
+﻿using GitHub.Services.WebApi;
+using GitHub.Services.WebApi.Jwt;
 using Newtonsoft.Json.Linq;
 using System;
 
-namespace Microsoft.VisualStudio.Services.DelegatedAuthorization
+namespace GitHub.Services.DelegatedAuthorization
 {
     public class AuthorizationGrantJsonConverter : VssJsonCreationConverter<AuthorizationGrant>
     {

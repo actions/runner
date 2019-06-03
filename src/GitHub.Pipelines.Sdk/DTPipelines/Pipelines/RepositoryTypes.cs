@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Pipelines
+namespace GitHub.DistributedTask.Pipelines
 {
     public static class RepositoryTypes
     {

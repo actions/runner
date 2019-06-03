@@ -1,6 +1,6 @@
 ﻿using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.DelegatedAuthorization
+namespace GitHub.Services.DelegatedAuthorization
 {
     [DataContract]
     public enum CreatedByOptions

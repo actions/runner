@@ -1,8 +1,8 @@
 ﻿using System.Collections.Generic;
 using System.Runtime.Serialization;
-using Microsoft.VisualStudio.Services.Common;
+using GitHub.Services.Common;
 
-namespace Microsoft.VisualStudio.Services.Graph
+namespace GitHub.Services.Graph
 {
     [DataContract]
     public class GraphGlobalExtendedPropertyBatch

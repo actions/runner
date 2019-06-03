@@ -1,4 +1,4 @@
-namespace Microsoft.TeamFoundation.DistributedTask.WebApi
+﻿namespace GitHub.DistributedTask.WebApi
 {
     public enum EnableAccessTokenType
     {

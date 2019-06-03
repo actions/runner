@@ -1,7 +1,7 @@
-using System;
-using Microsoft.VisualStudio.Services.Common;
+﻿using System;
+using GitHub.Services.Common;
 
-namespace Microsoft.TeamFoundation.DistributedTask.WebApi
+namespace GitHub.DistributedTask.WebApi
 {
     [GenerateAllConstants]
     public static class ResourceTypeConstants

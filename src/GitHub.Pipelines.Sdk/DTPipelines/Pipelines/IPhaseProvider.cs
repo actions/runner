@@ -1,7 +1,7 @@
 ﻿using System;
-using Microsoft.TeamFoundation.DistributedTask.Pipelines.Validation;
+using GitHub.DistributedTask.Pipelines.Validation;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Pipelines
+namespace GitHub.DistributedTask.Pipelines
 {
     /// <summary>
     /// This is a temprary extension point for provider phase to participate in pipeline resource discover

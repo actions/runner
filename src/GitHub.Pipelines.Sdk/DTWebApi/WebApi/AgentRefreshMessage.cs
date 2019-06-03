@@ -3,7 +3,7 @@ using System;
 using System.Runtime.Serialization;
 
 
-namespace Microsoft.TeamFoundation.DistributedTask.WebApi
+namespace GitHub.DistributedTask.WebApi
 {
     [DataContract]
     public sealed class AgentRefreshMessage

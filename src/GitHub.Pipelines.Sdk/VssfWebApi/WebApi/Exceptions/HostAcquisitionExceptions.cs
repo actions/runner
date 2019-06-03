@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Runtime.Serialization;
-using Microsoft.VisualStudio.Services.Common;
+using GitHub.Services.Common;
 
-namespace Microsoft.VisualStudio.Services.HostAcquisition
+namespace GitHub.Services.HostAcquisition
 {
     [Serializable]
     public class HostAcquisitionException : VssServiceException

@@ -1,6 +1,6 @@
 ﻿using System.Globalization;
 
-namespace Microsoft.VisualStudio.Services.WebApi
+namespace GitHub.Services.WebApi
 {
     public static class WebPlatformResources
     {

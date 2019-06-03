@@ -1,11 +1,11 @@
-﻿using Microsoft.VisualStudio.Services.Common.Internal;
+﻿using GitHub.Services.Common.Internal;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
 using System.Security.Cryptography;
 
-namespace Microsoft.VisualStudio.Services.Common
+namespace GitHub.Services.Common
 {
     [EditorBrowsable(EditorBrowsableState.Never)]
     public class ContentIdentification : IDisposable

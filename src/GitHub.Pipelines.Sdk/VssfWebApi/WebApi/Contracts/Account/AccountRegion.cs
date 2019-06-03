@@ -1,6 +1,6 @@
-using System.Runtime.Serialization;
+﻿using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.Account
+namespace GitHub.Services.Account
 {
     /// <summary>
     /// Account region metadata

@@ -1,8 +1,8 @@
-﻿using Microsoft.TeamFoundation.DistributedTask.WebApi;
-using Microsoft.VisualStudio.Services.Agent.Util;
+﻿using GitHub.DistributedTask.WebApi;
+using Runner.Common.Util;
 using Xunit;
 
-namespace Microsoft.VisualStudio.Services.Agent.Tests.Util
+namespace Runner.Common.Tests.Util
 {
     public class TaskResultUtilL0
     {

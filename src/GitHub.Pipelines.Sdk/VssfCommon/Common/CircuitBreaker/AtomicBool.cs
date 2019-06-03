@@ -15,7 +15,7 @@ using System;
 using System.Globalization;
 using System.Threading;
 
-namespace Microsoft.VisualStudio.Services.CircuitBreaker
+namespace GitHub.Services.CircuitBreaker
 {
     [Serializable]
     public class AtomicBoolean : IFormattable, IEquatable<AtomicBoolean>

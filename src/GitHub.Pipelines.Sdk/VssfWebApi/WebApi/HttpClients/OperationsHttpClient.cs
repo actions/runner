@@ -1,10 +1,10 @@
-﻿using Microsoft.VisualStudio.Services.Common;
+﻿using GitHub.Services.Common;
 using System;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Microsoft.VisualStudio.Services.Operations
+namespace GitHub.Services.Operations
 {
     /// <summary>
     /// HttpClient for operations.

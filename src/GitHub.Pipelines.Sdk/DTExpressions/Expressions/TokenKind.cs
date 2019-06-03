@@ -1,4 +1,4 @@
-﻿namespace Microsoft.TeamFoundation.DistributedTask.Expressions
+﻿namespace GitHub.DistributedTask.Expressions
 {
     internal enum TokenKind
     {

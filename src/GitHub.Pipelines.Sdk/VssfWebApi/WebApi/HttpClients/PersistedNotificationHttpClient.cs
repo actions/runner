@@ -1,12 +1,12 @@
-﻿using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.WebApi;
+﻿using GitHub.Services.Common;
+using GitHub.Services.WebApi;
 using System;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Microsoft.VisualStudio.Services.Notification.Client
+namespace GitHub.Services.Notification.Client
 {
     [ResourceArea(PersistedNotificationResourceIds.AreaId)]
     public class PersistedNotificationHttpClient : VssHttpClientBase

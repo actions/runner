@@ -5,10 +5,10 @@ using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.VisualStudio.Services.Common.Diagnostics;
-using Microsoft.VisualStudio.Services.Common.Internal;
+using GitHub.Services.Common.Diagnostics;
+using GitHub.Services.Common.Internal;
 
-namespace Microsoft.VisualStudio.Services.Common
+namespace GitHub.Services.Common
 {
     /// <summary>
     /// Provides authentication for Visual Studio Services.

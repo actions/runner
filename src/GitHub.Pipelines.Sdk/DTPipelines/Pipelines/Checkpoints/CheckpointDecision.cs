@@ -1,9 +1,9 @@
-using System;
+﻿using System;
 using System.ComponentModel;
 using System.Runtime.Serialization;
-using Microsoft.VisualStudio.Services.WebApi.Internal;
+using GitHub.Services.WebApi.Internal;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Pipelines.Checkpoints
+namespace GitHub.DistributedTask.Pipelines.Checkpoints
 {
     [EditorBrowsable(EditorBrowsableState.Never)]
     [DataContract]

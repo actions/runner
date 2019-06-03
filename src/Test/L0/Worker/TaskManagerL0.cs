@@ -1,6 +1,6 @@
-// using Microsoft.TeamFoundation.DistributedTask.WebApi;
-// using Microsoft.VisualStudio.Services.Agent.Util;
-// using Microsoft.VisualStudio.Services.Agent.Worker;
+﻿// using GitHub.DistributedTask.WebApi;
+// using Runner.Common.Util;
+// using Runner.Common.Worker;
 // using Moq;
 // using System;
 // using System.Collections.Generic;
@@ -10,9 +10,9 @@
 // using System.Threading;
 // using System.Threading.Tasks;
 // using Xunit;
-// using Pipelines = Microsoft.TeamFoundation.DistributedTask.Pipelines;
+// using Pipelines = GitHub.DistributedTask.Pipelines;
 
-// namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
+// namespace Runner.Common.Tests.Worker
 // {
 //     public sealed class TaskManagerL0
 //     {

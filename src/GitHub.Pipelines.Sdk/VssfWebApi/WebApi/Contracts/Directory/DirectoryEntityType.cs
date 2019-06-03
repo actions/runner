@@ -1,6 +1,6 @@
-﻿using Microsoft.VisualStudio.Services.Common;
+﻿using GitHub.Services.Common;
 
-namespace Microsoft.VisualStudio.Services.Directories
+namespace GitHub.Services.Directories
 {
     [GenerateSpecificConstants]
     public static class DirectoryEntityType

@@ -1,9 +1,9 @@
 ﻿using System;
-using Microsoft.VisualStudio.Services.WebApi;
+using GitHub.Services.WebApi;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-namespace Microsoft.VisualStudio.Services.Directories
+namespace GitHub.Services.Directories
 {
     internal class DirectoryEntityJsonConverter : VssSecureJsonConverter
     {

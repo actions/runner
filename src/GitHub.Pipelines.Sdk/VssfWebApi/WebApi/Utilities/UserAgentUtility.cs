@@ -8,11 +8,11 @@ using System.Net.Http.Headers;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
-using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.Common.Internal;
+using GitHub.Services.Common;
+using GitHub.Services.Common.Internal;
 using Microsoft.Win32;
 
-namespace Microsoft.VisualStudio.Services.WebApi.Utilities.Internal
+namespace GitHub.Services.WebApi.Utilities.Internal
 {
     [EditorBrowsable(EditorBrowsableState.Never)]
     public static class UserAgentUtility

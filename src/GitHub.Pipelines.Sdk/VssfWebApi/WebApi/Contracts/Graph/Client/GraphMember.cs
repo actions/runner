@@ -1,11 +1,11 @@
 ﻿using System;
 using System.ComponentModel;
 using System.Runtime.Serialization;
-using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.WebApi;
-using IdentityDescriptor = Microsoft.VisualStudio.Services.Identity.IdentityDescriptor;
+using GitHub.Services.Common;
+using GitHub.Services.WebApi;
+using IdentityDescriptor = GitHub.Services.Identity.IdentityDescriptor;
 
-namespace Microsoft.VisualStudio.Services.Graph.Client
+namespace GitHub.Services.Graph.Client
 {
     [DataContract]
     public abstract class GraphMember : GraphSubject

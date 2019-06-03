@@ -1,6 +1,6 @@
 ﻿using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.FeatureAvailability
+namespace GitHub.Services.FeatureAvailability
 {
     /// <summary>
     /// This is passed to the FeatureFlagController to edit the status of a feature flag

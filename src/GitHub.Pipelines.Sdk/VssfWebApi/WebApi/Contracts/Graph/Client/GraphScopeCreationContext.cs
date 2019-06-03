@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Runtime.Serialization;
-using GroupScopeType = Microsoft.VisualStudio.Services.Identity.GroupScopeType;
+using GroupScopeType = GitHub.Services.Identity.GroupScopeType;
 
-namespace Microsoft.VisualStudio.Services.Graph.Client
+namespace GitHub.Services.Graph.Client
 {
     /// <summary>
     /// This type is the subset of fields that can be provided by the user to create

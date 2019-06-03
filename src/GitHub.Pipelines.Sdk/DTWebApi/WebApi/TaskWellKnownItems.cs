@@ -1,7 +1,7 @@
-﻿using Microsoft.VisualStudio.Services.Common;
+﻿using GitHub.Services.Common;
 using System.Collections.Generic;
 
-namespace Microsoft.TeamFoundation.DistributedTask.WebApi
+namespace GitHub.DistributedTask.WebApi
 {
     [GenerateAllConstants]
     public static class TaskWellKnownItems

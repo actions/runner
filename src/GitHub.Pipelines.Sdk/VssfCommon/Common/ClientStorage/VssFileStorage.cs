@@ -8,11 +8,11 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.VisualStudio.Services.Common.Internal;
+using GitHub.Services.Common.Internal;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-namespace Microsoft.VisualStudio.Services.Common.ClientStorage
+namespace GitHub.Services.Common.ClientStorage
 {
     /// <summary>
     /// Class providing access to local file storage, so data can persist across processes.

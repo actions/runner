@@ -2,7 +2,7 @@
 using System.ComponentModel;
 using Newtonsoft.Json.Linq;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Expressions
+namespace GitHub.DistributedTask.Expressions
 {
     /// <summary>
     /// Helper class for ExpressionNode authors. This class helps calculate memory overhead for a result object.

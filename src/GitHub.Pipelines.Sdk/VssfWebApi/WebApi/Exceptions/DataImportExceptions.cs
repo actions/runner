@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Runtime.Serialization;
-using Microsoft.VisualStudio.Services.Common;
+using GitHub.Services.Common;
 
-namespace Microsoft.VisualStudio.Services.WebApi
+namespace GitHub.Services.WebApi
 {
     [Serializable]
     public abstract class DataImportException : VssServiceException
@@ -329,7 +329,7 @@ namespace Microsoft.VisualStudio.Services.WebApi
     /// thrown when the connection string for source Database appears invalid
     /// </summary>
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "EmptyImportSourceException", "Microsoft.VisualStudio.Services.WebApi.InvalidImportSourceConnectionStringException, Microsoft.VisualStudio.Services.WebApi, Version=15.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "EmptyImportSourceException", "GitHub.Services.WebApi.InvalidImportSourceConnectionStringException, GitHub.Services.WebApi, Version=15.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class InvalidImportSourceConnectionStringException : DataImportException
     {
         public InvalidImportSourceConnectionStringException(string message)
@@ -352,7 +352,7 @@ namespace Microsoft.VisualStudio.Services.WebApi
     /// thrown when timing out attempting to connect with the source Database
     /// </summary>
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "EmptyImportSourceException", "Microsoft.VisualStudio.Services.WebApi.ImportSourceConnectionTimeoutException, Microsoft.VisualStudio.Services.WebApi, Version=15.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "EmptyImportSourceException", "GitHub.Services.WebApi.ImportSourceConnectionTimeoutException, GitHub.Services.WebApi, Version=15.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class ImportSourceConnectionTimeoutException : DataImportException
     {
         public ImportSourceConnectionTimeoutException(string message)

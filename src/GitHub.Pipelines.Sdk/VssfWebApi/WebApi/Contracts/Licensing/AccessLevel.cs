@@ -1,8 +1,8 @@
-﻿using Microsoft.VisualStudio.Services.Account;
-using Microsoft.VisualStudio.Services.Licensing;
+﻿using GitHub.Services.Account;
+using GitHub.Services.Licensing;
 using System.Runtime.Serialization;
 
-namespace Microsoft.Azure.DevOps.Licensing.WebApi
+namespace GitHub.Licensing.WebApi
 {
     /// <summary>
     /// License assigned to a user

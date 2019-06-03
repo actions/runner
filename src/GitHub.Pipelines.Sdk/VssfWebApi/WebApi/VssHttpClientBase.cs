@@ -1,4 +1,4 @@
-//-----------------------------------------------------------------------
+﻿//-----------------------------------------------------------------------
 // <copyright file="VssHttpClientBase.cs" company="Microsoft Corporation">
 // Copyright (C) 2009-2014 All Rights Reserved
 // </copyright>
@@ -18,14 +18,14 @@ using System.Net.Http.Headers;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.Common.Diagnostics;
-using Microsoft.VisualStudio.Services.Common.Internal;
-using Microsoft.VisualStudio.Services.WebApi.Utilities.Internal;
+using GitHub.Services.Common;
+using GitHub.Services.Common.Diagnostics;
+using GitHub.Services.Common.Internal;
+using GitHub.Services.WebApi.Utilities.Internal;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-namespace Microsoft.VisualStudio.Services.WebApi
+namespace GitHub.Services.WebApi
 {
     /// <summary>
     /// This class is used as the base class for all the REST client classes.

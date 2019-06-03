@@ -1,6 +1,6 @@
 ﻿using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.Invitation
+namespace GitHub.Services.Invitation
 {
     /// <summary>
     /// Enum value indicating type of invitation

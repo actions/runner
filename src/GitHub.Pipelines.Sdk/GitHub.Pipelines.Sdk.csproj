@@ -28,7 +28,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="DTPipelines\workflow-v1.0.json">
-        <LogicalName>Microsoft.TeamFoundation.DistributedTask.Pipelines.ObjectTemplating.workflow-v1.0.json</LogicalName>
+        <LogicalName>GitHub.DistributedTask.Pipelines.ObjectTemplating.workflow-v1.0.json</LogicalName>
     </EmbeddedResource>
   </ItemGroup>
 </Project>

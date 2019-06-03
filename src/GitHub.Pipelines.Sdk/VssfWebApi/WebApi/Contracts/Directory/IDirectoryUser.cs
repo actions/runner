@@ -1,4 +1,4 @@
-﻿namespace Microsoft.VisualStudio.Services.Directories
+﻿namespace GitHub.Services.Directories
 {
     /// <summary>
     /// All directory users implement this read-only interface.

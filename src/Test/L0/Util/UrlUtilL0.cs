@@ -1,8 +1,8 @@
-using System;
-using Microsoft.VisualStudio.Services.Agent.Util;
+﻿using System;
+using Runner.Common.Util;
 using Xunit;
 
-namespace Microsoft.VisualStudio.Services.Agent.Tests.Util
+namespace Runner.Common.Tests.Util
 {
     public class UrlUtilL0
     {

@@ -2,7 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Expressions.CollectionAccessors
+namespace GitHub.DistributedTask.Expressions.CollectionAccessors
 {
     internal sealed class ReadOnlyDictionaryOfStringObjectAccessor : IReadOnlyObject
     {

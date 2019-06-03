@@ -3,7 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Expressions.CollectionAccessors
+namespace GitHub.DistributedTask.Expressions.CollectionAccessors
 {
     internal sealed class JArrayAccessor : IReadOnlyArray
     {

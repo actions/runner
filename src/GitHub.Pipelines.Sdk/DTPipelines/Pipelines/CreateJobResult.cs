@@ -1,8 +1,8 @@
 ﻿using System.ComponentModel;
-using Microsoft.TeamFoundation.DistributedTask.Pipelines.Runtime;
-using Microsoft.TeamFoundation.DistributedTask.WebApi;
+using GitHub.DistributedTask.Pipelines.Runtime;
+using GitHub.DistributedTask.WebApi;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Pipelines
+namespace GitHub.DistributedTask.Pipelines
 {
     [EditorBrowsable(EditorBrowsableState.Never)]
     public struct CreateJobResult

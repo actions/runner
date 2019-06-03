@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Logging
+namespace GitHub.DistributedTask.Logging
 {
     internal sealed class ReplacementPosition
     {

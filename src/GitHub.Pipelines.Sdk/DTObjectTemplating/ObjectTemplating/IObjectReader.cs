@@ -1,6 +1,6 @@
-using System;
+﻿using System;
 
-namespace Microsoft.TeamFoundation.DistributedTask.ObjectTemplating
+namespace GitHub.DistributedTask.ObjectTemplating
 {
     /// <summary>
     /// Interface for reading a source object (or file).

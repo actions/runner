@@ -1,7 +1,7 @@
-using System;
-using Microsoft.TeamFoundation.DistributedTask.ObjectTemplating.Tokens;
+﻿using System;
+using GitHub.DistributedTask.ObjectTemplating.Tokens;
 
-namespace Microsoft.TeamFoundation.DistributedTask.ObjectTemplating
+namespace GitHub.DistributedTask.ObjectTemplating
 {
     /// <summary>
     /// Result object from loading a template file.

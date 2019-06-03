@@ -1,4 +1,4 @@
-//-----------------------------------------------------------------------
+﻿//-----------------------------------------------------------------------
 // <copyright file="DirectoryHttpClient.cs" company="Microsoft Corporation">
 // Copyright (C) 2009-2014 All Rights Reserved
 // </copyright>
@@ -8,12 +8,12 @@ using System.Collections.Generic;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.VisualStudio.Services.AadMemberAccessStatus;
-using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.Identity;
-using Microsoft.VisualStudio.Services.WebApi;
+using GitHub.Services.AadMemberAccessStatus;
+using GitHub.Services.Common;
+using GitHub.Services.Identity;
+using GitHub.Services.WebApi;
 
-namespace Microsoft.VisualStudio.Services.Directories.DirectoryService.Client
+namespace GitHub.Services.Directories.DirectoryService.Client
 {
     [ResourceArea(DirectoryResourceIds.DirectoryService)]
     public class DirectoryHttpClient : VssHttpClientBase

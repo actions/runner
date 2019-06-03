@@ -1,4 +1,4 @@
-﻿namespace Microsoft.VisualStudio.Services.Directories
+﻿namespace GitHub.Services.Directories
 {
     public static class DirectoryUserProperty
     {

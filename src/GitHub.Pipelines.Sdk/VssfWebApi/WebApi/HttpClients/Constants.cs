@@ -1,7 +1,7 @@
-using System;
+﻿using System;
 using System.ComponentModel;
 
-namespace Microsoft.VisualStudio.Services
+namespace GitHub.Services
 {
     internal static class QueryParameters
     {

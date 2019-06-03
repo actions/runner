@@ -1,8 +1,8 @@
-using System;
-using Microsoft.TeamFoundation.DistributedTask.ObjectTemplating.Tokens;
+﻿using System;
+using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using Newtonsoft.Json.Linq;
 
-namespace Microsoft.TeamFoundation.DistributedTask.ObjectTemplating
+namespace GitHub.DistributedTask.ObjectTemplating
 {
     /// <summary>
     /// Tracks characteristics about the current memory usage (CPU, stack, size)

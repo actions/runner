@@ -1,17 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Runtime.Serialization;
-using Microsoft.VisualStudio.Services.Graph;
+using GitHub.Services.Graph;
 using System.Xml.Serialization;
 using System.Xml;
 using System.Xml.Schema;
-using Microsoft.VisualStudio.Services.WebApi;
+using GitHub.Services.WebApi;
 using System.Linq;
 using System.Reflection;
 using System.ComponentModel;
 using System.Globalization;
 
-namespace Microsoft.VisualStudio.Services.Common
+namespace GitHub.Services.Common
 {
     [TypeConverter(typeof(SocialDescriptorConverter))]
     public struct SocialDescriptor : IEquatable<SocialDescriptor>, IXmlSerializable

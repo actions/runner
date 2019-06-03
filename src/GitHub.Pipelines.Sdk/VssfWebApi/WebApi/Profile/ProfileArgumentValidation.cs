@@ -1,7 +1,7 @@
-﻿using Microsoft.VisualStudio.Services.Common;
+﻿using GitHub.Services.Common;
 using System;
 
-namespace Microsoft.VisualStudio.Services.Profile
+namespace GitHub.Services.Profile
 {
     public static class ProfileArgumentValidation
     {

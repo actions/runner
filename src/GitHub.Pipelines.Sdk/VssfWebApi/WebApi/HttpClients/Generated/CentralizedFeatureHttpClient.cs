@@ -25,10 +25,10 @@ using System.Net.Http;
 using System.Net.Http.Formatting;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.WebApi;
+using GitHub.Services.Common;
+using GitHub.Services.WebApi;
 
-namespace Microsoft.VisualStudio.Services.CentralizedFeature.Client
+namespace GitHub.Services.CentralizedFeature.Client
 {
     [ResourceArea(CentralizedFeatureResourceIds.AreaId)]
     [ClientCircuitBreakerSettings(timeoutSeconds: 20, failurePercentage: 80, MaxConcurrentRequests = 30)]

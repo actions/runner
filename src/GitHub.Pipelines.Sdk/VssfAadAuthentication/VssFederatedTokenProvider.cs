@@ -1,10 +1,10 @@
-using System;
+﻿using System;
 using System.Net;
 using System.Net.Http;
-using Microsoft.VisualStudio.Services.Common;
+using GitHub.Services.Common;
 using System.Globalization;
 
-namespace Microsoft.VisualStudio.Services.Client
+namespace GitHub.Services.Client
 {
     /// <summary>
     /// Provides authentication for internet identities using single-sign-on cookies.

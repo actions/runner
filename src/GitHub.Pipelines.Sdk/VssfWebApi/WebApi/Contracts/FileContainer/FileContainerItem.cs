@@ -3,7 +3,7 @@ using System.ComponentModel;
 using System.Runtime.Serialization;
 using System.Text;
 
-namespace Microsoft.VisualStudio.Services.FileContainer
+namespace GitHub.Services.FileContainer
 {
     /// <summary>
     /// Represents an item in a container.

@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Runtime.Serialization;
-using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.WebApi;
+using GitHub.Services.Common;
+using GitHub.Services.WebApi;
 using Newtonsoft.Json;
 
-namespace Microsoft.VisualStudio.Services.CentralizedFeature.Client
+namespace GitHub.Services.CentralizedFeature.Client
 {
     [DataContract]
     public class CentralizedFeatureAvailabilityResult : ISecuredObject

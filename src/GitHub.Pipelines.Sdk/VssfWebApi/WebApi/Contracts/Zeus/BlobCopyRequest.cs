@@ -1,9 +1,9 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.Zeus
+namespace GitHub.Services.Zeus
 {
     public enum BlobCopyRequestStatus
     {

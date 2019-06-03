@@ -1,5 +1,5 @@
 ﻿
-namespace Microsoft.VisualStudio.Services.Identity
+namespace GitHub.Services.Identity
 {
     public enum IdentityMetaType
     {

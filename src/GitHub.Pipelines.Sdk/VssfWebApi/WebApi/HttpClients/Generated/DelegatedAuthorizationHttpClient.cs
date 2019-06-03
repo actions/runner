@@ -24,11 +24,11 @@ using System.Net.Http;
 using System.Net.Http.Formatting;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.WebApi;
-using Microsoft.VisualStudio.Services.WebApi.Jwt;
+using GitHub.Services.Common;
+using GitHub.Services.WebApi;
+using GitHub.Services.WebApi.Jwt;
 
-namespace Microsoft.VisualStudio.Services.DelegatedAuthorization.WebApi
+namespace GitHub.Services.DelegatedAuthorization.WebApi
 {
     [ResourceArea(Tokens.DelegatedAuthResourceIds.AreaId)]
     public class DelegatedAuthorizationHttpClient : VssHttpClientBase

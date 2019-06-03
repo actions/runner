@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Microsoft.VisualStudio.Services.TokenSigningKeyLifecycle
+namespace GitHub.Services.TokenSigningKeyLifecycle
 {
     /// <summary>
     /// Represents a container that store metadata about signing key

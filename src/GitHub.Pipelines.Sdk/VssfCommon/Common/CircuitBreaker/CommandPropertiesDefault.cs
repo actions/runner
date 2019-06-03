@@ -13,7 +13,7 @@
 // limitations under the License.
 using System;
 
-namespace Microsoft.VisualStudio.Services.CircuitBreaker
+namespace GitHub.Services.CircuitBreaker
 {
     public class CommandPropertiesDefault : ICommandProperties
     {

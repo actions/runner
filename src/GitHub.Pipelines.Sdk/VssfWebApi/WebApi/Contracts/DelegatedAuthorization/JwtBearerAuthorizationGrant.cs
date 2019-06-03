@@ -1,7 +1,7 @@
-﻿using Microsoft.VisualStudio.Services.WebApi.Jwt;
+﻿using GitHub.Services.WebApi.Jwt;
 using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.DelegatedAuthorization
+namespace GitHub.Services.DelegatedAuthorization
 {
     public class JwtBearerAuthorizationGrant : AuthorizationGrant
     {

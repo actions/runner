@@ -1,6 +1,6 @@
 ﻿using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.FormInput
+namespace GitHub.Services.FormInput
 {
     /// <summary>
     /// Mode in which a subscription input should be entered (in a UI)

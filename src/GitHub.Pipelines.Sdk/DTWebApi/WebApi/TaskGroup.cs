@@ -3,9 +3,9 @@ using System.Runtime.Serialization;
 using System.Collections.Generic;
 using System.Linq;
 
-using Microsoft.VisualStudio.Services.WebApi;
+using GitHub.Services.WebApi;
 
-namespace Microsoft.TeamFoundation.DistributedTask.WebApi
+namespace GitHub.DistributedTask.WebApi
 {
     [DataContract]
     public class TaskGroup: TaskDefinition

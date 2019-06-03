@@ -1,4 +1,4 @@
-// Copyright (c) Microsoft Corporation.  All rights reserved.
+﻿// Copyright (c) Microsoft Corporation.  All rights reserved.
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -6,11 +6,11 @@ using System.Globalization;
 using System.IO;
 using System.Threading;
 using System.Xml;
-using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.Location;
-using Microsoft.VisualStudio.Services.Common.Internal;
+using GitHub.Services.Common;
+using GitHub.Services.Location;
+using GitHub.Services.Common.Internal;
 
-namespace Microsoft.VisualStudio.Services.WebApi.Location
+namespace GitHub.Services.WebApi.Location
 {
     /// <summary>
     /// This class is responsible for managing both the in-memory and disk cache

@@ -7,11 +7,11 @@ using System.Reflection;
 using System.Runtime.Serialization;
 using System.Security.Claims;
 using System.Text;
-using Microsoft.VisualStudio.Services.Common;
+using GitHub.Services.Common;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-namespace Microsoft.VisualStudio.Services.WebApi.Jwt
+namespace GitHub.Services.WebApi.Jwt
 {
     //while the spec defined other possible algorithms
     //in practice these are the only two that are used

@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel;
 
-namespace Microsoft.VisualStudio.Services.WebApi.Internal
+namespace GitHub.Services.WebApi.Internal
 {
     [EditorBrowsable(EditorBrowsableState.Never)]
     public static class VssConnectionParameterKeys

@@ -2,7 +2,7 @@
 using System.Runtime.Serialization;
 using System.ComponentModel;
 
-namespace Microsoft.TeamFoundation.DistributedTask.WebApi
+namespace GitHub.DistributedTask.WebApi
 {
     [DataContract]
     public class TaskAgentPoolStatus : TaskAgentPoolReference

@@ -1,9 +1,9 @@
-﻿using Microsoft.VisualStudio.Services.WebApi;
+﻿using GitHub.Services.WebApi;
 using Newtonsoft.Json;
 using System;
 using System.Reflection;
 
-namespace Microsoft.TeamFoundation.DistributedTask.WebApi
+namespace GitHub.DistributedTask.WebApi
 {
     internal sealed class DemandJsonConverter : VssSecureJsonConverter
     {

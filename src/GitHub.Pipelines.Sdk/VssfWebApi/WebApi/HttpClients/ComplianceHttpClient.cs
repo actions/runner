@@ -1,13 +1,13 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Net.Http;
 using System.Threading.Tasks;
-using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.WebApi;
+using GitHub.Services.Common;
+using GitHub.Services.WebApi;
 using System.Threading;
 
-namespace Microsoft.VisualStudio.Services.Compliance.Client
+namespace GitHub.Services.Compliance.Client
 {
     [ResourceArea(ComplianceResourceIds.AreaId)]
     [Obsolete("This type is no longer used.")]

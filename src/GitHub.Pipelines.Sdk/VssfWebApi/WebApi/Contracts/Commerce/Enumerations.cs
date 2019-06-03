@@ -2,7 +2,7 @@
 using System;
 using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.Commerce
+namespace GitHub.Services.Commerce
 {
     /// <summary>
     /// Reason for disabled resource.

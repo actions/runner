@@ -1,4 +1,4 @@
-﻿namespace Microsoft.VisualStudio.Services.Commerce
+﻿namespace GitHub.Services.Commerce
 {
     /// <summary>
     /// The body of a POST request to check name availability.

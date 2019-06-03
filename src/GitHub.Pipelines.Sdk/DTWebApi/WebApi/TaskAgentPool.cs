@@ -1,9 +1,9 @@
-﻿using Microsoft.VisualStudio.Services.WebApi;
+﻿using GitHub.Services.WebApi;
 using System;
 using System.Runtime.Serialization;
 using System.ComponentModel;
 
-namespace Microsoft.TeamFoundation.DistributedTask.WebApi
+namespace GitHub.DistributedTask.WebApi
 {
     /// <summary>
     /// An organization-level grouping of agents.

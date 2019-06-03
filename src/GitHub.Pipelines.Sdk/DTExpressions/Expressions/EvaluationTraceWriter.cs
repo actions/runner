@@ -1,8 +1,8 @@
-using System;
-using Microsoft.TeamFoundation.DistributedTask.Logging;
-using Microsoft.VisualStudio.Services.Common;
+﻿using System;
+using GitHub.DistributedTask.Logging;
+using GitHub.Services.Common;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Expressions
+namespace GitHub.DistributedTask.Expressions
 {
     internal sealed class EvaluationTraceWriter : ITraceWriter
     {

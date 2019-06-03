@@ -13,7 +13,7 @@
 // limitations under the License.
 using System.Diagnostics;
 
-namespace Microsoft.VisualStudio.Services.CircuitBreaker
+namespace GitHub.Services.CircuitBreaker
 {
     /// <summary>
     /// Provides a mechanism to be notified of events for <see cref="Command"/> instances. 

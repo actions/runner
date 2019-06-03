@@ -19,5 +19,5 @@ TestLogs
 **/*.DotSettings.user
 
 #generated
-src/Agent.Sdk/BuildConstants.cs
+src/Runner.Sdk/BuildConstants.cs
 

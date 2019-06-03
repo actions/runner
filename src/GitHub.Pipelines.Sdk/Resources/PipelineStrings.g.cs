@@ -1,6 +1,6 @@
 ﻿using System.Globalization;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Pipelines
+namespace GitHub.DistributedTask.Pipelines
 {
     public static class PipelineStrings
     {

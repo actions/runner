@@ -3,10 +3,10 @@ using System.Collections.Generic;
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Threading;
-using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.WebApi;
+using GitHub.Services.Common;
+using GitHub.Services.WebApi;
 
-namespace Microsoft.VisualStudio.Services.Identity.Client
+namespace GitHub.Services.Identity.Client
 {
     [ResourceArea(PropertyCacheResourceIds.AreaId)]
     public class PropertyCacheHttpClient : VssHttpClientBase

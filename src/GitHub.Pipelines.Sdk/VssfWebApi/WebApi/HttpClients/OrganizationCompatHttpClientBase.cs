@@ -3,10 +3,10 @@ using System.ComponentModel;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.WebApi;
+using GitHub.Services.Common;
+using GitHub.Services.WebApi;
 
-namespace Microsoft.VisualStudio.Services.Organization.Client
+namespace GitHub.Services.Organization.Client
 {
     /// <summary>
     /// This class contains deprecated overloads to maintain binary compatibility

@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Runtime.Serialization;
 
-namespace Microsoft.Azure.DevOps.Licensing.WebApi
+namespace GitHub.Licensing.WebApi
 {
     [DataContract]
     [Flags]

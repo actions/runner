@@ -5,7 +5,7 @@ using System.Linq;
 using System.Runtime.Serialization;
 using Newtonsoft.Json.Linq;
 
-namespace Microsoft.TeamFoundation.DistributedTask.WebApi
+namespace GitHub.DistributedTask.WebApi
 {
     [DataContract]
     [DebuggerDisplay("Id: {Id}, Name: {Name}, Version: {Version}")]

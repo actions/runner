@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Runtime.Serialization;
-using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.Identity;
-using Microsoft.VisualStudio.Services.WebApi;
+using GitHub.Services.Common;
+using GitHub.Services.Identity;
+using GitHub.Services.WebApi;
 
-namespace Microsoft.VisualStudio.Services.Graph
+namespace GitHub.Services.Graph
 {
     [Serializable]
     public class GraphException : VssServiceException

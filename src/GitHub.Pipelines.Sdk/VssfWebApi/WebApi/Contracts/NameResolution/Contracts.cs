@@ -1,9 +1,9 @@
 ﻿using System;
 using System.ComponentModel;
 using System.Runtime.Serialization;
-using Microsoft.VisualStudio.Services.Common;
+using GitHub.Services.Common;
 
-namespace Microsoft.VisualStudio.Services.NameResolution
+namespace GitHub.Services.NameResolution
 {
     [GenerateAllConstants]
     public static class NameResolutionResourceIds

@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Text.RegularExpressions;
-using Microsoft.VisualStudio.Services.Common;
+using GitHub.Services.Common;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Pipelines.Validation
+namespace GitHub.DistributedTask.Pipelines.Validation
 {
     /// <summary>
     /// Validates script tasks for bad tokens. For best performance, create one instance and reuse - this is

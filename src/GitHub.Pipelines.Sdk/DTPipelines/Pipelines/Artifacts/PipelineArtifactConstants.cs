@@ -1,8 +1,8 @@
 ﻿using System;
 
-using Microsoft.TeamFoundation.DistributedTask.WebApi;
+using GitHub.DistributedTask.WebApi;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Pipelines.Artifacts
+namespace GitHub.DistributedTask.Pipelines.Artifacts
 {
     public static class PipelineArtifactConstants
     {

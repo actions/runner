@@ -193,96 +193,124 @@ $resourceNamespace = @{
     "PartitioningResources"   = "Microsoft.VisualStudio.Services.WebApi";
 }
 
+# "Microsoft.VisualStudio"
+# "Microsoft.Azure.DevOps"
+# "Microsoft.TeamFoundation"
+
 $gitHubSdkFolder = Join-Path -Path $PWD -ChildPath "GitHub.Pipelines.Sdk"
 
-foreach ($folder in $targetFolders) {
-    Write-Host "Recreate $gitHubSdkFolder\$folder"
+# foreach ($folder in $targetFolders) {
+#     Write-Host "Recreate $gitHubSdkFolder\$folder"
 
-    Remove-Item -LiteralPath "$gitHubSdkFolder\$folder" -Force -Recurse
-    New-Item -Path $gitHubSdkFolder -Name $folder -ItemType "directory" -Force
-}
+#     Remove-Item -LiteralPath "$gitHubSdkFolder\$folder" -Force -Recurse
+#     New-Item -Path $gitHubSdkFolder -Name $folder -ItemType "directory" -Force
+# }
 
-foreach ($sourceFolder in $sourceFolders.Keys) {
-    $copySource = Join-Path -Path $vsoRepo -ChildPath $sourceFolder
-    $copyDest = Join-Path -Path $gitHubSdkFolder -ChildPath $sourceFolders[$sourceFolder]
+# foreach ($sourceFolder in $sourceFolders.Keys) {
+#     $copySource = Join-Path -Path $vsoRepo -ChildPath $sourceFolder
+#     $copyDest = Join-Path -Path $gitHubSdkFolder -ChildPath $sourceFolders[$sourceFolder]
     
-    Write-Host "Copy $copySource to $copyDest"
+#     Write-Host "Copy $copySource to $copyDest"
 
-    Copy-Item -Path $copySource -Destination $copyDest -Filter "*.cs" -Recurse -Force 
+#     Copy-Item -Path $copySource -Destination $copyDest -Filter "*.cs" -Recurse -Force 
+# }
+
+# Write-Host "Delete extra none NetStandard files"
+# foreach ($extraFile in $extraFiles) {
+#     Remove-Item -LiteralPath "$gitHubSdkFolder\$extraFile" -Force
+# }
+
+# Write-Host "Generate C# file for resx files"
+# foreach ($resourceFile in $resourceFiles.Keys) {
+#     Write-Host "Generate file for $resourceFile"
+#     $stringBuilder = New-Object System.Text.StringBuilder
+#     $file = $resourceFiles[$resourceFile]
+#     $xml = [xml](Get-Content -LiteralPath "$vsoRepo\$file")
+#     $null = $stringBuilder.AppendLine('using System.Globalization;')
+#     $null = $stringBuilder.AppendLine('')
+#     $namespace = $resourceNamespace[$resourceFile]
+#     $null = $stringBuilder.AppendLine("namespace $namespace")
+#     $null = $stringBuilder.AppendLine('{')
+#     $null = $stringBuilder.AppendLine("    public static class $resourceFile")
+#     $null = $stringBuilder.AppendLine('    {')
+#     foreach ($data in $xml.root.data) {
+#         $i = 0
+#         $args = ""
+#         $inputs = ""
+#         while ($true) {
+#             if ($data.value.Contains("{$i}") -or $data.value.Contains("{$i" + ":")) {
+#                 if ($i -eq 0) {
+#                     $args = "object arg$i"
+#                     $inputs = "arg$i"
+#                 }
+#                 else {
+#                     $args = $args + ", " + "object arg$i"    
+#                     $inputs = $inputs + ", " + "arg$i"
+#                 }
+#                 $i++
+#             }
+#             else {
+#                 break
+#             }
+#         }
+        
+#         $null = $stringBuilder.AppendLine("")
+#         $null = $stringBuilder.AppendLine("        public static string $($data.name)($($args))")
+#         $null = $stringBuilder.AppendLine("        {")
+#         $null = $stringBuilder.AppendLine(@"
+#             const string Format = @"$($data.value.Replace('"', '""'))";
+# "@)
+#         if ($i -eq 0) {
+#             $null = $stringBuilder.AppendLine("            return Format;")
+#         }
+#         else {
+#             $null = $stringBuilder.AppendLine("            return string.Format(CultureInfo.CurrentCulture, Format, $inputs);")
+#         }
+#         $null = $stringBuilder.AppendLine("        }")
+#     }
+
+#     $null = $stringBuilder.AppendLine("    }")
+#     $null = $stringBuilder.AppendLine("}")
+
+#     # Write Resources.g.cs.
+#     $genResourceFile = Join-Path -Path $gitHubSdkFolder -ChildPath "Resources\$resourceFile.g.cs"
+#     [System.IO.File]::WriteAllText($genResourceFile, ($stringBuilder.ToString()), ([System.Text.Encoding]::UTF8))
+# }
+
+# Print out all namespaces
+Write-Host "Rename namespaces:"
+$namespaces = New-Object 'System.Collections.Generic.HashSet[string]'
+$sourceFiles = Get-ChildItem -LiteralPath $gitHubSdkFolder -Filter "*.cs" -Recurse -Force -File
+foreach ($file in $sourceFiles) {
+    foreach ($line in Get-Content $file.FullName) {
+        if ($line.StartsWith("namespace ")) {
+            $namespace = $line.Substring("namespace ".Length)
+            if ($namespaces.Add($namespace)) {
+                Write-Host $namespace
+            }
+        }
+    }
 }
 
-Write-Host "Delete extra none NetStandard files"
-foreach ($extraFile in $extraFiles) {
-    Remove-Item -LiteralPath "$gitHubSdkFolder\$extraFile" -Force
-}
-
-Write-Host "Generate C# file for resx files"
-foreach ($resourceFile in $resourceFiles.Keys) {
-    Write-Host "Generate file for $resourceFile"
+# Rename all namespaces to GitHub
+$allSourceFiles = Get-ChildItem -LiteralPath $PWD -Filter "*.cs" -Recurse -Force -File
+foreach ($file in $allSourceFiles) {
     $stringBuilder = New-Object System.Text.StringBuilder
-    $file = $resourceFiles[$resourceFile]
-    $xml = [xml](Get-Content -LiteralPath "$vsoRepo\$file")
-    $null = $stringBuilder.AppendLine('using System.Globalization;')
-    $null = $stringBuilder.AppendLine('')
-    $namespace = $resourceNamespace[$resourceFile]
-    $null = $stringBuilder.AppendLine("namespace $namespace")
-    $null = $stringBuilder.AppendLine('{')
-    $null = $stringBuilder.AppendLine("    public static class $resourceFile")
-    $null = $stringBuilder.AppendLine('    {')
-    foreach ($data in $xml.root.data) {
-        $i = 0
-        $args = ""
-        $inputs = ""
-        while ($true) {
-            if ($data.value.Contains("{$i}") -or $data.value.Contains("{$i" + ":")) {
-                if ($i -eq 0) {
-                    $args = "object arg$i"
-                    $inputs = "arg$i"
-                }
-                else {
-                    $args = $args + ", " + "object arg$i"    
-                    $inputs = $inputs + ", " + "arg$i"
-                }
-                $i++
-            }
-            else {
-                break
-            }
+    foreach ($line in Get-Content $file.FullName) {
+        if ($line.Contains("Microsoft.VisualStudio")) {
+            $line = $line.Replace("Microsoft.VisualStudio", "GitHub");
         }
-        
-        $null = $stringBuilder.AppendLine("")
-        $null = $stringBuilder.AppendLine("        public static string $($data.name)($($args))")
-        $null = $stringBuilder.AppendLine("        {")
-        $null = $stringBuilder.AppendLine(@"
-            const string Format = @"$($data.value.Replace('"', '""'))";
-"@)
-        if ($i -eq 0) {
-            $null = $stringBuilder.AppendLine("            return Format;")
+        elseif ($line.Contains("Microsoft.Azure.DevOps")) {
+            $line = $line.Replace("Microsoft.Azure.DevOps", "GitHub");
         }
-        else {
-            $null = $stringBuilder.AppendLine("            return string.Format(CultureInfo.CurrentCulture, Format, $inputs);")
+        elseif ($line.Contains("Microsoft.TeamFoundation")) {
+            $line = $line.Replace("Microsoft.TeamFoundation", "GitHub");
         }
-        $null = $stringBuilder.AppendLine("        }")
-        
-        #         $null = $stringBuilder.AppendLine(@"
-        #         public static string $($data.name)($($args))
-        #         {
-        #             const string Format = @"$($data.value.Replace('"', '""'))";
-        #             if (args == null || args.Length == 0)
-        #             {
-        #                 return Format;
-        #             }
-        #             return string.Format(CultureInfo.CurrentCulture, Format, args);
-        #         }
-        # "@)
+
+        $null = $stringBuilder.AppendLine($line)
     }
 
-    $null = $stringBuilder.AppendLine("    }")
-    $null = $stringBuilder.AppendLine("}")
-
-    # Write Resources.g.cs.
-    $genResourceFile = Join-Path -Path $gitHubSdkFolder -ChildPath "Resources\$resourceFile.g.cs"
-    [System.IO.File]::WriteAllText($genResourceFile, ($stringBuilder.ToString()), ([System.Text.Encoding]::UTF8))
+    [System.IO.File]::WriteAllText($file.FullName, ($stringBuilder.ToString()), ([System.Text.Encoding]::UTF8))
 }
 
 Write-Host "Done"

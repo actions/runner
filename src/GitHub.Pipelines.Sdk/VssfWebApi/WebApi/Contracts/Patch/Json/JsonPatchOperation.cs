@@ -1,6 +1,6 @@
 ﻿using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.WebApi.Patch.Json
+namespace GitHub.Services.WebApi.Patch.Json
 {
     /// <summary>
     /// The JSON model for a JSON Patch operation

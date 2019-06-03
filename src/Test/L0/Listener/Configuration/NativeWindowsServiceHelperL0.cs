@@ -2,12 +2,12 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.VisualStudio.Services.Agent.Listener.Configuration;
+using Runner.Common.Listener.Configuration;
 using Moq;
 using Xunit;
 using System.Security.Principal;
-using Microsoft.VisualStudio.Services.Agent;
-using Microsoft.VisualStudio.Services.Agent.Tests;
+using Runner.Common;
+using Runner.Common.Tests;
 
 namespace Test.L0.Listener.Configuration
 {

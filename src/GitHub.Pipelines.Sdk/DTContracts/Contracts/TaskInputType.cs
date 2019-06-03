@@ -1,7 +1,7 @@
 ﻿using System.Runtime.Serialization;
 using System;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Common.Contracts
+namespace GitHub.DistributedTask.Common.Contracts
 {
     public static class TaskInputType
     {

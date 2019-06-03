@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Runtime.Serialization;
-using Microsoft.VisualStudio.Services.Common;
+using GitHub.Services.Common;
 
-namespace Microsoft.VisualStudio.Services.GitHubConnector
+namespace GitHub.Services.GitHubConnector
 {
     [Serializable]
     public class GitHubConnectorException : VssServiceException

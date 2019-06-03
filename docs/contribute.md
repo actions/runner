@@ -32,7 +32,7 @@ cd ./src
 
 ## Editors
 
-[Using Visual Studio 2017](https://www.visualstudio.com/vs/)  
+[Using Visual Studio 2019](https://www.visualstudio.com/vs/)  
 [Using Visual Studio Code](https://code.visualstudio.com/)
 
 ## Styling

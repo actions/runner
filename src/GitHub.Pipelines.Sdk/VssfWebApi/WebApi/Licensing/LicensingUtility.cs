@@ -2,12 +2,12 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Cryptography.X509Certificates;
-using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.WebApi;
-using Microsoft.VisualStudio.Services.WebApi.Jwt;
+using GitHub.Services.Common;
+using GitHub.Services.WebApi;
+using GitHub.Services.WebApi.Jwt;
 using Newtonsoft.Json;
 
-namespace Microsoft.VisualStudio.Services.Licensing
+namespace GitHub.Services.Licensing
 {
     public static class LicensingUtility
     {

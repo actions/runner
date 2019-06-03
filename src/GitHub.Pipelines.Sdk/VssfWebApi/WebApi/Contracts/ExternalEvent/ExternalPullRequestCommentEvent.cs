@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.ExternalEvent
+namespace GitHub.Services.ExternalEvent
 {
     [DataContract]
     public class ExternalPullRequestCommentEvent : ExternalGitComment, IExternalGitEvent

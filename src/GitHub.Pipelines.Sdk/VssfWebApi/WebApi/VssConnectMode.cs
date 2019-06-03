@@ -1,4 +1,4 @@
-﻿namespace Microsoft.VisualStudio.Services.WebApi
+﻿namespace GitHub.Services.WebApi
 {
     public enum VssConnectMode
     {

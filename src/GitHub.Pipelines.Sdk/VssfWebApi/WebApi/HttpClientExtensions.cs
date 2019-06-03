@@ -1,4 +1,4 @@
-﻿using Microsoft.VisualStudio.Services.Common;
+﻿using GitHub.Services.Common;
 using System;
 using System.ComponentModel;
 using System.IO;
@@ -9,7 +9,7 @@ using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Microsoft.VisualStudio.Services.WebApi
+namespace GitHub.Services.WebApi
 {
     [EditorBrowsable(EditorBrowsableState.Never)]
     public static class HttpClientExtensions

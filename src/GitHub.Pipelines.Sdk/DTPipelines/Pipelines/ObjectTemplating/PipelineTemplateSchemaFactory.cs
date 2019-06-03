@@ -2,9 +2,9 @@
 using System.ComponentModel;
 using System.IO;
 using System.Reflection;
-using Microsoft.TeamFoundation.DistributedTask.ObjectTemplating.Schema;
+using GitHub.DistributedTask.ObjectTemplating.Schema;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Pipelines.ObjectTemplating
+namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 {
     [EditorBrowsable(EditorBrowsableState.Never)]
     public sealed class PipelineTemplateSchemaFactory
@@ -13,7 +13,7 @@ namespace Microsoft.TeamFoundation.DistributedTask.Pipelines.ObjectTemplating
         {
             var assembly = Assembly.GetExecutingAssembly();
             var json = default(String);
-            using (var stream = assembly.GetManifestResourceStream("Microsoft.TeamFoundation.DistributedTask.Pipelines.ObjectTemplating.workflow-v1.0.json"))
+            using (var stream = assembly.GetManifestResourceStream("GitHub.DistributedTask.Pipelines.ObjectTemplating.workflow-v1.0.json"))
             using (var streamReader = new StreamReader(stream))
             {
                 json = streamReader.ReadToEnd();

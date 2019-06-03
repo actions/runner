@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.WebPlatform
+namespace GitHub.Services.WebPlatform
 {
     [DataContract]
     public class ClientTraceEvent

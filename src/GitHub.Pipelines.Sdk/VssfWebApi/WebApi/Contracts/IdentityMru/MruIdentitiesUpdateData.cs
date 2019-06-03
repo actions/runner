@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.Identity.Mru
+namespace GitHub.Services.Identity.Mru
 {
     [DataContract]
     public class JsonPatchOperationData<T>

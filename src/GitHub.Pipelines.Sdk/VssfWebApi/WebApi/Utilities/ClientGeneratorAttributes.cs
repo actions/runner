@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Microsoft.VisualStudio.Services.WebApi.Internal
+namespace GitHub.Services.WebApi.Internal
 {
     /// <summary>
     /// GenClient (SwaggerGenerator) will ignore controller methods, parameters, and classes that have this attribute.

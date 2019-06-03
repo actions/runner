@@ -7,7 +7,7 @@ using System.Globalization;
 using System.Runtime.Serialization;
 using System.Xml;
 
-namespace Microsoft.VisualStudio.Services.Identity
+namespace GitHub.Services.Identity
 {
     /// <summary>
     /// 

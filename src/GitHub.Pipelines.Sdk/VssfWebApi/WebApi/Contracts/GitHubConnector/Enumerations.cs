@@ -1,6 +1,6 @@
 ﻿using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.GitHubConnector
+namespace GitHub.Services.GitHubConnector
 {
     [DataContract]
     public enum GitHubAccountType

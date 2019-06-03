@@ -1,7 +1,7 @@
 ﻿using System;
-using Microsoft.VisualStudio.Services.Common;
+using GitHub.Services.Common;
 
-namespace Microsoft.VisualStudio.Services.Commerce
+namespace GitHub.Services.Commerce
 {
     public class ReportingEvent
     {

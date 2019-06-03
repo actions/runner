@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Microsoft.VisualStudio.Services.Common.TokenStorage
+namespace GitHub.Services.Common.TokenStorage
 {
     /// <summary>
     /// Defines how to store a token in storage.

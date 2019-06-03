@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace Microsoft.VisualStudio.Services.TokenSigningKeyLifecycle
+namespace GitHub.Services.TokenSigningKeyLifecycle
 {
     /// <summary>
     /// Represents a keynamespace publishing rules associated with creation and usage of signingkeys generated in the namespace.

@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using Microsoft.TeamFoundation.DistributedTask.Expressions;
+using GitHub.DistributedTask.Expressions;
 
-namespace Microsoft.TeamFoundation.DistributedTask.ObjectTemplating.Tokens
+namespace GitHub.DistributedTask.ObjectTemplating.Tokens
 {
     /// <summary>
     /// Collection interface for expressions to work with MappingToken objects

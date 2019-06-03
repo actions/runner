@@ -5,9 +5,9 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.VisualStudio.Services.Common.Diagnostics;
+using GitHub.Services.Common.Diagnostics;
 
-namespace Microsoft.VisualStudio.Services.Common
+namespace GitHub.Services.Common
 {
     internal interface ISupportSignOut
     {

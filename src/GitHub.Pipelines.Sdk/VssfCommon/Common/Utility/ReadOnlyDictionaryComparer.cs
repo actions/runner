@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace Microsoft.VisualStudio.Services.Common
+namespace GitHub.Services.Common
 {
     public class ReadOnlyDictionaryComparer<K, V> : IEqualityComparer<IReadOnlyDictionary<K, V>>
     {

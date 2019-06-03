@@ -13,7 +13,7 @@
 // limitations under the License.
 using System;
 
-namespace Microsoft.VisualStudio.Services.CircuitBreaker
+namespace GitHub.Services.CircuitBreaker
 {
     /// <summary>
     /// Provides code driven properties overrides for <see cref="Command"/> instances.

@@ -1,9 +1,9 @@
-using System;
+﻿using System;
 using System.Net.Http;
-using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.WebApi;
+using GitHub.Services.Common;
+using GitHub.Services.WebApi;
 
-namespace Microsoft.VisualStudio.Services.Identity.Mru.Client
+namespace GitHub.Services.Identity.Mru.Client
 {
     [ResourceArea(IdentityMruResourceIds.AreaId)]
     public class IdentityMruHttpClient : IdentityMruHttpClientBase

@@ -1,4 +1,4 @@
-﻿namespace Microsoft.VisualStudio.Services.DelegatedAuthorization
+﻿namespace GitHub.Services.DelegatedAuthorization
 {
     public class AppTokenSecretPair
     {

@@ -1,4 +1,4 @@
-﻿namespace Microsoft.TeamFoundation.DistributedTask.WebApi
+﻿namespace GitHub.DistributedTask.WebApi
 {
     internal class DeploymentStrategyDeployAction : DeploymentStrategyBaseAction
     {

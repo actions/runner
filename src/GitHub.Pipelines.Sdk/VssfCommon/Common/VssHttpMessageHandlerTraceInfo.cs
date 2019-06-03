@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Net.Http;
 
-namespace Microsoft.VisualStudio.Services.Common
+namespace GitHub.Services.Common
 {
     /// <summary>
     /// This class is used by the message handler, if injected as a request property, to trace additional

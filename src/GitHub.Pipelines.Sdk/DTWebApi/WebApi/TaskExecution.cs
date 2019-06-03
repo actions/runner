@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Runtime.Serialization;
 
-namespace Microsoft.TeamFoundation.DistributedTask.WebApi
+namespace GitHub.DistributedTask.WebApi
 {
     [DataContract]
     public class TaskExecution
@@ -39,12 +39,12 @@ namespace Microsoft.TeamFoundation.DistributedTask.WebApi
         /// If a task is going to run code, then this provides the type/script etc... information by platform.
         /// For example, it might look like.
         ///     net45: {
-        ///         typeName: "Microsoft.TeamFoundation.Automation.Tasks.PowerShellTask",
-        ///         assemblyName: "Microsoft.TeamFoundation.Automation.Tasks.PowerShell.dll"
+        ///         typeName: "GitHub.Automation.Tasks.PowerShellTask",
+        ///         assemblyName: "GitHub.Automation.Tasks.PowerShell.dll"
         ///     }
         ///     net20: {
-        ///         typeName: "Microsoft.TeamFoundation.Automation.Tasks.PowerShellTask",
-        ///         assemblyName: "Microsoft.TeamFoundation.Automation.Tasks.PowerShell.dll"
+        ///         typeName: "GitHub.Automation.Tasks.PowerShellTask",
+        ///         assemblyName: "GitHub.Automation.Tasks.PowerShell.dll"
         ///     }
         ///     java: {
         ///         jar: "powershelltask.tasks.automation.teamfoundation.microsoft.com",

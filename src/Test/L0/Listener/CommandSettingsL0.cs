@@ -1,12 +1,12 @@
-using Microsoft.VisualStudio.Services.Agent.Listener;
-using Microsoft.VisualStudio.Services.Agent.Listener.Configuration;
-using Microsoft.VisualStudio.Services.Agent.Util;
+﻿using Runner.Common.Listener;
+using Runner.Common.Listener.Configuration;
+using Runner.Common.Util;
 using Moq;
 using System;
 using System.Runtime.CompilerServices;
 using Xunit;
 
-namespace Microsoft.VisualStudio.Services.Agent.Tests
+namespace Runner.Common.Tests
 {
     public sealed class CommandSettingsL0
     {

@@ -1,5 +1,5 @@
-﻿using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.WebApi;
+﻿using GitHub.Services.Common;
+using GitHub.Services.WebApi;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -7,7 +7,7 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Microsoft.VisualStudio.Services.Users.Client
+namespace GitHub.Services.Users.Client
 {
     [EditorBrowsable(EditorBrowsableState.Never)]
     public abstract class UserCompatHttpClientBase : VssHttpClientBase

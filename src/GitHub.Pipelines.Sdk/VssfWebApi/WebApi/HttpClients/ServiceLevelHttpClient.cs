@@ -2,10 +2,10 @@
 using System.ComponentModel;
 using System.Net.Http;
 using System.Threading.Tasks;
-using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.WebApi;
+using GitHub.Services.Common;
+using GitHub.Services.WebApi;
 
-namespace Microsoft.VisualStudio.Services.Servicing.Client
+namespace GitHub.Services.Servicing.Client
 {
     /// <summary>
     /// Http client for the /_apis/servicelevel REST endpoint.

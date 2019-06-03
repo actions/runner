@@ -24,11 +24,11 @@ using System.Net.Http;
 using System.Net.Http.Formatting;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.Licensing;
-using Microsoft.VisualStudio.Services.WebApi;
+using GitHub.Services.Common;
+using GitHub.Services.Licensing;
+using GitHub.Services.WebApi;
 
-namespace Microsoft.Azure.DevOps.Licensing.WebApi
+namespace GitHub.Licensing.WebApi
 {
     [ResourceArea(LicensingResourceIds.AreaId)]
     public class LicensingHttpClient : VssHttpClientBase

@@ -1,8 +1,8 @@
-using System;
-using Microsoft.VisualStudio.Services.Agent.Worker.Container;
+﻿using System;
+using Runner.Common.Worker.Container;
 using Xunit;
 
-namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Container
+namespace Runner.Common.Tests.Worker.Container
 {
     public sealed class ContainerInfoL0
     {

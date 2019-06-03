@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.Account
+namespace GitHub.Services.Account
 {
 
     [DataContract]

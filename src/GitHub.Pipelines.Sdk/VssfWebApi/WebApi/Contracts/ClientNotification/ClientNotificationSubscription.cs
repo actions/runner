@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.ClientNotification
+namespace GitHub.Services.ClientNotification
 {
     /// <summary>
     /// 

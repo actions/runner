@@ -1,8 +1,8 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.Identity
+namespace GitHub.Services.Identity
 {
     [CollectionDataContract(Name = "Identities", ItemName = "Identity")]
     public class IdentitiesCollection : List<Identity>

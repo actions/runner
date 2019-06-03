@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Runtime.Serialization;
-using Microsoft.VisualStudio.Services.Common;
+using GitHub.Services.Common;
 
-namespace Microsoft.VisualStudio.Services.WebApi.Patch
+namespace GitHub.Services.WebApi.Patch
 {
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "PatchOperationFailedException", "Microsoft.VisualStudio.Services.WebApi.Patch.PatchOperationFailedException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "PatchOperationFailedException", "GitHub.Services.WebApi.Patch.PatchOperationFailedException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class PatchOperationFailedException : VssServiceException
     {
         public PatchOperationFailedException()
@@ -29,7 +29,7 @@ namespace Microsoft.VisualStudio.Services.WebApi.Patch
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "InvalidPatchFieldNameException", "Microsoft.VisualStudio.Services.WebApi.Patch.InvalidPatchFieldNameException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "InvalidPatchFieldNameException", "GitHub.Services.WebApi.Patch.InvalidPatchFieldNameException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class InvalidPatchFieldNameException : PatchOperationFailedException
     {
         public InvalidPatchFieldNameException(string message)
@@ -39,7 +39,7 @@ namespace Microsoft.VisualStudio.Services.WebApi.Patch
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "TestPatchOperationFailedException", "Microsoft.VisualStudio.Services.WebApi.Patch.TestPatchOperationFailedException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "TestPatchOperationFailedException", "GitHub.Services.WebApi.Patch.TestPatchOperationFailedException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class TestPatchOperationFailedException : PatchOperationFailedException
     {
         public TestPatchOperationFailedException()

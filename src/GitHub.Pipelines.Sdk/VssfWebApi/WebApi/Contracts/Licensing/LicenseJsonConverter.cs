@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Reflection;
-using Microsoft.VisualStudio.Services.WebApi;
+using GitHub.Services.WebApi;
 using Newtonsoft.Json;
 
-namespace Microsoft.VisualStudio.Services.Licensing
+namespace GitHub.Services.Licensing
 {
     /// <summary>
     /// Converts between a <see cref="License"/> and a JSON-serialized license string

@@ -1,8 +1,8 @@
-﻿using Microsoft.VisualStudio.Services.Licensing;
+﻿using GitHub.Services.Licensing;
 using System;
 using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.WebApi.Contracts.Licensing
+namespace GitHub.Services.WebApi.Contracts.Licensing
 {
     [DataContract]
     public class ExtensionLicenseData

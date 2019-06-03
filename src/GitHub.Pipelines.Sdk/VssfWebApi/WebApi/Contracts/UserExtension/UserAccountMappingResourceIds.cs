@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Microsoft.VisualStudio.Services.UserAccountMapping
+namespace GitHub.Services.UserAccountMapping
 {
     public static class UserAccountMappingResourceIds
     {

@@ -2,9 +2,9 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.Serialization;
 using System.Security.Permissions;
-using Microsoft.VisualStudio.Services.Common;
+using GitHub.Services.Common;
 
-namespace Microsoft.VisualStudio.Services.WebApi.Exceptions
+namespace GitHub.Services.WebApi.Exceptions
 {
     /// <summary>
     /// Throw when there is any throttling happening

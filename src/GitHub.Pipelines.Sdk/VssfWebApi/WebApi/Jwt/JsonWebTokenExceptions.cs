@@ -1,12 +1,12 @@
-using System;
+﻿using System;
 using System.Diagnostics.CodeAnalysis;
-using Microsoft.VisualStudio.Services.Common;
+using GitHub.Services.Common;
 
-namespace Microsoft.VisualStudio.Services.WebApi.Jwt
+namespace GitHub.Services.WebApi.Jwt
 {
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "JsonWebTokenException", "Microsoft.VisualStudio.Services.WebApi.Jwt.JsonWebTokenException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "JsonWebTokenException", "GitHub.Services.WebApi.Jwt.JsonWebTokenException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class JsonWebTokenException : VssServiceException
     {
         public JsonWebTokenException(string message)
@@ -22,7 +22,7 @@ namespace Microsoft.VisualStudio.Services.WebApi.Jwt
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "JsonWebTokenValidationException", "Microsoft.VisualStudio.Services.WebApi.Jwt.JsonWebTokenValidationException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "JsonWebTokenValidationException", "GitHub.Services.WebApi.Jwt.JsonWebTokenValidationException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class JsonWebTokenValidationException : JsonWebTokenException
     {
         public JsonWebTokenValidationException(string message)
@@ -38,7 +38,7 @@ namespace Microsoft.VisualStudio.Services.WebApi.Jwt
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "JsonWebTokenSerializationException", "Microsoft.VisualStudio.Services.WebApi.Jwt.JsonWebTokenSerializationException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "JsonWebTokenSerializationException", "GitHub.Services.WebApi.Jwt.JsonWebTokenSerializationException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class JsonWebTokenSerializationException : JsonWebTokenException
     {
         public JsonWebTokenSerializationException() : base(JwtResources.SerializationException())
@@ -48,7 +48,7 @@ namespace Microsoft.VisualStudio.Services.WebApi.Jwt
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "JsonWebTokenDeserializationException", "Microsoft.VisualStudio.Services.WebApi.Jwt.JsonWebTokenDeserializationException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "JsonWebTokenDeserializationException", "GitHub.Services.WebApi.Jwt.JsonWebTokenDeserializationException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class JsonWebTokenDeserializationException : JsonWebTokenException
     {
         public JsonWebTokenDeserializationException()
@@ -59,7 +59,7 @@ namespace Microsoft.VisualStudio.Services.WebApi.Jwt
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "DigestUnsupportedException", "Microsoft.VisualStudio.Services.WebApi.Jwt.DigestUnsupportedException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "DigestUnsupportedException", "GitHub.Services.WebApi.Jwt.DigestUnsupportedException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class DigestUnsupportedException : JsonWebTokenException
     {
         public DigestUnsupportedException(string supportedDigest, string invalidDigest)
@@ -70,7 +70,7 @@ namespace Microsoft.VisualStudio.Services.WebApi.Jwt
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "InvalidCredentialsException", "Microsoft.VisualStudio.Services.WebApi.Jwt.InvalidCredentialsException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "InvalidCredentialsException", "GitHub.Services.WebApi.Jwt.InvalidCredentialsException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class InvalidCredentialsException : JsonWebTokenException
     {
         public InvalidCredentialsException(string message)
@@ -81,7 +81,7 @@ namespace Microsoft.VisualStudio.Services.WebApi.Jwt
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "SignatureAlgorithmUnsupportedException", "Microsoft.VisualStudio.Services.WebApi.Jwt.SignatureAlgorithmUnsupportedException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "SignatureAlgorithmUnsupportedException", "GitHub.Services.WebApi.Jwt.SignatureAlgorithmUnsupportedException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class SignatureAlgorithmUnsupportedException : JsonWebTokenException
     {
         public SignatureAlgorithmUnsupportedException(string invalidAlgorithm)
@@ -97,7 +97,7 @@ namespace Microsoft.VisualStudio.Services.WebApi.Jwt
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "InvalidClockSkewException", "Microsoft.VisualStudio.Services.WebApi.Jwt.InvalidClockSkewException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "InvalidClockSkewException", "GitHub.Services.WebApi.Jwt.InvalidClockSkewException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class InvalidClockSkewException : JsonWebTokenException
     {
         public InvalidClockSkewException()
@@ -108,7 +108,7 @@ namespace Microsoft.VisualStudio.Services.WebApi.Jwt
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "InvalidValidFromValueException", "Microsoft.VisualStudio.Services.WebApi.Jwt.InvalidValidFromValueException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "InvalidValidFromValueException", "GitHub.Services.WebApi.Jwt.InvalidValidFromValueException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class InvalidValidFromValueException : JsonWebTokenException
     {
         public InvalidValidFromValueException()
@@ -119,7 +119,7 @@ namespace Microsoft.VisualStudio.Services.WebApi.Jwt
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "InvalidValidToValueException", "Microsoft.VisualStudio.Services.WebApi.Jwt.InvalidValidToValueException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "InvalidValidToValueException", "GitHub.Services.WebApi.Jwt.InvalidValidToValueException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class InvalidValidToValueException : JsonWebTokenException
     {
         public InvalidValidToValueException()
@@ -130,7 +130,7 @@ namespace Microsoft.VisualStudio.Services.WebApi.Jwt
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "ValidFromAfterValidToException", "Microsoft.VisualStudio.Services.WebApi.Jwt.ValidFromAfterValidToException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "ValidFromAfterValidToException", "GitHub.Services.WebApi.Jwt.ValidFromAfterValidToException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class ValidFromAfterValidToException : JsonWebTokenException
     {
         public ValidFromAfterValidToException()
@@ -141,7 +141,7 @@ namespace Microsoft.VisualStudio.Services.WebApi.Jwt
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "ActorValidationException", "Microsoft.VisualStudio.Services.WebApi.Jwt.ActorValidationException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "ActorValidationException", "GitHub.Services.WebApi.Jwt.ActorValidationException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class ActorValidationException : JsonWebTokenValidationException
     {
         public ActorValidationException()
@@ -152,7 +152,7 @@ namespace Microsoft.VisualStudio.Services.WebApi.Jwt
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "TokenNotYetValidException", "Microsoft.VisualStudio.Services.WebApi.Jwt.TokenNotYetValidException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "TokenNotYetValidException", "GitHub.Services.WebApi.Jwt.TokenNotYetValidException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class TokenNotYetValidException : JsonWebTokenValidationException
     {
         public TokenNotYetValidException()
@@ -163,7 +163,7 @@ namespace Microsoft.VisualStudio.Services.WebApi.Jwt
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "TokenExpiredException", "Microsoft.VisualStudio.Services.WebApi.Jwt.TokenExpiredException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "TokenExpiredException", "GitHub.Services.WebApi.Jwt.TokenExpiredException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class TokenExpiredException : JsonWebTokenValidationException
     {
         public TokenExpiredException()
@@ -174,7 +174,7 @@ namespace Microsoft.VisualStudio.Services.WebApi.Jwt
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "InvalidAudienceException", "Microsoft.VisualStudio.Services.WebApi.Jwt.InvalidAudienceException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "InvalidAudienceException", "GitHub.Services.WebApi.Jwt.InvalidAudienceException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class InvalidAudienceException : JsonWebTokenValidationException
     {
         public InvalidAudienceException()
@@ -185,7 +185,7 @@ namespace Microsoft.VisualStudio.Services.WebApi.Jwt
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "InvalidTokenException", "Microsoft.VisualStudio.Services.WebApi.Jwt.InvalidTokenException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "InvalidTokenException", "GitHub.Services.WebApi.Jwt.InvalidTokenException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class InvalidTokenException : JsonWebTokenValidationException
     {
         public InvalidTokenException(string message)
@@ -196,7 +196,7 @@ namespace Microsoft.VisualStudio.Services.WebApi.Jwt
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "SignatureValidationException", "Microsoft.VisualStudio.Services.WebApi.Jwt.SignatureValidationException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "SignatureValidationException", "GitHub.Services.WebApi.Jwt.SignatureValidationException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class SignatureValidationException : JsonWebTokenValidationException
     {
         public SignatureValidationException()
@@ -207,7 +207,7 @@ namespace Microsoft.VisualStudio.Services.WebApi.Jwt
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "InvalidIssuerException", "Microsoft.VisualStudio.Services.WebApi.Jwt.InvalidIssuerException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "InvalidIssuerException", "GitHub.Services.WebApi.Jwt.InvalidIssuerException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class InvalidIssuerException : JsonWebTokenValidationException
     {
         public InvalidIssuerException()
@@ -218,7 +218,7 @@ namespace Microsoft.VisualStudio.Services.WebApi.Jwt
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "InvalidScopeException", "Microsoft.VisualStudio.Services.WebApi.Jwt.InvalidScopeException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "InvalidScopeException", "GitHub.Services.WebApi.Jwt.InvalidScopeException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class InvalidScopeException : JsonWebTokenValidationException
     {
         public InvalidScopeException()

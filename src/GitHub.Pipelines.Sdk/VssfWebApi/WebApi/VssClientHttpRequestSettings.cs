@@ -1,13 +1,13 @@
-using System;
+﻿using System;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.Security;
-using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.WebApi.Utilities.Internal;
+using GitHub.Services.Common;
+using GitHub.Services.WebApi.Utilities.Internal;
 using Microsoft.Win32;
 
-namespace Microsoft.VisualStudio.Services.WebApi
+namespace GitHub.Services.WebApi
 {
     /// <summary>
     /// Provides access to common settings which control the behavior of requests for a <c>VssHttpClient</c> instance.

@@ -1,6 +1,6 @@
-using System.Runtime.Serialization;
+﻿using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.MarketingPreferences
+namespace GitHub.Services.MarketingPreferences
 {
     [DataContract]
     public class MarketingPreferences

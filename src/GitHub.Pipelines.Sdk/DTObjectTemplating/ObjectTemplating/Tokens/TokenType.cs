@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Microsoft.TeamFoundation.DistributedTask.ObjectTemplating.Tokens
+namespace GitHub.DistributedTask.ObjectTemplating.Tokens
 {
     internal static class TokenType
     {

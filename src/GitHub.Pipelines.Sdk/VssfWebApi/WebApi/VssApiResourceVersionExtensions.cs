@@ -4,7 +4,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Net.Http.Headers;
 
-namespace Microsoft.VisualStudio.Services.WebApi
+namespace GitHub.Services.WebApi
 {
     /// <summary>
     /// Extension methods for getting/setting API resource version information from requests and to responses

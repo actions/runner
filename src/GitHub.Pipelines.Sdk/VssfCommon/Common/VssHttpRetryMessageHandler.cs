@@ -1,4 +1,4 @@
-﻿using Microsoft.VisualStudio.Services.Common.Diagnostics;
+﻿using GitHub.Services.Common.Diagnostics;
 using System;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -9,9 +9,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Linq;
-using Microsoft.VisualStudio.Services.Common.Internal;
+using GitHub.Services.Common.Internal;
 
-namespace Microsoft.VisualStudio.Services.Common
+namespace GitHub.Services.Common
 {
     /// <summary>
     /// Handles automatic replay of HTTP requests when errors are encountered based on a configurable set of options.

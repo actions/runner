@@ -1,4 +1,4 @@
-﻿namespace Microsoft.VisualStudio.Services.WebApi.Patch
+﻿namespace GitHub.Services.WebApi.Patch
 {
     /// <summary>
     /// Event for when a patch operation has been applied.

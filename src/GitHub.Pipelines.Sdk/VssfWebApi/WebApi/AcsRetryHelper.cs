@@ -1,9 +1,9 @@
 ﻿using System;
 using System.ComponentModel;
 using System.Net;
-using Microsoft.VisualStudio.Services.Common;
+using GitHub.Services.Common;
 
-namespace Microsoft.VisualStudio.Services.WebApi
+namespace GitHub.Services.WebApi
 {
     /// <summary>
     /// A helper class that that implements a retry strategy for ACS requests.

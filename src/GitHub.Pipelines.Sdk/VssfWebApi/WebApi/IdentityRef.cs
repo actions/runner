@@ -1,12 +1,12 @@
 ﻿using System;
 using System.ComponentModel;
 using System.Runtime.Serialization;
-using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.Graph.Client;
-using Microsoft.VisualStudio.Services.WebApi.Xml;
+using GitHub.Services.Common;
+using GitHub.Services.Graph.Client;
+using GitHub.Services.WebApi.Xml;
 using Newtonsoft.Json;
 
-namespace Microsoft.VisualStudio.Services.WebApi
+namespace GitHub.Services.WebApi
 {
     [JsonObject(MemberSerialization = MemberSerialization.OptIn)]
     [XmlSerializableDataContract(EnableCamelCaseNameCompat = true)]

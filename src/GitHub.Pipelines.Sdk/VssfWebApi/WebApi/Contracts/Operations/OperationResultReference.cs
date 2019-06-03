@@ -2,7 +2,7 @@
 using System.Globalization;
 using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.Operations
+namespace GitHub.Services.Operations
 {
     [DataContract]
     public class OperationResultReference

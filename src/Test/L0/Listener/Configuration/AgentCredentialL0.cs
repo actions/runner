@@ -1,9 +1,9 @@
-using Microsoft.VisualStudio.Services.Agent.Listener;
-using Microsoft.VisualStudio.Services.Agent.Listener.Configuration;
-using Microsoft.VisualStudio.Services.Client;
-using Microsoft.VisualStudio.Services.Common;
+﻿using Runner.Common.Listener;
+using Runner.Common.Listener.Configuration;
+using GitHub.Services.Client;
+using GitHub.Services.Common;
 
-namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
+namespace Runner.Common.Tests.Listener.Configuration
 {
     public class TestAgentCredential : CredentialProvider
     {

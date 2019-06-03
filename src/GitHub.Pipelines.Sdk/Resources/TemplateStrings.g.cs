@@ -1,6 +1,6 @@
 ﻿using System.Globalization;
 
-namespace Microsoft.TeamFoundation.DistributedTask.ObjectTemplating
+namespace GitHub.DistributedTask.ObjectTemplating
 {
     public static class TemplateStrings
     {

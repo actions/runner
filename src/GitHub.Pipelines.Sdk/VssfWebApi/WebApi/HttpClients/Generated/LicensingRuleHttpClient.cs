@@ -25,12 +25,12 @@ using System.Net.Http;
 using System.Net.Http.Formatting;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.Graph.Client;
-using Microsoft.VisualStudio.Services.Operations;
-using Microsoft.VisualStudio.Services.WebApi;
+using GitHub.Services.Common;
+using GitHub.Services.Graph.Client;
+using GitHub.Services.Operations;
+using GitHub.Services.WebApi;
 
-namespace Microsoft.VisualStudio.Services.GroupLicensingRule
+namespace GitHub.Services.GroupLicensingRule
 {
     [ResourceArea(LicensingRuleResourceIds.AreaId)]
     public class LicensingRuleHttpClient : VssHttpClientBase

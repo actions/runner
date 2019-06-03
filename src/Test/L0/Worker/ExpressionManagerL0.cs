@@ -1,13 +1,13 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-using Microsoft.TeamFoundation.DistributedTask.WebApi;
-using Microsoft.VisualStudio.Services.Agent.Worker;
+using GitHub.DistributedTask.WebApi;
+using Runner.Common.Worker;
 using Moq;
 using Xunit;
-using Microsoft.TeamFoundation.DistributedTask.Expressions;
+using GitHub.DistributedTask.Expressions;
 
-namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
+namespace Runner.Common.Tests.Worker
 {
     public sealed class ExpressionManagerL0
     {

@@ -2,12 +2,12 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
-using Microsoft.TeamFoundation.DistributedTask.Expressions;
-using Microsoft.TeamFoundation.DistributedTask.Logging;
-using Microsoft.TeamFoundation.DistributedTask.Pipelines.Expressions;
-using Microsoft.VisualStudio.Services.Common;
+using GitHub.DistributedTask.Expressions;
+using GitHub.DistributedTask.Logging;
+using GitHub.DistributedTask.Pipelines.Expressions;
+using GitHub.Services.Common;
 
-namespace Microsoft.TeamFoundation.DistributedTask.Pipelines.Runtime
+namespace GitHub.DistributedTask.Pipelines.Runtime
 {
     [EditorBrowsable(EditorBrowsableState.Never)]
     public abstract class GraphExecutionContext<TInstance> : PipelineExecutionContext where TInstance : IGraphNodeInstance

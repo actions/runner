@@ -6,10 +6,10 @@ using System.Globalization;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.VisualStudio.Services.Common.Diagnostics;
-using Microsoft.VisualStudio.Services.Common.Internal;
+using GitHub.Services.Common.Diagnostics;
+using GitHub.Services.Common.Internal;
 
-namespace Microsoft.VisualStudio.Services.Common
+namespace GitHub.Services.Common
 {
     /// <summary>
     /// The type of credentials supported natively by the framework
@@ -166,7 +166,7 @@ namespace Microsoft.VisualStudio.Services.Common
                 // the UI SyncrhonizationContext whose MaximumConcurrencyLevel is 1 and only has a single thread to 
                 // execute queued work. Then, if the UI thread invokes one of our synchronous methods that are just 
                 // wrappers that block until the asynchronous overload returns, and if the async Task queues work to 
-                // this TaskScheduler, like Microsoft.VisualStudio.Services.CommonGetTokenOperation.GetTokenAsync does, 
+                // this TaskScheduler, like GitHub.Services.CommonGetTokenOperation.GetTokenAsync does, 
                 // this will produce an immediate deadlock. It is a much safer choice to use TaskScheduler.Default here 
                 // as it uses the .NET Framework ThreadPool to execute queued work. 
                 scheduler = TaskScheduler.Default;

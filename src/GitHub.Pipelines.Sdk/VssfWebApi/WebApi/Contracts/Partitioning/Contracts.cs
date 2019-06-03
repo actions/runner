@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Runtime.Serialization;
-using Microsoft.VisualStudio.Services.Common;
+using GitHub.Services.Common;
 
-namespace Microsoft.VisualStudio.Services.Partitioning
+namespace GitHub.Services.Partitioning
 {
     [GenerateAllConstants]
     public static class PartitioningResourceIds

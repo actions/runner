@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Runtime.Serialization;
-using Microsoft.VisualStudio.Services.Common;
+using GitHub.Services.Common;
 
-namespace Microsoft.VisualStudio.Services.Directories
+namespace GitHub.Services.Directories
 {
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "DirectoryException", "Microsoft.VisualStudio.Services.Directories.DirectoryException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "DirectoryException", "GitHub.Services.Directories.DirectoryException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class DirectoryException : VssServiceException
     {
         public DirectoryException() : base()
@@ -30,7 +30,7 @@ namespace Microsoft.VisualStudio.Services.Directories
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "DirectoryParameterException", "Microsoft.VisualStudio.Services.Directories.DirectoryParameterException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "DirectoryParameterException", "GitHub.Services.Directories.DirectoryParameterException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class DirectoryParameterException : DirectoryException
     {
         public DirectoryParameterException() : base()
@@ -79,7 +79,7 @@ namespace Microsoft.VisualStudio.Services.Directories
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "DirectoryHostTypeNotSupportedException", "Microsoft.VisualStudio.Services.Directories.DirectoryHostTypeNotSupportedException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "DirectoryHostTypeNotSupportedException", "GitHub.Services.Directories.DirectoryHostTypeNotSupportedException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
         public class DirectoryHostTypeNotSupportedException : DirectoryException
     {
         public DirectoryHostTypeNotSupportedException() : base()

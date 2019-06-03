@@ -1,8 +1,8 @@
 ﻿using System.Runtime.Serialization;
-using Microsoft.VisualStudio.Services.WebApi;
-using CommonContracts = Microsoft.TeamFoundation.DistributedTask.Common.Contracts;
+using GitHub.Services.WebApi;
+using CommonContracts = GitHub.DistributedTask.Common.Contracts;
 
-namespace Microsoft.TeamFoundation.DistributedTask.WebApi
+namespace GitHub.DistributedTask.WebApi
 {
     [DataContract]
     public class TaskInputDefinition : CommonContracts.TaskInputDefinitionBase

@@ -1,13 +1,13 @@
 ﻿using System;
 using System.Diagnostics.CodeAnalysis;
-using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.WebApi;
+using GitHub.Services.Common;
+using GitHub.Services.WebApi;
 
-namespace Microsoft.VisualStudio.Services.FileContainer
+namespace GitHub.Services.FileContainer
 {
     [Serializable]
     [SuppressMessage("Microsoft.Usage", "CA2214:DoNotCallOverridableMethodsInConstructors")]
-    [ExceptionMapping("0.0", "3.0", "FileContainerException", "Microsoft.VisualStudio.Services.FileContainer.FileContainerException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "FileContainerException", "GitHub.Services.FileContainer.FileContainerException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public abstract class FileContainerException : VssServiceException
     {
         public FileContainerException()
@@ -30,7 +30,7 @@ namespace Microsoft.VisualStudio.Services.FileContainer
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "ArtifactUriNotSupportedException", "Microsoft.VisualStudio.Services.FileContainer.ArtifactUriNotSupportedException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "ArtifactUriNotSupportedException", "GitHub.Services.FileContainer.ArtifactUriNotSupportedException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class ArtifactUriNotSupportedException : FileContainerException
     {
         public ArtifactUriNotSupportedException(Uri artifactUri) :
@@ -51,7 +51,7 @@ namespace Microsoft.VisualStudio.Services.FileContainer
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "ContainerNotFoundException", "Microsoft.VisualStudio.Services.FileContainer.ContainerNotFoundException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "ContainerNotFoundException", "GitHub.Services.FileContainer.ContainerNotFoundException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class ContainerNotFoundException : FileContainerException
     {
         public ContainerNotFoundException() :
@@ -77,7 +77,7 @@ namespace Microsoft.VisualStudio.Services.FileContainer
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "ContainerItemNotFoundException", "Microsoft.VisualStudio.Services.FileContainer.ContainerItemNotFoundException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "ContainerItemNotFoundException", "GitHub.Services.FileContainer.ContainerItemNotFoundException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public sealed class ContainerItemNotFoundException : FileContainerException
     {
         public ContainerItemNotFoundException() :
@@ -108,7 +108,7 @@ namespace Microsoft.VisualStudio.Services.FileContainer
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "ContainerWriteAccessDeniedException", "Microsoft.VisualStudio.Services.FileContainer.ContainerWriteAccessDeniedException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "ContainerWriteAccessDeniedException", "GitHub.Services.FileContainer.ContainerWriteAccessDeniedException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class ContainerWriteAccessDeniedException : FileContainerException
     {
         public ContainerWriteAccessDeniedException(String message) :
@@ -124,7 +124,7 @@ namespace Microsoft.VisualStudio.Services.FileContainer
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "ContainerItemExistsException", "Microsoft.VisualStudio.Services.FileContainer.ContainerItemExistsException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "ContainerItemExistsException", "GitHub.Services.FileContainer.ContainerItemExistsException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public sealed class ContainerItemExistsException : FileContainerException
     {
         public ContainerItemExistsException(ContainerItemType itemType, String existingPath)
@@ -145,7 +145,7 @@ namespace Microsoft.VisualStudio.Services.FileContainer
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "ContainerItemCopyTargetChildOfSourceException", "Microsoft.VisualStudio.Services.FileContainer.ContainerItemCopyTargetChildOfSourceException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "ContainerItemCopyTargetChildOfSourceException", "GitHub.Services.FileContainer.ContainerItemCopyTargetChildOfSourceException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public sealed class ContainerItemCopyTargetChildOfSourceException : FileContainerException
     {
         public ContainerItemCopyTargetChildOfSourceException(String targetPath, String sourcePath)
@@ -166,7 +166,7 @@ namespace Microsoft.VisualStudio.Services.FileContainer
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "ContainerItemCopySourcePendingUploadException", "Microsoft.VisualStudio.Services.FileContainer.ContainerItemCopySourcePendingUploadException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "ContainerItemCopySourcePendingUploadException", "GitHub.Services.FileContainer.ContainerItemCopySourcePendingUploadException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public sealed class ContainerItemCopySourcePendingUploadException : FileContainerException
     {
         public ContainerItemCopySourcePendingUploadException(String sourcePath)
@@ -182,7 +182,7 @@ namespace Microsoft.VisualStudio.Services.FileContainer
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "ContainerItemCopyDuplicateTargetsException", "Microsoft.VisualStudio.Services.FileContainer.ContainerItemCopyDuplicateTargetsException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "ContainerItemCopyDuplicateTargetsException", "GitHub.Services.FileContainer.ContainerItemCopyDuplicateTargetsException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public sealed class ContainerItemCopyDuplicateTargetsException : FileContainerException
     {
         public ContainerItemCopyDuplicateTargetsException(String targetPath)
@@ -198,7 +198,7 @@ namespace Microsoft.VisualStudio.Services.FileContainer
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "PendingUploadNotFoundException", "Microsoft.VisualStudio.Services.FileContainer.PendingUploadNotFoundException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "PendingUploadNotFoundException", "GitHub.Services.FileContainer.PendingUploadNotFoundException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class PendingUploadNotFoundException : FileContainerException
     {
         public PendingUploadNotFoundException(Int32 uploadId) :
@@ -219,7 +219,7 @@ namespace Microsoft.VisualStudio.Services.FileContainer
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "ContainerAlreadyExistsException", "Microsoft.VisualStudio.Services.FileContainer.ContainerAlreadyExistsException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "ContainerAlreadyExistsException", "GitHub.Services.FileContainer.ContainerAlreadyExistsException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public sealed class ContainerAlreadyExistsException : FileContainerException
     {
         public ContainerAlreadyExistsException(String artifactUri)
@@ -235,7 +235,7 @@ namespace Microsoft.VisualStudio.Services.FileContainer
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "ContainerUnexpectedContentTypeException", "Microsoft.VisualStudio.Services.FileContainer.ContainerUnexpectedContentTypeException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "ContainerUnexpectedContentTypeException", "GitHub.Services.FileContainer.ContainerUnexpectedContentTypeException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public sealed class ContainerUnexpectedContentTypeException : FileContainerException
     {
         public ContainerUnexpectedContentTypeException(String expectedContent, String actualContent)
@@ -256,7 +256,7 @@ namespace Microsoft.VisualStudio.Services.FileContainer
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "ContainerNoContentException", "Microsoft.VisualStudio.Services.FileContainer.ContainerNoContentException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "ContainerNoContentException", "GitHub.Services.FileContainer.ContainerNoContentException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public sealed class ContainerNoContentException : FileContainerException
     {
         public ContainerNoContentException()
@@ -277,7 +277,7 @@ namespace Microsoft.VisualStudio.Services.FileContainer
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "ContainerItemContentException", "Microsoft.VisualStudio.Services.FileContainer.ContainerItemContentException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "ContainerItemContentException", "GitHub.Services.FileContainer.ContainerItemContentException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public sealed class ContainerItemContentException : FileContainerException
     {
         public ContainerItemContentException()
@@ -299,7 +299,7 @@ namespace Microsoft.VisualStudio.Services.FileContainer
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "ContainerContentIdCollisionException", "Microsoft.VisualStudio.Services.FileContainer.ContainerContentIdCollisionException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "ContainerContentIdCollisionException", "GitHub.Services.FileContainer.ContainerContentIdCollisionException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public sealed class ContainerContentIdCollisionException : FileContainerException
     {
         public ContainerContentIdCollisionException(String fileId1, String length1, String fileId2, String length2)
@@ -321,7 +321,7 @@ namespace Microsoft.VisualStudio.Services.FileContainer
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "ContainerItemCreateDuplicateItemException", "Microsoft.VisualStudio.Services.FileContainer.ContainerItemCreateDuplicateItemException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "ContainerItemCreateDuplicateItemException", "GitHub.Services.FileContainer.ContainerItemCreateDuplicateItemException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public sealed class ContainerItemCreateDuplicateItemException : FileContainerException
     {
         public ContainerItemCreateDuplicateItemException(String targetPath)
@@ -337,7 +337,7 @@ namespace Microsoft.VisualStudio.Services.FileContainer
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "ContainerDeleteFailedException", "Microsoft.VisualStudio.Services.FileContainer.ContainerDeleteFailedException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "ContainerDeleteFailedException", "GitHub.Services.FileContainer.ContainerDeleteFailedException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public sealed class ContainerDeleteFailedException : FileContainerException
     {
         public ContainerDeleteFailedException(String targetContainerPath)
@@ -349,7 +349,7 @@ namespace Microsoft.VisualStudio.Services.FileContainer
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "ContainerItemUpdateFailedException", "Microsoft.VisualStudio.Services.FileContainer.ContainerItemUpdateFailedException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "ContainerItemUpdateFailedException", "GitHub.Services.FileContainer.ContainerItemUpdateFailedException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public sealed class ContainerItemUpdateFailedException : FileContainerException
     {
         public ContainerItemUpdateFailedException(String targetPath)

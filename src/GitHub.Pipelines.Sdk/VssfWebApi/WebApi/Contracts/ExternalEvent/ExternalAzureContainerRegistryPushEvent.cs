@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Runtime.Serialization;
-using Microsoft.VisualStudio.Services.WebApi;
+using GitHub.Services.WebApi;
 
-namespace Microsoft.VisualStudio.Services.ExternalEvent
+namespace GitHub.Services.ExternalEvent
 {
     [DataContract]
     [ClientInternalUseOnly]

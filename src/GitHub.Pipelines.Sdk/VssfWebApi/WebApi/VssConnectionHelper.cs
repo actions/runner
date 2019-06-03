@@ -3,11 +3,11 @@ using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.Location;
-using Microsoft.VisualStudio.Services.Organization;
+using GitHub.Services.Common;
+using GitHub.Services.Location;
+using GitHub.Services.Organization;
 
-namespace Microsoft.VisualStudio.Services.WebApi
+namespace GitHub.Services.WebApi
 {
     /// <summary>
     /// Helper methods for connecting to VSTS resources.

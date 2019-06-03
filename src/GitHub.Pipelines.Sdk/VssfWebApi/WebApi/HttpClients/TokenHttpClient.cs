@@ -4,11 +4,11 @@ using System.Collections.Specialized;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.Identity;
-using Microsoft.VisualStudio.Services.Tokens;
+using GitHub.Services.Common;
+using GitHub.Services.Identity;
+using GitHub.Services.Tokens;
 
-namespace Microsoft.VisualStudio.Services.WebApi.HttpClients
+namespace GitHub.Services.WebApi.HttpClients
 {
     [ResourceArea(TokenResourceIds.AreaId)]
     public class TokenHttpClient : VssHttpClientBase

@@ -3,12 +3,12 @@ using System.Runtime.Serialization;
 using System.Xml;
 using System.Xml.Schema;
 using System.Xml.Serialization;
-using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.WebApi;
-using Microsoft.VisualStudio.Services.WebApi.Xml;
+using GitHub.Services.Common;
+using GitHub.Services.WebApi;
+using GitHub.Services.WebApi.Xml;
 using Newtonsoft.Json;
 
-namespace Microsoft.VisualStudio.Services.Graph.Client
+namespace GitHub.Services.Graph.Client
 {
     [JsonObject(MemberSerialization = MemberSerialization.OptIn)]
     [XmlSerializableDataContract]

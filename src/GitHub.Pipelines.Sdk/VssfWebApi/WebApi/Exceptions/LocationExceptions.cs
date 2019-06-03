@@ -1,14 +1,14 @@
-﻿using Microsoft.VisualStudio.Services.Common;
+﻿using GitHub.Services.Common;
 using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.Serialization;
-using Microsoft.VisualStudio.Services.WebApi;
+using GitHub.Services.WebApi;
 
-namespace Microsoft.VisualStudio.Services.Location
+namespace GitHub.Services.Location
 {
     [Serializable]
     [SuppressMessageAttribute("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "ServiceDefinitionDoesNotExistException", "Microsoft.VisualStudio.Services.Location.ServiceDefinitionDoesNotExistException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "ServiceDefinitionDoesNotExistException", "GitHub.Services.Location.ServiceDefinitionDoesNotExistException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public partial class ServiceDefinitionDoesNotExistException : VssServiceException
     {
         public ServiceDefinitionDoesNotExistException(String message)
@@ -29,7 +29,7 @@ namespace Microsoft.VisualStudio.Services.Location
 
     [Serializable]
     [SuppressMessageAttribute("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "InvalidAccessPointException", "Microsoft.VisualStudio.Services.Location.InvalidAccessPointException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "InvalidAccessPointException", "GitHub.Services.Location.InvalidAccessPointException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public partial class InvalidAccessPointException : VssServiceException
     {
         public InvalidAccessPointException(String message)
@@ -50,7 +50,7 @@ namespace Microsoft.VisualStudio.Services.Location
 
     [Serializable]
     [SuppressMessageAttribute("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "InvalidServiceDefinitionException", "Microsoft.VisualStudio.Services.Location.InvalidServiceDefinitionException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "InvalidServiceDefinitionException", "GitHub.Services.Location.InvalidServiceDefinitionException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public partial class InvalidServiceDefinitionException : VssServiceException
     {
         public InvalidServiceDefinitionException(String message)
@@ -71,7 +71,7 @@ namespace Microsoft.VisualStudio.Services.Location
 
     [Serializable]
     [SuppressMessageAttribute("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "CannotChangeParentDefinitionException", "Microsoft.VisualStudio.Services.Location.CannotChangeParentDefinitionException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "CannotChangeParentDefinitionException", "GitHub.Services.Location.CannotChangeParentDefinitionException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public partial class CannotChangeParentDefinitionException : VssServiceException
     {
         public CannotChangeParentDefinitionException()
@@ -108,7 +108,7 @@ namespace Microsoft.VisualStudio.Services.Location
 
     [Serializable]
     [SuppressMessageAttribute("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "ParentDefinitionNotFoundException", "Microsoft.VisualStudio.Services.Location.ParentDefinitionNotFoundException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "ParentDefinitionNotFoundException", "GitHub.Services.Location.ParentDefinitionNotFoundException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public partial class ParentDefinitionNotFoundException : VssServiceException
     {
         public ParentDefinitionNotFoundException(String serviceType, Guid identifier, String parentServiceType, Guid serviceInstance)
@@ -134,7 +134,7 @@ namespace Microsoft.VisualStudio.Services.Location
 
     [Serializable]
     [SuppressMessageAttribute("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "ActionDeniedBySubscriberException", "Microsoft.VisualStudio.Services.Location.ActionDeniedBySubscriberException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "ActionDeniedBySubscriberException", "GitHub.Services.Location.ActionDeniedBySubscriberException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public partial class ActionDeniedBySubscriberException : VssServiceException
     {
         public ActionDeniedBySubscriberException(String message)

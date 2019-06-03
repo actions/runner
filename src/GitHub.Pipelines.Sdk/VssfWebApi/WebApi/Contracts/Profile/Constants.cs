@@ -1,4 +1,4 @@
-namespace Microsoft.VisualStudio.Services.Profile
+﻿namespace GitHub.Services.Profile
 {
     public static class ServiceSettings
     {

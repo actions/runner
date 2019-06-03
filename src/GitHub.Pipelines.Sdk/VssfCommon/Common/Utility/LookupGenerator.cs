@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Microsoft.VisualStudio.Services.Common.Utility
+namespace GitHub.Services.Common.Utility
 {
     /// <summary>
     /// The <see cref="LookupGenerator"/> is a collection of functions to create 

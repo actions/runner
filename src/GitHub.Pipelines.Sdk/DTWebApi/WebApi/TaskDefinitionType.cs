@@ -1,7 +1,7 @@
 ﻿
 using System;
 
-namespace Microsoft.TeamFoundation.DistributedTask.WebApi
+namespace GitHub.DistributedTask.WebApi
 {
     public class TaskDefinitionType
     {

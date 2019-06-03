@@ -1,6 +1,6 @@
 ﻿using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.Servicing
+namespace GitHub.Services.Servicing
 {
     [DataContract]
     public class ServiceLevelData

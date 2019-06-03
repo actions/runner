@@ -1,11 +1,11 @@
-﻿using Microsoft.VisualStudio.Services.Common;
+﻿using GitHub.Services.Common;
 using System;
 using System.Diagnostics.CodeAnalysis;
 
-namespace Microsoft.VisualStudio.Services.Licensing
+namespace GitHub.Services.Licensing
 {
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "LicensingException", "Microsoft.VisualStudio.Services.Licensing.LicensingException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "LicensingException", "GitHub.Services.Licensing.LicensingException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public abstract class LicensingException : VssServiceException
     {
         public LicensingException(string message)
@@ -17,7 +17,7 @@ namespace Microsoft.VisualStudio.Services.Licensing
         { }
     }
 
-    [ExceptionMapping("0.0", "3.0", "LicenseServiceUnavailableException", "Microsoft.VisualStudio.Services.Licensing.InvalidRightNameException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "LicenseServiceUnavailableException", "GitHub.Services.Licensing.InvalidRightNameException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
 
     public class LicenseServiceUnavailableException : VssServiceException
     {
@@ -39,7 +39,7 @@ namespace Microsoft.VisualStudio.Services.Licensing
     [Serializable]
     [SuppressMessage("Microsoft.Usage", "CA2240:ImplementISerializableCorrectly")]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "InvalidRightNameException", "Microsoft.VisualStudio.Services.Licensing.InvalidRightNameException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "InvalidRightNameException", "GitHub.Services.Licensing.InvalidRightNameException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class InvalidRightNameException : LicensingException
     {
         public InvalidRightNameException()
@@ -58,7 +58,7 @@ namespace Microsoft.VisualStudio.Services.Licensing
     [Serializable]
     [SuppressMessage("Microsoft.Usage", "CA2240:ImplementISerializableCorrectly")]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "InvalidClientVersionException", "Microsoft.VisualStudio.Services.Licensing.InvalidClientVersionException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "InvalidClientVersionException", "GitHub.Services.Licensing.InvalidClientVersionException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class InvalidClientVersionException : LicensingException
     {
         public InvalidClientVersionException()
@@ -77,7 +77,7 @@ namespace Microsoft.VisualStudio.Services.Licensing
     [Serializable]
     [SuppressMessage("Microsoft.Usage", "CA2240:ImplementISerializableCorrectly")]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "InvalidClientRightsQueryContextException", "Microsoft.VisualStudio.Services.Licensing.InvalidClientRightsQueryContextException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "InvalidClientRightsQueryContextException", "GitHub.Services.Licensing.InvalidClientRightsQueryContextException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class InvalidClientRightsQueryContextException : LicensingException
     {
         public InvalidClientRightsQueryContextException()
@@ -96,7 +96,7 @@ namespace Microsoft.VisualStudio.Services.Licensing
     [Serializable]
     [SuppressMessage("Microsoft.Usage", "CA2240:ImplementISerializableCorrectly")]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "InvalidVisualStudioOffersQueryContextException", "Microsoft.VisualStudio.Services.Licensing.InvalidVisualStudioOffersQueryContextException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "InvalidVisualStudioOffersQueryContextException", "GitHub.Services.Licensing.InvalidVisualStudioOffersQueryContextException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class InvalidVisualStudioOffersQueryContextException : LicensingException
     {
         public InvalidVisualStudioOffersQueryContextException()
@@ -115,7 +115,7 @@ namespace Microsoft.VisualStudio.Services.Licensing
     [Serializable]
     [SuppressMessage("Microsoft.Usage", "CA2240:ImplementISerializableCorrectly")]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "LicenseNotAvailableException", "Microsoft.VisualStudio.Services.Licensing.LicenseNotAvailableException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "LicenseNotAvailableException", "GitHub.Services.Licensing.LicenseNotAvailableException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class LicenseNotAvailableException : LicensingException
     {
         public LicenseNotAvailableException()
@@ -134,7 +134,7 @@ namespace Microsoft.VisualStudio.Services.Licensing
     [Serializable]
     [SuppressMessage("Microsoft.Usage", "CA2240:ImplementISerializableCorrectly")]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "InvalidExtensionIdException", "Microsoft.VisualStudio.Services.Licensing.InvalidExtensionIdException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "InvalidExtensionIdException", "GitHub.Services.Licensing.InvalidExtensionIdException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class InvalidExtensionIdException : LicensingException
     {
         public InvalidExtensionIdException()
@@ -153,7 +153,7 @@ namespace Microsoft.VisualStudio.Services.Licensing
     [Serializable]
     [SuppressMessage("Microsoft.Usage", "CA2240:ImplementISerializableCorrectly")]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "InvalidLicensingOperation", "Microsoft.VisualStudio.Services.Licensing.InvalidLicensingOperation, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "InvalidLicensingOperation", "GitHub.Services.Licensing.InvalidLicensingOperation, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class InvalidLicensingOperation : LicensingException
     {
         public InvalidLicensingOperation()
@@ -172,7 +172,7 @@ namespace Microsoft.VisualStudio.Services.Licensing
     [Serializable]
     [SuppressMessage("Microsoft.Usage", "CA2240:ImplementISerializableCorrectly")]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "TransferUserLicenseException", "Microsoft.VisualStudio.Services.Licensing.InvalidLicensingOperation, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "TransferUserLicenseException", "GitHub.Services.Licensing.InvalidLicensingOperation, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class TransferUserLicenseException : LicensingException
     {
         public TransferUserLicenseException()
@@ -191,7 +191,7 @@ namespace Microsoft.VisualStudio.Services.Licensing
     [Serializable]
     [SuppressMessage("Microsoft.Usage", "CA2240:ImplementISerializableCorrectly")]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "MaterializationFailedDuringLicensingException", "Microsoft.VisualStudio.Services.Licensing.MaterializationFailedDuringLicensingException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "MaterializationFailedDuringLicensingException", "GitHub.Services.Licensing.MaterializationFailedDuringLicensingException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class MaterializationFailedDuringLicensingException : LicensingException
     {
         public MaterializationFailedDuringLicensingException()

@@ -1,8 +1,8 @@
-﻿using Microsoft.VisualStudio.Services.WebApi.Jwt;
+﻿using GitHub.Services.WebApi.Jwt;
 using System;
 using System.ComponentModel;
 
-namespace Microsoft.VisualStudio.Services.DelegatedAuthorization
+namespace GitHub.Services.DelegatedAuthorization
 {
     public class AccessToken
     {

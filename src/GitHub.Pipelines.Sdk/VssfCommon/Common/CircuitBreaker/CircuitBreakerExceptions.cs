@@ -11,17 +11,17 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-using Microsoft.VisualStudio.Services.Common;
+using GitHub.Services.Common;
 using System;
 using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.CircuitBreaker
+namespace GitHub.Services.CircuitBreaker
 {
     /// <summary>
     /// Base class for all CB exceptions to facilitate easier handling of circuit breaker exceptions.
     /// </summary>
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "CircuitBreakerException", "Microsoft.VisualStudio.Services.CircuitBreaker.CircuitBreakerException, Microsoft.VisualStudio.Services.Common, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "CircuitBreakerException", "GitHub.Services.CircuitBreaker.CircuitBreakerException, GitHub.Services.Common, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public abstract class CircuitBreakerException : VssException
     {
         /// <summary>
@@ -47,7 +47,7 @@ namespace Microsoft.VisualStudio.Services.CircuitBreaker
     /// a <see cref="Command"/> fails and does not have a fallback.
     /// </summary>
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "CircuitBreakerShortCircuitException", "Microsoft.VisualStudio.Services.CircuitBreaker.CircuitBreakerShortCircuitException, Microsoft.VisualStudio.Services.Common, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "CircuitBreakerShortCircuitException", "GitHub.Services.CircuitBreaker.CircuitBreakerShortCircuitException, GitHub.Services.Common, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class CircuitBreakerShortCircuitException : CircuitBreakerException
     {
         /// <summary>
@@ -73,7 +73,7 @@ namespace Microsoft.VisualStudio.Services.CircuitBreaker
     /// the maximum number of concurrent requests permitted to Command.Run() is exceeded.
     /// </summary>
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "CircuitBreakerExceededConcurrencyException", "Microsoft.VisualStudio.Services.CircuitBreaker.CircuitBreakerExceededConcurrencyException, Microsoft.VisualStudio.Services.Common, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "CircuitBreakerExceededConcurrencyException", "GitHub.Services.CircuitBreaker.CircuitBreakerExceededConcurrencyException, GitHub.Services.Common, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class CircuitBreakerExceededConcurrencyException : CircuitBreakerException
     {
         /// <summary>
@@ -99,7 +99,7 @@ namespace Microsoft.VisualStudio.Services.CircuitBreaker
     /// the maximum number of requests permitted to Command.Run() is exceeded.
     /// </summary>
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "CircuitBreakerExceededExecutionLimitException", "Microsoft.VisualStudio.Services.CircuitBreaker.CircuitBreakerExceededExecutionLimitException, Microsoft.VisualStudio.Services.Common, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "CircuitBreakerExceededExecutionLimitException", "GitHub.Services.CircuitBreaker.CircuitBreakerExceededExecutionLimitException, GitHub.Services.Common, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class CircuitBreakerExceededExecutionLimitException : CircuitBreakerException
     {
         /// <summary>

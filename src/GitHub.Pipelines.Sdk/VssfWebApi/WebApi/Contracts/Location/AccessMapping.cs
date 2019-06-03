@@ -1,11 +1,11 @@
-﻿using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.WebApi;
+﻿using GitHub.Services.Common;
+using GitHub.Services.WebApi;
 using System;
 using System.Diagnostics;
 using System.Runtime.Serialization;
 using System.Xml;
 
-namespace Microsoft.VisualStudio.Services.Location
+namespace GitHub.Services.Location
 {
     /// <summary>
     /// 

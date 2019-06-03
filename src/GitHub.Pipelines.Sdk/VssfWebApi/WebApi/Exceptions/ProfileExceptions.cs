@@ -1,12 +1,12 @@
-﻿using Microsoft.VisualStudio.Services.Common;
+﻿using GitHub.Services.Common;
 using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.Serialization;
 
-namespace Microsoft.VisualStudio.Services.Profile
+namespace GitHub.Services.Profile
 {
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "ProfileException", "Microsoft.VisualStudio.Services.Profile.ProfileException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "ProfileException", "GitHub.Services.Profile.ProfileException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class ProfileException : VssServiceException
     {
         public ProfileException()
@@ -36,7 +36,7 @@ namespace Microsoft.VisualStudio.Services.Profile
     #region Common Exceptions
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "BadProfileRequestException", "Microsoft.VisualStudio.Services.Profile.BadProfileRequestException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "BadProfileRequestException", "GitHub.Services.Profile.BadProfileRequestException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class BadProfileRequestException : ProfileException
     {
         protected BadProfileRequestException()
@@ -60,7 +60,7 @@ namespace Microsoft.VisualStudio.Services.Profile
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "ProfileServiceUnavailableException", "Microsoft.VisualStudio.Services.Profile.ProfileServiceUnavailableException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "ProfileServiceUnavailableException", "GitHub.Services.Profile.ProfileServiceUnavailableException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class ProfileServiceUnavailableException : VssServiceException
     {
         public ProfileServiceUnavailableException()
@@ -88,7 +88,7 @@ namespace Microsoft.VisualStudio.Services.Profile
     #region Avatar related exceptions
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "AvatarTooBigException", "Microsoft.VisualStudio.Services.Profile.AvatarTooBigException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "AvatarTooBigException", "GitHub.Services.Profile.AvatarTooBigException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class AvatarTooBigException : ProfileException
     {
         public AvatarTooBigException()
@@ -112,7 +112,7 @@ namespace Microsoft.VisualStudio.Services.Profile
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "AvatarTooBigException", "Microsoft.VisualStudio.Services.Profile.AvatarTooBigException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "AvatarTooBigException", "GitHub.Services.Profile.AvatarTooBigException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class AvatarTooSmallException : ProfileException
     {
         public AvatarTooSmallException()
@@ -136,7 +136,7 @@ namespace Microsoft.VisualStudio.Services.Profile
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "BadAvatarValueException", "Microsoft.VisualStudio.Services.Profile.BadAvatarValueException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "BadAvatarValueException", "GitHub.Services.Profile.BadAvatarValueException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class BadAvatarValueException : BadProfileRequestException
     {
         public BadAvatarValueException()
@@ -164,7 +164,7 @@ namespace Microsoft.VisualStudio.Services.Profile
     #region Profile operations related exceptions
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "ProfileDoesNotExistException", "Microsoft.VisualStudio.Services.Profile.ProfileDoesNotExistException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "ProfileDoesNotExistException", "GitHub.Services.Profile.ProfileDoesNotExistException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class ProfileDoesNotExistException : ProfileException
     {
         public ProfileDoesNotExistException()
@@ -188,7 +188,7 @@ namespace Microsoft.VisualStudio.Services.Profile
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "ProfileAlreadyExistsException", "Microsoft.VisualStudio.Services.Profile.ProfileAlreadyExistsException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "ProfileAlreadyExistsException", "GitHub.Services.Profile.ProfileAlreadyExistsException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class ProfileAlreadyExistsException : ProfileException
     {
         public ProfileAlreadyExistsException()
@@ -212,7 +212,7 @@ namespace Microsoft.VisualStudio.Services.Profile
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "NewerVersionOfProfileExists", "Microsoft.VisualStudio.Services.Profile.NewerVersionOfProfileExists, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "NewerVersionOfProfileExists", "GitHub.Services.Profile.NewerVersionOfProfileExists, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class NewerVersionOfProfileExists : ProfileException
     {
         public NewerVersionOfProfileExists()
@@ -231,7 +231,7 @@ namespace Microsoft.VisualStudio.Services.Profile
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "BadServiceSettingNameException", "Microsoft.VisualStudio.Services.Profile.BadServiceSettingNameException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "BadServiceSettingNameException", "GitHub.Services.Profile.BadServiceSettingNameException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class BadServiceSettingNameException : BadProfileRequestException
     {
         public BadServiceSettingNameException()
@@ -255,7 +255,7 @@ namespace Microsoft.VisualStudio.Services.Profile
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "ServiceSettingNotFoundException", "Microsoft.VisualStudio.Services.Profile.ServiceSettingNotFoundException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "ServiceSettingNotFoundException", "GitHub.Services.Profile.ServiceSettingNotFoundException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class ServiceSettingNotFoundException : ProfileResourceNotFoundException
     {
         public ServiceSettingNotFoundException()
@@ -279,7 +279,7 @@ namespace Microsoft.VisualStudio.Services.Profile
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "ProfileResourceNotFoundException", "Microsoft.VisualStudio.Services.Profile.ProfileResourceNotFoundException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "ProfileResourceNotFoundException", "GitHub.Services.Profile.ProfileResourceNotFoundException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class ProfileResourceNotFoundException : ProfileException
     {
         protected ProfileResourceNotFoundException()
@@ -307,7 +307,7 @@ namespace Microsoft.VisualStudio.Services.Profile
     #region Attributes related exceptions
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "ProfileAttributeNotFoundException", "Microsoft.VisualStudio.Services.Profile.ProfileAttributeNotFoundException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "ProfileAttributeNotFoundException", "GitHub.Services.Profile.ProfileAttributeNotFoundException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class ProfileAttributeNotFoundException : ProfileException
     {
         public ProfileAttributeNotFoundException()
@@ -330,7 +330,7 @@ namespace Microsoft.VisualStudio.Services.Profile
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "NewerVersionOfResourceExistsException", "Microsoft.VisualStudio.Services.Profile.NewerVersionOfResourceExistsException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "NewerVersionOfResourceExistsException", "GitHub.Services.Profile.NewerVersionOfResourceExistsException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class NewerVersionOfResourceExistsException : ProfileException
     {
         public NewerVersionOfResourceExistsException()
@@ -354,7 +354,7 @@ namespace Microsoft.VisualStudio.Services.Profile
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "AttributeValueTooBigException", "Microsoft.VisualStudio.Services.Profile.AttributeValueTooBigException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "AttributeValueTooBigException", "GitHub.Services.Profile.AttributeValueTooBigException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class AttributeValueTooBigException : ProfileException
     {
         public AttributeValueTooBigException()
@@ -379,7 +379,7 @@ namespace Microsoft.VisualStudio.Services.Profile
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
-    [ExceptionMapping("0.0", "3.0", "BadAttributeValueException", "Microsoft.VisualStudio.Services.Profile.BadAttributeValueException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "BadAttributeValueException", "GitHub.Services.Profile.BadAttributeValueException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class BadAttributeValueException : BadProfileRequestException
     {
         public BadAttributeValueException()
@@ -407,7 +407,7 @@ namespace Microsoft.VisualStudio.Services.Profile
     #region Properties (PublicAlias, EmailAddress, DisplayName) related exceptions
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "PublicAliasAlreadyExistException", "Microsoft.VisualStudio.Services.Profile.PublicAliasAlreadyExistException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "PublicAliasAlreadyExistException", "GitHub.Services.Profile.PublicAliasAlreadyExistException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class PublicAliasAlreadyExistException : ProfileException
     {
         public PublicAliasAlreadyExistException()
@@ -431,7 +431,7 @@ namespace Microsoft.VisualStudio.Services.Profile
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "BadDisplayNameException", "Microsoft.VisualStudio.Services.Profile.BadDisplayNameException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "BadDisplayNameException", "GitHub.Services.Profile.BadDisplayNameException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class BadDisplayNameException : BadProfileRequestException
     {
         public BadDisplayNameException()
@@ -455,7 +455,7 @@ namespace Microsoft.VisualStudio.Services.Profile
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "BadCountryNameException", "Microsoft.VisualStudio.Services.Profile.BadCountryNameException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "BadCountryNameException", "GitHub.Services.Profile.BadCountryNameException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class BadCountryNameException : BadProfileRequestException
     {
         public BadCountryNameException()
@@ -479,7 +479,7 @@ namespace Microsoft.VisualStudio.Services.Profile
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "BadPublicAliasException", "Microsoft.VisualStudio.Services.Profile.BadPublicAliasException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "BadPublicAliasException", "GitHub.Services.Profile.BadPublicAliasException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class BadPublicAliasException : BadProfileRequestException
     {
         public BadPublicAliasException()
@@ -503,7 +503,7 @@ namespace Microsoft.VisualStudio.Services.Profile
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "BadEmailAddressException", "Microsoft.VisualStudio.Services.Profile.BadEmailAddressException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "BadEmailAddressException", "GitHub.Services.Profile.BadEmailAddressException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class BadEmailAddressException : BadProfileRequestException
     {
         public BadEmailAddressException()
@@ -531,7 +531,7 @@ namespace Microsoft.VisualStudio.Services.Profile
     #region AEX
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "AexServiceUnavailableException", "Microsoft.VisualStudio.Services.Profile.AexServiceUnavailableException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "AexServiceUnavailableException", "GitHub.Services.Profile.AexServiceUnavailableException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class AexServiceUnavailableException : VssServiceException
     {
         public AexServiceUnavailableException()
@@ -558,7 +558,7 @@ namespace Microsoft.VisualStudio.Services.Profile
     #region Authorization related
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "ProfileServiceSecurityException", "Microsoft.VisualStudio.Services.Profile.ProfileServiceSecurityException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "ProfileServiceSecurityException", "GitHub.Services.Profile.ProfileServiceSecurityException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class ProfileServiceSecurityException : ProfileException
     {
         public ProfileServiceSecurityException()
@@ -582,7 +582,7 @@ namespace Microsoft.VisualStudio.Services.Profile
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "ProfileNotAuthorizedException", "Microsoft.VisualStudio.Services.Profile.ProfileNotAuthorizedException, Microsoft.VisualStudio.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    [ExceptionMapping("0.0", "3.0", "ProfileNotAuthorizedException", "GitHub.Services.Profile.ProfileNotAuthorizedException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public class ProfileNotAuthorizedException : ProfileException
     {
         public ProfileNotAuthorizedException()

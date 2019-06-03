@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Net;
 
-namespace Microsoft.VisualStudio.Services.Common
+namespace GitHub.Services.Common
 {
     public sealed class WindowsToken : IssuedToken, ICredentials
     {

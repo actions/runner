@@ -1,5 +1,5 @@
 ﻿
-namespace Microsoft.VisualStudio.Services.Common.Diagnostics
+namespace GitHub.Services.Common.Diagnostics
 {
     internal enum VssHttpMethod
     {
