@@ -11,12 +11,12 @@ namespace GitHub.Runner.Common
         public Type Default { get; set; }
     }
 
-    public interface IAgentService
+    public interface IRunnerService
     {
         void Initialize(IHostContext context);
     }
 
-    public abstract class AgentService
+    public abstract class RunnerService
     {
         protected IHostContext HostContext { get; private set; }
         protected Tracing Trace { get; private set; }

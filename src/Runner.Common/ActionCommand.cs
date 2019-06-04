@@ -26,6 +26,7 @@ namespace GitHub.Runner.Common
 
         public string Command { get; }
 
+
         public Dictionary<string, string> Properties => _properties;
 
         public string Data { get; set; }

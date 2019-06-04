@@ -9,7 +9,7 @@ using GitHub.Runner.Sdk;
 
 namespace GitHub.Runner.Listener.Configuration
 {
-    public class RSAFileKeyManager : AgentService, IRSAKeyManager
+    public class RSAFileKeyManager : RunnerService, IRSAKeyManager
     {
         private string _keyFile;
         private IHostContext _context;
@@ -85,7 +85,7 @@ namespace GitHub.Runner.Listener.Configuration
             return rsa;
         }
 
-        void IAgentService.Initialize(IHostContext context)
+        void IRunnerService.Initialize(IHostContext context)
         {
             base.Initialize(context);
 

@@ -7,6 +7,7 @@ using System.Net.Http.Headers;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
+using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Services.Common;
 using GitHub.Services.WebApi;
@@ -15,7 +16,7 @@ using Pipelines = GitHub.DistributedTask.Pipelines;
 
 namespace GitHub.Runner.Sdk
 {
-    public interface IAgentLogPlugin
+    public interface IRunnerLogPlugin
     {
         // Short meaningful name for the plugin.
         // Any outputs from the pluging will be prefixed with the name.
@@ -23,16 +24,16 @@ namespace GitHub.Runner.Sdk
 
         // Get call when plugin host load up all plugins for the first time.
         // return `False` will tells the plugin host not longer forward log line to the plugin
-        Task<bool> InitializeAsync(IAgentLogPluginContext context);
+        Task<bool> InitializeAsync(IRunnerLogPluginContext context);
 
         // Get called by plugin host on every log line.
-        Task ProcessLineAsync(IAgentLogPluginContext context, Pipelines.ActionStepDefinitionReference step, string line);
+        Task ProcessLineAsync(IRunnerLogPluginContext context, Pipelines.ActionStepDefinitionReference step, string line);
 
         // Get called by plugin host when all step execute finish.
-        Task FinalizeAsync(IAgentLogPluginContext context);
+        Task FinalizeAsync(IRunnerLogPluginContext context);
     }
 
-    public interface IAgentLogPluginTrace
+    public interface IRunnerLogPluginTrace
     {
         // agent log
         void Trace(string message);
@@ -41,7 +42,7 @@ namespace GitHub.Runner.Sdk
         void Output(string message);
     }
 
-    public interface IAgentLogPluginContext
+    public interface IRunnerLogPluginContext
     {
         // default SystemConnection back to service use the job oauth token
         VssConnection VssConnection { get; }
@@ -58,6 +59,9 @@ namespace GitHub.Runner.Sdk
         // all variables
         IDictionary<string, VariableValue> Variables { get; }
 
+        // all context
+        Dictionary<String, PipelineContextData> Context { get; }
+
         // agent log
         void Trace(string message);
 
@@ -65,7 +69,7 @@ namespace GitHub.Runner.Sdk
         void Output(string message);
     }
 
-    public class AgentLogPluginTrace : IAgentLogPluginTrace
+    public class RunnerLogPluginTrace : IRunnerLogPluginTrace
     {
         // agent log
         public void Trace(string message)
@@ -80,10 +84,10 @@ namespace GitHub.Runner.Sdk
         }
     }
 
-    public class AgentLogPluginContext : IAgentLogPluginContext
+    public class RunnerLogPluginContext : IRunnerLogPluginContext
     {
         private string _pluginName;
-        private IAgentLogPluginTrace _trace;
+        private IRunnerLogPluginTrace _trace;
 
 
         // default SystemConnection back to service use the job oauth token
@@ -101,14 +105,18 @@ namespace GitHub.Runner.Sdk
         // all variables
         public IDictionary<string, VariableValue> Variables { get; }
 
-        public AgentLogPluginContext(
+        // all context
+        public Dictionary<String, PipelineContextData> Context { get; set; }
+
+        public RunnerLogPluginContext(
             string pluginNme,
             VssConnection connection,
             IList<Pipelines.ActionStepDefinitionReference> steps,
             IList<ServiceEndpoint> endpoints,
             IList<Pipelines.RepositoryResource> repositories,
             IDictionary<string, VariableValue> variables,
-            IAgentLogPluginTrace trace)
+            Dictionary<String, PipelineContextData> Context,
+            IRunnerLogPluginTrace trace)
         {
             _pluginName = pluginNme;
             VssConnection = connection;
@@ -132,7 +140,7 @@ namespace GitHub.Runner.Sdk
         }
     }
 
-    public class AgentLogPluginHostContext
+    public class RunnerLogPluginHostContext
     {
         private VssConnection _connection;
 
@@ -140,6 +148,7 @@ namespace GitHub.Runner.Sdk
         public List<ServiceEndpoint> Endpoints { get; set; }
         public List<Pipelines.RepositoryResource> Repositories { get; set; }
         public Dictionary<string, VariableValue> Variables { get; set; }
+        public Dictionary<String, PipelineContextData> Context { get; set; }
         public Dictionary<string, Pipelines.ActionStepDefinitionReference> Steps { get; set; }
 
         [JsonIgnore]
@@ -158,7 +167,7 @@ namespace GitHub.Runner.Sdk
         private VssConnection InitializeVssConnection()
         {
             var headerValues = new List<ProductInfoHeaderValue>();
-            headerValues.Add(new ProductInfoHeaderValue($"VstsAgentCore-Plugin", Variables.GetValueOrDefault("agent.version")?.Value ?? "Unknown"));
+            headerValues.Add(new ProductInfoHeaderValue($"GitHubActionsRunner-Plugin", BuildConstants.RunnerPackage.Version));
             headerValues.Add(new ProductInfoHeaderValue($"({RuntimeInformation.OSDescription.Trim()})"));
 
             if (VssClientHttpRequestSettings.Default.UserAgent != null && VssClientHttpRequestSettings.Default.UserAgent.Count > 0)
@@ -173,7 +182,7 @@ namespace GitHub.Runner.Sdk
             {
                 if (!string.IsNullOrEmpty(certSetting.ClientCertificateArchiveFile))
                 {
-                    VssClientHttpRequestSettings.Default.ClientCertificateManager = new AgentClientCertificateManager(certSetting.ClientCertificateArchiveFile, certSetting.ClientCertificatePassword);
+                    VssClientHttpRequestSettings.Default.ClientCertificateManager = new RunnerClientCertificateManager(certSetting.ClientCertificateArchiveFile, certSetting.ClientCertificatePassword);
                 }
 
                 if (certSetting.SkipServerCertificateValidation)
@@ -187,7 +196,7 @@ namespace GitHub.Runner.Sdk
             {
                 if (!string.IsNullOrEmpty(proxySetting.ProxyAddress))
                 {
-                    VssHttpMessageHandler.DefaultWebProxy = new AgentWebProxy(proxySetting.ProxyAddress, proxySetting.ProxyUsername, proxySetting.ProxyPassword, proxySetting.ProxyBypassList);
+                    VssHttpMessageHandler.DefaultWebProxy = new RunnerWebProxyCore(proxySetting.ProxyAddress, proxySetting.ProxyUsername, proxySetting.ProxyPassword, proxySetting.ProxyBypassList);
                 }
             }
 
@@ -200,30 +209,45 @@ namespace GitHub.Runner.Sdk
             return VssUtil.CreateConnection(systemConnection.Url, credentials);
         }
 
-        private AgentCertificateSettings GetCertConfiguration()
+        public String GetRunnerInfo(string infoName)
         {
-            bool skipCertValidation = StringUtil.ConvertToBoolean(this.Variables.GetValueOrDefault("Agent.SkipCertValidation")?.Value);
-            string caFile = this.Variables.GetValueOrDefault("Agent.CAInfo")?.Value;
-            string clientCertFile = this.Variables.GetValueOrDefault("Agent.ClientCert")?.Value;
+            this.Context.TryGetValue("runner", out var context);
+            var runnerContext = context as DictionaryContextData;
+            ArgUtil.NotNull(runnerContext, nameof(runnerContext));
+            if (runnerContext.TryGetValue(infoName, out var info))
+            {
+                return info as StringContextData;
+            }
+            else
+            {
+                return null;
+            }
+        }
+
+        private RunnerCertificateSettings GetCertConfiguration()
+        {
+            bool skipCertValidation = StringUtil.ConvertToBoolean(GetRunnerInfo("SkipCertValidation"));
+            string caFile = GetRunnerInfo("CAInfo");
+            string clientCertFile = GetRunnerInfo("ClientCert");
 
             if (!string.IsNullOrEmpty(caFile) || !string.IsNullOrEmpty(clientCertFile) || skipCertValidation)
             {
-                var certConfig = new AgentCertificateSettings();
+                var certConfig = new RunnerCertificateSettings();
                 certConfig.SkipServerCertificateValidation = skipCertValidation;
                 certConfig.CACertificateFile = caFile;
 
                 if (!string.IsNullOrEmpty(clientCertFile))
                 {
                     certConfig.ClientCertificateFile = clientCertFile;
-                    string clientCertKey = this.Variables.GetValueOrDefault("Agent.ClientCertKey")?.Value;
-                    string clientCertArchive = this.Variables.GetValueOrDefault("Agent.ClientCertArchive")?.Value;
-                    string clientCertPassword = this.Variables.GetValueOrDefault("Agent.ClientCertPassword")?.Value;
+                    string clientCertKey = GetRunnerInfo("ClientCertKey");
+                    string clientCertArchive = GetRunnerInfo("ClientCertArchive");
+                    string clientCertPassword = GetRunnerInfo("ClientCertPassword");
 
                     certConfig.ClientCertificatePrivateKeyFile = clientCertKey;
                     certConfig.ClientCertificateArchiveFile = clientCertArchive;
                     certConfig.ClientCertificatePassword = clientCertPassword;
 
-                    certConfig.VssClientCertificateManager = new AgentClientCertificateManager(clientCertArchive, clientCertPassword);
+                    certConfig.VssClientCertificateManager = new RunnerClientCertificateManager(clientCertArchive, clientCertPassword);
                 }
 
                 return certConfig;
@@ -234,21 +258,21 @@ namespace GitHub.Runner.Sdk
             }
         }
 
-        private AgentWebProxySettings GetProxyConfiguration()
+        private RunnerWebProxySettings GetProxyConfiguration()
         {
-            string proxyUrl = this.Variables.GetValueOrDefault("Agent.ProxyUrl")?.Value;
+            string proxyUrl = GetRunnerInfo("ProxyUrl");
             if (!string.IsNullOrEmpty(proxyUrl))
             {
-                string proxyUsername = this.Variables.GetValueOrDefault("Agent.ProxyUsername")?.Value;
-                string proxyPassword = this.Variables.GetValueOrDefault("Agent.ProxyPassword")?.Value;
-                List<string> proxyBypassHosts = StringUtil.ConvertFromJson<List<string>>(this.Variables.GetValueOrDefault("Agent.ProxyBypassList")?.Value ?? "[]");
-                return new AgentWebProxySettings()
+                string proxyUsername = GetRunnerInfo("ProxyUsername");
+                string proxyPassword = GetRunnerInfo("ProxyPassword");
+                List<string> proxyBypassHosts = StringUtil.ConvertFromJson<List<string>>(GetRunnerInfo("ProxyBypassList") ?? "[]");
+                return new RunnerWebProxySettings()
                 {
                     ProxyAddress = proxyUrl,
                     ProxyUsername = proxyUsername,
                     ProxyPassword = proxyPassword,
                     ProxyBypassList = proxyBypassHosts,
-                    WebProxy = new AgentWebProxy(proxyUrl, proxyUsername, proxyPassword, proxyBypassHosts)
+                    WebProxy = new RunnerWebProxyCore(proxyUrl, proxyUsername, proxyPassword, proxyBypassHosts)
                 };
             }
             else
@@ -258,28 +282,28 @@ namespace GitHub.Runner.Sdk
         }
     }
 
-    public class AgentLogPluginHost
+    public class RunnerLogPluginHost
     {
         private readonly TaskCompletionSource<int> _jobFinished = new TaskCompletionSource<int>();
         private readonly Dictionary<string, ConcurrentQueue<string>> _outputQueue = new Dictionary<string, ConcurrentQueue<string>>();
-        private readonly Dictionary<string, IAgentLogPluginContext> _pluginContexts = new Dictionary<string, IAgentLogPluginContext>();
+        private readonly Dictionary<string, IRunnerLogPluginContext> _pluginContexts = new Dictionary<string, IRunnerLogPluginContext>();
         private readonly Dictionary<string, TaskCompletionSource<int>> _shortCircuited = new Dictionary<string, TaskCompletionSource<int>>();
         private Dictionary<string, Pipelines.ActionStepDefinitionReference> _steps;
-        private List<IAgentLogPlugin> _plugins;
-        private IAgentLogPluginTrace _trace;
+        private List<IRunnerLogPlugin> _plugins;
+        private IRunnerLogPluginTrace _trace;
         private int _shortCircuitThreshold;
         private int _shortCircuitMonitorFrequency;
 
-        public AgentLogPluginHost(
-            AgentLogPluginHostContext hostContext,
-            List<IAgentLogPlugin> plugins,
-            IAgentLogPluginTrace trace = null,
+        public RunnerLogPluginHost(
+            RunnerLogPluginHostContext hostContext,
+            List<IRunnerLogPlugin> plugins,
+            IRunnerLogPluginTrace trace = null,
             int shortCircuitThreshold = 1000, // output queue depth >= 1000 lines
             int shortCircuitMonitorFrequency = 10000) // check all output queues every 10 sec
         {
             _steps = hostContext.Steps;
             _plugins = plugins;
-            _trace = trace ?? new AgentLogPluginTrace();
+            _trace = trace ?? new RunnerLogPluginTrace();
             _shortCircuitThreshold = shortCircuitThreshold;
             _shortCircuitMonitorFrequency = shortCircuitMonitorFrequency;
 
@@ -287,7 +311,7 @@ namespace GitHub.Runner.Sdk
             {
                 string typeName = plugin.GetType().FullName;
                 _outputQueue[typeName] = new ConcurrentQueue<string>();
-                _pluginContexts[typeName] = new AgentLogPluginContext(plugin.FriendlyName, hostContext.VssConnection, hostContext.Steps.Values.ToList(), hostContext.Endpoints, hostContext.Repositories, hostContext.Variables, _trace);
+                _pluginContexts[typeName] = new RunnerLogPluginContext(plugin.FriendlyName, hostContext.VssConnection, hostContext.Steps.Values.ToList(), hostContext.Endpoints, hostContext.Repositories, hostContext.Variables, hostContext.Context, _trace);
                 _shortCircuited[typeName] = new TaskCompletionSource<int>();
             }
         }
@@ -424,11 +448,11 @@ namespace GitHub.Runner.Sdk
 
                 await Task.WhenAny(Task.Delay(_shortCircuitMonitorFrequency), Task.Delay(-1, token));
             }
-            
+
             _trace.Trace($"Output buffer monitor stopped.");
         }
 
-        private async Task RunAsync(IAgentLogPlugin plugin, CancellationToken token)
+        private async Task RunAsync(IRunnerLogPlugin plugin, CancellationToken token)
         {
             List<string> errors = new List<string>();
             string typeName = plugin.GetType().FullName;
@@ -496,7 +520,7 @@ namespace GitHub.Runner.Sdk
             }
         }
 
-        private async Task ProcessOutputQueue(IAgentLogPluginContext context, IAgentLogPlugin plugin, List<string> errors)
+        private async Task ProcessOutputQueue(IRunnerLogPluginContext context, IRunnerLogPlugin plugin, List<string> errors)
         {
             string typeName = plugin.GetType().FullName;
             while (!_shortCircuited[typeName].Task.IsCompleted && _outputQueue[typeName].TryDequeue(out string line))

@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 namespace GitHub.Runner.Common
 {
     [ServiceLocator(Default = typeof(JobNotification))]
-    public interface IJobNotification : IAgentService, IDisposable
+    public interface IJobNotification : IRunnerService, IDisposable
     {
         Task JobStarted(Guid jobId, string accessToken, Uri serverUrl);
         Task JobCompleted(Guid jobId);
@@ -18,7 +18,7 @@ namespace GitHub.Runner.Common
         void StartClient(string socketAddress, string monitorSocketAddress);
     }
 
-    public sealed class JobNotification : AgentService, IJobNotification
+    public sealed class JobNotification : RunnerService, IJobNotification
     {
         private NamedPipeClientStream _outClient;
         private StreamWriter _writeStream;
@@ -185,7 +185,7 @@ namespace GitHub.Runner.Common
             }
             catch (Exception e)
             {
-                Trace.Error($"Unexpected error occured while sending StartMonitor message on socket!");
+                Trace.Error($"Unexpected error occurred while sending StartMonitor message on socket!");
                 Trace.Error(e);
             }
         }
@@ -212,7 +212,7 @@ namespace GitHub.Runner.Common
             }
             catch (Exception e)
             {
-                Trace.Error($"Unexpected error occured while sending StartMonitor message on socket!");
+                Trace.Error($"Unexpected error occurred while sending StartMonitor message on socket!");
                 Trace.Error(e);
             }
         }

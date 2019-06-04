@@ -79,11 +79,11 @@ namespace GitHub.Runner.Common.Tests.Worker.Build
                     Constants.Build.Path.TopLevelTrackingConfigFile);
                 var config = JsonConvert.DeserializeObject<TopLevelTrackingConfig>(
                     value: File.ReadAllText(topLevelFile));
-                Assert.Equal(1, config.LastBuildDirectoryNumber);
+                Assert.Equal(1, config.LastPipelineDirectoryNumber);
                 // Manipulate the expected seconds due to loss of granularity when the
                 // date-time-offset is serialized in a friendly format.
-                Assert.True(testStartOn.AddSeconds(-1) <= config.LastBuildDirectoryCreatedOn);
-                Assert.True(DateTimeOffset.Now.AddSeconds(1) >= config.LastBuildDirectoryCreatedOn);
+                Assert.True(testStartOn.AddSeconds(-1) <= config.LastPipelineDirectoryCreatedOn);
+                Assert.True(DateTimeOffset.Now.AddSeconds(1) >= config.LastPipelineDirectoryCreatedOn);
             }
         }
 
@@ -107,7 +107,7 @@ namespace GitHub.Runner.Common.Tests.Worker.Build
                 Assert.Equal(
                     Path.Combine("1", Constants.Build.Path.ArtifactsDirectory),
                     config.ArtifactsDirectory);
-                Assert.Equal("1", config.BuildDirectory);
+                Assert.Equal("1", config.PipelineDirectory);
                 Assert.Equal(CollectionId, config.CollectionId);
                 Assert.Equal(CollectionUrl, config.CollectionUrl);
                 Assert.Equal(DefinitionId, config.DefinitionId);
@@ -162,7 +162,7 @@ namespace GitHub.Runner.Common.Tests.Worker.Build
                 TrackingConfig config = baseConfig as TrackingConfig;
                 Assert.NotNull(config);
                 Assert.Equal(@"b00335b6\a", config.ArtifactsDirectory);
-                Assert.Equal(@"b00335b6", config.BuildDirectory);
+                Assert.Equal(@"b00335b6", config.PipelineDirectory);
                 Assert.Equal(@"7aee6dde-6381-4098-93e7-50a8264cf066", config.CollectionId);
                 Assert.Equal(@"", config.CollectionUrl ?? string.Empty);
                 Assert.Equal(@"7", config.DefinitionId);
@@ -212,7 +212,7 @@ namespace GitHub.Runner.Common.Tests.Worker.Build
                 TrackingConfig config = baseConfig as TrackingConfig;
                 Assert.NotNull(config);
                 Assert.Equal(@"b00335b6\a", config.ArtifactsDirectory);
-                Assert.Equal(@"b00335b6", config.BuildDirectory);
+                Assert.Equal(@"b00335b6", config.PipelineDirectory);
                 Assert.Equal(@"7aee6dde-6381-4098-93e7-50a8264cf066", config.CollectionId);
                 Assert.Equal(CollectionUrl, config.CollectionUrl);
                 Assert.Equal(@"7", config.DefinitionId);
@@ -319,11 +319,11 @@ namespace GitHub.Runner.Common.Tests.Worker.Build
                     Constants.Build.Path.TopLevelTrackingConfigFile);
                 TopLevelTrackingConfig config = JsonConvert.DeserializeObject<TopLevelTrackingConfig>(
                     value: File.ReadAllText(topLevelFile));
-                Assert.Equal(2, config.LastBuildDirectoryNumber);
+                Assert.Equal(2, config.LastPipelineDirectoryNumber);
                 // Manipulate the expected seconds due to loss of granularity when the
                 // date-time-offset is serialized in a friendly format.
-                Assert.True(testStartOn.AddSeconds(-1) <= config.LastBuildDirectoryCreatedOn);
-                Assert.True(DateTimeOffset.Now.AddSeconds(1) >= config.LastBuildDirectoryCreatedOn);
+                Assert.True(testStartOn.AddSeconds(-1) <= config.LastPipelineDirectoryCreatedOn);
+                Assert.True(DateTimeOffset.Now.AddSeconds(1) >= config.LastPipelineDirectoryCreatedOn);
             }
         }
 

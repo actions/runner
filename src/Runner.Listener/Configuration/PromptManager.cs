@@ -6,7 +6,7 @@ using System;
 namespace GitHub.Runner.Listener.Configuration
 {
     [ServiceLocator(Default = typeof(PromptManager))]
-    public interface IPromptManager : IAgentService
+    public interface IPromptManager : IRunnerService
     {
         bool ReadBool(
             string argName,
@@ -23,7 +23,7 @@ namespace GitHub.Runner.Listener.Configuration
             bool unattended);
     }
 
-    public sealed class PromptManager : AgentService, IPromptManager
+    public sealed class PromptManager : RunnerService, IPromptManager
     {
         private ITerminal _terminal;
 

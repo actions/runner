@@ -5,7 +5,7 @@ using System.IO;
 namespace GitHub.Runner.Common
 {
     [ServiceLocator(Default = typeof(PagingLogger))]
-    public interface IPagingLogger : IAgentService
+    public interface IPagingLogger : IRunnerService
     {
         long TotalLines { get; }
         void Setup(Guid timelineId, Guid timelineRecordId);
@@ -15,7 +15,7 @@ namespace GitHub.Runner.Common
         void End();
     }
 
-    public class PagingLogger : AgentService, IPagingLogger
+    public class PagingLogger : RunnerService, IPagingLogger
     {
         public static string PagingFolder = "pages";
 

@@ -9,8 +9,8 @@ arg_2=${2}
 RUNNER_ROOT=`pwd`
 
 UNIT_PATH=/etc/systemd/system/${SVC_NAME}
-TEMPLATE_PATH=./bin/action.runner.service.template
-TEMP_PATH=./bin/action.runner.service.temp
+TEMPLATE_PATH=./bin/actions.runner.service.template
+TEMP_PATH=./bin/actions.runner.service.temp
 CONFIG_PATH=.service
 
 user_id=`id -u`

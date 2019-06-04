@@ -27,7 +27,7 @@ namespace GitHub.Runner.Worker
     }
 
     [ServiceLocator(Default = typeof(ExecutionContext))]
-    public interface IExecutionContext : IAgentService
+    public interface IExecutionContext : IRunnerService
     {
         Guid Id { get; }
         string ScopeName { get; }
@@ -80,7 +80,7 @@ namespace GitHub.Runner.Worker
         void ForceTaskComplete();
     }
 
-    public sealed class ExecutionContext : AgentService, IExecutionContext
+    public sealed class ExecutionContext : RunnerService, IExecutionContext
     {
         private const int _maxIssueCount = 10;
 
@@ -90,7 +90,7 @@ namespace GitHub.Runner.Worker
         private readonly List<IAsyncCommandContext> _asyncCommands = new List<IAsyncCommandContext>();
         private readonly HashSet<string> _outputvariables = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        private IAgentLogPlugin _logPlugin;
+        private IRunnerLogPlugin _logPlugin;
         private IPagingLogger _logger;
         private IJobServerQueue _jobServerQueue;
         private IExecutionContext _parentExecutionContext;
@@ -587,7 +587,7 @@ namespace GitHub.Runner.Worker
             }
 
             // Proxy variables
-            var agentWebProxy = HostContext.GetService<IVstsAgentWebProxy>();
+            var agentWebProxy = HostContext.GetService<IRunnerWebProxy>();
             if (!string.IsNullOrEmpty(agentWebProxy.ProxyAddress))
             {
                 SetRunnerContext("proxyurl", agentWebProxy.ProxyAddress);
@@ -617,7 +617,7 @@ namespace GitHub.Runner.Worker
             }
 
             // Certificate variables
-            var agentCert = HostContext.GetService<IAgentCertificateManager>();
+            var agentCert = HostContext.GetService<IRunnerCertificateManager>();
             if (agentCert.SkipServerCertificateValidation)
             {
                 SetRunnerContext("sslskipcertvalidation", bool.TrueString);
@@ -651,7 +651,7 @@ namespace GitHub.Runner.Worker
             }
 
             // Runtime option variables
-            var runtimeOptions = HostContext.GetService<IConfigurationStore>().GetAgentRuntimeOptions();
+            var runtimeOptions = HostContext.GetService<IConfigurationStore>().GetRunnerRuntimeOptions();
             if (runtimeOptions != null)
             {
 #if OS_WINDOWS
@@ -715,7 +715,7 @@ namespace GitHub.Runner.Worker
             {
                 if (_logPlugin == null)
                 {
-                    _logPlugin = HostContext.GetService<IAgentLogPlugin>();
+                    _logPlugin = HostContext.GetService<IRunnerLogPlugin>();
                 }
 
                 _logPlugin.Write(_record.Id, msg);
@@ -791,11 +791,6 @@ namespace GitHub.Runner.Worker
                     {
                         query["keywords"] = this.Variables.Build_Number;
                         query["definition"] = this.Variables.Build_DefinitionName;
-                    }
-                    else if (!String.IsNullOrEmpty(this.Variables.Release_ReleaseName))
-                    {
-                        query["keywords"] = this.Variables.Release_ReleaseId;
-                        query["definition"] = this.Variables.Release_ReleaseName;
                     }
 
                     // RU link scoped for the build/release

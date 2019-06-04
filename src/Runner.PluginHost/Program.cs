@@ -21,7 +21,7 @@ namespace GitHub.Runner.PluginHost
         public static int Main(string[] args)
         {
             // We can't use the new SocketsHttpHandler for now for both Windows and Linux
-            // On linux, Negotiate auth is not working if the TFS url is behind Https
+            // On linux, Negotiate auth is not working if the Server url is behind Https
             // On windows, Proxy is not working
             AppContext.SetSwitch("System.Net.Http.UseSocketsHttpHandler", false);
             Console.CancelKeyPress += Console_CancelKeyPress;
@@ -35,7 +35,7 @@ namespace GitHub.Runner.PluginHost
                 ArgUtil.Equal(2, args.Length, nameof(args.Length));
 
                 string pluginType = args[0];
-                if (string.Equals("task", pluginType, StringComparison.OrdinalIgnoreCase))
+                if (string.Equals("action", pluginType, StringComparison.OrdinalIgnoreCase))
                 {
                     string assemblyQualifiedName = args[1];
                     ArgUtil.NotNullOrEmpty(assemblyQualifiedName, nameof(assemblyQualifiedName));
@@ -43,7 +43,7 @@ namespace GitHub.Runner.PluginHost
                     string serializedContext = Console.ReadLine();
                     ArgUtil.NotNullOrEmpty(serializedContext, nameof(serializedContext));
 
-                    AgentTaskPluginExecutionContext executionContext = StringUtil.ConvertFromJson<AgentTaskPluginExecutionContext>(serializedContext);
+                    RunnerActionPluginExecutionContext executionContext = StringUtil.ConvertFromJson<RunnerActionPluginExecutionContext>(serializedContext);
                     ArgUtil.NotNull(executionContext, nameof(executionContext));
 
                     VariableValue culture;
@@ -59,7 +59,7 @@ namespace GitHub.Runner.PluginHost
                     try
                     {
                         Type type = Type.GetType(assemblyQualifiedName, throwOnError: true);
-                        var taskPlugin = Activator.CreateInstance(type) as IAgentTaskPlugin;
+                        var taskPlugin = Activator.CreateInstance(type) as IRunnerActionPlugin;
                         ArgUtil.NotNull(taskPlugin, nameof(taskPlugin));
                         taskPlugin.RunAsync(executionContext, tokenSource.Token).GetAwaiter().GetResult();
                     }
@@ -86,11 +86,11 @@ namespace GitHub.Runner.PluginHost
                     // read STDIN, the first line will be the HostContext for the log plugin host
                     string serializedContext = Console.ReadLine();
                     ArgUtil.NotNullOrEmpty(serializedContext, nameof(serializedContext));
-                    AgentLogPluginHostContext hostContext = StringUtil.ConvertFromJson<AgentLogPluginHostContext>(serializedContext);
+                    RunnerLogPluginHostContext hostContext = StringUtil.ConvertFromJson<RunnerLogPluginHostContext>(serializedContext);
                     ArgUtil.NotNull(hostContext, nameof(hostContext));
 
                     // create plugin object base on plugin assembly names from the HostContext
-                    List<IAgentLogPlugin> logPlugins = new List<IAgentLogPlugin>();
+                    List<IRunnerLogPlugin> logPlugins = new List<IRunnerLogPlugin>();
                     AssemblyLoadContext.Default.Resolving += ResolveAssembly;
                     try
                     {
@@ -99,7 +99,7 @@ namespace GitHub.Runner.PluginHost
                             try
                             {
                                 Type type = Type.GetType(pluginAssembly, throwOnError: true);
-                                var logPlugin = Activator.CreateInstance(type) as IAgentLogPlugin;
+                                var logPlugin = Activator.CreateInstance(type) as IRunnerLogPlugin;
                                 ArgUtil.NotNull(logPlugin, nameof(logPlugin));
                                 logPlugins.Add(logPlugin);
                             }
@@ -116,7 +116,7 @@ namespace GitHub.Runner.PluginHost
                     }
 
                     // start the log plugin host
-                    var logPluginHost = new AgentLogPluginHost(hostContext, logPlugins);
+                    var logPluginHost = new RunnerLogPluginHost(hostContext, logPlugins);
                     Task hostTask = logPluginHost.Run();
                     while (true)
                     {

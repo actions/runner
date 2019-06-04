@@ -13,12 +13,12 @@ using GitHub.Runner.Sdk;
 namespace GitHub.Runner.Worker
 {
     [ServiceLocator(Default = typeof(ActionRunner))]
-    public interface IActionRunner : IStep, IAgentService
+    public interface IActionRunner : IStep, IRunnerService
     {
         Pipelines.ActionStep Action { get; set; }
     }
 
-    public sealed class ActionRunner : AgentService, IActionRunner
+    public sealed class ActionRunner : RunnerService, IActionRunner
     {
         public IExpressionNode Condition { get; set; }
 
@@ -40,7 +40,7 @@ namespace GitHub.Runner.Worker
             Trace.Entering();
             ArgUtil.NotNull(ExecutionContext, nameof(ExecutionContext));
             ArgUtil.NotNull(Action, nameof(Action));
-            var taskManager = HostContext.GetService<ITaskManager>();
+            var taskManager = HostContext.GetService<IActionManager>();
             var handlerFactory = HostContext.GetService<IHandlerFactory>();
 
             // Load the task definition and choose the handler.

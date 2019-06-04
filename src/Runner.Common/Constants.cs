@@ -13,11 +13,8 @@ namespace GitHub.Runner.Common
         Bin,
         Diag,
         Externals,
-        LegacyPSHost,
         Root,
-        ServerOM,
-        Tasks,
-        Tee,
+        Actions,
         Temp,
         Tools,
         Update,
@@ -26,7 +23,7 @@ namespace GitHub.Runner.Common
 
     public enum WellKnownConfigFile
     {
-        Agent,
+        Runner,
         Credentials,
         RSACredentials,
         Service,
@@ -35,22 +32,21 @@ namespace GitHub.Runner.Common
         Proxy,
         ProxyCredentials,
         ProxyBypass,
-        Autologon,
         Options,
     }
 
     public static class Constants
     {
-        /// <summary>Path environment varible name.</summary>
+        /// <summary>Path environment variable name.</summary>
 #if OS_WINDOWS
         public static readonly string PathVariable = "Path";
 #else
         public static readonly string PathVariable = "PATH";
 #endif
-        public static string TFBuild = "TF_BUILD";
-        public static string ProcessLookupId = "VSTS_PROCESS_LOOKUP_ID";
+
+        public static string ProcessLookupId = "GITHUB_PROCESS_LOOKUP_ID";
         public static string PluginTracePrefix = "##[plugin.trace]";
-        public static readonly int AgentDownloadRetryMaxAttempts = 3;
+        public static readonly int RunnerDownloadRetryMaxAttempts = 3;
 
         // This enum is embedded within the Constants class to make it easier to reference and avoid
         // ambiguous type reference with System.Runtime.InteropServices.OSPlatform and System.Runtime.InteropServices.Architecture
@@ -69,7 +65,7 @@ namespace GitHub.Runner.Common
             Arm64
         }
 
-        public static class Agent
+        public static class Runner
         {
 #if OS_LINUX
             public static readonly OSPlatform Platform = OSPlatform.Linux;
@@ -109,7 +105,6 @@ namespace GitHub.Runner.Common
                     public static readonly string MonitorSocketAddress = "monitorsocketaddress";
                     public static readonly string NotificationPipeName = "notificationpipename";
                     public static readonly string NotificationSocketAddress = "notificationsocketaddress";
-                    public static readonly string Phase = "phase";
                     public static readonly string Pool = "pool";
                     public static readonly string ProjectName = "projectname";
                     public static readonly string ProxyUrl = "proxyurl";
@@ -182,8 +177,8 @@ namespace GitHub.Runner.Common
                 public const int Success = 0;
                 public const int TerminatedError = 1;
                 public const int RetryableError = 2;
-                public const int AgentUpdating = 3;
-                public const int RunOnceAgentUpdating = 4;
+                public const int RunnerUpdating = 3;
+                public const int RunOnceRunnerUpdating = 4;
             }
 
             public static class AgentConfigurationProvider
@@ -256,7 +251,7 @@ namespace GitHub.Runner.Common
             public static readonly string ToolDirectory = "_tool";
             public static readonly string TaskJsonFile = "task.json";
             public static readonly string ActionManifestFile = "action.yml";
-            public static readonly string TasksDirectory = "_tasks";
+            public static readonly string ActionsDirectory = "_actions";
             public static readonly string UpdateDirectory = "_update";
             public static readonly string WorkDirectory = "_work";
         }

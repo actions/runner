@@ -12,12 +12,12 @@ namespace GitHub.Runner.Listener.Configuration
     public class OsxServiceControlManager : ServiceControlManager, ILinuxServiceControlManager
     {
         // This is the name you would see when you do `systemctl list-units | grep vsts`
-        private const string _svcNamePattern = "vsts.agent.{0}.{1}";
-        private const string _svcDisplayPattern = "Azure Pipelines Agent ({0}.{1})";
+        private const string _svcNamePattern = "actions.runner.{0}.{1}.{2}";
+        private const string _svcDisplayPattern = "GitHub Actions Runner ({0}.{1}.{2})";
         private const string _shTemplate = "darwin.svc.sh.template";
         private const string _svcShName = "svc.sh";
 
-        public void GenerateScripts(AgentSettings settings)
+        public void GenerateScripts(RunnerSettings settings)
         {
             Trace.Entering();
 

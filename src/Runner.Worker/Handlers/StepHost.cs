@@ -15,7 +15,7 @@ using GitHub.Runner.Sdk;
 
 namespace GitHub.Runner.Worker.Handlers
 {
-    public interface IStepHost : IAgentService
+    public interface IStepHost : IRunnerService
     {
         event EventHandler<ProcessDataReceivedEventArgs> OutputDataReceived;
         event EventHandler<ProcessDataReceivedEventArgs> ErrorDataReceived;
@@ -45,7 +45,7 @@ namespace GitHub.Runner.Worker.Handlers
     {
     }
 
-    public sealed class DefaultStepHost : AgentService, IDefaultStepHost
+    public sealed class DefaultStepHost : RunnerService, IDefaultStepHost
     {
         public event EventHandler<ProcessDataReceivedEventArgs> OutputDataReceived;
         public event EventHandler<ProcessDataReceivedEventArgs> ErrorDataReceived;
@@ -84,7 +84,7 @@ namespace GitHub.Runner.Worker.Handlers
         }
     }
 
-    public sealed class ContainerStepHost : AgentService, IContainerStepHost
+    public sealed class ContainerStepHost : RunnerService, IContainerStepHost
     {
         public ContainerInfo Container { get; set; }
         public string PrependPath { get; set; }

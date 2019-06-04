@@ -307,7 +307,7 @@ namespace GitHub.Runner.Common.Tests
                 var command = new CommandSettings(hc, args: new string[] { "--unattended" });
                 _promptManager
                     .Setup(x => x.ReadBool(
-                        Constants.Agent.CommandLine.Flags.AcceptTeeEula, // argName
+                        Constants.Runner.CommandLine.Flags.AcceptTeeEula, // argName
                         StringUtil.Loc("AcceptTeeEula"), // description
                         false, // defaultValue
                         true)) // unattended
@@ -332,7 +332,7 @@ namespace GitHub.Runner.Common.Tests
                 var command = new CommandSettings(hc, args: new string[] { "--unattended" });
                 _promptManager
                     .Setup(x => x.ReadValue(
-                        Constants.Agent.CommandLine.Args.Agent, // argName
+                        Constants.Runner.CommandLine.Args.Agent, // argName
                         StringUtil.Loc("AgentName"), // description
                         false, // secret
                         Environment.MachineName, // defaultValue
@@ -359,7 +359,7 @@ namespace GitHub.Runner.Common.Tests
                 var command = new CommandSettings(hc, args: new string[0]);
                 _promptManager
                     .Setup(x => x.ReadBool(
-                        Constants.Agent.CommandLine.Flags.AcceptTeeEula, // argName
+                        Constants.Runner.CommandLine.Flags.AcceptTeeEula, // argName
                         StringUtil.Loc("AcceptTeeEula"), // description
                         false, // defaultValue
                         false)) // unattended
@@ -384,7 +384,7 @@ namespace GitHub.Runner.Common.Tests
                 var command = new CommandSettings(hc, args: new string[0]);
                 _promptManager
                     .Setup(x => x.ReadValue(
-                        Constants.Agent.CommandLine.Args.Agent, // argName
+                        Constants.Runner.CommandLine.Args.Agent, // argName
                         StringUtil.Loc("AgentName"), // description
                         false, // secret
                         Environment.MachineName, // defaultValue
@@ -411,7 +411,7 @@ namespace GitHub.Runner.Common.Tests
                 var command = new CommandSettings(hc, args: new string[0]);
                 _promptManager
                     .Setup(x => x.ReadValue(
-                        Constants.Agent.CommandLine.Args.Auth, // argName
+                        Constants.Runner.CommandLine.Args.Auth, // argName
                         StringUtil.Loc("AuthenticationType"), // description
                         false, // secret
                         "some default auth", // defaultValue
@@ -438,7 +438,7 @@ namespace GitHub.Runner.Common.Tests
                 var command = new CommandSettings(hc, args: new string[0]);
                 _promptManager
                     .Setup(x => x.ReadValue(
-                        Constants.Agent.CommandLine.Args.Password, // argName
+                        Constants.Runner.CommandLine.Args.Password, // argName
                         StringUtil.Loc("Password"), // description
                         true, // secret
                         string.Empty, // defaultValue
@@ -465,7 +465,7 @@ namespace GitHub.Runner.Common.Tests
                 var command = new CommandSettings(hc, args: new string[0]);
                 _promptManager
                     .Setup(x => x.ReadValue(
-                        Constants.Agent.CommandLine.Args.Pool, // argName
+                        Constants.Runner.CommandLine.Args.Pool, // argName
                         StringUtil.Loc("AgentMachinePoolNameLabel"), // description
                         false, // secret
                         "default", // defaultValue
@@ -492,7 +492,7 @@ namespace GitHub.Runner.Common.Tests
                 var command = new CommandSettings(hc, args: new string[0]);
                 _promptManager
                     .Setup(x => x.ReadBool(
-                        Constants.Agent.CommandLine.Flags.Replace, // argName
+                        Constants.Runner.CommandLine.Flags.Replace, // argName
                         StringUtil.Loc("Replace"), // description
                         false, // defaultValue
                         false)) // unattended
@@ -517,7 +517,7 @@ namespace GitHub.Runner.Common.Tests
                 var command = new CommandSettings(hc, args: new string[0]);
                 _promptManager
                     .Setup(x => x.ReadBool(
-                        Constants.Agent.CommandLine.Flags.RunAsService, // argName
+                        Constants.Runner.CommandLine.Flags.RunAsService, // argName
                         StringUtil.Loc("RunAgentAsServiceDescription"), // description
                         false, // defaultValue
                         false)) // unattended
@@ -542,7 +542,7 @@ namespace GitHub.Runner.Common.Tests
                 var command = new CommandSettings(hc, args: new string[0]);
                 _promptManager
                     .Setup(x => x.ReadValue(
-                        Constants.Agent.CommandLine.Args.Token, // argName
+                        Constants.Runner.CommandLine.Args.Token, // argName
                         StringUtil.Loc("PersonalAccessToken"), // description
                         true, // secret
                         string.Empty, // defaultValue
@@ -569,7 +569,7 @@ namespace GitHub.Runner.Common.Tests
                 var command = new CommandSettings(hc, args: new string[0]);
                 _promptManager
                     .Setup(x => x.ReadValue(
-                        Constants.Agent.CommandLine.Args.Url, // argName
+                        Constants.Runner.CommandLine.Args.Url, // argName
                         StringUtil.Loc("ServerUrl"), // description
                         false, // secret
                         string.Empty, // defaultValue
@@ -596,7 +596,7 @@ namespace GitHub.Runner.Common.Tests
                 var command = new CommandSettings(hc, args: new string[0]);
                 _promptManager
                     .Setup(x => x.ReadValue(
-                        Constants.Agent.CommandLine.Args.UserName, // argName
+                        Constants.Runner.CommandLine.Args.UserName, // argName
                         StringUtil.Loc("UserName"), // description
                         false, // secret
                         string.Empty, // defaultValue
@@ -623,7 +623,7 @@ namespace GitHub.Runner.Common.Tests
                 var command = new CommandSettings(hc, args: new string[0]);
                 _promptManager
                     .Setup(x => x.ReadValue(
-                        Constants.Agent.CommandLine.Args.WindowsLogonAccount, // argName
+                        Constants.Runner.CommandLine.Args.WindowsLogonAccount, // argName
                         StringUtil.Loc("WindowsLogonAccountNameDescription"), // description
                         false, // secret
                         "some default account", // defaultValue
@@ -651,7 +651,7 @@ namespace GitHub.Runner.Common.Tests
                 string accountName = "somewindowsaccount";
                 _promptManager
                     .Setup(x => x.ReadValue(
-                        Constants.Agent.CommandLine.Args.WindowsLogonPassword, // argName
+                        Constants.Runner.CommandLine.Args.WindowsLogonPassword, // argName
                         StringUtil.Loc("WindowsLogonPasswordDescription", accountName), // description
                         true, // secret
                         string.Empty, // defaultValue
@@ -678,7 +678,7 @@ namespace GitHub.Runner.Common.Tests
                 var command = new CommandSettings(hc, args: new string[0]);
                 _promptManager
                     .Setup(x => x.ReadValue(
-                        Constants.Agent.CommandLine.Args.Work, // argName
+                        Constants.Runner.CommandLine.Args.Work, // argName
                         StringUtil.Loc("WorkFolderDescription"), // description
                         false, // secret
                         "_work", // defaultValue
@@ -707,7 +707,7 @@ namespace GitHub.Runner.Common.Tests
                 var command = new CommandSettings(hc, args: new string[] { "--url", "" });
                 _promptManager
                     .Setup(x => x.ReadValue(
-                        Constants.Agent.CommandLine.Args.Url, // argName
+                        Constants.Runner.CommandLine.Args.Url, // argName
                         StringUtil.Loc("ServerUrl"), // description
                         false, // secret
                         string.Empty, // defaultValue
@@ -736,7 +736,7 @@ namespace GitHub.Runner.Common.Tests
                 var command = new CommandSettings(hc, args: new string[] { "--url", "notValid" });
                 _promptManager
                     .Setup(x => x.ReadValue(
-                        Constants.Agent.CommandLine.Args.Url, // argName
+                        Constants.Runner.CommandLine.Args.Url, // argName
                         StringUtil.Loc("ServerUrl"), // description
                         false, // secret
                         string.Empty, // defaultValue
@@ -839,7 +839,7 @@ namespace GitHub.Runner.Common.Tests
                 var command = new CommandSettings(hc, args: new string[0]);
                 _promptManager
                     .Setup(x => x.ReadValue(
-                        Constants.Agent.CommandLine.Args.ProjectName, // argName
+                        Constants.Runner.CommandLine.Args.ProjectName, // argName
                         StringUtil.Loc("ProjectName"), // description
                         false, // secret
                         string.Empty, // defaultValue
@@ -866,7 +866,7 @@ namespace GitHub.Runner.Common.Tests
                 var command = new CommandSettings(hc, args: new string[0]);
                 _promptManager
                     .Setup(x => x.ReadValue(
-                        Constants.Agent.CommandLine.Args.CollectionName, // argName
+                        Constants.Runner.CommandLine.Args.CollectionName, // argName
                         StringUtil.Loc("CollectionName"), // description
                         false, // secret
                         "DefaultCollection", // defaultValue
@@ -893,7 +893,7 @@ namespace GitHub.Runner.Common.Tests
                 var command = new CommandSettings(hc, args: new string[0]);
                 _promptManager
                     .Setup(x => x.ReadValue(
-                        Constants.Agent.CommandLine.Args.DeploymentGroupName, // argName
+                        Constants.Runner.CommandLine.Args.DeploymentGroupName, // argName
                         StringUtil.Loc("DeploymentGroupName"), // description
                         false, // secret
                         string.Empty, // defaultValue
@@ -920,7 +920,7 @@ namespace GitHub.Runner.Common.Tests
                 var command = new CommandSettings(hc, args: new string[0]);
                 _promptManager
                     .Setup(x => x.ReadValue(
-                        Constants.Agent.CommandLine.Args.DeploymentPoolName, // argName
+                        Constants.Runner.CommandLine.Args.DeploymentPoolName, // argName
                         StringUtil.Loc("DeploymentPoolName"), // description
                         false, // secret
                         string.Empty, // defaultValue
@@ -952,7 +952,7 @@ namespace GitHub.Runner.Common.Tests
                                   "--deploymentgroupname", "Test-DeploymentGroupName"
                               });
                 _promptManager.Setup(x => x.ReadValue(
-                        Constants.Agent.CommandLine.Args.DeploymentGroupName, // argName
+                        Constants.Runner.CommandLine.Args.DeploymentGroupName, // argName
                         StringUtil.Loc("DeploymentGroupName"), // description
                         false, // secret
                         string.Empty, // defaultValue
@@ -984,7 +984,7 @@ namespace GitHub.Runner.Common.Tests
                 var command = new CommandSettings(hc, args: new string[0]);
                 _promptManager
                     .Setup(x => x.ReadValue(
-                        Constants.Agent.CommandLine.Args.DeploymentGroupTags, // argName
+                        Constants.Runner.CommandLine.Args.DeploymentGroupTags, // argName
                         StringUtil.Loc("DeploymentGroupTags"), // description
                         false, // secret
                         string.Empty, // defaultValue
@@ -1016,7 +1016,7 @@ namespace GitHub.Runner.Common.Tests
                                   "--deploymentgrouptags", "Test-DeploymentGrouptag1,Test-DeploymentGrouptag2"
                               });
                 _promptManager.Setup(x => x.ReadValue(
-                        Constants.Agent.CommandLine.Args.DeploymentGroupTags, // argName
+                        Constants.Runner.CommandLine.Args.DeploymentGroupTags, // argName
                         StringUtil.Loc("DeploymentGroupTags"), // description
                         false, // secret
                         string.Empty, // defaultValue

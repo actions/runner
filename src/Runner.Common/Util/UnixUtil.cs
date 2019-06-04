@@ -6,14 +6,14 @@ using GitHub.Runner.Sdk;
 namespace GitHub.Runner.Common.Util
 {
     [ServiceLocator(Default = typeof(UnixUtil))]
-    public interface IUnixUtil : IAgentService
+    public interface IUnixUtil : IRunnerService
     {
         Task ExecAsync(string workingDirectory, string toolName, string argLine);
         Task ChmodAsync(string mode, string file);
         Task ChownAsync(string owner, string group, string file);
     }
 
-    public sealed class UnixUtil : AgentService, IUnixUtil
+    public sealed class UnixUtil : RunnerService, IUnixUtil
     {
         private ITerminal _term;
 

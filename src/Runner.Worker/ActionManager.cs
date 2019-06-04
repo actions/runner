@@ -22,15 +22,15 @@ using GitHub.Runner.Sdk;
 
 namespace GitHub.Runner.Worker
 {
-    [ServiceLocator(Default = typeof(TaskManager))]
-    public interface ITaskManager : IAgentService
+    [ServiceLocator(Default = typeof(ActionManager))]
+    public interface IActionManager : IRunnerService
     {
         Dictionary<Guid, ContainerInfo> CachedActionContainers { get; }
         Task DownloadAsync(IExecutionContext executionContext, IEnumerable<Pipelines.JobStep> steps);
         Definition LoadAction(IExecutionContext executionContext, Pipelines.ActionStep action);
     }
 
-    public sealed class TaskManager : AgentService, ITaskManager
+    public sealed class ActionManager : RunnerService, IActionManager
     {
         private const int _defaultFileStreamBufferSize = 4096;
 
@@ -46,7 +46,7 @@ namespace GitHub.Runner.Worker
             ArgUtil.NotNull(executionContext, nameof(executionContext));
             ArgUtil.NotNull(steps, nameof(steps));
 
-            executionContext.Output(StringUtil.Loc("EnsureTasksExist"));
+            executionContext.Output("Download all required actions.");
 
             IEnumerable<Pipelines.ActionStep> actions = steps.OfType<Pipelines.ActionStep>();
 
@@ -157,7 +157,7 @@ namespace GitHub.Runner.Worker
             string archiveLink = $"https://api.github.com/repos/{repositoryReference.Name}/tarball/{repositoryReference.Ref}";
 #endif
 
-            string destDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Tasks), repositoryReference.Name.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar), repositoryReference.Ref);
+            string destDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Actions), repositoryReference.Name.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar), repositoryReference.Ref);
             Trace.Info($"Download archive '{archiveLink}' to '{destDirectory}'.");
             if (File.Exists(destDirectory + ".completed"))
             {
@@ -171,8 +171,8 @@ namespace GitHub.Runner.Worker
                 Directory.CreateDirectory(destDirectory);
             }
 
-            //download and extract task in a temp folder and rename it on success
-            string tempDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Tasks), "_temp_" + Guid.NewGuid());
+            //download and extract action in a temp folder and rename it on success
+            string tempDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Actions), "_temp_" + Guid.NewGuid());
             Directory.CreateDirectory(tempDirectory);
 
 
@@ -187,18 +187,12 @@ namespace GitHub.Runner.Worker
 
                 int retryCount = 0;
 
-                // Allow up to 20 * 60s for any task to be downloaded from service. 
-                // Base on Kusto, the longest we have on the service today is over 850 seconds.
-                // Timeout limit can be overwrite by environment variable
-                if (!int.TryParse(Environment.GetEnvironmentVariable("VSTS_TASK_DOWNLOAD_TIMEOUT") ?? string.Empty, out int timeoutSeconds))
-                {
-                    timeoutSeconds = 20 * 60;
-                }
-
+                // Allow up to 20 * 60s for any action to be downloaded from github graph. 
+                int timeoutSeconds = 20 * 60;
                 while (retryCount < 3)
                 {
-                    using (var taskDownloadTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds)))
-                    using (var taskDownloadCancellation = CancellationTokenSource.CreateLinkedTokenSource(taskDownloadTimeout.Token, executionContext.CancellationToken))
+                    using (var actionDownloadTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds)))
+                    using (var actionDownloadCancellation = CancellationTokenSource.CreateLinkedTokenSource(actionDownloadTimeout.Token, executionContext.CancellationToken))
                     {
                         try
                         {
@@ -218,8 +212,8 @@ namespace GitHub.Runner.Worker
                                 httpClient.DefaultRequestHeaders.UserAgent.Add(HostContext.UserAgent);
                                 using (var result = await httpClient.GetStreamAsync(archiveLink))
                                 {
-                                    await result.CopyToAsync(fs, _defaultCopyBufferSize, taskDownloadCancellation.Token);
-                                    await fs.FlushAsync(taskDownloadCancellation.Token);
+                                    await result.CopyToAsync(fs, _defaultCopyBufferSize, actionDownloadCancellation.Token);
+                                    await fs.FlushAsync(actionDownloadCancellation.Token);
 
                                     // download succeed, break out the retry loop.
                                     break;
@@ -228,7 +222,7 @@ namespace GitHub.Runner.Worker
                         }
                         catch (OperationCanceledException) when (executionContext.CancellationToken.IsCancellationRequested)
                         {
-                            Trace.Info($"Task download has been cancelled.");
+                            Trace.Info($"Action download has been cancelled.");
                             throw;
                         }
                         catch (Exception ex) when (retryCount < 2)
@@ -236,19 +230,19 @@ namespace GitHub.Runner.Worker
                             retryCount++;
                             Trace.Error($"Fail to download archive '{archiveLink}' -- Attempt: {retryCount}");
                             Trace.Error(ex);
-                            if (taskDownloadTimeout.Token.IsCancellationRequested)
+                            if (actionDownloadTimeout.Token.IsCancellationRequested)
                             {
-                                // task download didn't finish within timeout
-                                executionContext.Warning(StringUtil.Loc("TaskDownloadTimeout", archiveLink, timeoutSeconds));
+                                // action download didn't finish within timeout
+                                executionContext.Warning(StringUtil.Loc("ActionDownloadTimeout", archiveLink, timeoutSeconds));
                             }
                             else
                             {
-                                executionContext.Warning(StringUtil.Loc("TaskDownloadFailed", archiveLink, ex.Message));
+                                executionContext.Warning(StringUtil.Loc("ActionDownloadFailed", archiveLink, ex.Message));
                             }
                         }
                     }
 
-                    if (String.IsNullOrEmpty(Environment.GetEnvironmentVariable("VSTS_TASK_DOWNLOAD_NO_BACKOFF")))
+                    if (String.IsNullOrEmpty(Environment.GetEnvironmentVariable("_GITHUB_ACTION_DOWNLOAD_NO_BACKOFF")))
                     {
                         var backOff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(30));
                         executionContext.Warning($"Back off {backOff.TotalSeconds} seconds before retry.");
@@ -310,7 +304,7 @@ namespace GitHub.Runner.Worker
                     IOUtil.CopyDirectory(subDirectories[0].FullName, destDirectory, executionContext.CancellationToken);
                 }
 
-                Trace.Verbose("Create watermark file indicate task download succeed.");
+                Trace.Verbose("Create watermark file indicate action download succeed.");
                 File.WriteAllText(destDirectory + ".completed", DateTime.UtcNow.ToString());
 
                 executionContext.Debug($"Archive '{archiveFile}' has been unzipped into '{destDirectory}'.");
@@ -323,7 +317,7 @@ namespace GitHub.Runner.Worker
                     //if the temp folder wasn't moved -> wipe it
                     if (Directory.Exists(tempDirectory))
                     {
-                        Trace.Verbose("Deleting task temp folder: {0}", tempDirectory);
+                        Trace.Verbose("Deleting action temp folder: {0}", tempDirectory);
                         IOUtil.DeleteDirectory(tempDirectory, CancellationToken.None); // Don't cancel this cleanup and should be pretty fast.
                     }
                 }
@@ -415,7 +409,7 @@ namespace GitHub.Runner.Worker
                     }
                     else
                     {
-                        actionDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Tasks), repoAction.Name.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar), repoAction.Ref);
+                        actionDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Actions), repoAction.Name.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar), repoAction.Ref);
                         if (!string.IsNullOrEmpty(repoAction.Path))
                         {
                             actionDirectory = Path.Combine(actionDirectory, repoAction.Path);
@@ -543,13 +537,13 @@ namespace GitHub.Runner.Worker
             else if (action.Reference.Type == Pipelines.ActionSourceType.AgentPlugin)
             {
                 var pluginAction = action.Reference as Pipelines.PluginReference;
-                var pluginManager = HostContext.GetService<IAgentPluginManager>();
+                var pluginManager = HostContext.GetService<IRunnerPluginManager>();
                 var plugin = pluginManager.GetPluginAction(pluginAction.Plugin);
 
                 ArgUtil.NotNull(plugin, pluginAction.Plugin);
                 ArgUtil.NotNullOrEmpty(plugin.PluginTypeName, pluginAction.Plugin);
 
-                definition.Data.Execution.AgentPlugin = new AgentPluginHandlerData()
+                definition.Data.Execution.RunnerPlugin = new RunnerPluginHandlerData()
                 {
                     Target = plugin.PluginTypeName
                 };
@@ -574,14 +568,11 @@ namespace GitHub.Runner.Worker
     {
         public string FriendlyName { get; set; }
         public string Description { get; set; }
-        public string HelpMarkDown { get; set; }
         public string HelpUrl { get; set; }
         public string Author { get; set; }
         public OutputVariable[] OutputVariables { get; set; }
         public TaskInputDefinition[] Inputs { get; set; }
-        public ExecutionData PreJobExecution { get; set; }
         public ExecutionData Execution { get; set; }
-        public ExecutionData PostJobExecution { get; set; }
     }
 
     public sealed class ActionDefinitionData
@@ -651,7 +642,7 @@ namespace GitHub.Runner.Worker
         private ContainerActionHandlerData _containerAction;
         private NodeScriptActionHandlerData _nodeScriptAction;
         private ScriptActionHandlerData _scriptAction;
-        private AgentPluginHandlerData _agentPlugin;
+        private RunnerPluginHandlerData _runnerPlugin;
 
         [JsonIgnore]
         public List<HandlerData> All => _all;
@@ -698,16 +689,16 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        public AgentPluginHandlerData AgentPlugin
+        public RunnerPluginHandlerData RunnerPlugin
         {
             get
             {
-                return _agentPlugin;
+                return _runnerPlugin;
             }
 
             set
             {
-                _agentPlugin = value;
+                _runnerPlugin = value;
                 Add(value);
             }
         }
@@ -746,23 +737,6 @@ namespace GitHub.Runner.Worker
         public HandlerData()
         {
             Inputs = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        }
-
-        public bool PreferredOnCurrentPlatform()
-        {
-#if OS_WINDOWS
-            const string CurrentPlatform = "windows";
-            return Platforms?.Any(x => string.Equals(x, CurrentPlatform, StringComparison.OrdinalIgnoreCase)) ?? false;
-#else
-            return false;
-#endif
-        }
-
-        public void ReplaceMacros(IHostContext context, Definition definition)
-        {
-            var handlerVariables = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            handlerVariables["currentdirectory"] = definition.Directory;
-            VarUtil.ExpandValues(context, source: handlerVariables, target: Inputs);
         }
 
         protected string GetInput(string name)
@@ -818,7 +792,7 @@ namespace GitHub.Runner.Worker
 
     public sealed class NodeScriptActionHandlerData : HandlerData
     {
-        public override int Priority => 3;
+        public override int Priority => 2;
 
         public string WorkingDirectory
         {
@@ -834,13 +808,13 @@ namespace GitHub.Runner.Worker
         }
     }
 
-    public sealed class AgentPluginHandlerData : HandlerData
+    public sealed class RunnerPluginHandlerData : HandlerData
     {
         public override int Priority => 0;
     }
 
     public sealed class ScriptActionHandlerData : HandlerData
     {
-        public override int Priority => 0;
+        public override int Priority => 1;
     }
 }

@@ -18,7 +18,7 @@ namespace GitHub.Runner.Common.Tests.Worker.Build
         private const string NonmatchingHashKey = "0987654321098765432109876543210987654321";
         private const string CollectionId = "31ffacb8-b468-4e60-b2f9-c50ce437da92";
         private const string DefinitionId = "1234";
-        private BuildDirectoryManager _buildDirectoryManager;
+        private PipelineDirectoryManager _buildDirectoryManager;
         private Mock<IExecutionContext> _ec;
         private Pipelines.RepositoryResource _repository;
         private Pipelines.WorkspaceOptions _workspaceOptions;
@@ -41,8 +41,8 @@ namespace GitHub.Runner.Common.Tests.Worker.Build
                 _buildDirectoryManager.PrepareDirectory(_ec.Object, _repository, _workspaceOptions);
 
                 // Assert.
-                Assert.True(Directory.Exists(Path.Combine(_workFolder, _newConfig.BuildDirectory, Constants.Build.Path.ArtifactsDirectory)));
-                Assert.True(Directory.Exists(Path.Combine(_workFolder, _newConfig.BuildDirectory, Constants.Build.Path.BinariesDirectory)));
+                Assert.True(Directory.Exists(Path.Combine(_workFolder, _newConfig.PipelineDirectory, Constants.Build.Path.ArtifactsDirectory)));
+                Assert.True(Directory.Exists(Path.Combine(_workFolder, _newConfig.PipelineDirectory, Constants.Build.Path.BinariesDirectory)));
             }
         }
 
@@ -88,7 +88,7 @@ namespace GitHub.Runner.Common.Tests.Worker.Build
             // Arrange.
             using (TestHostContext hc = Setup(cleanOption: BuildCleanOption.Source))
             {
-                string sourcesDirectory = Path.Combine(_workFolder, _newConfig.BuildDirectory, Constants.Build.Path.SourcesDirectory);
+                string sourcesDirectory = Path.Combine(_workFolder, _newConfig.PipelineDirectory, Constants.Build.Path.SourcesDirectory);
                 string sourceFile = Path.Combine(sourcesDirectory, "some subdirectory", "some source file");
                 Directory.CreateDirectory(Path.GetDirectoryName(sourceFile));
                 File.WriteAllText(path: sourceFile, contents: "some source contents");
@@ -110,7 +110,7 @@ namespace GitHub.Runner.Common.Tests.Worker.Build
             // Arrange.
             using (TestHostContext hc = Setup())
             {
-                string artifactsDirectory = Path.Combine(_workFolder, _newConfig.BuildDirectory, Constants.Build.Path.ArtifactsDirectory);
+                string artifactsDirectory = Path.Combine(_workFolder, _newConfig.PipelineDirectory, Constants.Build.Path.ArtifactsDirectory);
                 string artifactFile = Path.Combine(artifactsDirectory, "some subdirectory", "some artifact file");
                 Directory.CreateDirectory(Path.GetDirectoryName(artifactFile));
                 File.WriteAllText(path: artifactFile, contents: "some artifact contents");
@@ -133,7 +133,7 @@ namespace GitHub.Runner.Common.Tests.Worker.Build
             // Arrange.
             using (TestHostContext hc = Setup(cleanOption: BuildCleanOption.All))
             {
-                string buildDirectory = Path.Combine(_workFolder, _newConfig.BuildDirectory);
+                string buildDirectory = Path.Combine(_workFolder, _newConfig.PipelineDirectory);
                 string looseFile = Path.Combine(buildDirectory, "some loose directory", "some loose file");
                 Directory.CreateDirectory(Path.GetDirectoryName(looseFile));
                 File.WriteAllText(path: looseFile, contents: "some loose file contents");
@@ -143,9 +143,9 @@ namespace GitHub.Runner.Common.Tests.Worker.Build
 
                 // Assert.
                 Assert.Equal(4, Directory.GetFileSystemEntries(buildDirectory, "*", SearchOption.AllDirectories).Length);
-                Assert.True(Directory.Exists(Path.Combine(_workFolder, _newConfig.BuildDirectory, Constants.Build.Path.ArtifactsDirectory)));
-                Assert.True(Directory.Exists(Path.Combine(_workFolder, _newConfig.BuildDirectory, Constants.Build.Path.BinariesDirectory)));
-                Assert.True(Directory.Exists(Path.Combine(_workFolder, _newConfig.BuildDirectory, Constants.Build.Path.SourcesDirectory)));
+                Assert.True(Directory.Exists(Path.Combine(_workFolder, _newConfig.PipelineDirectory, Constants.Build.Path.ArtifactsDirectory)));
+                Assert.True(Directory.Exists(Path.Combine(_workFolder, _newConfig.PipelineDirectory, Constants.Build.Path.BinariesDirectory)));
+                Assert.True(Directory.Exists(Path.Combine(_workFolder, _newConfig.PipelineDirectory, Constants.Build.Path.SourcesDirectory)));
             }
         }
 
@@ -157,7 +157,7 @@ namespace GitHub.Runner.Common.Tests.Worker.Build
             // Arrange.
             using (TestHostContext hc = Setup(cleanOption: BuildCleanOption.Binary))
             {
-                string binariesDirectory = Path.Combine(_workFolder, _newConfig.BuildDirectory, Constants.Build.Path.BinariesDirectory);
+                string binariesDirectory = Path.Combine(_workFolder, _newConfig.PipelineDirectory, Constants.Build.Path.BinariesDirectory);
                 string binaryFile = Path.Combine(binariesDirectory, "some subdirectory", "some binary file");
                 Directory.CreateDirectory(Path.GetDirectoryName(binaryFile));
                 File.WriteAllText(path: binaryFile, contents: "some binary contents");
@@ -215,7 +215,7 @@ namespace GitHub.Runner.Common.Tests.Worker.Build
                 // Act.
                 var tracking = _buildDirectoryManager.PrepareDirectory(_ec.Object, _repository, _workspaceOptions);
 
-                _repository.Properties.Set<string>(Pipelines.RepositoryPropertyNames.Path, Path.Combine(hc.GetDirectory(WellKnownDirectory.Work), tracking.BuildDirectory, $"test{Path.DirectorySeparatorChar}foo"));
+                _repository.Properties.Set<string>(Pipelines.RepositoryPropertyNames.Path, Path.Combine(hc.GetDirectory(WellKnownDirectory.Work), tracking.PipelineDirectory, $"test{Path.DirectorySeparatorChar}foo"));
 
                 var newTracking = _buildDirectoryManager.UpdateDirectory(_ec.Object, _repository);
 
@@ -256,7 +256,7 @@ namespace GitHub.Runner.Common.Tests.Worker.Build
             // Create a random work path.
             var configStore = new Mock<IConfigurationStore>();
             _workFolder = hc.GetDirectory(WellKnownDirectory.Work);
-            var settings = new AgentSettings() { WorkFolder = _workFolder };
+            var settings = new RunnerSettings() { WorkFolder = _workFolder };
             configStore.Setup(x => x.GetSettings()).Returns(settings);
             hc.SetSingleton<IConfigurationStore>(configStore.Object);
 
@@ -299,11 +299,11 @@ namespace GitHub.Runner.Common.Tests.Worker.Build
             {
                 case ExistingConfigKind.Matching:
                     _existingConfig = new TrackingConfig(_ec.Object, _repository, 1, HashKey);
-                    Assert.Equal("1", _existingConfig.BuildDirectory);
+                    Assert.Equal("1", _existingConfig.PipelineDirectory);
                     break;
                 case ExistingConfigKind.Nonmatching:
                     _existingConfig = new TrackingConfig(_ec.Object, _repository, 2, NonmatchingHashKey);
-                    Assert.Equal("2", _existingConfig.BuildDirectory);
+                    Assert.Equal("2", _existingConfig.PipelineDirectory);
                     break;
                 case ExistingConfigKind.None:
                     break;
@@ -319,7 +319,7 @@ namespace GitHub.Runner.Common.Tests.Worker.Build
             else
             {
                 _newConfig = new TrackingConfig(_ec.Object, _repository, 3, HashKey);
-                Assert.Equal("3", _newConfig.BuildDirectory);
+                Assert.Equal("3", _newConfig.PipelineDirectory);
             }
 
             // Setup the tracking manager.
@@ -351,7 +351,7 @@ namespace GitHub.Runner.Common.Tests.Worker.Build
             hc.SetSingleton<ITrackingManager>(_trackingManager.Object);
 
             // Setup the build directory manager.
-            _buildDirectoryManager = new BuildDirectoryManager();
+            _buildDirectoryManager = new PipelineDirectoryManager();
             _buildDirectoryManager.Initialize(hc);
             return hc;
         }

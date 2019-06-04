@@ -9,7 +9,7 @@ namespace GitHub.Runner.Common
     // (2) Reroute in tests
     //
     [ServiceLocator(Default = typeof(Terminal))]
-    public interface ITerminal : IAgentService, IDisposable
+    public interface ITerminal : IRunnerService, IDisposable
     {
         event EventHandler CancelKeyPress;
 
@@ -23,7 +23,7 @@ namespace GitHub.Runner.Common
         void WriteError(string line);
     }
 
-    public sealed class Terminal : AgentService, ITerminal
+    public sealed class Terminal : RunnerService, ITerminal
     {
         public bool Silent { get; set; }
 

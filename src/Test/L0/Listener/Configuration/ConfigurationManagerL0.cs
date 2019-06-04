@@ -21,15 +21,15 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
 {
     public class ConfigurationManagerL0
     {
-        private Mock<IAgentServer> _agentServer;
+        private Mock<IRunnerServer> _agentServer;
         private Mock<ILocationServer> _locationServer;
         private Mock<ICredentialManager> _credMgr;
         private Mock<IPromptManager> _promptManager;
         private Mock<IConfigurationStore> _store;
         private Mock<IExtensionManager> _extnMgr;
         // private Mock<IDeploymentGroupServer> _machineGroupServer;
-        private Mock<IVstsAgentWebProxy> _vstsAgentWebProxy;
-        private Mock<IAgentCertificateManager> _cert;
+        private Mock<IRunnerWebProxy> _vstsAgentWebProxy;
+        private Mock<IRunnerCertificateManager> _cert;
 
 #if OS_WINDOWS
         private Mock<IWindowsServiceControlManager> _serviceControlManager;
@@ -56,11 +56,11 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
         private int _expectedPoolId = 1;
         private int _expectedDeploymentMachineId = 81;
         private RSACryptoServiceProvider rsa = null;
-        private AgentSettings _configMgrAgentSettings = new AgentSettings();
+        private RunnerSettings _configMgrAgentSettings = new RunnerSettings();
 
         public ConfigurationManagerL0()
         {
-            _agentServer = new Mock<IAgentServer>();
+            _agentServer = new Mock<IRunnerServer>();
             _locationServer = new Mock<ILocationServer>();
             _credMgr = new Mock<ICredentialManager>();
             _promptManager = new Mock<IPromptManager>();
@@ -68,8 +68,8 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
             _extnMgr = new Mock<IExtensionManager>();
             _rsaKeyManager = new Mock<IRSAKeyManager>();
             // _machineGroupServer = new Mock<IDeploymentGroupServer>();
-            _vstsAgentWebProxy = new Mock<IVstsAgentWebProxy>();
-            _cert = new Mock<IAgentCertificateManager>();
+            _vstsAgentWebProxy = new Mock<IRunnerWebProxy>();
+            _cert = new Mock<IRunnerCertificateManager>();
 
 #if OS_WINDOWS
             _serviceControlManager = new Mock<IWindowsServiceControlManager>();
@@ -109,8 +109,8 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
             _store.Setup(x => x.HasCredentials()).Returns(false);
             _store.Setup(x => x.GetSettings()).Returns(() => _configMgrAgentSettings);
 
-            _store.Setup(x => x.SaveSettings(It.IsAny<AgentSettings>()))
-                .Callback((AgentSettings settings) =>
+            _store.Setup(x => x.SaveSettings(It.IsAny<RunnerSettings>()))
+                .Callback((RunnerSettings settings) =>
                 {
                     _configMgrAgentSettings = settings;
                 });
@@ -118,7 +118,7 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
             _credMgr.Setup(x => x.GetCredentialProvider(It.IsAny<string>())).Returns(new TestAgentCredential());
 
 #if !OS_WINDOWS
-            _serviceControlManager.Setup(x => x.GenerateScripts(It.IsAny<AgentSettings>()));
+            _serviceControlManager.Setup(x => x.GenerateScripts(It.IsAny<RunnerSettings>()));
 #endif
 
             var expectedPools = new List<TaskAgentPool>() { new TaskAgentPool(_expectedPoolName) { Id = _expectedPoolId } };
@@ -127,7 +127,7 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
             var expectedAgents = new List<TaskAgent>();
             _agentServer.Setup(x => x.GetAgentsAsync(It.IsAny<int>(), It.IsAny<string>())).Returns(Task.FromResult(expectedAgents));
 
-            _agentServer.Setup(x => x.AddAgentAsync(It.IsAny<int>(), It.IsAny<TaskAgent>())).Returns(Task.FromResult(expectedAgent));
+            _agentServer.Setup(x => x.AddRunnerAsync(It.IsAny<int>(), It.IsAny<TaskAgent>())).Returns(Task.FromResult(expectedAgent));
             _agentServer.Setup(x => x.UpdateAgentAsync(It.IsAny<int>(), It.IsAny<TaskAgent>())).Returns(Task.FromResult(expectedAgent));
 
             rsa = new RSACryptoServiceProvider(2048);
@@ -142,12 +142,12 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
             tc.SetSingleton<IPromptManager>(_promptManager.Object);
             tc.SetSingleton<IConfigurationStore>(_store.Object);
             tc.SetSingleton<IExtensionManager>(_extnMgr.Object);
-            tc.SetSingleton<IAgentServer>(_agentServer.Object);
+            tc.SetSingleton<IRunnerServer>(_agentServer.Object);
             tc.SetSingleton<ILocationServer>(_locationServer.Object);
             // tc.SetSingleton<IDeploymentGroupServer>(_machineGroupServer.Object);
             tc.SetSingleton<ICapabilitiesManager>(_capabilitiesManager);
-            tc.SetSingleton<IVstsAgentWebProxy>(_vstsAgentWebProxy.Object);
-            tc.SetSingleton<IAgentCertificateManager>(_cert.Object);
+            tc.SetSingleton<IRunnerWebProxy>(_vstsAgentWebProxy.Object);
+            tc.SetSingleton<IRunnerCertificateManager>(_cert.Object);
 
 #if OS_WINDOWS
             tc.SetSingleton<IWindowsServiceControlManager>(_serviceControlManager.Object);
@@ -224,7 +224,7 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
         // Init the Agent Config Provider
         private List<IConfigurationProvider> GetConfigurationProviderList(TestHostContext tc)
         {
-            IConfigurationProvider buildReleasesAgentConfigProvider = new BuildReleasesAgentConfigProvider();
+            IConfigurationProvider buildReleasesAgentConfigProvider = new ActionsRunnerConfigProvider();
             buildReleasesAgentConfigProvider.Initialize(tc);
 
             return new List<IConfigurationProvider> { buildReleasesAgentConfigProvider };

@@ -15,25 +15,22 @@ using Pipelines = GitHub.DistributedTask.Pipelines;
 
 namespace GitHub.Runner.Sdk
 {
-    public interface IAgentTaskPlugin
+    public interface IRunnerActionPlugin
     {
-        Guid Id { get; }
-        string Version { get; }
-        string Stage { get; }
-        Task RunAsync(AgentTaskPluginExecutionContext executionContext, CancellationToken token);
+        Task RunAsync(RunnerActionPluginExecutionContext executionContext, CancellationToken token);
     }
 
-    public class AgentTaskPluginExecutionContext : ITraceWriter
+    public class RunnerActionPluginExecutionContext : ITraceWriter
     {
         private VssConnection _connection;
         private readonly object _stdoutLock = new object();
         private readonly ITraceWriter _trace; // for unit tests
 
-        public AgentTaskPluginExecutionContext()
+        public RunnerActionPluginExecutionContext()
             : this(null)
         { }
 
-        public AgentTaskPluginExecutionContext(ITraceWriter trace)
+        public RunnerActionPluginExecutionContext(ITraceWriter trace)
         {
             _trace = trace;
             this.Endpoints = new List<ServiceEndpoint>();
@@ -42,7 +39,6 @@ namespace GitHub.Runner.Sdk
             this.TaskVariables = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
             this.Variables = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
             this.Context = new Dictionary<string, PipelineContextData>(StringComparer.OrdinalIgnoreCase);
-            // this.Environment = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         }
 
         public List<ServiceEndpoint> Endpoints { get; set; }
@@ -51,8 +47,6 @@ namespace GitHub.Runner.Sdk
         public Dictionary<string, VariableValue> TaskVariables { get; set; }
         public Dictionary<string, string> Inputs { get; set; }
         public Dictionary<String, PipelineContextData> Context { get; set; }
-
-        // public Dictionary<string, string> Environment { get; set; }
 
         [JsonIgnore]
         public VssConnection VssConnection
@@ -70,7 +64,7 @@ namespace GitHub.Runner.Sdk
         public VssConnection InitializeVssConnection()
         {
             var headerValues = new List<ProductInfoHeaderValue>();
-            headerValues.Add(new ProductInfoHeaderValue($"VstsAgentCore-Plugin", Variables.GetValueOrDefault("agent.version")?.Value ?? "Unknown"));
+            headerValues.Add(new ProductInfoHeaderValue($"GitHubActionsRunner-Plugin", BuildConstants.RunnerPackage.Version));
             headerValues.Add(new ProductInfoHeaderValue($"({RuntimeInformation.OSDescription.Trim()})"));
 
             if (VssClientHttpRequestSettings.Default.UserAgent != null && VssClientHttpRequestSettings.Default.UserAgent.Count > 0)
@@ -92,7 +86,7 @@ namespace GitHub.Runner.Sdk
             {
                 if (!string.IsNullOrEmpty(certSetting.ClientCertificateArchiveFile))
                 {
-                    VssClientHttpRequestSettings.Default.ClientCertificateManager = new AgentClientCertificateManager(certSetting.ClientCertificateArchiveFile, certSetting.ClientCertificatePassword);
+                    VssClientHttpRequestSettings.Default.ClientCertificateManager = new RunnerClientCertificateManager(certSetting.ClientCertificateArchiveFile, certSetting.ClientCertificatePassword);
                 }
 
                 if (certSetting.SkipServerCertificateValidation)
@@ -106,7 +100,7 @@ namespace GitHub.Runner.Sdk
             {
                 if (!string.IsNullOrEmpty(proxySetting.ProxyAddress))
                 {
-                    VssHttpMessageHandler.DefaultWebProxy = new AgentWebProxy(proxySetting.ProxyAddress, proxySetting.ProxyUsername, proxySetting.ProxyPassword, proxySetting.ProxyBypassList);
+                    VssHttpMessageHandler.DefaultWebProxy = new RunnerWebProxyCore(proxySetting.ProxyAddress, proxySetting.ProxyUsername, proxySetting.ProxyPassword, proxySetting.ProxyBypassList);
                 }
             }
 
@@ -118,6 +112,7 @@ namespace GitHub.Runner.Sdk
             ArgUtil.NotNull(credentials, nameof(credentials));
             return VssUtil.CreateConnection(systemConnection.Url, credentials);
         }
+
         public string GetInput(string name, bool required = false)
         {
             string value = null;
@@ -146,7 +141,7 @@ namespace GitHub.Runner.Sdk
 #if DEBUG
             Debug(message);
 #else
-            string vstsAgentTrace = Environment.GetEnvironmentVariable("VSTSAGENT_TRACE");
+            string vstsAgentTrace = Environment.GetEnvironmentVariable("system.debug");
             if (!string.IsNullOrEmpty(vstsAgentTrace))
             {
                 Debug(message);
@@ -172,13 +167,6 @@ namespace GitHub.Runner.Sdk
             Output($"##[warning]{Escape(message)}");
         }
 
-        public void PublishTelemetry(string area, string feature, Dictionary<string, string> properties)
-        {
-            // string propertiesAsJson = StringUtil.ConvertToJson(properties, Formatting.None);
-
-            // Output($"##vso[telemetry.publish area={area};feature={feature}]{Escape(propertiesAsJson)}");
-        }
-
         public void Output(string message)
         {
             lock (_stdoutLock)
@@ -194,37 +182,9 @@ namespace GitHub.Runner.Sdk
             }
         }
 
-        public void PrependPath(string directory)
-        {
-            // PathUtil.PrependPath(directory);
-            // Output($"##vso[task.prependpath]{Escape(directory)}");
-        }
-
-        public void Progress(int progress, string operation)
-        {
-            if (progress < 0 || progress > 100)
-            {
-                throw new ArgumentOutOfRangeException(nameof(progress));
-            }
-
-            // Output($"##vso[task.setprogress value={progress}]{Escape(operation)}");
-        }
-
         public void SetSecret(string secret)
         {
             //Output($"##[set-secret]{Escape(secret)}");
-        }
-
-        public void SetVariable(string variable, string value, bool isSecret = false)
-        {
-            this.Variables[variable] = new VariableValue(value, isSecret);
-            // Output($"##vso[task.setvariable variable={Escape(variable)};issecret={isSecret.ToString()};]{Escape(value)}");
-        }
-
-        public void SetTaskVariable(string variable, string value, bool isSecret = false)
-        {
-            // this.TaskVariables[variable] = new VariableValue(value, isSecret);
-            // Output($"##vso[task.settaskvariable variable={Escape(variable)};issecret={isSecret.ToString()};]{Escape(value)}");
         }
 
         public void Command(string command)
@@ -237,30 +197,45 @@ namespace GitHub.Runner.Sdk
             Output($"##[internal-set-self-path]{path}");
         }
 
-        public AgentCertificateSettings GetCertConfiguration()
+        public String GetRunnerInfo(string infoName)
         {
-            bool skipCertValidation = StringUtil.ConvertToBoolean(this.Variables.GetValueOrDefault("Agent.SkipCertValidation")?.Value);
-            string caFile = this.Variables.GetValueOrDefault("Agent.CAInfo")?.Value;
-            string clientCertFile = this.Variables.GetValueOrDefault("Agent.ClientCert")?.Value;
+            this.Context.TryGetValue("runner", out var context);
+            var runnerContext = context as DictionaryContextData;
+            ArgUtil.NotNull(runnerContext, nameof(runnerContext));
+            if(runnerContext.TryGetValue(infoName, out var info))
+            {
+                return info as StringContextData;
+            }
+            else
+            {
+                return null;
+            }
+        }
+
+        public RunnerCertificateSettings GetCertConfiguration()
+        {
+            bool skipCertValidation = StringUtil.ConvertToBoolean(GetRunnerInfo("SkipCertValidation"));
+            string caFile = GetRunnerInfo("CAInfo");
+            string clientCertFile = GetRunnerInfo("ClientCert");
 
             if (!string.IsNullOrEmpty(caFile) || !string.IsNullOrEmpty(clientCertFile) || skipCertValidation)
             {
-                var certConfig = new AgentCertificateSettings();
+                var certConfig = new RunnerCertificateSettings();
                 certConfig.SkipServerCertificateValidation = skipCertValidation;
                 certConfig.CACertificateFile = caFile;
 
                 if (!string.IsNullOrEmpty(clientCertFile))
                 {
                     certConfig.ClientCertificateFile = clientCertFile;
-                    string clientCertKey = this.Variables.GetValueOrDefault("Agent.ClientCertKey")?.Value;
-                    string clientCertArchive = this.Variables.GetValueOrDefault("Agent.ClientCertArchive")?.Value;
-                    string clientCertPassword = this.Variables.GetValueOrDefault("Agent.ClientCertPassword")?.Value;
+                    string clientCertKey = GetRunnerInfo("ClientCertKey");
+                    string clientCertArchive = GetRunnerInfo("ClientCertArchive");
+                    string clientCertPassword = GetRunnerInfo("ClientCertPassword");
 
                     certConfig.ClientCertificatePrivateKeyFile = clientCertKey;
                     certConfig.ClientCertificateArchiveFile = clientCertArchive;
                     certConfig.ClientCertificatePassword = clientCertPassword;
 
-                    certConfig.VssClientCertificateManager = new AgentClientCertificateManager(clientCertArchive, clientCertPassword);
+                    certConfig.VssClientCertificateManager = new RunnerClientCertificateManager(clientCertArchive, clientCertPassword);
                 }
 
                 return certConfig;
@@ -271,21 +246,21 @@ namespace GitHub.Runner.Sdk
             }
         }
 
-        public AgentWebProxySettings GetProxyConfiguration()
+        public RunnerWebProxySettings GetProxyConfiguration()
         {
-            string proxyUrl = this.Variables.GetValueOrDefault("Agent.ProxyUrl")?.Value;
+            string proxyUrl = GetRunnerInfo("ProxyUrl");
             if (!string.IsNullOrEmpty(proxyUrl))
             {
-                string proxyUsername = this.Variables.GetValueOrDefault("Agent.ProxyUsername")?.Value;
-                string proxyPassword = this.Variables.GetValueOrDefault("Agent.ProxyPassword")?.Value;
-                List<string> proxyBypassHosts = StringUtil.ConvertFromJson<List<string>>(this.Variables.GetValueOrDefault("Agent.ProxyBypassList")?.Value ?? "[]");
-                return new AgentWebProxySettings()
+                string proxyUsername = GetRunnerInfo("ProxyUsername");
+                string proxyPassword = GetRunnerInfo("ProxyPassword");
+                List<string> proxyBypassHosts = StringUtil.ConvertFromJson<List<string>>(GetRunnerInfo("ProxyBypassList") ?? "[]");
+                return new RunnerWebProxySettings()
                 {
                     ProxyAddress = proxyUrl,
                     ProxyUsername = proxyUsername,
                     ProxyPassword = proxyPassword,
                     ProxyBypassList = proxyBypassHosts,
-                    WebProxy = new AgentWebProxy(proxyUrl, proxyUsername, proxyPassword, proxyBypassHosts)
+                    WebProxy = new RunnerWebProxyCore(proxyUrl, proxyUsername, proxyPassword, proxyBypassHosts)
                 };
             }
             else

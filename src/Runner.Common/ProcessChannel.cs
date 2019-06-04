@@ -13,7 +13,7 @@ namespace GitHub.Runner.Common
         NotInitialized = -1,
         NewJobRequest = 1,
         CancelRequest = 2,
-        AgentShutdown = 3,
+        RunnerShutdown = 3,
         OperatingSystemShutdown = 4
     }
 
@@ -29,7 +29,7 @@ namespace GitHub.Runner.Common
     }
 
     [ServiceLocator(Default = typeof(ProcessChannel))]
-    public interface IProcessChannel : IDisposable, IAgentService
+    public interface IProcessChannel : IDisposable, IRunnerService
     {
         void StartServer(StartProcessDelegate startProcess);
         void StartClient(string pipeNameInput, string pipeNameOutput);
@@ -38,7 +38,7 @@ namespace GitHub.Runner.Common
         Task<WorkerMessage> ReceiveAsync(CancellationToken cancellationToken);
     }
 
-    public sealed class ProcessChannel : AgentService, IProcessChannel
+    public sealed class ProcessChannel : RunnerService, IProcessChannel
     {
         private AnonymousPipeServerStream _inServer;
         private AnonymousPipeServerStream _outServer;

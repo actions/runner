@@ -13,7 +13,7 @@ using GitHub.Runner.Sdk;
 namespace GitHub.Runner.Common
 {
     [ServiceLocator(Default = typeof(JobServerQueue))]
-    public interface IJobServerQueue : IAgentService, IThrottlingReporter
+    public interface IJobServerQueue : IRunnerService, IThrottlingReporter
     {
         event EventHandler<ThrottlingEventArgs> JobServerQueueThrottling;
         Task ShutdownAsync();
@@ -23,7 +23,7 @@ namespace GitHub.Runner.Common
         void QueueTimelineRecordUpdate(Guid timelineId, TimelineRecord timelineRecord);
     }
 
-    public sealed class JobServerQueue : AgentService, IJobServerQueue
+    public sealed class JobServerQueue : RunnerService, IJobServerQueue
     {
         // Default delay for Dequeue process
         private static readonly TimeSpan _aggressiveDelayForWebConsoleLineDequeue = TimeSpan.FromMilliseconds(250);

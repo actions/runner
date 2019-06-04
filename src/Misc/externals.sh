@@ -2,7 +2,6 @@
 PACKAGERUNTIME=$1
 PRECACHE=$2
 
-CONTAINER_URL=https://vstsagenttools.blob.core.windows.net/tools
 NODE_URL=https://nodejs.org/dist
 NODE_VERSION="6.10.3"
 NODE10_VERSION="10.13.0"
@@ -29,14 +28,11 @@ function checkRC() {
 }
 
 function acquireExternalTool() {
-    local download_source=$1 # E.g. https://vstsagenttools.blob.core.windows.net/tools/pdbstr/1/pdbstr.zip
-    local target_dir="$LAYOUT_DIR/externals/$2" # E.g. $LAYOUT_DIR/externals/pdbstr
-    local fix_nested_dir=$3 # Flag that indicates whether to move nested contents up one directory. E.g. TEE-CLC-14.0.4.zip
-                            # directly contains only a nested directory TEE-CLC-14.0.4. When this flag is set, the contents
-                            # of the nested TEE-CLC-14.0.4 directory are moved up one directory, and then the empty directory
-                            # TEE-CLC-14.0.4 is removed.
+    local download_source=$1 # E.g. https://github.com/microsoft/vswhere/releases/download/2.6.7/vswhere.exe
+    local target_dir="$LAYOUT_DIR/externals/$2" # E.g. $LAYOUT_DIR/externals/vswhere
+    local fix_nested_dir=$3 # Flag that indicates whether to move nested contents up one directory. 
 
-    # Extract the portion of the URL after the protocol. E.g. vstsagenttools.blob.core.windows.net/tools/pdbstr/1/pdbstr.zip
+    # Extract the portion of the URL after the protocol. E.g. github.com/microsoft/vswhere/releases/download/2.6.7/vswhere.exe
     local relative_url="${download_source#*://}"
 
     # Check if the download already exists.
@@ -132,7 +128,7 @@ if [[ "$PACKAGERUNTIME" == "win-x64" ]]; then
     acquireExternalTool "$NODE_URL/v${NODE10_VERSION}/win-x64/node.exe" node10/bin
     acquireExternalTool "$NODE_URL/v${NODE10_VERSION}/win-x64/node.lib" node10/bin
     if [[ "$PRECACHE" != "" ]]; then
-        acquireExternalTool "$CONTAINER_URL/vswhere/1_0_62/vswhere.zip" vswhere
+        acquireExternalTool "https://github.com/microsoft/vswhere/releases/download/2.6.7/vswhere.exe" vswhere
     fi
 fi
 

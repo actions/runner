@@ -8,27 +8,26 @@ using System.Threading.Tasks;
 
 namespace GitHub.Runner.Common.Capabilities
 {
-    public sealed class AgentCapabilitiesProvider : AgentService, ICapabilitiesProvider
+    public sealed class RunnerCapabilitiesProvider : RunnerService, ICapabilitiesProvider
     {
         public Type ExtensionType => typeof(ICapabilitiesProvider);
 
         public int Order => 99; // Process last to override prior.
 
-        public Task<List<Capability>> GetCapabilitiesAsync(AgentSettings settings, CancellationToken cancellationToken)
+        public Task<List<Capability>> GetCapabilitiesAsync(RunnerSettings settings, CancellationToken cancellationToken)
         {
             ArgUtil.NotNull(settings, nameof(settings));
             var capabilities = new List<Capability>();
-            Add(capabilities, "Agent.Name", settings.AgentName ?? string.Empty);
-            Add(capabilities, "Agent.OS", VarUtil.OS);
-            Add(capabilities, "Agent.OSArchitecture", VarUtil.OSArchitecture);
+            Add(capabilities, "Runner.Name", settings.AgentName ?? string.Empty);
+            Add(capabilities, "Runner.OS", VarUtil.OS);
+            Add(capabilities, "Runner.OSArchitecture", VarUtil.OSArchitecture);
 #if OS_WINDOWS
-            Add(capabilities, "Agent.OSVersion", GetOSVersionString());
-            Add(capabilities, "Cmd", Environment.GetEnvironmentVariable("comspec"));
+            Add(capabilities, "Runner.OSVersion", GetOSVersionString());
 #endif
             Add(capabilities, "InteractiveSession", (HostContext.StartupType != StartupType.Service).ToString());
-            Add(capabilities, "Agent.Version", BuildConstants.RunnerPackage.Version);
-            Add(capabilities, "Agent.ComputerName", Environment.MachineName ?? string.Empty);
-            Add(capabilities, "Agent.HomeDirectory", HostContext.GetDirectory(WellKnownDirectory.Root));
+            Add(capabilities, "Runner.Version", BuildConstants.RunnerPackage.Version);
+            Add(capabilities, "Runner.ComputerName", Environment.MachineName ?? string.Empty);
+            Add(capabilities, "Runner.HomeDirectory", HostContext.GetDirectory(WellKnownDirectory.Root));
             return Task.FromResult(capabilities);
         }
 

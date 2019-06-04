@@ -12,8 +12,8 @@ using GitHub.Runner.Sdk;
 
 namespace GitHub.Runner.Common
 {
-    [ServiceLocator(Default = typeof(AgentCertificateManager))]
-    public interface IAgentCertificateManager : IAgentService
+    [ServiceLocator(Default = typeof(RunnerCertificateManager))]
+    public interface IRunnerCertificateManager : IRunnerService
     {
         bool SkipServerCertificateValidation { get; }
         string CACertificateFile { get; }
@@ -24,9 +24,9 @@ namespace GitHub.Runner.Common
         IVssClientCertificateManager VssClientCertificateManager { get; }
     }
 
-    public class AgentCertificateManager : AgentService, IAgentCertificateManager
+    public class RunnerCertificateManager : RunnerService, IRunnerCertificateManager
     {
-        private AgentClientCertificateManager _agentClientCertificateManager = new AgentClientCertificateManager();
+        private RunnerClientCertificateManager _runnerClientCertificateManager = new RunnerClientCertificateManager();
 
         public bool SkipServerCertificateValidation { private set; get; }
         public string CACertificateFile { private set; get; }
@@ -34,7 +34,7 @@ namespace GitHub.Runner.Common
         public string ClientCertificatePrivateKeyFile { private set; get; }
         public string ClientCertificateArchiveFile { private set; get; }
         public string ClientCertificatePassword { private set; get; }
-        public IVssClientCertificateManager VssClientCertificateManager => _agentClientCertificateManager;
+        public IVssClientCertificateManager VssClientCertificateManager => _runnerClientCertificateManager;
 
         public override void Initialize(IHostContext hostContext)
         {
@@ -45,7 +45,7 @@ namespace GitHub.Runner.Common
         // This should only be called from config
         public void SetupCertificate(bool skipCertValidation, string caCert, string clientCert, string clientCertPrivateKey, string clientCertArchive, string clientCertPassword)
         {
-            Trace.Info("Setup agent certificate setting base on configuration inputs.");
+            Trace.Info("Setup runner certificate setting base on configuration inputs.");
 
             if (skipCertValidation)
             {
@@ -77,7 +77,7 @@ namespace GitHub.Runner.Common
             ClientCertificateArchiveFile = clientCertArchive;
             ClientCertificatePassword = clientCertPassword;
 
-            _agentClientCertificateManager.AddClientCertificate(ClientCertificateArchiveFile, ClientCertificatePassword);
+            _runnerClientCertificateManager.AddClientCertificate(ClientCertificateArchiveFile, ClientCertificatePassword);
         }
 
         // This should only be called from config
@@ -86,7 +86,7 @@ namespace GitHub.Runner.Common
             string certSettingFile = HostContext.GetConfigFile(WellKnownConfigFile.Certificates);
             IOUtil.DeleteFile(certSettingFile);
 
-            var setting = new AgentCertificateSetting();
+            var setting = new RunnerCertificateSetting();
             if (SkipServerCertificateValidation)
             {
                 Trace.Info($"Store Skip ServerCertificateValidation setting to '{certSettingFile}'");
@@ -114,8 +114,8 @@ namespace GitHub.Runner.Common
                     string lookupKey = Guid.NewGuid().ToString("D").ToUpperInvariant();
                     Trace.Info($"Store client cert private key password with lookup key {lookupKey}");
 
-                    var credStore = HostContext.GetService<IAgentCredentialStore>();
-                    credStore.Write($"VSTS_AGENT_CLIENT_CERT_PASSWORD_{lookupKey}", "VSTS", ClientCertificatePassword);
+                    var credStore = HostContext.GetService<IRunnerCredentialStore>();
+                    credStore.Write($"GITHUB_ACTIONS_RUNNER_CLIENT_CERT_PASSWORD_{lookupKey}", "VSTS", ClientCertificatePassword);
 
                     setting.ClientCertPasswordLookupKey = lookupKey;
                 }
@@ -136,14 +136,14 @@ namespace GitHub.Runner.Common
             string certSettingFile = HostContext.GetConfigFile(WellKnownConfigFile.Certificates);
             if (File.Exists(certSettingFile))
             {
-                Trace.Info($"Load agent certificate setting from '{certSettingFile}'");
-                var certSetting = IOUtil.LoadObject<AgentCertificateSetting>(certSettingFile);
+                Trace.Info($"Load runner certificate setting from '{certSettingFile}'");
+                var certSetting = IOUtil.LoadObject<RunnerCertificateSetting>(certSettingFile);
 
                 if (certSetting != null && !string.IsNullOrEmpty(certSetting.ClientCertPasswordLookupKey))
                 {
                     Trace.Info("Delete client cert private key password from credential store.");
-                    var credStore = HostContext.GetService<IAgentCredentialStore>();
-                    credStore.Delete($"VSTS_AGENT_CLIENT_CERT_PASSWORD_{certSetting.ClientCertPasswordLookupKey}");
+                    var credStore = HostContext.GetService<IRunnerCredentialStore>();
+                    credStore.Delete($"GITHUB_ACTIONS_RUNNER_CLIENT_CERT_PASSWORD_{certSetting.ClientCertPasswordLookupKey}");
                 }
 
                 Trace.Info($"Delete cert setting file: {certSettingFile}");
@@ -156,9 +156,9 @@ namespace GitHub.Runner.Common
             string certSettingFile = HostContext.GetConfigFile(WellKnownConfigFile.Certificates);
             if (File.Exists(certSettingFile))
             {
-                Trace.Info($"Load agent certificate setting from '{certSettingFile}'");
-                var certSetting = IOUtil.LoadObject<AgentCertificateSetting>(certSettingFile);
-                ArgUtil.NotNull(certSetting, nameof(AgentCertificateSetting));
+                Trace.Info($"Load runner certificate setting from '{certSettingFile}'");
+                var certSetting = IOUtil.LoadObject<RunnerCertificateSetting>(certSettingFile);
+                ArgUtil.NotNull(certSetting, nameof(RunnerCertificateSetting));
 
                 if (certSetting.SkipServerCertValidation)
                 {
@@ -192,12 +192,12 @@ namespace GitHub.Runner.Common
 
                     if (!string.IsNullOrEmpty(certSetting.ClientCertPasswordLookupKey))
                     {
-                        var cerdStore = HostContext.GetService<IAgentCredentialStore>();
-                        ClientCertificatePassword = cerdStore.Read($"VSTS_AGENT_CLIENT_CERT_PASSWORD_{certSetting.ClientCertPasswordLookupKey}").Password;
+                        var cerdStore = HostContext.GetService<IRunnerCredentialStore>();
+                        ClientCertificatePassword = cerdStore.Read($"GITHUB_ACTIONS_RUNNER_CLIENT_CERT_PASSWORD_{certSetting.ClientCertPasswordLookupKey}").Password;
                         HostContext.SecretMasker.AddValue(ClientCertificatePassword);
                     }
 
-                    _agentClientCertificateManager.AddClientCertificate(ClientCertificateArchiveFile, ClientCertificatePassword);
+                    _runnerClientCertificateManager.AddClientCertificate(ClientCertificateArchiveFile, ClientCertificatePassword);
                 }
             }
             else
@@ -208,7 +208,7 @@ namespace GitHub.Runner.Common
     }
 
     [DataContract]
-    internal class AgentCertificateSetting
+    internal class RunnerCertificateSetting
     {
         [DataMember]
         public bool SkipServerCertValidation { get; set; }

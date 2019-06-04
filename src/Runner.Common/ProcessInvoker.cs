@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 namespace GitHub.Runner.Common
 {
     [ServiceLocator(Default = typeof(ProcessInvokerWrapper))]
-    public interface IProcessInvoker : IDisposable, IAgentService
+    public interface IProcessInvoker : IDisposable, IRunnerService
     {
         event EventHandler<ProcessDataReceivedEventArgs> OutputDataReceived;
         event EventHandler<ProcessDataReceivedEventArgs> ErrorDataReceived;
@@ -107,7 +107,7 @@ namespace GitHub.Runner.Common
     // Missing functionalities:
     //       1. Cancel/Kill process tree
     //       2. Make sure STDOUT and STDERR not process out of order
-    public sealed class ProcessInvokerWrapper : AgentService, IProcessInvoker
+    public sealed class ProcessInvokerWrapper : RunnerService, IProcessInvoker
     {
         private ProcessInvoker _invoker;
 

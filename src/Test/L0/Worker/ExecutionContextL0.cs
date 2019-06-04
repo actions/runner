@@ -124,15 +124,15 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             // Arrange: Setup the configation store.
             var configurationStore = new Mock<IConfigurationStore>();
-            configurationStore.Setup(x => x.GetSettings()).Returns(new AgentSettings());
+            configurationStore.Setup(x => x.GetSettings()).Returns(new RunnerSettings());
             hc.SetSingleton(configurationStore.Object);
 
             // Arrange: Setup the proxy configation.
-            var proxy = new Mock<IVstsAgentWebProxy>();
+            var proxy = new Mock<IRunnerWebProxy>();
             hc.SetSingleton(proxy.Object);
 
             // Arrange: Setup the cert configation.
-            var cert = new Mock<IAgentCertificateManager>();
+            var cert = new Mock<IRunnerCertificateManager>();
             hc.SetSingleton(cert.Object);
 
             // Arrange: Create the execution context.

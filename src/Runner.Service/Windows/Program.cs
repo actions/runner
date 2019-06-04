@@ -30,7 +30,7 @@ namespace RunnerService
 
                 try
                 {
-                    EventLog.WriteEntry(RunnerService.EventSourceName, "create event log trace source for action-runner service", EventLogEntryType.Information, 100);
+                    EventLog.WriteEntry(RunnerService.EventSourceName, "create event log trace source for actions-runner service", EventLogEntryType.Information, 100);
                     return 0;
                 }
                 catch (Win32Exception ex)
@@ -45,7 +45,7 @@ namespace RunnerService
             ServiceBase[] ServicesToRun;
             ServicesToRun = new ServiceBase[]
             {
-                new RunnerService(args.Length > 0 ? args[0] : "ActionRunnerService")
+                new RunnerService(args.Length > 0 ? args[0] : "ActionsRunnerService")
             };
             ServiceBase.Run(ServicesToRun);
 

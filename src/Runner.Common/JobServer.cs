@@ -9,7 +9,7 @@ using GitHub.Services.WebApi;
 namespace GitHub.Runner.Common
 {
     [ServiceLocator(Default = typeof(JobServer))]
-    public interface IJobServer : IAgentService
+    public interface IJobServer : IRunnerService
     {
         Task ConnectAsync(VssConnection jobConnection);
 
@@ -24,7 +24,7 @@ namespace GitHub.Runner.Common
         Task<Timeline> GetTimelineAsync(Guid scopeIdentifier, string hubName, Guid planId, Guid timelineId, CancellationToken cancellationToken);
     }
 
-    public sealed class JobServer : AgentService, IJobServer
+    public sealed class JobServer : RunnerService, IJobServer
     {
         private bool _hasConnection;
         private VssConnection _connection;

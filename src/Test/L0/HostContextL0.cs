@@ -23,14 +23,14 @@ namespace GitHub.Runner.Common.Tests
                 Setup();
 
                 // Act.
-                var reference1 = _hc.CreateService<IAgentServer>();
-                var reference2 = _hc.CreateService<IAgentServer>();
+                var reference1 = _hc.CreateService<IRunnerServer>();
+                var reference2 = _hc.CreateService<IRunnerServer>();
 
                 // Assert.
                 Assert.NotNull(reference1);
-                Assert.IsType<AgentServer>(reference1);
+                Assert.IsType<RunnerServer>(reference1);
                 Assert.NotNull(reference2);
-                Assert.IsType<AgentServer>(reference2);
+                Assert.IsType<RunnerServer>(reference2);
                 Assert.False(object.ReferenceEquals(reference1, reference2));
             }
             finally
@@ -51,12 +51,12 @@ namespace GitHub.Runner.Common.Tests
                 Setup();
 
                 // Act.
-                var reference1 = _hc.GetService<IAgentServer>();
-                var reference2 = _hc.GetService<IAgentServer>();
+                var reference1 = _hc.GetService<IRunnerServer>();
+                var reference2 = _hc.GetService<IRunnerServer>();
 
                 // Assert.
                 Assert.NotNull(reference1);
-                Assert.IsType<AgentServer>(reference1);
+                Assert.IsType<RunnerServer>(reference1);
                 Assert.NotNull(reference2);
                 Assert.True(object.ReferenceEquals(reference1, reference2));
             }

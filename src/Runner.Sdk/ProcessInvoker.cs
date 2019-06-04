@@ -268,9 +268,6 @@ namespace GitHub.Runner.Sdk
                 }
             }
 
-            // Set the TF_BUILD env variable.
-            _proc.StartInfo.Environment["TF_BUILD"] = "True";
-
             // Hook up the events.
             _proc.EnableRaisingEvents = true;
             _proc.Exited += ProcessExitedHandler;

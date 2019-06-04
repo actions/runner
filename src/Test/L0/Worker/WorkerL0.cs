@@ -15,15 +15,15 @@ namespace GitHub.Runner.Common.Tests.Worker
     {
         private Mock<IProcessChannel> _processChannel;
         private Mock<IJobRunner> _jobRunner;
-        private Mock<IVstsAgentWebProxy> _proxy;
-        private Mock<IAgentCertificateManager> _cert;
+        private Mock<IRunnerWebProxy> _proxy;
+        private Mock<IRunnerCertificateManager> _cert;
 
         public WorkerL0()
         {
             _processChannel = new Mock<IProcessChannel>();
             _jobRunner = new Mock<IJobRunner>();
-            _proxy = new Mock<IVstsAgentWebProxy>();
-            _cert = new Mock<IAgentCertificateManager>();
+            _proxy = new Mock<IRunnerWebProxy>();
+            _cert = new Mock<IRunnerCertificateManager>();
         }
 
         private Pipelines.AgentJobRequestMessage CreateJobRequestMessage(string jobName)
@@ -75,8 +75,8 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var worker = new GitHub.Runner.Worker.Worker();
                 hc.EnqueueInstance<IProcessChannel>(_processChannel.Object);
                 hc.EnqueueInstance<IJobRunner>(_jobRunner.Object);
-                hc.SetSingleton<IVstsAgentWebProxy>(_proxy.Object);
-                hc.SetSingleton<IAgentCertificateManager>(_cert.Object);
+                hc.SetSingleton<IRunnerWebProxy>(_proxy.Object);
+                hc.SetSingleton<IRunnerCertificateManager>(_cert.Object);
                 worker.Initialize(hc);
                 var jobMessage = CreateJobRequestMessage("job1");
                 var arWorkerMessages = new WorkerMessage[]
@@ -128,8 +128,8 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var worker = new GitHub.Runner.Worker.Worker();
                 hc.EnqueueInstance<IProcessChannel>(_processChannel.Object);
                 hc.EnqueueInstance<IJobRunner>(_jobRunner.Object);
-                hc.SetSingleton<IVstsAgentWebProxy>(_proxy.Object);
-                hc.SetSingleton<IAgentCertificateManager>(_cert.Object);
+                hc.SetSingleton<IRunnerWebProxy>(_proxy.Object);
+                hc.SetSingleton<IRunnerCertificateManager>(_cert.Object);
                 worker.Initialize(hc);
                 var jobMessage = CreateJobRequestMessage("job1");
                 var cancelMessage = CreateJobCancelMessage(jobMessage.JobId);

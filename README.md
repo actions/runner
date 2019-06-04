@@ -1,8 +1,8 @@
-# GitHub Action Runner
+# GitHub Actions Runner
 
 ## Overview
 
-The cross platform action runner for GitHub Pipelines.  
+The cross platform actions runner for GitHub Pipelines.  
 
 Supported on Windows, OSX, Linux.  Written for the .NET Core CLR as one code base in C#.
 

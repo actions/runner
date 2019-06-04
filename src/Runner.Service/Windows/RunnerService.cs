@@ -13,7 +13,7 @@ namespace RunnerService
 {
     public partial class RunnerService : ServiceBase
     {
-        public const string EventSourceName = "ActionRunnerService";
+        public const string EventSourceName = "ActionsRunnerService";
         private const int CTRL_C_EVENT = 0;
         private const int CTRL_BREAK_EVENT = 1;
         private bool _restart = false;
@@ -37,7 +37,7 @@ namespace RunnerService
                         try
                         {
                             bool stopping;
-                            WriteInfo("Starting Action Runner Service");
+                            WriteInfo("Starting Actions Runner Service");
                             TimeSpan timeBetweenRetries = TimeSpan.FromSeconds(5);
 
                             lock (ServiceLock)
@@ -47,7 +47,7 @@ namespace RunnerService
 
                             while (!stopping)
                             {
-                                WriteInfo("Starting Action Runner listener");
+                                WriteInfo("Starting Actions Runner listener");
                                 lock (ServiceLock)
                                 {
                                     RunnerListener = CreateRunnerListener();

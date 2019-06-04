@@ -4,7 +4,7 @@ using GitHub.Services.Common;
 
 namespace GitHub.Runner.Sdk
 {
-    public class AgentCertificateSettings
+    public class RunnerCertificateSettings
     {
         public bool SkipServerCertificateValidation { get; set; }
         public string CACertificateFile { get; set; }
@@ -15,16 +15,16 @@ namespace GitHub.Runner.Sdk
         public IVssClientCertificateManager VssClientCertificateManager { get; set; }
     }
 
-    public class AgentClientCertificateManager : IVssClientCertificateManager
+    public class RunnerClientCertificateManager : IVssClientCertificateManager
     {
         private readonly X509Certificate2Collection _clientCertificates = new X509Certificate2Collection();
         public X509Certificate2Collection ClientCertificates => _clientCertificates;
 
-        public AgentClientCertificateManager()
+        public RunnerClientCertificateManager()
         {
         }
 
-        public AgentClientCertificateManager(string clientCertificateArchiveFile, string clientCertificatePassword)
+        public RunnerClientCertificateManager(string clientCertificateArchiveFile, string clientCertificatePassword)
         {
             AddClientCertificate(clientCertificateArchiveFile, clientCertificatePassword);
         }

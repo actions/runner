@@ -1,30 +1,4 @@
-﻿// workflow:
-//   build:
-//     actions:
-//     - run: printenv
-//       name: printenv_name
-//       id: printenv_id
-//       if: succeeded()
-//       env:
-//         foo: bar
-//     - uses: 'docker://ubuntu:16.04'
-//       if: succeeded()
-//       with:
-//         entryPoint: /bin/bash
-//         args: echo
-//       env:
-//         foo: bar
-//     - uses: actions/npm@master
-//       name: npm_version
-//       with:
-//         args: version
-//     - uses: actions/aws/cli@master
-//       id: cli_id
-//       with:
-//         args: version
-
-
-using GitHub.DistributedTask.WebApi;
+﻿using GitHub.DistributedTask.WebApi;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 using GitHub.Runner.Common.Util;
 using GitHub.Services.Common;
@@ -39,7 +13,6 @@ using System.Threading.Tasks;
 using System.Net.Http;
 using System.Text;
 using System.IO.Compression;
-using GitHub.Runner.Worker.Build;
 using System.Diagnostics;
 using Newtonsoft.Json.Linq;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
@@ -49,12 +22,12 @@ using GitHub.Runner.Sdk;
 namespace GitHub.Runner.Worker
 {
     [ServiceLocator(Default = typeof(JobRunner))]
-    public interface IJobRunner : IAgentService
+    public interface IJobRunner : IRunnerService
     {
         Task<TaskResult> RunAsync(Pipelines.AgentJobRequestMessage message, CancellationToken jobRequestCancellationToken);
     }
 
-    public sealed class JobRunner : AgentService, IJobRunner
+    public sealed class JobRunner : RunnerService, IJobRunner
     {
         private IJobServerQueue _jobServerQueue;
         private ITempDirectoryManager _tempDirectoryManager;
@@ -110,7 +83,7 @@ namespace GitHub.Runner.Worker
             MakeJobMessageCompat(message);
 
             IExecutionContext jobContext = null;
-            CancellationTokenRegistration? agentShutdownRegistration = null;
+            CancellationTokenRegistration? runnerShutdownRegistration = null;
             try
             {
                 // Create the job execution context.
@@ -120,21 +93,21 @@ namespace GitHub.Runner.Worker
                 jobContext.Start();
                 jobContext.Section(StringUtil.Loc("StepStarting", message.JobDisplayName));
 
-                agentShutdownRegistration = HostContext.AgentShutdownToken.Register(() =>
+                runnerShutdownRegistration = HostContext.RunnerShutdownToken.Register(() =>
                 {
-                    // log an issue, then agent get shutdown by Ctrl-C or Ctrl-Break.
-                    // the server will use Ctrl-Break to tells the agent that operating system is shutting down.
+                    // log an issue, then runner get shutdown by Ctrl-C or Ctrl-Break.
+                    // the server will use Ctrl-Break to tells the runner that operating system is shutting down.
                     string errorMessage;
-                    switch (HostContext.AgentShutdownReason)
+                    switch (HostContext.RunnerShutdownReason)
                     {
                         case ShutdownReason.UserCancelled:
-                            errorMessage = StringUtil.Loc("UserShutdownAgent");
+                            errorMessage = StringUtil.Loc("UserShutdownRunner");
                             break;
                         case ShutdownReason.OperatingSystemShutdown:
                             errorMessage = StringUtil.Loc("OperatingSystemShutdown", Environment.MachineName);
                             break;
                         default:
-                            throw new ArgumentException(HostContext.AgentShutdownReason.ToString(), nameof(HostContext.AgentShutdownReason));
+                            throw new ArgumentException(HostContext.RunnerShutdownReason.ToString(), nameof(HostContext.RunnerShutdownReason));
                     }
                     jobContext.AddIssue(new Issue() { Type = IssueType.Error, Message = errorMessage });
                 });
@@ -173,10 +146,7 @@ namespace GitHub.Runner.Worker
 
                 // Get the job extension.
                 Trace.Info("Getting job extension.");
-                IJobExtension jobExtension = new BuildJobExtension();
-                jobExtension.Initialize(HostContext);
-                ArgUtil.NotNull(jobExtension, nameof(jobExtension));
-
+                IJobExtension jobExtension = HostContext.CreateService<IJobExtension>();
                 List<IStep> jobSteps = null;
                 try
                 {
@@ -254,10 +224,10 @@ namespace GitHub.Runner.Worker
             }
             finally
             {
-                if (agentShutdownRegistration != null)
+                if (runnerShutdownRegistration != null)
                 {
-                    agentShutdownRegistration.Value.Dispose();
-                    agentShutdownRegistration = null;
+                    runnerShutdownRegistration.Value.Dispose();
+                    runnerShutdownRegistration = null;
                 }
 
                 await ShutdownQueue(throwOnFailure: false);
@@ -451,7 +421,7 @@ namespace GitHub.Runner.Worker
         //          Agent config url is https://tfsserver.mycompany.com:9090/tfs 
         private Uri ReplaceWithConfigUriBase(Uri messageUri)
         {
-            AgentSettings settings = HostContext.GetService<IConfigurationStore>().GetSettings();
+            RunnerSettings settings = HostContext.GetService<IConfigurationStore>().GetSettings();
             try
             {
                 Uri result = null;

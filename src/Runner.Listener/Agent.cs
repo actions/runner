@@ -14,13 +14,13 @@ using GitHub.Runner.Sdk;
 
 namespace GitHub.Runner.Listener
 {
-    [ServiceLocator(Default = typeof(Agent))]
-    public interface IAgent : IAgentService
+    [ServiceLocator(Default = typeof(Runner))]
+    public interface IRunner : IRunnerService
     {
         Task<int> ExecuteCommand(CommandSettings command);
     }
 
-    public sealed class Agent : AgentService, IAgent
+    public sealed class Runner : RunnerService, IRunner
     {
         private IMessageListener _listener;
         private ITerminal _term;
@@ -37,16 +37,16 @@ namespace GitHub.Runner.Listener
         {
             try
             {
-                var agentWebProxy = HostContext.GetService<IVstsAgentWebProxy>();
-                var agentCertManager = HostContext.GetService<IAgentCertificateManager>();
-                VssUtil.InitializeVssClientSettings(HostContext.UserAgent, agentWebProxy.WebProxy, agentCertManager.VssClientCertificateManager);
+                var runnerWebProxy = HostContext.GetService<IRunnerWebProxy>();
+                var runnerCertManager = HostContext.GetService<IRunnerCertificateManager>();
+                VssUtil.InitializeVssClientSettings(HostContext.UserAgent, runnerWebProxy.WebProxy, runnerCertManager.VssClientCertificateManager);
 
                 _inConfigStage = true;
                 _completedCommand.Reset();
                 _term.CancelKeyPress += CtrlCHandler;
 
                 //register a SIGTERM handler
-                HostContext.Unloading += Agent_Unloading;
+                HostContext.Unloading += Runner_Unloading;
 
                 // TODO Unit test to cover this logic
                 Trace.Info(nameof(ExecuteCommand));
@@ -59,35 +59,35 @@ namespace GitHub.Runner.Listener
                 if (command.Help)
                 {
                     PrintUsage(command);
-                    return Constants.Agent.ReturnCode.Success;
+                    return Constants.Runner.ReturnCode.Success;
                 }
 
                 if (command.Version)
                 {
                     _term.WriteLine(BuildConstants.RunnerPackage.Version);
-                    return Constants.Agent.ReturnCode.Success;
+                    return Constants.Runner.ReturnCode.Success;
                 }
 
                 if (command.Commit)
                 {
                     _term.WriteLine(BuildConstants.Source.CommitHash);
-                    return Constants.Agent.ReturnCode.Success;
+                    return Constants.Runner.ReturnCode.Success;
                 }
 
-                // Configure agent prompt for args if not supplied
-                // Unattend configure mode will not prompt for args if not supplied and error on any missing or invalid value.
+                // Configure runner prompt for args if not supplied
+                // Unattended configure mode will not prompt for args if not supplied and error on any missing or invalid value.
                 if (command.Configure)
                 {
                     try
                     {
                         await configManager.ConfigureAsync(command);
-                        return Constants.Agent.ReturnCode.Success;
+                        return Constants.Runner.ReturnCode.Success;
                     }
                     catch (Exception ex)
                     {
                         Trace.Error(ex);
                         _term.WriteError(ex.Message);
-                        return Constants.Agent.ReturnCode.TerminatedError;
+                        return Constants.Runner.ReturnCode.TerminatedError;
                     }
                 }
 
@@ -97,21 +97,21 @@ namespace GitHub.Runner.Listener
                     try
                     {
                         await configManager.UnconfigureAsync(command);
-                        return Constants.Agent.ReturnCode.Success;
+                        return Constants.Runner.ReturnCode.Success;
                     }
                     catch (Exception ex)
                     {
                         Trace.Error(ex);
                         _term.WriteError(ex.Message);
-                        return Constants.Agent.ReturnCode.TerminatedError;
+                        return Constants.Runner.ReturnCode.TerminatedError;
                     }
                 }
 
                 _inConfigStage = false;
 
-                // warmup agent process (JIT/CLR)
-                // In scenarios where the agent is single use (used and then thrown away), the system provisioning the agent can call `Runner.Listener --warmup` before the machine is made available to the pool for use.
-                // this will optimizes the agent process startup time.
+                // warmup runner process (JIT/CLR)
+                // In scenarios where the runner is single use (used and then thrown away), the system provisioning the runner can call `Runner.Listener --warmup` before the machine is made available to the pool for use.
+                // this will optimizes the runner process startup time.
                 if (command.Warmup)
                 {
                     var binDir = HostContext.GetDirectory(WellKnownDirectory.Bin);
@@ -149,69 +149,75 @@ namespace GitHub.Runner.Listener
                         }
                     }
 
-                    return Constants.Agent.ReturnCode.Success;
+                    return Constants.Runner.ReturnCode.Success;
                 }
 
-                AgentSettings settings = configManager.LoadSettings();
+                RunnerSettings settings = configManager.LoadSettings();
 
                 var store = HostContext.GetService<IConfigurationStore>();
                 bool configuredAsService = store.IsServiceConfigured();
 
-                // Run agent
-                //if (command.Run) // this line is current break machine provisioner.
-                //{
-
-                // Error if agent not configured.
-                if (!configManager.IsConfigured())
+                // Run runner
+                if (command.Run) // this line is current break machine provisioner.
                 {
-                    _term.WriteError(StringUtil.Loc("AgentIsNotConfigured"));
-                    PrintUsage(command);
-                    return Constants.Agent.ReturnCode.TerminatedError;
-                }
 
-                Trace.Verbose($"Configured as service: '{configuredAsService}'");
+                    // Error if runner not configured.
+                    if (!configManager.IsConfigured())
+                    {
+                        _term.WriteError(StringUtil.Loc("RunnerIsNotConfigured"));
+                        PrintUsage(command);
+                        return Constants.Runner.ReturnCode.TerminatedError;
+                    }
 
-                //Get the startup type of the agent i.e., autostartup, service, manual
-                StartupType startType;
-                var startupTypeAsString = command.GetStartupType();
-                if (string.IsNullOrEmpty(startupTypeAsString) && configuredAsService)
-                {
-                    // We need try our best to make the startup type accurate 
-                    // The problem is coming from agent autoupgrade, which result an old version service host binary but a newer version agent binary
-                    // At that time the servicehost won't pass --startuptype to Runner.Listener while the agent is actually running as service.
-                    // We will guess the startup type only when the agent is configured as service and the guess will based on whether STDOUT/STDERR/STDIN been redirect or not
-                    Trace.Info($"Try determine agent startup type base on console redirects.");
-                    startType = (Console.IsErrorRedirected && Console.IsInputRedirected && Console.IsOutputRedirected) ? StartupType.Service : StartupType.Manual;
+                    Trace.Verbose($"Configured as service: '{configuredAsService}'");
+
+                    //Get the startup type of the runner i.e., autostartup, service, manual
+                    StartupType startType;
+                    var startupTypeAsString = command.GetStartupType();
+                    if (string.IsNullOrEmpty(startupTypeAsString) && configuredAsService)
+                    {
+                        // We need try our best to make the startup type accurate 
+                        // The problem is coming from runner autoupgrade, which result an old version service host binary but a newer version runner binary
+                        // At that time the servicehost won't pass --startuptype to Runner.Listener while the runner is actually running as service.
+                        // We will guess the startup type only when the runner is configured as service and the guess will based on whether STDOUT/STDERR/STDIN been redirect or not
+                        Trace.Info($"Try determine runner startup type base on console redirects.");
+                        startType = (Console.IsErrorRedirected && Console.IsInputRedirected && Console.IsOutputRedirected) ? StartupType.Service : StartupType.Manual;
+                    }
+                    else
+                    {
+                        if (!Enum.TryParse(startupTypeAsString, true, out startType))
+                        {
+                            Trace.Info($"Could not parse the argument value '{startupTypeAsString}' for StartupType. Defaulting to {StartupType.Manual}");
+                            startType = StartupType.Manual;
+                        }
+                    }
+
+                    Trace.Info($"Set runner startup type - {startType}");
+                    HostContext.StartupType = startType;
+
+                    // Run the runner interactively or as service
+                    return await RunAsync(settings, command.RunOnce);
                 }
                 else
                 {
-                    if (!Enum.TryParse(startupTypeAsString, true, out startType))
-                    {
-                        Trace.Info($"Could not parse the argument value '{startupTypeAsString}' for StartupType. Defaulting to {StartupType.Manual}");
-                        startType = StartupType.Manual;
-                    }
+                    PrintUsage(command);
+                    return Constants.Runner.ReturnCode.Success;
                 }
-
-                Trace.Info($"Set agent startup type - {startType}");
-                HostContext.StartupType = startType;
-
-                // Run the agent interactively or as service
-                return await RunAsync(settings, command.RunOnce);
             }
             finally
             {
                 _term.CancelKeyPress -= CtrlCHandler;
-                HostContext.Unloading -= Agent_Unloading;
+                HostContext.Unloading -= Runner_Unloading;
                 _completedCommand.Set();
             }
         }
 
-        private void Agent_Unloading(object sender, EventArgs e)
+        private void Runner_Unloading(object sender, EventArgs e)
         {
-            if ((!_inConfigStage) && (!HostContext.AgentShutdownToken.IsCancellationRequested))
+            if ((!_inConfigStage) && (!HostContext.RunnerShutdownToken.IsCancellationRequested))
             {
-                HostContext.ShutdownAgent(ShutdownReason.UserCancelled);
-                _completedCommand.WaitOne(Constants.Agent.ExitOnUnloadTimeout);
+                HostContext.ShutdownRunner(ShutdownReason.UserCancelled);
+                _completedCommand.WaitOne(Constants.Runner.ExitOnUnloadTimeout);
             }
         }
 
@@ -221,7 +227,7 @@ namespace GitHub.Runner.Listener
             if (_inConfigStage)
             {
                 HostContext.Dispose();
-                Environment.Exit(Constants.Agent.ReturnCode.TerminatedError);
+                Environment.Exit(Constants.Runner.ReturnCode.TerminatedError);
             }
             else
             {
@@ -231,7 +237,7 @@ namespace GitHub.Runner.Listener
                     ShutdownReason reason;
                     if (cancelEvent.SpecialKey == ConsoleSpecialKey.ControlBreak)
                     {
-                        Trace.Info("Received Ctrl-Break signal from agent service host, this indicate the operating system is shutting down.");
+                        Trace.Info("Received Ctrl-Break signal from runner service host, this indicate the operating system is shutting down.");
                         reason = ShutdownReason.OperatingSystemShutdown;
                     }
                     else
@@ -240,32 +246,32 @@ namespace GitHub.Runner.Listener
                         reason = ShutdownReason.UserCancelled;
                     }
 
-                    HostContext.ShutdownAgent(reason);
+                    HostContext.ShutdownRunner(reason);
                 }
                 else
                 {
-                    HostContext.ShutdownAgent(ShutdownReason.UserCancelled);
+                    HostContext.ShutdownRunner(ShutdownReason.UserCancelled);
                 }
             }
         }
 
         //create worker manager, create message listener and start listening to the queue
-        private async Task<int> RunAsync(AgentSettings settings, bool runOnce = false)
+        private async Task<int> RunAsync(RunnerSettings settings, bool runOnce = false)
         {
             try
             {
                 Trace.Info(nameof(RunAsync));
                 _listener = HostContext.GetService<IMessageListener>();
-                if (!await _listener.CreateSessionAsync(HostContext.AgentShutdownToken))
+                if (!await _listener.CreateSessionAsync(HostContext.RunnerShutdownToken))
                 {
-                    return Constants.Agent.ReturnCode.TerminatedError;
+                    return Constants.Runner.ReturnCode.TerminatedError;
                 }
 
                 HostContext.WritePerfCounter("SessionCreated");
                 _term.WriteLine(StringUtil.Loc("ListenForJobs", DateTime.UtcNow));
 
                 IJobDispatcher jobDispatcher = null;
-                CancellationTokenSource messageQueueLoopTokenSource = CancellationTokenSource.CreateLinkedTokenSource(HostContext.AgentShutdownToken);
+                CancellationTokenSource messageQueueLoopTokenSource = CancellationTokenSource.CreateLinkedTokenSource(HostContext.RunnerShutdownToken);
                 try
                 {
                     var notification = HostContext.GetService<IJobNotification>();
@@ -275,7 +281,7 @@ namespace GitHub.Runner.Listener
                     }
                     else
                     {
-                        notification.StartClient(settings.NotificationPipeName, settings.MonitorSocketAddress, HostContext.AgentShutdownToken);
+                        notification.StartClient(settings.NotificationPipeName, settings.MonitorSocketAddress, HostContext.RunnerShutdownToken);
                     }
 
                     bool autoUpdateInProgress = false;
@@ -283,7 +289,7 @@ namespace GitHub.Runner.Listener
                     bool runOnceJobReceived = false;
                     jobDispatcher = HostContext.CreateService<IJobDispatcher>();
 
-                    while (!HostContext.AgentShutdownToken.IsCancellationRequested)
+                    while (!HostContext.RunnerShutdownToken.IsCancellationRequested)
                     {
                         TaskAgentMessage message = null;
                         bool skipMessageDeletion = false;
@@ -299,7 +305,7 @@ namespace GitHub.Runner.Listener
                                     autoUpdateInProgress = false;
                                     if (await selfUpdateTask)
                                     {
-                                        Trace.Info("Auto update task finished at backend, an agent update is ready to apply exit the current agent instance.");
+                                        Trace.Info("Auto update task finished at backend, an runner update is ready to apply exit the current runner instance.");
                                         Trace.Info("Stop message queue looping.");
                                         messageQueueLoopTokenSource.Cancel();
                                         try
@@ -313,27 +319,27 @@ namespace GitHub.Runner.Listener
 
                                         if (runOnce)
                                         {
-                                            return Constants.Agent.ReturnCode.RunOnceAgentUpdating;
+                                            return Constants.Runner.ReturnCode.RunOnceRunnerUpdating;
                                         }
                                         else
                                         {
-                                            return Constants.Agent.ReturnCode.AgentUpdating;
+                                            return Constants.Runner.ReturnCode.RunnerUpdating;
                                         }
                                     }
                                     else
                                     {
-                                        Trace.Info("Auto update task finished at backend, there is no available agent update needs to apply, continue message queue looping.");
+                                        Trace.Info("Auto update task finished at backend, there is no available runner update needs to apply, continue message queue looping.");
                                     }
                                 }
                             }
 
                             if (runOnceJobReceived)
                             {
-                                Trace.Verbose("One time used agent has start running its job, waiting for getNextMessage or the job to finish.");
+                                Trace.Verbose("One time used runner has start running its job, waiting for getNextMessage or the job to finish.");
                                 Task completeTask = await Task.WhenAny(getNextMessage, jobDispatcher.RunOnceJobCompleted.Task);
                                 if (completeTask == jobDispatcher.RunOnceJobCompleted.Task)
                                 {
-                                    Trace.Info("Job has finished at backend, the agent will exit since it is running under onetime use mode.");
+                                    Trace.Info("Job has finished at backend, the runner will exit since it is running under onetime use mode.");
                                     Trace.Info("Stop message queue looping.");
                                     messageQueueLoopTokenSource.Cancel();
                                     try
@@ -345,7 +351,7 @@ namespace GitHub.Runner.Listener
                                         Trace.Info($"Ignore any exception after cancel message loop. {ex}");
                                     }
 
-                                    return Constants.Agent.ReturnCode.Success;
+                                    return Constants.Runner.ReturnCode.Success;
                                 }
                             }
 
@@ -356,9 +362,9 @@ namespace GitHub.Runner.Listener
                                 if (autoUpdateInProgress == false)
                                 {
                                     autoUpdateInProgress = true;
-                                    var agentUpdateMessage = JsonUtility.FromString<AgentRefreshMessage>(message.Body);
+                                    var runnerUpdateMessage = JsonUtility.FromString<AgentRefreshMessage>(message.Body);
                                     var selfUpdater = HostContext.GetService<ISelfUpdater>();
-                                    selfUpdateTask = selfUpdater.SelfUpdate(agentUpdateMessage, jobDispatcher, !runOnce && HostContext.StartupType != StartupType.Service, HostContext.AgentShutdownToken);
+                                    selfUpdateTask = selfUpdater.SelfUpdate(runnerUpdateMessage, jobDispatcher, !runOnce && HostContext.StartupType != StartupType.Service, HostContext.RunnerShutdownToken);
                                     Trace.Info("Refresh message received, kick-off selfupdate background process.");
                                 }
                                 else
@@ -391,7 +397,7 @@ namespace GitHub.Runner.Listener
                                     jobDispatcher.Run(pipelineJobMessage, runOnce);
                                     if (runOnce)
                                     {
-                                        Trace.Info("One time used agent received job message.");
+                                        Trace.Info("One time used runner received job message.");
                                         runOnceJobReceived = true;
                                     }
                                 }
@@ -451,7 +457,7 @@ namespace GitHub.Runner.Listener
                 Trace.Info("Agent OAuth token has been revoked. Shutting down.");
             }
 
-            return Constants.Agent.ReturnCode.Success;
+            return Constants.Runner.ReturnCode.Success;
         }
 
         private void PrintUsage(CommandSettings command)

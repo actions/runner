@@ -9,8 +9,8 @@ using GitHub.Runner.Sdk;
 
 namespace GitHub.Runner.Common
 {
-    [ServiceLocator(Default = typeof(VstsAgentWebProxy))]
-    public interface IVstsAgentWebProxy : IAgentService
+    [ServiceLocator(Default = typeof(RunnerWebProxy))]
+    public interface IRunnerWebProxy : IRunnerService
     {
         string ProxyAddress { get; }
         string ProxyUsername { get; }
@@ -19,17 +19,17 @@ namespace GitHub.Runner.Common
         IWebProxy WebProxy { get; }
     }
 
-    public class VstsAgentWebProxy : AgentService, IVstsAgentWebProxy
+    public class RunnerWebProxy : RunnerService, IRunnerWebProxy
     {
         private readonly List<Regex> _regExBypassList = new List<Regex>();
         private readonly List<string> _bypassList = new List<string>();
-        private AgentWebProxy _agentWebProxy = new AgentWebProxy();
+        private RunnerWebProxyCore _runnerWebProxy = new RunnerWebProxyCore();
 
         public string ProxyAddress { get; private set; }
         public string ProxyUsername { get; private set; }
         public string ProxyPassword { get; private set; }
         public List<string> ProxyBypassList => _bypassList;
-        public IWebProxy WebProxy => _agentWebProxy;
+        public IWebProxy WebProxy => _runnerWebProxy;
 
         public override void Initialize(IHostContext context)
         {
@@ -55,7 +55,7 @@ namespace GitHub.Runner.Common
                 Trace.Info($"Config authentication proxy as: {ProxyUsername}.");
             }
 
-            _agentWebProxy.Update(ProxyAddress, ProxyUsername, ProxyPassword, ProxyBypassList);
+            _runnerWebProxy.Update(ProxyAddress, ProxyUsername, ProxyPassword, ProxyBypassList);
         }
 
         // This should only be called from config
@@ -78,8 +78,8 @@ namespace GitHub.Runner.Common
                     File.WriteAllText(proxyCredFile, lookupKey);
                     File.SetAttributes(proxyCredFile, File.GetAttributes(proxyCredFile) | FileAttributes.Hidden);
 
-                    var credStore = HostContext.GetService<IAgentCredentialStore>();
-                    credStore.Write($"VSTS_AGENT_PROXY_{lookupKey}", ProxyUsername, ProxyPassword);
+                    var credStore = HostContext.GetService<IRunnerCredentialStore>();
+                    credStore.Write($"GITHUB_ACTIONS_RUNNER_PROXY_{lookupKey}", ProxyUsername, ProxyPassword);
                 }
             }
             else
@@ -98,8 +98,8 @@ namespace GitHub.Runner.Common
                 string lookupKey = File.ReadAllLines(proxyCredFile).FirstOrDefault();
                 if (!string.IsNullOrEmpty(lookupKey))
                 {
-                    var credStore = HostContext.GetService<IAgentCredentialStore>();
-                    credStore.Delete($"VSTS_AGENT_PROXY_{lookupKey}");
+                    var credStore = HostContext.GetService<IRunnerCredentialStore>();
+                    credStore.Delete($"GITHUB_ACTIONS_RUNNER_PROXY_{lookupKey}");
                 }
 
                 Trace.Info($"Delete .proxycredentials file: {proxyCredFile}");
@@ -130,14 +130,6 @@ namespace GitHub.Runner.Common
                 Trace.Verbose($"{ProxyAddress}");
             }
 
-            if (string.IsNullOrEmpty(ProxyAddress))
-            {
-                Trace.Verbose("Try read proxy setting from environment variable: 'VSTS_HTTP_PROXY'.");
-                ProxyAddress = Environment.GetEnvironmentVariable("VSTS_HTTP_PROXY") ?? string.Empty;
-                ProxyAddress = ProxyAddress.Trim();
-                Trace.Verbose($"{ProxyAddress}");
-            }
-
             if (!string.IsNullOrEmpty(ProxyAddress) && !Uri.IsWellFormedUriString(ProxyAddress, UriKind.Absolute))
             {
                 Trace.Info($"The proxy url is not a well formed absolute uri string: {ProxyAddress}.");
@@ -154,21 +146,11 @@ namespace GitHub.Runner.Common
                     string lookupKey = File.ReadAllLines(proxyCredFile).FirstOrDefault();
                     if (!string.IsNullOrEmpty(lookupKey))
                     {
-                        var credStore = HostContext.GetService<IAgentCredentialStore>();
-                        var proxyCred = credStore.Read($"VSTS_AGENT_PROXY_{lookupKey}");
+                        var credStore = HostContext.GetService<IRunnerCredentialStore>();
+                        var proxyCred = credStore.Read($"GITHUB_ACTIONS_RUNNER_PROXY_{lookupKey}");
                         ProxyUsername = proxyCred.UserName;
                         ProxyPassword = proxyCred.Password;
                     }
-                }
-
-                if (string.IsNullOrEmpty(ProxyUsername))
-                {
-                    ProxyUsername = Environment.GetEnvironmentVariable("VSTS_HTTP_PROXY_USERNAME");
-                }
-
-                if (string.IsNullOrEmpty(ProxyPassword))
-                {
-                    ProxyPassword = Environment.GetEnvironmentVariable("VSTS_HTTP_PROXY_PASSWORD");
                 }
 
                 if (!string.IsNullOrEmpty(ProxyPassword))
@@ -203,7 +185,7 @@ namespace GitHub.Runner.Common
                     }
                 }
 
-                _agentWebProxy.Update(ProxyAddress, ProxyUsername, ProxyPassword, ProxyBypassList);
+                _runnerWebProxy.Update(ProxyAddress, ProxyUsername, ProxyPassword, ProxyBypassList);
             }
             else
             {

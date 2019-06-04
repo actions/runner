@@ -10,21 +10,21 @@ using GitHub.Runner.Sdk;
 
 namespace GitHub.Runner.Common
 {
-    public enum AgentConnectionType
+    public enum RunnerConnectionType
     {
         Generic,
         MessageQueue,
         JobRequest
     }
 
-    [ServiceLocator(Default = typeof(AgentServer))]
-    public interface IAgentServer : IAgentService
+    [ServiceLocator(Default = typeof(RunnerServer))]
+    public interface IRunnerServer : IRunnerService
     {
         Task ConnectAsync(Uri serverUrl, VssCredentials credentials);
 
-        Task RefreshConnectionAsync(AgentConnectionType connectionType, TimeSpan timeout);
+        Task RefreshConnectionAsync(RunnerConnectionType connectionType, TimeSpan timeout);
 
-        void SetConnectionTimeout(AgentConnectionType connectionType, TimeSpan timeout);
+        void SetConnectionTimeout(RunnerConnectionType connectionType, TimeSpan timeout);
 
         // Configuration
         Task<TaskAgent> AddAgentAsync(Int32 agentPoolId, TaskAgent agent);
@@ -52,7 +52,7 @@ namespace GitHub.Runner.Common
         Task<TaskAgent> UpdateAgentUpdateStateAsync(int agentPoolId, int agentId, string currentState);
     }
 
-    public sealed class AgentServer : AgentService, IAgentServer
+    public sealed class RunnerServer : RunnerService, IRunnerServer
     {
         private bool _hasGenericConnection;
         private bool _hasMessageConnection;
@@ -85,13 +85,13 @@ namespace GitHub.Runner.Common
         }
 
         // Refresh connection is best effort. it should never throw exception
-        public async Task RefreshConnectionAsync(AgentConnectionType connectionType, TimeSpan timeout)
+        public async Task RefreshConnectionAsync(RunnerConnectionType connectionType, TimeSpan timeout)
         {
             Trace.Info($"Refresh {connectionType} VssConnection to get on a different AFD node.");
             VssConnection newConnection = null;
             switch (connectionType)
             {
-                case AgentConnectionType.MessageQueue:
+                case RunnerConnectionType.MessageQueue:
                     try
                     {
                         _hasMessageConnection = false;
@@ -111,7 +111,7 @@ namespace GitHub.Runner.Common
                         _hasMessageConnection = true;
                     }
                     break;
-                case AgentConnectionType.JobRequest:
+                case RunnerConnectionType.JobRequest:
                     try
                     {
                         _hasRequestConnection = false;
@@ -131,7 +131,7 @@ namespace GitHub.Runner.Common
                         _hasRequestConnection = true;
                     }
                     break;
-                case AgentConnectionType.Generic:
+                case RunnerConnectionType.Generic:
                     try
                     {
                         _hasGenericConnection = false;
@@ -157,18 +157,18 @@ namespace GitHub.Runner.Common
             }
         }
 
-        public void SetConnectionTimeout(AgentConnectionType connectionType, TimeSpan timeout)
+        public void SetConnectionTimeout(RunnerConnectionType connectionType, TimeSpan timeout)
         {
             Trace.Info($"Set {connectionType} VssConnection's timeout to {timeout.TotalSeconds} seconds.");
             switch (connectionType)
             {
-                case AgentConnectionType.JobRequest:
+                case RunnerConnectionType.JobRequest:
                     _requestConnection.Settings.SendTimeout = timeout;
                     break;
-                case AgentConnectionType.MessageQueue:
+                case RunnerConnectionType.MessageQueue:
                     _messageConnection.Settings.SendTimeout = timeout;
                     break;
-                case AgentConnectionType.Generic:
+                case RunnerConnectionType.Generic:
                     _genericConnection.Settings.SendTimeout = timeout;
                     break;
                 default:
@@ -202,26 +202,26 @@ namespace GitHub.Runner.Common
             throw new InvalidOperationException(nameof(EstablishVssConnection));
         }
 
-        private void CheckConnection(AgentConnectionType connectionType)
+        private void CheckConnection(RunnerConnectionType connectionType)
         {
             switch (connectionType)
             {
-                case AgentConnectionType.Generic:
+                case RunnerConnectionType.Generic:
                     if (!_hasGenericConnection)
                     {
-                        throw new InvalidOperationException($"SetConnection {AgentConnectionType.Generic}");
+                        throw new InvalidOperationException($"SetConnection {RunnerConnectionType.Generic}");
                     }
                     break;
-                case AgentConnectionType.JobRequest:
+                case RunnerConnectionType.JobRequest:
                     if (!_hasRequestConnection)
                     {
-                        throw new InvalidOperationException($"SetConnection {AgentConnectionType.JobRequest}");
+                        throw new InvalidOperationException($"SetConnection {RunnerConnectionType.JobRequest}");
                     }
                     break;
-                case AgentConnectionType.MessageQueue:
+                case RunnerConnectionType.MessageQueue:
                     if (!_hasMessageConnection)
                     {
-                        throw new InvalidOperationException($"SetConnection {AgentConnectionType.MessageQueue}");
+                        throw new InvalidOperationException($"SetConnection {RunnerConnectionType.MessageQueue}");
                     }
                     break;
                 default:
@@ -235,31 +235,31 @@ namespace GitHub.Runner.Common
 
         public Task<List<TaskAgentPool>> GetAgentPoolsAsync(string agentPoolName, TaskAgentPoolType poolType = TaskAgentPoolType.Automation)
         {
-            CheckConnection(AgentConnectionType.Generic);
+            CheckConnection(RunnerConnectionType.Generic);
             return _genericTaskAgentClient.GetAgentPoolsAsync(agentPoolName, poolType: poolType);
         }
 
         public Task<TaskAgent> AddAgentAsync(Int32 agentPoolId, TaskAgent agent)
         {
-            CheckConnection(AgentConnectionType.Generic);
+            CheckConnection(RunnerConnectionType.Generic);
             return _genericTaskAgentClient.AddAgentAsync(agentPoolId, agent);
         }
 
         public Task<List<TaskAgent>> GetAgentsAsync(int agentPoolId, string agentName = null)
         {
-            CheckConnection(AgentConnectionType.Generic);
+            CheckConnection(RunnerConnectionType.Generic);
             return _genericTaskAgentClient.GetAgentsAsync(agentPoolId, agentName, false);
         }
 
         public Task<TaskAgent> UpdateAgentAsync(int agentPoolId, TaskAgent agent)
         {
-            CheckConnection(AgentConnectionType.Generic);
+            CheckConnection(RunnerConnectionType.Generic);
             return _genericTaskAgentClient.ReplaceAgentAsync(agentPoolId, agent);
         }
 
         public Task DeleteAgentAsync(int agentPoolId, int agentId)
         {
-            CheckConnection(AgentConnectionType.Generic);
+            CheckConnection(RunnerConnectionType.Generic);
             return _genericTaskAgentClient.DeleteAgentAsync(agentPoolId, agentId);
         }
 
@@ -269,25 +269,25 @@ namespace GitHub.Runner.Common
 
         public Task<TaskAgentSession> CreateAgentSessionAsync(Int32 poolId, TaskAgentSession session, CancellationToken cancellationToken)
         {
-            CheckConnection(AgentConnectionType.MessageQueue);
+            CheckConnection(RunnerConnectionType.MessageQueue);
             return _messageTaskAgentClient.CreateAgentSessionAsync(poolId, session, cancellationToken: cancellationToken);
         }
 
         public Task DeleteAgentMessageAsync(Int32 poolId, Int64 messageId, Guid sessionId, CancellationToken cancellationToken)
         {
-            CheckConnection(AgentConnectionType.MessageQueue);
+            CheckConnection(RunnerConnectionType.MessageQueue);
             return _messageTaskAgentClient.DeleteMessageAsync(poolId, messageId, sessionId, cancellationToken: cancellationToken);
         }
 
         public Task DeleteAgentSessionAsync(Int32 poolId, Guid sessionId, CancellationToken cancellationToken)
         {
-            CheckConnection(AgentConnectionType.MessageQueue);
+            CheckConnection(RunnerConnectionType.MessageQueue);
             return _messageTaskAgentClient.DeleteAgentSessionAsync(poolId, sessionId, cancellationToken: cancellationToken);
         }
 
         public Task<TaskAgentMessage> GetAgentMessageAsync(Int32 poolId, Guid sessionId, Int64? lastMessageId, CancellationToken cancellationToken)
         {
-            CheckConnection(AgentConnectionType.MessageQueue);
+            CheckConnection(RunnerConnectionType.MessageQueue);
             return _messageTaskAgentClient.GetMessageAsync(poolId, sessionId, lastMessageId, cancellationToken: cancellationToken);
         }
 
@@ -302,7 +302,7 @@ namespace GitHub.Runner.Common
                 return Task.FromResult(JsonUtility.FromString<TaskAgentJobRequest>("{ lockedUntil: \"" + DateTime.Now.Add(TimeSpan.FromMinutes(5)).ToString("u") + "\" }"));
             }
 
-            CheckConnection(AgentConnectionType.JobRequest);
+            CheckConnection(RunnerConnectionType.JobRequest);
             return _requestTaskAgentClient.RenewAgentRequestAsync(poolId, requestId, lockToken, cancellationToken: cancellationToken);
         }
 
@@ -313,14 +313,14 @@ namespace GitHub.Runner.Common
                 return Task.FromResult<TaskAgentJobRequest>(null);
             }
 
-            CheckConnection(AgentConnectionType.JobRequest);
+            CheckConnection(RunnerConnectionType.JobRequest);
             return _requestTaskAgentClient.FinishAgentRequestAsync(poolId, requestId, lockToken, finishTime, result, cancellationToken: cancellationToken);
         }
 
         public Task<TaskAgentJobRequest> GetAgentRequestAsync(int poolId, long requestId, CancellationToken cancellationToken = default(CancellationToken))
         {
             ArgUtil.Equal(RunMode.Normal, HostContext.RunMode, nameof(HostContext.RunMode));
-            CheckConnection(AgentConnectionType.JobRequest);
+            CheckConnection(RunnerConnectionType.JobRequest);
             return _requestTaskAgentClient.GetAgentRequestAsync(poolId, requestId, cancellationToken: cancellationToken);
         }
 
@@ -330,19 +330,19 @@ namespace GitHub.Runner.Common
         public Task<List<PackageMetadata>> GetPackagesAsync(string packageType, string platform, int top, CancellationToken cancellationToken)
         {
             ArgUtil.Equal(RunMode.Normal, HostContext.RunMode, nameof(HostContext.RunMode));
-            CheckConnection(AgentConnectionType.Generic);
+            CheckConnection(RunnerConnectionType.Generic);
             return _genericTaskAgentClient.GetPackagesAsync(packageType, platform, top, cancellationToken: cancellationToken);
         }
 
         public Task<PackageMetadata> GetPackageAsync(string packageType, string platform, string version, CancellationToken cancellationToken)
         {
-            CheckConnection(AgentConnectionType.Generic);
+            CheckConnection(RunnerConnectionType.Generic);
             return _genericTaskAgentClient.GetPackageAsync(packageType, platform, version, cancellationToken: cancellationToken);
         }
 
         public Task<TaskAgent> UpdateAgentUpdateStateAsync(int agentPoolId, int agentId, string currentState)
         {
-            CheckConnection(AgentConnectionType.Generic);
+            CheckConnection(RunnerConnectionType.Generic);
             return _genericTaskAgentClient.UpdateAgentUpdateStateAsync(agentPoolId, agentId, currentState);
         }
     }

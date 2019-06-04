@@ -7,7 +7,7 @@ using GitHub.Runner.Sdk;
 namespace GitHub.Runner.Worker
 {
     [ServiceLocator(Default = typeof(AsyncCommandContext))]
-    public interface IAsyncCommandContext : IAgentService
+    public interface IAsyncCommandContext : IRunnerService
     {
         string Name { get; }
         Task Task { get; set; }
@@ -17,7 +17,7 @@ namespace GitHub.Runner.Worker
         Task WaitAsync();
     }
 
-    public class AsyncCommandContext : AgentService, IAsyncCommandContext
+    public class AsyncCommandContext : RunnerService, IAsyncCommandContext
     {
         private class OutputMessage
         {

@@ -15,15 +15,15 @@ using GitHub.Runner.Common;
 
 namespace GitHub.Runner.Worker.Handlers
 {
-    [ServiceLocator(Default = typeof(AgentPluginHandler))]
-    public interface IAgentPluginHandler : IHandler
+    [ServiceLocator(Default = typeof(RunnerPluginHandler))]
+    public interface IRunnerPluginHandler : IHandler
     {
-        AgentPluginHandlerData Data { get; set; }
+        RunnerPluginHandlerData Data { get; set; }
     }
 
-    public sealed class AgentPluginHandler : Handler, IAgentPluginHandler
+    public sealed class RunnerPluginHandler : Handler, IRunnerPluginHandler
     {
-        public AgentPluginHandlerData Data { get; set; }
+        public RunnerPluginHandlerData Data { get; set; }
 
         public async Task RunAsync()
         {
@@ -37,12 +37,12 @@ namespace GitHub.Runner.Worker.Handlers
             // Update the env dictionary.
             AddPrependPathToEnvironment();
 
-            // Make sure only particular task get run as agent plugin.
-            var agentPlugin = HostContext.GetService<IAgentPluginManager>();
+            // Make sure only particular task get run as runner plugin.
+            var runnerPlugin = HostContext.GetService<IRunnerPluginManager>();
             ActionCommandManager.EnablePluginInternalCommand();
             try
             {
-                await agentPlugin.RunPluginTaskAsync(ExecutionContext, Data.Target, Inputs, Environment, RuntimeVariables, OnDataReceived);
+                await runnerPlugin.RunPluginActionAsync(ExecutionContext, Data.Target, Inputs, Environment, RuntimeVariables, OnDataReceived);
             }
             finally
             {

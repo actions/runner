@@ -34,23 +34,23 @@ namespace GitHub.Runner.Plugins.Repository
         // min git-lfs version that support add extra auth header.
         private Version _minGitLfsVersionSupportAuthHeader = new Version(2, 1);
 
-        private bool GitSupportUseAuthHeader(AgentTaskPluginExecutionContext executionContext, GitCliManager gitCommandManager)
+        private bool GitSupportUseAuthHeader(RunnerActionPluginExecutionContext executionContext, GitCliManager gitCommandManager)
         {
             // v2.9 git exist use auth header.
             return gitCommandManager.EnsureGitVersion(_minGitVersionSupportAuthHeader, throwOnNotMatch: false);
         }
 
-        private bool GitLfsSupportUseAuthHeader(AgentTaskPluginExecutionContext executionContext, GitCliManager gitCommandManager)
+        private bool GitLfsSupportUseAuthHeader(RunnerActionPluginExecutionContext executionContext, GitCliManager gitCommandManager)
         {
             // v2.1 git-lfs exist use auth header.
             return gitCommandManager.EnsureGitLFSVersion(_minGitLfsVersionSupportAuthHeader, throwOnNotMatch: false);
         }
 
-        private void RequirementCheck(AgentTaskPluginExecutionContext executionContext, Pipelines.RepositoryResource repository, GitCliManager gitCommandManager)
+        private void RequirementCheck(RunnerActionPluginExecutionContext executionContext, Pipelines.RepositoryResource repository, GitCliManager gitCommandManager)
         {
 #if OS_WINDOWS
             // check git version for SChannel SSLBackend (Windows Only)
-            bool schannelSslBackend = StringUtil.ConvertToBoolean(executionContext.Variables.GetValueOrDefault("agent.gituseschannel")?.Value);
+            bool schannelSslBackend = StringUtil.ConvertToBoolean(executionContext.GetRunnerInfo("gituseschannel"));
             if (schannelSslBackend)
             {
                 gitCommandManager.EnsureGitVersion(_minGitVersionSupportSSLBackendOverride, throwOnNotMatch: true);
@@ -58,7 +58,7 @@ namespace GitHub.Runner.Plugins.Repository
 #endif
         }
 
-        private string GenerateAuthHeader(AgentTaskPluginExecutionContext executionContext, string username, string password)
+        private string GenerateAuthHeader(RunnerActionPluginExecutionContext executionContext, string username, string password)
         {
             // use basic auth header with username:password in base64encoding. 
             string authHeader = $"{username ?? string.Empty}:{password ?? string.Empty}";
@@ -69,16 +69,8 @@ namespace GitHub.Runner.Plugins.Repository
             return $"basic {base64encodedAuthHeader}";
         }
 
-        private bool GitSupportsFetchingCommitBySha1Hash
-        {
-            get
-            {
-                return false;
-            }
-        }
-
         public async Task GetSourceAsync(
-            AgentTaskPluginExecutionContext executionContext,
+            RunnerActionPluginExecutionContext executionContext,
             Pipelines.RepositoryResource repository,
             CancellationToken cancellationToken)
         {
@@ -146,8 +138,8 @@ namespace GitHub.Runner.Plugins.Repository
                 acceptUntrustedCerts = StringUtil.ConvertToBoolean(endpointAcceptUntrustedCerts);
             }
 
-            var agentCert = executionContext.GetCertConfiguration();
-            acceptUntrustedCerts = acceptUntrustedCerts || (agentCert?.SkipServerCertificateValidation ?? false);
+            var runnerCert = executionContext.GetCertConfiguration();
+            acceptUntrustedCerts = acceptUntrustedCerts || (runnerCert?.SkipServerCertificateValidation ?? false);
 
             int fetchDepth = 0;
             if (!int.TryParse(executionContext.GetInput(Pipelines.PipelineConstants.CheckoutTaskInputs.FetchDepth), out fetchDepth) || fetchDepth < 0)
@@ -155,25 +147,8 @@ namespace GitHub.Runner.Plugins.Repository
                 fetchDepth = 0;
             }
 
-            // prefer feature variable over endpoint data
-            if (int.TryParse(executionContext.Variables.GetValueOrDefault("agent.source.git.shallowFetchDepth")?.Value, out int fetchDepthOverwrite) && fetchDepthOverwrite >= 0)
-            {
-                fetchDepth = fetchDepthOverwrite;
-            }
-
             bool gitLfsSupport = StringUtil.ConvertToBoolean(executionContext.GetInput(Pipelines.PipelineConstants.CheckoutTaskInputs.Lfs));
-            // prefer feature variable over endpoint data
-            if (executionContext.Variables.GetValueOrDefault("agent.source.git.lfs") != null)
-            {
-                gitLfsSupport = StringUtil.ConvertToBoolean(executionContext.Variables.GetValueOrDefault("agent.source.git.lfs")?.Value);
-            }
-
             bool exposeCred = StringUtil.ConvertToBoolean(executionContext.GetInput(Pipelines.PipelineConstants.CheckoutTaskInputs.PersistCredentials));
-
-            // Read 'disable fetch by commit' value from the execution variable first, then from the environment variable if the first one is not set
-            bool fetchByCommit = GitSupportsFetchingCommitBySha1Hash && !StringUtil.ConvertToBoolean(
-                executionContext.Variables.GetValueOrDefault("VSTS.DisableFetchByCommit")?.Value ??
-                System.Environment.GetEnvironmentVariable("VSTS_DISABLEFETCHBYCOMMIT"), false);
 
             executionContext.Debug($"repository url={repositoryUrl}");
             executionContext.Debug($"targetPath={targetPath}");
@@ -187,9 +162,8 @@ namespace GitHub.Runner.Plugins.Repository
             executionContext.Debug($"gitLfsSupport={gitLfsSupport}");
             executionContext.Debug($"acceptUntrustedCerts={acceptUntrustedCerts}");
 
-            bool preferGitFromPath = true;
 #if OS_WINDOWS
-            bool schannelSslBackend = StringUtil.ConvertToBoolean(executionContext.Variables.GetValueOrDefault("agent.gituseschannel")?.Value);
+            bool schannelSslBackend = StringUtil.ConvertToBoolean(executionContext.GetRunnerInfo("gituseschannel"));
             executionContext.Debug($"schannelSslBackend={schannelSslBackend}");
 #endif            
             // Determine do we need to provide creds to git operation
@@ -219,7 +193,7 @@ namespace GitHub.Runner.Plugins.Repository
             }
 
             GitCliManager gitCommandManager = new GitCliManager(gitEnv);
-            await gitCommandManager.LoadGitExecutionInfo(executionContext, useBuiltInGit: !preferGitFromPath);
+            await gitCommandManager.LoadGitExecutionInfo(executionContext);
 
             bool gitSupportAuthHeader = GitSupportUseAuthHeader(executionContext, gitCommandManager);
 
@@ -280,10 +254,10 @@ namespace GitHub.Runner.Plugins.Repository
 
             // prepare credentail embedded urls
             repositoryUrlWithCred = UrlUtil.GetCredentialEmbeddedUrl(repositoryUrl, username, password);
-            var agentProxy = executionContext.GetProxyConfiguration();
-            if (agentProxy != null && !string.IsNullOrEmpty(agentProxy.ProxyAddress) && !agentProxy.WebProxy.IsBypassed(repositoryUrl))
+            var runnerProxy = executionContext.GetProxyConfiguration();
+            if (runnerProxy != null && !string.IsNullOrEmpty(runnerProxy.ProxyAddress) && !runnerProxy.WebProxy.IsBypassed(repositoryUrl))
             {
-                proxyUrlWithCred = UrlUtil.GetCredentialEmbeddedUrl(new Uri(agentProxy.ProxyAddress), agentProxy.ProxyUsername, agentProxy.ProxyPassword);
+                proxyUrlWithCred = UrlUtil.GetCredentialEmbeddedUrl(new Uri(runnerProxy.ProxyAddress), runnerProxy.ProxyUsername, runnerProxy.ProxyPassword);
 
                 // uri.absoluteuri will not contains port info if the scheme is http/https and the port is 80/443
                 // however, git.exe always require you provide port info, if nothing passed in, it will use 1080 as default
@@ -300,25 +274,25 @@ namespace GitHub.Runner.Plugins.Repository
 
             // prepare askpass for client cert private key, if the repository's endpoint url match the TFS/VSTS url
             var systemConnection = executionContext.Endpoints.Single(x => string.Equals(x.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
-            if (agentCert != null && Uri.Compare(repositoryUrl, systemConnection.Url, UriComponents.SchemeAndServer, UriFormat.Unescaped, StringComparison.OrdinalIgnoreCase) == 0)
+            if (runnerCert != null && Uri.Compare(repositoryUrl, systemConnection.Url, UriComponents.SchemeAndServer, UriFormat.Unescaped, StringComparison.OrdinalIgnoreCase) == 0)
             {
-                if (!string.IsNullOrEmpty(agentCert.CACertificateFile))
+                if (!string.IsNullOrEmpty(runnerCert.CACertificateFile))
                 {
                     useSelfSignedCACert = true;
                 }
 
-                if (!string.IsNullOrEmpty(agentCert.ClientCertificateFile) &&
-                    !string.IsNullOrEmpty(agentCert.ClientCertificatePrivateKeyFile))
+                if (!string.IsNullOrEmpty(runnerCert.ClientCertificateFile) &&
+                    !string.IsNullOrEmpty(runnerCert.ClientCertificatePrivateKeyFile))
                 {
                     useClientCert = true;
 
                     // prepare askpass for client cert password
-                    if (!string.IsNullOrEmpty(agentCert.ClientCertificatePassword))
+                    if (!string.IsNullOrEmpty(runnerCert.ClientCertificatePassword))
                     {
-                        clientCertPrivateKeyAskPassFile = Path.Combine(executionContext.Variables["agent.tempdirectory"].Value, $"{Guid.NewGuid()}.sh");
+                        clientCertPrivateKeyAskPassFile = Path.Combine(executionContext.GetRunnerInfo("tempdirectory"), $"{Guid.NewGuid()}.sh");
                         List<string> askPass = new List<string>();
                         askPass.Add("#!/bin/sh");
-                        askPass.Add($"echo \"{agentCert.ClientCertificatePassword}\"");
+                        askPass.Add($"echo \"{runnerCert.ClientCertificatePassword}\"");
                         File.WriteAllLines(clientCertPrivateKeyAskPassFile, askPass);
 
 #if !OS_WINDOWS
@@ -342,7 +316,8 @@ namespace GitHub.Runner.Plugins.Repository
                             }
                         };
 
-                        await processInvoker.ExecuteAsync(executionContext.Variables.GetValueOrDefault("system.defaultworkingdirectory")?.Value, toolPath, argLine, null, true, CancellationToken.None);
+                        string workingDirectory = executionContext.GetRunnerInfo("pipelineWorkspace");
+                        await processInvoker.ExecuteAsync(workingDirectory, toolPath, argLine, null, true, CancellationToken.None);
 #endif
                     }
                 }
@@ -488,7 +463,6 @@ namespace GitHub.Runner.Plugins.Repository
             }
 
             cancellationToken.ThrowIfCancellationRequested();
-            executionContext.Progress(0, "Starting fetch...");
 
             // disable git auto gc
             int exitCode_disableGC = await gitCommandManager.GitDisableAutoGC(executionContext, targetPath);
@@ -546,9 +520,9 @@ namespace GitHub.Runner.Plugins.Repository
                 }
 
                 // Prepare proxy config for fetch.
-                if (agentProxy != null && !string.IsNullOrEmpty(agentProxy.ProxyAddress) && !agentProxy.WebProxy.IsBypassed(repositoryUrl))
+                if (runnerProxy != null && !string.IsNullOrEmpty(runnerProxy.ProxyAddress) && !runnerProxy.WebProxy.IsBypassed(repositoryUrl))
                 {
-                    executionContext.Debug($"Config proxy server '{agentProxy.ProxyAddress}' for git fetch.");
+                    executionContext.Debug($"Config proxy server '{runnerProxy.ProxyAddress}' for git fetch.");
                     ArgUtil.NotNullOrEmpty(proxyUrlWithCredString, nameof(proxyUrlWithCredString));
                     additionalFetchArgs.Add($"-c http.proxy=\"{proxyUrlWithCredString}\"");
                     additionalLfsFetchArgs.Add($"-c http.proxy=\"{proxyUrlWithCredString}\"");
@@ -564,25 +538,25 @@ namespace GitHub.Runner.Plugins.Repository
                 // Prepare self-signed CA cert config for fetch from TFS.
                 if (useSelfSignedCACert)
                 {
-                    executionContext.Debug($"Use self-signed certificate '{agentCert.CACertificateFile}' for git fetch.");
-                    additionalFetchArgs.Add($"-c http.sslcainfo=\"{agentCert.CACertificateFile}\"");
-                    additionalLfsFetchArgs.Add($"-c http.sslcainfo=\"{agentCert.CACertificateFile}\"");
+                    executionContext.Debug($"Use self-signed certificate '{runnerCert.CACertificateFile}' for git fetch.");
+                    additionalFetchArgs.Add($"-c http.sslcainfo=\"{runnerCert.CACertificateFile}\"");
+                    additionalLfsFetchArgs.Add($"-c http.sslcainfo=\"{runnerCert.CACertificateFile}\"");
                 }
 
                 // Prepare client cert config for fetch from TFS.
                 if (useClientCert)
                 {
-                    executionContext.Debug($"Use client certificate '{agentCert.ClientCertificateFile}' for git fetch.");
+                    executionContext.Debug($"Use client certificate '{runnerCert.ClientCertificateFile}' for git fetch.");
 
                     if (!string.IsNullOrEmpty(clientCertPrivateKeyAskPassFile))
                     {
-                        additionalFetchArgs.Add($"-c http.sslcert=\"{agentCert.ClientCertificateFile}\" -c http.sslkey=\"{agentCert.ClientCertificatePrivateKeyFile}\" -c http.sslCertPasswordProtected=true -c core.askpass=\"{clientCertPrivateKeyAskPassFile}\"");
-                        additionalLfsFetchArgs.Add($"-c http.sslcert=\"{agentCert.ClientCertificateFile}\" -c http.sslkey=\"{agentCert.ClientCertificatePrivateKeyFile}\" -c http.sslCertPasswordProtected=true -c core.askpass=\"{clientCertPrivateKeyAskPassFile}\"");
+                        additionalFetchArgs.Add($"-c http.sslcert=\"{runnerCert.ClientCertificateFile}\" -c http.sslkey=\"{runnerCert.ClientCertificatePrivateKeyFile}\" -c http.sslCertPasswordProtected=true -c core.askpass=\"{clientCertPrivateKeyAskPassFile}\"");
+                        additionalLfsFetchArgs.Add($"-c http.sslcert=\"{runnerCert.ClientCertificateFile}\" -c http.sslkey=\"{runnerCert.ClientCertificatePrivateKeyFile}\" -c http.sslCertPasswordProtected=true -c core.askpass=\"{clientCertPrivateKeyAskPassFile}\"");
                     }
                     else
                     {
-                        additionalFetchArgs.Add($"-c http.sslcert=\"{agentCert.ClientCertificateFile}\" -c http.sslkey=\"{agentCert.ClientCertificatePrivateKeyFile}\"");
-                        additionalLfsFetchArgs.Add($"-c http.sslcert=\"{agentCert.ClientCertificateFile}\" -c http.sslkey=\"{agentCert.ClientCertificatePrivateKeyFile}\"");
+                        additionalFetchArgs.Add($"-c http.sslcert=\"{runnerCert.ClientCertificateFile}\" -c http.sslkey=\"{runnerCert.ClientCertificatePrivateKeyFile}\"");
+                        additionalLfsFetchArgs.Add($"-c http.sslcert=\"{runnerCert.ClientCertificateFile}\" -c http.sslkey=\"{runnerCert.ClientCertificatePrivateKeyFile}\"");
                     }
                 }
 #if OS_WINDOWS
@@ -638,29 +612,11 @@ namespace GitHub.Runner.Plugins.Repository
             }
 
             List<string> additionalFetchSpecs = new List<string>();
+            additionalFetchSpecs.Add("+refs/heads/*:refs/remotes/origin/*");
+
             if (IsPullRequest(sourceBranch))
             {
-                // Build a 'fetch-by-commit' refspec iff the server allows us to do so in the shallow fetch scenario
-                // Otherwise, fall back to fetch all branches and pull request ref
-                if (fetchDepth > 0 && fetchByCommit && !string.IsNullOrEmpty(sourceVersion))
-                {
-                    additionalFetchSpecs.Add($"+{sourceVersion}:{_remoteRefsPrefix}{sourceVersion}");
-                    additionalFetchSpecs.Add($"+{sourceBranch}:{GetRemoteRefName(sourceBranch)}");
-                }
-                else
-                {
-                    additionalFetchSpecs.Add("+refs/heads/*:refs/remotes/origin/*");
-                    additionalFetchSpecs.Add($"+{sourceBranch}:{GetRemoteRefName(sourceBranch)}");
-                }
-            }
-            else
-            {
-                // Build a refspec iff the server allows us to fetch a specific commit in the shallow fetch scenario
-                // Otherwise, use the default fetch behavior (i.e. with no refspecs)
-                if (fetchDepth > 0 && fetchByCommit && !string.IsNullOrEmpty(sourceVersion))
-                {
-                    additionalFetchSpecs.Add($"+{sourceVersion}:{_remoteRefsPrefix}{sourceVersion}");
-                }
+                additionalFetchSpecs.Add($"+{sourceBranch}:{GetRemoteRefName(sourceBranch)}");
             }
 
             int exitCode_fetch = await gitCommandManager.GitFetch(executionContext, targetPath, "origin", fetchDepth, additionalFetchSpecs, string.Join(" ", additionalFetchArgs), cancellationToken);
@@ -675,7 +631,6 @@ namespace GitHub.Runner.Plugins.Repository
             // (change refs/heads to refs/remotes/origin, refs/pull to refs/remotes/pull, or leave it as it when the branch name doesn't contain refs/...)
             // if sourceVersion provide, just use that for checkout, since when you checkout a commit, it will end up in detached head.
             cancellationToken.ThrowIfCancellationRequested();
-            executionContext.Progress(80, "Starting checkout...");
             string sourcesToBuild;
             if (IsPullRequest(sourceBranch) || string.IsNullOrEmpty(sourceVersion))
             {
@@ -724,7 +679,6 @@ namespace GitHub.Runner.Plugins.Repository
             if (checkoutSubmodules)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                executionContext.Progress(90, "Updating submodules...");
 
                 int exitCode_submoduleSync = await gitCommandManager.GitSubmoduleSync(executionContext, targetPath, checkoutNestedSubmodules, cancellationToken);
                 if (exitCode_submoduleSync != 0)
@@ -742,9 +696,9 @@ namespace GitHub.Runner.Plugins.Repository
                     }
 
                     // Prepare proxy config for submodule update.
-                    if (agentProxy != null && !string.IsNullOrEmpty(agentProxy.ProxyAddress) && !agentProxy.WebProxy.IsBypassed(repositoryUrl))
+                    if (runnerProxy != null && !string.IsNullOrEmpty(runnerProxy.ProxyAddress) && !runnerProxy.WebProxy.IsBypassed(repositoryUrl))
                     {
-                        executionContext.Debug($"Config proxy server '{agentProxy.ProxyAddress}' for git submodule update.");
+                        executionContext.Debug($"Config proxy server '{runnerProxy.ProxyAddress}' for git submodule update.");
                         ArgUtil.NotNullOrEmpty(proxyUrlWithCredString, nameof(proxyUrlWithCredString));
                         additionalSubmoduleUpdateArgs.Add($"-c http.proxy=\"{proxyUrlWithCredString}\"");
                     }
@@ -758,24 +712,24 @@ namespace GitHub.Runner.Plugins.Repository
                     // Prepare self-signed CA cert config for submodule update.
                     if (useSelfSignedCACert)
                     {
-                        executionContext.Debug($"Use self-signed CA certificate '{agentCert.CACertificateFile}' for git submodule update.");
+                        executionContext.Debug($"Use self-signed CA certificate '{runnerCert.CACertificateFile}' for git submodule update.");
                         string authorityUrl = repositoryUrl.AbsoluteUri.Replace(repositoryUrl.PathAndQuery, string.Empty);
-                        additionalSubmoduleUpdateArgs.Add($"-c http.{authorityUrl}.sslcainfo=\"{agentCert.CACertificateFile}\"");
+                        additionalSubmoduleUpdateArgs.Add($"-c http.{authorityUrl}.sslcainfo=\"{runnerCert.CACertificateFile}\"");
                     }
 
                     // Prepare client cert config for submodule update.
                     if (useClientCert)
                     {
-                        executionContext.Debug($"Use client certificate '{agentCert.ClientCertificateFile}' for git submodule update.");
+                        executionContext.Debug($"Use client certificate '{runnerCert.ClientCertificateFile}' for git submodule update.");
                         string authorityUrl = repositoryUrl.AbsoluteUri.Replace(repositoryUrl.PathAndQuery, string.Empty);
 
                         if (!string.IsNullOrEmpty(clientCertPrivateKeyAskPassFile))
                         {
-                            additionalSubmoduleUpdateArgs.Add($"-c http.{authorityUrl}.sslcert=\"{agentCert.ClientCertificateFile}\" -c http.{authorityUrl}.sslkey=\"{agentCert.ClientCertificatePrivateKeyFile}\" -c http.{authorityUrl}.sslCertPasswordProtected=true -c core.askpass=\"{clientCertPrivateKeyAskPassFile}\"");
+                            additionalSubmoduleUpdateArgs.Add($"-c http.{authorityUrl}.sslcert=\"{runnerCert.ClientCertificateFile}\" -c http.{authorityUrl}.sslkey=\"{runnerCert.ClientCertificatePrivateKeyFile}\" -c http.{authorityUrl}.sslCertPasswordProtected=true -c core.askpass=\"{clientCertPrivateKeyAskPassFile}\"");
                         }
                         else
                         {
-                            additionalSubmoduleUpdateArgs.Add($"-c http.{authorityUrl}.sslcert=\"{agentCert.ClientCertificateFile}\" -c http.{authorityUrl}.sslkey=\"{agentCert.ClientCertificatePrivateKeyFile}\"");
+                            additionalSubmoduleUpdateArgs.Add($"-c http.{authorityUrl}.sslcert=\"{runnerCert.ClientCertificateFile}\" -c http.{authorityUrl}.sslkey=\"{runnerCert.ClientCertificatePrivateKeyFile}\"");
                         }
                     }
 #if OS_WINDOWS
@@ -818,9 +772,9 @@ namespace GitHub.Runner.Plugins.Repository
                 if (exposeCred)
                 {
                     // save proxy setting to git config.
-                    if (agentProxy != null && !string.IsNullOrEmpty(agentProxy.ProxyAddress) && !agentProxy.WebProxy.IsBypassed(repositoryUrl))
+                    if (runnerProxy != null && !string.IsNullOrEmpty(runnerProxy.ProxyAddress) && !runnerProxy.WebProxy.IsBypassed(repositoryUrl))
                     {
-                        executionContext.Debug($"Save proxy config for proxy server '{agentProxy.ProxyAddress}' into git config.");
+                        executionContext.Debug($"Save proxy config for proxy server '{runnerProxy.ProxyAddress}' into git config.");
                         ArgUtil.NotNullOrEmpty(proxyUrlWithCredString, nameof(proxyUrlWithCredString));
 
                         string proxyConfigKey = "http.proxy";
@@ -854,7 +808,7 @@ namespace GitHub.Runner.Plugins.Repository
                     {
                         executionContext.Debug($"Save CA cert config into git config.");
                         string sslCaInfoConfigKey = "http.sslcainfo";
-                        string sslCaInfoConfigValue = $"\"{agentCert.CACertificateFile}\"";
+                        string sslCaInfoConfigValue = $"\"{runnerCert.CACertificateFile}\"";
                         configModifications[sslCaInfoConfigKey] = sslCaInfoConfigValue.Trim('\"');
 
                         int exitCode_sslconfig = await gitCommandManager.GitConfig(executionContext, targetPath, sslCaInfoConfigKey, sslCaInfoConfigValue);
@@ -869,9 +823,9 @@ namespace GitHub.Runner.Plugins.Repository
                     {
                         executionContext.Debug($"Save client cert config into git config.");
                         string sslCertConfigKey = "http.sslcert";
-                        string sslCertConfigValue = $"\"{agentCert.ClientCertificateFile}\"";
+                        string sslCertConfigValue = $"\"{runnerCert.ClientCertificateFile}\"";
                         string sslKeyConfigKey = "http.sslkey";
-                        string sslKeyConfigValue = $"\"{agentCert.CACertificateFile}\"";
+                        string sslKeyConfigValue = $"\"{runnerCert.CACertificateFile}\"";
                         configModifications[sslCertConfigKey] = sslCertConfigValue.Trim('\"');
                         configModifications[sslKeyConfigKey] = sslKeyConfigValue.Trim('\"');
 
@@ -944,90 +898,9 @@ namespace GitHub.Runner.Plugins.Repository
                     IOUtil.DeleteFile(clientCertPrivateKeyAskPassFile);
                 }
             }
-
-            // Set intra-task variable for post job cleanup
-            executionContext.SetTaskVariable("repository", repository.Alias);
-
-            if (selfManageGitCreds)
-            {
-                // no needs to cleanup creds, since customer choose to manage creds themselves.
-                executionContext.SetTaskVariable("cleanupcreds", "false");
-            }
-            else if (exposeCred)
-            {
-                executionContext.SetTaskVariable("cleanupcreds", "true");
-            }
-
-            if (preferGitFromPath)
-            {
-                // use git from PATH
-                executionContext.SetTaskVariable("preferPath", "true");
-            }
-
-            if (repositoryUrlWithCred != null)
-            {
-                executionContext.SetTaskVariable("repoUrlWithCred", repositoryUrlWithCred.AbsoluteUri, true);
-            }
-
-            if (configModifications.Count > 0)
-            {
-                executionContext.SetTaskVariable("modifiedgitconfig", JsonUtility.ToString(configModifications), true);
-            }
-
-            if (useClientCert && !string.IsNullOrEmpty(clientCertPrivateKeyAskPassFile))
-            {
-                executionContext.SetTaskVariable("clientCertAskPass", clientCertPrivateKeyAskPassFile);
-            }
         }
 
-        public async Task PostJobCleanupAsync(AgentTaskPluginExecutionContext executionContext, Pipelines.RepositoryResource repository)
-        {
-            ArgUtil.NotNull(executionContext, nameof(executionContext));
-            ArgUtil.NotNull(repository, nameof(repository));
-
-            executionContext.Output($"Cleaning any cached credential from repository: {repository.Properties.Get<string>(Pipelines.RepositoryPropertyNames.Name)} ({repository.Type})");
-
-            Uri repositoryUrl = repository.Url;
-            string targetPath = repository.Properties.Get<string>(Pipelines.RepositoryPropertyNames.Path);
-
-            executionContext.Debug($"Repository url={repositoryUrl}");
-            executionContext.Debug($"targetPath={targetPath}");
-
-            bool cleanupCreds = StringUtil.ConvertToBoolean(executionContext.TaskVariables.GetValueOrDefault("cleanupcreds")?.Value);
-            if (cleanupCreds)
-            {
-                bool preferGitFromPath = StringUtil.ConvertToBoolean(executionContext.TaskVariables.GetValueOrDefault("preferPath")?.Value);
-
-                // Initialize git command manager
-                GitCliManager gitCommandManager = new GitCliManager();
-                await gitCommandManager.LoadGitExecutionInfo(executionContext, useBuiltInGit: !preferGitFromPath);
-
-                executionContext.Debug("Remove any extraheader, proxy and client cert setting from git config.");
-                var configModifications = JsonUtility.FromString<Dictionary<string, string>>(executionContext.TaskVariables.GetValueOrDefault("modifiedgitconfig")?.Value);
-                if (configModifications != null && configModifications.Count > 0)
-                {
-                    foreach (var config in configModifications)
-                    {
-                        await RemoveGitConfig(executionContext, gitCommandManager, targetPath, config.Key, config.Value);
-                    }
-                }
-
-                var repositoryUrlWithCred = executionContext.TaskVariables.GetValueOrDefault("repoUrlWithCred")?.Value;
-                if (string.IsNullOrEmpty(repositoryUrlWithCred))
-                {
-                    await RemoveCachedCredential(executionContext, gitCommandManager, new Uri(repositoryUrlWithCred), targetPath, repositoryUrl, "origin");
-                }
-            }
-
-            // delete client cert askpass file.
-            string clientCertPrivateKeyAskPassFile = executionContext.TaskVariables.GetValueOrDefault("clientCertAskPass")?.Value;
-            if (!string.IsNullOrEmpty(clientCertPrivateKeyAskPassFile))
-            {
-                IOUtil.DeleteFile(clientCertPrivateKeyAskPassFile);
-            }
-        }
-
-        private async Task<bool> IsRepositoryOriginUrlMatch(AgentTaskPluginExecutionContext context, GitCliManager gitCommandManager, string repositoryPath, Uri expectedRepositoryOriginUrl)
+        private async Task<bool> IsRepositoryOriginUrlMatch(RunnerActionPluginExecutionContext context, GitCliManager gitCommandManager, string repositoryPath, Uri expectedRepositoryOriginUrl)
         {
             context.Debug($"Checking if the repo on {repositoryPath} matches the expected repository origin URL. expected Url: {expectedRepositoryOriginUrl.AbsoluteUri}");
             if (!Directory.Exists(Path.Combine(repositoryPath, ".git")))
@@ -1061,7 +934,7 @@ namespace GitHub.Runner.Plugins.Repository
             }
         }
 
-        private async Task RemoveGitConfig(AgentTaskPluginExecutionContext executionContext, GitCliManager gitCommandManager, string targetPath, string configKey, string configValue)
+        private async Task RemoveGitConfig(RunnerActionPluginExecutionContext executionContext, GitCliManager gitCommandManager, string targetPath, string configKey, string configValue)
         {
             int exitCode_configUnset = await gitCommandManager.GitConfigUnset(executionContext, targetPath, configKey);
             if (exitCode_configUnset != 0)
@@ -1096,7 +969,7 @@ namespace GitHub.Runner.Plugins.Repository
             }
         }
 
-        private async Task RemoveCachedCredential(AgentTaskPluginExecutionContext context, GitCliManager gitCommandManager, Uri repositoryUrlWithCred, string repositoryPath, Uri repositoryUrl, string remoteName)
+        private async Task RemoveCachedCredential(RunnerActionPluginExecutionContext context, GitCliManager gitCommandManager, Uri repositoryUrlWithCred, string repositoryPath, Uri repositoryUrl, string remoteName)
         {
             // there is nothing cached in repository Url.
             if (repositoryUrlWithCred == null)

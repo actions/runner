@@ -9,7 +9,7 @@ using System.IO;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
 
-namespace GitHub.Runner.Worker.Build
+namespace GitHub.Runner.Worker
 {
     public sealed class TrackingConfig
     {
@@ -23,7 +23,7 @@ namespace GitHub.Runner.Worker.Build
         public TrackingConfig(
             IExecutionContext executionContext,
             RepositoryResource repository,
-            int buildDirectory,
+            int pipelineDirectory,
             string hashKey)
         {
             var repoFullName = repository.Properties.Get<string>(RepositoryPropertyNames.Name);
@@ -32,10 +32,9 @@ namespace GitHub.Runner.Worker.Build
             var repoName = repoFullName.Substring(repoFullName.LastIndexOf('/') + 1);
             ArgUtil.NotNullOrEmpty(repoName, nameof(repoName));
             // Set the directories.
-            BuildDirectory = buildDirectory.ToString(CultureInfo.InvariantCulture);
-            ArtifactsDirectory = Path.Combine(BuildDirectory, Constants.Build.Path.ArtifactsDirectory);
-            SourcesDirectory = Path.Combine(BuildDirectory, repoName);
-            // TestResultsDirectory = Path.Combine(BuildDirectory, Constants.Build.Path.TestResultsDirectory);
+            PipelineDirectory = pipelineDirectory.ToString(CultureInfo.InvariantCulture);
+            ArtifactsDirectory = Path.Combine(PipelineDirectory, Constants.Build.Path.ArtifactsDirectory);
+            SourcesDirectory = Path.Combine(PipelineDirectory, repoName);
 
             // Set the other properties.
             CollectionId = executionContext.Variables.System_CollectionId;
@@ -43,11 +42,8 @@ namespace GitHub.Runner.Worker.Build
             HashKey = hashKey;
             RepositoryUrl = repository.Url.AbsoluteUri;
             RepositoryType = repository.Type;
-            System = BuildSystem;
             UpdateJobRunProperties(executionContext);
         }
-
-        protected static readonly string BuildSystem = "build";
 
         public string CollectionId { get; set; }
 
@@ -57,13 +53,11 @@ namespace GitHub.Runner.Worker.Build
 
         public string RepositoryUrl { get; set; }
 
-        public string System { get; set; }
-
-        [JsonProperty("build_artifactstagingdirectory")]
+        [JsonProperty("runner_artifactdirectory")]
         public string ArtifactsDirectory { get; set; }
 
-        [JsonProperty("agent_builddirectory")]
-        public string BuildDirectory { get; set; }
+        [JsonProperty("runner_pipelinedirectory")]
+        public string PipelineDirectory { get; set; }
 
         public string CollectionUrl { get; set; }
 
@@ -120,55 +114,7 @@ namespace GitHub.Runner.Worker.Build
 
         public string RepositoryType { get; set; }
 
-        [JsonIgnore]
-        public DateTimeOffset? LastMaintenanceAttemptedOn { get; set; }
-
-        [JsonProperty("lastMaintenanceAttemptedOn")]
-        [EditorBrowsableAttribute(EditorBrowsableState.Never)]
-        public string LastMaintenanceAttemptedOnString
-        {
-            get
-            {
-                return string.Format(CultureInfo.InvariantCulture, "{0}", LastMaintenanceAttemptedOn);
-            }
-
-            set
-            {
-                if (string.IsNullOrEmpty(value))
-                {
-                    LastMaintenanceAttemptedOn = null;
-                    return;
-                }
-
-                LastMaintenanceAttemptedOn = DateTimeOffset.Parse(value, CultureInfo.InvariantCulture);
-            }
-        }
-
-        [JsonIgnore]
-        public DateTimeOffset? LastMaintenanceCompletedOn { get; set; }
-
-        [JsonProperty("lastMaintenanceCompletedOn")]
-        [EditorBrowsableAttribute(EditorBrowsableState.Never)]
-        public string LastMaintenanceCompletedOnString
-        {
-            get
-            {
-                return string.Format(CultureInfo.InvariantCulture, "{0}", LastMaintenanceCompletedOn);
-            }
-
-            set
-            {
-                if (string.IsNullOrEmpty(value))
-                {
-                    LastMaintenanceCompletedOn = null;
-                    return;
-                }
-
-                LastMaintenanceCompletedOn = DateTimeOffset.Parse(value, CultureInfo.InvariantCulture);
-            }
-        }
-
-        [JsonProperty("build_sourcesdirectory")]
+        [JsonProperty("runner_sourcesdirectory")]
         public string SourcesDirectory { get; set; }
 
         public void UpdateJobRunProperties(IExecutionContext executionContext)

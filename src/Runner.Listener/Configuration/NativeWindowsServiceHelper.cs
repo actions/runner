@@ -19,9 +19,9 @@ using GitHub.Runner.Sdk;
 namespace GitHub.Runner.Listener.Configuration
 {
     [ServiceLocator(Default = typeof(NativeWindowsServiceHelper))]
-    public interface INativeWindowsServiceHelper : IAgentService
+    public interface INativeWindowsServiceHelper : IRunnerService
     {
-        string GetUniqueBuildGroupName();
+        string GetUniqueRunnerGroupName();
 
         bool LocalGroupExists(string groupName);
 
@@ -37,7 +37,7 @@ namespace GitHub.Runner.Listener.Configuration
 
         bool IsUserHasLogonAsServicePrivilege(string domain, string userName);
 
-        bool GrantUserLogonAsServicePrivilage(string domain, string userName);
+        bool GrantUserLogonAsServicePrivilege(string domain, string userName);
 
         bool IsValidCredential(string domain, string userName, string logonPassword);
 
@@ -78,9 +78,9 @@ namespace GitHub.Runner.Listener.Configuration
         void RevokeDirectoryPermissionForAccount(IList<string> folders);
     }
 
-    public class NativeWindowsServiceHelper : AgentService, INativeWindowsServiceHelper
+    public class NativeWindowsServiceHelper : RunnerService, INativeWindowsServiceHelper
     {
-        private const string AgentServiceLocalGroupPrefix = "VSTS_AgentService_G";
+        private const string RunnerServiceLocalGroupPrefix = "GITHUB_ActionsRunner_G";
         private ITerminal _term;
 
         public override void Initialize(IHostContext hostContext)
@@ -89,12 +89,11 @@ namespace GitHub.Runner.Listener.Configuration
             _term = hostContext.GetService<ITerminal>();
         }
 
-        public string GetUniqueBuildGroupName()
+        public string GetUniqueRunnerGroupName()
         {
-            return AgentServiceLocalGroupPrefix + IOUtil.GetPathHash(HostContext.GetDirectory(WellKnownDirectory.Bin)).Substring(0, 5);
+            return RunnerServiceLocalGroupPrefix + IOUtil.GetPathHash(HostContext.GetDirectory(WellKnownDirectory.Bin)).Substring(0, 5);
         }
 
-        // TODO: Make sure to remove Old agent's group and registry changes made during auto upgrade to vsts-agent.
         public bool LocalGroupExists(string groupName)
         {
             Trace.Entering();
@@ -348,7 +347,7 @@ namespace GitHub.Runner.Listener.Configuration
             return userHasPermission;
         }
 
-        public bool GrantUserLogonAsServicePrivilage(string domain, string userName)
+        public bool GrantUserLogonAsServicePrivilege(string domain, string userName)
         {
             Trace.Entering();
             ArgUtil.NotNullOrEmpty(userName, nameof(userName));
@@ -358,12 +357,12 @@ namespace GitHub.Runner.Listener.Configuration
                 uint result = LsaAddAccountRights(lsaPolicy.Handle, GetSidBinaryFromWindows(domain, userName), LogonAsServiceRights, 1);
                 if (result == 0)
                 {
-                    Trace.Info($"Successfully grant logon as service privilage to account '{userName}'");
+                    Trace.Info($"Successfully grant logon as service privilege to account '{userName}'");
                     return true;
                 }
                 else
                 {
-                    Trace.Info($"Fail to grant logon as service privilage to account '{userName}', error code {result}.");
+                    Trace.Info($"Fail to grant logon as service privilege to account '{userName}', error code {result}.");
                     return false;
                 }
             }
@@ -870,7 +869,7 @@ namespace GitHub.Runner.Listener.Configuration
         public void GrantDirectoryPermissionForAccount(string accountName, IList<string> folders)
         {
             Trace.Entering();
-            string groupName = GetUniqueBuildGroupName();
+            string groupName = GetUniqueRunnerGroupName();
             Trace.Info(StringUtil.Format("Calculated unique group name {0}", groupName));
 
             if (!LocalGroupExists(groupName))
@@ -896,7 +895,7 @@ namespace GitHub.Runner.Listener.Configuration
         public void RevokeDirectoryPermissionForAccount(IList<string> folders)
         {
             Trace.Entering();
-            string groupName = GetUniqueBuildGroupName();
+            string groupName = GetUniqueRunnerGroupName();
             Trace.Info(StringUtil.Format("Calculated unique group name {0}", groupName));
 
             // remove the group from folders

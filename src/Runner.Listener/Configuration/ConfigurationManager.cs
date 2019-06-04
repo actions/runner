@@ -20,23 +20,24 @@ using GitHub.Runner.Sdk;
 namespace GitHub.Runner.Listener.Configuration
 {
     [ServiceLocator(Default = typeof(ConfigurationManager))]
-    public interface IConfigurationManager : IAgentService
+    public interface IConfigurationManager : IRunnerService
     {
         bool IsConfigured();
         Task ConfigureAsync(CommandSettings command);
         Task UnconfigureAsync(CommandSettings command);
-        AgentSettings LoadSettings();
+        RunnerSettings LoadSettings();
     }
 
-    public sealed class ConfigurationManager : AgentService, IConfigurationManager
+    public sealed class ConfigurationManager : RunnerService, IConfigurationManager
     {
         private IConfigurationStore _store;
-        private IAgentServer _agentServer;
+        private IRunnerServer _runnerServer;
         private ITerminal _term;
 
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
+            _runnerServer = HostContext.GetService<IRunnerServer>();
             Trace.Verbose("Creating _store");
             _store = hostContext.GetService<IConfigurationStore>();
             Trace.Verbose("store created");
@@ -50,7 +51,7 @@ namespace GitHub.Runner.Listener.Configuration
             return result;
         }
 
-        public AgentSettings LoadSettings()
+        public RunnerSettings LoadSettings()
         {
             Trace.Info(nameof(LoadSettings));
             if (!IsConfigured())
@@ -58,7 +59,7 @@ namespace GitHub.Runner.Listener.Configuration
                 throw new InvalidOperationException("Not configured");
             }
 
-            AgentSettings settings = _store.GetSettings();
+            RunnerSettings settings = _store.GetSettings();
             Trace.Info("Settings Loaded");
 
             return settings;
@@ -74,7 +75,7 @@ namespace GitHub.Runner.Listener.Configuration
             }
 
             // Populate proxy setting from commandline args
-            var vstsProxy = HostContext.GetService<IVstsAgentWebProxy>();
+            var runnerProxy = HostContext.GetService<IRunnerWebProxy>();
             bool saveProxySetting = false;
             string proxyUrl = command.GetProxyUrl();
             if (!string.IsNullOrEmpty(proxyUrl))
@@ -87,12 +88,12 @@ namespace GitHub.Runner.Listener.Configuration
                 Trace.Info("Reset proxy base on commandline args.");
                 string proxyUserName = command.GetProxyUserName();
                 string proxyPassword = command.GetProxyPassword();
-                (vstsProxy as VstsAgentWebProxy).SetupProxy(proxyUrl, proxyUserName, proxyPassword);
+                (runnerProxy as RunnerWebProxy).SetupProxy(proxyUrl, proxyUserName, proxyPassword);
                 saveProxySetting = true;
             }
 
             // Populate cert setting from commandline args
-            var agentCertManager = HostContext.GetService<IAgentCertificateManager>();
+            var runnerCertManager = HostContext.GetService<IRunnerCertificateManager>();
             bool saveCertSetting = false;
             bool skipCertValidation = command.GetSkipCertificateValidation();
             string caCert = command.GetCACertificate();
@@ -127,27 +128,19 @@ namespace GitHub.Runner.Listener.Configuration
                      !string.IsNullOrEmpty(clientCertArchive))
             {
                 // Print out which args are missing.
-                ArgUtil.NotNullOrEmpty(Constants.Agent.CommandLine.Args.SslClientCert, Constants.Agent.CommandLine.Args.SslClientCert);
-                ArgUtil.NotNullOrEmpty(Constants.Agent.CommandLine.Args.SslClientCertKey, Constants.Agent.CommandLine.Args.SslClientCertKey);
-                ArgUtil.NotNullOrEmpty(Constants.Agent.CommandLine.Args.SslClientCertArchive, Constants.Agent.CommandLine.Args.SslClientCertArchive);
+                ArgUtil.NotNullOrEmpty(Constants.Runner.CommandLine.Args.SslClientCert, Constants.Runner.CommandLine.Args.SslClientCert);
+                ArgUtil.NotNullOrEmpty(Constants.Runner.CommandLine.Args.SslClientCertKey, Constants.Runner.CommandLine.Args.SslClientCertKey);
+                ArgUtil.NotNullOrEmpty(Constants.Runner.CommandLine.Args.SslClientCertArchive, Constants.Runner.CommandLine.Args.SslClientCertArchive);
             }
 
             if (skipCertValidation || !string.IsNullOrEmpty(caCert) || !string.IsNullOrEmpty(clientCert))
             {
-                Trace.Info("Reset agent cert setting base on commandline args.");
-                (agentCertManager as AgentCertificateManager).SetupCertificate(skipCertValidation, caCert, clientCert, clientCertKey, clientCertArchive, clientCertPassword);
+                Trace.Info("Reset runner cert setting base on commandline args.");
+                (runnerCertManager as RunnerCertificateManager).SetupCertificate(skipCertValidation, caCert, clientCert, clientCertKey, clientCertArchive, clientCertPassword);
                 saveCertSetting = true;
             }
 
-            AgentSettings agentSettings = new AgentSettings();
-
-            // Create the configuration provider as per agent type.
-            string agentType = Constants.Agent.AgentConfigurationProvider.BuildReleasesAgentConfiguration;
-            var extensionManager = HostContext.GetService<IExtensionManager>();
-            IConfigurationProvider agentProvider =
-                (extensionManager.GetExtensions<IConfigurationProvider>())
-                .FirstOrDefault(x => x.ConfigurationProviderType == agentType);
-            ArgUtil.NotNull(agentProvider, agentType);
+            RunnerSettings runnerSettings = new RunnerSettings();
 
             bool isHostedServer = false;
             // Loop getting url and creds until you can connect
@@ -157,22 +150,20 @@ namespace GitHub.Runner.Listener.Configuration
             while (true)
             {
                 // Get the URL
-                agentProvider.GetServerUrl(agentSettings, command);
+                runnerSettings.ServerUrl = command.GetUrl();
 
                 // Get the credentials
-                credProvider = GetCredentialProvider(command, agentSettings.ServerUrl);
+                credProvider = GetCredentialProvider(command, runnerSettings.ServerUrl);
                 creds = credProvider.GetVssCredentials(HostContext);
                 Trace.Info("cred retrieved");
                 try
                 {
                     // Determine the service deployment type based on connection data. (Hosted/OnPremises)
-                    isHostedServer = await IsHostedServer(agentSettings.ServerUrl, creds);
-
-                    // Get the collection name for deployment group
-                    agentProvider.GetCollectionName(agentSettings, command, isHostedServer);
+                    isHostedServer = await IsHostedServer(runnerSettings.ServerUrl, creds);
 
                     // Validate can connect.
-                    await agentProvider.TestConnectionAsync(agentSettings, creds, isHostedServer);
+                    _term.WriteLine(StringUtil.Loc("ConnectingToServer"));
+                    await _runnerServer.ConnectAsync(new Uri(runnerSettings.ServerUrl), creds);
                     Trace.Info("Test Connection complete.");
                     break;
                 }
@@ -183,7 +174,6 @@ namespace GitHub.Runner.Listener.Configuration
                 }
             }
 
-            _agentServer = HostContext.GetService<IAgentServer>();
             // We want to use the native CSP of the platform for storage, so we use the RSACSP directly
             RSAParameters publicKey;
             var keyManager = HostContext.GetService<IRSAKeyManager>();
@@ -199,28 +189,42 @@ namespace GitHub.Runner.Listener.Configuration
             {
                 try
                 {
-                    await agentProvider.GetPoolIdAndName(agentSettings, command);
+                    string poolName = command.GetPool();
+
+                    TaskAgentPool agentPool = (await _runnerServer.GetAgentPoolsAsync(poolName)).FirstOrDefault();
+                    if (agentPool == null)
+                    {
+                        throw new TaskAgentPoolNotFoundException(StringUtil.Loc("PoolNotFound", poolName));
+                    }
+                    else
+                    {
+                        Trace.Info("Found pool {0} with id {1} and name {2}", poolName, agentPool.Id, agentPool.Name);
+                        runnerSettings.PoolId = agentPool.Id;
+                        runnerSettings.PoolName = agentPool.Name;
+                    }
+
                     break;
                 }
                 catch (Exception e) when (!command.Unattended)
                 {
                     _term.WriteError(e);
-                    _term.WriteError(agentProvider.GetFailedToFindPoolErrorString());
+                    _term.WriteError(StringUtil.Loc("FailedToFindPool"));
                 }
             }
 
             TaskAgent agent;
             while (true)
             {
-                agentSettings.AgentName = command.GetAgentName();
+                runnerSettings.AgentName = command.GetAgentName();
 
                 // Get the system capabilities.
-                // TODO: Hook up to ctrl+c cancellation token.
                 _term.WriteLine(StringUtil.Loc("ScanToolCapabilities"));
-                Dictionary<string, string> systemCapabilities = await HostContext.GetService<ICapabilitiesManager>().GetCapabilitiesAsync(agentSettings, CancellationToken.None);
+                Dictionary<string, string> systemCapabilities = await HostContext.GetService<ICapabilitiesManager>().GetCapabilitiesAsync(runnerSettings, CancellationToken.None);
 
                 _term.WriteLine(StringUtil.Loc("ConnectToServer"));
-                agent = await agentProvider.GetAgentAsync(agentSettings);
+                var agents = await _runnerServer.GetAgentsAsync(runnerSettings.PoolId, runnerSettings.AgentName);
+                Trace.Verbose("Returns {0} agents", agents.Count);
+                agent = agents.FirstOrDefault();
                 if (agent != null)
                 {
                     if (command.GetReplace())
@@ -230,7 +234,7 @@ namespace GitHub.Runner.Listener.Configuration
 
                         try
                         {
-                            agent = await agentProvider.UpdateAgentAsync(agentSettings, agent, command);
+                            agent = await _runnerServer.UpdateAgentAsync(runnerSettings.PoolId, agent);
                             _term.WriteLine(StringUtil.Loc("AgentReplaced"));
                             break;
                         }
@@ -243,17 +247,17 @@ namespace GitHub.Runner.Listener.Configuration
                     else if (command.Unattended)
                     {
                         // if not replace and it is unattended config.
-                        agentProvider.ThrowTaskAgentExistException(agentSettings);
+                        throw new TaskAgentExistsException(StringUtil.Loc("AgentWithSameNameAlreadyExistInPool", runnerSettings.PoolId, runnerSettings.AgentName));
                     }
                 }
                 else
                 {
                     // Create a new agent. 
-                    agent = CreateNewAgent(agentSettings.AgentName, publicKey, systemCapabilities);
+                    agent = CreateNewAgent(runnerSettings.AgentName, publicKey, systemCapabilities);
 
                     try
                     {
-                        agent = await agentProvider.AddAgentAsync(agentSettings, agent, command);
+                        agent = await _runnerServer.AddAgentAsync(runnerSettings.PoolId, agent);
                         _term.WriteLine(StringUtil.Loc("AgentAddedSuccessfully"));
                         break;
                     }
@@ -265,7 +269,7 @@ namespace GitHub.Runner.Listener.Configuration
                 }
             }
             // Add Agent Id to settings
-            agentSettings.AgentId = agent.Id;
+            runnerSettings.AgentId = agent.Id;
 
             // respect the serverUrl resolve by server.
             // in case of agent configured using collection url instead of account url.
@@ -276,17 +280,17 @@ namespace GitHub.Runner.Listener.Configuration
                 Trace.Info($"Agent server url resolve by server: '{agentServerUrl}'.");
 
                 // we need make sure the Schema/Host/Port component of the url remain the same.
-                UriBuilder inputServerUrl = new UriBuilder(agentSettings.ServerUrl);
+                UriBuilder inputServerUrl = new UriBuilder(runnerSettings.ServerUrl);
                 UriBuilder serverReturnedServerUrl = new UriBuilder(agentServerUrl);
                 if (Uri.Compare(inputServerUrl.Uri, serverReturnedServerUrl.Uri, UriComponents.SchemeAndServer, UriFormat.Unescaped, StringComparison.OrdinalIgnoreCase) != 0)
                 {
                     inputServerUrl.Path = serverReturnedServerUrl.Path;
                     Trace.Info($"Replace server returned url's scheme://host:port component with user input server url's scheme://host:port: '{inputServerUrl.Uri.AbsoluteUri}'.");
-                    agentSettings.ServerUrl = inputServerUrl.Uri.AbsoluteUri;
+                    runnerSettings.ServerUrl = inputServerUrl.Uri.AbsoluteUri;
                 }
                 else
                 {
-                    agentSettings.ServerUrl = agentServerUrl;
+                    runnerSettings.ServerUrl = agentServerUrl;
                 }
             }
 
@@ -300,7 +304,7 @@ namespace GitHub.Runner.Listener.Configuration
                 // Which means, we will keep use the original authorizationUrl in the VssOAuthJwtBearerClientCredential (authorizationUrl is the audience),
                 // But might have different Url in VssOAuthCredential (connection url)
                 // We can't do this for VSTS, since its SPS/TFS urls are different.
-                UriBuilder configServerUrl = new UriBuilder(agentSettings.ServerUrl);
+                UriBuilder configServerUrl = new UriBuilder(runnerSettings.ServerUrl);
                 UriBuilder oauthEndpointUrlBuilder = new UriBuilder(agent.Authorization.AuthorizationUrl);
                 if (!isHostedServer && Uri.Compare(configServerUrl.Uri, oauthEndpointUrlBuilder.Uri, UriComponents.SchemeAndServer, UriFormat.Unescaped, StringComparison.OrdinalIgnoreCase) != 0)
                 {
@@ -326,7 +330,7 @@ namespace GitHub.Runner.Listener.Configuration
             }
             else
             {
-                switch (Constants.Agent.Platform)
+                switch (Constants.Runner.Platform)
                 {
                     case Constants.OSPlatform.OSX:
                     case Constants.OSPlatform.Linux:
@@ -346,10 +350,9 @@ namespace GitHub.Runner.Listener.Configuration
             _term.WriteLine(StringUtil.Loc("TestAgentConnection"));
             var credMgr = HostContext.GetService<ICredentialManager>();
             VssCredentials credential = credMgr.LoadCredentials();
-            var agentSvr = HostContext.GetService<IAgentServer>();
             try
             {
-                await agentSvr.ConnectAsync(new Uri(agentSettings.ServerUrl), credential);
+                await _runnerServer.ConnectAsync(new Uri(runnerSettings.ServerUrl), credential);
             }
             catch (VssOAuthTokenRequestException ex) when (ex.Message.Contains("Current server time is"))
             {
@@ -362,33 +365,33 @@ namespace GitHub.Runner.Listener.Configuration
             }
 
             // We will Combine() what's stored with root.  Defaults to string a relative path
-            agentSettings.WorkFolder = command.GetWork();
+            runnerSettings.WorkFolder = command.GetWork();
 
             // notificationPipeName for Hosted agent provisioner.
-            agentSettings.NotificationPipeName = command.GetNotificationPipeName();
+            runnerSettings.NotificationPipeName = command.GetNotificationPipeName();
 
-            agentSettings.MonitorSocketAddress = command.GetMonitorSocketAddress();
+            runnerSettings.MonitorSocketAddress = command.GetMonitorSocketAddress();
 
-            agentSettings.NotificationSocketAddress = command.GetNotificationSocketAddress();
+            runnerSettings.NotificationSocketAddress = command.GetNotificationSocketAddress();
 
-            _store.SaveSettings(agentSettings);
+            _store.SaveSettings(runnerSettings);
 
             if (saveProxySetting)
             {
                 Trace.Info("Save proxy setting to disk.");
-                (vstsProxy as VstsAgentWebProxy).SaveProxySetting();
+                (runnerProxy as RunnerWebProxy).SaveProxySetting();
             }
 
             if (saveCertSetting)
             {
                 Trace.Info("Save agent cert setting to disk.");
-                (agentCertManager as AgentCertificateManager).SaveCertificateSetting();
+                (runnerCertManager as RunnerCertificateManager).SaveCertificateSetting();
             }
 
             _term.WriteLine(StringUtil.Loc("SavedSettings", DateTime.UtcNow));
 
             bool saveRuntimeOptions = false;
-            var runtimeOptions = new AgentRuntimeOptions();
+            var runtimeOptions = new RunnerRuntimeOptions();
 #if OS_WINDOWS
             if (command.GitUseSChannel)
             {
@@ -399,7 +402,7 @@ namespace GitHub.Runner.Listener.Configuration
             if (saveRuntimeOptions)
             {
                 Trace.Info("Save agent runtime options to disk.");
-                _store.SaveAgentRuntimeOptions(runtimeOptions);
+                _store.SaveRunnerRuntimeOptions(runtimeOptions);
             }
 
 #if OS_WINDOWS
@@ -409,13 +412,13 @@ namespace GitHub.Runner.Listener.Configuration
             {
                 Trace.Info("Configuring to run the agent as service");
                 var serviceControlManager = HostContext.GetService<IWindowsServiceControlManager>();
-                serviceControlManager.ConfigureService(agentSettings, command);
+                serviceControlManager.ConfigureService(runnerSettings, command);
             }
 
 #elif OS_LINUX || OS_OSX
             // generate service config script for OSX and Linux, GenerateScripts() will no-opt on windows.
             var serviceControlManager = HostContext.GetService<ILinuxServiceControlManager>();
-            serviceControlManager.GenerateScripts(agentSettings);
+            serviceControlManager.GenerateScripts(runnerSettings);
 #endif
         }
 
@@ -450,7 +453,7 @@ namespace GitHub.Runner.Listener.Configuration
                 bool hasCredentials = _store.HasCredentials();
                 if (isConfigured && hasCredentials)
                 {
-                    AgentSettings settings = _store.GetSettings();
+                    RunnerSettings settings = _store.GetSettings();
                     var credentialManager = HostContext.GetService<ICredentialManager>();
 
                     // Get the credentials
@@ -458,23 +461,21 @@ namespace GitHub.Runner.Listener.Configuration
                     VssCredentials creds = credProvider.GetVssCredentials(HostContext);
                     Trace.Info("cred retrieved");
 
-                    string agentType = Constants.Agent.AgentConfigurationProvider.BuildReleasesAgentConfiguration;
-                    var extensionManager = HostContext.GetService<IExtensionManager>();
-                    IConfigurationProvider agentProvider = (extensionManager.GetExtensions<IConfigurationProvider>()).FirstOrDefault(x => x.ConfigurationProviderType == agentType);
-                    ArgUtil.NotNull(agentProvider, agentType);
-
                     // Determine the service deployment type based on connection data. (Hosted/OnPremises)
                     bool isHostedServer = await IsHostedServer(settings.ServerUrl, creds);
-                    await agentProvider.TestConnectionAsync(settings, creds, isHostedServer);
+                    _term.WriteLine(StringUtil.Loc("ConnectingToServer"));
+                    await _runnerServer.ConnectAsync(new Uri(settings.ServerUrl), creds);
 
-                    TaskAgent agent = await agentProvider.GetAgentAsync(settings);
+                    var agents = await _runnerServer.GetAgentsAsync(settings.PoolId, settings.AgentName);
+                    Trace.Verbose("Returns {0} agents", agents.Count);
+                    TaskAgent agent = agents.FirstOrDefault();
                     if (agent == null)
                     {
                         _term.WriteLine(StringUtil.Loc("Skipping") + currentAction);
                     }
                     else
                     {
-                        await agentProvider.DeleteAgentAsync(settings);
+                        await _runnerServer.DeleteAgentAsync(settings.PoolId, settings.AgentId);
                         _term.WriteLine(StringUtil.Loc("Success") + currentAction);
                     }
                 }
@@ -504,13 +505,13 @@ namespace GitHub.Runner.Listener.Configuration
                 if (isConfigured)
                 {
                     // delete proxy setting
-                    (HostContext.GetService<IVstsAgentWebProxy>() as VstsAgentWebProxy).DeleteProxySetting();
+                    (HostContext.GetService<IRunnerWebProxy>() as RunnerWebProxy).DeleteProxySetting();
 
                     // delete agent cert setting
-                    (HostContext.GetService<IAgentCertificateManager>() as AgentCertificateManager).DeleteCertificateSetting();
+                    (HostContext.GetService<IRunnerCertificateManager>() as RunnerCertificateManager).DeleteCertificateSetting();
 
                     // delete agent runtime option
-                    _store.DeleteAgentRuntimeOptions();
+                    _store.DeleteRunnerRuntimeOptions();
 
                     _store.DeleteSettings();
                     _term.WriteLine(StringUtil.Loc("Success") + currentAction);
@@ -543,7 +544,7 @@ namespace GitHub.Runner.Listener.Configuration
             }
             else
             {
-                defaultAuth = Constants.Agent.Platform == Constants.OSPlatform.Windows ? Constants.Configuration.Integrated : Constants.Configuration.Negotiate;
+                defaultAuth = Constants.Runner.Platform == Constants.OSPlatform.Windows ? Constants.Configuration.Integrated : Constants.Configuration.Negotiate;
             }
 
             string authType = command.GetAuth(defaultValue: defaultAuth);
@@ -559,6 +560,7 @@ namespace GitHub.Runner.Listener.Configuration
             provider.EnsureCredential(HostContext, command, serverUrl);
             return provider;
         }
+
 
         private TaskAgent UpdateExistingAgent(TaskAgent agent, RSAParameters publicKey, Dictionary<string, string> systemCapabilities)
         {

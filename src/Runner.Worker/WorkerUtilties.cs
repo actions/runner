@@ -1,7 +1,4 @@
 ﻿using GitHub.DistributedTask.WebApi;
-using GitHub.Runner.Common.Util;
-using GitHub.Services.Common;
-using GitHub.Services.WebApi;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 using System;
 using System.Collections.Generic;
@@ -12,21 +9,6 @@ namespace GitHub.Runner.Worker
 {
     public class WorkerUtilities
     {
-        public static VssConnection GetVssConnection(IExecutionContext context)
-        {
-            ArgUtil.NotNull(context, nameof(context));
-            ArgUtil.NotNull(context.Endpoints, nameof(context.Endpoints));
-
-            ServiceEndpoint systemConnection = context.Endpoints.FirstOrDefault(e => string.Equals(e.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
-            ArgUtil.NotNull(systemConnection, nameof(systemConnection));
-            ArgUtil.NotNull(systemConnection.Url, nameof(systemConnection.Url));
-
-            VssCredentials credentials = VssUtil.GetVssCredential(systemConnection);
-            ArgUtil.NotNull(credentials, nameof(credentials));
-            VssConnection connection = VssUtil.CreateConnection(systemConnection.Url, credentials);
-            return connection;
-        }
-
         public static Pipelines.AgentJobRequestMessage ScrubPiiData(Pipelines.AgentJobRequestMessage message)
         {
             ArgUtil.NotNull(message, nameof(message));

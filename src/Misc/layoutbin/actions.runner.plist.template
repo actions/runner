@@ -20,7 +20,7 @@
     <string>{{UserHome}}/Library/Logs/{{SvcName}}/stderr.log</string>
     <key>EnvironmentVariables</key>
     <dict> 
-      <key>ACTION_RUNNER_SVC</key>
+      <key>ACTIONS_RUNNER_SVC</key>
       <string>1</string>
     </dict>
   </dict>

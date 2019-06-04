@@ -44,7 +44,7 @@ namespace GitHub.Runner.Common.Tests
                 // Act/Assert.
                 AssertContains<GitHub.Runner.Common.Capabilities.ICapabilitiesProvider>(
                     manager,
-                    concreteType: typeof(GitHub.Runner.Common.Capabilities.AgentCapabilitiesProvider));
+                    concreteType: typeof(GitHub.Runner.Common.Capabilities.RunnerCapabilitiesProvider));
                 AssertContains<GitHub.Runner.Worker.IJobExtension>(
                     manager,
                     concreteType: typeof(GitHub.Runner.Worker.Build.BuildJobExtension));

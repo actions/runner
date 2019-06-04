@@ -62,7 +62,6 @@
     </ItemGroup>
 
     <Delete Files="@(LayoutRootFilesToDelete)" />
-    <RemoveDir Directories="$(MSBuildProjectDirectory)/../_layout/bin/powershell" Condition="'$(Product)' == 'Github' Or ('$(PackageRuntime)' != 'win-x64' And '$(PackageRuntime)' != 'win-x86')"/>
   </Target>
 
   <Target Name="Clean">

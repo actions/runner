@@ -21,7 +21,7 @@ namespace GitHub.Runner.Listener.Configuration
 
             // Get the user name from the credential data.
             string userName;
-            if (!CredentialData.Data.TryGetValue(Constants.Agent.CommandLine.Args.UserName, out userName))
+            if (!CredentialData.Data.TryGetValue(Constants.Runner.CommandLine.Args.UserName, out userName))
             {
                 userName = null;
             }
@@ -31,7 +31,7 @@ namespace GitHub.Runner.Listener.Configuration
 
             // Get the password from the credential data.
             string password;
-            if (!CredentialData.Data.TryGetValue(Constants.Agent.CommandLine.Args.Password, out password))
+            if (!CredentialData.Data.TryGetValue(Constants.Runner.CommandLine.Args.Password, out password))
             {
                 password = null;
             }
@@ -41,7 +41,7 @@ namespace GitHub.Runner.Listener.Configuration
 
             // Get the URL from the credential data.
             string url;
-            if (!CredentialData.Data.TryGetValue(Constants.Agent.CommandLine.Args.Url, out url))
+            if (!CredentialData.Data.TryGetValue(Constants.Runner.CommandLine.Args.Url, out url))
             {
                 url = null;
             }
@@ -52,7 +52,7 @@ namespace GitHub.Runner.Listener.Configuration
             // Create the Negotiate and NTLM credential object.
             var credential = new NetworkCredential(userName, password);
             var credentialCache = new CredentialCache();
-            switch (Constants.Agent.Platform)
+            switch (Constants.Runner.Platform)
             {
                 case Constants.OSPlatform.Linux:
                 case Constants.OSPlatform.OSX:
@@ -76,9 +76,9 @@ namespace GitHub.Runner.Listener.Configuration
             ArgUtil.NotNull(command, nameof(command));
             ArgUtil.NotNullOrEmpty(serverUrl, nameof(serverUrl));
             //TODO: use Validators.NTAccountValidator when it works on Linux
-            CredentialData.Data[Constants.Agent.CommandLine.Args.UserName] = command.GetUserName();
-            CredentialData.Data[Constants.Agent.CommandLine.Args.Password] = command.GetPassword();
-            CredentialData.Data[Constants.Agent.CommandLine.Args.Url] = serverUrl;
+            CredentialData.Data[Constants.Runner.CommandLine.Args.UserName] = command.GetUserName();
+            CredentialData.Data[Constants.Runner.CommandLine.Args.Password] = command.GetPassword();
+            CredentialData.Data[Constants.Runner.CommandLine.Args.Url] = serverUrl;
         }
     }
 }

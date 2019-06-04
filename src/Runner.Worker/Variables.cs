@@ -1,6 +1,5 @@
 ﻿using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common.Util;
-using GitHub.Runner.Worker.Build;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -96,48 +95,12 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        public string Agent_ProxyUrl => Get(Constants.Variables.Agent.ProxyUrl);
-
-        public string Agent_ProxyUsername => Get(Constants.Variables.Agent.ProxyUsername);
-
-        public string Agent_ProxyPassword => Get(Constants.Variables.Agent.ProxyPassword);
-
-        public BuildCleanOption? Build_Clean => GetEnum<BuildCleanOption>(Constants.Variables.Features.BuildDirectoryClean) ?? GetEnum<BuildCleanOption>(Constants.Variables.Build.Clean);
-
         public string Build_DefinitionName => Get(Constants.Variables.Build.DefinitionName);
-
-        public bool? Build_GatedRunCI => GetBoolean(Constants.Variables.Build.GatedRunCI);
-
-        public string Build_GatedShelvesetName => Get(Constants.Variables.Build.GatedShelvesetName);
 
         public string Build_Number => Get(Constants.Variables.Build.Number);
 
-        public string Build_RepoTfvcWorkspace => Get(Constants.Variables.Build.RepoTfvcWorkspace);
-
-        public string Build_SourceBranch => Get(Constants.Variables.Build.SourceBranch);
-
-        public string Build_SourceTfvcShelveset => Get(Constants.Variables.Build.SourceTfvcShelveset);
-
-        public string Build_SourceVersion => Get(Constants.Variables.Build.SourceVersion);
-
-        public bool? Build_SyncSources => GetBoolean(Constants.Variables.Build.SyncSources);
-
-        public string Release_ArtifactsDirectory => Get(Constants.Variables.Release.ArtifactsDirectory);
-
-        public string Release_ReleaseEnvironmentUri => Get(Constants.Variables.Release.ReleaseEnvironmentUri);
-
-        public string Release_ReleaseId => Get(Constants.Variables.Release.ReleaseId);
-
-        public string Release_ReleaseName => Get(Constants.Variables.Release.ReleaseName);
-
-        public string Release_ReleaseUri => Get(Constants.Variables.Release.ReleaseUri);
-
-        public int? Release_Download_BufferSize => GetInt(Constants.Variables.Release.ReleaseDownloadBufferSize);
-
-        public int? Release_Parallel_Download_Limit => GetInt(Constants.Variables.Release.ReleaseParallelDownloadLimit);
-
 #if OS_WINDOWS
-        public bool Retain_Default_Encoding => GetBoolean(Constants.Variables.Agent.RetainDefaultEncoding) ?? true;
+        public bool Retain_Default_Encoding => false;
 #else
         public bool Retain_Default_Encoding => true;
 #endif
@@ -147,8 +110,6 @@ namespace GitHub.Runner.Worker
         public bool? System_Debug => GetBoolean(Constants.Variables.System.Debug);
 
         public string System_DefinitionId => Get(Constants.Variables.System.DefinitionId);
-
-        public bool? System_EnableAccessToken => GetBoolean(Constants.Variables.System.EnableAccessToken);
 
         public string System_PhaseDisplayName => Get(Constants.Variables.System.PhaseDisplayName);
 
@@ -209,7 +170,8 @@ namespace GitHub.Runner.Worker
                 source[variable.Name] = variable.Value;
             }
 
-            return VarUtil.ExpandValues(_hostContext, source, target);
+            // return VarUtil.ExpandValues(_hostContext, source, target);
+            return null;
         }
 
         public string Get(string name)

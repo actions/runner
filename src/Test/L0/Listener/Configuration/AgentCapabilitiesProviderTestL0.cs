@@ -24,9 +24,9 @@ namespace GitHub.Runner.Common.Tests.Listener
                 hc.SetSingleton<IConfigurationManager>(configurationManager.Object);
                 
                 // Arrange
-                var provider = new AgentCapabilitiesProvider();
+                var provider = new RunnerCapabilitiesProvider();
                 provider.Initialize(hc);
-                var settings = new AgentSettings() { AgentName = "IAmAgent007" };
+                var settings = new RunnerSettings() { AgentName = "IAmAgent007" };
 
                 // Act
                 List<Capability> capabilities = await provider.GetCapabilitiesAsync(settings, tokenSource.Token);
@@ -61,9 +61,9 @@ namespace GitHub.Runner.Common.Tests.Listener
         private async Task VerifyInteractiveSessionCapability(IHostContext hc, CancellationToken token, bool expectedValue)
         {
             // Arrange
-            var provider = new AgentCapabilitiesProvider();
+            var provider = new RunnerCapabilitiesProvider();
             provider.Initialize(hc);
-            var settings = new AgentSettings() { AgentName = "IAmAgent007" };
+            var settings = new RunnerSettings() { AgentName = "IAmAgent007" };
 
             // Act
             List<Capability> capabilities = await provider.GetCapabilitiesAsync(settings, token);

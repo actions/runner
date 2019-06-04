@@ -158,7 +158,7 @@ function package ()
     fi
 
     runner_ver=$("${LAYOUT_DIR}/bin/Runner.Listener" --version) || failed "version"
-    runner_pkg_name="action-runner-${RUNTIME_ID}-${runner_ver}"
+    runner_pkg_name="actions-runner-${RUNTIME_ID}-${runner_ver}"
 
     heading "Packaging ${runner_pkg_name}"
 
