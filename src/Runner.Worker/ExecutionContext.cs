@@ -544,6 +544,26 @@ namespace GitHub.Runner.Worker
                 githubContext["action"] = new StringContextData(Variables.Build_Number);
 
                 // GITHUB_EVENT_PATH=/github/workflow/event.json
+            }else{
+                var githubContext = new GitHubContext();
+                var selfRepo = message.Resources.Repositories.Single(x => string.Equals(x.Alias, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase));
+
+                var ghDictionary = (DictionaryContextData)ExpressionValues["github"];
+                foreach (var pair in ghDictionary){
+                    githubContext.Add(pair.Key, pair.Value);
+                }
+
+                // GITHUB_TOKEN=TOKEN
+                if (selfRepo.Endpoint != null)
+                {
+                    var repoEndpoint = message.Resources.Endpoints.FirstOrDefault(x => x.Id == selfRepo.Endpoint.Id);
+                    if (repoEndpoint?.Authorization?.Parameters != null && repoEndpoint.Authorization.Parameters.ContainsKey("accessToken"))
+                    {
+                        githubContext["token"] = new StringContextData(repoEndpoint.Authorization.Parameters["accessToken"]);
+                    }
+                }
+
+                ExpressionValues["github"] = githubContext;
             }
 
             // Prepend Path
