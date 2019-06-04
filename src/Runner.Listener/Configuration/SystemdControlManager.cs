@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Common;
-using GitHub.Skd;
+using GitHub.Sdk;
 
 namespace GitHub.Runner.Listener.Configuration
 {
