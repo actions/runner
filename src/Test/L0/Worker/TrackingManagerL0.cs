@@ -1,7 +1,6 @@
 ﻿using GitHub.DistributedTask.WebApi;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 using GitHub.Runner.Worker;
-using GitHub.Runner.Worker.Build;
 using Moq;
 using Newtonsoft.Json;
 using System;
@@ -13,7 +12,7 @@ using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using Xunit;
 
-namespace GitHub.Runner.Common.Tests.Worker.Build
+namespace GitHub.Runner.Common.Tests.Worker
 {
     public sealed class TrackingManagerL0
     {
@@ -70,7 +69,7 @@ namespace GitHub.Runner.Common.Tests.Worker.Build
                 DateTimeOffset testStartOn = DateTimeOffset.Now;
 
                 // Act.
-                _trackingManager.Create(_ec.Object, _repository, "some hash key", trackingFile, false);
+                _trackingManager.Create(_ec.Object, _repository, "some hash key", trackingFile);
 
                 // Assert.
                 string topLevelFile = Path.Combine(
@@ -100,7 +99,7 @@ namespace GitHub.Runner.Common.Tests.Worker.Build
                 DateTimeOffset testStartOn = DateTimeOffset.Now;
 
                 // Act.
-                _trackingManager.Create(_ec.Object, _repository, HashKey, trackingFile, false);
+                _trackingManager.Create(_ec.Object, _repository, HashKey, trackingFile);
 
                 // Assert.
                 TrackingConfig config = _trackingManager.LoadIfExists(_ec.Object, trackingFile) as TrackingConfig;
@@ -122,7 +121,6 @@ namespace GitHub.Runner.Common.Tests.Worker.Build
                 Assert.Equal(
                     Path.Combine("1", Constants.Build.Path.SourcesDirectory),
                     config.SourcesDirectory);
-                Assert.Equal("build", config.System);
             }
         }
 
@@ -147,8 +145,7 @@ namespace GitHub.Runner.Common.Tests.Worker.Build
   ""collectionId"": ""7aee6dde-6381-4098-93e7-50a8264cf066"",
   ""definitionId"": ""7"",
   ""hashKey"": ""b00335b6923adfa64f46f3abb7da1cdc0d9bae6c"",
-  ""repositoryUrl"": ""http://contoso:8080/tfs/DefaultCollection/_git/gitTest"",
-  ""system"": ""build""
+  ""repositoryUrl"": ""http://contoso:8080/tfs/DefaultCollection/_git/gitTest""
 }";
                 Directory.CreateDirectory(_workFolder);
                 string filePath = Path.Combine(_workFolder, "trackingconfig.json");
@@ -172,7 +169,6 @@ namespace GitHub.Runner.Common.Tests.Worker.Build
                 Assert.Equal(new DateTimeOffset(2015, 9, 16, 23, 56, 46, TimeSpan.FromHours(-4)), config.LastRunOn);
                 Assert.Equal(@"http://contoso:8080/tfs/DefaultCollection/_git/gitTest", config.RepositoryUrl);
                 Assert.Equal(@"b00335b6\gitTest", config.SourcesDirectory);
-                Assert.Equal(@"build", config.System);
             }
         }
 
@@ -197,8 +193,7 @@ namespace GitHub.Runner.Common.Tests.Worker.Build
   ""collectionId"": ""7aee6dde-6381-4098-93e7-50a8264cf066"",
   ""definitionId"": ""7"",
   ""hashKey"": ""b00335b6923adfa64f46f3abb7da1cdc0d9bae6c"",
-  ""repositoryUrl"": ""http://contoso:8080/tfs/DefaultCollection/_git/gitTest"",
-  ""system"": ""build""
+  ""repositoryUrl"": ""http://contoso:8080/tfs/DefaultCollection/_git/gitTest""
 }";
                 Directory.CreateDirectory(_workFolder);
                 string filePath = Path.Combine(_workFolder, "trackingconfig.json");
@@ -222,7 +217,6 @@ namespace GitHub.Runner.Common.Tests.Worker.Build
                 Assert.Equal(new DateTimeOffset(2015, 9, 16, 23, 56, 46, TimeSpan.FromHours(-4)), config.LastRunOn);
                 Assert.Equal(@"http://contoso:8080/tfs/DefaultCollection/_git/gitTest", config.RepositoryUrl);
                 Assert.Equal(@"b00335b6\gitTest", config.SourcesDirectory);
-                Assert.Equal(@"build", config.System);
             }
         }
 
@@ -267,8 +261,7 @@ namespace GitHub.Runner.Common.Tests.Worker.Build
   ""collectionId"": ""7aee6dde-6381-4098-93e7-50a8264cf066"",
   ""definitionId"": ""7"",
   ""hashKey"": ""b00335b6923adfa64f46f3abb7da1cdc0d9bae6c"",
-  ""repositoryUrl"": ""http://contoso:8080/tfs/DefaultCollection/_git/gitTest"",
-  ""system"": ""build""
+  ""repositoryUrl"": ""http://contoso:8080/tfs/DefaultCollection/_git/gitTest""
 }";
                 Directory.CreateDirectory(_workFolder);
                 string trackingFile = Path.Combine(_workFolder, "trackingconfig.json");
@@ -306,11 +299,11 @@ namespace GitHub.Runner.Common.Tests.Worker.Build
             {
                 // Arrange.
                 string trackingFile = Path.Combine(_workFolder, "trackingconfig.json");
-                _trackingManager.Create(_ec.Object, _repository, "some hash key", trackingFile, false);
+                _trackingManager.Create(_ec.Object, _repository, "some hash key", trackingFile);
                 DateTimeOffset testStartOn = DateTimeOffset.Now;
 
                 // Act.
-                _trackingManager.Create(_ec.Object, _repository, "some hash key", trackingFile, false);
+                _trackingManager.Create(_ec.Object, _repository, "some hash key", trackingFile);
 
                 // Assert.
                 string topLevelFile = Path.Combine(

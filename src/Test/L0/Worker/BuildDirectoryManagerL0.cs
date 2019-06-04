@@ -1,7 +1,6 @@
 ﻿using GitHub.DistributedTask.WebApi;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 using GitHub.Runner.Worker;
-using GitHub.Runner.Worker.Build;
 using Moq;
 using System;
 using System.Collections.Generic;
@@ -10,7 +9,7 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using Xunit;
 
-namespace GitHub.Runner.Common.Tests.Worker.Build
+namespace GitHub.Runner.Common.Tests.Worker
 {
     public sealed class BuildDirectoryManagerL0
     {
@@ -58,7 +57,7 @@ namespace GitHub.Runner.Common.Tests.Worker.Build
                 _buildDirectoryManager.PrepareDirectory(_ec.Object, _repository, _workspaceOptions);
 
                 // Assert.
-                _trackingManager.Verify(x => x.Create(_ec.Object, _repository, HashKey, _trackingFile, false));
+                _trackingManager.Verify(x => x.Create(_ec.Object, _repository, HashKey, _trackingFile));
             }
         }
 
@@ -75,7 +74,7 @@ namespace GitHub.Runner.Common.Tests.Worker.Build
 
                 // Assert.
                 _trackingManager.Verify(x => x.LoadIfExists(_ec.Object, _trackingFile));
-                _trackingManager.Verify(x => x.Create(_ec.Object, _repository, HashKey, _trackingFile, false));
+                _trackingManager.Verify(x => x.Create(_ec.Object, _repository, HashKey, _trackingFile));
                 _trackingManager.Verify(x => x.MarkForGarbageCollection(_ec.Object, _existingConfig));
             }
         }
@@ -330,7 +329,7 @@ namespace GitHub.Runner.Common.Tests.Worker.Build
             if (existingConfigKind == ExistingConfigKind.None || existingConfigKind == ExistingConfigKind.Nonmatching)
             {
                 _trackingManager
-                    .Setup(x => x.Create(_ec.Object, _repository, HashKey, _trackingFile, false))
+                    .Setup(x => x.Create(_ec.Object, _repository, HashKey, _trackingFile))
                     .Returns(_newConfig);
                 if (existingConfigKind == ExistingConfigKind.Nonmatching)
                 {

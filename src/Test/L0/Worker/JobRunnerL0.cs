@@ -83,9 +83,6 @@ namespace GitHub.Runner.Common.Tests.Worker
             Guid JobId = Guid.NewGuid();
             _message = Pipelines.AgentJobRequestMessageUtil.Convert(new AgentJobRequestMessage(plan, timeline, JobId, testName, testName, environment, tasks));
 
-            _extensions.Setup(x => x.GetExtensions<IJobExtension>()).
-                Returns(new[] { _jobExtension.Object }.ToList());
-
             _initResult.Clear();
 
             _jobExtension.Setup(x => x.InitializeJob(It.IsAny<IExecutionContext>(), It.IsAny<Pipelines.AgentJobRequestMessage>())).

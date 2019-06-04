@@ -127,7 +127,7 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
             var expectedAgents = new List<TaskAgent>();
             _agentServer.Setup(x => x.GetAgentsAsync(It.IsAny<int>(), It.IsAny<string>())).Returns(Task.FromResult(expectedAgents));
 
-            _agentServer.Setup(x => x.AddRunnerAsync(It.IsAny<int>(), It.IsAny<TaskAgent>())).Returns(Task.FromResult(expectedAgent));
+            _agentServer.Setup(x => x.AddAgentAsync(It.IsAny<int>(), It.IsAny<TaskAgent>())).Returns(Task.FromResult(expectedAgent));
             _agentServer.Setup(x => x.UpdateAgentAsync(It.IsAny<int>(), It.IsAny<TaskAgent>())).Returns(Task.FromResult(expectedAgent));
 
             rsa = new RSACryptoServiceProvider(2048);
@@ -193,8 +193,6 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
                 _store.Setup(x => x.IsConfigured()).Returns(false);
                 _configMgrAgentSettings = null;
 
-                _extnMgr.Setup(x => x.GetExtensions<IConfigurationProvider>()).Returns(GetConfigurationProviderList(tc));
-
                 trace.Info("Ensuring all the required parameters are available in the command line parameter");
                 await configManager.ConfigureAsync(command);
 
@@ -219,16 +217,5 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
                 //      x.UpdateDeploymentTargetsAsync(It.IsAny<Guid>(), It.IsAny<int>(), It.IsAny<List<DeploymentMachine>>()), Times.Never);
             }
         }
-
-
-        // Init the Agent Config Provider
-        private List<IConfigurationProvider> GetConfigurationProviderList(TestHostContext tc)
-        {
-            IConfigurationProvider buildReleasesAgentConfigProvider = new ActionsRunnerConfigProvider();
-            buildReleasesAgentConfigProvider.Initialize(tc);
-
-            return new List<IConfigurationProvider> { buildReleasesAgentConfigProvider };
-        }
-        // TODO Unit Test for IsConfigured - Rename config file and make sure it returns false
     }
 }

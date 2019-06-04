@@ -1,5 +1,5 @@
-﻿using GitHub.Runner.Worker;
-using GitHub.Runner.Worker.Build;
+﻿using GitHub.Runner.Common.Capabilities;
+using GitHub.Runner.Worker;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -21,12 +21,12 @@ namespace GitHub.Runner.Common.Tests
                 manager.Initialize(tc);
 
                 // Act.
-                List<IJobExtension> extensions = manager.GetExtensions<IJobExtension>();
+                List<ICapabilitiesProvider> extensions = manager.GetExtensions<ICapabilitiesProvider>();
 
                 // Assert.
                 Assert.True(
-                    extensions.Any(x => x is BuildJobExtension),
-                    $"Expected {nameof(BuildJobExtension)} extension to be returned as a job extension.");
+                    extensions.Any(x => x is RunnerCapabilitiesProvider),
+                    $"Expected {nameof(RunnerCapabilitiesProvider)} extension to be returned as a job extension.");
             }
         }
 
@@ -45,9 +45,6 @@ namespace GitHub.Runner.Common.Tests
                 AssertContains<GitHub.Runner.Common.Capabilities.ICapabilitiesProvider>(
                     manager,
                     concreteType: typeof(GitHub.Runner.Common.Capabilities.RunnerCapabilitiesProvider));
-                AssertContains<GitHub.Runner.Worker.IJobExtension>(
-                    manager,
-                    concreteType: typeof(GitHub.Runner.Worker.Build.BuildJobExtension));
             }
         }
 
