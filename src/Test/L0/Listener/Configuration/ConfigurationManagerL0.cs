@@ -1,9 +1,9 @@
-using Microsoft.TeamFoundation.DistributedTask.WebApi;
-using Microsoft.VisualStudio.Services.Agent.Listener;
-using Microsoft.VisualStudio.Services.Agent.Capabilities;
-using Microsoft.VisualStudio.Services.Agent.Listener.Configuration;
-using Microsoft.VisualStudio.Services.Agent.Util;
-using Microsoft.VisualStudio.Services.WebApi;
+﻿using GitHub.DistributedTask.WebApi;
+using GitHub.Runner.Listener;
+using GitHub.Runner.Common.Capabilities;
+using GitHub.Runner.Listener.Configuration;
+using GitHub.Runner.Common.Util;
+using GitHub.Services.WebApi;
 using Moq;
 using Newtonsoft.Json;
 using System;
@@ -14,10 +14,10 @@ using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
 using Xunit;
-using Microsoft.VisualStudio.Services.Location;
-using Microsoft.VisualStudio.Services.Common;
+using GitHub.Services.Location;
+using GitHub.Services.Common;
 
-namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
+namespace GitHub.Runner.Common.Tests.Listener.Configuration
 {
     public class ConfigurationManagerL0
     {

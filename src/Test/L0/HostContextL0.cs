@@ -1,11 +1,11 @@
-using Microsoft.VisualStudio.Services.Agent.Util;
+﻿using GitHub.Runner.Common.Util;
 using System.IO;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using Xunit;
 
-namespace Microsoft.VisualStudio.Services.Agent.Tests
+namespace GitHub.Runner.Common.Tests
 {
     public sealed class HostContextL0
     {

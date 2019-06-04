@@ -29,10 +29,10 @@ if /i "%~1" equ "remove" (
     rem ********************************************************************************
     rem Unconfigure the agent.
     rem ********************************************************************************
-    "%~dp0bin\Agent.Listener.exe" %*
+    "%~dp0bin\Runner.Listener.exe" %*
 ) else (
     rem ********************************************************************************
     rem Configure the agent.
     rem ********************************************************************************
-    "%~dp0bin\Agent.Listener.exe" configure %*
+    "%~dp0bin\Runner.Listener.exe" configure %*
 )

@@ -1,17 +1,17 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.TeamFoundation.DistributedTask.WebApi;
-using Microsoft.VisualStudio.Services.Agent.Listener;
-using Microsoft.VisualStudio.Services.WebApi;
+using GitHub.DistributedTask.WebApi;
+using GitHub.Runner.Listener;
+using GitHub.Services.WebApi;
 using Moq;
 using Xunit;
 
-using Pipelines = Microsoft.TeamFoundation.DistributedTask.Pipelines;
+using Pipelines = GitHub.DistributedTask.Pipelines;
 
-namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
+namespace GitHub.Runner.Common.Tests.Listener
 {
     public sealed class JobDispatcherL0
     {

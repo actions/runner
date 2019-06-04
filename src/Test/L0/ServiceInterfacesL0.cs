@@ -1,15 +1,15 @@
-using Microsoft.VisualStudio.Services.Agent.Listener;
-using Microsoft.VisualStudio.Services.Agent.Capabilities;
-using Microsoft.VisualStudio.Services.Agent.Listener.Configuration;
-using Microsoft.VisualStudio.Services.Agent.Worker;
-using Microsoft.VisualStudio.Services.Agent.Worker.Handlers;
+﻿using GitHub.Runner.Listener;
+using GitHub.Runner.Common.Capabilities;
+using GitHub.Runner.Listener.Configuration;
+using GitHub.Runner.Worker;
+using GitHub.Runner.Worker.Handlers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using Xunit;
 
-namespace Microsoft.VisualStudio.Services.Agent.Tests
+namespace GitHub.Runner.Common.Tests
 {
     public sealed class ServiceInterfacesL0
     {
@@ -81,7 +81,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             foreach (TypeInfo interfaceTypeInfo in assembly.DefinedTypes.Where(x => x.IsInterface && !w.ContainsKey(x)))
             {
                 // Temporary hack due to shared code copied in two places.
-                if (interfaceTypeInfo.FullName.StartsWith("Microsoft.TeamFoundation.DistributedTask"))
+                if (interfaceTypeInfo.FullName.StartsWith("GitHub.DistributedTask"))
                 {
                     continue;
                 }

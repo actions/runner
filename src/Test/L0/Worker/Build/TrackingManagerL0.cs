@@ -1,7 +1,7 @@
-﻿using Microsoft.TeamFoundation.DistributedTask.WebApi;
-using Pipelines = Microsoft.TeamFoundation.DistributedTask.Pipelines;
-using Microsoft.VisualStudio.Services.Agent.Worker;
-using Microsoft.VisualStudio.Services.Agent.Worker.Build;
+﻿using GitHub.DistributedTask.WebApi;
+using Pipelines = GitHub.DistributedTask.Pipelines;
+using GitHub.Runner.Worker;
+using GitHub.Runner.Worker.Build;
 using Moq;
 using Newtonsoft.Json;
 using System;
@@ -13,7 +13,7 @@ using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using Xunit;
 
-namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Build
+namespace GitHub.Runner.Common.Tests.Worker.Build
 {
     public sealed class TrackingManagerL0
     {

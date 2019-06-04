@@ -1,8 +1,9 @@
-using Microsoft.VisualStudio.Services.Agent.Util;
+﻿using GitHub.Runner.Common.Util;
+using GitHub.Runner.Sdk;
 using System.Globalization;
 using Xunit;
 
-namespace Microsoft.VisualStudio.Services.Agent.Tests.Util
+namespace GitHub.Runner.Common.Tests.Util
 {
     public class StringUtilL0
     {

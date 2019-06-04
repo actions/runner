@@ -1,10 +1,10 @@
-# Azure Pipelines Agent
+# GitHub Action Runner
 
 ## Overview
 
-The cross platform build and release agent for Azure Pipelines and Team Foundation Server 2015 and beyond.  This replaced the deprecated closed source windows build agent and the existing [xplat agent](https://github.com/Microsoft/vso-agent)
+The cross platform action runner for GitHub Pipelines.  
 
-Supported on Windows, OSX, Ubuntu and Red Hat.  Written for the .NET Core CLR as one code base in C#.
+Supported on Windows, OSX, Linux.  Written for the .NET Core CLR as one code base in C#.
 
 
 ## Status
@@ -34,30 +34,11 @@ First, ensure you have the necessary system pre-requisites
 
 Next, download and configure the agent
 
-![win](docs/res/win_sm.png)  [Start Windows](https://www.visualstudio.com/en-us/docs/build/admin/agents/v2-windows)  
+![win](docs/res/win_sm.png)  [Start Windows](https://github.com/actions/runner/releases/latest)  
 
-![macOS](docs/res/apple_sm.png)  [Start macOS](https://www.visualstudio.com/en-us/docs/build/admin/agents/v2-osx)  
+![macOS](docs/res/apple_sm.png)  [Start macOS](https://github.com/actions/runner/releases/latest)  
 
-![linux](docs/res/linux_sm.png)  [Start Linux](https://www.visualstudio.com/en-us/docs/build/admin/agents/v2-linux)  
-
-## Supported Usage
-
-This agent can be used for Azure Pipelines and it replaces the node agent for TFS2015 On-Prem.
-
-| Scenario | OSX/Unix | Windows | Comment |
-|:-------------:|:-----:|:-----:|:-----:|
-| Azure Pipelines      |  Yes  | Yes   |
-| TFS2015 (onprem)   |  Yes  | No    | Windows use agent with 2015 |
-| TFS2017 (onprem)   |  Yes  | Yes    |  |
-| TFS2018 (onprem)   |  Yes  | Yes    |  |
-
-## More Documentation
-
-[Documentation Here](https://aka.ms/tfbuild)
-
-## Troubleshooting
-
-Troubleshooting tips are [located here](docs/troubleshooting.md)
+![linux](docs/res/linux_sm.png)  [Start Linux](https://github.com/actions/runner/releases/latest)  
 
 ## Contribute
 

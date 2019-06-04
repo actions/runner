@@ -1,17 +1,17 @@
-using Microsoft.TeamFoundation.DistributedTask.WebApi;
-using Microsoft.VisualStudio.Services.Agent.Listener;
-using Microsoft.VisualStudio.Services.Agent.Listener.Configuration;
+﻿using GitHub.DistributedTask.WebApi;
+using GitHub.Runner.Listener;
+using GitHub.Runner.Listener.Configuration;
 using Moq;
 using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
-using Microsoft.VisualStudio.Services.WebApi;
-using Pipelines = Microsoft.TeamFoundation.DistributedTask.Pipelines;
-using Microsoft.VisualStudio.Services.Agent.Util;
+using GitHub.Services.WebApi;
+using Pipelines = GitHub.DistributedTask.Pipelines;
+using GitHub.Runner.Common.Util;
 
-namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
+namespace GitHub.Runner.Common.Tests.Listener
 {
     public sealed class AgentL0
     {
@@ -68,7 +68,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
             using (var hc = new TestHostContext(this))
             {
                 //Arrange
-                var agent = new Agent.Listener.Agent();
+                var agent = new Runner.Listener.Agent();
                 hc.SetSingleton<IConfigurationManager>(_configurationManager.Object);
                 hc.SetSingleton<IJobNotification>(_jobNotification.Object);
                 hc.SetSingleton<IMessageListener>(_messageListener.Object);
@@ -200,7 +200,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                 _messageListener.Setup(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()))
                     .Returns(Task.FromResult(false));
 
-                var agent = new Agent.Listener.Agent();
+                var agent = new Runner.Listener.Agent();
                 agent.Initialize(hc);
                 await agent.ExecuteCommand(command);
 
@@ -236,7 +236,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                 _messageListener.Setup(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()))
                     .Returns(Task.FromResult(false));
 
-                var agent = new Agent.Listener.Agent();
+                var agent = new Runner.Listener.Agent();
                 agent.Initialize(hc);
                 await agent.ExecuteCommand(command);
 
@@ -272,7 +272,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                 _messageListener.Setup(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()))
                     .Returns(Task.FromResult(false));
 
-                var agent = new Agent.Listener.Agent();
+                var agent = new Runner.Listener.Agent();
                 agent.Initialize(hc);
                 await agent.ExecuteCommand(command);
 
@@ -288,7 +288,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
             using (var hc = new TestHostContext(this))
             {
                 //Arrange
-                var agent = new Agent.Listener.Agent();
+                var agent = new Runner.Listener.Agent();
                 hc.SetSingleton<IConfigurationManager>(_configurationManager.Object);
                 hc.SetSingleton<IJobNotification>(_jobNotification.Object);
                 hc.SetSingleton<IMessageListener>(_messageListener.Object);
@@ -384,7 +384,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
             using (var hc = new TestHostContext(this))
             {
                 //Arrange
-                var agent = new Agent.Listener.Agent();
+                var agent = new Runner.Listener.Agent();
                 hc.SetSingleton<IConfigurationManager>(_configurationManager.Object);
                 hc.SetSingleton<IJobNotification>(_jobNotification.Object);
                 hc.SetSingleton<IMessageListener>(_messageListener.Object);
@@ -487,7 +487,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
             using (var hc = new TestHostContext(this))
             {
                 //Arrange
-                var agent = new Agent.Listener.Agent();
+                var agent = new Runner.Listener.Agent();
                 hc.SetSingleton<IConfigurationManager>(_configurationManager.Object);
                 hc.SetSingleton<IJobNotification>(_jobNotification.Object);
                 hc.SetSingleton<IMessageListener>(_messageListener.Object);

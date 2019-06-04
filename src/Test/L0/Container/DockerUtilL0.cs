@@ -1,9 +1,9 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
-using Microsoft.VisualStudio.Services.Agent.Worker.Container;
+using GitHub.Runner.Worker.Container;
 using Xunit;
 
-namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker.Container
+namespace GitHub.Runner.Common.Tests.Worker.Container
 {
     public sealed class DockerUtilL0
     {

@@ -6,11 +6,11 @@ SVC_DESCRIPTION="{{SvcDescription}}"
 SVC_CMD=$1
 arg_2=${2}
 
-AGENT_ROOT=`pwd`
+RUNNER_ROOT=`pwd`
 
 UNIT_PATH=/etc/systemd/system/${SVC_NAME}
-TEMPLATE_PATH=./bin/vsts.agent.service.template
-TEMP_PATH=./bin/vsts.agent.service.temp
+TEMPLATE_PATH=./bin/action.runner.service.template
+TEMP_PATH=./bin/action.runner.service.temp
 CONFIG_PATH=.service
 
 user_id=`id -u`
@@ -30,7 +30,7 @@ function failed()
 }
 
 if [ ! -f "${TEMPLATE_PATH}" ]; then
-    failed "Must run from agent root or install is corrupt"
+    failed "Must run from runner root or install is corrupt"
 fi
 
 #check if we run as root
@@ -41,7 +41,7 @@ fi
 
 function install()
 {
-    echo "Creating launch agent in ${UNIT_PATH}"
+    echo "Creating launch runner in ${UNIT_PATH}"
     if [ -f "${UNIT_PATH}" ]; then
         failed "error: exists ${UNIT_PATH}"
     fi
@@ -60,7 +60,7 @@ function install()
     run_as_gid=$(id -g ${run_as_user}) || failed "Group not available"
     echo "gid: ${run_as_gid}"
 
-    sed "s/{{User}}/${run_as_user}/g; s/{{Description}}/$(echo ${SVC_DESCRIPTION} | sed -e 's/[\/&]/\\&/g')/g; s/{{AgentRoot}}/$(echo ${AGENT_ROOT} | sed -e 's/[\/&]/\\&/g')/g;" "${TEMPLATE_PATH}" > "${TEMP_PATH}" || failed "failed to create replacement temp file"
+    sed "s/{{User}}/${run_as_user}/g; s/{{Description}}/$(echo ${SVC_DESCRIPTION} | sed -e 's/[\/&]/\\&/g')/g; s/{{RunnerRoot}}/$(echo ${RUNNER_ROOT} | sed -e 's/[\/&]/\\&/g')/g;" "${TEMPLATE_PATH}" > "${TEMP_PATH}" || failed "failed to create replacement temp file"
     mv "${TEMP_PATH}" "${UNIT_PATH}" || failed "failed to copy unit file"
     
     # unit file should not be executable and world writable
@@ -122,11 +122,11 @@ function usage()
     echo Usage:
     echo "./svc.sh [install, start, stop, status, uninstall]"
     echo "Commands:"
-    echo "   install [user]: Install agent service as Root or specified user."
-    echo "   start: Manually start the agent service."
-    echo "   stop: Manually stop the agent service."
-    echo "   status: Display status of agent service."
-    echo "   uninstall: Uninstall agent service."
+    echo "   install [user]: Install runner service as Root or specified user."
+    echo "   start: Manually start the runner service."
+    echo "   stop: Manually stop the runner service."
+    echo "   status: Display status of runner service."
+    echo "   uninstall: Uninstall runner service."
     echo
 }
 

@@ -1,10 +1,10 @@
-using Microsoft.VisualStudio.Services.Agent.Util;
+﻿using GitHub.Runner.Common.Util;
 using Moq;
 using System;
 using System.IO;
 using Xunit;
 
-namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
+namespace GitHub.Runner.Common.Tests.Listener
 {
     public sealed class PagingLoggerL0
     {

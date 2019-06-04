@@ -1,8 +1,9 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using GitHub.Runner.Sdk;
 using Xunit;
 
 
-namespace Microsoft.VisualStudio.Services.Agent.Tests
+namespace GitHub.Runner.Common.Tests
 {
     public sealed class ConstantGenerationL0
     {
@@ -22,7 +23,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
             };
 
             Assert.True(BuildConstants.Source.CommitHash.Length == 40, $"CommitHash should be SHA-1 hash {BuildConstants.Source.CommitHash}");
-            Assert.True(validPackageNames.Contains(BuildConstants.AgentPackage.PackageName), $"PackageName should be one of the following '{string.Join(", ", validPackageNames)}', current PackageName is '{BuildConstants.AgentPackage.PackageName}'");
+            Assert.True(validPackageNames.Contains(BuildConstants.RunnerPackage.PackageName), $"PackageName should be one of the following '{string.Join(", ", validPackageNames)}', current PackageName is '{BuildConstants.RunnerPackage.PackageName}'");
         }
     }
 }

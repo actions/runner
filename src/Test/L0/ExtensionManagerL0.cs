@@ -1,11 +1,11 @@
-using Microsoft.VisualStudio.Services.Agent.Worker;
-using Microsoft.VisualStudio.Services.Agent.Worker.Build;
+﻿using GitHub.Runner.Worker;
+using GitHub.Runner.Worker.Build;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using Xunit;
 
-namespace Microsoft.VisualStudio.Services.Agent.Tests
+namespace GitHub.Runner.Common.Tests
 {
     public sealed class ExtensionManagerL0
     {
@@ -42,12 +42,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                 manager.Initialize(tc);
 
                 // Act/Assert.
-                AssertContains<Microsoft.VisualStudio.Services.Agent.Capabilities.ICapabilitiesProvider>(
+                AssertContains<GitHub.Runner.Common.Capabilities.ICapabilitiesProvider>(
                     manager,
-                    concreteType: typeof(Microsoft.VisualStudio.Services.Agent.Capabilities.AgentCapabilitiesProvider));
-                AssertContains<Microsoft.VisualStudio.Services.Agent.Worker.IJobExtension>(
+                    concreteType: typeof(GitHub.Runner.Common.Capabilities.AgentCapabilitiesProvider));
+                AssertContains<GitHub.Runner.Worker.IJobExtension>(
                     manager,
-                    concreteType: typeof(Microsoft.VisualStudio.Services.Agent.Worker.Build.BuildJobExtension));
+                    concreteType: typeof(GitHub.Runner.Worker.Build.BuildJobExtension));
             }
         }
 

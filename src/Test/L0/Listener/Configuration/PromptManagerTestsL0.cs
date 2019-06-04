@@ -1,11 +1,12 @@
-using Microsoft.VisualStudio.Services.Agent.Listener.Configuration;
-using Microsoft.VisualStudio.Services.Agent.Util;
+﻿using GitHub.Runner.Listener.Configuration;
+using GitHub.Runner.Common.Util;
 using Moq;
 using System;
 using System.Collections.Generic;
 using Xunit;
+using GitHub.Runner.Sdk;
 
-namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
+namespace GitHub.Runner.Common.Tests.Listener.Configuration
 {
     public class PromptManagerTestsL0
     {

@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netcoreapp2.1</TargetFramework>
+    <TargetFramework>netcoreapp2.2</TargetFramework>
     <RuntimeIdentifiers>win-x64;win-x86;linux-x64;linux-arm;rhel.6-x64;osx-x64</RuntimeIdentifiers>
     <TargetLatestRuntimePatch>true</TargetLatestRuntimePatch>
     <AssetTargetFallback>portable-net45+win8</AssetTargetFallback>
@@ -9,10 +9,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Agent.Listener\Agent.Listener.csproj" />
-    <ProjectReference Include="..\Microsoft.VisualStudio.Services.Agent\Microsoft.VisualStudio.Services.Agent.csproj" />
-    <ProjectReference Include="..\Agent.Worker\Agent.Worker.csproj" />
-    <ProjectReference Include="..\Agent.Plugins\Agent.Plugins.csproj" />
+    <ProjectReference Include="..\GitHub.Pipelines.Sdk\GitHub.Pipelines.Sdk.csproj" />
+    <ProjectReference Include="..\Runner.Listener\Runner.Listener.csproj" />
+    <ProjectReference Include="..\Runner.Common\Runner.Common.csproj" />
+    <ProjectReference Include="..\Runner.Worker\Runner.Worker.csproj" />
+    <ProjectReference Include="..\Runner.Plugins\Runner.Plugins.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -22,9 +23,7 @@
     <PackageReference Include="System.Buffers" Version="4.3.0" />
     <PackageReference Include="System.Reflection.TypeExtensions" Version="4.4.0" />
     <PackageReference Include="System.Threading.ThreadPool" Version="4.3.0" />
-    <PackageReference Include="vss-api-netcore" Version="0.5.120-private" />
-    <PackageReference Include="Moq" Version="4.6.36-alpha" />
-    <PackageReference Include="azuredevops-testresultparser" Version="1.0.1" />
+    <PackageReference Include="Moq" Version="4.6.36-alpha" />    
   </ItemGroup>
 
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">

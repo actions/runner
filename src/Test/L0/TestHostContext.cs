@@ -1,4 +1,4 @@
-using Microsoft.VisualStudio.Services.Agent.Util;
+﻿using GitHub.Runner.Common.Util;
 using System;
 using System.Collections.Concurrent;
 using System.Globalization;
@@ -9,10 +9,11 @@ using System.Threading.Tasks;
 using System.Runtime.Loader;
 using System.Reflection;
 using System.Collections.Generic;
-using Microsoft.TeamFoundation.DistributedTask.Logging;
+using GitHub.DistributedTask.Logging;
 using System.Net.Http.Headers;
+using GitHub.Runner.Sdk;
 
-namespace Microsoft.VisualStudio.Services.Agent.Tests
+namespace GitHub.Runner.Common.Tests
 {
     public sealed class TestHostContext : IHostContext, IDisposable
     {

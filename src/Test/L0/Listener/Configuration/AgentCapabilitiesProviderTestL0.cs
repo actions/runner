@@ -1,5 +1,5 @@
-using Microsoft.VisualStudio.Services.Agent.Capabilities;
-using Microsoft.VisualStudio.Services.Agent.Listener.Configuration;
+﻿using GitHub.Runner.Common.Capabilities;
+using GitHub.Runner.Listener.Configuration;
 using Moq;
 using System;
 using System.Collections.Generic;
@@ -8,7 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 
-namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
+namespace GitHub.Runner.Common.Tests.Listener
 {
     public sealed class AgentCapabilitiesProviderTestL0
     {

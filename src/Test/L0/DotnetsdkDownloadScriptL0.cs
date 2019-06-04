@@ -1,9 +1,9 @@
-using Xunit;
+﻿using Xunit;
 using System.IO;
 using System.Net.Http;
 using System.Threading.Tasks;
 
-namespace Microsoft.VisualStudio.Services.Agent.Tests
+namespace GitHub.Runner.Common.Tests
 {
     public sealed class DotnetsdkDownloadScriptL0
     {

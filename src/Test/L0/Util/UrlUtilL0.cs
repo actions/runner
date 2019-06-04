@@ -1,8 +1,9 @@
-using System;
-using Microsoft.VisualStudio.Services.Agent.Util;
+﻿using System;
+using GitHub.Runner.Common.Util;
+using GitHub.Runner.Sdk;
 using Xunit;
 
-namespace Microsoft.VisualStudio.Services.Agent.Tests.Util
+namespace GitHub.Runner.Common.Tests.Util
 {
     public class UrlUtilL0
     {

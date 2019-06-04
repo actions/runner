@@ -1,9 +1,9 @@
-using Microsoft.VisualStudio.Services.Agent.Listener;
-using Microsoft.VisualStudio.Services.Agent.Listener.Configuration;
-using Microsoft.VisualStudio.Services.Client;
-using Microsoft.VisualStudio.Services.Common;
+﻿using GitHub.Runner.Listener;
+using GitHub.Runner.Listener.Configuration;
+using GitHub.Services.Client;
+using GitHub.Services.Common;
 
-namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
+namespace GitHub.Runner.Common.Tests.Listener.Configuration
 {
     public class TestAgentCredential : CredentialProvider
     {
@@ -14,7 +14,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener.Configuration
             trace.Info("GetVssCredentials()");
 
             VssBasicCredential loginCred = new VssBasicCredential("test", "password");
-            VssCredentials creds = new VssClientCredentials(loginCred);
+            VssCredentials creds = new VssCredentials(loginCred);
             trace.Verbose("cred created");
 
             return creds;

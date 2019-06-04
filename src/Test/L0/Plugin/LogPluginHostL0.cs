@@ -1,4 +1,4 @@
-using Microsoft.TeamFoundation.DistributedTask.WebApi;
+﻿using GitHub.DistributedTask.WebApi;
 using Moq;
 using System;
 using System.Collections.Generic;
@@ -8,10 +8,10 @@ using System.Threading.Tasks;
 using Xunit;
 using System.Threading;
 using System.Collections.ObjectModel;
-using Pipelines = Microsoft.TeamFoundation.DistributedTask.Pipelines;
-using Agent.Sdk;
+using Pipelines = GitHub.DistributedTask.Pipelines;
+using GitHub.Runner.Sdk;
 
-namespace Microsoft.VisualStudio.Services.Agent.Tests.LogPluginHost
+namespace GitHub.Runner.Common.Tests.LogPluginHost
 {
     public sealed class LogPluginHostL0
     {

@@ -1,12 +1,13 @@
-﻿using Microsoft.VisualStudio.Services.Agent.Util;
-using Microsoft.VisualStudio.Services.Common;
+﻿using GitHub.Runner.Common.Util;
+using GitHub.Services.Common;
 using System;
 using System.Collections.Generic;
 using System.Net.Http.Headers;
 using Xunit;
 using System.Text.RegularExpressions;
+using GitHub.Runner.Sdk;
 
-namespace Microsoft.VisualStudio.Services.Agent.Tests.Util
+namespace GitHub.Runner.Common.Tests.Util
 {
     public sealed class VssUtilL0
     {

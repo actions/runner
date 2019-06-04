@@ -1,5 +1,5 @@
-using Microsoft.TeamFoundation.DistributedTask.WebApi;
-using Microsoft.VisualStudio.Services.Agent.Worker;
+﻿using GitHub.DistributedTask.WebApi;
+using GitHub.Runner.Worker;
 using Moq;
 using System;
 using System.Collections.Generic;
@@ -8,9 +8,9 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Xunit;
-using Microsoft.TeamFoundation.DistributedTask.Expressions;
+using GitHub.DistributedTask.Expressions;
 
-namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
+namespace GitHub.Runner.Common.Tests.Worker
 {
     public sealed class StepsRunnerL0
     {

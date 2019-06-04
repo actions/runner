@@ -1,12 +1,13 @@
-using Microsoft.TeamFoundation.DistributedTask.WebApi;
-using Microsoft.VisualStudio.Services.Agent.Util;
-using Microsoft.VisualStudio.Services.Agent.Worker;
+﻿using GitHub.DistributedTask.WebApi;
+using GitHub.Runner.Common.Util;
+using GitHub.Runner.Sdk;
+using GitHub.Runner.Worker;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using Xunit;
 
-namespace Microsoft.VisualStudio.Services.Agent.Tests.Worker
+namespace GitHub.Runner.Common.Tests.Worker
 {
     public sealed class VariablesL0
     {
