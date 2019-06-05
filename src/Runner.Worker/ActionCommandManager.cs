@@ -3,6 +3,7 @@ using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common.Util;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
@@ -244,6 +245,120 @@ namespace GitHub.Runner.Worker
             context.PrependPath.RemoveAll(x => string.Equals(x, command.Data, StringComparison.CurrentCulture));
             context.PrependPath.Add(command.Data);
             omitEcho = false;
+        }
+    }
+
+    public sealed class AddMatcherCommandExtension : RunnerService, IActionCommandExtension
+    {
+        public string Command => "add-matcher";
+
+        public Type ExtensionType => typeof(IActionCommandExtension);
+
+        public void ProcessCommand(IExecutionContext context, string line, ActionCommand command, out bool omitEcho)
+        {
+            omitEcho = false;
+            var file = command.Data;
+
+            // File is required
+            if (string.IsNullOrEmpty(file))
+            {
+                context.Warning("File path must be specified.");
+                return;
+            }
+
+            // Translate file path back from container path
+            if (context.Container != null)
+            {
+                file = context.Container.TranslateToHostPath(file);
+            }
+
+            // Root the path
+            if (!Path.IsPathRooted(file))
+            {
+                var githubContext = context.ExpressionValues["github"] as GitHubContext;
+                ArgUtil.NotNull(githubContext, nameof(githubContext));
+                var workspace = githubContext["workspace"].ToString();
+                ArgUtil.NotNullOrEmpty(workspace, "workspace");
+
+                file = Path.Combine(workspace, file);
+            }
+
+            // Load the config
+            var json = File.ReadAllText(file);
+            var config = StringUtil.ConvertFromJson<IssueMatchersConfig>(json);
+
+            // Add
+            if (config.Matchers.Count > 0)
+            {
+                config.Validate();
+                context.AddMatchers(config);
+            }
+        }
+    }
+
+    public sealed class RemoveMatcherCommandExtension : RunnerService, IActionCommandExtension
+    {
+        public string Command => "remove-matcher";
+
+        public Type ExtensionType => typeof(IActionCommandExtension);
+
+        public void ProcessCommand(IExecutionContext context, string line, ActionCommand command, out bool omitEcho)
+        {
+            omitEcho = false;
+            command.Properties.TryGetValue(RemoveMatcherCommandProperties.Owner, out string owner);
+            var file = command.Data;
+
+            // Owner and file are mutually exclusive
+            if (!string.IsNullOrEmpty(owner) && !string.IsNullOrEmpty(file))
+            {
+                context.Warning("Either specify a matcher owner name or a file path. Both values cannot be set.");
+                return;
+            }
+
+            // Owner or file is required
+            if (string.IsNullOrEmpty(owner) && string.IsNullOrEmpty(file))
+            {
+                context.Warning("Either a matcher owner name or a file path must be specified.");
+                return;
+            }
+
+            // Remove by owner
+            if (!string.IsNullOrEmpty(owner))
+            {
+                context.RemoveMatchers(new[] { owner });
+            }
+            // Remove by file
+            else
+            {
+                // Translate file path back from container path
+                if (context.Container != null)
+                {
+                    file = context.Container.TranslateToHostPath(file);
+                }
+
+                // Root the path
+                if (!Path.IsPathRooted(file))
+                {
+                    var githubContext = context.ExpressionValues["github"] as GitHubContext;
+                    ArgUtil.NotNull(githubContext, nameof(githubContext));
+                    var workspace = githubContext["workspace"].ToString();
+                    ArgUtil.NotNullOrEmpty(workspace, "workspace");
+
+                    file = Path.Combine(workspace, file);
+                }
+
+                // Load the config
+                var json = File.ReadAllText(file);
+                var config = StringUtil.ConvertFromJson<IssueMatchersConfig>(json);
+
+                // Remove
+                context.RemoveMatchers(config.Matchers.Select(x => x.Owner));
+            }
+        }
+
+        private static class RemoveMatcherCommandProperties
+        {
+            public const string Owner = "owner";
         }
     }
 

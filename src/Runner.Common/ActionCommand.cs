@@ -7,7 +7,6 @@ namespace GitHub.Runner.Common
 {
     public sealed class ActionCommand
     {
-        private const string _actionCommandPrefix = "##[";
         private static readonly EscapeMapping[] _escapeMappings = new[]
         {
             new EscapeMapping(token: "%", replacement: "%25"),
@@ -17,6 +16,7 @@ namespace GitHub.Runner.Common
             new EscapeMapping(token: "]", replacement: "%5D"),
         };
         private readonly Dictionary<string, string> _properties = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        public const string Prefix = "##[";
 
         public ActionCommand(string command)
         {
@@ -42,7 +42,7 @@ namespace GitHub.Runner.Common
             try
             {
                 // Get the index of the prefix.
-                int prefixIndex = message.IndexOf(_actionCommandPrefix);
+                int prefixIndex = message.IndexOf(Prefix);
                 if (prefixIndex < 0)
                 {
                     return false;
@@ -56,7 +56,7 @@ namespace GitHub.Runner.Common
                 }
 
                 // Get the command info (command and properties).
-                int cmdIndex = prefixIndex + _actionCommandPrefix.Length;
+                int cmdIndex = prefixIndex + Prefix.Length;
                 string cmdInfo = message.Substring(cmdIndex, rbIndex - cmdIndex);
 
                 // Get the command name

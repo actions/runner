@@ -99,39 +99,32 @@ namespace GitHub.Runner.Worker.Handlers
                 }
             }
 
-            // Execute through stephost
-            StepHost.OutputDataReceived += OnDataReceived;
-            StepHost.ErrorDataReceived += OnDataReceived;
-
             // dump out the command
             var fileName = StepHost.ResolvePathForStepHost(commandPath);
             ExecutionContext.Command($"{fileName} {arguments}");
 
-            // Execute
-            int exitCode = await StepHost.ExecuteAsync(workingDirectory: StepHost.ResolvePathForStepHost(workingDirectory),
-                                        fileName: fileName,
-                                        arguments: arguments,
-                                        environment: Environment,
-                                        requireExitCodeZero: false,
-                                        outputEncoding: null,
-                                        killProcessOnCancel: false,
-                                        inheritConsoleHandler: !ExecutionContext.Variables.Retain_Default_Encoding,
-                                        cancellationToken: ExecutionContext.CancellationToken);
-
-            // Error
-            if (exitCode != 0)
+            using (var stdoutManager = new OutputManager(ExecutionContext, ActionCommandManager))
+            using (var stderrManager = new OutputManager(ExecutionContext, ActionCommandManager))
             {
-                throw new Exception(StringUtil.Loc("ProcessCompletedWithExitCode0", exitCode));
-            }
-        }
+                StepHost.OutputDataReceived += stdoutManager.OnDataReceived;
+                StepHost.ErrorDataReceived += stderrManager.OnDataReceived;
 
-        private void OnDataReceived(object sender, ProcessDataReceivedEventArgs e)
-        {
-            // This does not need to be inside of a critical section.
-            // The logging queues and command handlers are thread-safe.
-            if (!ActionCommandManager.TryProcessCommand(ExecutionContext, e.Data))
-            {
-                ExecutionContext.Output(e.Data);
+                // Execute
+                int exitCode = await StepHost.ExecuteAsync(workingDirectory: StepHost.ResolvePathForStepHost(workingDirectory),
+                                            fileName: fileName,
+                                            arguments: arguments,
+                                            environment: Environment,
+                                            requireExitCodeZero: false,
+                                            outputEncoding: null,
+                                            killProcessOnCancel: false,
+                                            inheritConsoleHandler: !ExecutionContext.Variables.Retain_Default_Encoding,
+                                            cancellationToken: ExecutionContext.CancellationToken);
+
+                // Error
+                if (exitCode != 0)
+                {
+                    throw new Exception(StringUtil.Loc("ProcessCompletedWithExitCode0", exitCode));
+                }
             }
         }
     }
