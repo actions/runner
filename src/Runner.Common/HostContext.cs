@@ -22,19 +22,19 @@ namespace GitHub.Runner.Common
     {
         RunMode RunMode { get; set; }
         StartupType StartupType { get; set; }
-        CancellationToken AgentShutdownToken { get; }
-        ShutdownReason AgentShutdownReason { get; }
+        CancellationToken RunnerShutdownToken { get; }
+        ShutdownReason RunnerShutdownReason { get; }
         ISecretMasker SecretMasker { get; }
         ProductInfoHeaderValue UserAgent { get; }
         string GetDirectory(WellKnownDirectory directory);
         string GetConfigFile(WellKnownConfigFile configFile);
         Tracing GetTrace(string name);
         Task Delay(TimeSpan delay, CancellationToken cancellationToken);
-        T CreateService<T>() where T : class, IAgentService;
-        T GetService<T>() where T : class, IAgentService;
+        T CreateService<T>() where T : class, IRunnerService;
+        T GetService<T>() where T : class, IRunnerService;
         void SetDefaultCulture(string name);
         event EventHandler Unloading;
-        void ShutdownAgent(ShutdownReason reason);
+        void ShutdownRunner(ShutdownReason reason);
         void WritePerfCounter(string counter);
     }
 
@@ -54,8 +54,8 @@ namespace GitHub.Runner.Common
         private readonly ConcurrentDictionary<Type, object> _serviceInstances = new ConcurrentDictionary<Type, object>();
         private readonly ConcurrentDictionary<Type, Type> _serviceTypes = new ConcurrentDictionary<Type, Type>();
         private readonly ISecretMasker _secretMasker = new SecretMasker();
-        private readonly ProductInfoHeaderValue _userAgent = new ProductInfoHeaderValue($"VstsAgentCore-{BuildConstants.RunnerPackage.PackageName}", BuildConstants.RunnerPackage.Version);
-        private CancellationTokenSource _agentShutdownTokenSource = new CancellationTokenSource();
+        private readonly ProductInfoHeaderValue _userAgent = new ProductInfoHeaderValue($"GitHubActionsRunner-{BuildConstants.RunnerPackage.PackageName}", BuildConstants.RunnerPackage.Version);
+        private CancellationTokenSource _runnerShutdownTokenSource = new CancellationTokenSource();
         private object _perfLock = new object();
 
         private RunMode _runMode = RunMode.Normal;
@@ -70,8 +70,8 @@ namespace GitHub.Runner.Common
         private string _perfFile;
 
         public event EventHandler Unloading;
-        public CancellationToken AgentShutdownToken => _agentShutdownTokenSource.Token;
-        public ShutdownReason AgentShutdownReason { get; private set; }
+        public CancellationToken RunnerShutdownToken => _runnerShutdownTokenSource.Token;
+        public ShutdownReason RunnerShutdownReason { get; private set; }
         public ISecretMasker SecretMasker => _secretMasker;
         public ProductInfoHeaderValue UserAgent => _userAgent;
         public HostContext(string hostType, string logFile = null)
@@ -102,7 +102,7 @@ namespace GitHub.Runner.Common
                     logRetentionDays = _defaultLogRetentionDays;
                 }
 
-                // this should give us _diag folder under agent root directory
+                // this should give us _diag folder under runner root directory
                 string diagLogDirectory = Path.Combine(new DirectoryInfo(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)).Parent.FullName, Constants.Path.DiagDirectory);
                 _traceManager = new TraceManager(new HostTraceListener(diagLogDirectory, hostType, logPageSize, logRetentionDays), this.SecretMasker);
             }
@@ -112,15 +112,15 @@ namespace GitHub.Runner.Common
             }
 
             _trace = GetTrace(nameof(HostContext));
-            _vssTrace = GetTrace("GitHubActionRunner");  // VisualStudioService
+            _vssTrace = GetTrace("GitHubActionsRunner");  // VisualStudioService
 
             // Enable Http trace
             bool enableHttpTrace;
-            if (bool.TryParse(Environment.GetEnvironmentVariable("VSTS_AGENT_HTTPTRACE"), out enableHttpTrace) && enableHttpTrace)
+            if (bool.TryParse(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_HTTPTRACE"), out enableHttpTrace) && enableHttpTrace)
             {
                 _trace.Warning("*****************************************************************************************");
                 _trace.Warning("**                                                                                     **");
-                _trace.Warning("** Http trace is enabled, all your http traffic will be dumped into agent diag log.    **");
+                _trace.Warning("** Http trace is enabled, all your http traffic will be dumped into runner diag log.   **");
                 _trace.Warning("** DO NOT share the log in public place! The trace may contains secrets in plain text. **");
                 _trace.Warning("**                                                                                     **");
                 _trace.Warning("*****************************************************************************************");
@@ -130,7 +130,7 @@ namespace GitHub.Runner.Common
             }
 
             // Enable perf counter trace
-            string perfCounterLocation = Environment.GetEnvironmentVariable("VSTS_AGENT_PERFLOG");
+            string perfCounterLocation = Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_PERFLOG");
             if (!string.IsNullOrEmpty(perfCounterLocation))
             {
                 try
@@ -180,26 +180,8 @@ namespace GitHub.Runner.Common
                         Constants.Path.ExternalsDirectory);
                     break;
 
-                case WellKnownDirectory.LegacyPSHost:
-                    path = Path.Combine(
-                        GetDirectory(WellKnownDirectory.Externals),
-                        Constants.Path.LegacyPSHostDirectory);
-                    break;
-
                 case WellKnownDirectory.Root:
                     path = new DirectoryInfo(GetDirectory(WellKnownDirectory.Bin)).Parent.FullName;
-                    break;
-
-                case WellKnownDirectory.ServerOM:
-                    path = Path.Combine(
-                        GetDirectory(WellKnownDirectory.Externals),
-                        Constants.Path.ServerOMDirectory);
-                    break;
-
-                case WellKnownDirectory.Tee:
-                    path = Path.Combine(
-                        GetDirectory(WellKnownDirectory.Externals),
-                        Constants.Path.TeeDirectory);
                     break;
 
                 case WellKnownDirectory.Temp:
@@ -208,20 +190,23 @@ namespace GitHub.Runner.Common
                         Constants.Path.TempDirectory);
                     break;
 
-                case WellKnownDirectory.Tasks:
+                case WellKnownDirectory.Actions:
                     path = Path.Combine(
                         GetDirectory(WellKnownDirectory.Work),
-                        Constants.Path.TasksDirectory);
+                        Constants.Path.ActionsDirectory);
                     break;
 
                 case WellKnownDirectory.Tools:
-                    path = Environment.GetEnvironmentVariable("AGENT_TOOLSDIRECTORY") ?? Environment.GetEnvironmentVariable(Constants.Variables.Agent.ToolsDirectory);
-                    if (string.IsNullOrEmpty(path))
-                    {
-                        path = Path.Combine(
-                            GetDirectory(WellKnownDirectory.Work),
-                            Constants.Path.ToolDirectory);
-                    }
+                    path = Path.Combine(
+                                GetDirectory(WellKnownDirectory.Work),
+                                Constants.Path.ToolDirectory);
+                    // path = Environment.GetEnvironmentVariable("RUNNER_TOOLSDIRECTORY") ?? Environment.GetEnvironmentVariable(Constants.Variables.Agent.ToolsDirectory);
+                    // if (string.IsNullOrEmpty(path))
+                    // {
+                    //     path = Path.Combine(
+                    //         GetDirectory(WellKnownDirectory.Work),
+                    //         Constants.Path.ToolDirectory);
+                    // }
                     break;
 
                 case WellKnownDirectory.Update:
@@ -232,7 +217,7 @@ namespace GitHub.Runner.Common
 
                 case WellKnownDirectory.Work:
                     var configurationStore = GetService<IConfigurationStore>();
-                    AgentSettings settings = configurationStore.GetSettings();
+                    RunnerSettings settings = configurationStore.GetSettings();
                     ArgUtil.NotNull(settings, nameof(settings));
                     ArgUtil.NotNullOrEmpty(settings.WorkFolder, nameof(settings.WorkFolder));
                     path = Path.GetFullPath(Path.Combine(
@@ -253,10 +238,10 @@ namespace GitHub.Runner.Common
             string path;
             switch (configFile)
             {
-                case WellKnownConfigFile.Agent:
+                case WellKnownConfigFile.Runner:
                     path = Path.Combine(
                         GetDirectory(WellKnownDirectory.Root),
-                        ".agent");
+                        ".runner");
                     break;
 
                 case WellKnownConfigFile.Credentials:
@@ -313,12 +298,6 @@ namespace GitHub.Runner.Common
                         ".proxybypass");
                     break;
 
-                case WellKnownConfigFile.Autologon:
-                    path = Path.Combine(
-                        GetDirectory(WellKnownDirectory.Root),
-                        ".autologon");
-                    break;
-
                 case WellKnownConfigFile.Options:
                     path = Path.Combine(
                         GetDirectory(WellKnownDirectory.Root),
@@ -345,7 +324,7 @@ namespace GitHub.Runner.Common
         /// <summary>
         /// Creates a new instance of T.
         /// </summary>
-        public T CreateService<T>() where T : class, IAgentService
+        public T CreateService<T>() where T : class, IRunnerService
         {
             Type target;
             if (!_serviceTypes.TryGetValue(typeof(T), out target))
@@ -384,7 +363,7 @@ namespace GitHub.Runner.Common
         /// <summary>
         /// Gets or creates an instance of T.
         /// </summary>
-        public T GetService<T>() where T : class, IAgentService
+        public T GetService<T>() where T : class, IRunnerService
         {
             // Return the cached instance if one already exists.
             object instance;
@@ -409,12 +388,12 @@ namespace GitHub.Runner.Common
         }
 
 
-        public void ShutdownAgent(ShutdownReason reason)
+        public void ShutdownRunner(ShutdownReason reason)
         {
             ArgUtil.NotNull(reason, nameof(reason));
-            _trace.Info($"Agent will be shutdown for {reason.ToString()}");
-            AgentShutdownReason = reason;
-            _agentShutdownTokenSource.Cancel();
+            _trace.Info($"Runner will be shutdown for {reason.ToString()}");
+            RunnerShutdownReason = reason;
+            _runnerShutdownTokenSource.Cancel();
         }
 
         public override void Dispose()
@@ -469,8 +448,8 @@ namespace GitHub.Runner.Common
                 _traceManager?.Dispose();
                 _traceManager = null;
 
-                _agentShutdownTokenSource?.Dispose();
-                _agentShutdownTokenSource = null;
+                _runnerShutdownTokenSource?.Dispose();
+                _runnerShutdownTokenSource = null;
 
                 base.Dispose();
             }
@@ -599,8 +578,8 @@ namespace GitHub.Runner.Common
         public static HttpClientHandler CreateHttpClientHandler(this IHostContext context)
         {
             HttpClientHandler clientHandler = new HttpClientHandler();
-            var agentWebProxy = context.GetService<IVstsAgentWebProxy>();
-            clientHandler.Proxy = agentWebProxy.WebProxy;
+            var runnerWebProxy = context.GetService<IRunnerWebProxy>();
+            clientHandler.Proxy = runnerWebProxy.WebProxy;
             return clientHandler;
         }
     }

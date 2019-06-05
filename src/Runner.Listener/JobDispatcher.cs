@@ -16,7 +16,7 @@ using GitHub.Runner.Sdk;
 namespace GitHub.Runner.Listener
 {
     [ServiceLocator(Default = typeof(JobDispatcher))]
-    public interface IJobDispatcher : IAgentService
+    public interface IJobDispatcher : IRunnerService
     {
         TaskCompletionSource<bool> RunOnceJobCompleted { get; }
         void Run(Pipelines.AgentJobRequestMessage message, bool runOnce = false);
@@ -27,15 +27,15 @@ namespace GitHub.Runner.Listener
     }
 
     // This implementation of IDobDispatcher is not thread safe.
-    // It is base on the fact that the current design of agent is dequeue
+    // It is base on the fact that the current design of runner is dequeue
     // and process one message from message queue everytime.
     // In addition, it only execute one job every time, 
     // and server will not send another job while this one is still running.
-    public sealed class JobDispatcher : AgentService, IJobDispatcher
+    public sealed class JobDispatcher : RunnerService, IJobDispatcher
     {
         private readonly Lazy<Dictionary<long, TaskResult>> _localRunJobResult = new Lazy<Dictionary<long, TaskResult>>();
         private int _poolId;
-        AgentSettings _agentSetting;
+        RunnerSettings _runnerSetting;
         private static readonly string _workerProcessName = $"Runner.Worker{IOUtil.ExeExtension}";
 
         // this is not thread-safe
@@ -43,7 +43,7 @@ namespace GitHub.Runner.Listener
         private readonly ConcurrentDictionary<Guid, WorkerDispatcher> _jobInfos = new ConcurrentDictionary<Guid, WorkerDispatcher>();
 
         //allow up to 30sec for any data to be transmitted over the process channel
-        //timeout limit can be overwrite by environment VSTS_AGENT_CHANNEL_TIMEOUT
+        //timeout limit can be overwrite by environment GITHUB_ACTIONS_RUNNER_CHANNEL_TIMEOUT
         private TimeSpan _channelTimeout;
 
         private TaskCompletionSource<bool> _runOnceJobCompleted = new TaskCompletionSource<bool>();
@@ -54,18 +54,18 @@ namespace GitHub.Runner.Listener
 
             // get pool id from config
             var configurationStore = hostContext.GetService<IConfigurationStore>();
-            _agentSetting = configurationStore.GetSettings();
-            _poolId = _agentSetting.PoolId;
+            _runnerSetting = configurationStore.GetSettings();
+            _poolId = _runnerSetting.PoolId;
 
             int channelTimeoutSeconds;
-            if (!int.TryParse(Environment.GetEnvironmentVariable("VSTS_AGENT_CHANNEL_TIMEOUT") ?? string.Empty, out channelTimeoutSeconds))
+            if (!int.TryParse(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_CHANNEL_TIMEOUT") ?? string.Empty, out channelTimeoutSeconds))
             {
                 channelTimeoutSeconds = 30;
             }
 
             // _channelTimeout should in range [30,  300] seconds
             _channelTimeout = TimeSpan.FromSeconds(Math.Min(Math.Max(channelTimeoutSeconds, 30), 300));
-            Trace.Info($"Set agent/worker IPC timeout to {_channelTimeout.TotalSeconds} seconds.");
+            Trace.Info($"Set runner/worker IPC timeout to {_channelTimeout.TotalSeconds} seconds.");
         }
 
         public TaskCompletionSource<bool> RunOnceJobCompleted => _runOnceJobCompleted;
@@ -87,7 +87,7 @@ namespace GitHub.Runner.Listener
             WorkerDispatcher newDispatch = new WorkerDispatcher(jobRequestMessage.JobId, jobRequestMessage.RequestId);
             if (runOnce)
             {
-                Trace.Info("Start dispatcher for one time used agent.");
+                Trace.Info("Start dispatcher for one time used runner.");
                 newDispatch.WorkerDispatch = RunOnceAsync(jobRequestMessage, currentDispatch, newDispatch.WorkerCancellationTokenSource.Token, newDispatch.WorkerCancelTimeoutKillTokenSource.Token);
             }
             else
@@ -208,8 +208,8 @@ namespace GitHub.Runner.Listener
             {
                 if (cancelRunningJob)
                 {
-                    // cancel running job when shutting down the agent.
-                    // this will happen when agent get Ctrl+C or message queue loop crashed.
+                    // cancel running job when shutting down the runner.
+                    // this will happen when runner get Ctrl+C or message queue loop crashed.
                     jobDispatch.WorkerCancellationTokenSource.Cancel();
                     // wait for worker process exit then return.
                     await jobDispatch.WorkerDispatch;
@@ -217,19 +217,19 @@ namespace GitHub.Runner.Listener
                     return;
                 }
 
-                // base on the current design, server will only send one job for a given agent everytime.
-                // if the agent received a new job request while a previous job request is still running, this typically indicate two situations
-                // 1. an agent bug cause server and agent mismatch on the state of the job request, ex. agent not renew jobrequest properly but think it still own the job reqest, however server already abandon the jobrequest.
-                // 2. a server bug or design change that allow server send more than one job request to an given agent that haven't finish previous job request.
-                var agentServer = HostContext.GetService<IAgentServer>();
+                // base on the current design, server will only send one job for a given runner everytime.
+                // if the runner received a new job request while a previous job request is still running, this typically indicate two situations
+                // 1. an runner bug cause server and runner mismatch on the state of the job request, ex. runner not renew jobrequest properly but think it still own the job reqest, however server already abandon the jobrequest.
+                // 2. a server bug or design change that allow server send more than one job request to an given runner that haven't finish previous job request.
+                var runnerServer = HostContext.GetService<IRunnerServer>();
                 TaskAgentJobRequest request = null;
                 try
                 {
-                    request = await agentServer.GetAgentRequestAsync(_poolId, jobDispatch.RequestId, CancellationToken.None);
+                    request = await runnerServer.GetAgentRequestAsync(_poolId, jobDispatch.RequestId, CancellationToken.None);
                 }
                 catch (Exception ex)
                 {
-                    // we can't even query for the jobrequest from server, something totally busted, stop agent/worker.
+                    // we can't even query for the jobrequest from server, something totally busted, stop runner/worker.
                     Trace.Error($"Catch exception while checking jobrequest {jobDispatch.JobId} status. Cancel running worker right away.");
                     Trace.Error(ex);
 
@@ -244,7 +244,7 @@ namespace GitHub.Runner.Listener
                 if (request.Result != null)
                 {
                     // job request has been finished, the server already has result.
-                    // this means agent is busted since it still running that request.
+                    // this means runner is busted since it still running that request.
                     // cancel the zombie worker, run next job request.
                     Trace.Error($"Received job request while previous job {jobDispatch.JobId} still running on worker. Cancel the previous job since the job request have been finished on server side with result: {request.Result.Value}.");
                     jobDispatch.WorkerCancellationTokenSource.Cancel();
@@ -260,7 +260,7 @@ namespace GitHub.Runner.Listener
                 }
                 else
                 {
-                    // something seriously wrong on server side. stop agent from continue running.
+                    // something seriously wrong on server side. stop runner from continue running.
                     // no need to localize the exception string should never happen.
                     throw new InvalidOperationException($"Server send a new job request while the previous job request {jobDispatch.JobId} haven't finished.");
                 }
@@ -273,7 +273,7 @@ namespace GitHub.Runner.Listener
             }
             catch (Exception ex)
             {
-                Trace.Error($"Worker Dispatch failed witn an exception for job request {jobDispatch.JobId}.");
+                Trace.Error($"Worker Dispatch failed with an exception for job request {jobDispatch.JobId}.");
                 Trace.Error(ex);
             }
             finally
@@ -295,7 +295,7 @@ namespace GitHub.Runner.Listener
             }
             finally
             {
-                Trace.Info("Fire signal for one time used agent.");
+                Trace.Info("Fire signal for one time used runner.");
                 _runOnceJobCompleted.TrySetResult(true);
             }
         }
@@ -430,7 +430,7 @@ namespace GitHub.Runner.Listener
                     try
                     {
                         Trace.Info($"Send job request message to worker for job {message.JobId}.");
-                        HostContext.WritePerfCounter($"AgentSendingJobToWorker_{message.JobId}");
+                        HostContext.WritePerfCounter($"RunnerSendingJobToWorker_{message.JobId}");
                         using (var csSendJobRequest = new CancellationTokenSource(_channelTimeout))
                         {
                             await processChannel.SendAsync(
@@ -531,12 +531,12 @@ namespace GitHub.Runner.Listener
                             using (var csSendCancel = new CancellationTokenSource(_channelTimeout))
                             {
                                 var messageType = MessageType.CancelRequest;
-                                if (HostContext.AgentShutdownToken.IsCancellationRequested)
+                                if (HostContext.RunnerShutdownToken.IsCancellationRequested)
                                 {
-                                    switch (HostContext.AgentShutdownReason)
+                                    switch (HostContext.RunnerShutdownReason)
                                     {
                                         case ShutdownReason.UserCancelled:
-                                            messageType = MessageType.AgentShutdown;
+                                            messageType = MessageType.RunnerShutdown;
                                             break;
                                         case ShutdownReason.OperatingSystemShutdown:
                                             messageType = MessageType.OperatingSystemShutdown;
@@ -608,7 +608,7 @@ namespace GitHub.Runner.Listener
 
         public async Task RenewJobRequestAsync(int poolId, long requestId, Guid lockToken, TaskCompletionSource<int> firstJobRequestRenewed, CancellationToken token)
         {
-            var agentServer = HostContext.GetService<IAgentServer>();
+            var runnerServer = HostContext.GetService<IRunnerServer>();
             TaskAgentJobRequest request = null;
             int firstRenewRetryLimit = 5;
             int encounteringError = 0;
@@ -619,7 +619,7 @@ namespace GitHub.Runner.Listener
             {
                 try
                 {
-                    request = await agentServer.RenewAgentRequestAsync(poolId, requestId, lockToken, token);
+                    request = await runnerServer.RenewAgentRequestAsync(poolId, requestId, lockToken, token);
 
                     Trace.Info($"Successfully renew job request {requestId}, job is valid till {request.LockedUntil.Value}");
 
@@ -632,7 +632,7 @@ namespace GitHub.Runner.Listener
                     if (encounteringError > 0)
                     {
                         encounteringError = 0;
-                        agentServer.SetConnectionTimeout(AgentConnectionType.JobRequest, TimeSpan.FromSeconds(60));
+                        runnerServer.SetConnectionTimeout(RunnerConnectionType.JobRequest, TimeSpan.FromSeconds(60));
                         HostContext.WritePerfCounter("JobRenewRecovered");
                     }
 
@@ -660,7 +660,7 @@ namespace GitHub.Runner.Listener
                 }
                 catch (Exception ex)
                 {
-                    Trace.Error($"Catch exception during renew agent jobrequest {requestId}.");
+                    Trace.Error($"Catch exception during renew runner jobrequest {requestId}.");
                     Trace.Error(ex);
                     encounteringError++;
 
@@ -704,7 +704,7 @@ namespace GitHub.Runner.Listener
                         // Re-establish connection to server in order to avoid affinity with server.
                         // Reduce connection timeout to 30 seconds (from 60s)
                         HostContext.WritePerfCounter("ResetJobRenewConnection");
-                        await agentServer.RefreshConnectionAsync(AgentConnectionType.JobRequest, TimeSpan.FromSeconds(30));
+                        await runnerServer.RefreshConnectionAsync(RunnerConnectionType.JobRequest, TimeSpan.FromSeconds(30));
 
                         try
                         {
@@ -742,14 +742,14 @@ namespace GitHub.Runner.Listener
                 return;
             }
 
-            var agentServer = HostContext.GetService<IAgentServer>();
+            var runnerServer = HostContext.GetService<IRunnerServer>();
             int completeJobRequestRetryLimit = 5;
             List<Exception> exceptions = new List<Exception>();
             while (completeJobRequestRetryLimit-- > 0)
             {
                 try
                 {
-                    await agentServer.FinishAgentRequestAsync(poolId, message.RequestId, lockToken, DateTime.UtcNow, result, CancellationToken.None);
+                    await runnerServer.FinishAgentRequestAsync(poolId, message.RequestId, lockToken, DateTime.UtcNow, result, CancellationToken.None);
                     return;
                 }
                 catch (TaskAgentJobNotFoundException)
@@ -764,7 +764,7 @@ namespace GitHub.Runner.Listener
                 }
                 catch (Exception ex)
                 {
-                    Trace.Error($"Catch exception during complete agent jobrequest {message.RequestId}.");
+                    Trace.Error($"Catch exception during complete runner jobrequest {message.RequestId}.");
                     Trace.Error(ex);
                     exceptions.Add(ex);
                 }
@@ -796,7 +796,7 @@ namespace GitHub.Runner.Listener
                     try
                     {
                         Uri result = null;
-                        Uri configUri = new Uri(_agentSetting.ServerUrl);
+                        Uri configUri = new Uri(_runnerSetting.ServerUrl);
                         if (Uri.TryCreate(new Uri(configUri.GetComponents(UriComponents.SchemeAndServer, UriFormat.Unescaped)), jobServerUrl.PathAndQuery, out result))
                         {
                             //replace the schema and host portion of messageUri with the host from the

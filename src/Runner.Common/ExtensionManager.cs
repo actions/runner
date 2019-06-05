@@ -8,12 +8,12 @@ using System.Linq;
 namespace GitHub.Runner.Common
 {
     [ServiceLocator(Default = typeof(ExtensionManager))]
-    public interface IExtensionManager : IAgentService
+    public interface IExtensionManager : IRunnerService
     {
         List<T> GetExtensions<T>() where T : class, IExtension;
     }
 
-    public sealed class ExtensionManager : AgentService, IExtensionManager
+    public sealed class ExtensionManager : RunnerService, IExtensionManager
     {
         private readonly ConcurrentDictionary<Type, List<IExtension>> _cache = new ConcurrentDictionary<Type, List<IExtension>>();
 
@@ -41,15 +41,7 @@ namespace GitHub.Runner.Common
             {
                 // Listener capabilities providers.
                 case "GitHub.Runner.Common.Capabilities.ICapabilitiesProvider":
-                    Add<T>(extensions, "GitHub.Runner.Common.Capabilities.AgentCapabilitiesProvider, Runner.Common");
-                    break;
-                // Listener agent configuration providers
-                case "GitHub.Runner.Listener.Configuration.IConfigurationProvider":
-                    Add<T>(extensions, "GitHub.Runner.Listener.Configuration.BuildReleasesAgentConfigProvider, Runner.Listener");
-                    break;
-                // Worker job extensions.
-                case "GitHub.Runner.Worker.IJobExtension":
-                    Add<T>(extensions, "GitHub.Runner.Worker.Build.BuildJobExtension, Runner.Worker");
+                    Add<T>(extensions, "GitHub.Runner.Common.Capabilities.RunnerCapabilitiesProvider, Runner.Common");
                     break;
                 // Action command extensions.
                 case "GitHub.Runner.Worker.IActionCommandExtension":

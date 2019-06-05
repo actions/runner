@@ -9,7 +9,7 @@ using GitHub.Runner.Sdk;
 namespace GitHub.Runner.Worker.Handlers
 {
     [ServiceLocator(Default = typeof(HandlerFactory))]
-    public interface IHandlerFactory : IAgentService
+    public interface IHandlerFactory : IRunnerService
     {
         IHandler Create(
             IExecutionContext executionContext,
@@ -22,7 +22,7 @@ namespace GitHub.Runner.Worker.Handlers
             string taskDirectory);
     }
 
-    public sealed class HandlerFactory : AgentService, IHandlerFactory
+    public sealed class HandlerFactory : RunnerService, IHandlerFactory
     {
         public IHandler Create(
             IExecutionContext executionContext,
@@ -60,11 +60,11 @@ namespace GitHub.Runner.Worker.Handlers
                 handler = HostContext.CreateService<IScriptHandler>();
                 (handler as IScriptHandler).Data = data as ScriptActionHandlerData;
             }
-            else if (data is AgentPluginHandlerData)
+            else if (data is RunnerPluginHandlerData)
             {
                 // Agent plugin
-                handler = HostContext.CreateService<IAgentPluginHandler>();
-                (handler as IAgentPluginHandler).Data = data as AgentPluginHandlerData;
+                handler = HostContext.CreateService<IRunnerPluginHandler>();
+                (handler as IRunnerPluginHandler).Data = data as RunnerPluginHandlerData;
             }
             else
             {

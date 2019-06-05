@@ -11,7 +11,7 @@ namespace GitHub.Runner.Common
     // Settings are persisted in this structure
     //
     [DataContract]
-    public sealed class AgentSettings
+    public sealed class RunnerSettings
     {
         [DataMember(EmitDefaultValue = false)]
         public bool AcceptTeeEula { get; set; }
@@ -21,9 +21,6 @@ namespace GitHub.Runner.Common
 
         [DataMember(EmitDefaultValue = false)]
         public string AgentName { get; set; }
-
-        [IgnoreDataMember]
-        public bool IsHosted => !string.IsNullOrEmpty(NotificationPipeName) || !string.IsNullOrEmpty(NotificationSocketAddress);
 
         [DataMember(EmitDefaultValue = false)]
         public string NotificationPipeName { get; set; }
@@ -49,39 +46,12 @@ namespace GitHub.Runner.Common
         [DataMember(EmitDefaultValue = false)]
         public string WorkFolder { get; set; }
 
-        // Do not use Project Name any more to save in agent settings file. Ensure to use ProjectId. 
-        // Deployment Group scenario will not work for project rename scenario if we work with projectName
-        [DataMember(EmitDefaultValue = false)]
-        public string ProjectName { get; set; }
-
-        [DataMember(EmitDefaultValue = false)]
-        public int MachineGroupId { get; set; }
-
-        [DataMember(EmitDefaultValue = false)]
-        public int DeploymentGroupId { get; set; }
-
-        [DataMember(EmitDefaultValue = false)]
-        public string ProjectId { get; set; }
-
-        [DataMember(EmitDefaultValue = false)]
-        public string CollectionName { get; set; }
-
         [DataMember(EmitDefaultValue = false)]
         public string MonitorSocketAddress { get; set; }
     }
 
     [DataContract]
-    public sealed class AutoLogonSettings
-    {
-        [DataMember(EmitDefaultValue = false)]
-        public string UserDomainName { get; set; }
-
-        [DataMember(EmitDefaultValue = false)]
-        public string UserName { get; set; }
-    }
-
-    [DataContract]
-    public sealed class AgentRuntimeOptions
+    public sealed class RunnerRuntimeOptions
     {
 #if OS_WINDOWS
         [DataMember(EmitDefaultValue = false)]
@@ -90,40 +60,33 @@ namespace GitHub.Runner.Common
     }
 
     [ServiceLocator(Default = typeof(ConfigurationStore))]
-    public interface IConfigurationStore : IAgentService
+    public interface IConfigurationStore : IRunnerService
     {
-        string RootFolder { get; }
         bool IsConfigured();
         bool IsServiceConfigured();
-        bool IsAutoLogonConfigured();
         bool HasCredentials();
         CredentialData GetCredentials();
-        AgentSettings GetSettings();
+        RunnerSettings GetSettings();
         void SaveCredential(CredentialData credential);
-        void SaveSettings(AgentSettings settings);
+        void SaveSettings(RunnerSettings settings);
         void DeleteCredential();
         void DeleteSettings();
-        void DeleteAutoLogonSettings();
-        void SaveAutoLogonSettings(AutoLogonSettings settings);
-        AutoLogonSettings GetAutoLogonSettings();
-        AgentRuntimeOptions GetAgentRuntimeOptions();
-        void SaveAgentRuntimeOptions(AgentRuntimeOptions options);
-        void DeleteAgentRuntimeOptions();
+        RunnerRuntimeOptions GetRunnerRuntimeOptions();
+        void SaveRunnerRuntimeOptions(RunnerRuntimeOptions options);
+        void DeleteRunnerRuntimeOptions();
     }
 
-    public sealed class ConfigurationStore : AgentService, IConfigurationStore
+    public sealed class ConfigurationStore : RunnerService, IConfigurationStore
     {
         private string _binPath;
         private string _configFilePath;
         private string _credFilePath;
         private string _serviceConfigFilePath;
-        private string _autoLogonSettingsFilePath;
         private string _runtimeOptionsFilePath;
 
         private CredentialData _creds;
-        private AgentSettings _settings;
-        private AutoLogonSettings _autoLogonSettings;
-        private AgentRuntimeOptions _runtimeOptions;
+        private RunnerSettings _settings;
+        private RunnerRuntimeOptions _runtimeOptions;
 
         public override void Initialize(IHostContext hostContext)
         {
@@ -138,7 +101,7 @@ namespace GitHub.Runner.Common
             RootFolder = HostContext.GetDirectory(WellKnownDirectory.Root);
             Trace.Info("RootFolder: {0}", RootFolder);
 
-            _configFilePath = hostContext.GetConfigFile(WellKnownConfigFile.Agent);
+            _configFilePath = hostContext.GetConfigFile(WellKnownConfigFile.Runner);
             Trace.Info("ConfigFilePath: {0}", _configFilePath);
 
             _credFilePath = hostContext.GetConfigFile(WellKnownConfigFile.Credentials);
@@ -146,9 +109,6 @@ namespace GitHub.Runner.Common
 
             _serviceConfigFilePath = hostContext.GetConfigFile(WellKnownConfigFile.Service);
             Trace.Info("ServiceConfigFilePath: {0}", _serviceConfigFilePath);
-
-            _autoLogonSettingsFilePath = hostContext.GetConfigFile(WellKnownConfigFile.Autologon);
-            Trace.Info("AutoLogonSettingsFilePath: {0}", _autoLogonSettingsFilePath);
 
             _runtimeOptionsFilePath = hostContext.GetConfigFile(WellKnownConfigFile.Options);
             Trace.Info("RuntimeOptionsFilePath: {0}", _runtimeOptionsFilePath);
@@ -182,14 +142,6 @@ namespace GitHub.Runner.Common
             return serviceConfigured;
         }
 
-        public bool IsAutoLogonConfigured()
-        {
-            Trace.Entering();
-            bool autoLogonConfigured = (new FileInfo(_autoLogonSettingsFilePath)).Exists;
-            Trace.Info($"IsAutoLogonConfigured: {autoLogonConfigured}");
-            return autoLogonConfigured;
-        }
-
         public CredentialData GetCredentials()
         {
             ArgUtil.Equal(RunMode.Normal, HostContext.RunMode, nameof(HostContext.RunMode));
@@ -201,49 +153,23 @@ namespace GitHub.Runner.Common
             return _creds;
         }
 
-        public AgentSettings GetSettings()
+        public RunnerSettings GetSettings()
         {
             if (_settings == null)
             {
-                AgentSettings configuredSettings = null;
+                RunnerSettings configuredSettings = null;
                 if (File.Exists(_configFilePath))
                 {
                     string json = File.ReadAllText(_configFilePath, Encoding.UTF8);
                     Trace.Info($"Read setting file: {json.Length} chars");
-                    configuredSettings = StringUtil.ConvertFromJson<AgentSettings>(json);
+                    configuredSettings = StringUtil.ConvertFromJson<RunnerSettings>(json);
                 }
 
-                if (HostContext.RunMode == RunMode.Local)
-                {
-                    _settings = new AgentSettings()
-                    {
-                        AcceptTeeEula = configuredSettings?.AcceptTeeEula ?? false,
-                        AgentId = 1,
-                        AgentName = "local-runner-agent",
-                        PoolId = 1,
-                        PoolName = "local-runner-pool",
-                        ServerUrl = "http://127.0.0.1/vsts-agent-local-runner",
-                        WorkFolder = configuredSettings?.WorkFolder ?? Constants.Path.WorkDirectory
-                    };
-                }
-                else
-                {
-                    ArgUtil.NotNull(configuredSettings, nameof(configuredSettings));
-                    _settings = configuredSettings;
-                }
+                ArgUtil.NotNull(configuredSettings, nameof(configuredSettings));
+                _settings = configuredSettings;
             }
 
             return _settings;
-        }
-
-        public AutoLogonSettings GetAutoLogonSettings()
-        {
-            if (_autoLogonSettings == null)
-            {
-                _autoLogonSettings = IOUtil.LoadObject<AutoLogonSettings>(_autoLogonSettingsFilePath);
-            }
-
-            return _autoLogonSettings;
         }
 
         public void SaveCredential(CredentialData credential)
@@ -253,7 +179,7 @@ namespace GitHub.Runner.Common
             if (File.Exists(_credFilePath))
             {
                 // Delete existing credential file first, since the file is hidden and not able to overwrite.
-                Trace.Info("Delete exist agent credential file.");
+                Trace.Info("Delete exist runner credential file.");
                 IOUtil.DeleteFile(_credFilePath);
             }
 
@@ -262,35 +188,20 @@ namespace GitHub.Runner.Common
             File.SetAttributes(_credFilePath, File.GetAttributes(_credFilePath) | FileAttributes.Hidden);
         }
 
-        public void SaveSettings(AgentSettings settings)
+        public void SaveSettings(RunnerSettings settings)
         {
             ArgUtil.Equal(RunMode.Normal, HostContext.RunMode, nameof(HostContext.RunMode));
-            Trace.Info("Saving agent settings.");
+            Trace.Info("Saving runner settings.");
             if (File.Exists(_configFilePath))
             {
-                // Delete existing agent settings file first, since the file is hidden and not able to overwrite.
-                Trace.Info("Delete exist agent settings file.");
+                // Delete existing runner settings file first, since the file is hidden and not able to overwrite.
+                Trace.Info("Delete exist runner settings file.");
                 IOUtil.DeleteFile(_configFilePath);
             }
 
             IOUtil.SaveObject(settings, _configFilePath);
             Trace.Info("Settings Saved.");
             File.SetAttributes(_configFilePath, File.GetAttributes(_configFilePath) | FileAttributes.Hidden);
-        }
-
-        public void SaveAutoLogonSettings(AutoLogonSettings autoLogonSettings)
-        {
-            Trace.Info("Saving autologon settings.");
-            if (File.Exists(_autoLogonSettingsFilePath))
-            {
-                // Delete existing autologon settings file first, since the file is hidden and not able to overwrite.
-                Trace.Info("Delete existing autologon settings file.");
-                IOUtil.DeleteFile(_autoLogonSettingsFilePath);
-            }
-
-            IOUtil.SaveObject(autoLogonSettings, _autoLogonSettingsFilePath);
-            Trace.Info("AutoLogon settings Saved.");
-            File.SetAttributes(_autoLogonSettingsFilePath, File.GetAttributes(_autoLogonSettingsFilePath) | FileAttributes.Hidden);
         }
 
         public void DeleteCredential()
@@ -305,22 +216,17 @@ namespace GitHub.Runner.Common
             IOUtil.Delete(_configFilePath, default(CancellationToken));
         }
 
-        public void DeleteAutoLogonSettings()
-        {
-            IOUtil.Delete(_autoLogonSettingsFilePath, default(CancellationToken));
-        }
-
-        public AgentRuntimeOptions GetAgentRuntimeOptions()
+        public RunnerRuntimeOptions GetRunnerRuntimeOptions()
         {
             if (_runtimeOptions == null && File.Exists(_runtimeOptionsFilePath))
             {
-                _runtimeOptions = IOUtil.LoadObject<AgentRuntimeOptions>(_runtimeOptionsFilePath);
+                _runtimeOptions = IOUtil.LoadObject<RunnerRuntimeOptions>(_runtimeOptionsFilePath);
             }
 
             return _runtimeOptions;
         }
 
-        public void SaveAgentRuntimeOptions(AgentRuntimeOptions options)
+        public void SaveRunnerRuntimeOptions(RunnerRuntimeOptions options)
         {
             Trace.Info("Saving runtime options.");
             if (File.Exists(_runtimeOptionsFilePath))
@@ -335,7 +241,7 @@ namespace GitHub.Runner.Common
             File.SetAttributes(_runtimeOptionsFilePath, File.GetAttributes(_runtimeOptionsFilePath) | FileAttributes.Hidden);
         }
 
-        public void DeleteAgentRuntimeOptions()
+        public void DeleteRunnerRuntimeOptions()
         {
             IOUtil.Delete(_runtimeOptionsFilePath, default(CancellationToken));
         }

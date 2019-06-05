@@ -17,18 +17,18 @@ namespace GitHub.Runner.Common.Tests.Listener
 {
     public sealed class MessageListenerL0
     {
-        private AgentSettings _settings;
+        private RunnerSettings _settings;
         private Mock<IConfigurationManager> _config;
-        private Mock<IAgentServer> _agentServer;
+        private Mock<IRunnerServer> _agentServer;
         private Mock<ICredentialManager> _credMgr;
         private Mock<ICapabilitiesManager> _capabilitiesManager;
 
         public MessageListenerL0()
         {
-            _settings = new AgentSettings { AgentId = 1, AgentName = "myagent", PoolId = 123, PoolName = "default", ServerUrl = "http://myserver", WorkFolder = "_work" };
+            _settings = new RunnerSettings { AgentId = 1, AgentName = "myagent", PoolId = 123, PoolName = "default", ServerUrl = "http://myserver", WorkFolder = "_work" };
             _config = new Mock<IConfigurationManager>();
             _config.Setup(x => x.LoadSettings()).Returns(_settings);
-            _agentServer = new Mock<IAgentServer>();
+            _agentServer = new Mock<IRunnerServer>();
             _credMgr = new Mock<ICredentialManager>();
             _capabilitiesManager = new Mock<ICapabilitiesManager>();
         }
@@ -37,7 +37,7 @@ namespace GitHub.Runner.Common.Tests.Listener
         {
             TestHostContext tc = new TestHostContext(this, testName);
             tc.SetSingleton<IConfigurationManager>(_config.Object);
-            tc.SetSingleton<IAgentServer>(_agentServer.Object);
+            tc.SetSingleton<IRunnerServer>(_agentServer.Object);
             tc.SetSingleton<ICredentialManager>(_credMgr.Object);
             tc.SetSingleton<ICapabilitiesManager>(_capabilitiesManager.Object);
             return tc;

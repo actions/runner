@@ -8,13 +8,13 @@ using GitHub.Runner.Sdk;
 namespace GitHub.Runner.Worker
 {
     [ServiceLocator(Default = typeof(TempDirectoryManager))]
-    public interface ITempDirectoryManager : IAgentService
+    public interface ITempDirectoryManager : IRunnerService
     {
         void InitializeTempDirectory(IExecutionContext jobContext);
         void CleanupTempDirectory();
     }
 
-    public sealed class TempDirectoryManager : AgentService, ITempDirectoryManager
+    public sealed class TempDirectoryManager : RunnerService, ITempDirectoryManager
     {
         private string _tempDirectory;
 
@@ -28,9 +28,8 @@ namespace GitHub.Runner.Worker
         {
             ArgUtil.NotNull(jobContext, nameof(jobContext));
             ArgUtil.NotNullOrEmpty(_tempDirectory, nameof(_tempDirectory));
-            // jobContext.SetVariable(Constants.Variables.Agent.TempDirectory, _tempDirectory, isFilePath: true);
             jobContext.SetRunnerContext("tempDirectory", _tempDirectory);
-            jobContext.Debug($"Cleaning agent temp folder: {_tempDirectory}");
+            jobContext.Debug($"Cleaning runner temp folder: {_tempDirectory}");
             try
             {
                 IOUtil.DeleteDirectory(_tempDirectory, contentsOnly: true, continueOnContentDeleteError: true, cancellationToken: jobContext.CancellationToken);
@@ -44,33 +43,12 @@ namespace GitHub.Runner.Worker
                 // make sure folder exists
                 Directory.CreateDirectory(_tempDirectory);
             }
-
-//             bool overwriteTemp = jobContext.Variables.GetBoolean("VSTS_OVERWRITE_TEMP") ?? StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("VSTS_OVERWRITE_TEMP"));
-
-//             // TEMP and TMP on Windows
-//             // TMPDIR on Linux
-//             if (!overwriteTemp)
-//             {
-//                 jobContext.Debug($"Skipping overwrite %TEMP% environment variable");
-//             }
-//             else
-//             {
-// #if OS_WINDOWS
-//                 jobContext.Debug($"SET TMP={_tempDirectory}");
-//                 jobContext.Debug($"SET TEMP={_tempDirectory}");
-//                 jobContext.SetVariable("TMP", _tempDirectory, isFilePath: true);
-//                 jobContext.SetVariable("TEMP", _tempDirectory, isFilePath: true);
-// #else
-//                 jobContext.Debug($"SET TMPDIR={_tempDirectory}");
-//                 jobContext.SetVariable("TMPDIR", _tempDirectory, isFilePath:true);
-// #endif
-//             }
         }
 
         public void CleanupTempDirectory()
         {
             ArgUtil.NotNullOrEmpty(_tempDirectory, nameof(_tempDirectory));
-            Trace.Info($"Cleaning agent temp folder: {_tempDirectory}");
+            Trace.Info($"Cleaning runner temp folder: {_tempDirectory}");
             try
             {
                 IOUtil.DeleteDirectory(_tempDirectory, contentsOnly: true, continueOnContentDeleteError: true, cancellationToken: CancellationToken.None);

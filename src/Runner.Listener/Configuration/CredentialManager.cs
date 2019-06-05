@@ -7,13 +7,13 @@ namespace GitHub.Runner.Listener.Configuration
 {
     // TODO: Refactor extension manager to enable using it from the agent process.
     [ServiceLocator(Default = typeof(CredentialManager))]
-    public interface ICredentialManager : IAgentService
+    public interface ICredentialManager : IRunnerService
     {
         ICredentialProvider GetCredentialProvider(string credType);
         VssCredentials LoadCredentials();
     }
 
-    public class CredentialManager : AgentService, ICredentialManager
+    public class CredentialManager : RunnerService, ICredentialManager
     {        
         public static readonly Dictionary<string, Type> CredentialTypes = new Dictionary<string, Type>(StringComparer.OrdinalIgnoreCase)
         {

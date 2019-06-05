@@ -9,25 +9,23 @@ using System.Linq;
 using System.Diagnostics;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
+using System.IO;
 
 namespace GitHub.Runner.Worker
 {
-    public interface IJobExtension : IExtension
+    [ServiceLocator(Default = typeof(JobExtension))]
+
+    public interface IJobExtension : IRunnerService
     {
         Task<List<IStep>> InitializeJob(IExecutionContext jobContext, Pipelines.AgentJobRequestMessage message);
         Task FinalizeJob(IExecutionContext jobContext);
     }
 
-    public abstract class JobExtension : AgentService, IJobExtension
+    public sealed class JobExtension : RunnerService, IJobExtension
     {
         private readonly HashSet<string> _existingProcesses = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         private bool _processCleanup;
-        private string _processLookupId = $"vsts_{Guid.NewGuid()}";
-
-        public abstract Type ExtensionType { get; }
-
-        // Anything job extension want to do before building the steps list.
-        public abstract void InitializeJobExtension(IExecutionContext context, IList<Pipelines.JobStep> steps, Pipelines.WorkspaceOptions workspace);
+        private string _processLookupId = $"github_{Guid.NewGuid()}";
 
         // download all required tasks.
         // make sure all task's condition inputs are valid.
@@ -52,29 +50,47 @@ namespace GitHub.Runner.Worker
                     context.Section(StringUtil.Loc("StepStarting", StringUtil.Loc("InitializeJob")));
 
                     // Set agent version variable.
-                    // context.Variables.Set(Constants.Variables.Agent.Version, BuildConstants.RunnerPackage.Version);
                     context.Output(StringUtil.Loc("AgentVersion", BuildConstants.RunnerPackage.Version));
 
                     // Print proxy setting information for better diagnostic experience
-                    var agentWebProxy = HostContext.GetService<IVstsAgentWebProxy>();
+                    var agentWebProxy = HostContext.GetService<IRunnerWebProxy>();
                     if (!string.IsNullOrEmpty(agentWebProxy.ProxyAddress))
                     {
                         context.Output(StringUtil.Loc("AgentRunningBehindProxy", agentWebProxy.ProxyAddress));
                     }
 
                     // Give job extension a chance to initialize
-                    Trace.Info($"Run initial step from extension {this.GetType().Name}.");
-                    InitializeJobExtension(context, message.Steps, message.Workspace);
+                    Trace.Info($"Prepare pipelines directory");
+                    // We only support checkout one repository at this time.
+                    Pipelines.RepositoryResource Repository = context.Repositories.SingleOrDefault(x => x.Alias == Pipelines.PipelineConstants.SelfAlias);
+                    ArgUtil.NotNull(Repository, nameof(Repository));
 
-                    // Download tasks if not already in the cache
-                    Trace.Info("Downloading task definitions.");
-                    var taskManager = HostContext.GetService<ITaskManager>();
-                    await taskManager.DownloadAsync(context, message.Steps);
+                    context.Debug($"Primary repository: {Repository.Properties.Get<string>(Pipelines.RepositoryPropertyNames.Name)}. repository type: {Repository.Type}");
 
-                    // Parse all Task conditions.
-                    Trace.Info("Parsing all task's condition inputs.");
+                    // Prepare the pipeline directory.
+                    context.Output(StringUtil.Loc("PreparePipelineDir"));
+                    var directoryManager = HostContext.GetService<IPipelineDirectoryManager>();
+                    TrackingConfig trackingConfig = directoryManager.PrepareDirectory(
+                        context,
+                        Repository,
+                        message.Workspace);
+
+                    // Set the directory variables.
+                    context.Output(StringUtil.Loc("SetBuildVars"));
+                    string _workDirectory = HostContext.GetDirectory(WellKnownDirectory.Work);
+
+                    context.SetRunnerContext("pipelineWorkspace", Path.Combine(_workDirectory, trackingConfig.PipelineDirectory));
+                    context.SetGitHubContext("workspace", Path.Combine(_workDirectory, trackingConfig.SourcesDirectory));
+
+                    // Download actions if not already in the cache
+                    Trace.Info("Downloading actions.");
+                    var actionManager = HostContext.GetService<IActionManager>();
+                    await actionManager.DownloadAsync(context, message.Steps);
+
+                    // Parse all actions' conditions.
+                    Trace.Info("Parsing all action's condition inputs.");
                     var expression = HostContext.GetService<IExpressionManager>();
-                    Dictionary<Guid, IExpressionNode> taskConditionMap = new Dictionary<Guid, IExpressionNode>();
+                    Dictionary<Guid, IExpressionNode> actionConditionMap = new Dictionary<Guid, IExpressionNode>();
                     foreach (var step in message.Steps)
                     {
                         IExpressionNode condition;
@@ -85,13 +101,9 @@ namespace GitHub.Runner.Worker
                         else
                         {
                             context.Debug($"Step '{step.DisplayName}' has following condition: '{step.Condition}'.");
-                            if (step.Type == Pipelines.StepType.Task)
+                            if (step.Type == Pipelines.StepType.Action)
                             {
-                                condition = expression.Parse(context, step.Condition, legacy: true);
-                            }
-                            else if (step.Type == Pipelines.StepType.Action)
-                            {
-                                condition = expression.Parse(context, step.Condition, legacy: false);
+                                condition = expression.Parse(context, step.Condition);
                             }
                             else
                             {
@@ -99,7 +111,7 @@ namespace GitHub.Runner.Worker
                             }
                         }
 
-                        taskConditionMap[step.Id] = condition;
+                        actionConditionMap[step.Id] = condition;
                     }
 
                     // build up 3 lists of steps, pre-job, job, post-job
@@ -134,7 +146,7 @@ namespace GitHub.Runner.Worker
                             Trace.Info($"Adding {action.DisplayName}.");
                             var actionRunner = HostContext.CreateService<IActionRunner>();
                             actionRunner.Action = action;
-                            actionRunner.Condition = taskConditionMap[action.Id];
+                            actionRunner.Condition = actionConditionMap[action.Id];
                             jobSteps.Add(actionRunner);
                         }
                     }
@@ -193,8 +205,8 @@ namespace GitHub.Runner.Worker
                     _processCleanup = jobContext.Variables.GetBoolean("process.clean") ?? true;
                     if (_processCleanup)
                     {
-                        // Set the VSTS_PROCESS_LOOKUP_ID env variable.
-                        context.SetRunnerContext(Constants.ProcessLookupId, _processLookupId);
+                        // Set the GITHUB_PROCESS_LOOKUP_ID env variable.
+                        Environment.SetEnvironmentVariable(Constants.ProcessLookupId, _processLookupId);
                         context.Output("Start tracking orphan processes.");
 
                         // Take a snapshot of current running processes
@@ -267,6 +279,12 @@ namespace GitHub.Runner.Worker
                         Dictionary<int, Process> currentProcesses = SnapshotProcesses();
                         foreach (var proc in currentProcesses)
                         {
+                            if (proc.Key == Process.GetCurrentProcess().Id)
+                            {
+                                // skip for current process.
+                                continue;
+                            }
+
                             if (_existingProcesses.Contains($"{proc.Key}_{proc.Value.ProcessName}"))
                             {
                                 Trace.Verbose($"Skip existing process. PID: {proc.Key} ({proc.Value.ProcessName})");

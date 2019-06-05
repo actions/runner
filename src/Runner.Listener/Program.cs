@@ -18,52 +18,52 @@ namespace GitHub.Runner.Listener
             // On linux, Negotiate auth is not working if the TFS url is behind Https
             // On windows, Proxy is not working
             AppContext.SetSwitch("System.Net.Http.UseSocketsHttpHandler", false);
-            using (HostContext context = new HostContext("Agent"))
+            using (HostContext context = new HostContext("Runner"))
             {
                 return MainAsync(context, args).GetAwaiter().GetResult();
             }
         }
 
         // Return code definition: (this will be used by service host to determine whether it will re-launch Runner.Listener)
-        // 0: Agent exit
+        // 0: Runner exit
         // 1: Terminate failure
         // 2: Retriable failure
         // 3: Exit for self update
         public async static Task<int> MainAsync(IHostContext context, string[] args)
         {
-            Tracing trace = context.GetTrace("AgentProcess");
-            trace.Info($"Agent is built for {Constants.Agent.Platform} ({Constants.Agent.PlatformArchitecture}) - {BuildConstants.RunnerPackage.PackageName}.");
+            Tracing trace = context.GetTrace(nameof(GitHub.Runner.Listener));
+            trace.Info($"Runner is built for {Constants.Runner.Platform} ({Constants.Runner.PlatformArchitecture}) - {BuildConstants.RunnerPackage.PackageName}.");
             trace.Info($"RuntimeInformation: {RuntimeInformation.OSDescription}.");
-            context.WritePerfCounter("AgentProcessStarted");
+            context.WritePerfCounter("RunnerProcessStarted");
             var terminal = context.GetService<ITerminal>();
 
             // Validate the binaries intended for one OS are not running on a different OS.
-            switch (Constants.Agent.Platform)
+            switch (Constants.Runner.Platform)
             {
                 case Constants.OSPlatform.Linux:
                     if (!RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
                     {
                         terminal.WriteLine(StringUtil.Loc("NotLinux"));
-                        return Constants.Agent.ReturnCode.TerminatedError;
+                        return Constants.Runner.ReturnCode.TerminatedError;
                     }
                     break;
                 case Constants.OSPlatform.OSX:
                     if (!RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
                     {
                         terminal.WriteLine(StringUtil.Loc("NotOSX"));
-                        return Constants.Agent.ReturnCode.TerminatedError;
+                        return Constants.Runner.ReturnCode.TerminatedError;
                     }
                     break;
                 case Constants.OSPlatform.Windows:
                     if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                     {
                         terminal.WriteLine(StringUtil.Loc("NotWindows"));
-                        return Constants.Agent.ReturnCode.TerminatedError;
+                        return Constants.Runner.ReturnCode.TerminatedError;
                     }
                     break;
                 default:
-                    terminal.WriteLine(StringUtil.Loc("PlatformNotSupport", RuntimeInformation.OSDescription, Constants.Agent.Platform.ToString()));
-                    return Constants.Agent.ReturnCode.TerminatedError;
+                    terminal.WriteLine(StringUtil.Loc("PlatformNotSupport", RuntimeInformation.OSDescription, Constants.Runner.Platform.ToString()));
+                    return Constants.Runner.ReturnCode.TerminatedError;
             }
 
             try
@@ -74,17 +74,17 @@ namespace GitHub.Runner.Listener
                 trace.Info($"UI Culture: {CultureInfo.CurrentUICulture.Name}");
 
                 // Validate directory permissions.
-                string agentDirectory = context.GetDirectory(WellKnownDirectory.Root);
-                trace.Info($"Validating directory permissions for: '{agentDirectory}'");
+                string runnerDirectory = context.GetDirectory(WellKnownDirectory.Root);
+                trace.Info($"Validating directory permissions for: '{runnerDirectory}'");
                 try
                 {
-                    IOUtil.ValidateExecutePermission(agentDirectory);
+                    IOUtil.ValidateExecutePermission(runnerDirectory);
                 }
                 catch (Exception e)
                 {
                     terminal.WriteError(StringUtil.Loc("ErrorOccurred", e.Message));
                     trace.Error(e);
-                    return Constants.Agent.ReturnCode.TerminatedError;
+                    return Constants.Runner.ReturnCode.TerminatedError;
                 }
 
                 // Add environment variables from .env file
@@ -114,22 +114,22 @@ namespace GitHub.Runner.Listener
                     terminal.WriteError(StringUtil.Loc("UnrecognizedCmdArgs", string.Join(", ", unknownCommandlines)));
                 }
 
-                // Defer to the Agent class to execute the command.
-                IAgent agent = context.GetService<IAgent>();
+                // Defer to the Runner class to execute the command.
+                IRunner runner = context.GetService<IRunner>();
                 try
                 {
-                    return await agent.ExecuteCommand(command);
+                    return await runner.ExecuteCommand(command);
                 }
-                catch (OperationCanceledException) when (context.AgentShutdownToken.IsCancellationRequested)
+                catch (OperationCanceledException) when (context.RunnerShutdownToken.IsCancellationRequested)
                 {
-                    trace.Info("Agent execution been cancelled.");
-                    return Constants.Agent.ReturnCode.Success;
+                    trace.Info("Runner execution been cancelled.");
+                    return Constants.Runner.ReturnCode.Success;
                 }
                 catch (NonRetryableException e)
                 {
                     terminal.WriteError(StringUtil.Loc("ErrorOccurred", e.Message));
                     trace.Error(e);
-                    return Constants.Agent.ReturnCode.TerminatedError;
+                    return Constants.Runner.ReturnCode.TerminatedError;
                 }
 
             }
@@ -137,7 +137,7 @@ namespace GitHub.Runner.Listener
             {
                 terminal.WriteError(StringUtil.Loc("ErrorOccurred", e.Message));
                 trace.Error(e);
-                return Constants.Agent.ReturnCode.RetryableError;
+                return Constants.Runner.ReturnCode.RetryableError;
             }
         }
     }

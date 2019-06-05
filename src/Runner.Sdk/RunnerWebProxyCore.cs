@@ -5,7 +5,7 @@ using System.Text.RegularExpressions;
 
 namespace GitHub.Runner.Sdk
 {
-    public class AgentWebProxySettings
+    public class RunnerWebProxySettings
     {
         public string ProxyAddress { get; set; }
         public string ProxyUsername { get; set; }
@@ -14,18 +14,18 @@ namespace GitHub.Runner.Sdk
         public IWebProxy WebProxy { get; set; }
     }
 
-    public class AgentWebProxy : IWebProxy
+    public class RunnerWebProxyCore : IWebProxy
     {
         private string _proxyAddress;
         private readonly List<Regex> _regExBypassList = new List<Regex>();
 
         public ICredentials Credentials { get; set; }
 
-        public AgentWebProxy()
+        public RunnerWebProxyCore()
         {
         }
 
-        public AgentWebProxy(string proxyAddress, string proxyUsername, string proxyPassword, List<string> proxyBypassList)
+        public RunnerWebProxyCore(string proxyAddress, string proxyUsername, string proxyPassword, List<string> proxyBypassList)
         {
             Update(proxyAddress, proxyUsername, proxyPassword, proxyBypassList);
         }

@@ -7,7 +7,6 @@ using System.Runtime.InteropServices;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Worker;
-using GitHub.Runner.Worker.Build;
 using GitHub.Runner.Common.Capabilities;
 using GitHub.Services.WebApi;
 using Microsoft.Win32;
@@ -24,7 +23,7 @@ using GitHub.Runner.Sdk;
 namespace GitHub.Runner.Worker
 {
     [ServiceLocator(Default = typeof(DiagnosticLogManager))]
-    public interface IDiagnosticLogManager : IAgentService
+    public interface IDiagnosticLogManager : IRunnerService
     {
         Task UploadDiagnosticLogsAsync(IExecutionContext executionContext,
                                   Pipelines.AgentJobRequestMessage message,
@@ -38,7 +37,7 @@ namespace GitHub.Runner.Worker
     //          \files (supportFolder)
     //              ...
     //          support.zip
-    public sealed class DiagnosticLogManager : AgentService, IDiagnosticLogManager
+    public sealed class DiagnosticLogManager : RunnerService, IDiagnosticLogManager
     {
         public async Task UploadDiagnosticLogsAsync(IExecutionContext executionContext,
                                          Pipelines.AgentJobRequestMessage message,
@@ -63,7 +62,7 @@ namespace GitHub.Runner.Worker
             // Create the environment file
             // \_layout\_work\_temp\[jobname-support]\files\environment.txt
             var configurationStore = HostContext.GetService<IConfigurationStore>();
-            AgentSettings settings = configurationStore.GetSettings();
+            RunnerSettings settings = configurationStore.GetSettings();
             int agentId = settings.AgentId;
             string agentName = settings.AgentName;
             int poolId = settings.PoolId;

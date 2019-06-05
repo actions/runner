@@ -26,12 +26,12 @@ namespace GitHub.Runner.Worker
     }
 
     [ServiceLocator(Default = typeof(StepsRunner))]
-    public interface IStepsRunner : IAgentService
+    public interface IStepsRunner : IRunnerService
     {
         Task RunAsync(IExecutionContext Context, IList<IStep> steps);
     }
 
-    public sealed class StepsRunner : AgentService, IStepsRunner
+    public sealed class StepsRunner : RunnerService, IStepsRunner
     {
         // StepsRunner should never throw exception to caller
         public async Task RunAsync(IExecutionContext jobContext, IList<IStep> steps)
@@ -84,9 +84,9 @@ namespace GitHub.Runner.Worker
 
                                 step.ExecutionContext.Debug($"Re-evaluate condition on job cancellation for step: '{step.DisplayName}'.");
                                 ConditionResult conditionReTestResult;
-                                if (HostContext.AgentShutdownToken.IsCancellationRequested)
+                                if (HostContext.RunnerShutdownToken.IsCancellationRequested)
                                 {
-                                    step.ExecutionContext.Debug($"Skip Re-evaluate condition on agent shutdown.");
+                                    step.ExecutionContext.Debug($"Skip Re-evaluate condition on runner shutdown.");
                                     conditionReTestResult = false;
                                 }
                                 else
@@ -126,9 +126,9 @@ namespace GitHub.Runner.Worker
                         step.ExecutionContext.Debug($"Evaluating condition for step: '{step.DisplayName}'");
                         Exception conditionEvaluateError = null;
                         ConditionResult conditionResult;
-                        if (HostContext.AgentShutdownToken.IsCancellationRequested)
+                        if (HostContext.RunnerShutdownToken.IsCancellationRequested)
                         {
-                            step.ExecutionContext.Debug($"Skip evaluate condition on agent shutdown.");
+                            step.ExecutionContext.Debug($"Skip evaluate condition on runner shutdown.");
                             conditionResult = false;
                         }
                         else
@@ -208,7 +208,7 @@ namespace GitHub.Runner.Worker
 #if OS_WINDOWS
             try
             {
-                if (step.ExecutionContext.Variables.Retain_Default_Encoding != true && Console.InputEncoding.CodePage != 65001)
+                if (Console.InputEncoding.CodePage != 65001)
                 {
                     using (var p = HostContext.CreateService<IProcessInvoker>())
                     {
@@ -282,7 +282,7 @@ namespace GitHub.Runner.Worker
                     if (step.ExecutionContext.CancellationToken.IsCancellationRequested &&
                         !jobCancellationToken.IsCancellationRequested)
                     {
-                        // Log the timeout error, set step result to falied if the current result is not canceled.
+                        // Log the timeout error, set step result to failed if the current result is not canceled.
                         Trace.Error($"Caught timeout exception from async command {command.Name}: {ex}");
                         step.ExecutionContext.Error(StringUtil.Loc("StepTimedOut"));
 

@@ -35,7 +35,7 @@ namespace GitHub.Runner.Common
             _traceSetting = traceSetting;
             _secretMasker = secretMasker;
 
-            Switch = new SourceSwitch("VSTSAgentSwitch")
+            Switch = new SourceSwitch("GitHubActionsRunnerSwitch")
             {
                 Level = _traceSetting.DefaultTraceLevel.ToSourceLevels()
             };
@@ -77,7 +77,7 @@ namespace GitHub.Runner.Common
             TraceLevel sourceTraceLevel;
             if (_traceSetting.DetailTraceSetting.TryGetValue(name, out sourceTraceLevel))
             {
-                sourceSwitch = new SourceSwitch("VSTSAgentSubSwitch")
+                sourceSwitch = new SourceSwitch("GitHubActionsRunnerSubSwitch")
                 {
                     Level = sourceTraceLevel.ToSourceLevels()
                 };

@@ -1,11 +1,7 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using GitHub.Runner.Sdk;
-using GitHub.Services.WebApi;
-using Newtonsoft.Json.Linq;
 
 namespace GitHub.Runner.Common.Util
 {
@@ -15,7 +11,7 @@ namespace GitHub.Runner.Common.Util
         {
             get
             {
-                switch (Constants.Agent.Platform)
+                switch (Constants.Runner.Platform)
                 {
                     case Constants.OSPlatform.Linux:
                     case Constants.OSPlatform.OSX:
@@ -32,7 +28,7 @@ namespace GitHub.Runner.Common.Util
         {
             get
             {
-                switch (Constants.Agent.Platform)
+                switch (Constants.Runner.Platform)
                 {
                     case Constants.OSPlatform.Linux:
                         return "Linux";
@@ -50,7 +46,7 @@ namespace GitHub.Runner.Common.Util
         {
             get
             {
-                switch (Constants.Agent.PlatformArchitecture)
+                switch (Constants.Runner.PlatformArchitecture)
                 {
                     case Constants.Architecture.X86:
                         return "X86";
@@ -62,70 +58,6 @@ namespace GitHub.Runner.Common.Util
                         throw new NotSupportedException(); // Should never reach here.
                 }
             }
-        }
-
-        public static JToken ExpandEnvironmentVariables(IHostContext context, JToken target)
-        {
-            var mapFuncs = new Dictionary<JTokenType, Func<JToken, JToken>>
-            {
-                {
-                    JTokenType.String,
-                    (t)=> {
-                        var token = new Dictionary<string, string>()
-                        {
-                            {
-                                "token", t.ToString()
-                            }
-                        };
-                        ExpandEnvironmentVariables(context, token);
-                        return token["token"];
-                    }
-                }
-            };
-
-            return target.Map(mapFuncs);
-        }
-
-        public static void ExpandEnvironmentVariables(IHostContext context, IDictionary<string, string> target)
-        {
-            ArgUtil.NotNull(context, nameof(context));
-            Tracing trace = context.GetTrace(nameof(VarUtil));
-            trace.Entering();
-
-            // Copy the environment variables into a dictionary that uses the correct comparer.
-            var source = new Dictionary<string, string>(EnvironmentVariableKeyComparer);
-            IDictionary environment = Environment.GetEnvironmentVariables();
-            foreach (DictionaryEntry entry in environment)
-            {
-                string key = entry.Key as string ?? string.Empty;
-                string val = entry.Value as string ?? string.Empty;
-                source[key] = val;
-            }
-
-            // Expand the target values.
-            ExpandValues(context, source, target);
-        }
-
-        public static JToken ExpandValues(IHostContext context, IDictionary<string, string> source, JToken target)
-        {
-            var mapFuncs = new Dictionary<JTokenType, Func<JToken, JToken>>
-            {
-                {
-                    JTokenType.String,
-                    (t)=> {
-                        var token = new Dictionary<string, string>()
-                        {
-                            {
-                                "token", t.ToString()
-                            }
-                        };
-                        ExpandValues(context, source, token);
-                        return token["token"];
-                    }
-                }
-            };
-
-            return target.Map(mapFuncs);
         }
 
         public static void ExpandValues(IHostContext context, IDictionary<string, string> source, IDictionary<string, string> target)

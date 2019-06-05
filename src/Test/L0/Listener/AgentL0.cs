@@ -20,11 +20,11 @@ namespace GitHub.Runner.Common.Tests.Listener
         private Mock<IMessageListener> _messageListener;
         private Mock<IPromptManager> _promptManager;
         private Mock<IJobDispatcher> _jobDispatcher;
-        private Mock<IAgentServer> _agentServer;
+        private Mock<IRunnerServer> _agentServer;
         private Mock<ITerminal> _term;
         private Mock<IConfigurationStore> _configStore;
-        private Mock<IVstsAgentWebProxy> _proxy;
-        private Mock<IAgentCertificateManager> _cert;
+        private Mock<IRunnerWebProxy> _proxy;
+        private Mock<IRunnerCertificateManager> _cert;
         private Mock<ISelfUpdater> _updater;
 
         public AgentL0()
@@ -34,11 +34,11 @@ namespace GitHub.Runner.Common.Tests.Listener
             _messageListener = new Mock<IMessageListener>();
             _promptManager = new Mock<IPromptManager>();
             _jobDispatcher = new Mock<IJobDispatcher>();
-            _agentServer = new Mock<IAgentServer>();
+            _agentServer = new Mock<IRunnerServer>();
             _term = new Mock<ITerminal>();
             _configStore = new Mock<IConfigurationStore>();
-            _proxy = new Mock<IVstsAgentWebProxy>();
-            _cert = new Mock<IAgentCertificateManager>();
+            _proxy = new Mock<IRunnerWebProxy>();
+            _cert = new Mock<IRunnerCertificateManager>();
             _updater = new Mock<ISelfUpdater>();
         }
 
@@ -68,17 +68,17 @@ namespace GitHub.Runner.Common.Tests.Listener
             using (var hc = new TestHostContext(this))
             {
                 //Arrange
-                var agent = new Runner.Listener.Agent();
+                var agent = new Runner.Listener.Runner();
                 hc.SetSingleton<IConfigurationManager>(_configurationManager.Object);
                 hc.SetSingleton<IJobNotification>(_jobNotification.Object);
                 hc.SetSingleton<IMessageListener>(_messageListener.Object);
                 hc.SetSingleton<IPromptManager>(_promptManager.Object);
-                hc.SetSingleton<IAgentServer>(_agentServer.Object);
-                hc.SetSingleton<IVstsAgentWebProxy>(_proxy.Object);
-                hc.SetSingleton<IAgentCertificateManager>(_cert.Object);
+                hc.SetSingleton<IRunnerServer>(_agentServer.Object);
+                hc.SetSingleton<IRunnerWebProxy>(_proxy.Object);
+                hc.SetSingleton<IRunnerCertificateManager>(_cert.Object);
                 hc.SetSingleton<IConfigurationStore>(_configStore.Object);
                 agent.Initialize(hc);
-                var settings = new AgentSettings
+                var settings = new RunnerSettings
                 {
                     PoolId = 43242
                 };
@@ -105,7 +105,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                             if (0 == messages.Count)
                             {
                                 signalWorkerComplete.Release();
-                                await Task.Delay(2000, hc.AgentShutdownToken);
+                                await Task.Delay(2000, hc.RunnerShutdownToken);
                             }
 
                             return messages.Dequeue();
@@ -146,7 +146,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 else
                 {
                     //Act
-                    hc.ShutdownAgent(ShutdownReason.UserCancelled); //stop Agent
+                    hc.ShutdownRunner(ShutdownReason.UserCancelled); //stop Agent
 
                     //Assert
                     Task[] taskToWait2 = { agentTask, Task.Delay(2000) };
@@ -185,22 +185,22 @@ namespace GitHub.Runner.Common.Tests.Listener
                 hc.SetSingleton<IConfigurationManager>(_configurationManager.Object);
                 hc.SetSingleton<IPromptManager>(_promptManager.Object);
                 hc.SetSingleton<IMessageListener>(_messageListener.Object);
-                hc.SetSingleton<IVstsAgentWebProxy>(_proxy.Object);
-                hc.SetSingleton<IAgentCertificateManager>(_cert.Object);
+                hc.SetSingleton<IRunnerWebProxy>(_proxy.Object);
+                hc.SetSingleton<IRunnerCertificateManager>(_cert.Object);
                 hc.SetSingleton<IConfigurationStore>(_configStore.Object);
 
                 var command = new CommandSettings(hc, args);
 
                 _configurationManager.Setup(x => x.IsConfigured()).Returns(true);
                 _configurationManager.Setup(x => x.LoadSettings())
-                    .Returns(new AgentSettings { });
+                    .Returns(new RunnerSettings { });
 
                 _configStore.Setup(x => x.IsServiceConfigured()).Returns(configureAsService);
 
                 _messageListener.Setup(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()))
                     .Returns(Task.FromResult(false));
 
-                var agent = new Runner.Listener.Agent();
+                var agent = new Runner.Listener.Runner();
                 agent.Initialize(hc);
                 await agent.ExecuteCommand(command);
 
@@ -219,8 +219,8 @@ namespace GitHub.Runner.Common.Tests.Listener
                 hc.SetSingleton<IConfigurationManager>(_configurationManager.Object);
                 hc.SetSingleton<IPromptManager>(_promptManager.Object);
                 hc.SetSingleton<IMessageListener>(_messageListener.Object);
-                hc.SetSingleton<IVstsAgentWebProxy>(_proxy.Object);
-                hc.SetSingleton<IAgentCertificateManager>(_cert.Object);
+                hc.SetSingleton<IRunnerWebProxy>(_proxy.Object);
+                hc.SetSingleton<IRunnerCertificateManager>(_cert.Object);
                 hc.SetSingleton<IConfigurationStore>(_configStore.Object);
 
                 var command = new CommandSettings(hc, new[] { "run" });
@@ -228,7 +228,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 _configurationManager.Setup(x => x.IsConfigured()).
                     Returns(true);
                 _configurationManager.Setup(x => x.LoadSettings())
-                    .Returns(new AgentSettings { });
+                    .Returns(new RunnerSettings { });
 
                 _configStore.Setup(x => x.IsServiceConfigured())
                     .Returns(false);
@@ -236,7 +236,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 _messageListener.Setup(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()))
                     .Returns(Task.FromResult(false));
 
-                var agent = new Runner.Listener.Agent();
+                var agent = new Runner.Listener.Runner();
                 agent.Initialize(hc);
                 await agent.ExecuteCommand(command);
 
@@ -255,8 +255,8 @@ namespace GitHub.Runner.Common.Tests.Listener
                 hc.SetSingleton<IConfigurationManager>(_configurationManager.Object);
                 hc.SetSingleton<IPromptManager>(_promptManager.Object);
                 hc.SetSingleton<IMessageListener>(_messageListener.Object);
-                hc.SetSingleton<IVstsAgentWebProxy>(_proxy.Object);
-                hc.SetSingleton<IAgentCertificateManager>(_cert.Object);
+                hc.SetSingleton<IRunnerWebProxy>(_proxy.Object);
+                hc.SetSingleton<IRunnerCertificateManager>(_cert.Object);
                 hc.SetSingleton<IConfigurationStore>(_configStore.Object);
 
                 var command = new CommandSettings(hc, new string[] { });
@@ -264,7 +264,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 _configurationManager.Setup(x => x.IsConfigured()).
                     Returns(true);
                 _configurationManager.Setup(x => x.LoadSettings())
-                    .Returns(new AgentSettings { });
+                    .Returns(new RunnerSettings { });
 
                 _configStore.Setup(x => x.IsServiceConfigured())
                     .Returns(false);
@@ -272,7 +272,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 _messageListener.Setup(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()))
                     .Returns(Task.FromResult(false));
 
-                var agent = new Runner.Listener.Agent();
+                var agent = new Runner.Listener.Runner();
                 agent.Initialize(hc);
                 await agent.ExecuteCommand(command);
 
@@ -288,17 +288,17 @@ namespace GitHub.Runner.Common.Tests.Listener
             using (var hc = new TestHostContext(this))
             {
                 //Arrange
-                var agent = new Runner.Listener.Agent();
+                var agent = new Runner.Listener.Runner();
                 hc.SetSingleton<IConfigurationManager>(_configurationManager.Object);
                 hc.SetSingleton<IJobNotification>(_jobNotification.Object);
                 hc.SetSingleton<IMessageListener>(_messageListener.Object);
                 hc.SetSingleton<IPromptManager>(_promptManager.Object);
-                hc.SetSingleton<IAgentServer>(_agentServer.Object);
-                hc.SetSingleton<IVstsAgentWebProxy>(_proxy.Object);
-                hc.SetSingleton<IAgentCertificateManager>(_cert.Object);
+                hc.SetSingleton<IRunnerServer>(_agentServer.Object);
+                hc.SetSingleton<IRunnerWebProxy>(_proxy.Object);
+                hc.SetSingleton<IRunnerCertificateManager>(_cert.Object);
                 hc.SetSingleton<IConfigurationStore>(_configStore.Object);
                 agent.Initialize(hc);
-                var settings = new AgentSettings
+                var settings = new RunnerSettings
                 {
                     PoolId = 43242
                 };
@@ -365,7 +365,7 @@ namespace GitHub.Runner.Common.Tests.Listener
 
                 Assert.True(agentTask.IsCompleted, $"{nameof(agent.ExecuteCommand)} timed out.");
                 Assert.True(!agentTask.IsFaulted, agentTask.Exception?.ToString());
-                Assert.True(agentTask.Result == Constants.Agent.ReturnCode.Success);
+                Assert.True(agentTask.Result == Constants.Runner.ReturnCode.Success);
 
                 _jobDispatcher.Verify(x => x.Run(It.IsAny<Pipelines.AgentJobRequestMessage>(), true), Times.Once(),
                      $"{nameof(_jobDispatcher.Object.Run)} was not invoked.");
@@ -384,17 +384,17 @@ namespace GitHub.Runner.Common.Tests.Listener
             using (var hc = new TestHostContext(this))
             {
                 //Arrange
-                var agent = new Runner.Listener.Agent();
+                var agent = new Runner.Listener.Runner();
                 hc.SetSingleton<IConfigurationManager>(_configurationManager.Object);
                 hc.SetSingleton<IJobNotification>(_jobNotification.Object);
                 hc.SetSingleton<IMessageListener>(_messageListener.Object);
                 hc.SetSingleton<IPromptManager>(_promptManager.Object);
-                hc.SetSingleton<IAgentServer>(_agentServer.Object);
-                hc.SetSingleton<IVstsAgentWebProxy>(_proxy.Object);
-                hc.SetSingleton<IAgentCertificateManager>(_cert.Object);
+                hc.SetSingleton<IRunnerServer>(_agentServer.Object);
+                hc.SetSingleton<IRunnerWebProxy>(_proxy.Object);
+                hc.SetSingleton<IRunnerCertificateManager>(_cert.Object);
                 hc.SetSingleton<IConfigurationStore>(_configStore.Object);
                 agent.Initialize(hc);
-                var settings = new AgentSettings
+                var settings = new RunnerSettings
                 {
                     PoolId = 43242
                 };
@@ -468,7 +468,7 @@ namespace GitHub.Runner.Common.Tests.Listener
 
                 Assert.True(agentTask.IsCompleted, $"{nameof(agent.ExecuteCommand)} timed out.");
                 Assert.True(!agentTask.IsFaulted, agentTask.Exception?.ToString());
-                Assert.True(agentTask.Result == Constants.Agent.ReturnCode.Success);
+                Assert.True(agentTask.Result == Constants.Runner.ReturnCode.Success);
 
                 _jobDispatcher.Verify(x => x.Run(It.IsAny<Pipelines.AgentJobRequestMessage>(), true), Times.Once(),
                      $"{nameof(_jobDispatcher.Object.Run)} was not invoked.");
@@ -487,19 +487,19 @@ namespace GitHub.Runner.Common.Tests.Listener
             using (var hc = new TestHostContext(this))
             {
                 //Arrange
-                var agent = new Runner.Listener.Agent();
+                var agent = new Runner.Listener.Runner();
                 hc.SetSingleton<IConfigurationManager>(_configurationManager.Object);
                 hc.SetSingleton<IJobNotification>(_jobNotification.Object);
                 hc.SetSingleton<IMessageListener>(_messageListener.Object);
                 hc.SetSingleton<IPromptManager>(_promptManager.Object);
-                hc.SetSingleton<IAgentServer>(_agentServer.Object);
-                hc.SetSingleton<IVstsAgentWebProxy>(_proxy.Object);
-                hc.SetSingleton<IAgentCertificateManager>(_cert.Object);
+                hc.SetSingleton<IRunnerServer>(_agentServer.Object);
+                hc.SetSingleton<IRunnerWebProxy>(_proxy.Object);
+                hc.SetSingleton<IRunnerCertificateManager>(_cert.Object);
                 hc.SetSingleton<IConfigurationStore>(_configStore.Object);
                 hc.SetSingleton<ISelfUpdater>(_updater.Object);
 
                 agent.Initialize(hc);
-                var settings = new AgentSettings
+                var settings = new RunnerSettings
                 {
                     PoolId = 43242,
                     AgentId = 5678
@@ -560,7 +560,7 @@ namespace GitHub.Runner.Common.Tests.Listener
 
                 Assert.True(agentTask.IsCompleted, $"{nameof(agent.ExecuteCommand)} timed out.");
                 Assert.True(!agentTask.IsFaulted, agentTask.Exception?.ToString());
-                Assert.True(agentTask.Result == Constants.Agent.ReturnCode.RunOnceAgentUpdating);
+                Assert.True(agentTask.Result == Constants.Runner.ReturnCode.RunOnceRunnerUpdating);
 
                 _updater.Verify(x => x.SelfUpdate(It.IsAny<AgentRefreshMessage>(), It.IsAny<IJobDispatcher>(), false, It.IsAny<CancellationToken>()), Times.Once);
                 _jobDispatcher.Verify(x => x.Run(It.IsAny<Pipelines.AgentJobRequestMessage>(), true), Times.Never());

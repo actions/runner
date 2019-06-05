@@ -129,7 +129,7 @@ rem restart interactive runner if needed
 if %restartinteractiverunner% equ 1 (
   echo [%date% %time%] Restart interactive runner >> "%logfile%.succeed" 2>&1
   endlocal
-  start "Action Runner" cmd.exe /k "_ROOT_FOLDER_\run.cmd"
+  start "Actions Runner" cmd.exe /k "_ROOT_FOLDER_\run.cmd"
 ) else (
   endlocal
 )

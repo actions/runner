@@ -12,30 +12,23 @@ using System.Text;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
 
-namespace GitHub.Runner.Worker.Build
+namespace GitHub.Runner.Worker
 {
-    [ServiceLocator(Default = typeof(BuildDirectoryManager))]
-    public interface IBuildDirectoryManager : IAgentService
+    [ServiceLocator(Default = typeof(PipelineDirectoryManager))]
+    public interface IPipelineDirectoryManager : IRunnerService
     {
         TrackingConfig PrepareDirectory(
             IExecutionContext executionContext,
             RepositoryResource repository,
             WorkspaceOptions workspace);
 
-        // void CreateDirectory(
-        //     IExecutionContext executionContext,
-        //     string description, string path,
-        //     bool deleteExisting);
-
         TrackingConfig UpdateDirectory(
             IExecutionContext executionContext,
             RepositoryResource repository);
     }
 
-    public sealed class BuildDirectoryManager : AgentService, IBuildDirectoryManager
+    public sealed class PipelineDirectoryManager : RunnerService, IPipelineDirectoryManager
     {
-        public string MaintenanceDescription => StringUtil.Loc("DeleteUnusedBuildDir");
-
         public TrackingConfig PrepareDirectory(
             IExecutionContext executionContext,
             RepositoryResource repository,
@@ -49,7 +42,7 @@ namespace GitHub.Runner.Worker.Build
             var trackingManager = HostContext.GetService<ITrackingManager>();
 
             // Defer to the source provider to calculate the hash key.
-            Trace.Verbose("Calculating build directory hash key.");
+            Trace.Verbose("Calculating pipeline directory hash key.");
             string hashKey = GetSourceDirectoryHashKey(executionContext);
             Trace.Verbose($"Hash key: {hashKey}");
 
@@ -61,52 +54,46 @@ namespace GitHub.Runner.Worker.Build
                 executionContext.Variables.System_DefinitionId,
                 Constants.Build.Path.TrackingConfigFile);
             Trace.Verbose($"Loading tracking config if exists: {trackingFile}");
-            TrackingConfig existingConfig = trackingManager.LoadIfExists(executionContext, trackingFile);
+            TrackingConfig trackingConfig = trackingManager.LoadIfExists(executionContext, trackingFile);
 
-            // Check if the build needs to be garbage collected. If the hash key
-            // has changed, then the existing build directory cannot be reused.
+            // Check if the pipeline needs to be garbage collected. If the hash key
+            // has changed, then the existing pipeline directory cannot be reused.
             TrackingConfig garbageConfig = null;
-            if (existingConfig != null
-                && !string.Equals(existingConfig.HashKey, hashKey, StringComparison.OrdinalIgnoreCase))
+            if (trackingConfig != null
+                && !string.Equals(trackingConfig.HashKey, hashKey, StringComparison.OrdinalIgnoreCase))
             {
                 // Just store a reference to the config for now. It can safely be
-                // marked for garbage collection only after the new build directory
+                // marked for garbage collection only after the new pipeline directory
                 // config has been created.
-                Trace.Verbose($"Hash key from existing tracking config does not match. Existing key: {existingConfig.HashKey}");
-                garbageConfig = existingConfig;
-                existingConfig = null;
+                Trace.Verbose($"Hash key from existing tracking config does not match. Existing key: {trackingConfig.HashKey}");
+                garbageConfig = trackingConfig;
+                trackingConfig = null;
             }
 
             // Create a new tracking config if required.
-            TrackingConfig newConfig;
-            if (existingConfig == null)
+            if (trackingConfig == null)
             {
                 Trace.Verbose("Creating a new tracking config file.");
                 var agentSetting = HostContext.GetService<IConfigurationStore>().GetSettings();
-                newConfig = trackingManager.Create(
+                trackingConfig = trackingManager.Create(
                     executionContext,
                     repository,
                     hashKey,
-                    trackingFile,
-                    false);
-                // repository.TestOverrideBuildDirectory(agentSetting));
-                ArgUtil.NotNull(newConfig, nameof(newConfig));
+                    trackingFile);
+                ArgUtil.NotNull(trackingConfig, nameof(trackingConfig));
             }
             else
             {
-                // Convert legacy format to the new format if required.
-                newConfig = ConvertToNewFormat(executionContext, repository, existingConfig);
-
                 // Fill out repository type if it's not there.
                 // repository type is a new property introduced for maintenance job
-                if (string.IsNullOrEmpty(newConfig.RepositoryType))
+                if (string.IsNullOrEmpty(trackingConfig.RepositoryType))
                 {
-                    newConfig.RepositoryType = repository.Type;
+                    trackingConfig.RepositoryType = repository.Type;
                 }
 
                 // For existing tracking config files, update the job run properties.
                 Trace.Verbose("Updating job run properties.");
-                trackingManager.UpdateJobRunProperties(executionContext, newConfig, trackingFile);
+                trackingManager.UpdateJobRunProperties(executionContext, trackingConfig, trackingFile);
             }
 
             // Mark the old configuration for garbage collection.
@@ -125,29 +112,29 @@ namespace GitHub.Runner.Worker.Build
             CreateDirectory(
                 executionContext,
                 description: "build directory",
-                path: Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), newConfig.BuildDirectory),
+                path: Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), trackingConfig.PipelineDirectory),
                 deleteExisting: cleanOption == BuildCleanOption.All);
             CreateDirectory(
                 executionContext,
                 description: "artifacts directory",
-                path: Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), newConfig.ArtifactsDirectory),
+                path: Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), trackingConfig.ArtifactsDirectory),
                 deleteExisting: true);
             CreateDirectory(
                 executionContext,
                 description: "binaries directory",
-                path: Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), newConfig.BuildDirectory, Constants.Build.Path.BinariesDirectory),
+                path: Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), trackingConfig.PipelineDirectory, Constants.Build.Path.BinariesDirectory),
                 deleteExisting: cleanOption == BuildCleanOption.Binary);
             CreateDirectory(
                 executionContext,
                 description: "source directory",
-                path: Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), newConfig.SourcesDirectory),
+                path: Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), trackingConfig.SourcesDirectory),
                 deleteExisting: cleanOption == BuildCleanOption.Source);
 
-            var repoPath = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), newConfig.SourcesDirectory);
+            var repoPath = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), trackingConfig.SourcesDirectory);
             Trace.Info($"Set repository path for repository {repository.Alias} to '{repoPath}'");
             repository.Properties.Set<string>(RepositoryPropertyNames.Path, repoPath);
 
-            return newConfig;
+            return trackingConfig;
         }
 
         public TrackingConfig UpdateDirectory(
@@ -177,18 +164,15 @@ namespace GitHub.Runner.Worker.Build
             TrackingConfig existingConfig = trackingManager.LoadIfExists(executionContext, trackingFile);
             ArgUtil.NotNull(existingConfig, nameof(existingConfig));
 
-            TrackingConfig newConfig = ConvertToNewFormat(executionContext, repository, existingConfig);
-            ArgUtil.NotNull(newConfig, nameof(newConfig));
-
             var repoPath = repository.Properties.Get<string>(RepositoryPropertyNames.Path);
             ArgUtil.NotNullOrEmpty(repoPath, nameof(repoPath));
             Trace.Info($"Update repository path for repository {repository.Alias} to '{repoPath}'");
 
-            string buildDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), newConfig.BuildDirectory);
+            string buildDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), existingConfig.PipelineDirectory);
             if (repoPath.StartsWith(buildDirectory + Path.DirectorySeparatorChar) || repoPath.StartsWith(buildDirectory + Path.AltDirectorySeparatorChar))
             {
                 // The sourcesDirectory in tracking file is a relative path to agent's work folder.
-                newConfig.SourcesDirectory = repoPath.Substring(HostContext.GetDirectory(WellKnownDirectory.Work).Length + 1).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                existingConfig.SourcesDirectory = repoPath.Substring(HostContext.GetDirectory(WellKnownDirectory.Work).Length + 1).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
             }
             else
             {
@@ -197,9 +181,9 @@ namespace GitHub.Runner.Worker.Build
 
             // Update the tracking config files.
             Trace.Verbose("Updating job run properties.");
-            trackingManager.UpdateJobRunProperties(executionContext, newConfig, trackingFile);
+            trackingManager.UpdateJobRunProperties(executionContext, existingConfig, trackingFile);
 
-            return newConfig;
+            return existingConfig;
         }
 
         private string GetSourceDirectoryHashKey(IExecutionContext executionContext)
@@ -226,60 +210,6 @@ namespace GitHub.Runner.Worker.Build
 
                 return hexString.ToString();
             }
-        }
-
-        private TrackingConfig ConvertToNewFormat(
-            IExecutionContext executionContext,
-            RepositoryResource repository,
-            TrackingConfig config)
-        {
-            Trace.Entering();
-
-            // If it's already in the new format, return it.
-            TrackingConfig newConfig = config as TrackingConfig;
-            ArgUtil.NotNull(newConfig, nameof(newConfig));
-            // if (newConfig != null)
-            // {
-            return newConfig;
-            // }
-
-            // Delete the legacy artifact/staging directories.
-            // LegacyTrackingConfig legacyConfig = config as LegacyTrackingConfig;
-            // DeleteDirectory(
-            //     executionContext,
-            //     description: "legacy artifacts directory",
-            //     path: Path.Combine(legacyConfig.BuildDirectory, Constants.Build.Path.LegacyArtifactsDirectory));
-            // DeleteDirectory(
-            //     executionContext,
-            //     description: "legacy staging directory",
-            //     path: Path.Combine(legacyConfig.BuildDirectory, Constants.Build.Path.LegacyStagingDirectory));
-
-            // // Determine the source directory name. Check if the directory is named "s" already.
-            // // Convert the source directory to be named "s" if there is a problem with the old name.
-            // string sourcesDirectoryNameOnly = Constants.Build.Path.SourcesDirectory;
-            // string repositoryName = repository.Properties.Get<string>(RepositoryPropertyNames.Name);
-            // if (!Directory.Exists(Path.Combine(legacyConfig.BuildDirectory, sourcesDirectoryNameOnly))
-            //     && !String.Equals(repositoryName, Constants.Build.Path.ArtifactsDirectory, StringComparison.OrdinalIgnoreCase)
-            //     && !String.Equals(repositoryName, Constants.Build.Path.LegacyArtifactsDirectory, StringComparison.OrdinalIgnoreCase)
-            //     && !String.Equals(repositoryName, Constants.Build.Path.LegacyStagingDirectory, StringComparison.OrdinalIgnoreCase)
-            //     && !String.Equals(repositoryName, Constants.Build.Path.TestResultsDirectory, StringComparison.OrdinalIgnoreCase)
-            //     && !repositoryName.Contains("\\")
-            //     && !repositoryName.Contains("/")
-            //     && Directory.Exists(Path.Combine(legacyConfig.BuildDirectory, repositoryName)))
-            // {
-            //     sourcesDirectoryNameOnly = repositoryName;
-            // }
-
-            // // Convert to the new format.
-            // newConfig = new TrackingConfig(
-            //     executionContext,
-            //     legacyConfig,
-            //     sourcesDirectoryNameOnly,
-            //     repository.Type,
-            //     // The legacy artifacts directory has been deleted at this point - see above - so
-            //     // switch the configuration to using the new naming scheme.
-            //     useNewArtifactsDirectoryName: true);
-            // return newConfig;
         }
 
         public void CreateDirectory(IExecutionContext executionContext, string description, string path, bool deleteExisting)

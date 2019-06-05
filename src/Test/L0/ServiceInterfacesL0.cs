@@ -22,8 +22,7 @@ namespace GitHub.Runner.Common.Tests
             // Otherwise, the interface needs to whitelisted.
             var whitelist = new[]
             {
-                typeof(ICredentialProvider),
-                typeof(IConfigurationProvider),
+                typeof(ICredentialProvider)
             };
             Validate(
                 assembly: typeof(IMessageListener).GetTypeInfo().Assembly,
@@ -39,7 +38,7 @@ namespace GitHub.Runner.Common.Tests
             // Otherwise, the interface needs to whitelisted.
             var whitelist = new[]
             {
-                typeof(IAgentService),
+                typeof(IRunnerService),
                 typeof(ICredentialProvider),
                 typeof(IExtension),
                 typeof(IHostContext),

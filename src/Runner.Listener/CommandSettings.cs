@@ -19,92 +19,68 @@ namespace GitHub.Runner.Listener
 
         private readonly string[] validCommands =
         {
-            Constants.Agent.CommandLine.Commands.Configure,
-            Constants.Agent.CommandLine.Commands.LocalRun,
-            Constants.Agent.CommandLine.Commands.Remove,
-            Constants.Agent.CommandLine.Commands.Run,
-            Constants.Agent.CommandLine.Commands.Warmup,
+            Constants.Runner.CommandLine.Commands.Configure,
+            Constants.Runner.CommandLine.Commands.Remove,
+            Constants.Runner.CommandLine.Commands.Run,
+            Constants.Runner.CommandLine.Commands.Warmup,
         };
 
         private readonly string[] validFlags =
         {
-            Constants.Agent.CommandLine.Flags.AcceptTeeEula,
-            Constants.Agent.CommandLine.Flags.AddMachineGroupTags,
-            Constants.Agent.CommandLine.Flags.AddDeploymentGroupTags,
-            Constants.Agent.CommandLine.Flags.Commit,
-            Constants.Agent.CommandLine.Flags.DeploymentGroup,
-            Constants.Agent.CommandLine.Flags.DeploymentPool,
+            Constants.Runner.CommandLine.Flags.Commit,
 #if OS_WINDOWS
-            Constants.Agent.CommandLine.Flags.GitUseSChannel,
+            Constants.Runner.CommandLine.Flags.GitUseSChannel,
 #endif
-            Constants.Agent.CommandLine.Flags.Help,
-            Constants.Agent.CommandLine.Flags.MachineGroup,
-            Constants.Agent.CommandLine.Flags.NoRestart,
-            Constants.Agent.CommandLine.Flags.OverwriteAutoLogon,
-            Constants.Agent.CommandLine.Flags.Replace,
-            Constants.Agent.CommandLine.Flags.RunAsAutoLogon,
-            Constants.Agent.CommandLine.Flags.RunAsService,
-            Constants.Agent.CommandLine.Flags.Once,
-            Constants.Agent.CommandLine.Flags.SslSkipCertValidation,
-            Constants.Agent.CommandLine.Flags.Unattended,
-            Constants.Agent.CommandLine.Flags.Version,
-            Constants.Agent.CommandLine.Flags.WhatIf
+            Constants.Runner.CommandLine.Flags.Help,
+            Constants.Runner.CommandLine.Flags.Replace,
+            Constants.Runner.CommandLine.Flags.RunAsService,
+            Constants.Runner.CommandLine.Flags.Once,
+            Constants.Runner.CommandLine.Flags.SslSkipCertValidation,
+            Constants.Runner.CommandLine.Flags.Unattended,
+            Constants.Runner.CommandLine.Flags.Version
         };
 
         private readonly string[] validArgs =
         {
-            Constants.Agent.CommandLine.Args.Agent,
-            Constants.Agent.CommandLine.Args.Auth,
-            Constants.Agent.CommandLine.Args.CollectionName,
-            Constants.Agent.CommandLine.Args.DeploymentGroupName,
-            Constants.Agent.CommandLine.Args.DeploymentPoolName,
-            Constants.Agent.CommandLine.Args.DeploymentGroupTags,
-            Constants.Agent.CommandLine.Args.MachineGroupName,
-            Constants.Agent.CommandLine.Args.MachineGroupTags,
-            Constants.Agent.CommandLine.Args.Matrix,
-            Constants.Agent.CommandLine.Args.MonitorSocketAddress,
-            Constants.Agent.CommandLine.Args.NotificationPipeName,
-            Constants.Agent.CommandLine.Args.Password,
-            Constants.Agent.CommandLine.Args.Phase,
-            Constants.Agent.CommandLine.Args.Pool,
-            Constants.Agent.CommandLine.Args.ProjectName,
-            Constants.Agent.CommandLine.Args.ProxyPassword,
-            Constants.Agent.CommandLine.Args.ProxyUrl,
-            Constants.Agent.CommandLine.Args.ProxyUserName,
-            Constants.Agent.CommandLine.Args.SslCACert,
-            Constants.Agent.CommandLine.Args.SslClientCert,
-            Constants.Agent.CommandLine.Args.SslClientCertKey,
-            Constants.Agent.CommandLine.Args.SslClientCertArchive,
-            Constants.Agent.CommandLine.Args.SslClientCertPassword,
-            Constants.Agent.CommandLine.Args.StartupType,
-            Constants.Agent.CommandLine.Args.Token,
-            Constants.Agent.CommandLine.Args.Url,
-            Constants.Agent.CommandLine.Args.UserName,
-            Constants.Agent.CommandLine.Args.WindowsLogonAccount,
-            Constants.Agent.CommandLine.Args.WindowsLogonPassword,
-            Constants.Agent.CommandLine.Args.Work,
-            Constants.Agent.CommandLine.Args.Yml
+            Constants.Runner.CommandLine.Args.Agent,
+            Constants.Runner.CommandLine.Args.Auth,
+            Constants.Runner.CommandLine.Args.MonitorSocketAddress,
+            Constants.Runner.CommandLine.Args.NotificationPipeName,
+            Constants.Runner.CommandLine.Args.Password,
+            Constants.Runner.CommandLine.Args.Pool,
+            Constants.Runner.CommandLine.Args.ProxyPassword,
+            Constants.Runner.CommandLine.Args.ProxyUrl,
+            Constants.Runner.CommandLine.Args.ProxyUserName,
+            Constants.Runner.CommandLine.Args.SslCACert,
+            Constants.Runner.CommandLine.Args.SslClientCert,
+            Constants.Runner.CommandLine.Args.SslClientCertKey,
+            Constants.Runner.CommandLine.Args.SslClientCertArchive,
+            Constants.Runner.CommandLine.Args.SslClientCertPassword,
+            Constants.Runner.CommandLine.Args.StartupType,
+            Constants.Runner.CommandLine.Args.Token,
+            Constants.Runner.CommandLine.Args.Url,
+            Constants.Runner.CommandLine.Args.UserName,
+            Constants.Runner.CommandLine.Args.WindowsLogonAccount,
+            Constants.Runner.CommandLine.Args.WindowsLogonPassword,
+            Constants.Runner.CommandLine.Args.Work
         };
 
         // Commands.
-        public bool Configure => TestCommand(Constants.Agent.CommandLine.Commands.Configure);
-        public bool LocalRun => TestCommand(Constants.Agent.CommandLine.Commands.LocalRun);
-        public bool Remove => TestCommand(Constants.Agent.CommandLine.Commands.Remove);
-        public bool Run => TestCommand(Constants.Agent.CommandLine.Commands.Run);
-        public bool Warmup => TestCommand(Constants.Agent.CommandLine.Commands.Warmup);
+        public bool Configure => TestCommand(Constants.Runner.CommandLine.Commands.Configure);
+        public bool Remove => TestCommand(Constants.Runner.CommandLine.Commands.Remove);
+        public bool Run => TestCommand(Constants.Runner.CommandLine.Commands.Run);
+        public bool Warmup => TestCommand(Constants.Runner.CommandLine.Commands.Warmup);
 
         // Flags.
-        public bool Commit => TestFlag(Constants.Agent.CommandLine.Flags.Commit);
-        public bool Help => TestFlag(Constants.Agent.CommandLine.Flags.Help);
-        public bool Unattended => TestFlag(Constants.Agent.CommandLine.Flags.Unattended);
-        public bool Version => TestFlag(Constants.Agent.CommandLine.Flags.Version);
-        public bool DeploymentGroup => TestFlag(Constants.Agent.CommandLine.Flags.MachineGroup) || TestFlag(Constants.Agent.CommandLine.Flags.DeploymentGroup);
-        public bool DeploymentPool => TestFlag(Constants.Agent.CommandLine.Flags.DeploymentPool);
-        public bool WhatIf => TestFlag(Constants.Agent.CommandLine.Flags.WhatIf);
+        public bool Commit => TestFlag(Constants.Runner.CommandLine.Flags.Commit);
+        public bool Help => TestFlag(Constants.Runner.CommandLine.Flags.Help);
+        public bool Unattended => TestFlag(Constants.Runner.CommandLine.Flags.Unattended);
+        public bool Version => TestFlag(Constants.Runner.CommandLine.Flags.Version);
+
 #if OS_WINDOWS
-        public bool GitUseSChannel => TestFlag(Constants.Agent.CommandLine.Flags.GitUseSChannel);
+        public bool GitUseSChannel => TestFlag(Constants.Runner.CommandLine.Flags.GitUseSChannel);
 #endif
-        public bool RunOnce => TestFlag(Constants.Agent.CommandLine.Flags.Once);
+        public bool RunOnce => TestFlag(Constants.Runner.CommandLine.Flags.Once);
 
         // Constructor.
         public CommandSettings(IHostContext context, string[] args)
@@ -116,15 +92,15 @@ namespace GitHub.Runner.Listener
             // Parse the command line args.
             _parser = new CommandLineParser(
                 hostContext: context,
-                secretArgNames: Constants.Agent.CommandLine.Args.Secrets);
+                secretArgNames: Constants.Runner.CommandLine.Args.Secrets);
             _parser.Parse(args);
 
             // Store and remove any args passed via environment variables.
             IDictionary environment = Environment.GetEnvironmentVariables();
-            string envPrefix = "VSTS_AGENT_INPUT_";
+            string envPrefix = "ACTIONS_RUNNER_INPUT_";
             foreach (DictionaryEntry entry in environment)
             {
-                // Test if starts with VSTS_AGENT_INPUT_.
+                // Test if starts with ACTIONS_RUNNER_INPUT_.
                 string fullKey = entry.Key as string ?? string.Empty;
                 if (fullKey.StartsWith(envPrefix, StringComparison.OrdinalIgnoreCase))
                 {
@@ -135,7 +111,7 @@ namespace GitHub.Runner.Listener
                         string name = fullKey.Substring(envPrefix.Length);
 
                         // Mask secrets.
-                        bool secret = Constants.Agent.CommandLine.Args.Secrets.Any(x => string.Equals(x, name, StringComparison.OrdinalIgnoreCase));
+                        bool secret = Constants.Runner.CommandLine.Args.Secrets.Any(x => string.Equals(x, name, StringComparison.OrdinalIgnoreCase));
                         if (secret)
                         {
                             context.SecretMasker.AddValue(val);
@@ -172,18 +148,10 @@ namespace GitHub.Runner.Listener
         //
         // Interactive flags.
         //
-        public bool GetAcceptTeeEula()
-        {
-            return TestFlagOrPrompt(
-                name: Constants.Agent.CommandLine.Flags.AcceptTeeEula,
-                description: StringUtil.Loc("AcceptTeeEula"),
-                defaultValue: false);
-        }
-
         public bool GetReplace()
         {
             return TestFlagOrPrompt(
-                name: Constants.Agent.CommandLine.Flags.Replace,
+                name: Constants.Runner.CommandLine.Flags.Replace,
                 description: StringUtil.Loc("Replace"),
                 defaultValue: false);
         }
@@ -191,48 +159,15 @@ namespace GitHub.Runner.Listener
         public bool GetRunAsService()
         {
             return TestFlagOrPrompt(
-                name: Constants.Agent.CommandLine.Flags.RunAsService,
+                name: Constants.Runner.CommandLine.Flags.RunAsService,
                 description: StringUtil.Loc("RunAgentAsServiceDescription"),
                 defaultValue: false);
-        }
-
-        public bool GetRunAsAutoLogon()
-        {
-            return TestFlagOrPrompt(
-                name: Constants.Agent.CommandLine.Flags.RunAsAutoLogon,
-                description: StringUtil.Loc("RunAsAutoLogonDescription"),
-                defaultValue: false);
-        }
-
-        public bool GetOverwriteAutoLogon(string logonAccount)
-        {
-            return TestFlagOrPrompt(
-                name: Constants.Agent.CommandLine.Flags.OverwriteAutoLogon,
-                description: StringUtil.Loc("OverwriteAutoLogon", logonAccount),
-                defaultValue: false);
-        }
-
-        public bool GetNoRestart()
-        {
-            return TestFlagOrPrompt(
-                name: Constants.Agent.CommandLine.Flags.NoRestart,
-                description: StringUtil.Loc("NoRestart"),
-                defaultValue: false);
-        }
-
-        public bool GetDeploymentGroupTagsRequired()
-        {
-            return TestFlag(Constants.Agent.CommandLine.Flags.AddMachineGroupTags)
-                   || TestFlagOrPrompt(
-                           name: Constants.Agent.CommandLine.Flags.AddDeploymentGroupTags,
-                           description: StringUtil.Loc("AddDeploymentGroupTagsFlagDescription"),
-                           defaultValue: false);
         }
 
         public bool GetAutoLaunchBrowser()
         {
             return TestFlagOrPrompt(
-                name: Constants.Agent.CommandLine.Flags.LaunchBrowser,
+                name: Constants.Runner.CommandLine.Flags.LaunchBrowser,
                 description: StringUtil.Loc("LaunchBrowser"),
                 defaultValue: true);
         }
@@ -242,7 +177,7 @@ namespace GitHub.Runner.Listener
         public string GetAgentName()
         {
             return GetArgOrPrompt(
-                name: Constants.Agent.CommandLine.Args.Agent,
+                name: Constants.Runner.CommandLine.Args.Agent,
                 description: StringUtil.Loc("AgentName"),
                 defaultValue: Environment.MachineName ?? "myagent",
                 validator: Validators.NonEmptyValidator);
@@ -251,35 +186,25 @@ namespace GitHub.Runner.Listener
         public string GetAuth(string defaultValue)
         {
             return GetArgOrPrompt(
-                name: Constants.Agent.CommandLine.Args.Auth,
+                name: Constants.Runner.CommandLine.Args.Auth,
                 description: StringUtil.Loc("AuthenticationType"),
                 defaultValue: defaultValue,
                 validator: Validators.AuthSchemeValidator);
         }
 
-        public string GetMatrix()
-        {
-            return GetArg(Constants.Agent.CommandLine.Args.Matrix);
-        }
-
         public string GetPassword()
         {
             return GetArgOrPrompt(
-                name: Constants.Agent.CommandLine.Args.Password,
+                name: Constants.Runner.CommandLine.Args.Password,
                 description: StringUtil.Loc("Password"),
                 defaultValue: string.Empty,
                 validator: Validators.NonEmptyValidator);
         }
 
-        public string GetPhase()
-        {
-            return GetArg(Constants.Agent.CommandLine.Args.Phase);
-        }
-
         public string GetPool()
         {
             return GetArgOrPrompt(
-                name: Constants.Agent.CommandLine.Args.Pool,
+                name: Constants.Runner.CommandLine.Args.Pool,
                 description: StringUtil.Loc("AgentMachinePoolNameLabel"),
                 defaultValue: "default",
                 validator: Validators.NonEmptyValidator);
@@ -288,7 +213,7 @@ namespace GitHub.Runner.Listener
         public string GetToken()
         {
             return GetArgOrPrompt(
-                name: Constants.Agent.CommandLine.Args.Token,
+                name: Constants.Runner.CommandLine.Args.Token,
                 description: StringUtil.Loc("PersonalAccessToken"),
                 defaultValue: string.Empty,
                 validator: Validators.NonEmptyValidator);
@@ -298,77 +223,22 @@ namespace GitHub.Runner.Listener
         {
             // Note, GetArg does not consume the arg (like GetArgOrPrompt does).
             if (suppressPromptIfEmpty &&
-                string.IsNullOrEmpty(GetArg(Constants.Agent.CommandLine.Args.Url)))
+                string.IsNullOrEmpty(GetArg(Constants.Runner.CommandLine.Args.Url)))
             {
                 return string.Empty;
             }
 
             return GetArgOrPrompt(
-                name: Constants.Agent.CommandLine.Args.Url,
+                name: Constants.Runner.CommandLine.Args.Url,
                 description: StringUtil.Loc("ServerUrl"),
                 defaultValue: string.Empty,
                 validator: Validators.ServerUrlValidator);
         }
 
-        public string GetDeploymentGroupName()
-        {
-            var result = GetArg(Constants.Agent.CommandLine.Args.MachineGroupName);
-            if (string.IsNullOrEmpty(result))
-            {
-                return GetArgOrPrompt(
-                            name: Constants.Agent.CommandLine.Args.DeploymentGroupName,
-                            description: StringUtil.Loc("DeploymentGroupName"),
-                            defaultValue: string.Empty,
-                            validator: Validators.NonEmptyValidator);
-            }
-            return result;
-        }
-
-        public string GetDeploymentPoolName()
-        {
-            return GetArgOrPrompt(
-                name: Constants.Agent.CommandLine.Args.DeploymentPoolName,
-                description: StringUtil.Loc("DeploymentPoolName"),
-                defaultValue: string.Empty,
-                validator: Validators.NonEmptyValidator);
-        }
-
-        public string GetProjectName(string defaultValue)
-        {
-            return GetArgOrPrompt(
-                name: Constants.Agent.CommandLine.Args.ProjectName,
-                description: StringUtil.Loc("ProjectName"),
-                defaultValue: defaultValue,
-                validator: Validators.NonEmptyValidator);
-        }
-
-        public string GetCollectionName()
-        {
-            return GetArgOrPrompt(
-                name: Constants.Agent.CommandLine.Args.CollectionName,
-                description: StringUtil.Loc("CollectionName"),
-                defaultValue: "DefaultCollection",
-                validator: Validators.NonEmptyValidator);
-        }
-
-        public string GetDeploymentGroupTags()
-        {
-            var result = GetArg(Constants.Agent.CommandLine.Args.MachineGroupTags);
-            if (string.IsNullOrEmpty(result))
-            {
-                return GetArgOrPrompt(
-                    name: Constants.Agent.CommandLine.Args.DeploymentGroupTags,
-                    description: StringUtil.Loc("DeploymentGroupTags"),
-                    defaultValue: string.Empty,
-                    validator: Validators.NonEmptyValidator);
-            }
-            return result;
-        }
-
         public string GetUserName()
         {
             return GetArgOrPrompt(
-                name: Constants.Agent.CommandLine.Args.UserName,
+                name: Constants.Runner.CommandLine.Args.UserName,
                 description: StringUtil.Loc("UserName"),
                 defaultValue: string.Empty,
                 validator: Validators.NonEmptyValidator);
@@ -377,7 +247,7 @@ namespace GitHub.Runner.Listener
         public string GetWindowsLogonAccount(string defaultValue, string descriptionMsg)
         {
             return GetArgOrPrompt(
-                name: Constants.Agent.CommandLine.Args.WindowsLogonAccount,
+                name: Constants.Runner.CommandLine.Args.WindowsLogonAccount,
                 description: descriptionMsg,
                 defaultValue: defaultValue,
                 validator: Validators.NTAccountValidator);
@@ -386,7 +256,7 @@ namespace GitHub.Runner.Listener
         public string GetWindowsLogonPassword(string accountName)
         {
             return GetArgOrPrompt(
-                name: Constants.Agent.CommandLine.Args.WindowsLogonPassword,
+                name: Constants.Runner.CommandLine.Args.WindowsLogonPassword,
                 description: StringUtil.Loc("WindowsLogonPasswordDescription", accountName),
                 defaultValue: string.Empty,
                 validator: Validators.NonEmptyValidator);
@@ -395,7 +265,7 @@ namespace GitHub.Runner.Listener
         public string GetWork()
         {
             return GetArgOrPrompt(
-                name: Constants.Agent.CommandLine.Args.Work,
+                name: Constants.Runner.CommandLine.Args.Work,
                 description: StringUtil.Loc("WorkFolderDescription"),
                 defaultValue: Constants.Path.WorkDirectory,
                 validator: Validators.NonEmptyValidator);
@@ -403,78 +273,68 @@ namespace GitHub.Runner.Listener
 
         public string GetMonitorSocketAddress()
         {
-            return GetArg(Constants.Agent.CommandLine.Args.MonitorSocketAddress);
+            return GetArg(Constants.Runner.CommandLine.Args.MonitorSocketAddress);
         }
 
         public string GetNotificationPipeName()
         {
-            return GetArg(Constants.Agent.CommandLine.Args.NotificationPipeName);
+            return GetArg(Constants.Runner.CommandLine.Args.NotificationPipeName);
         }
 
         public string GetNotificationSocketAddress()
         {
-            return GetArg(Constants.Agent.CommandLine.Args.NotificationSocketAddress);
+            return GetArg(Constants.Runner.CommandLine.Args.NotificationSocketAddress);
         }
 
         // This is used to find out the source from where the Runner.Listener.exe was launched at the time of run
         public string GetStartupType()
         {
-            return GetArg(Constants.Agent.CommandLine.Args.StartupType);
-        }
-
-        public string GetYml()
-        {
-            return GetArg(Constants.Agent.CommandLine.Args.Yml);
+            return GetArg(Constants.Runner.CommandLine.Args.StartupType);
         }
 
         public string GetProxyUrl()
         {
-            return GetArg(Constants.Agent.CommandLine.Args.ProxyUrl);
+            return GetArg(Constants.Runner.CommandLine.Args.ProxyUrl);
         }
 
         public string GetProxyUserName()
         {
-            return GetArg(Constants.Agent.CommandLine.Args.ProxyUserName);
+            return GetArg(Constants.Runner.CommandLine.Args.ProxyUserName);
         }
 
         public string GetProxyPassword()
         {
-            return GetArg(Constants.Agent.CommandLine.Args.ProxyPassword);
+            return GetArg(Constants.Runner.CommandLine.Args.ProxyPassword);
         }
 
         public bool GetSkipCertificateValidation()
         {
-            return TestFlag(Constants.Agent.CommandLine.Flags.SslSkipCertValidation);
+            return TestFlag(Constants.Runner.CommandLine.Flags.SslSkipCertValidation);
         }
 
         public string GetCACertificate()
         {
-            return GetArg(Constants.Agent.CommandLine.Args.SslCACert);
+            return GetArg(Constants.Runner.CommandLine.Args.SslCACert);
         }
 
         public string GetClientCertificate()
         {
-            return GetArg(Constants.Agent.CommandLine.Args.SslClientCert);
+            return GetArg(Constants.Runner.CommandLine.Args.SslClientCert);
         }
 
         public string GetClientCertificatePrivateKey()
         {
-            return GetArg(Constants.Agent.CommandLine.Args.SslClientCertKey);
+            return GetArg(Constants.Runner.CommandLine.Args.SslClientCertKey);
         }
 
         public string GetClientCertificateArchrive()
         {
-            return GetArg(Constants.Agent.CommandLine.Args.SslClientCertArchive);
+            return GetArg(Constants.Runner.CommandLine.Args.SslClientCertArchive);
         }
 
         public string GetClientCertificatePassword()
         {
-            return GetArg(Constants.Agent.CommandLine.Args.SslClientCertPassword);
-        }
-
-        public void SetUnattended()
-        {
-            _parser.Flags.Add(Constants.Agent.CommandLine.Flags.Unattended);
+            return GetArg(Constants.Runner.CommandLine.Args.SslClientCertPassword);
         }
 
         //
@@ -536,7 +396,7 @@ namespace GitHub.Runner.Listener
             return _promptManager.ReadValue(
                 argName: name,
                 description: description,
-                secret: Constants.Agent.CommandLine.Args.Secrets.Any(x => string.Equals(x, name, StringComparison.OrdinalIgnoreCase)),
+                secret: Constants.Runner.CommandLine.Args.Secrets.Any(x => string.Equals(x, name, StringComparison.OrdinalIgnoreCase)),
                 defaultValue: defaultValue,
                 validator: validator,
                 unattended: Unattended);

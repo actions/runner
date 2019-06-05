@@ -13,15 +13,12 @@ namespace GitHub.Runner.Listener.Configuration
     public class SystemDControlManager : ServiceControlManager, ILinuxServiceControlManager
     {
         // This is the name you would see when you do `systemctl list-units | grep vsts`
-        private const string _svcNamePattern = "vsts.agent.{0}.{1}.{2}.service";
-        private const string _svcDisplayPattern = "Azure Pipelines Agent ({0}.{1}.{2})";
-
-        private const int MaxUserNameLength = 32;
-        private const string VstsAgentServiceTemplate = "vsts.agent.service.template";
+        private const string _svcNamePattern = "actions.runner.{0}.{1}.{2}.service";
+        private const string _svcDisplayPattern = "GitHub Actions Runner ({0}.{1}.{2})";
         private const string _shTemplate = "systemd.svc.sh.template";
         private const string _shName = "svc.sh";
 
-        public void GenerateScripts(AgentSettings settings)
+        public void GenerateScripts(RunnerSettings settings)
         {
             try
             {
@@ -53,6 +50,6 @@ namespace GitHub.Runner.Listener.Configuration
                 throw;
             }
         }
-        }
-        }
+    }
+}
 #endif

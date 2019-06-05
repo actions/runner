@@ -2,7 +2,7 @@
 
 namespace GitHub.Runner.Common
 {
-    public interface IExtension : IAgentService
+    public interface IExtension : IRunnerService
     {
         Type ExtensionType { get; }
     }

@@ -26,7 +26,7 @@ namespace GitHub.Runner.Worker
             //ITerminal registers a CTRL-C handler, which keeps the Runner.Worker process running
             //and lets the Runner.Listener handle gracefully the exit.
             var term = context.GetService<ITerminal>();
-            Tracing trace = context.GetTrace(nameof(Program));
+            Tracing trace = context.GetTrace(nameof(GitHub.Runner.Worker));
             try
             {
                 trace.Info($"Version: {BuildConstants.RunnerPackage.Version}");
@@ -51,7 +51,7 @@ namespace GitHub.Runner.Worker
             }
             catch (Exception ex)
             {
-                // Populate any exception that cause worker failure back to agent.
+                // Populate any exception that cause worker failure back to runner.
                 Console.WriteLine(ex.ToString());
                 try
                 {

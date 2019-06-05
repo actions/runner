@@ -13,10 +13,10 @@ namespace GitHub.Runner.Listener.Configuration
 {
     public class WindowsServiceControlManager : ServiceControlManager, IWindowsServiceControlManager
     {
-        public const string WindowsServiceControllerName = "AgentService.exe";
+        public const string WindowsServiceControllerName = "RunnerService.exe";
 
-        private const string ServiceNamePattern = "vstsagent.{0}.{1}.{2}";
-        private const string ServiceDisplayNamePattern = "Azure Pipelines Agent ({0}.{1}.{2})";
+        private const string ServiceNamePattern = "actionsrunner.{0}.{1}.{2}";
+        private const string ServiceDisplayNamePattern = "GitHub Actions Runner ({0}.{1}.{2})";
 
         private INativeWindowsServiceHelper _windowsServiceHelper;
         private ITerminal _term;
@@ -28,22 +28,18 @@ namespace GitHub.Runner.Listener.Configuration
             _term = HostContext.GetService<ITerminal>();
         }
 
-        public void ConfigureService(AgentSettings settings, CommandSettings command)
+        public void ConfigureService(RunnerSettings settings, CommandSettings command)
         {
             Trace.Entering();
 
             if (!_windowsServiceHelper.IsRunningInElevatedMode())
             {
-                Trace.Error("Needs Administrator privileges for configure agent as windows service.");
-                throw new SecurityException(StringUtil.Loc("NeedAdminForConfigAgentWinService"));
+                Trace.Error("Needs Administrator privileges for configure runner as windows service.");
+                throw new SecurityException(StringUtil.Loc("NeedAdminForConfigRunnerWinService"));
             }
 
-            // TODO: Fix bug that exists in the legacy Windows agent where configuration using mirrored credentials causes an error, but the agent is still functional (after restarting). Mirrored credentials is a supported scenario and shouldn't manifest any errors.
-
-            // We use NetworkService as default account for build and release agent
-            // We use Local System as default account for deployment agent, deployment pool agent
-            bool isDeploymentGroupScenario = command.DeploymentGroup || command.DeploymentPool;
-            NTAccount defaultServiceAccount = isDeploymentGroupScenario ? _windowsServiceHelper.GetDefaultAdminServiceAccount() : _windowsServiceHelper.GetDefaultServiceAccount();
+            // We use NetworkService as default account for actions runner
+            NTAccount defaultServiceAccount = _windowsServiceHelper.GetDefaultServiceAccount();
             string logonAccount = command.GetWindowsLogonAccount(defaultValue: defaultServiceAccount.ToString(), descriptionMsg: StringUtil.Loc("WindowsLogonAccountNameDescription"));
 
             string domainName;
@@ -100,18 +96,18 @@ namespace GitHub.Runner.Listener.Configuration
             }
             else
             {
-                if (!_windowsServiceHelper.GrantUserLogonAsServicePrivilage(domainName, userName))
+                if (!_windowsServiceHelper.GrantUserLogonAsServicePrivilege(domainName, userName))
                 {
                     throw new InvalidOperationException(StringUtil.Loc("CanNotGrantPermission", logonAccount));
                 }
             }
 
-            // grant permission for agent root folder and work folder
+            // grant permission for runner root folder and work folder
             Trace.Info("Create local group and grant folder permission to service logon account.");
-            string agentRoot = HostContext.GetDirectory(WellKnownDirectory.Root);
+            string runnerRoot = HostContext.GetDirectory(WellKnownDirectory.Root);
             string workFolder = HostContext.GetDirectory(WellKnownDirectory.Work);
             Directory.CreateDirectory(workFolder);
-            _windowsServiceHelper.GrantDirectoryPermissionForAccount(logonAccount, new[] { agentRoot, workFolder });
+            _windowsServiceHelper.GrantDirectoryPermissionForAccount(logonAccount, new[] { runnerRoot, workFolder });
             _term.WriteLine(StringUtil.Loc("GrantingFilePermissions", logonAccount));
 
             // install service.
@@ -128,8 +124,8 @@ namespace GitHub.Runner.Listener.Configuration
         {
             if (!_windowsServiceHelper.IsRunningInElevatedMode())
             {
-                Trace.Error("Needs Administrator privileges for unconfigure windows service agent.");
-                throw new SecurityException(StringUtil.Loc("NeedAdminForUnconfigWinServiceAgent"));
+                Trace.Error("Needs Administrator privileges for unconfigure windows service runner.");
+                throw new SecurityException(StringUtil.Loc("NeedAdminForUnconfigWinServiceRunner"));
             }
 
             string serviceConfigPath = HostContext.GetConfigFile(WellKnownConfigFile.Service);
@@ -140,12 +136,9 @@ namespace GitHub.Runner.Listener.Configuration
                 _windowsServiceHelper.UninstallService(serviceName);
 
                 // Delete local group we created during configure.
-                string agentRoot = HostContext.GetDirectory(WellKnownDirectory.Root);
+                string runnerRoot = HostContext.GetDirectory(WellKnownDirectory.Root);
                 string workFolder = HostContext.GetDirectory(WellKnownDirectory.Work);
-                _windowsServiceHelper.RevokeDirectoryPermissionForAccount(new[] { agentRoot, workFolder });
-
-                // Remove registry key only on Windows
-                _windowsServiceHelper.DeleteVstsAgentRegistryKey();
+                _windowsServiceHelper.RevokeDirectoryPermissionForAccount(new[] { runnerRoot, workFolder });
             }
 
             IOUtil.DeleteFile(serviceConfigPath);

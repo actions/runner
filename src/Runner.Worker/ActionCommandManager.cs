@@ -1,7 +1,6 @@
 ﻿using GitHub.DistributedTask.Pipelines;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common.Util;
-using GitHub.Runner.Worker.Build;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,14 +10,14 @@ using GitHub.Runner.Sdk;
 namespace GitHub.Runner.Worker
 {
     [ServiceLocator(Default = typeof(ActionCommandManager))]
-    public interface IActionCommandManager : IAgentService
+    public interface IActionCommandManager : IRunnerService
     {
         void EnablePluginInternalCommand();
         void DisablePluginInternalCommand();
         bool TryProcessCommand(IExecutionContext context, string input);
     }
 
-    public sealed class ActionCommandManager : AgentService, IActionCommandManager
+    public sealed class ActionCommandManager : RunnerService, IActionCommandManager
     {
         private const string _stopCommand = "stop-commands";
         private readonly Dictionary<string, IActionCommandExtension> _commandExtensions = new Dictionary<string, IActionCommandExtension>(StringComparer.OrdinalIgnoreCase);
@@ -142,7 +141,7 @@ namespace GitHub.Runner.Worker
         void ProcessCommand(IExecutionContext context, string line, ActionCommand command, out bool omitEcho);
     }
 
-    public sealed class InternalPluginSetRepoPathCommandExtension : AgentService, IActionCommandExtension
+    public sealed class InternalPluginSetRepoPathCommandExtension : RunnerService, IActionCommandExtension
     {
         public string Command => "internal-set-self-path";
 
@@ -154,14 +153,14 @@ namespace GitHub.Runner.Worker
             selfRepo.Properties.Set(RepositoryPropertyNames.Path, command.Data);
             context.SetGitHubContext("workspace", command.Data);
 
-            var directoryManager = HostContext.GetService<IBuildDirectoryManager>();
+            var directoryManager = HostContext.GetService<IPipelineDirectoryManager>();
             var trackingConfig = directoryManager.UpdateDirectory(context, selfRepo);
 
             omitEcho = true;
         }
     }
 
-    public sealed class SetEnvCommandExtension : AgentService, IActionCommandExtension
+    public sealed class SetEnvCommandExtension : RunnerService, IActionCommandExtension
     {
         public string Command => "set-env";
 
@@ -186,7 +185,7 @@ namespace GitHub.Runner.Worker
         }
     }
 
-    public sealed class SetOutputCommandExtension : AgentService, IActionCommandExtension
+    public sealed class SetOutputCommandExtension : RunnerService, IActionCommandExtension
     {
         public string Command => "set-output";
 
@@ -211,7 +210,7 @@ namespace GitHub.Runner.Worker
         }
     }
 
-    public sealed class SetSecretCommandExtension : AgentService, IActionCommandExtension
+    public sealed class SetSecretCommandExtension : RunnerService, IActionCommandExtension
     {
         public string Command => "set-secret";
 
@@ -233,7 +232,7 @@ namespace GitHub.Runner.Worker
         }
     }
 
-    public sealed class AddPathCommandExtension : AgentService, IActionCommandExtension
+    public sealed class AddPathCommandExtension : RunnerService, IActionCommandExtension
     {
         public string Command => "add-path";
 
@@ -262,7 +261,7 @@ namespace GitHub.Runner.Worker
         public override string Command => "error";
     }
 
-    public abstract class IssueCommandExtension : AgentService, IActionCommandExtension
+    public abstract class IssueCommandExtension : RunnerService, IActionCommandExtension
     {
         public abstract IssueType Type { get; }
         public abstract string Command { get; }

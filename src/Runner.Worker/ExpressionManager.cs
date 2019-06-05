@@ -13,35 +13,25 @@ using GitHub.Runner.Sdk;
 namespace GitHub.Runner.Worker
 {
     [ServiceLocator(Default = typeof(ExpressionManager))]
-    public interface IExpressionManager : IAgentService
+    public interface IExpressionManager : IRunnerService
     {
-        IExpressionNode Parse(IExecutionContext context, string condition, bool legacy);
+        IExpressionNode Parse(IExecutionContext context, string condition);
         ConditionResult Evaluate(IExecutionContext context, IExpressionNode tree, bool hostTracingOnly = false);
     }
 
-    public sealed class ExpressionManager : AgentService, IExpressionManager
+    public sealed class ExpressionManager : RunnerService, IExpressionManager
     {
         public static IExpressionNode Always = new AlwaysNode();
         public static IExpressionNode Succeeded = new SucceededNode();
         public static IExpressionNode SucceededOrFailed = new SucceededOrFailedNode();
 
-        public IExpressionNode Parse(IExecutionContext executionContext, string condition, bool legacy)
+        public IExpressionNode Parse(IExecutionContext executionContext, string condition)
         {
             ArgUtil.NotNull(executionContext, nameof(executionContext));
             var expressionTrace = new TraceWriter(Trace, executionContext);
             var parser = new ExpressionParser();
-            var namedValues = default(INamedValueInfo[]);
-            if (legacy)
-            {
-                namedValues = new INamedValueInfo[]
-                {
-                    new NamedValueInfo<VariablesNode>(name: Constants.Expressions.Variables),
-                };
-            }
-            else
-            {
-                namedValues = executionContext.ExpressionValues.Keys.Select(x => new NamedValueInfo<ContextValueNode>(x)).ToArray();
-            }
+            var namedValues = executionContext.ExpressionValues.Keys.Select(x => new NamedValueInfo<ContextValueNode>(x)).ToArray();
+
             var functions = new IFunctionInfo[]
             {
                 new FunctionInfo<AlwaysNode>(name: Constants.Expressions.Always, minParameters: 0, maxParameters: 0),

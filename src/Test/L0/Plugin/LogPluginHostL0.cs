@@ -15,7 +15,7 @@ namespace GitHub.Runner.Common.Tests.LogPluginHost
 {
     public sealed class LogPluginHostL0
     {
-        public class TestTrace : IAgentLogPluginTrace
+        public class TestTrace : IRunnerLogPluginTrace
         {
             private Tracing _trace;
             public TestTrace(TestHostContext testHostContext)
@@ -38,89 +38,89 @@ namespace GitHub.Runner.Common.Tests.LogPluginHost
             }
         }
 
-        public class TestPlugin1 : IAgentLogPlugin
+        public class TestPlugin1 : IRunnerLogPlugin
         {
             public string FriendlyName => "Test1";
 
-            public Task FinalizeAsync(IAgentLogPluginContext context)
+            public Task FinalizeAsync(IRunnerLogPluginContext context)
             {
                 context.Output("Done");
                 return Task.CompletedTask;
             }
 
-            public Task<bool> InitializeAsync(IAgentLogPluginContext context)
+            public Task<bool> InitializeAsync(IRunnerLogPluginContext context)
             {
                 return Task.FromResult(true);
             }
 
-            public Task ProcessLineAsync(IAgentLogPluginContext context, Pipelines.ActionStepDefinitionReference step, string line)
+            public Task ProcessLineAsync(IRunnerLogPluginContext context, Pipelines.ActionStepDefinitionReference step, string line)
             {
                 context.Output(line);
                 return Task.CompletedTask;
             }
         }
 
-        public class TestPlugin2 : IAgentLogPlugin
+        public class TestPlugin2 : IRunnerLogPlugin
         {
             public string FriendlyName => "Test2";
 
-            public Task FinalizeAsync(IAgentLogPluginContext context)
+            public Task FinalizeAsync(IRunnerLogPluginContext context)
             {
                 context.Output("Done");
                 return Task.CompletedTask;
             }
 
-            public Task<bool> InitializeAsync(IAgentLogPluginContext context)
+            public Task<bool> InitializeAsync(IRunnerLogPluginContext context)
             {
                 return Task.FromResult(true);
             }
 
-            public Task ProcessLineAsync(IAgentLogPluginContext context, Pipelines.ActionStepDefinitionReference step, string line)
+            public Task ProcessLineAsync(IRunnerLogPluginContext context, Pipelines.ActionStepDefinitionReference step, string line)
             {
                 context.Output(line);
                 return Task.CompletedTask;
             }
         }
 
-        public class TestPluginSlow : IAgentLogPlugin
+        public class TestPluginSlow : IRunnerLogPlugin
         {
             public string FriendlyName => "TestSlow";
 
-            public Task FinalizeAsync(IAgentLogPluginContext context)
+            public Task FinalizeAsync(IRunnerLogPluginContext context)
             {
                 context.Output("Done");
                 return Task.CompletedTask;
             }
 
-            public Task<bool> InitializeAsync(IAgentLogPluginContext context)
+            public Task<bool> InitializeAsync(IRunnerLogPluginContext context)
             {
                 return Task.FromResult(true);
             }
 
-            public async Task ProcessLineAsync(IAgentLogPluginContext context, Pipelines.ActionStepDefinitionReference step, string line)
+            public async Task ProcessLineAsync(IRunnerLogPluginContext context, Pipelines.ActionStepDefinitionReference step, string line)
             {
                 context.Output("BLOCK");
                 await Task.Delay(-1);
             }
         }
 
-        public class TestPluginSlowRecover : IAgentLogPlugin
+        public class TestPluginSlowRecover : IRunnerLogPlugin
         {
             private int _counter = 0;
             public string FriendlyName => "TestSlowRecover";
 
-            public Task FinalizeAsync(IAgentLogPluginContext context)
+            public Task FinalizeAsync(IRunnerLogPluginContext context)
             {
                 context.Output("Done");
                 return Task.CompletedTask;
             }
 
-            public Task<bool> InitializeAsync(IAgentLogPluginContext context)
+            public Task<bool> InitializeAsync(IRunnerLogPluginContext context)
             {
                 return Task.FromResult(true);
             }
 
-            public async Task ProcessLineAsync(IAgentLogPluginContext context, Pipelines.ActionStepDefinitionReference step, string line)
+            public async Task ProcessLineAsync(IRunnerLogPluginContext context, Pipelines.ActionStepDefinitionReference step, string line)
             {
                 if (_counter++ < 1)
                 {
@@ -134,33 +134,33 @@ namespace GitHub.Runner.Common.Tests.LogPluginHost
             }
         }
 
-        public class TestPluginNotInitialized : IAgentLogPlugin
+        public class TestPluginNotInitialized : IRunnerLogPlugin
         {
             public string FriendlyName => "TestNotInitialized";
 
-            public Task FinalizeAsync(IAgentLogPluginContext context)
+            public Task FinalizeAsync(IRunnerLogPluginContext context)
             {
                 context.Output("Done");
                 return Task.CompletedTask;
             }
 
-            public Task<bool> InitializeAsync(IAgentLogPluginContext context)
+            public Task<bool> InitializeAsync(IRunnerLogPluginContext context)
             {
                 return Task.FromResult(false);
             }
 
-            public Task ProcessLineAsync(IAgentLogPluginContext context, Pipelines.ActionStepDefinitionReference step, string line)
+            public Task ProcessLineAsync(IRunnerLogPluginContext context, Pipelines.ActionStepDefinitionReference step, string line)
             {
                 context.Output(line);
                 return Task.CompletedTask;
             }
         }
 
-        public class TestPluginException : IAgentLogPlugin
+        public class TestPluginException : IRunnerLogPlugin
         {
             public string FriendlyName => "TestException";
 
-            public Task FinalizeAsync(IAgentLogPluginContext context)
+            public Task FinalizeAsync(IRunnerLogPluginContext context)
             {
                 if (context.Variables.ContainsKey("throw_finalize"))
                 {
@@ -173,7 +173,7 @@ namespace GitHub.Runner.Common.Tests.LogPluginHost
                 }
             }
 
-            public Task<bool> InitializeAsync(IAgentLogPluginContext context)
+            public Task<bool> InitializeAsync(IRunnerLogPluginContext context)
             {
                 if (context.Variables.ContainsKey("throw_initialize"))
                 {
@@ -185,7 +185,7 @@ namespace GitHub.Runner.Common.Tests.LogPluginHost
                 }
             }
 
-            public Task ProcessLineAsync(IAgentLogPluginContext context, Pipelines.ActionStepDefinitionReference step, string line)
+            public Task ProcessLineAsync(IRunnerLogPluginContext context, Pipelines.ActionStepDefinitionReference step, string line)
             {
                 if (context.Variables.ContainsKey("throw_process"))
                 {
@@ -206,11 +206,11 @@ namespace GitHub.Runner.Common.Tests.LogPluginHost
         {
             using (TestHostContext tc = new TestHostContext(this))
             {
-                AgentLogPluginHostContext hostContext = CreateTestLogPluginHostContext();
-                List<IAgentLogPlugin> plugins = new List<IAgentLogPlugin>() { new TestPlugin1() };
+                RunnerLogPluginHostContext hostContext = CreateTestLogPluginHostContext();
+                List<IRunnerLogPlugin> plugins = new List<IRunnerLogPlugin>() { new TestPlugin1() };
 
                 TestTrace trace = new TestTrace(tc);
-                AgentLogPluginHost logPluginHost = new AgentLogPluginHost(hostContext, plugins, trace);
+                RunnerLogPluginHost logPluginHost = new RunnerLogPluginHost(hostContext, plugins, trace);
                 var task = logPluginHost.Run();
                 for (int i = 0; i < 1000; i++)
                 {
@@ -234,11 +234,11 @@ namespace GitHub.Runner.Common.Tests.LogPluginHost
         {
             using (TestHostContext tc = new TestHostContext(this))
             {
-                AgentLogPluginHostContext hostContext = CreateTestLogPluginHostContext();
-                List<IAgentLogPlugin> plugins = new List<IAgentLogPlugin>() { new TestPlugin1() };
+                RunnerLogPluginHostContext hostContext = CreateTestLogPluginHostContext();
+                List<IRunnerLogPlugin> plugins = new List<IRunnerLogPlugin>() { new TestPlugin1() };
 
                 TestTrace trace = new TestTrace(tc);
-                AgentLogPluginHost logPluginHost = new AgentLogPluginHost(hostContext, plugins, trace);
+                RunnerLogPluginHost logPluginHost = new RunnerLogPluginHost(hostContext, plugins, trace);
                 var task = logPluginHost.Run();
                 for (int i = 0; i < 100; i++)
                 {
@@ -280,11 +280,11 @@ namespace GitHub.Runner.Common.Tests.LogPluginHost
         {
             using (TestHostContext tc = new TestHostContext(this))
             {
-                AgentLogPluginHostContext hostContext = CreateTestLogPluginHostContext();
-                List<IAgentLogPlugin> plugins = new List<IAgentLogPlugin>() { new TestPlugin1(), new TestPlugin2() };
+                RunnerLogPluginHostContext hostContext = CreateTestLogPluginHostContext();
+                List<IRunnerLogPlugin> plugins = new List<IRunnerLogPlugin>() { new TestPlugin1(), new TestPlugin2() };
 
                 TestTrace trace = new TestTrace(tc);
-                AgentLogPluginHost logPluginHost = new AgentLogPluginHost(hostContext, plugins, trace);
+                RunnerLogPluginHost logPluginHost = new RunnerLogPluginHost(hostContext, plugins, trace);
                 var task = logPluginHost.Run();
                 for (int i = 0; i < 1000; i++)
                 {
@@ -311,11 +311,11 @@ namespace GitHub.Runner.Common.Tests.LogPluginHost
         {
             using (TestHostContext tc = new TestHostContext(this))
             {
-                AgentLogPluginHostContext hostContext = CreateTestLogPluginHostContext();
-                List<IAgentLogPlugin> plugins = new List<IAgentLogPlugin>() { new TestPlugin1(), new TestPluginSlow() };
+                RunnerLogPluginHostContext hostContext = CreateTestLogPluginHostContext();
+                List<IRunnerLogPlugin> plugins = new List<IRunnerLogPlugin>() { new TestPlugin1(), new TestPluginSlow() };
 
                 TestTrace trace = new TestTrace(tc);
-                AgentLogPluginHost logPluginHost = new AgentLogPluginHost(hostContext, plugins, trace, 100, 100);
+                RunnerLogPluginHost logPluginHost = new RunnerLogPluginHost(hostContext, plugins, trace, 100, 100);
                 var task = logPluginHost.Run();
                 for (int i = 0; i < 1000; i++)
                 {
@@ -344,11 +344,11 @@ namespace GitHub.Runner.Common.Tests.LogPluginHost
         {
             using (TestHostContext tc = new TestHostContext(this))
             {
-                AgentLogPluginHostContext hostContext = CreateTestLogPluginHostContext();
-                List<IAgentLogPlugin> plugins = new List<IAgentLogPlugin>() { new TestPlugin1(), new TestPluginSlowRecover() };
+                RunnerLogPluginHostContext hostContext = CreateTestLogPluginHostContext();
+                List<IRunnerLogPlugin> plugins = new List<IRunnerLogPlugin>() { new TestPlugin1(), new TestPluginSlowRecover() };
 
                 TestTrace trace = new TestTrace(tc);
-                AgentLogPluginHost logPluginHost = new AgentLogPluginHost(hostContext, plugins, trace, 950, 100);
+                RunnerLogPluginHost logPluginHost = new RunnerLogPluginHost(hostContext, plugins, trace, 950, 100);
                 var task = logPluginHost.Run();
                 for (int i = 0; i < 1000; i++)
                 {
@@ -377,11 +377,11 @@ namespace GitHub.Runner.Common.Tests.LogPluginHost
         {
             using (TestHostContext tc = new TestHostContext(this))
             {
-                AgentLogPluginHostContext hostContext = CreateTestLogPluginHostContext();
-                List<IAgentLogPlugin> plugins = new List<IAgentLogPlugin>() { new TestPlugin1(), new TestPluginNotInitialized() };
+                RunnerLogPluginHostContext hostContext = CreateTestLogPluginHostContext();
+                List<IRunnerLogPlugin> plugins = new List<IRunnerLogPlugin>() { new TestPlugin1(), new TestPluginNotInitialized() };
 
                 TestTrace trace = new TestTrace(tc);
-                AgentLogPluginHost logPluginHost = new AgentLogPluginHost(hostContext, plugins, trace);
+                RunnerLogPluginHost logPluginHost = new RunnerLogPluginHost(hostContext, plugins, trace);
                 var task = logPluginHost.Run();
                 for (int i = 0; i < 1000; i++)
                 {
@@ -409,13 +409,13 @@ namespace GitHub.Runner.Common.Tests.LogPluginHost
         {
             using (TestHostContext tc = new TestHostContext(this))
             {
-                AgentLogPluginHostContext hostContext = CreateTestLogPluginHostContext();
+                RunnerLogPluginHostContext hostContext = CreateTestLogPluginHostContext();
                 hostContext.Variables["throw_initialize"] = "1";
 
-                List<IAgentLogPlugin> plugins = new List<IAgentLogPlugin>() { new TestPlugin1(), new TestPluginException() };
+                List<IRunnerLogPlugin> plugins = new List<IRunnerLogPlugin>() { new TestPlugin1(), new TestPluginException() };
 
                 TestTrace trace = new TestTrace(tc);
-                AgentLogPluginHost logPluginHost = new AgentLogPluginHost(hostContext, plugins, trace);
+                RunnerLogPluginHost logPluginHost = new RunnerLogPluginHost(hostContext, plugins, trace);
                 var task = logPluginHost.Run();
                 for (int i = 0; i < 1000; i++)
                 {
@@ -443,13 +443,13 @@ namespace GitHub.Runner.Common.Tests.LogPluginHost
         {
             using (TestHostContext tc = new TestHostContext(this))
             {
-                AgentLogPluginHostContext hostContext = CreateTestLogPluginHostContext();
+                RunnerLogPluginHostContext hostContext = CreateTestLogPluginHostContext();
                 hostContext.Variables["throw_process"] = "1";
 
-                List<IAgentLogPlugin> plugins = new List<IAgentLogPlugin>() { new TestPlugin1(), new TestPluginException() };
+                List<IRunnerLogPlugin> plugins = new List<IRunnerLogPlugin>() { new TestPlugin1(), new TestPluginException() };
 
                 TestTrace trace = new TestTrace(tc);
-                AgentLogPluginHost logPluginHost = new AgentLogPluginHost(hostContext, plugins, trace);
+                RunnerLogPluginHost logPluginHost = new RunnerLogPluginHost(hostContext, plugins, trace);
                 var task = logPluginHost.Run();
                 for (int i = 0; i < 1000; i++)
                 {
@@ -507,9 +507,9 @@ namespace GitHub.Runner.Common.Tests.LogPluginHost
         //     }
         // }
 
-        private AgentLogPluginHostContext CreateTestLogPluginHostContext()
+        private RunnerLogPluginHostContext CreateTestLogPluginHostContext()
         {
-            AgentLogPluginHostContext hostContext = new AgentLogPluginHostContext()
+            RunnerLogPluginHostContext hostContext = new RunnerLogPluginHostContext()
             {
                 Endpoints = new List<ServiceEndpoint>(),
                 PluginAssemblies = new List<string>(),

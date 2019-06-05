@@ -13,18 +13,19 @@ using GitHub.Runner.Common.Util;
 using GitHub.Services.WebApi;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 using GitHub.Runner.Common;
+using GitHub.DistributedTask.Pipelines.ContextData;
 
 namespace GitHub.Runner.Worker
 {
-    [ServiceLocator(Default = typeof(AgentLogPlugin))]
-    public interface IAgentLogPlugin : IAgentService
+    [ServiceLocator(Default = typeof(RunnerLogPlugin))]
+    public interface IRunnerLogPlugin : IRunnerService
     {
         Task StartAsync(IExecutionContext context, List<IStep> steps, CancellationToken token);
         Task WaitAsync(IExecutionContext context);
         void Write(Guid stepId, string message);
     }
 
-    public sealed class AgentLogPlugin : AgentService, IAgentLogPlugin
+    public sealed class RunnerLogPlugin : RunnerService, IRunnerLogPlugin
     {
         private readonly Guid _instanceId = Guid.NewGuid();
 
@@ -58,7 +59,7 @@ namespace GitHub.Runner.Worker
             ArgUtil.NotNull(context, nameof(context));
 
             List<PluginInfo> enabledPlugins = new List<PluginInfo>();
-            if (context.Variables.GetBoolean("agent.disablelogplugin") ?? false)
+            if (context.Variables.GetBoolean("runner.disablelogplugin") ?? false)
             {
                 // all log plugs are disabled
                 context.Debug("All log plugins are disabled.");
@@ -67,7 +68,7 @@ namespace GitHub.Runner.Worker
             {
                 foreach (var plugin in _logPlugins)
                 {
-                    if (context.Variables.GetBoolean($"agent.disablelogplugin.{plugin.Key}") ?? false)
+                    if (context.Variables.GetBoolean($"runner.disablelogplugin.{plugin.Key}") ?? false)
                     {
                         // skip plugin 
                         context.Debug($"Log plugin '{plugin.Key}' is disabled.");
@@ -123,13 +124,14 @@ namespace GitHub.Runner.Worker
                                                              cancellationToken: token);
 
                 // construct plugin context
-                AgentLogPluginHostContext pluginContext = new AgentLogPluginHostContext
+                RunnerLogPluginHostContext pluginContext = new RunnerLogPluginHostContext
                 {
                     PluginAssemblies = new List<string>(),
                     Repositories = context.Repositories,
                     Endpoints = context.Endpoints,
                     Variables = new Dictionary<string, VariableValue>(),
-                    Steps = new Dictionary<string, Pipelines.ActionStepDefinitionReference>()
+                    Steps = new Dictionary<string, Pipelines.ActionStepDefinitionReference>(),
+                    Context = context.ExpressionValues as Dictionary<string, PipelineContextData>
                 };
 
                 // plugins 

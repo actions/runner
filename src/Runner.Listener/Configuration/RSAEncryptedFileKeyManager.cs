@@ -8,7 +8,7 @@ using GitHub.Runner.Sdk;
 
 namespace GitHub.Runner.Listener.Configuration
 {
-    public class RSAEncryptedFileKeyManager : AgentService, IRSAKeyManager
+    public class RSAEncryptedFileKeyManager : RunnerService, IRSAKeyManager
     {
         private string _keyFile;
         private IHostContext _context;
@@ -75,7 +75,7 @@ namespace GitHub.Runner.Listener.Configuration
             File.SetAttributes(_keyFile, File.GetAttributes(_keyFile) | FileAttributes.Hidden);
         }
 
-        void IAgentService.Initialize(IHostContext context)
+        void IRunnerService.Initialize(IHostContext context)
         {
             base.Initialize(context);
 

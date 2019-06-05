@@ -20,7 +20,7 @@ using GitHub.Runner.Sdk;
 namespace GitHub.Runner.Listener
 {
     [ServiceLocator(Default = typeof(MessageListener))]
-    public interface IMessageListener : IAgentService
+    public interface IMessageListener : IRunnerService
     {
         Task<Boolean> CreateSessionAsync(CancellationToken token);
         Task DeleteSessionAsync();
@@ -28,12 +28,12 @@ namespace GitHub.Runner.Listener
         Task DeleteMessageAsync(TaskAgentMessage message);
     }
 
-    public sealed class MessageListener : AgentService, IMessageListener
+    public sealed class MessageListener : RunnerService, IMessageListener
     {
         private long? _lastMessageId;
-        private AgentSettings _settings;
+        private RunnerSettings _settings;
         private ITerminal _term;
-        private IAgentServer _agentServer;
+        private IRunnerServer _runnerServer;
         private TaskAgentSession _session;
         private TimeSpan _getNextMessageRetryInterval;
         private readonly TimeSpan _sessionCreationRetryInterval = TimeSpan.FromSeconds(30);
@@ -46,7 +46,7 @@ namespace GitHub.Runner.Listener
             base.Initialize(hostContext);
 
             _term = HostContext.GetService<ITerminal>();
-            _agentServer = HostContext.GetService<IAgentServer>();
+            _runnerServer = HostContext.GetService<IRunnerServer>();
         }
 
         public async Task<Boolean> CreateSessionAsync(CancellationToken token)
@@ -75,7 +75,7 @@ namespace GitHub.Runner.Listener
                 Version = BuildConstants.RunnerPackage.Version,
                 OSDescription = RuntimeInformation.OSDescription,
             };
-            string sessionName = $"{Environment.MachineName ?? "AGENT"}";
+            string sessionName = $"{Environment.MachineName ?? "RUNNER"}";
             var taskAgentSession = new TaskAgentSession(sessionName, agent, systemCapabilities);
 
             string errorMessage = string.Empty;
@@ -89,10 +89,10 @@ namespace GitHub.Runner.Listener
                 try
                 {
                     Trace.Info("Connecting to the Agent Server...");
-                    await _agentServer.ConnectAsync(new Uri(serverUrl), creds);
+                    await _runnerServer.ConnectAsync(new Uri(serverUrl), creds);
                     Trace.Info("VssConnection created");
 
-                    _session = await _agentServer.CreateAgentSessionAsync(
+                    _session = await _runnerServer.CreateAgentSessionAsync(
                                                         _settings.PoolId,
                                                         taskAgentSession,
                                                         token);
@@ -146,7 +146,7 @@ namespace GitHub.Runner.Listener
             {
                 using (var ts = new CancellationTokenSource(TimeSpan.FromSeconds(30)))
                 {
-                    await _agentServer.DeleteAgentSessionAsync(_settings.PoolId, _session.SessionId, ts.Token);
+                    await _runnerServer.DeleteAgentSessionAsync(_settings.PoolId, _session.SessionId, ts.Token);
                 }
             }
         }
@@ -167,7 +167,7 @@ namespace GitHub.Runner.Listener
                 TaskAgentMessage message = null;
                 try
                 {
-                    message = await _agentServer.GetAgentMessageAsync(_settings.PoolId,
+                    message = await _runnerServer.GetAgentMessageAsync(_settings.PoolId,
                                                                 _session.SessionId,
                                                                 _lastMessageId,
                                                                 token);
@@ -235,7 +235,7 @@ namespace GitHub.Runner.Listener
                         }
 
                         // re-create VssConnection before next retry
-                        await _agentServer.RefreshConnectionAsync(AgentConnectionType.MessageQueue, TimeSpan.FromSeconds(60));
+                        await _runnerServer.RefreshConnectionAsync(RunnerConnectionType.MessageQueue, TimeSpan.FromSeconds(60));
 
                         Trace.Info("Sleeping for {0} seconds before retrying.", _getNextMessageRetryInterval.TotalSeconds);
                         await HostContext.Delay(_getNextMessageRetryInterval, token);
@@ -271,7 +271,7 @@ namespace GitHub.Runner.Listener
             {
                 using (var cs = new CancellationTokenSource(TimeSpan.FromSeconds(30)))
                 {
-                    await _agentServer.DeleteAgentMessageAsync(_settings.PoolId, message.MessageId, _session.SessionId, cs.Token);
+                    await _runnerServer.DeleteAgentMessageAsync(_settings.PoolId, message.MessageId, _session.SessionId, cs.Token);
                 }
             }
         }
@@ -340,13 +340,13 @@ namespace GitHub.Runner.Listener
         {
             if (ex is TaskAgentNotFoundException)
             {
-                Trace.Info("The agent no longer exists on the server. Stopping the agent.");
+                Trace.Info("The agent no longer exists on the server. Stopping the runner.");
                 _term.WriteError(StringUtil.Loc("MissingAgent"));
                 return false;
             }
             else if (ex is TaskAgentSessionConflictException)
             {
-                Trace.Info("The session for this agent already exists.");
+                Trace.Info("The session for this runner already exists.");
                 _term.WriteError(StringUtil.Loc("SessionExist"));
                 if (_sessionCreationExceptionTracker.ContainsKey(nameof(TaskAgentSessionConflictException)))
                 {

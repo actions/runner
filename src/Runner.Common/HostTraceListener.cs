@@ -178,7 +178,7 @@ namespace GitHub.Runner.Common
                         catch (Exception)
                         {
                             // catch Exception and continue
-                            // we shouldn't block logging and fail the agent if the agent can't delete an older log file.
+                            // we shouldn't block logging and fail the runner if the runner can't delete an older log file.
                         }
                     }
                 }

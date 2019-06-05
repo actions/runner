@@ -1,13 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.Net.Http;
 using GitHub.DistributedTask.WebApi;
-using GitHub.Services.Common;
-using GitHub.Services.WebApi;
-using GitHub.Services.OAuth;
-using System.Net.Http.Headers;
-using System.Runtime.InteropServices;
 using GitHub.Runner.Sdk;
 
 namespace GitHub.Runner.Common.Util

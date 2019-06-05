@@ -15,19 +15,19 @@ using GitHub.Runner.Sdk;
 namespace GitHub.Runner.Listener
 {
     [ServiceLocator(Default = typeof(SelfUpdater))]
-    public interface ISelfUpdater : IAgentService
+    public interface ISelfUpdater : IRunnerService
     {
-        Task<bool> SelfUpdate(AgentRefreshMessage updateMessage, IJobDispatcher jobDispatcher, bool restartInteractiveAgent, CancellationToken token);
+        Task<bool> SelfUpdate(AgentRefreshMessage updateMessage, IJobDispatcher jobDispatcher, bool restartInteractiveRunner, CancellationToken token);
     }
 
-    public class SelfUpdater : AgentService, ISelfUpdater
+    public class SelfUpdater : RunnerService, ISelfUpdater
     {
         private static string _packageType = "agent";
         private static string _platform = BuildConstants.RunnerPackage.PackageName;
 
         private PackageMetadata _targetPackage;
         private ITerminal _terminal;
-        private IAgentServer _agentServer;
+        private IRunnerServer _runnerServer;
         private int _poolId;
         private int _agentId;
 
@@ -36,14 +36,14 @@ namespace GitHub.Runner.Listener
             base.Initialize(hostContext);
 
             _terminal = hostContext.GetService<ITerminal>();
-            _agentServer = HostContext.GetService<IAgentServer>();
+            _runnerServer = HostContext.GetService<IRunnerServer>();
             var configStore = HostContext.GetService<IConfigurationStore>();
             var settings = configStore.GetSettings();
             _poolId = settings.PoolId;
             _agentId = settings.AgentId;
         }
 
-        public async Task<bool> SelfUpdate(AgentRefreshMessage updateMessage, IJobDispatcher jobDispatcher, bool restartInteractiveAgent, CancellationToken token)
+        public async Task<bool> SelfUpdate(AgentRefreshMessage updateMessage, IJobDispatcher jobDispatcher, bool restartInteractiveRunner, CancellationToken token)
         {
             if (!await UpdateNeeded(updateMessage.TargetVersion, token))
             {
@@ -53,27 +53,27 @@ namespace GitHub.Runner.Listener
 
             Trace.Info($"An update is available.");
 
-            // Print console line that warn user not shutdown agent.
-            await UpdateAgentUpdateStateAsync(StringUtil.Loc("UpdateInProgress"));
-            await UpdateAgentUpdateStateAsync(StringUtil.Loc("DownloadAgent", _targetPackage.Version));
+            // Print console line that warn user not shutdown runner.
+            await UpdateRunnerUpdateStateAsync(StringUtil.Loc("UpdateInProgress"));
+            await UpdateRunnerUpdateStateAsync(StringUtil.Loc("DownloadRunner", _targetPackage.Version));
 
-            await DownloadLatestAgent(token);
-            Trace.Info($"Download latest agent and unzip into agent root.");
+            await DownloadLatestRunner(token);
+            Trace.Info($"Download latest runner and unzip into runner root.");
 
             // wait till all running job finish
-            await UpdateAgentUpdateStateAsync(StringUtil.Loc("EnsureJobFinished"));
+            await UpdateRunnerUpdateStateAsync(StringUtil.Loc("EnsureJobFinished"));
 
             await jobDispatcher.WaitAsync(token);
             Trace.Info($"All running job has exited.");
 
-            // delete agent backup
-            DeletePreviousVersionAgentBackup(token);
-            Trace.Info($"Delete old version agent backup.");
+            // delete runner backup
+            DeletePreviousVersionRunnerBackup(token);
+            Trace.Info($"Delete old version runner backup.");
 
             // generate update script from template
-            await UpdateAgentUpdateStateAsync(StringUtil.Loc("GenerateAndRunUpdateScript"));
+            await UpdateRunnerUpdateStateAsync(StringUtil.Loc("GenerateAndRunUpdateScript"));
 
-            string updateScript = GenerateUpdateScript(restartInteractiveAgent);
+            string updateScript = GenerateUpdateScript(restartInteractiveRunner);
             Trace.Info($"Generate update script into: {updateScript}");
 
             // kick off update script
@@ -88,7 +88,7 @@ namespace GitHub.Runner.Listener
             invokeScript.Start();
             Trace.Info($"Update script start running");
 
-            await UpdateAgentUpdateStateAsync(StringUtil.Loc("AgentExit"));
+            await UpdateRunnerUpdateStateAsync(StringUtil.Loc("RunnerExit"));
 
             return true;
         }
@@ -99,7 +99,7 @@ namespace GitHub.Runner.Listener
             // old server won't send target version as part of update message.
             if (string.IsNullOrEmpty(targetVersion))
             {
-                var packages = await _agentServer.GetPackagesAsync(_packageType, _platform, 1, token);
+                var packages = await _runnerServer.GetPackagesAsync(_packageType, _platform, 1, token);
                 if (packages == null || packages.Count == 0)
                 {
                     Trace.Info($"There is no package for {_packageType} and {_platform}.");
@@ -110,7 +110,7 @@ namespace GitHub.Runner.Listener
             }
             else
             {
-                _targetPackage = await _agentServer.GetPackageAsync(_packageType, _platform, targetVersion, token);
+                _targetPackage = await _runnerServer.GetPackageAsync(_packageType, _platform, targetVersion, token);
                 if (_targetPackage == null)
                 {
                     Trace.Info($"There is no package for {_packageType} and {_platform} with version {targetVersion}.");
@@ -120,10 +120,10 @@ namespace GitHub.Runner.Listener
 
             Trace.Info($"Version '{_targetPackage.Version}' of '{_targetPackage.Type}' package available in server.");
             PackageVersion serverVersion = new PackageVersion(_targetPackage.Version);
-            Trace.Info($"Current running agent version is {BuildConstants.RunnerPackage.Version}");
-            PackageVersion agentVersion = new PackageVersion(BuildConstants.RunnerPackage.Version);
+            Trace.Info($"Current running runner version is {BuildConstants.RunnerPackage.Version}");
+            PackageVersion runnerVersion = new PackageVersion(BuildConstants.RunnerPackage.Version);
 
-            return serverVersion.CompareTo(agentVersion) > 0;
+            return serverVersion.CompareTo(runnerVersion) > 0;
         }
 
         /// <summary>
@@ -137,31 +137,31 @@ namespace GitHub.Runner.Listener
         /// </summary>
         /// <param name="token"></param>
         /// <returns></returns>
-        private async Task DownloadLatestAgent(CancellationToken token)
+        private async Task DownloadLatestRunner(CancellationToken token)
         {
-            string latestAgentDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), Constants.Path.UpdateDirectory);
-            IOUtil.DeleteDirectory(latestAgentDirectory, token);
-            Directory.CreateDirectory(latestAgentDirectory);
+            string latestRunnerDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), Constants.Path.UpdateDirectory);
+            IOUtil.DeleteDirectory(latestRunnerDirectory, token);
+            Directory.CreateDirectory(latestRunnerDirectory);
 
-            int agentSuffix = 1;
+            int runnerSuffix = 1;
             string archiveFile = null;
             bool downloadSucceeded = false;
 
             try
             {
-                // Download the agent, using multiple attempts in order to be resilient against any networking/CDN issues
-                for (int attempt = 1; attempt <= Constants.AgentDownloadRetryMaxAttempts; attempt++)
+                // Download the runner, using multiple attempts in order to be resilient against any networking/CDN issues
+                for (int attempt = 1; attempt <= Constants.RunnerDownloadRetryMaxAttempts; attempt++)
                 {
                     // Generate an available package name, and do our best effort to clean up stale local zip files
                     while (true)
                     {
                         if (_targetPackage.Platform.StartsWith("win"))
                         {
-                            archiveFile = Path.Combine(latestAgentDirectory, $"agent{agentSuffix}.zip");
+                            archiveFile = Path.Combine(latestRunnerDirectory, $"runner{runnerSuffix}.zip");
                         }
                         else
                         {
-                            archiveFile = Path.Combine(latestAgentDirectory, $"agent{agentSuffix}.tar.gz");
+                            archiveFile = Path.Combine(latestRunnerDirectory, $"runner{runnerSuffix}.tar.gz");
                         }
 
                         try
@@ -169,7 +169,7 @@ namespace GitHub.Runner.Listener
                             // delete .zip file
                             if (!string.IsNullOrEmpty(archiveFile) && File.Exists(archiveFile))
                             {
-                                Trace.Verbose("Deleting latest agent package zip '{0}'", archiveFile);
+                                Trace.Verbose("Deleting latest runner package zip '{0}'", archiveFile);
                                 IOUtil.DeleteFile(archiveFile);
                             }
 
@@ -178,25 +178,25 @@ namespace GitHub.Runner.Listener
                         catch (Exception ex)
                         {
                             // couldn't delete the file for whatever reason, so generate another name
-                            Trace.Warning("Failed to delete agent package zip '{0}'. Exception: {1}", archiveFile, ex);
-                            agentSuffix++;
+                            Trace.Warning("Failed to delete runner package zip '{0}'. Exception: {1}", archiveFile, ex);
+                            runnerSuffix++;
                         }
                     }
 
-                    // Allow a 15-minute package download timeout, which is good enough to update the agent from a 1 Mbit/s ADSL connection.
-                    if (!int.TryParse(Environment.GetEnvironmentVariable("AZP_AGENT_DOWNLOAD_TIMEOUT") ?? string.Empty, out int timeoutSeconds))
+                    // Allow a 15-minute package download timeout, which is good enough to update the runner from a 1 Mbit/s ADSL connection.
+                    if (!int.TryParse(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_DOWNLOAD_TIMEOUT") ?? string.Empty, out int timeoutSeconds))
                     {
                         timeoutSeconds = 15 * 60;
                     }
 
-                    Trace.Info($"Attempt {attempt}: save latest agent into {archiveFile}.");
+                    Trace.Info($"Attempt {attempt}: save latest runner into {archiveFile}.");
 
                     using (var downloadTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds)))
                     using (var downloadCts = CancellationTokenSource.CreateLinkedTokenSource(downloadTimeout.Token, token))
                     {
                         try
                         {
-                            Trace.Info($"Download agent: begin download");
+                            Trace.Info($"Download runner: begin download");
 
                             //open zip stream in async mode
                             using (HttpClient httpClient = new HttpClient(HostContext.CreateHttpClientHandler()))
@@ -208,20 +208,20 @@ namespace GitHub.Runner.Listener
                                 await fs.FlushAsync(downloadCts.Token);
                             }
 
-                            Trace.Info($"Download agent: finished download");
+                            Trace.Info($"Download runner: finished download");
                             downloadSucceeded = true;
                             break;
                         }
                         catch (OperationCanceledException) when (token.IsCancellationRequested)
                         {
-                            Trace.Info($"Agent download has been canceled.");
+                            Trace.Info($"Runner download has been canceled.");
                             throw;
                         }
                         catch (Exception ex)
                         {
                             if (downloadCts.Token.IsCancellationRequested)
                             {
-                                Trace.Warning($"Agent download has timed out after {timeoutSeconds} seconds");
+                                Trace.Warning($"Runner download has timed out after {timeoutSeconds} seconds");
                             }
 
                             Trace.Warning($"Failed to get package '{archiveFile}' from '{_targetPackage.DownloadUrl}'. Exception {ex}");
@@ -231,13 +231,13 @@ namespace GitHub.Runner.Listener
 
                 if (!downloadSucceeded)
                 {
-                    throw new TaskCanceledException($"Agent package '{archiveFile}' failed after {Constants.AgentDownloadRetryMaxAttempts} download attempts");
+                    throw new TaskCanceledException($"Runner package '{archiveFile}' failed after {Constants.RunnerDownloadRetryMaxAttempts} download attempts");
                 }
 
-                // If we got this far, we know that we've successfully downloadeded the agent package
+                // If we got this far, we know that we've successfully downloaded the runner package
                 if (archiveFile.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
                 {
-                    ZipFile.ExtractToDirectory(archiveFile, latestAgentDirectory);
+                    ZipFile.ExtractToDirectory(archiveFile, latestRunnerDirectory);
                 }
                 else if (archiveFile.EndsWith(".tar.gz", StringComparison.OrdinalIgnoreCase))
                 {
@@ -267,7 +267,7 @@ namespace GitHub.Runner.Listener
                             }
                         });
 
-                        int exitCode = await processInvoker.ExecuteAsync(latestAgentDirectory, tar, $"-xzf \"{archiveFile}\"", null, token);
+                        int exitCode = await processInvoker.ExecuteAsync(latestRunnerDirectory, tar, $"-xzf \"{archiveFile}\"", null, token);
                         if (exitCode != 0)
                         {
                             throw new NotSupportedException($"Can't use 'tar -xzf' extract archive file: {archiveFile}. return code: {exitCode}.");
@@ -279,7 +279,7 @@ namespace GitHub.Runner.Listener
                     throw new NotSupportedException($"{archiveFile}");
                 }
 
-                Trace.Info($"Finished getting latest agent package at: {latestAgentDirectory}.");
+                Trace.Info($"Finished getting latest runner package at: {latestRunnerDirectory}.");
             }
             finally
             {
@@ -288,73 +288,47 @@ namespace GitHub.Runner.Listener
                     // delete .zip file
                     if (!string.IsNullOrEmpty(archiveFile) && File.Exists(archiveFile))
                     {
-                        Trace.Verbose("Deleting latest agent package zip: {0}", archiveFile);
+                        Trace.Verbose("Deleting latest runner package zip: {0}", archiveFile);
                         IOUtil.DeleteFile(archiveFile);
                     }
                 }
                 catch (Exception ex)
                 {
                     //it is not critical if we fail to delete the .zip file
-                    Trace.Warning("Failed to delete agent package zip '{0}'. Exception: {1}", archiveFile, ex);
+                    Trace.Warning("Failed to delete runner package zip '{0}'. Exception: {1}", archiveFile, ex);
                 }
             }
 
-            // copy latest agent into agent root folder
+            // copy latest runner into runner root folder
             // copy bin from _work/_update -> bin.version under root
             string binVersionDir = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), $"{Constants.Path.BinDirectory}.{_targetPackage.Version}");
             Directory.CreateDirectory(binVersionDir);
-            Trace.Info($"Copy {Path.Combine(latestAgentDirectory, Constants.Path.BinDirectory)} to {binVersionDir}.");
-            IOUtil.CopyDirectory(Path.Combine(latestAgentDirectory, Constants.Path.BinDirectory), binVersionDir, token);
+            Trace.Info($"Copy {Path.Combine(latestRunnerDirectory, Constants.Path.BinDirectory)} to {binVersionDir}.");
+            IOUtil.CopyDirectory(Path.Combine(latestRunnerDirectory, Constants.Path.BinDirectory), binVersionDir, token);
 
             // copy externals from _work/_update -> externals.version under root
             string externalsVersionDir = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), $"{Constants.Path.ExternalsDirectory}.{_targetPackage.Version}");
             Directory.CreateDirectory(externalsVersionDir);
-            Trace.Info($"Copy {Path.Combine(latestAgentDirectory, Constants.Path.ExternalsDirectory)} to {externalsVersionDir}.");
-            IOUtil.CopyDirectory(Path.Combine(latestAgentDirectory, Constants.Path.ExternalsDirectory), externalsVersionDir, token);
+            Trace.Info($"Copy {Path.Combine(latestRunnerDirectory, Constants.Path.ExternalsDirectory)} to {externalsVersionDir}.");
+            IOUtil.CopyDirectory(Path.Combine(latestRunnerDirectory, Constants.Path.ExternalsDirectory), externalsVersionDir, token);
 
             // copy and replace all .sh/.cmd files
-            Trace.Info($"Copy any remaining .sh/.cmd files into agent root.");
-            foreach (FileInfo file in new DirectoryInfo(latestAgentDirectory).GetFiles() ?? new FileInfo[0])
+            Trace.Info($"Copy any remaining .sh/.cmd files into runner root.");
+            foreach (FileInfo file in new DirectoryInfo(latestRunnerDirectory).GetFiles() ?? new FileInfo[0])
             {
                 // Copy and replace the file.
                 file.CopyTo(Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), file.Name), true);
             }
-
-            // for windows service back compat with old windows agent, we need make sure the servicehost.exe is still the old name
-            // if the current bin folder has VsoAgentService.exe, then the new agent bin folder needs VsoAgentService.exe as well
-#if OS_WINDOWS
-            if (File.Exists(Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Bin), "VsoAgentService.exe")))
-            {
-                Trace.Info($"Make a copy of AgentService.exe, name it VsoAgentService.exe");
-                File.Copy(Path.Combine(binVersionDir, "AgentService.exe"), Path.Combine(binVersionDir, "VsoAgentService.exe"), true);
-                File.Copy(Path.Combine(binVersionDir, "AgentService.exe.config"), Path.Combine(binVersionDir, "VsoAgentService.exe.config"), true);
-
-                Trace.Info($"Make a copy of Runner.Listener.exe, name it VsoAgent.exe");
-                File.Copy(Path.Combine(binVersionDir, "Runner.Listener.exe"), Path.Combine(binVersionDir, "VsoAgent.exe"), true);
-                File.Copy(Path.Combine(binVersionDir, "Runner.Listener.dll"), Path.Combine(binVersionDir, "VsoAgent.dll"), true);
-
-                // in case of we remove all pdb file from agent package.
-                if (File.Exists(Path.Combine(binVersionDir, "AgentService.pdb")))
-                {
-                    File.Copy(Path.Combine(binVersionDir, "AgentService.pdb"), Path.Combine(binVersionDir, "VsoAgentService.pdb"), true);
-                }
-
-                if (File.Exists(Path.Combine(binVersionDir, "Runner.Listener.pdb")))
-                {
-                    File.Copy(Path.Combine(binVersionDir, "Runner.Listener.pdb"), Path.Combine(binVersionDir, "VsoAgent.pdb"), true);
-                }
-            }
-#endif
         }
 
-        private void DeletePreviousVersionAgentBackup(CancellationToken token)
+        private void DeletePreviousVersionRunnerBackup(CancellationToken token)
         {
-            // delete previous backup agent (back compat, can be remove after serval sprints)
+            // delete previous backup runner (back compat, can be remove after serval sprints)
             // bin.bak.2.99.0
             // externals.bak.2.99.0
             foreach (string existBackUp in Directory.GetDirectories(HostContext.GetDirectory(WellKnownDirectory.Root), "*.bak.*"))
             {
-                Trace.Info($"Delete existing agent backup at {existBackUp}.");
+                Trace.Info($"Delete existing runner backup at {existBackUp}.");
                 try
                 {
                     IOUtil.DeleteDirectory(existBackUp, token);
@@ -378,11 +352,11 @@ namespace GitHub.Runner.Listener
                         string.Equals(oldBinDir, Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), $"bin.{BuildConstants.RunnerPackage.Version}"), StringComparison.OrdinalIgnoreCase) ||
                         string.Equals(oldBinDir, Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), $"bin.{_targetPackage.Version}"), StringComparison.OrdinalIgnoreCase))
                     {
-                        // skip for current agent version
+                        // skip for current runner version
                         continue;
                     }
 
-                    Trace.Info($"Delete agent bin folder's backup at {oldBinDir}.");
+                    Trace.Info($"Delete runner bin folder's backup at {oldBinDir}.");
                     try
                     {
                         IOUtil.DeleteDirectory(oldBinDir, token);
@@ -407,11 +381,11 @@ namespace GitHub.Runner.Listener
                         string.Equals(oldExternalDir, Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), $"externals.{BuildConstants.RunnerPackage.Version}"), StringComparison.OrdinalIgnoreCase) ||
                         string.Equals(oldExternalDir, Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), $"externals.{_targetPackage.Version}"), StringComparison.OrdinalIgnoreCase))
                     {
-                        // skip for current agent version
+                        // skip for current runner version
                         continue;
                     }
 
-                    Trace.Info($"Delete agent externals folder's backup at {oldExternalDir}.");
+                    Trace.Info($"Delete runner externals folder's backup at {oldExternalDir}.");
                     try
                     {
                         IOUtil.DeleteDirectory(oldExternalDir, token);
@@ -425,11 +399,11 @@ namespace GitHub.Runner.Listener
             }
         }
 
-        private string GenerateUpdateScript(bool restartInteractiveAgent)
+        private string GenerateUpdateScript(bool restartInteractiveRunner)
         {
             int processId = Process.GetCurrentProcess().Id;
             string updateLog = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Diag), $"SelfUpdate-{DateTime.UtcNow.ToString("yyyyMMdd-HHmmss")}.log");
-            string agentRoot = HostContext.GetDirectory(WellKnownDirectory.Root);
+            string runnerRoot = HostContext.GetDirectory(WellKnownDirectory.Root);
 
 #if OS_WINDOWS
             string templateName = "update.cmd.template";
@@ -437,16 +411,16 @@ namespace GitHub.Runner.Listener
             string templateName = "update.sh.template";
 #endif
 
-            string templatePath = Path.Combine(agentRoot, $"bin.{_targetPackage.Version}", templateName);
+            string templatePath = Path.Combine(runnerRoot, $"bin.{_targetPackage.Version}", templateName);
             string template = File.ReadAllText(templatePath);
 
             template = template.Replace("_PROCESS_ID_", processId.ToString());
-            template = template.Replace("_AGENT_PROCESS_NAME_", $"Runner.Listener{IOUtil.ExeExtension}");
-            template = template.Replace("_ROOT_FOLDER_", agentRoot);
-            template = template.Replace("_EXIST_AGENT_VERSION_", BuildConstants.RunnerPackage.Version);
-            template = template.Replace("_DOWNLOAD_AGENT_VERSION_", _targetPackage.Version);
+            template = template.Replace("_RUNNER_PROCESS_NAME_", $"Runner.Listener{IOUtil.ExeExtension}");
+            template = template.Replace("_ROOT_FOLDER_", runnerRoot);
+            template = template.Replace("_EXIST_RUNNER_VERSION_", BuildConstants.RunnerPackage.Version);
+            template = template.Replace("_DOWNLOAD_RUNNER_VERSION_", _targetPackage.Version);
             template = template.Replace("_UPDATE_LOG_", updateLog);
-            template = template.Replace("_RESTART_INTERACTIVE_AGENT_", restartInteractiveAgent ? "1" : "0");
+            template = template.Replace("_RESTART_INTERACTIVE_RUNNER_", restartInteractiveRunner ? "1" : "0");
 
 #if OS_WINDOWS
             string scriptName = "_update.cmd";
@@ -464,17 +438,17 @@ namespace GitHub.Runner.Listener
             return updateScript;
         }
 
-        private async Task UpdateAgentUpdateStateAsync(string currentState)
+        private async Task UpdateRunnerUpdateStateAsync(string currentState)
         {
             _terminal.WriteLine(currentState);
 
             try
             {
-                await _agentServer.UpdateAgentUpdateStateAsync(_poolId, _agentId, currentState);
+                await _runnerServer.UpdateAgentUpdateStateAsync(_poolId, _agentId, currentState);
             }
             catch (VssResourceNotFoundException)
             {
-                // ignore VssResourceNotFoundException, this exception means the agent is configured against a old server that doesn't support report agent update detail.
+                // ignore VssResourceNotFoundException, this exception means the runner is configured against a old server that doesn't support report runner update detail.
                 Trace.Info($"Catch VssResourceNotFoundException during report update state, ignore this error for backcompat.");
             }
             catch (Exception ex)

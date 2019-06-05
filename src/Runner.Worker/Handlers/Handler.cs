@@ -11,7 +11,7 @@ using GitHub.Runner.Sdk;
 
 namespace GitHub.Runner.Worker.Handlers
 {
-    public interface IHandler : IAgentService
+    public interface IHandler : IRunnerService
     {
         List<ServiceEndpoint> Endpoints { get; set; }
         Dictionary<string, string> Environment { get; set; }
@@ -25,7 +25,7 @@ namespace GitHub.Runner.Worker.Handlers
         Task RunAsync();
     }
 
-    public abstract class Handler : AgentService
+    public abstract class Handler : RunnerService
     {
 #if OS_WINDOWS
         // In windows OS the maximum supported size of a environment variable value is 32k.

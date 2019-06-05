@@ -22,8 +22,8 @@ namespace GitHub.Runner.Common.Tests.Worker
         private CancellationTokenSource _tokenSource;
         private Mock<IJobServer> _jobServer;
         private Mock<IJobServerQueue> _jobServerQueue;
-        private Mock<IVstsAgentWebProxy> _proxyConfig;
-        private Mock<IAgentCertificateManager> _cert;
+        private Mock<IRunnerWebProxy> _proxyConfig;
+        private Mock<IRunnerCertificateManager> _cert;
         private Mock<IConfigurationStore> _config;
         private Mock<IExtensionManager> _extensions;
         private Mock<IStepsRunner> _stepRunner;
@@ -43,8 +43,8 @@ namespace GitHub.Runner.Common.Tests.Worker
             _jobExtension = new Mock<IJobExtension>();
             _jobServer = new Mock<IJobServer>();
             _jobServerQueue = new Mock<IJobServerQueue>();
-            _proxyConfig = new Mock<IVstsAgentWebProxy>();
-            _cert = new Mock<IAgentCertificateManager>();
+            _proxyConfig = new Mock<IRunnerWebProxy>();
+            _cert = new Mock<IRunnerCertificateManager>();
             _stepRunner = new Mock<IStepsRunner>();
             _logger = new Mock<IPagingLogger>();
             _temp = new Mock<ITempDirectoryManager>();
@@ -83,9 +83,6 @@ namespace GitHub.Runner.Common.Tests.Worker
             Guid JobId = Guid.NewGuid();
             _message = Pipelines.AgentJobRequestMessageUtil.Convert(new AgentJobRequestMessage(plan, timeline, JobId, testName, testName, environment, tasks));
 
-            _extensions.Setup(x => x.GetExtensions<IJobExtension>()).
-                Returns(new[] { _jobExtension.Object }.ToList());
-
             _initResult.Clear();
 
             _jobExtension.Setup(x => x.InitializeJob(It.IsAny<IExecutionContext>(), It.IsAny<Pipelines.AgentJobRequestMessage>())).
@@ -94,7 +91,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             _proxyConfig.Setup(x => x.ProxyAddress)
                 .Returns(string.Empty);
 
-            var settings = new AgentSettings
+            var settings = new RunnerSettings
             {
                 AgentId = 1,
                 AgentName = "agent1",

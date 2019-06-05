@@ -51,7 +51,7 @@ namespace GitHub.Runner.Listener.Configuration
             trace.Info(nameof(GetVssCredentials));
             ArgUtil.NotNull(CredentialData, nameof(CredentialData));
 
-            CredentialData.Data.TryGetValue(Constants.Agent.CommandLine.Args.Url, out string serverUrl);
+            CredentialData.Data.TryGetValue(Constants.Runner.CommandLine.Args.Url, out string serverUrl);
             ArgUtil.NotNullOrEmpty(serverUrl, nameof(serverUrl));
 
             var tenantAuthorityUrl = GetTenantAuthorityUrl(context, serverUrl);
@@ -86,7 +86,7 @@ namespace GitHub.Runner.Listener.Configuration
 
             var term = context.GetService<ITerminal>();
             term.WriteLine($"Please finish AAD device code flow in browser ({codeResult.VerificationUrl}), user code: {codeResult.UserCode}");
-            if (string.Equals(CredentialData.Data[Constants.Agent.CommandLine.Flags.LaunchBrowser], bool.TrueString, StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(CredentialData.Data[Constants.Runner.CommandLine.Flags.LaunchBrowser], bool.TrueString, StringComparison.OrdinalIgnoreCase))
             {
                 try
                 {
@@ -123,8 +123,8 @@ namespace GitHub.Runner.Listener.Configuration
             Tracing trace = context.GetTrace(nameof(AadDeviceCodeAccessToken));
             trace.Info(nameof(EnsureCredential));
             ArgUtil.NotNull(command, nameof(command));
-            CredentialData.Data[Constants.Agent.CommandLine.Args.Url] = serverUrl;
-            CredentialData.Data[Constants.Agent.CommandLine.Flags.LaunchBrowser] = command.GetAutoLaunchBrowser().ToString();
+            CredentialData.Data[Constants.Runner.CommandLine.Args.Url] = serverUrl;
+            CredentialData.Data[Constants.Runner.CommandLine.Flags.LaunchBrowser] = command.GetAutoLaunchBrowser().ToString();
         }
 
         private Uri GetTenantAuthorityUrl(IHostContext context, string serverUrl)
@@ -166,7 +166,7 @@ namespace GitHub.Runner.Listener.Configuration
             trace.Info(nameof(GetVssCredentials));
             ArgUtil.NotNull(CredentialData, nameof(CredentialData));
             string token;
-            if (!CredentialData.Data.TryGetValue(Constants.Agent.CommandLine.Args.Token, out token))
+            if (!CredentialData.Data.TryGetValue(Constants.Runner.CommandLine.Args.Token, out token))
             {
                 token = null;
             }
@@ -189,7 +189,7 @@ namespace GitHub.Runner.Listener.Configuration
             Tracing trace = context.GetTrace(nameof(PersonalAccessToken));
             trace.Info(nameof(EnsureCredential));
             ArgUtil.NotNull(command, nameof(command));
-            CredentialData.Data[Constants.Agent.CommandLine.Args.Token] = command.GetToken();
+            CredentialData.Data[Constants.Runner.CommandLine.Args.Token] = command.GetToken();
         }
     }
 
@@ -204,13 +204,13 @@ namespace GitHub.Runner.Listener.Configuration
             trace.Info(nameof(GetVssCredentials));
             ArgUtil.NotNull(CredentialData, nameof(CredentialData));
             string token;
-            if (!CredentialData.Data.TryGetValue(Constants.Agent.CommandLine.Args.Token, out token))
+            if (!CredentialData.Data.TryGetValue(Constants.Runner.CommandLine.Args.Token, out token))
             {
                 token = null;
             }
 
             string username;
-            if (!CredentialData.Data.TryGetValue(Constants.Agent.CommandLine.Args.UserName, out username))
+            if (!CredentialData.Data.TryGetValue(Constants.Runner.CommandLine.Args.UserName, out username))
             {
                 username = null;
             }
@@ -235,8 +235,8 @@ namespace GitHub.Runner.Listener.Configuration
             Tracing trace = context.GetTrace(nameof(ServiceIdentityCredential));
             trace.Info(nameof(EnsureCredential));
             ArgUtil.NotNull(command, nameof(command));
-            CredentialData.Data[Constants.Agent.CommandLine.Args.Token] = command.GetToken();
-            CredentialData.Data[Constants.Agent.CommandLine.Args.UserName] = command.GetUserName();
+            CredentialData.Data[Constants.Runner.CommandLine.Args.Token] = command.GetToken();
+            CredentialData.Data[Constants.Runner.CommandLine.Args.UserName] = command.GetUserName();
         }
     }
 
@@ -251,13 +251,13 @@ namespace GitHub.Runner.Listener.Configuration
             trace.Info(nameof(GetVssCredentials));
 
             string username;
-            if (!CredentialData.Data.TryGetValue(Constants.Agent.CommandLine.Args.UserName, out username))
+            if (!CredentialData.Data.TryGetValue(Constants.Runner.CommandLine.Args.UserName, out username))
             {
                 username = null;
             }
 
             string password;
-            if (!CredentialData.Data.TryGetValue(Constants.Agent.CommandLine.Args.Password, out password))
+            if (!CredentialData.Data.TryGetValue(Constants.Runner.CommandLine.Args.Password, out password))
             {
                 password = null;
             }
@@ -281,8 +281,8 @@ namespace GitHub.Runner.Listener.Configuration
             Tracing trace = context.GetTrace(nameof(AlternateCredential));
             trace.Info(nameof(EnsureCredential));
             ArgUtil.NotNull(command, nameof(command));
-            CredentialData.Data[Constants.Agent.CommandLine.Args.UserName] = command.GetUserName();
-            CredentialData.Data[Constants.Agent.CommandLine.Args.Password] = command.GetPassword();
+            CredentialData.Data[Constants.Runner.CommandLine.Args.UserName] = command.GetUserName();
+            CredentialData.Data[Constants.Runner.CommandLine.Args.Password] = command.GetPassword();
         }
     }
 }

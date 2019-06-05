@@ -17,15 +17,15 @@ using GitHub.Runner.Sdk;
 
 namespace GitHub.Runner.Common
 {
-    // The purpose of this class is to store user's credential during agent configuration and retrive the credential back at runtime.
+    // The purpose of this class is to store user's credential during runner configuration and retrive the credential back at runtime.
 #if OS_WINDOWS
-    [ServiceLocator(Default = typeof(WindowsAgentCredentialStore))]
+    [ServiceLocator(Default = typeof(WindowsRunnerCredentialStore))]
 #elif OS_OSX
-    [ServiceLocator(Default = typeof(MacOSAgentCredentialStore))]
+    [ServiceLocator(Default = typeof(MacOSRunnerCredentialStore))]
 #else
-    [ServiceLocator(Default = typeof(LinuxAgentCredentialStore))]
+    [ServiceLocator(Default = typeof(LinuxRunnerCredentialStore))]
 #endif
-    public interface IAgentCredentialStore : IAgentService
+    public interface IRunnerCredentialStore : IRunnerService
     {
         NetworkCredential Write(string target, string username, string password);
 
@@ -38,8 +38,8 @@ namespace GitHub.Runner.Common
 
 #if OS_WINDOWS
     // Windows credential store is per user.
-    // This is a limitation for user configure the agent run as windows service, when user's current login account is different with the service run as account.
-    // Ex: I login the box as domain\admin, configure the agent as windows service and run as domian\buildserver
+    // This is a limitation for user configure the runner run as windows service, when user's current login account is different with the service run as account.
+    // Ex: I login the box as domain\admin, configure the runner as windows service and run as domian\buildserver
     // domain\buildserver won't read the stored credential from domain\admin's windows credential store.
     // To workaround this limitation.
     // Anytime we try to save a credential:
@@ -49,7 +49,7 @@ namespace GitHub.Runner.Common
     //   1. read from current user's windows credential store, delete the DP-API encrypted backup content on disk if the windows credential store read succeed.
     //   2. if credential not found in current user's windows credential store, read from the DP-API encrypted backup content on disk, 
     //      write the credential back the current user's windows credential store and delete the backup on disk.
-    public sealed class WindowsAgentCredentialStore : AgentService, IAgentCredentialStore
+    public sealed class WindowsRunnerCredentialStore : RunnerService, IRunnerCredentialStore
     {
         private string _credStoreFile;
         private Dictionary<string, string> _credStore;
@@ -294,16 +294,16 @@ namespace GitHub.Runner.Common
         }
     }
 #elif OS_OSX
-    public sealed class MacOSAgentCredentialStore : AgentService, IAgentCredentialStore
+    public sealed class MacOSRunnerCredentialStore : RunnerService, IRunnerCredentialStore
     {
-        private const string _osxAgentCredStoreKeyChainName = "_VSTS_AGENT_CREDSTORE_INTERNAL_";
+        private const string _osxRunnerCredStoreKeyChainName = "_GITHUB_ACTIONS_RUNNER_CREDSTORE_INTERNAL_";
 
         // Keychain requires a password, but this is not intended to add security
-        private const string _osxAgentCredStoreKeyChainPassword = "A1DC2A63B3D14817A64619FDDBC92264";
+        private const string _osxRunnerCredStoreKeyChainPassword = "C46F23C36AF94B72B1EAEE32C68670A0";
 
         private string _securityUtil;
 
-        private string _agentCredStoreKeyChain;
+        private string _runnerCredStoreKeyChain;
 
         public override void Initialize(IHostContext hostContext)
         {
@@ -311,10 +311,10 @@ namespace GitHub.Runner.Common
 
             _securityUtil = WhichUtil.Which("security", true, Trace);
 
-            _agentCredStoreKeyChain = hostContext.GetConfigFile(WellKnownConfigFile.CredentialStore);
+            _runnerCredStoreKeyChain = hostContext.GetConfigFile(WellKnownConfigFile.CredentialStore);
 
             // Create osx key chain if it doesn't exists.
-            if (!File.Exists(_agentCredStoreKeyChain))
+            if (!File.Exists(_runnerCredStoreKeyChain))
             {
                 List<string> securityOut = new List<string>();
                 List<string> securityError = new List<string>();
@@ -346,12 +346,12 @@ namespace GitHub.Runner.Common
                     // make sure the 'security' has access to the key so we won't get prompt at runtime.
                     int exitCode = p.ExecuteAsync(workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Root),
                                                   fileName: _securityUtil,
-                                                  arguments: $"create-keychain -p {_osxAgentCredStoreKeyChainPassword} \"{_agentCredStoreKeyChain}\"",
+                                                  arguments: $"create-keychain -p {_osxRunnerCredStoreKeyChainPassword} \"{_runnerCredStoreKeyChain}\"",
                                                   environment: null,
                                                   cancellationToken: CancellationToken.None).GetAwaiter().GetResult();
                     if (exitCode == 0)
                     {
-                        Trace.Info($"Successfully create-keychain for {_agentCredStoreKeyChain}");
+                        Trace.Info($"Successfully create-keychain for {_runnerCredStoreKeyChain}");
                     }
                     else
                     {
@@ -424,12 +424,12 @@ namespace GitHub.Runner.Common
                     // make sure the 'security' has access to the key so we won't get prompt at runtime.
                     int exitCode = p.ExecuteAsync(workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Root),
                                                 fileName: _securityUtil,
-                                                arguments: $"add-generic-password -s {target} -a VSTSAGENT -w {secretForKeyChain} -T \"{_securityUtil}\" \"{_agentCredStoreKeyChain}\"",
+                                                arguments: $"add-generic-password -s {target} -a GITHUBACTIONSRUNNER -w {secretForKeyChain} -T \"{_securityUtil}\" \"{_runnerCredStoreKeyChain}\"",
                                                 environment: null,
                                                 cancellationToken: CancellationToken.None).GetAwaiter().GetResult();
                     if (exitCode == 0)
                     {
-                        Trace.Info($"Successfully add-generic-password for {target} (VSTSAGENT)");
+                        Trace.Info($"Successfully add-generic-password for {target} (GITHUBACTIONSRUNNER)");
                     }
                     else
                     {
@@ -495,7 +495,7 @@ namespace GitHub.Runner.Common
 
                     int exitCode = p.ExecuteAsync(workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Root),
                                                   fileName: _securityUtil,
-                                                  arguments: $"find-generic-password -s {target} -a VSTSAGENT -w -g \"{_agentCredStoreKeyChain}\"",
+                                                  arguments: $"find-generic-password -s {target} -a GITHUBACTIONSRUNNER -w -g \"{_runnerCredStoreKeyChain}\"",
                                                   environment: null,
                                                   cancellationToken: CancellationToken.None).GetAwaiter().GetResult();
                     if (exitCode == 0)
@@ -504,7 +504,7 @@ namespace GitHub.Runner.Common
                         string[] secrets = keyChainSecret.Split(':');
                         if (secrets.Length == 2 && !string.IsNullOrEmpty(secrets[0]) && !string.IsNullOrEmpty(secrets[1]))
                         {
-                            Trace.Info($"Successfully find-generic-password for {target} (VSTSAGENT)");
+                            Trace.Info($"Successfully find-generic-password for {target} (GITHUBACTIONSRUNNER)");
                             username = Encoding.UTF8.GetString(Convert.FromBase64String(secrets[0]));
                             password = Encoding.UTF8.GetString(Convert.FromBase64String(secrets[1]));
                             return new NetworkCredential(username, password);
@@ -574,12 +574,12 @@ namespace GitHub.Runner.Common
 
                     int exitCode = p.ExecuteAsync(workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Root),
                                                   fileName: _securityUtil,
-                                                  arguments: $"delete-generic-password -s {target} -a VSTSAGENT \"{_agentCredStoreKeyChain}\"",
+                                                  arguments: $"delete-generic-password -s {target} -a GITHUBACTIONSRUNNER \"{_runnerCredStoreKeyChain}\"",
                                                   environment: null,
                                                   cancellationToken: CancellationToken.None).GetAwaiter().GetResult();
                     if (exitCode == 0)
                     {
-                        Trace.Info($"Successfully delete-generic-password for {target} (VSTSAGENT)");
+                        Trace.Info($"Successfully delete-generic-password for {target} (GITHUBACTIONSRUNNER)");
                     }
                     else
                     {
@@ -606,7 +606,7 @@ namespace GitHub.Runner.Common
         {
             Trace.Entering();
             ArgUtil.NotNullOrEmpty(_securityUtil, nameof(_securityUtil));
-            ArgUtil.NotNullOrEmpty(_agentCredStoreKeyChain, nameof(_agentCredStoreKeyChain));
+            ArgUtil.NotNullOrEmpty(_runnerCredStoreKeyChain, nameof(_runnerCredStoreKeyChain));
 
             List<string> securityOut = new List<string>();
             List<string> securityError = new List<string>();
@@ -638,12 +638,12 @@ namespace GitHub.Runner.Common
                 // make sure the 'security' has access to the key so we won't get prompt at runtime.
                 int exitCode = p.ExecuteAsync(workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Root),
                                               fileName: _securityUtil,
-                                              arguments: $"unlock-keychain -p {_osxAgentCredStoreKeyChainPassword} \"{_agentCredStoreKeyChain}\"",
+                                              arguments: $"unlock-keychain -p {_osxRunnerCredStoreKeyChainPassword} \"{_runnerCredStoreKeyChain}\"",
                                               environment: null,
                                               cancellationToken: CancellationToken.None).GetAwaiter().GetResult();
                 if (exitCode == 0)
                 {
-                    Trace.Info($"Successfully unlock-keychain for {_agentCredStoreKeyChain}");
+                    Trace.Info($"Successfully unlock-keychain for {_runnerCredStoreKeyChain}");
                 }
                 else
                 {
@@ -665,7 +665,7 @@ namespace GitHub.Runner.Common
         {
             Trace.Entering();
             ArgUtil.NotNullOrEmpty(_securityUtil, nameof(_securityUtil));
-            ArgUtil.NotNullOrEmpty(_agentCredStoreKeyChain, nameof(_agentCredStoreKeyChain));
+            ArgUtil.NotNullOrEmpty(_runnerCredStoreKeyChain, nameof(_runnerCredStoreKeyChain));
 
             List<string> securityOut = new List<string>();
             List<string> securityError = new List<string>();
@@ -697,12 +697,12 @@ namespace GitHub.Runner.Common
                 // make sure the 'security' has access to the key so we won't get prompt at runtime.
                 int exitCode = p.ExecuteAsync(workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Root),
                                               fileName: _securityUtil,
-                                              arguments: $"lock-keychain \"{_agentCredStoreKeyChain}\"",
+                                              arguments: $"lock-keychain \"{_runnerCredStoreKeyChain}\"",
                                               environment: null,
                                               cancellationToken: CancellationToken.None).GetAwaiter().GetResult();
                 if (exitCode == 0)
                 {
-                    Trace.Info($"Successfully lock-keychain for {_agentCredStoreKeyChain}");
+                    Trace.Info($"Successfully lock-keychain for {_runnerCredStoreKeyChain}");
                 }
                 else
                 {
@@ -721,10 +721,10 @@ namespace GitHub.Runner.Common
         }
     }
 #else
-    public sealed class LinuxAgentCredentialStore : AgentService, IAgentCredentialStore
+    public sealed class LinuxRunnerCredentialStore : RunnerService, IRunnerCredentialStore
     {
-        // 'msftvsts' 128 bits iv
-        private readonly byte[] iv = new byte[] { 0x36, 0x64, 0x37, 0x33, 0x36, 0x36, 0x37, 0x34, 0x37, 0x36, 0x37, 0x33, 0x37, 0x34, 0x37, 0x33 };
+        // 'ghrunner' 128 bits iv
+        private readonly byte[] iv = new byte[] { 0x67, 0x68, 0x72, 0x75, 0x6e, 0x6e, 0x65, 0x72, 0x67, 0x68, 0x72, 0x75, 0x6e, 0x6e, 0x65, 0x72 };
 
         // 256 bits key
         private byte[] _symmetricKey;
@@ -757,14 +757,14 @@ namespace GitHub.Runner.Common
                 if (string.IsNullOrEmpty(machineId) || machineId.Length != 32)
                 {
                     Trace.Warning("Can not get valid machine id from '/etc/machine-id'.");
-                    machineId = "5f767374735f6167656e745f63726564"; //_vsts_agent_cred
+                    machineId = "43e7fe5da07740cf914b90f1dac51c2a";
                 }
             }
             else
             {
                 // /etc/machine-id not exist
                 Trace.Warning("/etc/machine-id doesn't exist.");
-                machineId = "5f767374735f6167656e745f63726564"; //_vsts_agent_cred
+                machineId = "43e7fe5da07740cf914b90f1dac51c2a";
             }
 
             List<byte> keyBuilder = new List<byte>();

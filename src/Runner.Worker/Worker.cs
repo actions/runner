@@ -13,12 +13,12 @@ using GitHub.Runner.Sdk;
 namespace GitHub.Runner.Worker
 {
     [ServiceLocator(Default = typeof(Worker))]
-    public interface IWorker : IAgentService
+    public interface IWorker : IRunnerService
     {
         Task<int> RunAsync(string pipeIn, string pipeOut);
     }
 
-    public sealed class Worker : AgentService, IWorker
+    public sealed class Worker : RunnerService, IWorker
     {
         private readonly TimeSpan _workerStartTimeout = TimeSpan.FromSeconds(30);
 
@@ -27,14 +27,14 @@ namespace GitHub.Runner.Worker
             // Validate args.
             ArgUtil.NotNullOrEmpty(pipeIn, nameof(pipeIn));
             ArgUtil.NotNullOrEmpty(pipeOut, nameof(pipeOut));
-            var agentWebProxy = HostContext.GetService<IVstsAgentWebProxy>();
-            var agentCertManager = HostContext.GetService<IAgentCertificateManager>();
-            VssUtil.InitializeVssClientSettings(HostContext.UserAgent, agentWebProxy.WebProxy, agentCertManager.VssClientCertificateManager);
+            var runnerWebProxy = HostContext.GetService<IRunnerWebProxy>();
+            var runnerCertManager = HostContext.GetService<IRunnerCertificateManager>();
+            VssUtil.InitializeVssClientSettings(HostContext.UserAgent, runnerWebProxy.WebProxy, runnerCertManager.VssClientCertificateManager);
 
             var jobRunner = HostContext.CreateService<IJobRunner>();
 
             using (var channel = HostContext.CreateService<IProcessChannel>())
-            using (var jobRequestCancellationToken = CancellationTokenSource.CreateLinkedTokenSource(HostContext.AgentShutdownToken))
+            using (var jobRequestCancellationToken = CancellationTokenSource.CreateLinkedTokenSource(HostContext.RunnerShutdownToken))
             using (var channelTokenSource = new CancellationTokenSource())
             {
                 // Start the channel.
@@ -89,11 +89,11 @@ namespace GitHub.Runner.Worker
                     case MessageType.CancelRequest:
                         jobRequestCancellationToken.Cancel();   // Expire the host cancellation token.
                         break;
-                    case MessageType.AgentShutdown:
-                        HostContext.ShutdownAgent(ShutdownReason.UserCancelled);
+                    case MessageType.RunnerShutdown:
+                        HostContext.ShutdownRunner(ShutdownReason.UserCancelled);
                         break;
                     case MessageType.OperatingSystemShutdown:
-                        HostContext.ShutdownAgent(ShutdownReason.OperatingSystemShutdown);
+                        HostContext.ShutdownRunner(ShutdownReason.OperatingSystemShutdown);
                         break;
                     default:
                         throw new ArgumentOutOfRangeException(nameof(channelMessage.MessageType), channelMessage.MessageType, nameof(channelMessage.MessageType));

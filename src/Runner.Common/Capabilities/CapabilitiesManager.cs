@@ -9,14 +9,14 @@ using GitHub.Runner.Sdk;
 namespace GitHub.Runner.Common.Capabilities
 {
     [ServiceLocator(Default = typeof(CapabilitiesManager))]
-    public interface ICapabilitiesManager : IAgentService
+    public interface ICapabilitiesManager : IRunnerService
     {
-        Task<Dictionary<string, string>> GetCapabilitiesAsync(AgentSettings settings, CancellationToken token);
+        Task<Dictionary<string, string>> GetCapabilitiesAsync(RunnerSettings settings, CancellationToken token);
     }
 
-    public sealed class CapabilitiesManager : AgentService, ICapabilitiesManager
+    public sealed class CapabilitiesManager : RunnerService, ICapabilitiesManager
     {
-        public async Task<Dictionary<string, string>> GetCapabilitiesAsync(AgentSettings settings, CancellationToken cancellationToken)
+        public async Task<Dictionary<string, string>> GetCapabilitiesAsync(RunnerSettings settings, CancellationToken cancellationToken)
         {
             Trace.Entering();
             ArgUtil.NotNull(settings, nameof(settings));
@@ -55,7 +55,7 @@ namespace GitHub.Runner.Common.Capabilities
     {
         int Order { get; }
 
-        Task<List<Capability>> GetCapabilitiesAsync(AgentSettings settings, CancellationToken cancellationToken);
+        Task<List<Capability>> GetCapabilitiesAsync(RunnerSettings settings, CancellationToken cancellationToken);
     }
 
     public sealed class Capability

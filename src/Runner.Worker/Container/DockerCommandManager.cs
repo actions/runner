@@ -13,7 +13,7 @@ using GitHub.Runner.Sdk;
 namespace GitHub.Runner.Worker.Container
 {
     [ServiceLocator(Default = typeof(DockerCommandManager))]
-    public interface IDockerCommandManager : IAgentService
+    public interface IDockerCommandManager : IRunnerService
     {
         string DockerPath { get; }
         string DockerInstanceLabel { get; }
@@ -37,7 +37,7 @@ namespace GitHub.Runner.Worker.Container
         Task<List<PortMapping>> DockerPort(IExecutionContext context, string containerId);
     }
 
-    public class DockerCommandManager : AgentService, IDockerCommandManager
+    public class DockerCommandManager : RunnerService, IDockerCommandManager
     {
         public string DockerPath { get; private set; }
 

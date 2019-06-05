@@ -13,7 +13,7 @@ namespace GitHub.Runner.Listener.Configuration
 #else
     [ServiceLocator(Default = typeof(RSAFileKeyManager))]
 #endif
-    public interface IRSAKeyManager : IAgentService
+    public interface IRSAKeyManager : IRunnerService
     {
         /// <summary>
         /// Creates a new <c>RSACryptoServiceProvider</c> instance for the current agent. If a key file is found then the current

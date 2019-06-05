@@ -8,9 +8,9 @@ namespace GitHub.Runner.Listener.Configuration
 {
 #if OS_WINDOWS
     [ServiceLocator(Default = typeof(WindowsServiceControlManager))]
-    public interface IWindowsServiceControlManager : IAgentService
+    public interface IWindowsServiceControlManager : IRunnerService
     {
-        void ConfigureService(AgentSettings settings, CommandSettings command);
+        void ConfigureService(RunnerSettings settings, CommandSettings command);
 
         void UnconfigureService();
     }
@@ -23,15 +23,15 @@ namespace GitHub.Runner.Listener.Configuration
 #elif OS_OSX
     [ServiceLocator(Default = typeof(OsxServiceControlManager))]
 #endif
-    public interface ILinuxServiceControlManager : IAgentService
+    public interface ILinuxServiceControlManager : IRunnerService
     {
-        void GenerateScripts(AgentSettings settings);
+        void GenerateScripts(RunnerSettings settings);
     }
 #endif
 
-    public class ServiceControlManager : AgentService
+    public class ServiceControlManager : RunnerService
     {
-        public void CalculateServiceName(AgentSettings settings, string serviceNamePattern, string serviceDisplayNamePattern, out string serviceName, out string serviceDisplayName)
+        public void CalculateServiceName(RunnerSettings settings, string serviceNamePattern, string serviceDisplayNamePattern, out string serviceName, out string serviceDisplayName)
         {
             Trace.Entering();
             serviceName = string.Empty;
@@ -40,6 +40,7 @@ namespace GitHub.Runner.Listener.Configuration
             Uri accountUri = new Uri(settings.ServerUrl);
             string accountName = string.Empty;
 
+            // TODO: GITHUB_RENAME
             if (accountUri.Host.Equals("dev.azure.com", StringComparison.OrdinalIgnoreCase))
             {
                 accountName = accountUri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();

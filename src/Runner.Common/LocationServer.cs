@@ -7,14 +7,14 @@ using GitHub.Services.Location;
 namespace GitHub.Runner.Common
 {
     [ServiceLocator(Default = typeof(LocationServer))]
-    public interface ILocationServer : IAgentService
+    public interface ILocationServer : IRunnerService
     {
         Task ConnectAsync(VssConnection jobConnection);
 
         Task<ConnectionData> GetConnectionDataAsync();
     }
 
-    public sealed class LocationServer : AgentService, ILocationServer
+    public sealed class LocationServer : RunnerService, ILocationServer
     {
         private bool _hasConnection;
         private VssConnection _connection;

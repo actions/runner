@@ -13,23 +13,16 @@ namespace GitHub.Runner.Plugins.Repository
 {
     public interface ISourceProvider
     {
-        Task GetSourceAsync(AgentTaskPluginExecutionContext executionContext, Pipelines.RepositoryResource repository, CancellationToken cancellationToken);
-
-        Task PostJobCleanupAsync(AgentTaskPluginExecutionContext executionContext, Pipelines.RepositoryResource repository);
+        Task GetSourceAsync(RunnerActionPluginExecutionContext executionContext, Pipelines.RepositoryResource repository, CancellationToken cancellationToken);
     }
 
-    public class CheckoutTask : IAgentTaskPlugin
+    public class CheckoutTask : IRunnerActionPlugin
     {
         private readonly Regex _validSha1 = new Regex(@"\b[0-9a-f]{40}\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled, TimeSpan.FromSeconds(2));
 
-        public string Stage => "main";
-        public Guid Id => Pipelines.PipelineConstants.CheckoutTask.Id;
-        public string Version => Pipelines.PipelineConstants.CheckoutTask.Version;
-
-        public async Task RunAsync(AgentTaskPluginExecutionContext executionContext, CancellationToken token)
+        public async Task RunAsync(RunnerActionPluginExecutionContext executionContext, CancellationToken token)
         {
-            var runnerContext = executionContext.Context["runner"] as DictionaryContextData;
-            string pipelineWorkspace = runnerContext.GetValueOrDefault("pipelineWorkspace") as StringContextData;
+            string pipelineWorkspace = executionContext.GetRunnerInfo("pipelineWorkspace");
             ArgUtil.Directory(pipelineWorkspace, nameof(pipelineWorkspace));
             var repoAlias = executionContext.GetInput(Pipelines.PipelineConstants.CheckoutTaskInputs.Repository, true);
 
@@ -74,7 +67,7 @@ namespace GitHub.Runner.Plugins.Repository
             }
 
             var currentRepoPath = repo.Properties.Get<string>(Pipelines.RepositoryPropertyNames.Path);
-            string tempDirectory = runnerContext.GetValueOrDefault("tempdirectory") as StringContextData;
+            string tempDirectory = executionContext.GetRunnerInfo("tempdirectory");
 
             ArgUtil.NotNullOrEmpty(currentRepoPath, nameof(currentRepoPath));
             ArgUtil.NotNullOrEmpty(tempDirectory, nameof(tempDirectory));
@@ -102,7 +95,7 @@ namespace GitHub.Runner.Plugins.Repository
                 expectRepoPath = Path.Combine(pipelineWorkspace, repoNameSplit[1]);
             }
 
-            // for self repository, we need to let the agent knows where it is after checkout.
+            // for self repository, we need to let the worker knows where it is after checkout.
             if (string.Equals(repoAlias, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase))
             {
                 executionContext.UpdateSelfRepositoryPath(expectRepoPath);

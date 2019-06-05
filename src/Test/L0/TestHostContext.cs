@@ -30,8 +30,8 @@ namespace GitHub.Runner.Common.Tests
         private string _tempDirectoryRoot = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("D"));
         private StartupType _startupType;
         public event EventHandler Unloading;
-        public CancellationToken AgentShutdownToken => _agentShutdownTokenSource.Token;
-        public ShutdownReason AgentShutdownReason { get; private set; }
+        public CancellationToken RunnerShutdownToken => _agentShutdownTokenSource.Token;
+        public ShutdownReason RunnerShutdownReason { get; private set; }
         public ISecretMasker SecretMasker => _secretMasker;
         public TestHostContext(object testClass, [CallerMemberName] string testName = "")
         {
@@ -102,7 +102,7 @@ namespace GitHub.Runner.Common.Tests
             await Task.Delay(TimeSpan.Zero);
         }
 
-        public T CreateService<T>() where T : class, IAgentService
+        public T CreateService<T>() where T : class, IRunnerService
         {
             _trace.Verbose($"Create service: '{typeof(T).Name}'");
 
@@ -120,7 +120,7 @@ namespace GitHub.Runner.Common.Tests
             return s;
         }
 
-        public T GetService<T>() where T : class, IAgentService
+        public T GetService<T>() where T : class, IRunnerService
         {
             _trace.Verbose($"Get service: '{typeof(T).Name}'");
 
@@ -136,7 +136,7 @@ namespace GitHub.Runner.Common.Tests
             return s;
         }
 
-        public void EnqueueInstance<T>(T instance) where T : class, IAgentService
+        public void EnqueueInstance<T>(T instance) where T : class, IRunnerService
         {
             // Enqueue a service instance to be returned by CreateService.
             if (object.ReferenceEquals(instance, null))
@@ -155,7 +155,7 @@ namespace GitHub.Runner.Common.Tests
             DefaultCulture = new CultureInfo(name);
         }
 
-        public void SetSingleton<T>(T singleton) where T : class, IAgentService
+        public void SetSingleton<T>(T singleton) where T : class, IRunnerService
         {
             // Set the singleton instance to be returned by GetService.
             if (object.ReferenceEquals(singleton, null))
@@ -187,26 +187,8 @@ namespace GitHub.Runner.Common.Tests
                         Constants.Path.ExternalsDirectory);
                     break;
 
-                case WellKnownDirectory.LegacyPSHost:
-                    path = Path.Combine(
-                        GetDirectory(WellKnownDirectory.Externals),
-                        Constants.Path.LegacyPSHostDirectory);
-                    break;
-
                 case WellKnownDirectory.Root:
                     path = new DirectoryInfo(GetDirectory(WellKnownDirectory.Bin)).Parent.FullName;
-                    break;
-
-                case WellKnownDirectory.ServerOM:
-                    path = Path.Combine(
-                        GetDirectory(WellKnownDirectory.Externals),
-                        Constants.Path.ServerOMDirectory);
-                    break;
-
-                case WellKnownDirectory.Tee:
-                    path = Path.Combine(
-                        GetDirectory(WellKnownDirectory.Externals),
-                        Constants.Path.TeeDirectory);
                     break;
 
                 case WellKnownDirectory.Temp:
@@ -215,10 +197,10 @@ namespace GitHub.Runner.Common.Tests
                         Constants.Path.TempDirectory);
                     break;
 
-                case WellKnownDirectory.Tasks:
+                case WellKnownDirectory.Actions:
                     path = Path.Combine(
                         GetDirectory(WellKnownDirectory.Work),
-                        Constants.Path.TasksDirectory);
+                        Constants.Path.ActionsDirectory);
                     break;
 
                 case WellKnownDirectory.Tools:
@@ -256,7 +238,7 @@ namespace GitHub.Runner.Common.Tests
             string path;
             switch (configFile)
             {
-                case WellKnownConfigFile.Agent:
+                case WellKnownConfigFile.Runner:
                     path = Path.Combine(
                         GetDirectory(WellKnownDirectory.Root),
                         ".agent");
@@ -316,12 +298,6 @@ namespace GitHub.Runner.Common.Tests
                         ".proxybypass");
                     break;
 
-                case WellKnownConfigFile.Autologon:
-                    path = Path.Combine(
-                        GetDirectory(WellKnownDirectory.Root),
-                        ".autologon");
-                    break;
-
                 case WellKnownConfigFile.Options:
                     path = Path.Combine(
                         GetDirectory(WellKnownDirectory.Root),
@@ -348,10 +324,10 @@ namespace GitHub.Runner.Common.Tests
             return _traceManager[name];
         }
 
-        public void ShutdownAgent(ShutdownReason reason)
+        public void ShutdownRunner(ShutdownReason reason)
         {
             ArgUtil.NotNull(reason, nameof(reason));
-            AgentShutdownReason = reason;
+            RunnerShutdownReason = reason;
             _agentShutdownTokenSource.Cancel();
         }
 
