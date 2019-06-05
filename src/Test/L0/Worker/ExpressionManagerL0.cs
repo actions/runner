@@ -211,11 +211,9 @@ namespace GitHub.Runner.Common.Tests.Worker
 
         private void InitializeExecutionContext(TestHostContext hc)
         {
-            List<string> warnings;
             _variables = new Variables(
                 hostContext: hc,
-                copy: new Dictionary<string, VariableValue>(),
-                warnings: out warnings);
+                copy: new Dictionary<string, VariableValue>());
             _ec = new Mock<IExecutionContext>();
             _ec.SetupAllProperties();
             _ec.Setup(x => x.Variables).Returns(_variables);

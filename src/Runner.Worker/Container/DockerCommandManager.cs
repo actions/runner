@@ -23,7 +23,7 @@ namespace GitHub.Runner.Worker.Container
         Task<int> DockerPull(IExecutionContext context, string image);
         Task<int> DockerBuild(IExecutionContext context, string path, string tag);
         Task<string> DockerCreate(IExecutionContext context, ContainerInfo container);
-        Task<int> DockerRun(IExecutionContext context, ContainerInfo container);
+        Task<int> DockerRun(IExecutionContext context, ContainerInfo container, EventHandler<ProcessDataReceivedEventArgs> stdoutDataReceived, EventHandler<ProcessDataReceivedEventArgs> stderrDataReceived);
         Task<int> DockerStart(IExecutionContext context, string containerId);
         Task<int> DockerLogs(IExecutionContext context, string containerId);
         Task<List<string>> DockerPS(IExecutionContext context, string options);
@@ -173,7 +173,7 @@ namespace GitHub.Runner.Worker.Container
             return outputStrings.FirstOrDefault();
         }
 
-        public async Task<int> DockerRun(IExecutionContext context, ContainerInfo container)
+        public async Task<int> DockerRun(IExecutionContext context, ContainerInfo container, EventHandler<ProcessDataReceivedEventArgs> stdoutDataReceived, EventHandler<ProcessDataReceivedEventArgs> stderrDataReceived)
         {
             IList<string> dockerOptions = new List<string>();
             // OPTIONS
@@ -223,7 +223,7 @@ namespace GitHub.Runner.Worker.Container
             dockerOptions.Add($"{container.ContainerCommand}");
 
             var optionsString = string.Join(" ", dockerOptions);
-            return await ExecuteDockerCommandAsync(context, "run", optionsString, context.CancellationToken);
+            return await ExecuteDockerCommandAsync(context, "run", optionsString, stdoutDataReceived, stderrDataReceived, context.CancellationToken);
         }
 
         public async Task<int> DockerStart(IExecutionContext context, string containerId)
@@ -340,6 +340,41 @@ namespace GitHub.Runner.Worker.Container
         private Task<int> ExecuteDockerCommandAsync(IExecutionContext context, string command, string options, CancellationToken cancellationToken = default(CancellationToken))
         {
             return ExecuteDockerCommandAsync(context, command, options, null, cancellationToken);
+        }
+
+        private async Task<int> ExecuteDockerCommandAsync(IExecutionContext context, string command, string options, EventHandler<ProcessDataReceivedEventArgs> stdoutDataReceived, EventHandler<ProcessDataReceivedEventArgs> stderrDataReceived, CancellationToken cancellationToken = default(CancellationToken))
+        {
+            string arg = $"{command} {options}".Trim();
+            context.Command($"{DockerPath} {arg}");
+
+            var processInvoker = HostContext.CreateService<IProcessInvoker>();
+            processInvoker.OutputDataReceived += stdoutDataReceived;
+            processInvoker.ErrorDataReceived += stderrDataReceived;
+
+#if OS_WINDOWS
+            context.Output("");
+            context.Output("                        ##         .");
+            context.Output("                  ## ## ##        ==");
+            context.Output("               ## ## ## ## ##    ===");
+            context.Output("           /\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\\___/ ===");
+            context.Output("      ~~~ {~~ ~~~~ ~~~ ~~~~ ~~~ ~ /  ===- ~~~");
+            context.Output("           \\______ o           __/");
+            context.Output("             \\    \\         __/");
+            context.Output("              \\____\\_______/");
+            context.Output("");
+            await Task.Delay(1000);
+            return 0;
+#else
+            return await processInvoker.ExecuteAsync(
+                workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Work),
+                fileName: DockerPath,
+                arguments: arg,
+                environment: null,
+                requireExitCodeZero: false,
+                outputEncoding: null,
+                killProcessOnCancel: false,
+                cancellationToken: cancellationToken);
+#endif
         }
 
         private async Task<int> ExecuteDockerCommandAsync(IExecutionContext context, string command, string options, IList<string> standardIns = null, CancellationToken cancellationToken = default(CancellationToken))

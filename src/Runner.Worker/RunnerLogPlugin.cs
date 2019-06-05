@@ -138,13 +138,9 @@ namespace GitHub.Runner.Worker
                 pluginContext.PluginAssemblies.AddRange(_logPlugins.Values.Select(x => x.AssemblyName));
 
                 // variables
-                foreach (var publicVar in context.Variables.Public)
+                foreach (var variable in context.Variables.AllVariables)
                 {
-                    pluginContext.Variables[publicVar.Key] = publicVar.Value;
-                }
-                foreach (var privateVar in context.Variables.Private)
-                {
-                    pluginContext.Variables[privateVar.Key] = new VariableValue(privateVar.Value, true);
+                    pluginContext.Variables[variable.Name] = new VariableValue(variable.Value, variable.Secret);
                 }
 
                 // steps

@@ -67,9 +67,9 @@ namespace GitHub.Runner.Worker
         // timeline record update methods
         void Start(string currentOperation = null);
         TaskResult Complete(TaskResult? result = null, string currentOperation = null, string resultCode = null);
+        string GetRunnerContext(string name);
         void SetRunnerContext(string name, string value);
         void SetGitHubContext(string name, string value);
-        void SetVariable(string name, string value, bool isSecret = false, bool isOutput = false, bool isFilePath = false);
         void SetOutput(string name, string value, out string reference);
         void SetTimeout(TimeSpan? timeout);
         void AddIssue(Issue issue, string message = null);
@@ -296,38 +296,25 @@ namespace GitHub.Runner.Worker
             return Result.Value;
         }
 
-        public void SetVariable(string name, string value, bool isSecret = false, bool isOutput = false, bool isFilePath = false)
-        {
-            ArgUtil.NotNullOrEmpty(name, nameof(name));
-
-            if (isFilePath && Container != null)
-            {
-                value = Container.TranslateToContainerPath(value);
-            }
-
-            if (isOutput || OutputVariables.Contains(name))
-            {
-                _record.Variables[name] = new VariableValue()
-                {
-                    Value = value,
-                    IsSecret = isSecret
-                };
-                _jobServerQueue.QueueTimelineRecordUpdate(_mainTimelineId, _record);
-
-                ArgUtil.NotNullOrEmpty(_record.RefName, nameof(_record.RefName));
-                Variables.Set($"{_record.RefName}.{name}", value, secret: isSecret);
-            }
-            else
-            {
-                Variables.Set(name, value, secret: isSecret);
-            }
-        }
-
         public void SetRunnerContext(string name, string value)
         {
             ArgUtil.NotNullOrEmpty(name, nameof(name));
             var runnerContext = ExpressionValues["runner"] as RunnerContext;
             runnerContext[name] = new StringContextData(value);
+        }
+
+        public string GetRunnerContext(string name)
+        {
+            ArgUtil.NotNullOrEmpty(name, nameof(name));
+            var runnerContext = ExpressionValues["runner"] as RunnerContext;
+            if (runnerContext.TryGetValue(name, out var value))
+            {
+                return value as StringContextData;
+            }
+            else
+            {
+                return null;
+            }
         }
 
         public void SetGitHubContext(string name, string value)
@@ -488,9 +475,8 @@ namespace GitHub.Runner.Worker
             // Repositories
             Repositories = message.Resources.Repositories;
 
-            // Variables (constructor performs initial recursive expansion)
-            List<string> warnings;
-            Variables = new Variables(HostContext, message.Variables, out warnings); // We no longer using variables
+            // Variables
+            Variables = new Variables(HostContext, message.Variables);
 
             // Environment variables shared across all actions
             EnvironmentVariables = new Dictionary<string, string>(VarUtil.EnvironmentVariableKeyComparer);
@@ -577,12 +563,15 @@ namespace GitHub.Runner.Worker
                 githubContext["action"] = new StringContextData(Variables.Build_Number);
 
                 // GITHUB_EVENT_PATH=/github/workflow/event.json
-            }else{
+            }
+            else
+            {
                 var githubContext = new GitHubContext();
                 var selfRepo = message.Resources.Repositories.Single(x => string.Equals(x.Alias, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase));
 
                 var ghDictionary = (DictionaryContextData)ExpressionValues["github"];
-                foreach (var pair in ghDictionary){
+                foreach (var pair in ghDictionary)
+                {
                     githubContext.Add(pair.Key, pair.Value);
                 }
 
@@ -603,24 +592,11 @@ namespace GitHub.Runner.Worker
             PrependPath = new List<string>();
 
             // Docker (JobContainer)
-            string imageName = Variables.Get("_PREVIEW_VSTS_DOCKER_IMAGE");
-            if (string.IsNullOrEmpty(imageName))
-            {
-                imageName = Environment.GetEnvironmentVariable("_PREVIEW_VSTS_DOCKER_IMAGE");
-            }
+            var containerNetwork = $"github_network_{Guid.NewGuid().ToString("N")}";
 
-            var containerNetwork = $"vsts_network_{Guid.NewGuid().ToString("N")}";
-            if (!string.IsNullOrEmpty(imageName) &&
-                string.IsNullOrEmpty(message.JobContainer))
-            {
-                var dockerContainer = new Pipelines.ContainerResource()
-                {
-                    Alias = "vsts_container_preview"
-                };
-                dockerContainer.Properties.Set("image", imageName);
-                Container = new ContainerInfo(HostContext, dockerContainer) { ContainerNetwork = containerNetwork };
-            }
-            else if (!string.IsNullOrEmpty(message.JobContainer))
+            // Expose the network name through runner context
+            SetRunnerContext("containernetwork", containerNetwork);
+            if (!string.IsNullOrEmpty(message.JobContainer))
             {
                 Container = new ContainerInfo(HostContext, message.Resources.Containers.Single(x => string.Equals(x.Alias, message.JobContainer, StringComparison.OrdinalIgnoreCase))) { ContainerNetwork = containerNetwork };
             }
@@ -644,13 +620,11 @@ namespace GitHub.Runner.Worker
             if (!string.IsNullOrEmpty(agentWebProxy.ProxyAddress))
             {
                 SetRunnerContext("proxyurl", agentWebProxy.ProxyAddress);
-                // Variables.Set(Constants.Variables.Agent.ProxyUrl, agentWebProxy.ProxyAddress);
                 Environment.SetEnvironmentVariable("VSTS_HTTP_PROXY", string.Empty);
 
                 if (!string.IsNullOrEmpty(agentWebProxy.ProxyUsername))
                 {
                     SetRunnerContext("proxyusername", agentWebProxy.ProxyUsername);
-                    // Variables.Set(Constants.Variables.Agent.ProxyUsername, agentWebProxy.ProxyUsername);
                     Environment.SetEnvironmentVariable("VSTS_HTTP_PROXY_USERNAME", string.Empty);
                 }
 
@@ -658,14 +632,12 @@ namespace GitHub.Runner.Worker
                 {
                     HostContext.SecretMasker.AddValue(agentWebProxy.ProxyPassword);
                     SetRunnerContext("proxypassword", agentWebProxy.ProxyPassword);
-                    // Variables.Set(Constants.Variables.Agent.ProxyPassword, agentWebProxy.ProxyPassword, true);
                     Environment.SetEnvironmentVariable("VSTS_HTTP_PROXY_PASSWORD", string.Empty);
                 }
 
                 if (agentWebProxy.ProxyBypassList.Count > 0)
                 {
                     SetRunnerContext("proxybypasslist", JsonUtility.ToString(agentWebProxy.ProxyBypassList));
-                    // Variables.Set(Constants.Variables.Agent.ProxyBypassList, JsonUtility.ToString(agentWebProxy.ProxyBypassList));
                 }
             }
 
@@ -674,13 +646,11 @@ namespace GitHub.Runner.Worker
             if (agentCert.SkipServerCertificateValidation)
             {
                 SetRunnerContext("sslskipcertvalidation", bool.TrueString);
-                // Variables.Set(Constants.Variables.Agent.SslSkipCertValidation, bool.TrueString);
             }
 
             if (!string.IsNullOrEmpty(agentCert.CACertificateFile))
             {
                 SetRunnerContext("sslcainfo", agentCert.CACertificateFile);
-                // Variables.Set(Constants.Variables.Agent.SslCAInfo, agentCert.CACertificateFile);
             }
 
             if (!string.IsNullOrEmpty(agentCert.ClientCertificateFile) &&
@@ -691,15 +661,10 @@ namespace GitHub.Runner.Worker
                 SetRunnerContext("clientcertprivatekey", agentCert.ClientCertificatePrivateKeyFile);
                 SetRunnerContext("clientcertarchive", agentCert.ClientCertificateArchiveFile);
 
-                // Variables.Set(Constants.Variables.Agent.SslClientCert, agentCert.ClientCertificateFile);
-                // Variables.Set(Constants.Variables.Agent.SslClientCertKey, agentCert.ClientCertificatePrivateKeyFile);
-                // Variables.Set(Constants.Variables.Agent.SslClientCertArchive, agentCert.ClientCertificateArchiveFile);
-
                 if (!string.IsNullOrEmpty(agentCert.ClientCertificatePassword))
                 {
                     HostContext.SecretMasker.AddValue(agentCert.ClientCertificatePassword);
                     SetRunnerContext("clientcertpassword", agentCert.ClientCertificatePassword);
-                    // Variables.Set(Constants.Variables.Agent.SslClientCertPassword, agentCert.ClientCertificatePassword, true);
                 }
             }
 
@@ -711,7 +676,6 @@ namespace GitHub.Runner.Worker
                 if (runtimeOptions.GitUseSecureChannel)
                 {
                     SetRunnerContext("gituseschannel", runtimeOptions.GitUseSecureChannel.ToString());
-                    // Variables.Set(Constants.Variables.Agent.GitUseSChannel, runtimeOptions.GitUseSecureChannel.ToString());
                 }
 #endif                
             }
@@ -729,9 +693,6 @@ namespace GitHub.Runner.Worker
             // Logger (must be initialized before writing warnings).
             _logger = HostContext.CreateService<IPagingLogger>();
             _logger.Setup(_mainTimelineId, _record.Id);
-
-            // Log warnings from recursive variable expansion.
-            warnings?.ForEach(x => this.Warning(x));
 
             // Verbosity (from system.debug).
             WriteDebug = Variables.System_Debug ?? false;

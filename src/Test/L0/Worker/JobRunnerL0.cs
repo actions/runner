@@ -82,6 +82,12 @@ namespace GitHub.Runner.Common.Tests.Worker
             List<TaskInstance> tasks = new List<TaskInstance>();
             Guid JobId = Guid.NewGuid();
             _message = Pipelines.AgentJobRequestMessageUtil.Convert(new AgentJobRequestMessage(plan, timeline, JobId, testName, testName, environment, tasks));
+            _message.Resources.Repositories.Add(new Pipelines.RepositoryResource()
+            {
+                Alias = Pipelines.PipelineConstants.SelfAlias,
+                Id = "github",
+                Version = "sha1"
+            });
 
             _initResult.Clear();
 

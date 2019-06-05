@@ -11,7 +11,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\GitHub.Pipelines.Sdk\GitHub.Pipelines.Sdk.csproj" />
+    <ProjectReference Include="..\Sdk\Sdk.csproj" />
     <ProjectReference Include="..\Runner.Sdk\Runner.Sdk.csproj" />
   </ItemGroup>
 

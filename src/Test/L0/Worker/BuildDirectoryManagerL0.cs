@@ -261,11 +261,12 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             // Setup the execution context.
             _ec = new Mock<IExecutionContext>();
-            List<string> warnings;
-            _variables = new Variables(hc, new Dictionary<string, VariableValue>(), out warnings);
-            _variables.Set(Constants.Variables.System.CollectionId, CollectionId);
-            _variables.Set(Constants.Variables.System.DefinitionId, DefinitionId);
-            _variables.Set(Constants.Variables.Build.Clean, $"{cleanOption}");
+            var variables = new Dictionary<string, VariableValue>();
+            variables[Constants.Variables.System.CollectionId] = CollectionId;
+            variables[Constants.Variables.System.DefinitionId] = DefinitionId;
+            variables[Constants.Variables.Build.Clean] = cleanOption.ToString();
+            _variables = new Variables(hc, variables);
+            
             _ec.Setup(x => x.Variables).Returns(_variables);
 
             // Store the expected tracking file path.
