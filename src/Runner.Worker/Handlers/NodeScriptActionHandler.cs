@@ -63,9 +63,6 @@ namespace GitHub.Runner.Worker.Handlers
                 }
             }
 
-            StepHost.OutputDataReceived += OnDataReceived;
-            StepHost.ErrorDataReceived += OnDataReceived;
-
             string file;
             if (!string.IsNullOrEmpty(ExecutionContext.Container?.ContainerBringNodePath))
             {
@@ -91,39 +88,36 @@ namespace GitHub.Runner.Worker.Handlers
             Encoding outputEncoding = null;
 #endif
 
-            // Execute the process. Exit code 0 should always be returned.
-            // A non-zero exit code indicates infrastructural failure.
-            // Task failure should be communicated over STDOUT using ## commands.
-            Task step = StepHost.ExecuteAsync(workingDirectory: StepHost.ResolvePathForStepHost(workingDirectory),
-                                              fileName: StepHost.ResolvePathForStepHost(file),
-                                              arguments: arguments,
-                                              environment: Environment,
-                                              requireExitCodeZero: true,
-                                              outputEncoding: outputEncoding,
-                                              killProcessOnCancel: false,
-                                              inheritConsoleHandler: !ExecutionContext.Variables.Retain_Default_Encoding,
-                                              cancellationToken: ExecutionContext.CancellationToken);
-
-            // Wait for either the node exit or force finish through ##vso command
-            await System.Threading.Tasks.Task.WhenAny(step, ExecutionContext.ForceCompleted);
-
-            if (ExecutionContext.ForceCompleted.IsCompleted)
+            using (var stdoutManager = new OutputManager(ExecutionContext, ActionCommandManager))
+            using (var stderrManager = new OutputManager(ExecutionContext, ActionCommandManager))
             {
-                ExecutionContext.Debug("The task was marked as \"done\", but the process has not closed after 5 seconds. Treating the task as complete.");
-            }
-            else
-            {
-                await step;
-            }
-        }
+                StepHost.OutputDataReceived += stdoutManager.OnDataReceived;
+                StepHost.ErrorDataReceived += stderrManager.OnDataReceived;
 
-        private void OnDataReceived(object sender, ProcessDataReceivedEventArgs e)
-        {
-            // This does not need to be inside of a critical section.
-            // The logging queues and command handlers are thread-safe.
-            if (!ActionCommandManager.TryProcessCommand(ExecutionContext, e.Data))
-            {
-                ExecutionContext.Output(e.Data);
+                // Execute the process. Exit code 0 should always be returned.
+                // A non-zero exit code indicates infrastructural failure.
+                // Task failure should be communicated over STDOUT using ## commands.
+                Task step = StepHost.ExecuteAsync(workingDirectory: StepHost.ResolvePathForStepHost(workingDirectory),
+                                                fileName: StepHost.ResolvePathForStepHost(file),
+                                                arguments: arguments,
+                                                environment: Environment,
+                                                requireExitCodeZero: true,
+                                                outputEncoding: outputEncoding,
+                                                killProcessOnCancel: false,
+                                                inheritConsoleHandler: !ExecutionContext.Variables.Retain_Default_Encoding,
+                                                cancellationToken: ExecutionContext.CancellationToken);
+
+                // Wait for either the node exit or force finish through ##vso command
+                await System.Threading.Tasks.Task.WhenAny(step, ExecutionContext.ForceCompleted);
+
+                if (ExecutionContext.ForceCompleted.IsCompleted)
+                {
+                    ExecutionContext.Debug("The task was marked as \"done\", but the process has not closed after 5 seconds. Treating the task as complete.");
+                }
+                else
+                {
+                    await step;
+                }
             }
         }
     }

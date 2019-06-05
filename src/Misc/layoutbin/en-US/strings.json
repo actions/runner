@@ -424,6 +424,7 @@
   "ReadingCodeCoverageSummary": "Reading code coverage summary from '{0}'",
   "RegisterAgentSectionHeader": "Register Agent",
   "ReleaseDirLastUseTIme": "The last time release directory '{0}' been used is: {1}",
+  "RemovingIssueMatcher": "Removing issue matcher '{0}'. Matcher failed {1} times. Error: {2}",
   "RenameIndexFileCoberturaFailed": "Renaming '{0}' to '{1}' failed while publishing code coverage files for '{2}'. Inner Exception: '{3}'",
   "Replace": "replace? (Y/N)",
   "RepositoryNotExist": "Can't update repository, the repository does not exist.",

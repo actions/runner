@@ -111,15 +111,5 @@ namespace GitHub.Runner.Worker.Handlers
                 throw new InvalidOperationException($"Docker run failed with exit code {runExitCode}");
             }
         }
-
-        private void OnDataReceived(object sender, ProcessDataReceivedEventArgs e)
-        {
-            // This does not need to be inside of a critical section.
-            // The logging queues and command handlers are thread-safe.
-            if (!ActionCommandManager.TryProcessCommand(ExecutionContext, e.Data))
-            {
-                ExecutionContext.Output(e.Data);
-            }
-        }
     }
 }

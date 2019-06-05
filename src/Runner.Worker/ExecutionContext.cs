@@ -72,9 +72,16 @@ namespace GitHub.Runner.Worker
         void SetVariable(string name, string value, bool isSecret = false, bool isOutput = false, bool isFilePath = false);
         void SetOutput(string name, string value, out string reference);
         void SetTimeout(TimeSpan? timeout);
-        void AddIssue(Issue issue);
+        void AddIssue(Issue issue, string message = null);
         void Progress(int percentage, string currentOperation = null);
         void UpdateDetailTimelineRecord(TimelineRecord record);
+
+        // matchers
+        void Add(OnMatcherChanged handler);
+        void Remove(OnMatcherChanged handler);
+        void AddMatchers(IssueMatchersConfig matcher);
+        void RemoveMatchers(IEnumerable<string> owners);
+        IEnumerable<IssueMatcherConfig> GetMatchers();
 
         // others
         void ForceTaskComplete();
@@ -89,11 +96,16 @@ namespace GitHub.Runner.Worker
         private readonly object _loggerLock = new object();
         private readonly List<IAsyncCommandContext> _asyncCommands = new List<IAsyncCommandContext>();
         private readonly HashSet<string> _outputvariables = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        private readonly object _matchersLock = new object();
+
+        private event OnMatcherChanged _onMatcherChanged;
+
+        private IssueMatcherConfig[] _matchers;
 
         private IRunnerLogPlugin _logPlugin;
         private IPagingLogger _logger;
         private IJobServerQueue _jobServerQueue;
-        private IExecutionContext _parentExecutionContext;
+        private ExecutionContext _parentExecutionContext;
 
         private bool _outputForward = false;
         private Guid _mainTimelineId;
@@ -157,6 +169,21 @@ namespace GitHub.Runner.Worker
         }
 
         public PlanFeatures Features { get; private set; }
+
+        private ExecutionContext Root
+        {
+            get
+            {
+                var result = this;
+
+                while (result._parentExecutionContext != null)
+                {
+                    result = result._parentExecutionContext;
+                }
+
+                return result;
+            }
+        }
 
         public override void Initialize(IHostContext hostContext)
         {
@@ -347,18 +374,24 @@ namespace GitHub.Runner.Worker
         }
 
         // This is not thread safe, the caller need to take lock before calling issue()
-        public void AddIssue(Issue issue)
+        public void AddIssue(Issue issue, string logMessage = null)
         {
             ArgUtil.NotNull(issue, nameof(issue));
+
+            if (string.IsNullOrEmpty(logMessage))
+            {
+                logMessage = issue.Message;
+            }
+
             issue.Message = HostContext.SecretMasker.MaskSecrets(issue.Message);
 
             if (issue.Type == IssueType.Error)
             {
                 // tracking line number for each issue in log file
                 // log UI use this to navigate from issue to log
-                if (!string.IsNullOrEmpty(issue.Message))
+                if (!string.IsNullOrEmpty(logMessage))
                 {
-                    long logLineNumber = Write(WellKnownTags.Error, issue.Message);
+                    long logLineNumber = Write(WellKnownTags.Error, logMessage);
                     issue.Data["logFileLineNumber"] = logLineNumber.ToString();
                 }
 
@@ -373,9 +406,9 @@ namespace GitHub.Runner.Worker
             {
                 // tracking line number for each issue in log file
                 // log UI use this to navigate from issue to log
-                if (!string.IsNullOrEmpty(issue.Message))
+                if (!string.IsNullOrEmpty(logMessage))
                 {
-                    long logLineNumber = Write(WellKnownTags.Warning, issue.Message);
+                    long logLineNumber = Write(WellKnownTags.Warning, logMessage);
                     issue.Data["logFileLineNumber"] = logLineNumber.ToString();
                 }
 
@@ -701,12 +734,11 @@ namespace GitHub.Runner.Worker
             }
 
             // write to job level execution context's log file.
-            var parentContext = _parentExecutionContext as ExecutionContext;
-            if (parentContext != null)
+            if (_parentExecutionContext != null)
             {
-                lock (parentContext._loggerLock)
+                lock (_parentExecutionContext._loggerLock)
                 {
-                    parentContext._logger.Write(msg);
+                    _parentExecutionContext._logger.Write(msg);
                 }
             }
 
@@ -737,6 +769,106 @@ namespace GitHub.Runner.Worker
             }
 
             _jobServerQueue.QueueFileUpload(_mainTimelineId, _record.Id, type, name, filePath, deleteSource: false);
+        }
+
+        // Add OnMatcherChanged
+        public void Add(OnMatcherChanged handler)
+        {
+            Root._onMatcherChanged += handler;
+        }
+
+        // Remove OnMatcherChanged
+        public void Remove(OnMatcherChanged handler)
+        {
+            Root._onMatcherChanged -= handler;
+        }
+
+        // Add Issue matchers
+        public void AddMatchers(IssueMatchersConfig config)
+        {
+            var root = Root;
+
+            // Lock
+            lock (root._matchersLock)
+            {
+                var newMatchers = new List<IssueMatcherConfig>();
+
+                // Prepend
+                var newOwners = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                foreach (var matcher in config.Matchers)
+                {
+                    newOwners.Add(matcher.Owner);
+                    newMatchers.Add(matcher);
+                }
+
+                // Add existing non-matching
+                var existingMatchers = root._matchers ?? Array.Empty<IssueMatcherConfig>();
+                newMatchers.AddRange(existingMatchers.Where(x => !newOwners.Contains(x.Owner)));
+
+                // Store
+                root._matchers = newMatchers.ToArray();
+
+                // Fire events
+                foreach (var matcher in config.Matchers)
+                {
+                    root._onMatcherChanged(null, new MatcherChangedEventArgs(matcher));
+                }
+
+                // Output
+                var owners = config.Matchers.Select(x => $"'{x.Owner}'");
+                var joinedOwners = string.Join(", ", owners);
+                // todo: loc
+                this.Output($"Added matchers: {joinedOwners}");
+            }
+        }
+
+        // Remove issue matcher
+        public void RemoveMatchers(IEnumerable<string> owners)
+        {
+            var root = Root;
+            var distinctOwners = new HashSet<string>(owners, StringComparer.OrdinalIgnoreCase);
+            var removedMatchers = new List<IssueMatcherConfig>();
+            var newMatchers = new List<IssueMatcherConfig>();
+
+            // Lock
+            lock (root._matchersLock)
+            {
+                // Remove
+                var existingMatchers = root._matchers ?? Array.Empty<IssueMatcherConfig>();
+                foreach (var matcher in existingMatchers)
+                {
+                    if (distinctOwners.Contains(matcher.Owner))
+                    {
+                        removedMatchers.Add(matcher);
+                    }
+                    else
+                    {
+                        newMatchers.Add(matcher);
+                    }
+                }
+
+                // Store
+                root._matchers = newMatchers.ToArray();
+
+                // Fire events
+                foreach (var removedMatcher in removedMatchers)
+                {
+                    root._onMatcherChanged(null, new MatcherChangedEventArgs(new IssueMatcherConfig { Owner = removedMatcher.Owner }));
+                }
+
+                // Output
+                owners = removedMatchers.Select(x => $"'{x.Owner}'");
+                var joinedOwners = string.Join(", ", owners);
+                // todo: loc
+                this.Output($"Removed matchers: {joinedOwners}");
+            }
+        }
+
+        // Get issue matchers
+        public IEnumerable<IssueMatcherConfig> GetMatchers()
+        {
+            // Lock not required since the list is immutable
+            return Root._matchers ?? Array.Empty<IssueMatcherConfig>();
         }
 
         private void InitializeTimelineRecord(Guid timelineId, Guid timelineRecordId, Guid? parentTimelineRecordId, string recordType, string displayName, string refName, int? order)

@@ -50,6 +50,8 @@ namespace GitHub.Runner.Common
                     Add<T>(extensions, "GitHub.Runner.Worker.SetOutputCommandExtension, Runner.Worker");
                     Add<T>(extensions, "GitHub.Runner.Worker.SetSecretCommandExtension, Runner.Worker");
                     Add<T>(extensions, "GitHub.Runner.Worker.AddPathCommandExtension, Runner.Worker");
+                    Add<T>(extensions, "GitHub.Runner.Worker.AddMatcherCommandExtension, Runner.Worker");
+                    Add<T>(extensions, "GitHub.Runner.Worker.RemoveMatcherCommandExtension, Runner.Worker");
                     Add<T>(extensions, "GitHub.Runner.Worker.WarningCommandExtension, Runner.Worker");
                     Add<T>(extensions, "GitHub.Runner.Worker.ErrorCommandExtension, Runner.Worker");
                     break;
