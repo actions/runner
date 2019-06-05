@@ -8,7 +8,7 @@ public sealed class GitHubContext : DictionaryContextData, IEnvironmentContextDa
         {
             foreach (var data in this)
             {
-                if(data.Key.Equals("token"))
+                if(!data.Key.Equals("token"))
                     yield return new KeyValuePair<string, string>($"GITHUB_{data.Key.ToUpperInvariant()}", data.Value as StringContextData);
             }
         }
