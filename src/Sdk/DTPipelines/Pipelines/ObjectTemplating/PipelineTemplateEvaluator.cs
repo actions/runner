@@ -324,6 +324,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 Schema = m_schema,
                 TraceWriter = m_trace,
             };
+
             if (contextData?.Count > 0)
             {
                 foreach (var pair in contextData)
@@ -331,10 +332,30 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                     result.ExpressionValues[pair.Key] = pair.Value;
                 }
             }
+
+            // Compat for new agent against old server
+            foreach (var name in s_contextNames)
+            {
+                if (!result.ExpressionValues.ContainsKey(name))
+                {
+                    result.ExpressionValues[name] = null;
+                }
+            }
+
             return result;
         }
 
         private readonly ITraceWriter m_trace;
         private readonly TemplateSchema m_schema;
+        private readonly String[] s_contextNames = new[]
+        {
+            "github", // todo: move to const
+            PipelineTemplateConstants.Strategy,
+            PipelineTemplateConstants.Matrix,
+            PipelineTemplateConstants.Parallel,
+            PipelineTemplateConstants.Secrets,
+            PipelineTemplateConstants.Actions,
+            PipelineTemplateConstants.Inputs,
+        };
     }
 }

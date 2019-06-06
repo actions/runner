@@ -11,6 +11,11 @@ namespace GitHub.DistributedTask.Logging
     [EditorBrowsable(EditorBrowsableState.Never)]
     public static class ValueEncoders
     {
+        public static String ExpressionStringEscape(String value)
+        {
+            return Expressions.ExpressionUtil.StringEscape(value);
+        }
+
         public static String JsonStringEscape(String value)
         {
             // Convert to a JSON string and then remove the leading/trailing double-quote.

@@ -39,6 +39,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         internal const String ScalarStrategyContext = "scalar-strategy-context";
         internal const String Scope = "scope";
         internal const String Scopes = "scopes";
+        internal const String Secrets = "secrets";
         internal const String Strategy = "strategy";
         internal const String Submodules = "submodules";
         internal const String Template = "template";
