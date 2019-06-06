@@ -155,18 +155,23 @@ namespace GitHub.Runner.Worker.Handlers
 
             string entryScript = Container.TranslateToContainerPath(Path.Combine(tempDir, fileName));
 
+            // Usage:  docker exec [OPTIONS] CONTAINER COMMAND [ARG...]
             IList<string> containerExecutionArgs = new List<string>();
-            containerExecutionArgs.Add("exec");
+
+            containerExecutionArgs.Add($"exec -i");
 #if !OS_WINDOWS
-            containerExecutionArgs.Add($"-u {Container.CurrentUserId}");
+            if (!String.IsNullOrEmpty(Container.CurrentUserName))
+            {
+                containerExecutionArgs.Add($"-u {Container.CurrentUserId}");
+            }
 #else
 #endif
-            containerExecutionArgs.Add($"-i {Container.ContainerId}");
             foreach (var env in environment)
             {
-                containerExecutionArgs.Add($"-e \"{env.Key}\"");
+                containerExecutionArgs.Add($"-e {env.Key}");
             }
-            containerExecutionArgs.Add(entryScript);
+            containerExecutionArgs.Add($"{Container.ContainerId}");
+            containerExecutionArgs.Add(fileName);
             containerExecutionArgs.Add(arguments);
             string containerExecutionArgString = string.Join(" ", containerExecutionArgs);
 

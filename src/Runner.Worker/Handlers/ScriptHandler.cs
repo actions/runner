@@ -65,6 +65,9 @@ namespace GitHub.Runner.Worker.Handlers
             // Arguments
             var arguments = $"/D /E:ON /V:OFF /S /C \"CALL \"{StepHost.ResolvePathForStepHost(filePath)}\"\"";
 #else
+            // Command path
+            var commandPath = WhichUtil.Which("bash") ?? WhichUtil.Which("sh", true);
+
             // Fixup contents
             contents = $"set -eo pipefail\n{contents}";
 
@@ -72,9 +75,6 @@ namespace GitHub.Runner.Worker.Handlers
             var filePath = Path.Combine(tempDirectory, $"{Guid.NewGuid()}.sh");
             // Don't add a BOM. It causes the script to fail on some operating systems (e.g. on Ubuntu 14).
             File.WriteAllText(filePath, contents, new UTF8Encoding(false));
-
-            // Command path
-            var commandPath = WhichUtil.Which("bash") ?? WhichUtil.Which("sh", true);
 
             // Arguments
             var arguments = $"--noprofile --norc {StepHost.ResolvePathForStepHost(filePath).Replace("\"", "\\\"")}";
