@@ -132,15 +132,6 @@ namespace GitHub.Runner.Worker.Handlers
             var dockerManger = HostContext.GetService<IDockerCommandManager>();
             string containerEnginePath = dockerManger.DockerPath;
 
-            ContainerStandardInPayload payload = new ContainerStandardInPayload()
-            {
-                ExecutionHandler = fileName,
-                ExecutionHandlerWorkingDirectory = workingDirectory,
-                ExecutionHandlerArguments = arguments,
-                ExecutionHandlerEnvironment = environment,
-                ExecutionHandlerPrependPath = PrependPath
-            };
-
             // copy the intermediate script (containerHandlerInvoker.js) into Agent_TempDirectory
             // Background:
             //    We rely on environment variables to send task execution information from agent to task execution engine (node/powershell)
@@ -165,10 +156,21 @@ namespace GitHub.Runner.Worker.Handlers
             string entryScript = Container.TranslateToContainerPath(Path.Combine(tempDir, "containerHandlerInvoker.js"));
 
 #if !OS_WINDOWS
-            string containerExecutionArgs = $"exec -i -u {Container.CurrentUserId} {Container.ContainerId} {node} {entryScript}";
+            IList<string> containerExecutionArgs = new List<string>();
+            containerExecutionArgs.Add("exec");
+            containerExecutionArgs.Add($"-i -u {Container.CurrentUserId} {Container.ContainerId}");
 #else
-            string containerExecutionArgs = $"exec -i {Container.ContainerId} {node} {entryScript}";
+            IList<string> containerExecutionArgs = new List<string>();
+            containerExecutionArgs.Add("exec");
+            containerExecutionArgs.Add($"-i {Container.ContainerId}");
 #endif
+            foreach (var env in environment)
+            {
+                containerExecutionArgs.Add($"-e \"{env.Key}\"");
+            }
+            containerExecutionArgs.Add(fileName);
+            containerExecutionArgs.Add(arguments);
+            string containerExecutionArgString = string.Join(" ", containerExecutionArgs);
 
             using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
             {
@@ -183,38 +185,17 @@ namespace GitHub.Runner.Worker.Handlers
                 outputEncoding = null;
 #endif
 
-                var redirectStandardIn = Channel.CreateUnbounded<string>(new UnboundedChannelOptions() { SingleReader = true, SingleWriter = true });
-                redirectStandardIn.Writer.TryWrite(JsonUtility.ToString(payload));
-
                 return await processInvoker.ExecuteAsync(workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Work),
                                                          fileName: containerEnginePath,
-                                                         arguments: containerExecutionArgs,
-                                                         environment: null,
+                                                         arguments: containerExecutionArgString,
+                                                         environment: environment,
                                                          requireExitCodeZero: requireExitCodeZero,
                                                          outputEncoding: outputEncoding,
                                                          killProcessOnCancel: killProcessOnCancel,
-                                                         redirectStandardIn: redirectStandardIn,
+                                                         redirectStandardIn: null,
                                                          inheritConsoleHandler: inheritConsoleHandler,
                                                          cancellationToken: cancellationToken);
             }
-        }
-
-        private class ContainerStandardInPayload
-        {
-            [JsonProperty("handler")]
-            public String ExecutionHandler { get; set; }
-
-            [JsonProperty("args")]
-            public String ExecutionHandlerArguments { get; set; }
-
-            [JsonProperty("workDir")]
-            public String ExecutionHandlerWorkingDirectory { get; set; }
-
-            [JsonProperty("environment")]
-            public IDictionary<string, string> ExecutionHandlerEnvironment { get; set; }
-
-            [JsonProperty("prependPath")]
-            public string ExecutionHandlerPrependPath { get; set; }
         }
     }
 }
