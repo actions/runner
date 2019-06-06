@@ -11,6 +11,7 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using Xunit;
+using GitHub.DistributedTask.Pipelines;
 
 namespace GitHub.Runner.Common.Tests.Worker
 {
@@ -39,16 +40,18 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             // Setup the execution context.
             _ec = new Mock<IExecutionContext>();
-            List<string> warnings;
-            _variables = new Variables(hc, new Dictionary<string, VariableValue>(), out warnings);
-            _variables.Set(Constants.Variables.System.CollectionId, CollectionId);
-            _variables.Set(WellKnownDistributedTaskVariables.TFCollectionUrl, CollectionUrl);
-            _variables.Set(Constants.Variables.System.DefinitionId, DefinitionId);
-            _variables.Set(Constants.Variables.Build.DefinitionName, DefinitionName);
+            var variables = new Dictionary<string, VariableValue>();
+            variables[Constants.Variables.System.CollectionId] = CollectionId;
+            variables[WellKnownDistributedTaskVariables.TFCollectionUrl] = CollectionUrl;
+            variables[Constants.Variables.System.DefinitionId] = DefinitionId;
+            variables[Constants.Variables.Build.DefinitionName] = DefinitionName;
+
+            _variables = new Variables(hc, variables);
             _ec.Setup(x => x.Variables).Returns(_variables);
 
             // Setup the endpoint.
             _repository = new Pipelines.RepositoryResource() { Url = new Uri(RepositoryUrl) };
+            _repository.Properties.Set(RepositoryPropertyNames.Name, "test/gitTest");
 
             // Setup the tracking manager.
             _trackingManager = new TrackingManager();
@@ -127,54 +130,6 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public void LoadsTrackingConfig_FileFormatVersion2()
-        {
-            using (TestHostContext hc = Setup())
-            {
-                // Arrange.
-                // It doesn't matter for this test whether the line endings are CRLF or just LF.
-                const string Contents = @"{
-  ""build_artifactstagingdirectory"": ""b00335b6\\a"",
-  ""agent_builddirectory"": ""b00335b6"",
-  ""collectionName"": ""DefaultCollection"",
-  ""definitionName"": ""M87_PrintEnvVars"",
-  ""fileFormatVersion"": 2,
-  ""lastRunOn"": ""09/16/2015 23:56:46 -04:00"",
-  ""build_sourcesdirectory"": ""b00335b6\\gitTest"",
-  ""common_testresultsdirectory"": ""b00335b6\\TestResults"",
-  ""collectionId"": ""7aee6dde-6381-4098-93e7-50a8264cf066"",
-  ""definitionId"": ""7"",
-  ""hashKey"": ""b00335b6923adfa64f46f3abb7da1cdc0d9bae6c"",
-  ""repositoryUrl"": ""http://contoso:8080/tfs/DefaultCollection/_git/gitTest""
-}";
-                Directory.CreateDirectory(_workFolder);
-                string filePath = Path.Combine(_workFolder, "trackingconfig.json");
-                File.WriteAllText(filePath, Contents);
-
-                // Act.
-                TrackingConfig baseConfig = _trackingManager.LoadIfExists(_ec.Object, filePath);
-
-                // Assert.
-                Assert.NotNull(baseConfig);
-                TrackingConfig config = baseConfig as TrackingConfig;
-                Assert.NotNull(config);
-                Assert.Equal(@"b00335b6\a", config.ArtifactsDirectory);
-                Assert.Equal(@"b00335b6", config.PipelineDirectory);
-                Assert.Equal(@"7aee6dde-6381-4098-93e7-50a8264cf066", config.CollectionId);
-                Assert.Equal(@"", config.CollectionUrl ?? string.Empty);
-                Assert.Equal(@"7", config.DefinitionId);
-                Assert.Equal(@"M87_PrintEnvVars", config.DefinitionName);
-                Assert.Equal(3, config.FileFormatVersion);
-                Assert.Equal(@"b00335b6923adfa64f46f3abb7da1cdc0d9bae6c", config.HashKey);
-                Assert.Equal(new DateTimeOffset(2015, 9, 16, 23, 56, 46, TimeSpan.FromHours(-4)), config.LastRunOn);
-                Assert.Equal(@"http://contoso:8080/tfs/DefaultCollection/_git/gitTest", config.RepositoryUrl);
-                Assert.Equal(@"b00335b6\gitTest", config.SourcesDirectory);
-            }
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Worker")]
         public void LoadsTrackingConfig_FileFormatVersion3()
         {
             using (TestHostContext hc = Setup())
@@ -182,14 +137,13 @@ namespace GitHub.Runner.Common.Tests.Worker
                 // Arrange.
                 // It doesn't matter for this test whether the line endings are CRLF or just LF.
                 const string Contents = @"{
-  ""build_artifactstagingdirectory"": ""b00335b6\\a"",
-  ""agent_builddirectory"": ""b00335b6"",
+  ""runner_artifactstagingdirectory"": ""b00335b6\\a"",
+  ""runner_pipelinedirectory"": ""b00335b6"",
   ""collectionUrl"": ""http://contoso:8080/tfs/DefaultCollection/"",
   ""definitionName"": ""M87_PrintEnvVars"",
   ""fileFormatVersion"": 3,
   ""lastRunOn"": ""09/16/2015 23:56:46 -04:00"",
-  ""build_sourcesdirectory"": ""b00335b6\\gitTest"",
-  ""common_testresultsdirectory"": ""b00335b6\\TestResults"",
+  ""runner_sourcesdirectory"": ""b00335b6\\gitTest"",
   ""collectionId"": ""7aee6dde-6381-4098-93e7-50a8264cf066"",
   ""definitionId"": ""7"",
   ""hashKey"": ""b00335b6923adfa64f46f3abb7da1cdc0d9bae6c"",
@@ -247,17 +201,13 @@ namespace GitHub.Runner.Common.Tests.Worker
                 // Arrange.
                 // It doesn't matter for this test whether the line endings are CRLF or just LF.
                 const string TrackingContents = @"{
-  ""build_artifactstagingdirectory"": ""b00335b6\\a"",
-  ""agent_builddirectory"": ""b00335b6"",
+  ""runner_artifactstagingdirectory"": ""b00335b6\\a"",
+  ""runner_pipelinedirectory"": ""b00335b6"",
   ""collectionUrl"": ""http://contoso:8080/tfs/DefaultCollection/"",
   ""definitionName"": ""M87_PrintEnvVars"",
   ""fileFormatVersion"": 3,
   ""lastRunOn"": ""09/16/2015 23:56:46 -04:00"",
-  ""repositoryType"": ""tfsgit"",
-  ""lastMaintenanceAttemptedOn"": ""09/16/2015 23:56:46 -04:00"",
-  ""lastMaintenanceCompletedOn"": ""09/16/2015 23:56:46 -04:00"",
-  ""build_sourcesdirectory"": ""b00335b6\\gitTest"",
-  ""common_testresultsdirectory"": ""b00335b6\\TestResults"",
+  ""runner_sourcesdirectory"": ""b00335b6\\gitTest"",
   ""collectionId"": ""7aee6dde-6381-4098-93e7-50a8264cf066"",
   ""definitionId"": ""7"",
   ""hashKey"": ""b00335b6923adfa64f46f3abb7da1cdc0d9bae6c"",

@@ -42,7 +42,7 @@ namespace GitHub.Runner.Sdk
             VssClientHttpRequestSettings settings = VssClientHttpRequestSettings.Default.Clone();
 
             int maxRetryRequest;
-            if (!int.TryParse(Environment.GetEnvironmentVariable("VSTS_HTTP_RETRY") ?? string.Empty, out maxRetryRequest))
+            if (!int.TryParse(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_HTTP_RETRY") ?? string.Empty, out maxRetryRequest))
             {
                 maxRetryRequest = 3;
             }
@@ -50,14 +50,16 @@ namespace GitHub.Runner.Sdk
             // make sure MaxRetryRequest in range [3, 10]
             settings.MaxRetryRequest = Math.Min(Math.Max(maxRetryRequest, 3), 10);
 
-            int httpRequestTimeoutSeconds;
-            if (!int.TryParse(Environment.GetEnvironmentVariable("VSTS_HTTP_TIMEOUT") ?? string.Empty, out httpRequestTimeoutSeconds))
+            if (!int.TryParse(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_HTTP_TIMEOUT") ?? string.Empty, out int httpRequestTimeoutSeconds))
             {
-                httpRequestTimeoutSeconds = 100;
+                settings.SendTimeout = timeout ?? TimeSpan.FromSeconds(100);
+            }
+            else
+            {
+                // prefer environment variable
+                settings.SendTimeout = TimeSpan.FromSeconds(Math.Min(Math.Max(httpRequestTimeoutSeconds, 100), 1200));
             }
 
-            // prefer parameter, otherwise use httpRequestTimeoutSeconds and make sure httpRequestTimeoutSeconds in range [100, 1200]
-            settings.SendTimeout = timeout ?? TimeSpan.FromSeconds(Math.Min(Math.Max(httpRequestTimeoutSeconds, 100), 1200));
 
             // Remove Invariant from the list of accepted languages.
             //

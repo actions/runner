@@ -47,7 +47,7 @@ namespace GitHub.Runner.Worker
             //  Succeeded
             //  SucceededWithIssues
             CancellationTokenRegistration? jobCancelRegister = null;
-            jobContext.Variables.Agent_JobStatus = jobContext.Result ?? TaskResult.Succeeded;
+            jobContext.SetRunnerContext("jobstatus", (jobContext.Result ?? TaskResult.Succeeded).ToString());
             var scopeInputs = new Dictionary<string, PipelineContextData>(StringComparer.OrdinalIgnoreCase);
             for (var stepIndex = 0; stepIndex < steps.Count; stepIndex++)
             {
@@ -64,11 +64,6 @@ namespace GitHub.Runner.Worker
                 // Initialize scope
                 if (InitializeScope(step, scopeInputs))
                 {
-                    // Variable expansion
-                    List<string> expansionWarnings;
-                    step.ExecutionContext.Variables.RecalculateExpanded(out expansionWarnings);
-                    expansionWarnings?.ForEach(x => step.ExecutionContext.Warning(x));
-
                     var expressionManager = HostContext.GetService<IExpressionManager>();
                     try
                     {
@@ -80,7 +75,7 @@ namespace GitHub.Runner.Worker
                             {
                                 // mark job as cancelled
                                 jobContext.Result = TaskResult.Canceled;
-                                jobContext.Variables.Agent_JobStatus = jobContext.Result;
+                                jobContext.SetRunnerContext("jobstatus", jobContext.Result.ToString());
 
                                 step.ExecutionContext.Debug($"Re-evaluate condition on job cancellation for step: '{step.DisplayName}'.");
                                 ConditionResult conditionReTestResult;
@@ -118,7 +113,7 @@ namespace GitHub.Runner.Worker
                             {
                                 // mark job as cancelled
                                 jobContext.Result = TaskResult.Canceled;
-                                jobContext.Variables.Agent_JobStatus = jobContext.Result;
+                                jobContext.SetRunnerContext("jobstatus", jobContext.Result.ToString());
                             }
                         }
 
@@ -182,7 +177,7 @@ namespace GitHub.Runner.Worker
                 {
                     Trace.Info($"Update job result with current step result '{step.ExecutionContext.Result}'.");
                     jobContext.Result = TaskResultUtil.MergeTaskResults(jobContext.Result, step.ExecutionContext.Result.Value);
-                    jobContext.Variables.Agent_JobStatus = jobContext.Result;
+                    jobContext.SetRunnerContext("jobstatus", jobContext.Result.ToString());
                 }
                 else
                 {

@@ -32,17 +32,5 @@ namespace GitHub.Runner.Sdk
                 return path + Path.PathSeparator + currentPath;
             }
         }
-
-        public static void PrependPath(string directory)
-        {
-            ArgUtil.Directory(directory, nameof(directory));
-
-            // Build the new value.
-            string currentPath = Environment.GetEnvironmentVariable(PathVariable);
-            string path = PrependPath(directory, currentPath);
-
-            // Update the PATH environment variable.
-            Environment.SetEnvironmentVariable(PathVariable, path);
-        }
     }
 }

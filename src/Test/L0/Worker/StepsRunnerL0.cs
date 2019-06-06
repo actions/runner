@@ -9,6 +9,7 @@ using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Xunit;
 using GitHub.DistributedTask.Expressions;
+using GitHub.DistributedTask.Pipelines.ContextData;
 
 namespace GitHub.Runner.Common.Tests.Worker
 {
@@ -26,14 +27,21 @@ namespace GitHub.Runner.Common.Tests.Worker
             hc.SetSingleton<IExpressionManager>(expressionManager);
             Dictionary<string, VariableValue> variablesToCopy = new Dictionary<string, VariableValue>();
             variablesToCopy.Add(Constants.Variables.Agent.RetainDefaultEncoding, new VariableValue("true", false));
-            List<string> warnings;
             _variables = new Variables(
                 hostContext: hc,
-                copy: variablesToCopy,
-                warnings: out warnings);
+                copy: variablesToCopy);
             _ec = new Mock<IExecutionContext>();
             _ec.SetupAllProperties();
             _ec.Setup(x => x.Variables).Returns(_variables);
+
+            var _contexts = new Dictionary<string, PipelineContextData>();
+            _contexts["github"] = new DictionaryContextData();
+            _contexts["runner"] = new DictionaryContextData();
+            _contexts["actions"] = new DictionaryContextData();
+            _ec.Setup(x => x.ExpressionValues).Returns(_contexts);
+
+            var _actionContext = new ActionsContext();
+            _ec.Setup(x => x.ActionsContext).Returns(_actionContext);
             _stepsRunner = new StepsRunner();
             _stepsRunner.Initialize(hc);
             return hc;

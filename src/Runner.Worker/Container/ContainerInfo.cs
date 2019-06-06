@@ -233,20 +233,6 @@ namespace GitHub.Runner.Worker.Container
                 PortMappings.Add(port);
             }
         }
-
-        public void ExpandProperties(Variables variables)
-        {
-            // Expand port mapping
-            variables.ExpandValues(UserPortMappings);
-
-            // Expand volume mounts
-            variables.ExpandValues(UserMountVolumes);
-            foreach (var volume in UserMountVolumes.Values)
-            {
-                // After mount volume variables are expanded, they are final
-                MountVolumes.Add(new MountVolume(volume));
-            }
-        }
     }
 
     public class MountVolume
