@@ -153,22 +153,20 @@ namespace GitHub.Runner.Worker.Handlers
                 node = Container.TranslateToContainerPath(Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), "node10", "bin", $"node{IOUtil.ExeExtension}"));
             }
 
-            string entryScript = Container.TranslateToContainerPath(Path.Combine(tempDir, "containerHandlerInvoker.js"));
+            string entryScript = Container.TranslateToContainerPath(Path.Combine(tempDir, fileName));
 
+            IList<string> containerExecutionArgs = new List<string>();
+            containerExecutionArgs.Add("exec");
 #if !OS_WINDOWS
-            IList<string> containerExecutionArgs = new List<string>();
-            containerExecutionArgs.Add("exec");
-            containerExecutionArgs.Add($"-i -u {Container.CurrentUserId} {Container.ContainerId}");
+            containerExecutionArgs.Add($"-u {Container.CurrentUserId}");
 #else
-            IList<string> containerExecutionArgs = new List<string>();
-            containerExecutionArgs.Add("exec");
-            containerExecutionArgs.Add($"-i {Container.ContainerId}");
 #endif
+            containerExecutionArgs.Add($"-i {Container.ContainerId}");
             foreach (var env in environment)
             {
                 containerExecutionArgs.Add($"-e \"{env.Key}\"");
             }
-            containerExecutionArgs.Add(fileName);
+            containerExecutionArgs.Add(entryScript);
             containerExecutionArgs.Add(arguments);
             string containerExecutionArgString = string.Join(" ", containerExecutionArgs);
 
