@@ -24,7 +24,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 {
                     // Legal first char
                 }
-                else if (first >= '0' && first <= '9') // todo: support '-'
+                else if ((first >= '0' && first <= '9') || first == '-')
                 {
                     // Illegal first char, but legal char.
                     // Prepend "_".
@@ -46,7 +46,8 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 if ((c >= 'a' && c <= 'z') ||
                     (c >= 'A' && c <= 'Z') ||
                     (c >= '0' && c <= '9') ||
-                    c == '_')  // todo: support '-'
+                    c == '_' ||
+                    c == '-')
                 {
                     // Legal
                     m_name.Append(c);

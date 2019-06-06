@@ -366,15 +366,20 @@ namespace GitHub.DistributedTask.Pipelines
 
     public class BuildResourceStore : InMemoryResourceStore<BuildResource>, IBuildStore
     {
-        public BuildResourceStore(IEnumerable<BuildResource> builds)
+        public BuildResourceStore(
+            IEnumerable<BuildResource> builds, 
+            IArtifactResolver resolver = null)
             : base(builds)
         {
+            this.Resolver = resolver;
         }
 
         public BuildResourceStore(params BuildResource[] builds)
             : base(builds)
         {
         }
+
+        public IArtifactResolver Resolver { get; }
 
         public IList<TaskStep> GetPreSteps(
             IPipelineContext context,

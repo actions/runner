@@ -2194,6 +2194,25 @@ namespace GitHub.DistributedTask.WebApi
     }
 
     [Serializable]
+    public class TaskAgentCloudRequestAlreadyCompleteException : DistributedTaskException
+    {
+        public TaskAgentCloudRequestAlreadyCompleteException(string message)
+            : base(message)
+        {
+        }
+
+        public TaskAgentCloudRequestAlreadyCompleteException(string message, Exception ex)
+            : base(message, ex)
+        {
+        }
+
+        protected TaskAgentCloudRequestAlreadyCompleteException(SerializationInfo info, StreamingContext context)
+            : base(info, context)
+        {
+        }
+    }
+
+    [Serializable]
     public class TaskAgentPoolReferencesDifferentAgentCloudException : DistributedTaskException
     {
         public TaskAgentPoolReferencesDifferentAgentCloudException(string message)

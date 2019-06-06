@@ -482,28 +482,11 @@ namespace GitHub.Runner.Worker
             EnvironmentVariables = new Dictionary<string, string>(VarUtil.EnvironmentVariableKeyComparer);
 
             // Expression values
-            // todo: delete in master during m154
-            if (message.ExpressionValues?.Count > 0)
-            {
-                foreach (var pair in message.ExpressionValues)
-                {
-                    ExpressionValues[pair.Key] = pair.Value?.ToContextData();
-                }
-            }
             if (message.ContextData?.Count > 0)
             {
                 foreach (var pair in message.ContextData)
                 {
                     ExpressionValues[pair.Key] = pair.Value;
-                }
-            }
-
-            // todo: delete in master during m154
-            foreach (var key in new[] { "strategy", "matrix", "parallel" })
-            {
-                if (!ExpressionValues.ContainsKey(key))
-                {
-                    ExpressionValues[key] = null;
                 }
             }
 

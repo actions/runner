@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using GitHub.DistributedTask.Pipelines.Artifacts;
 using GitHub.DistributedTask.WebApi;
 
 namespace GitHub.DistributedTask.Pipelines
@@ -11,6 +12,7 @@ namespace GitHub.DistributedTask.Pipelines
         void Add(IEnumerable<BuildResource> resources);
         BuildResource Get(String alias);
         IEnumerable<BuildResource> GetAll();
+        IArtifactResolver Resolver { get; }
     }
 
     public interface IContainerStore

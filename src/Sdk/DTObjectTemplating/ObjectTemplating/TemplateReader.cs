@@ -184,7 +184,6 @@ namespace GitHub.DistributedTask.ObjectTemplating
 
             while (m_objectReader.AllowScalar(out Int32? line, out Int32? column, out String rawScalar))
             {
-// todo: switch to key-definition?
                 var nextKeyScalar = ParseScalar(line, column, rawScalar, definition.AllowedContext);
 
                 // Expression
@@ -561,7 +560,6 @@ namespace GitHub.DistributedTask.ObjectTemplating
 
                     var expression = segment as BasicExpressionToken;
                     args.Append(", ");
-// todo: does this null ref for the inline expression "asdf ${{ insert }}"
                     args.Append(expression.Expression);
                 }
             }

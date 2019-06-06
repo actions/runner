@@ -11,9 +11,11 @@ namespace GitHub.DistributedTask.Pipelines
     {
         public ServiceEndpointStore(
             IList<ServiceEndpoint> endpoints, 
-            IServiceEndpointResolver resolver = null)
+            IServiceEndpointResolver resolver = null,
+            Boolean lazyLoadEndpoints = false)
         {
             this.Resolver = resolver;
+            this.LazyLoadEndpoints = lazyLoadEndpoints;
             Add(endpoints?.ToArray());
         }
 
@@ -27,6 +29,12 @@ namespace GitHub.DistributedTask.Pipelines
 
         public IList<ServiceEndpointReference> GetAuthorizedReferences()
         {
+            if (LazyLoadEndpoints)
+            {
+                return this.Resolver != null ? this.Resolver.GetAuthorizedReferences()
+                : new List<ServiceEndpointReference>();
+            }
+
             return m_endpointsById.Values.Select(x => new ServiceEndpointReference { Id = x.Id, Name = x.Name }).ToList();
         }
 
@@ -105,5 +113,6 @@ namespace GitHub.DistributedTask.Pipelines
 
         private readonly Dictionary<Guid, ServiceEndpoint> m_endpointsById = new Dictionary<Guid, ServiceEndpoint>();
         private readonly Dictionary<String, List<ServiceEndpoint>> m_endpointsByName = new Dictionary<String, List<ServiceEndpoint>>(StringComparer.OrdinalIgnoreCase);
+        private readonly Boolean LazyLoadEndpoints;
     }
 }

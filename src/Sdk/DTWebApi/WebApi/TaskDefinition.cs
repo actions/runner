@@ -103,7 +103,6 @@ namespace GitHub.DistributedTask.WebApi
             this.InstanceNameFormat = taskDefinitionToClone.InstanceNameFormat;
             this.MinimumAgentVersion = taskDefinitionToClone.MinimumAgentVersion;
             this.Name = taskDefinitionToClone.Name;
-            this.Ecosystem = taskDefinitionToClone.Ecosystem;
             this.PackageLocation = taskDefinitionToClone.PackageLocation;
             this.PackageType = taskDefinitionToClone.PackageType;
             this.ServerOwned = taskDefinitionToClone.ServerOwned;
@@ -148,6 +147,7 @@ namespace GitHub.DistributedTask.WebApi
             set;
         }
 
+        [Obsolete("Ecosystem property is not currently supported.")]
         [DataMember(EmitDefaultValue = false)]
         public String Ecosystem
         {

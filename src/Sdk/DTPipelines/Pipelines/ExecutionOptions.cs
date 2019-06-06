@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.Serialization;
 
@@ -33,6 +34,21 @@ namespace GitHub.DistributedTask.Pipelines
         {
             get;
             set;
+        }
+
+        /// <summary>
+        /// Gets or sets value indicating any custom claims the system jwt token will have.
+        /// </summary>
+        public IDictionary<String, String> SystemTokenCustomClaims
+        {
+            get
+            {
+                if (m_systemTokenCustomClaims == null)
+                {
+                    m_systemTokenCustomClaims = new Dictionary<String, String>();
+                }
+                return m_systemTokenCustomClaims;
+            }
         }
 
         /// <summary>
@@ -84,5 +100,8 @@ namespace GitHub.DistributedTask.Pipelines
             get;
             set;
         }
+
+        [DataMember(Name = nameof(SystemTokenCustomClaims), EmitDefaultValue = false)]
+        private IDictionary<String, String> m_systemTokenCustomClaims;
     }
 }
