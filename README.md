@@ -1,6 +1,6 @@
 # GitHub Actions Runner
 
-![linux](docs/res/linux_sm.png) ![Linux x64](https://dev.azure.com/mseng/AzureDevOps/_apis/build/status/Products/Azure-pipelines-agent/actions-runner.ci?branchName=features/actionsrunner&jobName=Linux%20Agent%20(x64)) ![macOS](docs/res/apple_sm.png) ![macOS](https://dev.azure.com/mseng/AzureDevOps/_apis/build/status/Products/Azure-pipelines-agent/actions-runner.ci?branchName=features/actionsrunner&jobName=macOS%20Agent%20(x64)) ![win](docs/res/win_sm.png) ![Win x64](https://dev.azure.com/mseng/AzureDevOps/_apis/build/status/Products/Azure-pipelines-agent/actions-runner.ci?branchName=features/actionsrunner&jobName=Windows%20Agent%20(x64))
+![linux](docs/res/linux_sm.png) ![Linux x64](https://dev.azure.com/mseng/AzureDevOps/_apis/build/status/Products/Azure-pipelines-agent/actions-runner.ci?branchName=master&jobName=Linux%20Agent%20(x64)) ![macOS](docs/res/apple_sm.png) ![macOS](https://dev.azure.com/mseng/AzureDevOps/_apis/build/status/Products/Azure-pipelines-agent/actions-runner.ci?branchName=master&jobName=macOS%20Agent%20(x64)) ![win](docs/res/win_sm.png) ![Win x64](https://dev.azure.com/mseng/AzureDevOps/_apis/build/status/Products/Azure-pipelines-agent/actions-runner.ci?branchName=master&jobName=Windows%20Agent%20(x64))
 
 The GitHub actions runner.  Supported on Windows, OSX, Linux.
 
@@ -9,7 +9,7 @@ The GitHub actions runner.  Supported on Windows, OSX, Linux.
 </p>
 
 
-[build]: https://dev.azure.com/mseng/AzureDevOps/_build/latest?definitionId=8777&branchName=features/actionsrunner
+[build]: https://dev.azure.com/mseng/AzureDevOps/_build/latest?definitionId=8777&branchName=master
 
 
 ## Get Started
