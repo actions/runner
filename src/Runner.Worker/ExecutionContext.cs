@@ -481,6 +481,19 @@ namespace GitHub.Runner.Worker
             // Environment variables shared across all actions
             EnvironmentVariables = new Dictionary<string, string>(VarUtil.EnvironmentVariableKeyComparer);
 
+            // Actions context (StepsRunner manages adding the scoped actions context)
+            ActionsContext = new ActionsContext();
+
+            // Scopes
+            Scopes = new Dictionary<String, ContextScope>(StringComparer.OrdinalIgnoreCase);
+            if (message.Scopes?.Count > 0)
+            {
+                foreach (var scope in message.Scopes)
+                {
+                    Scopes[scope.Name] = scope;
+                }
+            }
+
             // Expression values
             if (message.ContextData?.Count > 0)
             {
@@ -490,15 +503,7 @@ namespace GitHub.Runner.Worker
                 }
             }
 
-            ActionsContext = new ActionsContext();
-            Scopes = new Dictionary<String, ContextScope>(StringComparer.OrdinalIgnoreCase);
-            if (message.Scopes?.Count > 0)
-            {
-                foreach (var scope in message.Scopes)
-                {
-                    Scopes[scope.Name] = scope;
-                }
-            }
+            ExpressionValues["secrets"] = Variables.ToSecretsContext();
             ExpressionValues["runner"] = new RunnerContext();
 
             if (!ExpressionValues.ContainsKey("github"))

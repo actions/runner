@@ -5,6 +5,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using GitHub.DistributedTask.Logging;
+using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
 
@@ -185,6 +186,19 @@ namespace GitHub.Runner.Worker
             val = null;
             _trace.Verbose($"Get '{name}' (not found)");
             return false;
+        }
+
+        public DictionaryContextData ToSecretsContext()
+        {
+            var result = new DictionaryContextData();
+            foreach (var variable in _variables.Values)
+            {
+                if (variable.Secret && !string.Equals(variable.Name, Constants.Variables.System.AccessToken, StringComparison.OrdinalIgnoreCase))
+                {
+                    result[variable.Name] = new StringContextData(variable.Value);
+                }
+            }
+            return result;
         }
     }
 

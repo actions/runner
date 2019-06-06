@@ -82,6 +82,7 @@ namespace GitHub.Runner.Common
             _loadContext = AssemblyLoadContext.GetLoadContext(typeof(HostContext).GetTypeInfo().Assembly);
             _loadContext.Unloading += LoadContext_Unloading;
 
+            this.SecretMasker.AddValueEncoder(ValueEncoders.ExpressionStringEscape);
             this.SecretMasker.AddValueEncoder(ValueEncoders.JsonStringEscape);
             this.SecretMasker.AddValueEncoder(ValueEncoders.UriDataEscape);
 
