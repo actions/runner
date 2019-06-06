@@ -47,25 +47,11 @@ namespace GitHub.DistributedTask.Pipelines
 
         private ContainerRegistryReference(ContainerRegistryReference referenceToClone)
         {
-#pragma warning disable CS0618 // Type or member is obsolete
-            this.Container = referenceToClone.Container;
-#pragma warning restore CS0618 // Type or member is obsolete
             this.Image = referenceToClone.Image;
         }
 
         [DataMember(EmitDefaultValue = false)]
         public override ActionSourceType Type => ActionSourceType.ContainerRegistry;
-
-        /// <summary>
-        /// Container resource alias
-        /// </summary>
-        [DataMember(EmitDefaultValue = false)]
-        [Obsolete("Deprecated", false)]
-        public string Container
-        {
-            get;
-            set;
-        }
 
         /// <summary>
         /// Container image
@@ -93,9 +79,6 @@ namespace GitHub.DistributedTask.Pipelines
 
         private RepositoryPathReference(RepositoryPathReference referenceToClone)
         {
-#pragma warning disable CS0618 // Type or member is obsolete
-            this.Repository = referenceToClone.Repository;
-#pragma warning restore CS0618 // Type or member is obsolete
             this.Name = referenceToClone.Name;
             this.Ref = referenceToClone.Ref;
             this.RepositoryType = referenceToClone.RepositoryType;
@@ -104,17 +87,6 @@ namespace GitHub.DistributedTask.Pipelines
 
         [DataMember(EmitDefaultValue = false)]
         public override ActionSourceType Type => ActionSourceType.Repository;
-
-        /// <summary>
-        /// Repository resource alias
-        /// </summary>
-        [DataMember(EmitDefaultValue = false)]
-        [Obsolete("Deprecated", false)]
-        public string Repository
-        {
-            get;
-            set;
-        }
 
         /// <summary>
         /// Repository name

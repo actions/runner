@@ -1,4 +1,4 @@
-namespace AsyncFixer
+﻿namespace AsyncFixer
 {
 }
 

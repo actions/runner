@@ -26,6 +26,13 @@ namespace GitHub.DistributedTask.Pipelines
             }
         }
 
+        /// <summary>
+        /// This is the format for producing "instance names"
+        /// Instance names are defined to be node "identifiers" (the logical path to the node in the graph)
+        ///   plus a single attempt number suffixed at the end.
+        /// Identifiers are constant accross different attempts of the same node.
+        /// Instance names are not, but will differ only in attempt number.
+        /// </summary>
         public static String GetInstanceName(params String[] segments)
         {
             return String.Join(".", segments.Where(x => !String.IsNullOrEmpty(x)).Select(x => x.Trim('.')));
@@ -127,11 +134,14 @@ namespace GitHub.DistributedTask.Pipelines
             return GetInstanceId(GetPhaseInstanceName(stageName, phaseName, phaseAttempt), preserveCase);
         }
 
+        /// <summary>
+        /// The phase "instance name" is the phase identifier suffixed with the phase attempt.
+        /// </summary>
         public static String GetPhaseInstanceName(
             StageInstance stage,
             PhaseInstance phase)
         {
-            var sb = new StringBuilder(GetStageInstanceName(stage?.Name, 1, false));
+            var sb = new StringBuilder(GetStageInstanceName(stage?.Name, stageAttempt: 1, false));
             if (sb.Length > 0)
             {
                 sb.Append(".");
@@ -151,7 +161,7 @@ namespace GitHub.DistributedTask.Pipelines
             String phaseName,
             Int32 phaseAttempt)
         {
-            var sb = new StringBuilder(GetStageInstanceName(stageName, 1, false));
+            var sb = new StringBuilder(GetStageInstanceName(stageName, stageAttempt: 1, false));
             if (sb.Length > 0)
             {
                 sb.Append(".");
@@ -370,6 +380,13 @@ namespace GitHub.DistributedTask.Pipelines
             }
 
             return true;
+        }
+
+        public static String GetOrchestrationInstanceId(
+            Guid planId,
+            String nodeIdentifier)
+        {
+            return PipelineUtilities.GetInstanceName(planId.ToString("D"), nodeIdentifier);
         }
     }
 }

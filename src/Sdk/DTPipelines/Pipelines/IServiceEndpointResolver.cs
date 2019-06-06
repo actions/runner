@@ -24,6 +24,8 @@ namespace GitHub.DistributedTask.Pipelines
         /// <param name="references">The endpoint references which should be resolved</param>
         /// <returns>The resolved service endpoints</returns>
         IList<ServiceEndpoint> Resolve(ICollection<ServiceEndpointReference> references);
+
+        IList<ServiceEndpointReference> GetAuthorizedReferences();
     }
 
     [EditorBrowsable(EditorBrowsableState.Never)]

@@ -299,7 +299,7 @@ foreach ($file in $sourceFiles) {
 }
 
 # Rename all namespaces to GitHub
-$allSourceFiles = Get-ChildItem -LiteralPath $PWD -Filter "*.cs" -Recurse -Force -File
+$allSourceFiles = Get-ChildItem -LiteralPath $gitHubSdkFolder -Filter "*.cs" -Recurse -Force -File
 foreach ($file in $allSourceFiles) {
     $stringBuilder = New-Object System.Text.StringBuilder
     foreach ($line in Get-Content $file.FullName) {

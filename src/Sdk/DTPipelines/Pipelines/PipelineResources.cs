@@ -71,8 +71,6 @@ namespace GitHub.DistributedTask.Pipelines
             {
                 m_variableGroups = new HashSet<VariableGroupReference>(resourcesToCopy.m_variableGroups.Select(x => x.Clone()), new VariableGroupComparer());
             }
-
-            Compiled = resourcesToCopy.Compiled;
         }
 
         /// <summary>
@@ -265,9 +263,6 @@ namespace GitHub.DistributedTask.Pipelines
                 return m_variableGroups;
             }
         }
-
-        [IgnoreDataMember]
-        public Boolean Compiled { get; set; }
 
         public PipelineResources Clone()
         {

@@ -5,10 +5,13 @@
 
     "workflow-root": {
       "description": "Workflow file",
-      "one-of": [
-        "workflow-root-legacy",
-        "workflow-root-new"
-      ]
+      "mapping": {
+        "properties": {
+          "on": "any",
+          "name": "scalar",
+          "jobs": "jobs"
+        }
+      }
     },
 
     "actions-template-root": {
@@ -103,28 +106,6 @@
         "actions"
       ],
       "scalar": {}
-    },
-
-    "workflow-root-legacy": {
-      "description": "Legacy 'workflow' keyword. TODO: Remove in master during M154.",
-      "mapping": {
-        "properties": {
-          "on": "any",
-          "name": "scalar",
-          "workflow": "jobs"
-        }
-      }
-    },
-
-    "workflow-root-new": {
-      "description": "New 'jobs' keyword. Merge into 'workflow-root' when 'workflow-root-legacy' is removed",
-      "mapping": {
-        "properties": {
-          "on": "any",
-          "name": "scalar",
-          "jobs": "jobs"
-        }
-      }
     },
 
     "jobs": {

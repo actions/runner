@@ -522,7 +522,6 @@ namespace GitHub.Runner.Common.Tests.LogPluginHost
             hostContext.Steps[Guid.Empty.ToString("D")] = new Pipelines.RepositoryPathReference()
             {
                 RepositoryType = "GitHub",
-                Repository = "actions/test",
                 Ref = "master"
             };
 

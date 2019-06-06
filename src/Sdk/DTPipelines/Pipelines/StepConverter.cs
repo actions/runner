@@ -75,12 +75,6 @@ namespace GitHub.DistributedTask.Pipelines
                         stepObject = new GroupStep();
                         break;
 
-#pragma warning disable CS0618 // Type or member is obsolete
-                    case StepType.Script:
-                        stepObject = new ScriptStep();
-                        break;
-#pragma warning restore CS0618 // Type or member is obsolete
-
                     case StepType.Task:
                         stepObject = new TaskStep();
                         break;

@@ -60,16 +60,6 @@ namespace GitHub.DistributedTask.Pipelines
             {
                 m_jobSidecarContainers = new Dictionary<String, String>(jobSidecarContainers, StringComparer.OrdinalIgnoreCase);
             }
-
-            // todo: delete in master during M154
-            if (contextData?.Count > 0)
-            {
-                ExpressionValues = new Dictionary<String, TemplateToken>();
-                foreach (var pair in contextData)
-                {
-                    ExpressionValues[pair.Key] = pair.Value?.ToTemplateToken();
-                }
-            }
         }
 
         [DataMember]
@@ -137,15 +127,6 @@ namespace GitHub.DistributedTask.Pipelines
 
         [DataMember]
         public JobResources Resources
-        {
-            get;
-            private set;
-        }
-
-        // todo: remove in master during m154
-        [DataMember(EmitDefaultValue = false)]
-        [EditorBrowsable(EditorBrowsableState.Never)]
-        public IDictionary<String, TemplateToken> ExpressionValues
         {
             get;
             private set;
