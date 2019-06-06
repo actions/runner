@@ -13,50 +13,50 @@ namespace GitHub.Runner.Common.Tests
 {
     public sealed class ProcessInvokerL0
     {
-#if OS_WINDOWS
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Common")]
-        public async Task DefaultsToCurrentSystemOemEncoding()
-        {
-            // This test verifies that the additional code pages encoding provider is registered.
-            // By default, only Unicode encodings, ASCII, and code page 28591 are supported. An
-            // additional provider must be registered to support the full set of encodings that
-            // were included in Full .NET prior to 4.6.
-            //
-            // For example, on an en-US box, this is required for loading the encoding for the
-            // default console output code page '437'. Without loading the correct encoding for
-            // code page IBM437, some characters cannot be translated correctly, e.g. write 'Ã§'
-            // from powershell.exe.
-            using (TestHostContext hc = new TestHostContext(this))
-            {
-                Tracing trace = hc.GetTrace();
-                var processInvoker = new ProcessInvokerWrapper();
-                processInvoker.Initialize(hc);
-                var stdout = new List<string>();
-                var stderr = new List<string>();
-                processInvoker.OutputDataReceived += (object sender, ProcessDataReceivedEventArgs e) =>
-                {
-                    stdout.Add(e.Data);
-                };
-                processInvoker.ErrorDataReceived += (object sender, ProcessDataReceivedEventArgs e) =>
-                {
-                    stderr.Add(e.Data);
-                };
-                await processInvoker.ExecuteAsync(
-                    workingDirectory: "",
-                    fileName: "powershell.exe",
-                    arguments: $@"-NoLogo -Sta -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -Command ""Write-Host 'From STDOUT ''Ã§''' ; Write-Error 'From STDERR ''Ã§'''""",
-                    environment: null,
-                    requireExitCodeZero: false,
-                    cancellationToken: CancellationToken.None);
-                Assert.Equal(1, stdout.Count);
-                Assert.Equal("From STDOUT 'Ã§'", stdout[0]);
-                Assert.True(stderr.Count > 0);
-                Assert.True(stderr[0].Contains("From STDERR 'Ã§'"));
-            }
-        }
-#endif
+// #if OS_WINDOWS
+//         [Fact]
+//         [Trait("Level", "L0")]
+//         [Trait("Category", "Common")]
+//         public async Task DefaultsToCurrentSystemOemEncoding()
+//         {
+//             // This test verifies that the additional code pages encoding provider is registered.
+//             // By default, only Unicode encodings, ASCII, and code page 28591 are supported. An
+//             // additional provider must be registered to support the full set of encodings that
+//             // were included in Full .NET prior to 4.6.
+//             //
+//             // For example, on an en-US box, this is required for loading the encoding for the
+//             // default console output code page '437'. Without loading the correct encoding for
+//             // code page IBM437, some characters cannot be translated correctly, e.g. write 'Ã§'
+//             // from powershell.exe.
+//             using (TestHostContext hc = new TestHostContext(this))
+//             {
+//                 Tracing trace = hc.GetTrace();
+//                 var processInvoker = new ProcessInvokerWrapper();
+//                 processInvoker.Initialize(hc);
+//                 var stdout = new List<string>();
+//                 var stderr = new List<string>();
+//                 processInvoker.OutputDataReceived += (object sender, ProcessDataReceivedEventArgs e) =>
+//                 {
+//                     stdout.Add(e.Data);
+//                 };
+//                 processInvoker.ErrorDataReceived += (object sender, ProcessDataReceivedEventArgs e) =>
+//                 {
+//                     stderr.Add(e.Data);
+//                 };
+//                 await processInvoker.ExecuteAsync(
+//                     workingDirectory: "",
+//                     fileName: "powershell.exe",
+//                     arguments: $@"-NoLogo -Sta -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -Command ""Write-Host 'From STDOUT ''Ã§''' ; Write-Error 'From STDERR ''Ã§'''""",
+//                     environment: null,
+//                     requireExitCodeZero: false,
+//                     cancellationToken: CancellationToken.None);
+//                 Assert.Equal(1, stdout.Count);
+//                 Assert.Equal("From STDOUT 'Ã§'", stdout[0]);
+//                 Assert.True(stderr.Count > 0);
+//                 Assert.True(stderr[0].Contains("From STDERR 'Ã§'"));
+//             }
+//         }
+// #endif
 
         [Fact]
         [Trait("Level", "L0")]

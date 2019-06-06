@@ -15,8 +15,8 @@ namespace GitHub.Runner.Common.Tests
         private static readonly Regex NewHttpClientRegex = new Regex("New\\s+HttpClient\\s*\\(\\s*\\)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private static readonly List<string> SkippedFiles = new List<string>()
         {
-            "GitHub.Runner.Common\\HostContext.cs",
-            "GitHub.Runner.Common/HostContext.cs"
+            "Runner.Common\\HostContext.cs",
+            "Runner.Common/HostContext.cs"
         };
 
         [Fact]
@@ -25,7 +25,7 @@ namespace GitHub.Runner.Common.Tests
         public void IsNotUseRawHttpClientHandler()
         {
             List<string> sourceFiles = Directory.GetFiles(
-                    TestUtil.GetProjectPath("GitHub.Runner.Common"),
+                    TestUtil.GetProjectPath("Runner.Common"),
                     "*.cs",
                     SearchOption.AllDirectories).ToList();
             sourceFiles.AddRange(Directory.GetFiles(
@@ -72,7 +72,7 @@ namespace GitHub.Runner.Common.Tests
         public void IsNotUseRawHttpClient()
         {
             List<string> sourceFiles = Directory.GetFiles(
-                    TestUtil.GetProjectPath("GitHub.Runner.Common"),
+                    TestUtil.GetProjectPath("Runner.Common"),
                     "*.cs",
                     SearchOption.AllDirectories).ToList();
             sourceFiles.AddRange(Directory.GetFiles(
