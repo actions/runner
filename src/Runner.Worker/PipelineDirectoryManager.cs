@@ -74,7 +74,6 @@ namespace GitHub.Runner.Worker
             if (trackingConfig == null)
             {
                 Trace.Verbose("Creating a new tracking config file.");
-                var agentSetting = HostContext.GetService<IConfigurationStore>().GetSettings();
                 trackingConfig = trackingManager.Create(
                     executionContext,
                     repository,

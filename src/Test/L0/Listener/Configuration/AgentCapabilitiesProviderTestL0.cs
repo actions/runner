@@ -33,9 +33,9 @@ namespace GitHub.Runner.Common.Tests.Listener
 
                 // Assert
                 Assert.NotNull(capabilities);
-                Capability agentNameCapability = capabilities.SingleOrDefault(x => string.Equals(x.Name, "Agent.Name", StringComparison.Ordinal));
-                Assert.NotNull(agentNameCapability);
-                Assert.Equal("IAmAgent007", agentNameCapability.Value);
+                Capability runnerNameCapability = capabilities.SingleOrDefault(x => string.Equals(x.Name, "Runner.Name", StringComparison.Ordinal));
+                Assert.NotNull(runnerNameCapability);
+                Assert.Equal("IAmAgent007", runnerNameCapability.Value);
             }
         }
 
