@@ -14,13 +14,23 @@ The GitHub actions runner.  Supported on Windows, OSX, Linux.
 
 ## Get Started
 
-Next, download and configure the agent
+![win](docs/res/win_sm.png) [Pre-reqs](docs/start/envwin.md) | [Download](https://github.com/actions/runner/releases/latest)  
 
-![win](docs/res/win_sm.png) [Pre-reqs](docs/start/envwin.md) -> [Download](https://github.com/actions/runner/releases/latest)  
+![macOS](docs/res/apple_sm.png)  [Pre-reqs](docs/start/envosx.md) | [Download](https://github.com/actions/runner/releases/latest)  
 
-![macOS](docs/res/apple_sm.png)  [Pre-reqs](docs/start/envosx.md) -> [Download](https://github.com/actions/runner/releases/latest)  
+![linux](docs/res/linux_sm.png)  [Pre-reqs](docs/start/envlinux.md) | [Download](https://github.com/actions/runner/releases/latest)
 
-![linux](docs/res/linux_sm.png)  [Pre-reqs](docs/start/envlinux.md) -> [Download](https://github.com/actions/runner/releases/latest)  
+Configure:
+
+MacOS and Linux
+```bash
+./config.sh
+```
+
+Windows
+```bash
+config.cmd
+```
 
 ## Contribute
 
