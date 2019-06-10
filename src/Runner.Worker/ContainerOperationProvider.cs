@@ -283,9 +283,8 @@ namespace GitHub.Runner.Worker
                     {
                         node = container.TranslateToContainerPath(Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), "node10", "bin", $"node{IOUtil.ExeExtension}"));
                     }
-                    string sleepCommand = $"\"{node}\" -e \"setInterval(function(){{}}, 24 * 60 * 60 * 1000);\"";
-
-                    container.ContainerCommand = sleepCommand;
+                    container.ContainerEntryPoint = node;
+                    container.ContainerEntryPointArgs = $"-e \"setInterval(function(){{}}, 24 * 60 * 60 * 1000);\"";
                 }
 
                 container.ContainerId = await _dockerManger.DockerCreate(executionContext, container);

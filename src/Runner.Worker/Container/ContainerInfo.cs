@@ -41,7 +41,6 @@ namespace GitHub.Runner.Worker.Container
             this.SkipContainerImagePull = container.Properties.Get<bool>("localimage");
             _environmentVariables = container.Environment;
             this.ContainerEntryPoint = container.Properties.Get<string>("entrypoint", defaultValue: "");
-            this.ContainerCommand = container.Properties.Get<string>("command", defaultValue: "");
             this.ContainerWorkDirectory = container.Properties.Get<string>("workdir", defaultValue: "");
             this.IsJobContainer = isJobContainer;
 
@@ -81,8 +80,8 @@ namespace GitHub.Runner.Worker.Container
         public string ContainerNetworkAlias { get; set; }
         public string ContainerImage { get; set; }
         public string ContainerName { get; set; }
+        public string ContainerEntryPointArgs { get; set; }
         public string ContainerEntryPoint { get; set; }
-        public string ContainerCommand { get; set; }
         public string ContainerWorkDirectory { get; set; }
         public string ContainerBringNodePath { get; set; }
         public Guid ContainerRegistryEndpoint { get; private set; }

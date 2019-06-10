@@ -132,9 +132,8 @@ namespace GitHub.Runner.Worker.Container
             dockerOptions.Add($"{container.ContainerCreateOptions}");
             foreach (var env in container.ContainerEnvironmentVariables)
             {
-                if (String.IsNullOrEmpty(env.Value) && String.IsNullOrEmpty(context.Variables.Get("_VSTS_DONT_RESOLVE_ENV_FROM_HOST")))
+                if (String.IsNullOrEmpty(env.Value))
                 {
-                    // TODO: Remove fallback variable if stable
                     dockerOptions.Add($"-e \"{env.Key}\"");
                 }
                 else
@@ -162,10 +161,18 @@ namespace GitHub.Runner.Worker.Container
                 }
                 dockerOptions.Add(volumeArg);
             }
+            if (!string.IsNullOrEmpty(container.ContainerEntryPoint))
+            {
+                dockerOptions.Add($"--entrypoint \"{container.ContainerEntryPoint}\"");
+            }
             // IMAGE
             dockerOptions.Add($"{container.ContainerImage}");
+
             // COMMAND
-            dockerOptions.Add($"{container.ContainerCommand}");
+            // Intentionally blank. Always overwrite ENTRYPOINT and send ARGs
+
+            // [ARG...]
+            dockerOptions.Add($"{container.ContainerEntryPointArgs}");
 
             var optionsString = string.Join(" ", dockerOptions);
             List<string> outputStrings = await ExecuteDockerCommandAsync(context, "create", optionsString);
@@ -219,8 +226,12 @@ namespace GitHub.Runner.Worker.Container
             }
             // IMAGE
             dockerOptions.Add($"{container.ContainerImage}");
+
             // COMMAND
-            dockerOptions.Add($"{container.ContainerCommand}");
+            // Intentionally blank. Always overwrite ENTRYPOINT and send ARGs
+
+            // [ARG...]
+            dockerOptions.Add($"{container.ContainerEntryPointArgs}");
 
             var optionsString = string.Join(" ", dockerOptions);
             return await ExecuteDockerCommandAsync(context, "run", optionsString, context.CancellationToken);

@@ -57,7 +57,7 @@ namespace GitHub.Runner.Worker.Handlers
             };
 
             container.ContainerEntryPoint = Inputs.GetValueOrDefault("entryPoint");
-            container.ContainerCommand = Inputs.GetValueOrDefault("args");
+            container.ContainerEntryPointArgs = Inputs.GetValueOrDefault("args");
 
             if (ExecutionContext.Variables.TryGetValue("Agent.ContainerNetwork", out string containerNetwork))
             {
