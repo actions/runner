@@ -96,12 +96,16 @@ namespace GitHub.DistributedTask.Pipelines
         public static class CheckoutTaskInputs
         {
             public static readonly String Repository = "repository";
+            public static readonly String Ref = "ref";
+            public static readonly String Version = "version";
+            public static readonly String Token = "token";
             public static readonly String Clean = "clean";
             public static readonly String Submodules = "submodules";
             public static readonly String Lfs = "lfs";
             public static readonly String FetchDepth = "fetchDepth";
             public static readonly String PersistCredentials = "persistCredentials";
             public static readonly String Path = "path";
+            public static readonly String WorkspaceRepo = "workspaceRepo";
 
             public static class SubmodulesOptions
             {

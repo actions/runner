@@ -513,7 +513,6 @@ namespace GitHub.Runner.Common.Tests.LogPluginHost
             {
                 Endpoints = new List<ServiceEndpoint>(),
                 PluginAssemblies = new List<string>(),
-                Repositories = new List<Pipelines.RepositoryResource>(),
                 Variables = new Dictionary<string, VariableValue>(),
                 Steps = new Dictionary<string, Pipelines.ActionStepDefinitionReference>(),
                 Context = new Dictionary<string, Pipelines.ContextData.PipelineContextData>() { { "runner", new Pipelines.ContextData.DictionaryContextData() } }

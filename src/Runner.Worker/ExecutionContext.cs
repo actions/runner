@@ -17,6 +17,7 @@ using ObjectTemplating = GitHub.DistributedTask.ObjectTemplating;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
+using System.Text;
 
 namespace GitHub.Runner.Worker
 {
@@ -39,7 +40,6 @@ namespace GitHub.Runner.Worker
         CancellationToken CancellationToken { get; }
         List<ServiceEndpoint> Endpoints { get; }
         List<SecureFile> SecureFiles { get; }
-        List<Pipelines.RepositoryResource> Repositories { get; }
 
         PlanFeatures Features { get; }
         Variables Variables { get; }
@@ -69,6 +69,7 @@ namespace GitHub.Runner.Worker
         TaskResult Complete(TaskResult? result = null, string currentOperation = null, string resultCode = null);
         string GetRunnerContext(string name);
         void SetRunnerContext(string name, string value);
+        string GetGitHubContext(string name);
         void SetGitHubContext(string name, string value);
         void SetOutput(string name, string value, out string reference);
         void SetTimeout(TimeSpan? timeout);
@@ -125,7 +126,6 @@ namespace GitHub.Runner.Worker
         public CancellationToken CancellationToken => _cancellationTokenSource.Token;
         public List<ServiceEndpoint> Endpoints { get; private set; }
         public List<SecureFile> SecureFiles { get; private set; }
-        public List<Pipelines.RepositoryResource> Repositories { get; private set; }
         public Variables Variables { get; private set; }
         // public Variables TaskVariables { get; private set; }
         public HashSet<string> OutputVariables => _outputvariables;
@@ -218,7 +218,6 @@ namespace GitHub.Runner.Worker
             child.Features = Features;
             child.Variables = Variables;
             child.Endpoints = Endpoints;
-            child.Repositories = Repositories;
             child.SecureFiles = SecureFiles;
             // child.TaskVariables = taskVariables;
             child.EnvironmentVariables = EnvironmentVariables;
@@ -322,6 +321,20 @@ namespace GitHub.Runner.Worker
             ArgUtil.NotNullOrEmpty(name, nameof(name));
             var githubContext = ExpressionValues["github"] as GitHubContext;
             githubContext[name] = new StringContextData(value);
+        }
+
+        public string GetGitHubContext(string name)
+        {
+            ArgUtil.NotNullOrEmpty(name, nameof(name));
+            var githubContext = ExpressionValues["github"] as GitHubContext;
+            if (githubContext.TryGetValue(name, out var value))
+            {
+                return value as StringContextData;
+            }
+            else
+            {
+                return null;
+            }
         }
 
         public void SetOutput(string name, string value, out string reference)
@@ -472,9 +485,6 @@ namespace GitHub.Runner.Worker
             // SecureFiles
             SecureFiles = message.Resources.SecureFiles;
 
-            // Repositories
-            Repositories = message.Resources.Repositories;
-
             // Variables
             Variables = new Variables(HostContext, message.Variables);
 
@@ -534,7 +544,10 @@ namespace GitHub.Runner.Worker
                     var repoEndpoint = message.Resources.Endpoints.FirstOrDefault(x => x.Id == selfRepo.Endpoint.Id);
                     if (repoEndpoint?.Authorization?.Parameters != null && repoEndpoint.Authorization.Parameters.ContainsKey("accessToken"))
                     {
-                        githubContext["token"] = new StringContextData(repoEndpoint.Authorization.Parameters["accessToken"]);
+                        var githubAccessToken = repoEndpoint.Authorization.Parameters["accessToken"];
+                        githubContext["token"] = new StringContextData(githubAccessToken);
+                        var base64EncodingToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"x-access-token:{githubAccessToken}"));
+                        HostContext.SecretMasker.AddValue(base64EncodingToken);
                     }
                 }
 
@@ -555,8 +568,6 @@ namespace GitHub.Runner.Worker
             else
             {
                 var githubContext = new GitHubContext();
-                var selfRepo = message.Resources.Repositories.Single(x => string.Equals(x.Alias, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase));
-
                 var ghDictionary = (DictionaryContextData)ExpressionValues["github"];
                 foreach (var pair in ghDictionary)
                 {
@@ -564,13 +575,12 @@ namespace GitHub.Runner.Worker
                 }
 
                 // GITHUB_TOKEN=TOKEN
-                if (selfRepo.Endpoint != null)
+                var githubAccessToken = Variables.Get("system.github.token");
+                if (!string.IsNullOrEmpty(githubAccessToken))
                 {
-                    var repoEndpoint = message.Resources.Endpoints.FirstOrDefault(x => x.Id == selfRepo.Endpoint.Id);
-                    if (repoEndpoint?.Authorization?.Parameters != null && repoEndpoint.Authorization.Parameters.ContainsKey("accessToken"))
-                    {
-                        githubContext["token"] = new StringContextData(repoEndpoint.Authorization.Parameters["accessToken"]);
-                    }
+                    githubContext["token"] = new StringContextData(githubAccessToken);
+                    var base64EncodingToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"x-access-token:{githubAccessToken}"));
+                    HostContext.SecretMasker.AddValue(base64EncodingToken);
                 }
 
                 ExpressionValues["github"] = githubContext;

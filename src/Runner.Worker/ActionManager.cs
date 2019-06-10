@@ -208,6 +208,12 @@ namespace GitHub.Runner.Worker
                                     var base64EncodingToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"PAT:{authToken}"));
                                     httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", base64EncodingToken);
                                 }
+                                else
+                                {
+                                    var accessToken = executionContext.GetGitHubContext("token");
+                                    var base64EncodingToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"x-access-token:{accessToken}"));
+                                    httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", base64EncodingToken);
+                                }
 
                                 httpClient.DefaultRequestHeaders.UserAgent.Add(HostContext.UserAgent);
                                 using (var result = await httpClient.GetStreamAsync(archiveLink))
@@ -400,8 +406,7 @@ namespace GitHub.Runner.Worker
                     var repoAction = action.Reference as Pipelines.RepositoryPathReference;
                     if (string.Equals(repoAction.RepositoryType, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase))
                     {
-                        var selfRepo = executionContext.Repositories.Single(x => string.Equals(x.Alias, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase));
-                        actionDirectory = selfRepo.Properties.Get<string>(Pipelines.RepositoryPropertyNames.Path);
+                        actionDirectory = executionContext.GetGitHubContext("workspace");
                         if (!string.IsNullOrEmpty(repoAction.Path))
                         {
                             actionDirectory = Path.Combine(actionDirectory, repoAction.Path);

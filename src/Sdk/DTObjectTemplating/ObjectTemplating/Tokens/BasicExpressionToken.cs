@@ -10,7 +10,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
     [EditorBrowsable(EditorBrowsableState.Never)]
     public sealed class BasicExpressionToken : ExpressionToken
     {
-        internal BasicExpressionToken(
+        public BasicExpressionToken(
             Int32? fileId,
             Int32? line,
             Int32? column,

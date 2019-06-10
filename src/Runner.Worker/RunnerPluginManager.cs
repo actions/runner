@@ -77,7 +77,6 @@ namespace GitHub.Runner.Worker
             RunnerActionPluginExecutionContext pluginContext = new RunnerActionPluginExecutionContext
             {
                 Inputs = inputs,
-                Repositories = context.Repositories,
                 Endpoints = context.Endpoints,
                 Context = context.ExpressionValues as Dictionary<string, PipelineContextData>
             };

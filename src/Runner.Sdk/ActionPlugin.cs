@@ -35,14 +35,12 @@ namespace GitHub.Runner.Sdk
             _trace = trace;
             this.Endpoints = new List<ServiceEndpoint>();
             this.Inputs = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            this.Repositories = new List<Pipelines.RepositoryResource>();
             this.TaskVariables = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
             this.Variables = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
             this.Context = new Dictionary<string, PipelineContextData>(StringComparer.OrdinalIgnoreCase);
         }
 
         public List<ServiceEndpoint> Endpoints { get; set; }
-        public List<Pipelines.RepositoryResource> Repositories { get; set; }
         public Dictionary<string, VariableValue> Variables { get; set; }
         public Dictionary<string, VariableValue> TaskVariables { get; set; }
         public Dictionary<string, string> Inputs { get; set; }
@@ -197,14 +195,29 @@ namespace GitHub.Runner.Sdk
             Output($"##[internal-set-self-path]{path}");
         }
 
-        public String GetRunnerInfo(string infoName)
+        public String GetRunnerContext(string contextName)
         {
             this.Context.TryGetValue("runner", out var context);
             var runnerContext = context as DictionaryContextData;
             ArgUtil.NotNull(runnerContext, nameof(runnerContext));
-            if(runnerContext.TryGetValue(infoName, out var info))
+            if (runnerContext.TryGetValue(contextName, out var data))
             {
-                return info as StringContextData;
+                return data as StringContextData;
+            }
+            else
+            {
+                return null;
+            }
+        }
+
+        public String GetGitHubContext(string contextName)
+        {
+            this.Context.TryGetValue("github", out var context);
+            var githubContext = context as DictionaryContextData;
+            ArgUtil.NotNull(githubContext, nameof(githubContext));
+            if (githubContext.TryGetValue(contextName, out var data))
+            {
+                return data as StringContextData;
             }
             else
             {
@@ -214,9 +227,9 @@ namespace GitHub.Runner.Sdk
 
         public RunnerCertificateSettings GetCertConfiguration()
         {
-            bool skipCertValidation = StringUtil.ConvertToBoolean(GetRunnerInfo("SkipCertValidation"));
-            string caFile = GetRunnerInfo("CAInfo");
-            string clientCertFile = GetRunnerInfo("ClientCert");
+            bool skipCertValidation = StringUtil.ConvertToBoolean(GetRunnerContext("SkipCertValidation"));
+            string caFile = GetRunnerContext("CAInfo");
+            string clientCertFile = GetRunnerContext("ClientCert");
 
             if (!string.IsNullOrEmpty(caFile) || !string.IsNullOrEmpty(clientCertFile) || skipCertValidation)
             {
@@ -227,9 +240,9 @@ namespace GitHub.Runner.Sdk
                 if (!string.IsNullOrEmpty(clientCertFile))
                 {
                     certConfig.ClientCertificateFile = clientCertFile;
-                    string clientCertKey = GetRunnerInfo("ClientCertKey");
-                    string clientCertArchive = GetRunnerInfo("ClientCertArchive");
-                    string clientCertPassword = GetRunnerInfo("ClientCertPassword");
+                    string clientCertKey = GetRunnerContext("ClientCertKey");
+                    string clientCertArchive = GetRunnerContext("ClientCertArchive");
+                    string clientCertPassword = GetRunnerContext("ClientCertPassword");
 
                     certConfig.ClientCertificatePrivateKeyFile = clientCertKey;
                     certConfig.ClientCertificateArchiveFile = clientCertArchive;
@@ -248,12 +261,12 @@ namespace GitHub.Runner.Sdk
 
         public RunnerWebProxySettings GetProxyConfiguration()
         {
-            string proxyUrl = GetRunnerInfo("ProxyUrl");
+            string proxyUrl = GetRunnerContext("ProxyUrl");
             if (!string.IsNullOrEmpty(proxyUrl))
             {
-                string proxyUsername = GetRunnerInfo("ProxyUsername");
-                string proxyPassword = GetRunnerInfo("ProxyPassword");
-                List<string> proxyBypassHosts = StringUtil.ConvertFromJson<List<string>>(GetRunnerInfo("ProxyBypassList") ?? "[]");
+                string proxyUsername = GetRunnerContext("ProxyUsername");
+                string proxyPassword = GetRunnerContext("ProxyPassword");
+                List<string> proxyBypassHosts = StringUtil.ConvertFromJson<List<string>>(GetRunnerContext("ProxyBypassList") ?? "[]");
                 return new RunnerWebProxySettings()
                 {
                     ProxyAddress = proxyUrl,

@@ -5,9 +5,9 @@ using Newtonsoft.Json.Linq;
 
 namespace GitHub.DistributedTask.ObjectTemplating
 {
-    internal static class TemplateUtil
+    public static class TemplateUtil
     {
-        internal static LiteralToken AssertLiteral(
+        public static LiteralToken AssertLiteral(
             TemplateToken value,
             String objectDescription)
         {
@@ -19,7 +19,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
             throw new ArgumentException($"Unexpected type '{value?.GetType().Name}' encountered while reading '{objectDescription}'. The type '{nameof(LiteralToken)}' was expected.");
         }
 
-        internal static MappingToken AssertMapping(
+        public static MappingToken AssertMapping(
             TemplateToken value,
             String objectDescription)
         {

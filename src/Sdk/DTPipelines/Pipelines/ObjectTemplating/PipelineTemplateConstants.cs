@@ -19,6 +19,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         internal const String FailFast = "fail-fast";
         internal const String FetchDepth = "fetch-depth";
         internal const String GeneratedId = "generated-id";
+        internal const String GitHub = "github";
         internal const String Id = "id";
         internal const String If = "if";
         internal const String Include = "include";
@@ -44,6 +45,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         internal const String Submodules = "submodules";
         internal const String Template = "template";
         internal const String Timeout = "timeout";
+        internal const String Token = "token";
         internal const String Uses = "uses";
         internal const String With = "with";
         internal const String Workflow = "workflow";
