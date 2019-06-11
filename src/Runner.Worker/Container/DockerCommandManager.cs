@@ -117,6 +117,10 @@ namespace GitHub.Runner.Worker.Container
             // OPTIONS
             dockerOptions.Add($"--name {container.ContainerDisplayName}");
             dockerOptions.Add($"--label {DockerInstanceLabel}");
+	    if (!string.IsNullOrEmpty(container.ContainerWorkDirectory))
+	    {
+		dockerOptions.Add($"--workdir {container.ContainerWorkDirectory}");
+	    }
             if (!string.IsNullOrEmpty(container.ContainerNetwork))
             {
                 dockerOptions.Add($"--network {container.ContainerNetwork}");
