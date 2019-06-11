@@ -603,24 +603,8 @@ namespace GitHub.Runner.Worker
             PrependPath = new List<string>();
 
             // Docker (JobContainer)
-            string imageName = Variables.Get("_PREVIEW_VSTS_DOCKER_IMAGE");
-            if (string.IsNullOrEmpty(imageName))
-            {
-                imageName = Environment.GetEnvironmentVariable("_PREVIEW_VSTS_DOCKER_IMAGE");
-            }
-
-            var containerNetwork = $"vsts_network_{Guid.NewGuid().ToString("N")}";
-            if (!string.IsNullOrEmpty(imageName) &&
-                string.IsNullOrEmpty(message.JobContainer))
-            {
-                var dockerContainer = new Pipelines.ContainerResource()
-                {
-                    Alias = "vsts_container_preview"
-                };
-                dockerContainer.Properties.Set("image", imageName);
-                Container = new ContainerInfo(HostContext, dockerContainer) { ContainerNetwork = containerNetwork };
-            }
-            else if (!string.IsNullOrEmpty(message.JobContainer))
+            var containerNetwork = $"runner_network_{Guid.NewGuid().ToString("N")}";
+            if (!string.IsNullOrEmpty(message.JobContainer))
             {
                 Container = new ContainerInfo(HostContext, message.Resources.Containers.Single(x => string.Equals(x.Alias, message.JobContainer, StringComparison.OrdinalIgnoreCase))) { ContainerNetwork = containerNetwork };
             }

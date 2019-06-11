@@ -51,7 +51,7 @@ namespace GitHub.Runner.Worker.Container
             _pathMappings[hostContext.GetDirectory(WellKnownDirectory.Root)] = "C:\\__a";
             // add -v '\\.\pipe\docker_engine:\\.\pipe\docker_engine' when they are available (17.09)
 #else
-	    this.ContainerWorkDirectory = "/__w";
+            this.ContainerWorkDirectory = "/__w";
             _pathMappings[hostContext.GetDirectory(WellKnownDirectory.Work)] = this.ContainerWorkDirectory;
             _pathMappings[hostContext.GetDirectory(WellKnownDirectory.Tools)] = "/__t"; // Tool cache folder may come from ENV, so we need a unique folder to avoid collision
             _pathMappings[hostContext.GetDirectory(WellKnownDirectory.Root)] = "/__a";
