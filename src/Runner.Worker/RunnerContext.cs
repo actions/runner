@@ -2,7 +2,9 @@ using GitHub.DistributedTask.Pipelines.ContextData;
 using System;
 using System.Collections.Generic;
 
-public sealed class RunnerContext : DictionaryContextData, IEnvironmentContextData
+namespace GitHub.Runner.Worker
+{
+    public sealed class RunnerContext : DictionaryContextData, IEnvironmentContextData
     {
         public IEnumerable<KeyValuePair<string, string>> GetRuntimeEnvironmentVariables()
         {
@@ -13,3 +15,4 @@ public sealed class RunnerContext : DictionaryContextData, IEnvironmentContextDa
             }
         }
     }
+}

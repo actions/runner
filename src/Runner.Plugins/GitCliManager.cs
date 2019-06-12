@@ -440,7 +440,7 @@ namespace GitHub.Runner.Plugins.Repository
         public async Task<Version> GitVersion(RunnerActionPluginExecutionContext context)
         {
             context.Debug("Get git version.");
-            string pipelineWorkspace = context.GetRunnerInfo("pipelineWorkspace");
+            string pipelineWorkspace = context.GetRunnerContext("pipelineWorkspace");
             ArgUtil.Directory(pipelineWorkspace, "pipelineWorkspace");
             Version version = null;
             List<string> outputStrings = new List<string>();
@@ -473,7 +473,7 @@ namespace GitHub.Runner.Plugins.Repository
         public async Task<Version> GitLfsVersion(RunnerActionPluginExecutionContext context)
         {
             context.Debug("Get git-lfs version.");
-            string pipelineWorkspace = context.GetRunnerInfo("pipelineWorkspace");
+            string pipelineWorkspace = context.GetRunnerContext("pipelineWorkspace");
             ArgUtil.Directory(pipelineWorkspace, "pipelineWorkspace");
             Version version = null;
             List<string> outputStrings = new List<string>();

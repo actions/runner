@@ -150,12 +150,10 @@ namespace GitHub.Runner.Worker
 
         public void ProcessCommand(IExecutionContext context, string line, ActionCommand command, out bool omitEcho)
         {
-            var selfRepo = context.Repositories.Single(x => string.Equals(x.Alias, PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase));
-            selfRepo.Properties.Set(RepositoryPropertyNames.Path, command.Data);
             context.SetGitHubContext("workspace", command.Data);
 
             var directoryManager = HostContext.GetService<IPipelineDirectoryManager>();
-            var trackingConfig = directoryManager.UpdateDirectory(context, selfRepo);
+            var trackingConfig = directoryManager.UpdateDirectory(context);
 
             omitEcho = true;
         }
@@ -409,10 +407,8 @@ namespace GitHub.Runner.Worker
                 }
 
                 // Get the values that represent the server path given a local path
-                var selfRepo = context.Repositories.Single(x => x.Alias == PipelineConstants.SelfAlias);
-                string repoName = selfRepo.Properties.Get<string>(RepositoryPropertyNames.Name);
-                var repoPath = selfRepo.Properties.Get<string>(RepositoryPropertyNames.Path);
-
+                string repoName = context.GetGitHubContext("repository");
+                var repoPath = context.GetGitHubContext("workspace");
 
                 string relativeSourcePath = IOUtil.MakeRelative(file, repoPath);
                 if (!string.Equals(relativeSourcePath, file, IOUtil.FilePathStringComparison))

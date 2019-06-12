@@ -760,7 +760,11 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 };
 
                 var inputs = new MappingToken(null, null, null);
-                inputs.Add(new LiteralToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Repository), new LiteralToken(null, null, null, PipelineConstants.SelfAlias));
+                inputs.Add(new LiteralToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Repository), new BasicExpressionToken(null, null, null, "github.repository"));
+                inputs.Add(new LiteralToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Ref), new BasicExpressionToken(null, null, null, "github.ref"));
+                inputs.Add(new LiteralToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Version), new BasicExpressionToken(null, null, null, "github.sha"));
+                inputs.Add(new LiteralToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Token), new BasicExpressionToken(null, null, null, "github.token"));
+                inputs.Add(new LiteralToken(null, null, null, PipelineConstants.CheckoutTaskInputs.WorkspaceRepo), new LiteralToken(null, null, null, bool.TrueString));
                 checkoutAction.Inputs = inputs;
 
                 result.Insert(0, checkoutAction);
@@ -791,6 +795,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             var fetchDepth = default(ScalarToken);
             var lfs = default(ScalarToken);
             var submodules = default(ScalarToken);
+            var token = default(ScalarToken);
 
             foreach (var actionProperty in action)
             {
@@ -853,6 +858,10 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 
                     case PipelineTemplateConstants.Timeout:
                         timeout = TemplateUtil.AssertLiteral(actionProperty.Value, $"{PipelineTemplateConstants.Actions} item {PipelineTemplateConstants.Timeout}");
+                        break;
+
+                    case PipelineTemplateConstants.Token:
+                        token = TemplateUtil.AssertScalar(actionProperty.Value, $"{PipelineTemplateConstants.Actions} item {PipelineTemplateConstants.Token}");
                         break;
 
                     case PipelineTemplateConstants.Uses:
@@ -940,17 +949,49 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 var inputs = new MappingToken(null, null, null);
                 if (string.Equals(checkout.Value, bool.TrueString, StringComparison.OrdinalIgnoreCase))
                 {
-                    inputs.Add(new LiteralToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Repository), new LiteralToken(null, null, null, PipelineConstants.SelfAlias));
+                    inputs.Add(new LiteralToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Repository), new BasicExpressionToken(null, null, null, "github.repository"));
+                    inputs.Add(new LiteralToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Ref), new BasicExpressionToken(null, null, null, "github.ref"));
+                    inputs.Add(new LiteralToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Version), new BasicExpressionToken(null, null, null, "github.sha"));
+                    inputs.Add(new LiteralToken(null, null, null, PipelineConstants.CheckoutTaskInputs.WorkspaceRepo), new LiteralToken(null, null, null, bool.TrueString));
                 }
                 else if (string.Equals(checkout.Value, bool.FalseString, StringComparison.OrdinalIgnoreCase))
                 {
                     // `- checkout: false` means not checkout, we will set the enable to false and let it get skipped.
-                    inputs.Add(new LiteralToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Repository), new LiteralToken(null, null, null, PipelineConstants.SelfAlias));
+                    inputs.Add(new LiteralToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Repository), new BasicExpressionToken(null, null, null, "github.repository"));
+                    inputs.Add(new LiteralToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Ref), new BasicExpressionToken(null, null, null, "github.ref"));
+                    inputs.Add(new LiteralToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Version), new BasicExpressionToken(null, null, null, "github.sha"));
+                    inputs.Add(new LiteralToken(null, null, null, PipelineConstants.CheckoutTaskInputs.WorkspaceRepo), new LiteralToken(null, null, null, bool.TrueString));
                     result.Enabled = false;
                 }
                 else
                 {
-                    inputs.Add(new LiteralToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Repository), checkout.Clone(true));
+                    var checkoutSegments = checkout.Value.Split('@');
+                    var pathSegments = checkoutSegments[0].Split(new[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries);
+                    var gitRef = checkoutSegments.Length == 2 ? checkoutSegments[1] : String.Empty;
+
+                    if (checkoutSegments.Length != 2 ||
+                        pathSegments.Length != 2 ||
+                        String.IsNullOrEmpty(pathSegments[0]) ||
+                        String.IsNullOrEmpty(pathSegments[1]) ||
+                        String.IsNullOrEmpty(gitRef))
+                    {
+                        // todo: loc
+                        context.Error(uses, $"Expected format {{org}}/{{repo}}@ref. Actual '{uses.Value}'");
+                    }
+                    else
+                    {
+                        var repositoryName = $"{pathSegments[0]}/{pathSegments[1]}";
+                        inputs.Add(new LiteralToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Repository), new LiteralToken(null, null, null, repositoryName));
+
+                        if (RegexUtility.IsMatch(gitRef, WellKnownRegularExpressions.SHA1))
+                        {
+                            inputs.Add(new LiteralToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Version), new LiteralToken(null, null, null, gitRef));
+                        }
+                        else
+                        {
+                            inputs.Add(new LiteralToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Ref), new LiteralToken(null, null, null, gitRef));
+                        }
+                    }
                 }
 
                 if (path != null)
@@ -976,6 +1017,15 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 if (submodules != null)
                 {
                     inputs.Add(new LiteralToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Submodules), submodules.Clone(true));
+                }
+
+                if (token != null)
+                {
+                    inputs.Add(new LiteralToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Token), token.Clone(true));
+                }
+                else
+                {
+                    inputs.Add(new LiteralToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Token), new BasicExpressionToken(null, null, null, "github.token"));
                 }
 
                 result.Inputs = inputs;

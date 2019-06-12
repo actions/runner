@@ -18,6 +18,8 @@ using Newtonsoft.Json.Linq;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
+using GitHub.DistributedTask.Pipelines.ContextData;
+using GitHub.DistributedTask.ObjectTemplating;
 
 namespace GitHub.Runner.Worker
 {
@@ -55,9 +57,6 @@ namespace GitHub.Runner.Worker
 
             ServiceEndpoint systemConnection = message.Resources.Endpoints.Single(x => string.Equals(x.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
 
-            // back compat TfsServerUrl
-            message.Variables[Constants.Variables.System.TFServerUrl] = systemConnection.Url.AbsoluteUri;
-
             // Make sure SystemConnection Url and Endpoint Url match Config Url base for OnPremises server
             // System.ServerType will always be there after M133
             if (!message.Variables.ContainsKey(Constants.Variables.System.ServerType) ||
@@ -76,6 +75,8 @@ namespace GitHub.Runner.Worker
             _jobServerQueue = HostContext.GetService<IJobServerQueue>();
             VssConnection jobConnection = VssUtil.CreateConnection(jobServerUrl, jobServerCredential, new DelegatingHandler[] { new ThrottlingReportHandler(_jobServerQueue) });
             await jobServer.ConnectAsync(jobConnection);
+
+            MakeJobMessageCompat(message);
 
             _jobServerQueue.Start(message);
             HostContext.WritePerfCounter($"WorkerJobServerQueueStarted_{message.RequestId.ToString()}");
@@ -397,6 +398,46 @@ namespace GitHub.Runner.Worker
                 message.Variables[Constants.Variables.System.TFServerUrl] = ReplaceWithConfigUriBase(new Uri(tfsServerUrl)).AbsoluteUri;
                 Trace.Info($"Ensure System.TFServerUrl match config url base. {message.Variables[Constants.Variables.System.TFServerUrl].Value}");
             }
+        }
+
+        private void MakeJobMessageCompat(Pipelines.AgentJobRequestMessage message)
+        {
+            var steps = new List<Pipelines.JobStep>();
+            foreach (var action in message.Steps.OfType<Pipelines.ActionStep>())
+            {
+                if (action.Reference.Type == Pipelines.ActionSourceType.AgentPlugin)
+                {
+                    bool fixInput = true;
+                    var inputs = TemplateUtil.AssertMapping(action.Inputs, "inputs");
+                    foreach (var input in inputs)
+                    {
+                        var inputName = TemplateUtil.AssertLiteral(input.Key, "input");
+                        if (string.Equals(inputName.Value, Pipelines.PipelineConstants.CheckoutTaskInputs.Version, StringComparison.OrdinalIgnoreCase) ||
+                            string.Equals(inputName.Value, Pipelines.PipelineConstants.CheckoutTaskInputs.Ref, StringComparison.OrdinalIgnoreCase) ||
+                            string.Equals(inputName.Value, Pipelines.PipelineConstants.CheckoutTaskInputs.Token, StringComparison.OrdinalIgnoreCase))
+                        {
+                            fixInput = false;
+                            break;
+                        }
+                    }
+
+                    if (fixInput)
+                    {
+                        var newInputs = new MappingToken(null, null, null);
+                        newInputs.Add(new LiteralToken(null, null, null, Pipelines.PipelineConstants.CheckoutTaskInputs.Repository), new BasicExpressionToken(null, null, null, "github.repository"));
+                        newInputs.Add(new LiteralToken(null, null, null, Pipelines.PipelineConstants.CheckoutTaskInputs.Ref), new BasicExpressionToken(null, null, null, "github.ref"));
+                        newInputs.Add(new LiteralToken(null, null, null, Pipelines.PipelineConstants.CheckoutTaskInputs.Version), new BasicExpressionToken(null, null, null, "github.sha"));
+                        newInputs.Add(new LiteralToken(null, null, null, Pipelines.PipelineConstants.CheckoutTaskInputs.Token), new BasicExpressionToken(null, null, null, "github.token"));
+                        newInputs.Add(new LiteralToken(null, null, null, Pipelines.PipelineConstants.CheckoutTaskInputs.WorkspaceRepo), new LiteralToken(null, null, null, bool.TrueString));
+                        action.Inputs = newInputs;
+                    }
+                }
+
+                steps.Add(action);
+            }
+
+            message.Steps.Clear();
+            message.Steps.AddRange(steps);
         }
     }
 }

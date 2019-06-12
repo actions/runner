@@ -19,26 +19,22 @@ namespace GitHub.Runner.Worker
     {
         TrackingConfig PrepareDirectory(
             IExecutionContext executionContext,
-            RepositoryResource repository,
             WorkspaceOptions workspace);
 
         TrackingConfig UpdateDirectory(
-            IExecutionContext executionContext,
-            RepositoryResource repository);
+            IExecutionContext executionContext);
     }
 
     public sealed class PipelineDirectoryManager : RunnerService, IPipelineDirectoryManager
     {
         public TrackingConfig PrepareDirectory(
             IExecutionContext executionContext,
-            RepositoryResource repository,
             WorkspaceOptions workspace)
         {
             // Validate parameters.
             Trace.Entering();
             ArgUtil.NotNull(executionContext, nameof(executionContext));
             ArgUtil.NotNull(executionContext.Variables, nameof(executionContext.Variables));
-            ArgUtil.NotNull(repository, nameof(repository));
             var trackingManager = HostContext.GetService<ITrackingManager>();
 
             // Defer to the source provider to calculate the hash key.
@@ -76,20 +72,12 @@ namespace GitHub.Runner.Worker
                 Trace.Verbose("Creating a new tracking config file.");
                 trackingConfig = trackingManager.Create(
                     executionContext,
-                    repository,
                     hashKey,
                     trackingFile);
                 ArgUtil.NotNull(trackingConfig, nameof(trackingConfig));
             }
             else
             {
-                // Fill out repository type if it's not there.
-                // repository type is a new property introduced for maintenance job
-                if (string.IsNullOrEmpty(trackingConfig.RepositoryType))
-                {
-                    trackingConfig.RepositoryType = repository.Type;
-                }
-
                 // For existing tracking config files, update the job run properties.
                 Trace.Verbose("Updating job run properties.");
                 trackingManager.UpdateJobRunProperties(executionContext, trackingConfig, trackingFile);
@@ -129,22 +117,16 @@ namespace GitHub.Runner.Worker
                 path: Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), trackingConfig.SourcesDirectory),
                 deleteExisting: cleanOption == BuildCleanOption.Source);
 
-            var repoPath = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), trackingConfig.SourcesDirectory);
-            Trace.Info($"Set repository path for repository {repository.Alias} to '{repoPath}'");
-            repository.Properties.Set<string>(RepositoryPropertyNames.Path, repoPath);
-
             return trackingConfig;
         }
 
         public TrackingConfig UpdateDirectory(
-            IExecutionContext executionContext,
-            RepositoryResource repository)
+            IExecutionContext executionContext)
         {
             // Validate parameters.
             Trace.Entering();
             ArgUtil.NotNull(executionContext, nameof(executionContext));
             ArgUtil.NotNull(executionContext.Variables, nameof(executionContext.Variables));
-            ArgUtil.NotNull(repository, nameof(repository));
             var trackingManager = HostContext.GetService<ITrackingManager>();
 
             // Defer to the source provider to calculate the hash key.
@@ -163,9 +145,9 @@ namespace GitHub.Runner.Worker
             TrackingConfig existingConfig = trackingManager.LoadIfExists(executionContext, trackingFile);
             ArgUtil.NotNull(existingConfig, nameof(existingConfig));
 
-            var repoPath = repository.Properties.Get<string>(RepositoryPropertyNames.Path);
+            var repoPath = executionContext.GetGitHubContext("workspace");
             ArgUtil.NotNullOrEmpty(repoPath, nameof(repoPath));
-            Trace.Info($"Update repository path for repository {repository.Alias} to '{repoPath}'");
+            Trace.Info($"Update workspace repository path to '{repoPath}'");
 
             string buildDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), existingConfig.PipelineDirectory);
             if (repoPath.StartsWith(buildDirectory + Path.DirectorySeparatorChar) || repoPath.StartsWith(buildDirectory + Path.AltDirectorySeparatorChar))

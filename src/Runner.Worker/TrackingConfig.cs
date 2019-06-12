@@ -22,11 +22,10 @@ namespace GitHub.Runner.Worker
 
         public TrackingConfig(
             IExecutionContext executionContext,
-            RepositoryResource repository,
             int pipelineDirectory,
             string hashKey)
         {
-            var repoFullName = repository.Properties.Get<string>(RepositoryPropertyNames.Name);
+            var repoFullName = executionContext.GetGitHubContext("repository");
             ArgUtil.NotNullOrEmpty(repoFullName, nameof(repoFullName));
 
             var repoName = repoFullName.Substring(repoFullName.LastIndexOf('/') + 1);
@@ -40,8 +39,7 @@ namespace GitHub.Runner.Worker
             CollectionId = executionContext.Variables.System_CollectionId;
             DefinitionId = executionContext.Variables.System_DefinitionId;
             HashKey = hashKey;
-            RepositoryUrl = repository.Url.AbsoluteUri;
-            RepositoryType = repository.Type;
+            RepositoryUrl = $"https://github.com/{repoFullName}";
             UpdateJobRunProperties(executionContext);
         }
 
@@ -111,8 +109,6 @@ namespace GitHub.Runner.Worker
                 LastRunOn = DateTimeOffset.Parse(value, CultureInfo.InvariantCulture);
             }
         }
-
-        public string RepositoryType { get; set; }
 
         [JsonProperty("runner_sourcesdirectory")]
         public string SourcesDirectory { get; set; }

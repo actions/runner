@@ -127,7 +127,6 @@ namespace GitHub.Runner.Worker
                 RunnerLogPluginHostContext pluginContext = new RunnerLogPluginHostContext
                 {
                     PluginAssemblies = new List<string>(),
-                    Repositories = context.Repositories,
                     Endpoints = context.Endpoints,
                     Variables = new Dictionary<string, VariableValue>(),
                     Steps = new Dictionary<string, Pipelines.ActionStepDefinitionReference>(),
