@@ -17,8 +17,8 @@ namespace GitHub.Runner.Worker.Handlers
     {
         private const string _colorCodePrefix = "\033[";
         private const int _maxAttempts = 3;
-        private const string _timeoutKey = "GITHUB_ISSUE_MATCHER_TIMEOUT";
-        private static readonly Regex _colorCodeRegex = new Regex(@"\033\[[0-9;]*m?", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+        private const string _timeoutKey = "GITHUB_ACTIONS_RUNNER_ISSUE_MATCHER_TIMEOUT";
+        private static readonly Regex _colorCodeRegex = new Regex(@"\x0033\[[0-9;]*m?", RegexOptions.Compiled | RegexOptions.CultureInvariant);
         private readonly IActionCommandManager _commandManager;
         private readonly IExecutionContext _executionContext;
         private readonly object _matchersLock = new object();
@@ -82,10 +82,11 @@ namespace GitHub.Runner.Worker.Handlers
             {
                 // This does not need to be inside of a critical section.
                 // The logging queues and command handlers are thread-safe.
-                _commandManager.TryProcessCommand(_executionContext, line);
-
+                if (_commandManager.TryProcessCommand(_executionContext, line))
+                {
 //_executionContext.Debug("LEAVING OutputManager OnDataReceived - command processed");
-                return;
+                    return;
+                }
             }
 
             // Problem matchers
@@ -212,7 +213,7 @@ namespace GitHub.Runner.Worker.Handlers
             }
             else
             {
-                _executionContext.Debug($"Skipping logging an issue for the matched line because the severity '{match.Severity}' is not supported.");
+                _executionContext.Debug($"Skipped logging an issue for the matched line because the severity '{match.Severity}' is not supported.");
                 return null;
             }
 
@@ -227,7 +228,7 @@ namespace GitHub.Runner.Worker.Handlers
             {
                 if (int.TryParse(match.Line, NumberStyles.None, CultureInfo.InvariantCulture, out var line))
                 {
-                    issue.Data["linenumber"] = line.ToString(CultureInfo.InvariantCulture);
+                    issue.Data["line"] = line.ToString(CultureInfo.InvariantCulture);
                 }
                 else
                 {
@@ -240,7 +241,7 @@ namespace GitHub.Runner.Worker.Handlers
             {
                 if (int.TryParse(match.Column, NumberStyles.None, CultureInfo.InvariantCulture, out var column))
                 {
-                    issue.Data["columnnumber"] = column.ToString(CultureInfo.InvariantCulture);
+                    issue.Data["column"] = column.ToString(CultureInfo.InvariantCulture);
                 }
                 else
                 {
@@ -300,7 +301,7 @@ namespace GitHub.Runner.Worker.Handlers
                         }
                         else
                         {
-                            issue.Data["sourcepath"] = file.Substring(repositoryPath.Length).TrimStart(Path.DirectorySeparatorChar);
+                            issue.Data["file"] = file.Substring(repositoryPath.Length).TrimStart(Path.DirectorySeparatorChar);
                         }
                     }
                     // File does not exist

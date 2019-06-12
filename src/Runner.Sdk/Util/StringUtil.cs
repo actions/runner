@@ -199,6 +199,21 @@ namespace GitHub.Runner.Sdk
                             locStrings[pair.Key] = pair.Value;
                         }
                     }
+                    else
+                    {
+                        string sourceDirectory = Environment.GetEnvironmentVariable("GITHUB_RUNNER_SRC_DIR");
+                        if (!string.IsNullOrEmpty(sourceDirectory))
+                        {
+                            file = Path.Combine(sourceDirectory, "..", "_layout", "bin", cultureName, "strings.json");
+                            if (File.Exists(file))
+                            {
+                                foreach (KeyValuePair<string, object> pair in IOUtil.LoadObject<Dictionary<string, object>>(file))
+                                {
+                                    locStrings[pair.Key] = pair.Value;
+                                }
+                            }
+                        }
+                    }
                 }
 
                 // Store the instance.
