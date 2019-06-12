@@ -193,7 +193,9 @@ namespace GitHub.Runner.Worker
             var result = new DictionaryContextData();
             foreach (var variable in _variables.Values)
             {
-                if (variable.Secret && !string.Equals(variable.Name, Constants.Variables.System.AccessToken, StringComparison.OrdinalIgnoreCase))
+                if (variable.Secret &&
+                    !string.Equals(variable.Name, Constants.Variables.System.AccessToken, StringComparison.OrdinalIgnoreCase) &&
+                    !string.Equals(variable.Name, "system.github.token", StringComparison.OrdinalIgnoreCase))
                 {
                     result[variable.Name] = new StringContextData(variable.Value);
                 }
