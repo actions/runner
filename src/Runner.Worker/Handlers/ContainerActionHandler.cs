@@ -105,10 +105,14 @@ namespace GitHub.Runner.Worker.Handlers
                 container.ContainerEnvironmentVariables[variable.Key] = container.TranslateToContainerPath(variable.Value);
             }
 
-            var runExitCode = await dockerManger.DockerRun(ExecutionContext, container);
-            if (runExitCode != 0)
+            using (var stdoutManager = new OutputManager(ExecutionContext, ActionCommandManager))
+            using (var stderrManager = new OutputManager(ExecutionContext, ActionCommandManager))
             {
-                throw new InvalidOperationException($"Docker run failed with exit code {runExitCode}");
+                var runExitCode = await dockerManger.DockerRun(ExecutionContext, container, stdoutManager.OnDataReceived, stderrManager.OnDataReceived);
+                if (runExitCode != 0)
+                {
+                    throw new InvalidOperationException($"Docker run failed with exit code {runExitCode}");
+                }
             }
         }
     }

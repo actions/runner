@@ -53,9 +53,6 @@ namespace GitHub.Runner.Sdk
         // all endpoints
         IList<ServiceEndpoint> Endpoints { get; }
 
-        // all repositories
-        IList<Pipelines.RepositoryResource> Repositories { get; }
-
         // all variables
         IDictionary<string, VariableValue> Variables { get; }
 
@@ -99,9 +96,6 @@ namespace GitHub.Runner.Sdk
         // all endpoints
         public IList<ServiceEndpoint> Endpoints { get; }
 
-        // all repositories
-        public IList<Pipelines.RepositoryResource> Repositories { get; }
-
         // all variables
         public IDictionary<string, VariableValue> Variables { get; }
 
@@ -113,7 +107,6 @@ namespace GitHub.Runner.Sdk
             VssConnection connection,
             IList<Pipelines.ActionStepDefinitionReference> steps,
             IList<ServiceEndpoint> endpoints,
-            IList<Pipelines.RepositoryResource> repositories,
             IDictionary<string, VariableValue> variables,
             Dictionary<String, PipelineContextData> Context,
             IRunnerLogPluginTrace trace)
@@ -122,7 +115,6 @@ namespace GitHub.Runner.Sdk
             VssConnection = connection;
             Steps = steps;
             Endpoints = endpoints;
-            Repositories = repositories;
             Variables = variables;
             _trace = trace;
         }
@@ -146,7 +138,6 @@ namespace GitHub.Runner.Sdk
 
         public List<String> PluginAssemblies { get; set; }
         public List<ServiceEndpoint> Endpoints { get; set; }
-        public List<Pipelines.RepositoryResource> Repositories { get; set; }
         public Dictionary<string, VariableValue> Variables { get; set; }
         public Dictionary<String, PipelineContextData> Context { get; set; }
         public Dictionary<string, Pipelines.ActionStepDefinitionReference> Steps { get; set; }
@@ -209,14 +200,14 @@ namespace GitHub.Runner.Sdk
             return VssUtil.CreateConnection(systemConnection.Url, credentials);
         }
 
-        public String GetRunnerInfo(string infoName)
+        public String GetRunnerContext(string contextName)
         {
             this.Context.TryGetValue("runner", out var context);
             var runnerContext = context as DictionaryContextData;
             ArgUtil.NotNull(runnerContext, nameof(runnerContext));
-            if (runnerContext.TryGetValue(infoName, out var info))
+            if (runnerContext.TryGetValue(contextName, out var data))
             {
-                return info as StringContextData;
+                return data as StringContextData;
             }
             else
             {
@@ -226,9 +217,9 @@ namespace GitHub.Runner.Sdk
 
         private RunnerCertificateSettings GetCertConfiguration()
         {
-            bool skipCertValidation = StringUtil.ConvertToBoolean(GetRunnerInfo("SkipCertValidation"));
-            string caFile = GetRunnerInfo("CAInfo");
-            string clientCertFile = GetRunnerInfo("ClientCert");
+            bool skipCertValidation = StringUtil.ConvertToBoolean(GetRunnerContext("SkipCertValidation"));
+            string caFile = GetRunnerContext("CAInfo");
+            string clientCertFile = GetRunnerContext("ClientCert");
 
             if (!string.IsNullOrEmpty(caFile) || !string.IsNullOrEmpty(clientCertFile) || skipCertValidation)
             {
@@ -239,9 +230,9 @@ namespace GitHub.Runner.Sdk
                 if (!string.IsNullOrEmpty(clientCertFile))
                 {
                     certConfig.ClientCertificateFile = clientCertFile;
-                    string clientCertKey = GetRunnerInfo("ClientCertKey");
-                    string clientCertArchive = GetRunnerInfo("ClientCertArchive");
-                    string clientCertPassword = GetRunnerInfo("ClientCertPassword");
+                    string clientCertKey = GetRunnerContext("ClientCertKey");
+                    string clientCertArchive = GetRunnerContext("ClientCertArchive");
+                    string clientCertPassword = GetRunnerContext("ClientCertPassword");
 
                     certConfig.ClientCertificatePrivateKeyFile = clientCertKey;
                     certConfig.ClientCertificateArchiveFile = clientCertArchive;
@@ -260,12 +251,12 @@ namespace GitHub.Runner.Sdk
 
         private RunnerWebProxySettings GetProxyConfiguration()
         {
-            string proxyUrl = GetRunnerInfo("ProxyUrl");
+            string proxyUrl = GetRunnerContext("ProxyUrl");
             if (!string.IsNullOrEmpty(proxyUrl))
             {
-                string proxyUsername = GetRunnerInfo("ProxyUsername");
-                string proxyPassword = GetRunnerInfo("ProxyPassword");
-                List<string> proxyBypassHosts = StringUtil.ConvertFromJson<List<string>>(GetRunnerInfo("ProxyBypassList") ?? "[]");
+                string proxyUsername = GetRunnerContext("ProxyUsername");
+                string proxyPassword = GetRunnerContext("ProxyPassword");
+                List<string> proxyBypassHosts = StringUtil.ConvertFromJson<List<string>>(GetRunnerContext("ProxyBypassList") ?? "[]");
                 return new RunnerWebProxySettings()
                 {
                     ProxyAddress = proxyUrl,
@@ -311,7 +302,7 @@ namespace GitHub.Runner.Sdk
             {
                 string typeName = plugin.GetType().FullName;
                 _outputQueue[typeName] = new ConcurrentQueue<string>();
-                _pluginContexts[typeName] = new RunnerLogPluginContext(plugin.FriendlyName, hostContext.VssConnection, hostContext.Steps.Values.ToList(), hostContext.Endpoints, hostContext.Repositories, hostContext.Variables, hostContext.Context, _trace);
+                _pluginContexts[typeName] = new RunnerLogPluginContext(plugin.FriendlyName, hostContext.VssConnection, hostContext.Steps.Values.ToList(), hostContext.Endpoints, hostContext.Variables, hostContext.Context, _trace);
                 _shortCircuited[typeName] = new TaskCompletionSource<int>();
             }
         }

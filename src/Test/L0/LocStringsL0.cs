@@ -18,7 +18,7 @@ namespace GitHub.Runner.Common.Tests
         [Trait("Category", "Common")]
         public void IsNotMissingCommonLocStrings()
         {
-            ValidateLocStrings(new TestHostContext(this), project: "GitHub.Runner.Common");
+            ValidateLocStrings(new TestHostContext(this), project: "Runner.Common");
         }
 
         [Fact]
@@ -58,7 +58,7 @@ namespace GitHub.Runner.Common.Tests
             string prettyStringsFile = Path.Combine(TestUtil.GetSrcPath(), "Misc", "layoutbin", "en-US", "strings.json.pretty");
             IOUtil.SaveObject(sortedResourceDictionary, prettyStringsFile);
 
-            Assert.True(string.Equals(File.ReadAllText(stringsFile), File.ReadAllText(prettyStringsFile)), $"Orginal string.json file: {stringsFile} is not pretty printed, replace it with: {prettyStringsFile}");
+            Assert.True(string.Equals(File.ReadAllText(stringsFile), File.ReadAllText(prettyStringsFile)), $"Original string.json file: {stringsFile} is not pretty printed, replace it with: {prettyStringsFile}");
 
             // delete file on succeed
             File.Delete(prettyStringsFile);
@@ -80,7 +80,7 @@ namespace GitHub.Runner.Common.Tests
             // when recursively searching due to parallel tests are deleting temp folders (DirectoryNotFoundException).
             var keys = new List<string>();
             string[] sourceFiles =
-                Directory.GetFiles(TestUtil.GetProjectPath("GitHub.Runner.Common"), "*.cs", SearchOption.AllDirectories)
+                Directory.GetFiles(TestUtil.GetProjectPath("Runner.Common"), "*.cs", SearchOption.AllDirectories)
                 .Concat(Directory.GetFiles(TestUtil.GetProjectPath("Runner.Listener"), "*.cs", SearchOption.AllDirectories))
                 .Concat(Directory.GetFiles(TestUtil.GetProjectPath("Runner.Worker"), "*.cs", SearchOption.AllDirectories))
                 .Concat(Directory.GetFiles(TestUtil.GetProjectPath("Runner.Plugins"), "*.cs", SearchOption.AllDirectories))
@@ -133,10 +133,23 @@ namespace GitHub.Runner.Common.Tests
             // find extra loc strings.
             var extraKeys = resourceDictionary.Keys.Where(x => !keys.Contains(x))?.ToList();
 
+            string trimStringsFile = Path.Combine(TestUtil.GetSrcPath(), "Misc", "layoutbin", "en-US", "strings.json.trim");
             if (extraKeys != null)
             {
-                Assert.True(extraKeys.Count == 0, $"Please save company's money by removing extra loc strings:{Environment.NewLine}{string.Join(Environment.NewLine, extraKeys)}");
+                if (extraKeys.Count != 0)
+                {
+                    foreach (var extra in extraKeys)
+                    {
+                        resourceDictionary.Remove(extra);
+                    }
+
+
+                    IOUtil.SaveObject(resourceDictionary, trimStringsFile);
+                    Assert.True(extraKeys.Count == 0, $"Please save company's money by removing extra loc strings, replace {stringsFile} with: {trimStringsFile}");
+                }
             }
+
+            File.Delete(trimStringsFile);
         }
 
         private void ValidateLocStrings(TestHostContext hc, string project)

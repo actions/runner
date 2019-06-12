@@ -1,44 +1,34 @@
 # GitHub Actions Runner
 
-## Overview
+![linux](docs/res/linux_sm.png) ![Linux x64](https://dev.azure.com/mseng/AzureDevOps/_apis/build/status/Products/Azure-pipelines-agent/actions-runner.ci?branchName=master&jobName=Linux%20Agent%20(x64)) ![macOS](docs/res/apple_sm.png) ![macOS](https://dev.azure.com/mseng/AzureDevOps/_apis/build/status/Products/Azure-pipelines-agent/actions-runner.ci?branchName=master&jobName=macOS%20Agent%20(x64)) ![win](docs/res/win_sm.png) ![Win x64](https://dev.azure.com/mseng/AzureDevOps/_apis/build/status/Products/Azure-pipelines-agent/actions-runner.ci?branchName=master&jobName=Windows%20Agent%20(x64))
 
-The cross platform actions runner for GitHub Pipelines.  
+<p align="center">
+  <img src="docs/res/github-graph.png">
+</p>
 
-Supported on Windows, OSX, Linux.  Written for the .NET Core CLR as one code base in C#.
+
+[build]: https://dev.azure.com/mseng/AzureDevOps/_build/latest?definitionId=8777&branchName=master
 
 
-## Status
+## Get Started
 
-|   | Build & Test |
-|---|:-----:|
-|![Win-x64](docs/res/win_med.png) **Windows x64**|[![Build & Test][win-x64-build-badge]][build]| 
-|![macOS](docs/res/apple_med.png) **macOS**|[![Build & Test][macOS-build-badge]][build]| 
-|![Linux-x64](docs/res/linux_med.png) **Linux x64**|[![Build & Test][linux-x64-build-badge]][build]|
+![win](docs/res/win_sm.png) [Pre-reqs](docs/start/envwin.md) | [Download](https://github.com/actions/runner/releases/latest)  
 
-[win-x64-build-badge]: https://dev.azure.com/mseng/AzureDevOps/_apis/build/status/Products/Azure-pipelines-agent/actions-runner.ci?branchName=features/actionsrunner&jobName=Windows%20Agent%20(x64)
-[macOS-build-badge]: https://dev.azure.com/mseng/AzureDevOps/_apis/build/status/Products/Azure-pipelines-agent/actions-runner.ci?branchName=features/actionsrunner&jobName=macOS%20Agent%20(x64)
-[linux-x64-build-badge]: https://dev.azure.com/mseng/AzureDevOps/_apis/build/status/Products/Azure-pipelines-agent/actions-runner.ci?branchName=features/actionsrunner&jobName=Linux%20Agent%20(x64)
-[build]: https://dev.azure.com/mseng/AzureDevOps/_build/latest?definitionId=8777&branchName=features/actionsrunner
+![macOS](docs/res/apple_sm.png)  [Pre-reqs](docs/start/envosx.md) | [Download](https://github.com/actions/runner/releases/latest)  
 
-## System Pre-Requisites
+![linux](docs/res/linux_sm.png)  [Pre-reqs](docs/start/envlinux.md) | [Download](https://github.com/actions/runner/releases/latest)
 
-First, ensure you have the necessary system pre-requisites
+**Configure:**
 
-![win](docs/res/win_sm.png) [Windows](docs/start/envwin.md)    
+*MacOS and Linux*
+```bash
+./config.sh
+```
 
-![macOS](docs/res/apple_sm.png) [macOS](docs/start/envosx.md)    
-
-![linux](docs/res/linux_sm.png) [Linux and RHEL6](docs/start/envlinux.md)
-
-## Get the Agent
-
-Next, download and configure the agent
-
-![win](docs/res/win_sm.png)  [Start Windows](https://github.com/actions/runner/releases/latest)  
-
-![macOS](docs/res/apple_sm.png)  [Start macOS](https://github.com/actions/runner/releases/latest)  
-
-![linux](docs/res/linux_sm.png)  [Start Linux](https://github.com/actions/runner/releases/latest)  
+*Windows*
+```bash
+config.cmd
+```
 
 ## Contribute
 

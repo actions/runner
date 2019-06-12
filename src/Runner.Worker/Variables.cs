@@ -5,10 +5,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using GitHub.DistributedTask.Logging;
-using GitHub.Runner.Worker.Container;
-using Newtonsoft.Json.Linq;
-using GitHub.Services.WebApi;
-using Microsoft.Win32;
+using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
 
@@ -17,33 +14,20 @@ namespace GitHub.Runner.Worker
     public sealed class Variables
     {
         private readonly IHostContext _hostContext;
-        private readonly ConcurrentDictionary<string, Variable> _nonexpanded = new ConcurrentDictionary<string, Variable>(StringComparer.OrdinalIgnoreCase);
+        private readonly ConcurrentDictionary<string, Variable> _variables = new ConcurrentDictionary<string, Variable>(StringComparer.OrdinalIgnoreCase);
         private readonly ISecretMasker _secretMasker;
         private readonly object _setLock = new object();
         private readonly Tracing _trace;
-        private ConcurrentDictionary<string, Variable> _expanded;
 
-        public IEnumerable<KeyValuePair<string, string>> Public
+        public IEnumerable<Variable> AllVariables
         {
             get
             {
-                return _expanded.Values
-                    .Where(x => !x.Secret)
-                    .Select(x => new KeyValuePair<string, string>(x.Name, x.Value));
+                return _variables.Values;
             }
         }
 
-        public IEnumerable<KeyValuePair<string, string>> Private
-        {
-            get
-            {
-                return _expanded.Values
-                    .Where(x => x.Secret)
-                    .Select(x => new KeyValuePair<string, string>(x.Name, x.Value));
-            }
-        }
-
-        public Variables(IHostContext hostContext, IDictionary<string, VariableValue> copy, out List<string> warnings)
+        public Variables(IHostContext hostContext, IDictionary<string, VariableValue> copy)
         {
             // Store/Validate args.
             _hostContext = hostContext;
@@ -72,28 +56,12 @@ namespace GitHub.Runner.Worker
             {
                 // Store the variable. The initial secret values have already been
                 // registered by the Worker class.
-                _nonexpanded[variable.Name] = variable;
+                _variables[variable.Name] = variable;
             }
-
-            // Recursively expand the variables.
-            RecalculateExpanded(out warnings);
         }
 
         // DO NOT add file path variable to here.
         // All file path variables needs to be retrive and set through ExecutionContext, so it can handle container file path translation.
-
-        public TaskResult? Agent_JobStatus
-        {
-            get
-            {
-                return GetEnum<TaskResult>(Constants.Variables.Agent.JobStatus);
-            }
-
-            set
-            {
-                Set(Constants.Variables.Agent.JobStatus, $"{value}");
-            }
-        }
 
         public string Build_DefinitionName => Get(Constants.Variables.Build.DefinitionName);
 
@@ -112,10 +80,6 @@ namespace GitHub.Runner.Worker
         public string System_DefinitionId => Get(Constants.Variables.System.DefinitionId);
 
         public string System_PhaseDisplayName => Get(Constants.Variables.System.PhaseDisplayName);
-
-        public string System_PullRequest_TargetBranch => Get(Constants.Variables.System.PullRequestTargetBranchName);
-
-        public string System_TaskDefinitionsUri => Get(WellKnownDistributedTaskVariables.TaskDefinitionsUrl);
 
         public string System_TFCollectionUrl => Get(WellKnownDistributedTaskVariables.TFCollectionUrl);
 
@@ -147,37 +111,10 @@ namespace GitHub.Runner.Worker
             "RequestedFor"
         };
 
-        public string System_DefaultWorkingDirectory => Get(Constants.Variables.System.DefaultWorkingDirectory);
-
-        public void ExpandValues(IDictionary<string, string> target)
-        {
-            _trace.Entering();
-            var source = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            foreach (Variable variable in _expanded.Values)
-            {
-                source[variable.Name] = variable.Value;
-            }
-
-            VarUtil.ExpandValues(_hostContext, source, target);
-        }
-
-        public JToken ExpandValues(JToken target)
-        {
-            _trace.Entering();
-            var source = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            foreach (Variable variable in _expanded.Values)
-            {
-                source[variable.Name] = variable.Value;
-            }
-
-            // return VarUtil.ExpandValues(_hostContext, source, target);
-            return null;
-        }
-
         public string Get(string name)
         {
             Variable variable;
-            if (_expanded.TryGetValue(name, out variable))
+            if (_variables.TryGetValue(name, out variable))
             {
                 _trace.Verbose($"Get '{name}': '{variable.Value}'");
                 return variable.Value;
@@ -236,46 +173,10 @@ namespace GitHub.Runner.Worker
             return null;
         }
 
-        public void Set(string name, string val, bool secret = false)
-        {
-            // Validate the args.
-            ArgUtil.NotNullOrEmpty(name, nameof(name));
-
-            // Add or update the variable.
-            lock (_setLock)
-            {
-                // Determine whether the value should be a secret. The approach taken here is somewhat
-                // conservative. If the previous expanded variable is a secret, then assume the new
-                // value should be a secret as well.
-                //
-                // Keep in mind, the two goals of flagging variables as secret:
-                // 1) Mask secrets from the logs.
-                // 2) Keep secrets out of environment variables for tasks. Secrets must be passed into
-                //    tasks via inputs. It's better to take a conservative approach when determining
-                //    whether a variable should be marked secret. Otherwise nested secret values may
-                //    inadvertantly end up in public environment variables.
-                secret = secret || (_expanded.ContainsKey(name) && _expanded[name].Secret);
-
-                // Register the secret. Secret masker handles duplicates gracefully.
-                if (secret && !string.IsNullOrEmpty(val))
-                {
-                    _secretMasker.AddValue(val);
-                }
-
-                // Store the value as-is to the expanded dictionary and the non-expanded dictionary.
-                // It is not expected that the caller needs to store an non-expanded value and then
-                // retrieve the expanded value in the same context.
-                var variable = new Variable(name, val, secret);
-                _expanded[name] = variable;
-                _nonexpanded[name] = variable;
-                _trace.Verbose($"Set '{name}' = '{val}'");
-            }
-        }
-
         public bool TryGetValue(string name, out string val)
         {
             Variable variable;
-            if (_expanded.TryGetValue(name, out variable))
+            if (_variables.TryGetValue(name, out variable))
             {
                 val = variable.Value;
                 _trace.Verbose($"Get '{name}': '{val}'");
@@ -287,170 +188,19 @@ namespace GitHub.Runner.Worker
             return false;
         }
 
-        public void RecalculateExpanded(out List<string> warnings)
+        public DictionaryContextData ToSecretsContext()
         {
-            // TODO: A performance improvement could be made by short-circuiting if the non-expanded values are not dirty. It's unclear whether it would make a significant difference.
-
-            // Take a lock to prevent the variables from changing while expansion is being processed.
-            lock (_setLock)
+            var result = new DictionaryContextData();
+            foreach (var variable in _variables.Values)
             {
-                const int MaxDepth = 50;
-                // TODO: Validate max size? No limit on *nix. Max of 32k per env var on Windows https://msdn.microsoft.com/en-us/library/windows/desktop/ms682653%28v=vs.85%29.aspx
-                _trace.Entering();
-                warnings = new List<string>();
-
-                // Create a new expanded instance.
-                var expanded = new ConcurrentDictionary<string, Variable>(_nonexpanded, StringComparer.OrdinalIgnoreCase);
-
-                // Process each variable in the dictionary.
-                foreach (string name in _nonexpanded.Keys)
+                if (variable.Secret &&
+                    !string.Equals(variable.Name, Constants.Variables.System.AccessToken, StringComparison.OrdinalIgnoreCase) &&
+                    !string.Equals(variable.Name, "system.github.token", StringComparison.OrdinalIgnoreCase))
                 {
-                    bool secret = _nonexpanded[name].Secret;
-                    _trace.Verbose($"Processing expansion for variable: '{name}'");
-
-                    // This algorithm handles recursive replacement using a stack.
-                    // 1) Max depth is enforced by leveraging the stack count.
-                    // 2) Cyclical references are detected by walking the stack.
-                    // 3) Additional call frames are avoided.
-                    bool exceedsMaxDepth = false;
-                    bool hasCycle = false;
-                    var stack = new Stack<RecursionState>();
-                    RecursionState state = new RecursionState(name: name, value: _nonexpanded[name].Value ?? string.Empty);
-
-                    // The outer while loop is used to manage popping items from the stack (of state objects).
-                    while (true)
-                    {
-                        // The inner while loop is used to manage replacement within the current state object.
-
-                        // Find the next macro within the current value.
-                        while (state.StartIndex < state.Value.Length &&
-                            (state.PrefixIndex = state.Value.IndexOf(Constants.Variables.MacroPrefix, state.StartIndex, StringComparison.Ordinal)) >= 0 &&
-                            (state.SuffixIndex = state.Value.IndexOf(Constants.Variables.MacroSuffix, state.PrefixIndex + Constants.Variables.MacroPrefix.Length, StringComparison.Ordinal)) >= 0)
-                        {
-                            // A candidate was found.
-                            string nestedName = state.Value.Substring(
-                                startIndex: state.PrefixIndex + Constants.Variables.MacroPrefix.Length,
-                                length: state.SuffixIndex - state.PrefixIndex - Constants.Variables.MacroPrefix.Length);
-                            if (!secret)
-                            {
-                                _trace.Verbose($"Found macro candidate: '{nestedName}'");
-                            }
-
-                            Variable nestedVariable;
-                            if (!string.IsNullOrEmpty(nestedName) &&
-                                _nonexpanded.TryGetValue(nestedName, out nestedVariable))
-                            {
-                                // A matching variable was found.
-
-                                // Check for max depth.
-                                int currentDepth = stack.Count + 1; // Add 1 since the current state isn't on the stack.
-                                if (currentDepth == MaxDepth)
-                                {
-                                    // Warn and break out of the while loops.
-                                    _trace.Warning("Exceeds max depth.");
-                                    exceedsMaxDepth = true;
-                                    warnings.Add(StringUtil.Loc("Variable0ExceedsMaxDepth1", name, MaxDepth));
-                                    break;
-                                }
-                                // Check for a cyclical reference.
-                                else if (string.Equals(state.Name, nestedName, StringComparison.OrdinalIgnoreCase) ||
-                                    stack.Any(x => string.Equals(x.Name, nestedName, StringComparison.OrdinalIgnoreCase)))
-                                {
-                                    // Warn and break out of the while loops.
-                                    _trace.Warning("Cyclical reference detected.");
-                                    hasCycle = true;
-                                    warnings.Add(StringUtil.Loc("Variable0ContainsCyclicalReference", name));
-                                    break;
-                                }
-                                else
-                                {
-                                    // Push the current state and start a new state. There is no need to break out
-                                    // of the inner while loop. It will continue processing the new current state.
-                                    secret = secret || nestedVariable.Secret;
-                                    if (!secret)
-                                    {
-                                        _trace.Verbose($"Processing expansion for nested variable: '{nestedName}'");
-                                    }
-
-                                    stack.Push(state);
-                                    state = new RecursionState(name: nestedName, value: nestedVariable.Value ?? string.Empty);
-                                }
-                            }
-                            else
-                            {
-                                // A matching variable was not found.
-                                if (!secret)
-                                {
-                                    _trace.Verbose("Macro not found.");
-                                }
-
-                                state.StartIndex = state.PrefixIndex + 1;
-                            }
-                        } // End of inner while loop for processing the variable.
-
-                        // No replacement is performed if something went wrong.
-                        if (exceedsMaxDepth || hasCycle)
-                        {
-                            break;
-                        }
-
-                        // Check if finished processing the stack.
-                        if (stack.Count == 0)
-                        {
-                            // Store the final value and break out of the outer while loop.
-                            if (!string.Equals(state.Value, _nonexpanded[name].Value, StringComparison.Ordinal))
-                            {
-                                // Register the secret.
-                                if (secret && !string.IsNullOrEmpty(state.Value))
-                                {
-                                    _secretMasker.AddValue(state.Value);
-                                }
-
-                                // Set the expanded value.
-                                expanded[state.Name] = new Variable(state.Name, state.Value, secret);
-                                _trace.Verbose($"Set '{state.Name}' = '{state.Value}'");
-                            }
-
-                            break;
-                        }
-
-                        // Adjust and pop the parent state.
-                        if (!secret)
-                        {
-                            _trace.Verbose("Popping recursion state.");
-                        }
-
-                        RecursionState parent = stack.Pop();
-                        parent.Value = string.Concat(
-                            parent.Value.Substring(0, parent.PrefixIndex),
-                            state.Value,
-                            parent.Value.Substring(parent.SuffixIndex + Constants.Variables.MacroSuffix.Length));
-                        parent.StartIndex = parent.PrefixIndex + (state.Value).Length;
-                        state = parent;
-                        if (!secret)
-                        {
-                            _trace.Verbose($"Intermediate state '{state.Name}': '{state.Value}'");
-                        }
-                    } // End of outer while loop for recursively processing the variable.
-                } // End of foreach loop over each key in the dictionary.
-
-                _expanded = expanded;
-            } // End of critical section.
-        }
-
-        private sealed class RecursionState
-        {
-            public RecursionState(string name, string value)
-            {
-                Name = name;
-                Value = value;
+                    result[variable.Name] = new StringContextData(variable.Value);
+                }
             }
-
-            public string Name { get; private set; }
-            public string Value { get; set; }
-            public int StartIndex { get; set; }
-            public int PrefixIndex { get; set; }
-            public int SuffixIndex { get; set; }
+            return result;
         }
     }
 

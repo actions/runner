@@ -15,40 +15,6 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public void InitializeJob_LogsWarningsFromVariables()
-        {
-            using (TestHostContext hc = CreateTestContext())
-            {
-                // Arrange: Create a job request message.
-                TaskOrchestrationPlanReference plan = new TaskOrchestrationPlanReference();
-                TimelineReference timeline = new TimelineReference();
-                JobEnvironment environment = new JobEnvironment();
-                environment.SystemConnection = new ServiceEndpoint();
-                environment.Variables["v1"] = "v1-$(v2)";
-                environment.Variables["v2"] = "v2-$(v1)";
-                List<TaskInstance> tasks = new List<TaskInstance>();
-                Guid JobId = Guid.NewGuid();
-                string jobName = "some job name";
-                var jobRequest = Pipelines.AgentJobRequestMessageUtil.Convert(new AgentJobRequestMessage(plan, timeline, JobId, jobName, jobName, environment, tasks));
-
-                // Arrange: Setup the paging logger.
-                var pagingLogger = new Mock<IPagingLogger>();
-                hc.EnqueueInstance(pagingLogger.Object);
-
-                var ec = new Runner.Worker.ExecutionContext();
-                ec.Initialize(hc);
-
-                // Act.
-                ec.InitializeJob(jobRequest, CancellationToken.None);
-
-                // Assert.
-                pagingLogger.Verify(x => x.Write(It.Is<string>(y => y.IndexOf("##[warning]") >= 0)), Times.Exactly(2));
-            }
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Worker")]
         public void AddIssue_CountWarningsErrors()
         {
             using (TestHostContext hc = CreateTestContext())
@@ -62,6 +28,12 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Guid JobId = Guid.NewGuid();
                 string jobName = "some job name";
                 var jobRequest = Pipelines.AgentJobRequestMessageUtil.Convert(new AgentJobRequestMessage(plan, timeline, JobId, jobName, jobName, environment, tasks));
+                jobRequest.Resources.Repositories.Add(new Pipelines.RepositoryResource()
+                {
+                    Alias = Pipelines.PipelineConstants.SelfAlias,
+                    Id = "github",
+                    Version = "sha1"
+                });
 
                 // Arrange: Setup the paging logger.
                 var pagingLogger = new Mock<IPagingLogger>();
@@ -138,19 +110,6 @@ namespace GitHub.Runner.Common.Tests.Worker
             // Arrange: Create the execution context.
             hc.SetSingleton(new Mock<IJobServerQueue>().Object);
             return hc;
-        }
-
-        private JobRequestMessage CreateJobRequestMessage()
-        {
-            TaskOrchestrationPlanReference plan = new TaskOrchestrationPlanReference();
-            TimelineReference timeline = new TimelineReference();
-            JobEnvironment environment = new JobEnvironment();
-            environment.SystemConnection = new ServiceEndpoint();
-            environment.Variables["v1"] = "v1";
-            List<TaskInstance> tasks = new List<TaskInstance>();
-            Guid JobId = Guid.NewGuid();
-            string jobName = "some job name";
-            return new AgentJobRequestMessage(plan, timeline, JobId, jobName, jobName, environment, tasks);
         }
     }
 }

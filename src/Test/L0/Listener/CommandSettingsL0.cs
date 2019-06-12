@@ -43,7 +43,7 @@ namespace GitHub.Runner.Common.Tests
                 try
                 {
                     // Arrange.
-                    Environment.SetEnvironmentVariable("VSTS_AGENT_INPUT_AGENT", "some agent");
+                    Environment.SetEnvironmentVariable("ACTIONS_RUNNER_INPUT_AGENT", "some agent");
                     var command = new CommandSettings(hc, args: new string[0]);
 
                     // Act.
@@ -51,12 +51,12 @@ namespace GitHub.Runner.Common.Tests
 
                     // Assert.
                     Assert.Equal("some agent", actual);
-                    Assert.Equal(string.Empty, Environment.GetEnvironmentVariable("VSTS_AGENT_INPUT_AGENT") ?? string.Empty); // Should remove.
+                    Assert.Equal(string.Empty, Environment.GetEnvironmentVariable("ACTIONS_RUNNER_INPUT_AGENT") ?? string.Empty); // Should remove.
                     Assert.Equal(hc.SecretMasker.MaskSecrets("some agent"), "some agent");
                 }
                 finally
                 {
-                    Environment.SetEnvironmentVariable("VSTS_AGENT_INPUT_AGENT", null);
+                    Environment.SetEnvironmentVariable("ACTIONS_RUNNER_INPUT_AGENT", null);
                 }
             }
         }
@@ -71,7 +71,7 @@ namespace GitHub.Runner.Common.Tests
                 try
                 {
                     // Arrange.
-                    Environment.SetEnvironmentVariable("VSTS_AGENT_INPUT_TOKEN", "some secret token value");
+                    Environment.SetEnvironmentVariable("ACTIONS_RUNNER_INPUT_TOKEN", "some secret token value");
                     var command = new CommandSettings(hc, args: new string[0]);
 
                     // Act.
@@ -79,12 +79,12 @@ namespace GitHub.Runner.Common.Tests
 
                     // Assert.
                     Assert.Equal("some secret token value", actual);
-                    Assert.Equal(string.Empty, Environment.GetEnvironmentVariable("VSTS_AGENT_INPUT_TOKEN") ?? string.Empty); // Should remove.
+                    Assert.Equal(string.Empty, Environment.GetEnvironmentVariable("ACTIONS_RUNNER_INPUT_TOKEN") ?? string.Empty); // Should remove.
                     Assert.Equal(hc.SecretMasker.MaskSecrets("some secret token value"), "***");
                 }
                 finally
                 {
-                    Environment.SetEnvironmentVariable("VSTS_AGENT_INPUT_TOKEN", null);
+                    Environment.SetEnvironmentVariable("ACTIONS_RUNNER_INPUT_TOKEN", null);
                 }
             }
         }
@@ -243,7 +243,7 @@ namespace GitHub.Runner.Common.Tests
                 try
                 {
                     // Arrange.
-                    Environment.SetEnvironmentVariable("VSTS_AGENT_INPUT_UNATTENDED", "true");
+                    Environment.SetEnvironmentVariable("ACTIONS_RUNNER_INPUT_UNATTENDED", "true");
                     var command = new CommandSettings(hc, args: new string[0]);
 
                     // Act.
@@ -251,11 +251,11 @@ namespace GitHub.Runner.Common.Tests
 
                     // Assert.
                     Assert.Equal(true, actual);
-                    Assert.Equal(string.Empty, Environment.GetEnvironmentVariable("VSTS_AGENT_INPUT_UNATTENDED") ?? string.Empty); // Should remove.
+                    Assert.Equal(string.Empty, Environment.GetEnvironmentVariable("ACTIONS_RUNNER_INPUT_UNATTENDED") ?? string.Empty); // Should remove.
                 }
                 finally
                 {
-                    Environment.SetEnvironmentVariable("VSTS_AGENT_INPUT_UNATTENDED", null);
+                    Environment.SetEnvironmentVariable("ACTIONS_RUNNER_INPUT_UNATTENDED", null);
                 }
             }
         }

@@ -470,7 +470,7 @@ namespace GitHub.Runner.Common.Tests.LogPluginHost
                 Assert.True(trace.Outputs.Contains("TestException: Done"));
             }
         }
-        
+
         // potential bug in XUnit cause the test failure.
         // [Fact]
         // [Trait("Level", "L0")]
@@ -513,15 +513,14 @@ namespace GitHub.Runner.Common.Tests.LogPluginHost
             {
                 Endpoints = new List<ServiceEndpoint>(),
                 PluginAssemblies = new List<string>(),
-                Repositories = new List<Pipelines.RepositoryResource>(),
                 Variables = new Dictionary<string, VariableValue>(),
-                Steps = new Dictionary<string, Pipelines.ActionStepDefinitionReference>()
+                Steps = new Dictionary<string, Pipelines.ActionStepDefinitionReference>(),
+                Context = new Dictionary<string, Pipelines.ContextData.PipelineContextData>() { { "runner", new Pipelines.ContextData.DictionaryContextData() } }
             };
 
             hostContext.Steps[Guid.Empty.ToString("D")] = new Pipelines.RepositoryPathReference()
             {
                 RepositoryType = "GitHub",
-                Repository = "actions/test",
                 Ref = "master"
             };
 

@@ -124,10 +124,8 @@ namespace GitHub.Runner.Worker
 
             // Create local docker network for this job to avoid port conflict when multiple agents run on same machine.
             // All containers within a job join the same network
-            await CreateContainerNetworkAsync(executionContext, containers.First().ContainerNetwork);
-
-            // Expose the network name through variable
-            executionContext.SetVariable("Agent.ContainerNetwork", containers.First().ContainerNetwork);
+            var ContainerNetwork = executionContext.GetRunnerContext("containernetwork");
+            await CreateContainerNetworkAsync(executionContext, ContainerNetwork);
 
             foreach (var container in containers)
             {
@@ -288,10 +286,6 @@ namespace GitHub.Runner.Worker
 
                 container.ContainerId = await _dockerManger.DockerCreate(executionContext, container);
                 ArgUtil.NotNullOrEmpty(container.ContainerId, nameof(container.ContainerId));
-                if (container.IsJobContainer)
-                {
-                    executionContext.Variables.Set(Constants.Variables.Agent.ContainerId, container.ContainerId);
-                }
 
                 // Start container
                 int startExitCode = await _dockerManger.DockerStart(executionContext, container.ContainerId);
@@ -343,9 +337,7 @@ namespace GitHub.Runner.Worker
                 container.AddPortMappings(await _dockerManger.DockerPort(executionContext, container.ContainerId));
                 foreach (var port in container.PortMappings)
                 {
-                    executionContext.Variables.Set(
-                        $"{Constants.Variables.Agent.ServicePortPrefix}.{container.ContainerNetworkAlias}.ports.{port.ContainerPort}",
-                        $"{port.HostPort}");
+                    executionContext.SetRunnerContext($"service.{container.ContainerNetworkAlias}.ports.{port.ContainerPort}", port.HostPort);
                 }
             }
         }
@@ -425,8 +417,6 @@ namespace GitHub.Runner.Worker
             {
                 throw new InvalidOperationException($"Docker network create failed with exit code {networkExitCode}");
             }
-            // Expose docker network to env
-            executionContext.Variables.Set(Constants.Variables.Agent.ContainerNetwork, network);
         }
 
         private async Task RemoveContainerNetworkAsync(IExecutionContext executionContext, string network)
@@ -442,8 +432,6 @@ namespace GitHub.Runner.Worker
             {
                 executionContext.Warning($"Docker network rm failed with exit code {removeExitCode}");
             }
-            // Remove docker network from env
-            executionContext.Variables.Set(Constants.Variables.Agent.ContainerNetwork, null);
         }
 
         private async Task ContainerHealthcheck(IExecutionContext executionContext, ContainerInfo container)

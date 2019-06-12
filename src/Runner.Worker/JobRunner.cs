@@ -18,6 +18,8 @@ using Newtonsoft.Json.Linq;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
+using GitHub.DistributedTask.Pipelines.ContextData;
+using GitHub.DistributedTask.ObjectTemplating;
 
 namespace GitHub.Runner.Worker
 {
@@ -55,9 +57,6 @@ namespace GitHub.Runner.Worker
 
             ServiceEndpoint systemConnection = message.Resources.Endpoints.Single(x => string.Equals(x.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
 
-            // back compat TfsServerUrl
-            message.Variables[Constants.Variables.System.TFServerUrl] = systemConnection.Url.AbsoluteUri;
-
             // Make sure SystemConnection Url and Endpoint Url match Config Url base for OnPremises server
             // System.ServerType will always be there after M133
             if (!message.Variables.ContainsKey(Constants.Variables.System.ServerType) ||
@@ -77,10 +76,10 @@ namespace GitHub.Runner.Worker
             VssConnection jobConnection = VssUtil.CreateConnection(jobServerUrl, jobServerCredential, new DelegatingHandler[] { new ThrottlingReportHandler(_jobServerQueue) });
             await jobServer.ConnectAsync(jobConnection);
 
+            MakeJobMessageCompat(message);
+
             _jobServerQueue.Start(message);
             HostContext.WritePerfCounter($"WorkerJobServerQueueStarted_{message.RequestId.ToString()}");
-
-            MakeJobMessageCompat(message);
 
             IExecutionContext jobContext = null;
             CancellationTokenRegistration? runnerShutdownRegistration = null;
@@ -232,100 +231,6 @@ namespace GitHub.Runner.Worker
 
                 await ShutdownQueue(throwOnFailure: false);
             }
-        }
-
-        private void MakeJobMessageCompat(Pipelines.AgentJobRequestMessage message)
-        {
-            List<Pipelines.JobStep> steps = new List<Pipelines.JobStep>();
-            foreach (var step in message.Steps)
-            {
-                if (step.Type == Pipelines.StepType.Action)
-                {
-                    var action = step as Pipelines.ActionStep;
-                    if (action.Reference.Type == Pipelines.ActionSourceType.ContainerRegistry)
-                    {
-                        var containerReference = action.Reference as Pipelines.ContainerRegistryReference;
-                        if (!string.IsNullOrEmpty(containerReference.Container))
-                        {
-                            // compat mode, convert container resource to inline step inputs
-                            var containerResource = message.Resources.Containers.FirstOrDefault(x => x.Alias == containerReference.Container);
-                            ArgUtil.NotNull(containerResource, nameof(containerResource));
-
-                            containerReference.Image = containerResource.Image;
-                        }
-                    }
-                    else if (action.Reference.Type == Pipelines.ActionSourceType.Repository)
-                    {
-                        var repoReference = action.Reference as Pipelines.RepositoryPathReference;
-                        if (!string.IsNullOrEmpty(repoReference.Repository))
-                        {
-                            // compat mode, convert repository resource to inline step inputs
-                            var repoResource = message.Resources.Repositories.FirstOrDefault(x => x.Alias == repoReference.Repository);
-                            ArgUtil.NotNull(repoResource, nameof(repoResource));
-
-                            repoReference.Name = repoResource.Id;
-                            repoReference.Ref = repoResource.Version;
-                            if (repoResource.Alias == Pipelines.PipelineConstants.SelfAlias)
-                            {
-                                repoReference.RepositoryType = Pipelines.PipelineConstants.SelfAlias;
-                            }
-                            else
-                            {
-                                repoReference.RepositoryType = repoResource.Type;
-                            }
-                        }
-                    }
-
-                    steps.Add(action);
-                }
-                else if (step.Type == Pipelines.StepType.Task)
-                {
-                    var task = step as Pipelines.TaskStep;
-                    if (task.Reference.Id == Pipelines.PipelineConstants.CheckoutTask.Id)
-                    {
-                        var checkoutAction = new Pipelines.ActionStep
-                        {
-                            Id = task.Id,
-                            Name = task.Name,
-                            DisplayName = task.DisplayName,
-                            Enabled = true,
-                            Reference = new Pipelines.PluginReference
-                            {
-                                Plugin = Pipelines.PipelineConstants.AgentPlugins.Checkout
-                            }
-                        };
-                        var inputs = new MappingToken(null, null, null);
-                        inputs.Add(new LiteralToken(null, null, null, Pipelines.PipelineConstants.CheckoutTaskInputs.Repository), new LiteralToken(null, null, null, Pipelines.PipelineConstants.SelfAlias));
-                        checkoutAction.Inputs = inputs;
-
-                        steps.Add(checkoutAction);
-                    }
-                    else
-                    {
-                        throw new InvalidOperationException(task.Name);
-                    }
-                }
-                else if (step.Type == Pipelines.StepType.Script)
-                {
-                    var script = step as Pipelines.ScriptStep;
-                    var result = new Pipelines.ActionStep
-                    {
-                        Enabled = true,
-                        Id = script.Id,
-                        Name = script.Name,
-                        DisplayName = script.DisplayName,
-                        Condition = script.Condition,
-                        TimeoutInMinutes = script.TimeoutInMinutes,
-                        Environment = script.Environment?.Clone(true),
-                        Reference = new Pipelines.ScriptReference(),
-                        Inputs = script.Inputs?.Clone(true),
-                    };
-                    steps.Add(script);
-                }
-            }
-
-            message.Steps.Clear();
-            message.Steps.AddRange(steps);
         }
 
         private async Task<TaskResult> CompleteJobAsync(IJobServer jobServer, IExecutionContext jobContext, Pipelines.AgentJobRequestMessage message, TaskResult? taskResult = null)
@@ -493,6 +398,46 @@ namespace GitHub.Runner.Worker
                 message.Variables[Constants.Variables.System.TFServerUrl] = ReplaceWithConfigUriBase(new Uri(tfsServerUrl)).AbsoluteUri;
                 Trace.Info($"Ensure System.TFServerUrl match config url base. {message.Variables[Constants.Variables.System.TFServerUrl].Value}");
             }
+        }
+
+        private void MakeJobMessageCompat(Pipelines.AgentJobRequestMessage message)
+        {
+            var steps = new List<Pipelines.JobStep>();
+            foreach (var action in message.Steps.OfType<Pipelines.ActionStep>())
+            {
+                if (action.Reference.Type == Pipelines.ActionSourceType.AgentPlugin)
+                {
+                    bool fixInput = true;
+                    var inputs = TemplateUtil.AssertMapping(action.Inputs, "inputs");
+                    foreach (var input in inputs)
+                    {
+                        var inputName = TemplateUtil.AssertLiteral(input.Key, "input");
+                        if (string.Equals(inputName.Value, Pipelines.PipelineConstants.CheckoutTaskInputs.Version, StringComparison.OrdinalIgnoreCase) ||
+                            string.Equals(inputName.Value, Pipelines.PipelineConstants.CheckoutTaskInputs.Ref, StringComparison.OrdinalIgnoreCase) ||
+                            string.Equals(inputName.Value, Pipelines.PipelineConstants.CheckoutTaskInputs.Token, StringComparison.OrdinalIgnoreCase))
+                        {
+                            fixInput = false;
+                            break;
+                        }
+                    }
+
+                    if (fixInput)
+                    {
+                        var newInputs = new MappingToken(null, null, null);
+                        newInputs.Add(new LiteralToken(null, null, null, Pipelines.PipelineConstants.CheckoutTaskInputs.Repository), new BasicExpressionToken(null, null, null, "github.repository"));
+                        newInputs.Add(new LiteralToken(null, null, null, Pipelines.PipelineConstants.CheckoutTaskInputs.Ref), new BasicExpressionToken(null, null, null, "github.ref"));
+                        newInputs.Add(new LiteralToken(null, null, null, Pipelines.PipelineConstants.CheckoutTaskInputs.Version), new BasicExpressionToken(null, null, null, "github.sha"));
+                        newInputs.Add(new LiteralToken(null, null, null, Pipelines.PipelineConstants.CheckoutTaskInputs.Token), new BasicExpressionToken(null, null, null, "github.token"));
+                        newInputs.Add(new LiteralToken(null, null, null, Pipelines.PipelineConstants.CheckoutTaskInputs.WorkspaceRepo), new LiteralToken(null, null, null, bool.TrueString));
+                        action.Inputs = newInputs;
+                    }
+                }
+
+                steps.Add(action);
+            }
+
+            message.Steps.Clear();
+            message.Steps.AddRange(steps);
         }
     }
 }

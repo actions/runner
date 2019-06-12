@@ -284,10 +284,8 @@ namespace GitHub.Runner.Worker.Handlers
                     // File exists
                     if (File.Exists(file))
                     {
-                        var selfRepository = _executionContext.Repositories.Single(x => String.Equals(x.Alias, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase));
-
                         // Repository path
-                        var repositoryPath = selfRepository.Properties.Get<string>(Pipelines.RepositoryPropertyNames.Path);
+                        var repositoryPath = _executionContext.GetGitHubContext("workspace");
                         ArgUtil.NotNullOrEmpty(repositoryPath, nameof(repositoryPath));
 
                         // Normalize slashes

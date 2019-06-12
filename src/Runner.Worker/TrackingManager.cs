@@ -18,7 +18,6 @@ namespace GitHub.Runner.Worker
     {
         TrackingConfig Create(
             IExecutionContext executionContext,
-            RepositoryResource repository,
             string hashKey,
             string file);
 
@@ -33,7 +32,6 @@ namespace GitHub.Runner.Worker
     {
         public TrackingConfig Create(
             IExecutionContext executionContext,
-            RepositoryResource repository,
             string hashKey,
             string file)
         {
@@ -83,7 +81,6 @@ namespace GitHub.Runner.Worker
             // Create the new tracking config.
             TrackingConfig config = new TrackingConfig(
                 executionContext,
-                repository,
                 topLevelConfig.LastPipelineDirectoryNumber,
                 hashKey);
             WriteToFile(file, config);

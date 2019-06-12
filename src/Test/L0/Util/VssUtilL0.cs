@@ -26,9 +26,9 @@ namespace GitHub.Runner.Common.Tests.Util
                 try
                 {
                     trace.Info("Set httpretry to 10.");
-                    Environment.SetEnvironmentVariable("VSTS_HTTP_RETRY", "10");
+                    Environment.SetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_HTTP_RETRY", "10");
                     trace.Info("Set httptimeout to 360.");
-                    Environment.SetEnvironmentVariable("VSTS_HTTP_TIMEOUT", "360");
+                    Environment.SetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_HTTP_TIMEOUT", "360");
 
                     var connect = VssUtil.CreateConnection(new Uri("https://github.com/Microsoft/vsts-agent"), new VssCredentials());
 
@@ -37,9 +37,9 @@ namespace GitHub.Runner.Common.Tests.Util
                     Assert.Equal(connect.Settings.SendTimeout.TotalSeconds.ToString(), "360");
 
                     trace.Info("Set httpretry to 100.");
-                    Environment.SetEnvironmentVariable("VSTS_HTTP_RETRY", "100");
+                    Environment.SetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_HTTP_RETRY", "100");
                     trace.Info("Set httptimeout to 3600.");
-                    Environment.SetEnvironmentVariable("VSTS_HTTP_TIMEOUT", "3600");
+                    Environment.SetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_HTTP_TIMEOUT", "3600");
 
                     connect = VssUtil.CreateConnection(new Uri("https://github.com/Microsoft/vsts-agent"), new VssCredentials());
 
@@ -49,8 +49,8 @@ namespace GitHub.Runner.Common.Tests.Util
                 }
                 finally
                 {
-                    Environment.SetEnvironmentVariable("VSTS_HTTP_RETRY", "");
-                    Environment.SetEnvironmentVariable("VSTS_HTTP_TIMEOUT", "");
+                    Environment.SetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_HTTP_RETRY", "");
+                    Environment.SetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_HTTP_TIMEOUT", "");
                 }
             }
         }
