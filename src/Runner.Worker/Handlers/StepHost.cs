@@ -138,12 +138,6 @@ namespace GitHub.Runner.Worker.Handlers
 
             // [OPTIONS]
             dockerCommandArgs.Add($"-i");
-#if !OS_WINDOWS
-            if (!String.IsNullOrEmpty(Container.CurrentUserName))
-            {
-                dockerCommandArgs.Add($"-u {Container.CurrentUserId}");
-            }
-#endif
             foreach (var env in environment)
             {
                 // e.g. -e MY_SECRET maps the value into the exec'ed process without exposing

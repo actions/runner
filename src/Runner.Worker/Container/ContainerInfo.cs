@@ -36,9 +36,7 @@ namespace GitHub.Runner.Worker.Container
 
             this.ContainerImage = containerImage;
             this.ContainerDisplayName = $"{container.Alias}_{Pipelines.Validation.NameValidation.Sanitize(containerImage)}_{Guid.NewGuid().ToString("N").Substring(0, 6)}";
-            this.ContainerRegistryEndpoint = container.Endpoint?.Id ?? Guid.Empty;
             this.ContainerCreateOptions = container.Properties.Get<string>("options");
-            this.SkipContainerImagePull = container.Properties.Get<bool>("localimage");
             _environmentVariables = container.Environment;
             this.ContainerEntryPoint = container.Properties.Get<string>("entrypoint", defaultValue: "");
             this.ContainerWorkDirectory = container.Properties.Get<string>("workdir", defaultValue: "");
@@ -86,13 +84,7 @@ namespace GitHub.Runner.Worker.Container
         public string ContainerEntryPoint { get; set; }
         public string ContainerWorkDirectory { get; set; }
         public string ContainerBringNodePath { get; set; }
-        public Guid ContainerRegistryEndpoint { get; private set; }
         public string ContainerCreateOptions { get; private set; }
-        public bool SkipContainerImagePull { get; private set; }
-#if !OS_WINDOWS
-        public string CurrentUserName { get; set; }
-        public string CurrentUserId { get; set; }
-#endif
         public bool IsJobContainer { get; set; }
 
         public IDictionary<string, string> ContainerEnvironmentVariables

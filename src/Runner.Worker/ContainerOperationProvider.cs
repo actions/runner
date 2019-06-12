@@ -163,9 +163,7 @@ namespace GitHub.Runner.Worker
 
             Trace.Info($"Container name: {container.ContainerName}");
             Trace.Info($"Container image: {container.ContainerImage}");
-            Trace.Info($"Container registry: {container.ContainerRegistryEndpoint.ToString()}");
             Trace.Info($"Container options: {container.ContainerCreateOptions}");
-            Trace.Info($"Skip container image pull: {container.SkipContainerImagePull}");
             foreach (var port in container.UserPortMappings)
             {
                 Trace.Info($"User provided port: {port.Value}");
@@ -175,136 +173,49 @@ namespace GitHub.Runner.Worker
                 Trace.Info($"User provided volume: {volume.Value}");
             }
 
-            // Login to private docker registry
-            string registryServer = string.Empty;
-            if (container.ContainerRegistryEndpoint != Guid.Empty)
-            {
-                var registryEndpoint = executionContext.Endpoints.FirstOrDefault(x => x.Type == "dockerregistry" && x.Id == container.ContainerRegistryEndpoint);
-                ArgUtil.NotNull(registryEndpoint, nameof(registryEndpoint));
-
-                string username = string.Empty;
-                string password = string.Empty;
-                registryEndpoint.Authorization?.Parameters?.TryGetValue("registry", out registryServer);
-                registryEndpoint.Authorization?.Parameters?.TryGetValue("username", out username);
-                registryEndpoint.Authorization?.Parameters?.TryGetValue("password", out password);
-
-                ArgUtil.NotNullOrEmpty(registryServer, nameof(registryServer));
-                ArgUtil.NotNullOrEmpty(username, nameof(username));
-                ArgUtil.NotNullOrEmpty(password, nameof(password));
-
-                int loginExitCode = await _dockerManger.DockerLogin(executionContext, registryServer, username, password);
-                if (loginExitCode != 0)
-                {
-                    throw new InvalidOperationException($"Docker login fail with exit code {loginExitCode}");
-                }
-            }
-
-            try
-            {
-                if (!container.SkipContainerImagePull)
-                {
-                    if (!string.IsNullOrEmpty(registryServer) &&
-                        registryServer.IndexOf("index.docker.io", StringComparison.OrdinalIgnoreCase) < 0)
-                    {
-                        var registryServerUri = new Uri(registryServer);
-                        if (!container.ContainerImage.StartsWith(registryServerUri.Authority, StringComparison.OrdinalIgnoreCase))
-                        {
-                            container.ContainerImage = $"{registryServerUri.Authority}/{container.ContainerImage}";
-                        }
-                    }
-
-                    // Pull down docker image with retry up to 3 times
-                    int retryCount = 0;
-                    int pullExitCode = 0;
-                    while (retryCount < 3)
-                    {
-                        pullExitCode = await _dockerManger.DockerPull(executionContext, container.ContainerImage);
-                        if (pullExitCode == 0)
-                        {
-                            break;
-                        }
-                        else
-                        {
-                            retryCount++;
-                            if (retryCount < 3)
-                            {
-                                var backOff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(10));
-                                executionContext.Warning($"Docker pull failed with exit code {pullExitCode}, back off {backOff.TotalSeconds} seconds before retry.");
-                                await Task.Delay(backOff);
-                            }
-                        }
-                    }
-
-                    if (retryCount == 3 && pullExitCode != 0)
-                    {
-                        throw new InvalidOperationException($"Docker pull failed with exit code {pullExitCode}");
-                    }
-                }
-
-                // Mount folder into container
+            // Mount folder into container
 #if OS_WINDOWS
-                container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Externals), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Externals))));
-                container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Work), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Work))));
-                container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Tools), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Tools))));
+            container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Externals), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Externals))));
+            container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Work), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Work))));
+            container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Tools), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Tools))));
 #else
 
-                string workingDirectory = HostContext.GetDirectory(WellKnownDirectory.Work);
-                container.MountVolumes.Add(new MountVolume(container.TranslateToHostPath(workingDirectory), container.TranslateToContainerPath(workingDirectory)));
-                container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Temp), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Temp))));
-                container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Tools), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Tools))));
-                container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Actions), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Actions))));
-                container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Externals), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Externals)), true));
-
-                // Ensure .taskkey file exist so we can mount it.
-                string taskKeyFile = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), ".taskkey");
-                if (!File.Exists(taskKeyFile))
-                {
-                    File.WriteAllText(taskKeyFile, string.Empty);
-                }
-                container.MountVolumes.Add(new MountVolume(taskKeyFile, container.TranslateToContainerPath(taskKeyFile)));
+            string workingDirectory = HostContext.GetDirectory(WellKnownDirectory.Work);
+            container.MountVolumes.Add(new MountVolume(container.TranslateToHostPath(workingDirectory), container.TranslateToContainerPath(workingDirectory)));
+            container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Temp), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Temp))));
+            container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Tools), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Tools))));
+            container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Actions), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Actions))));
+            container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Externals), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Externals)), true));
 #endif
 
-                if (container.IsJobContainer)
-                {
-                    // See if this container brings its own Node.js
-                    container.ContainerBringNodePath = await _dockerManger.DockerInspect(context: executionContext,
-                                                                        dockerObject: container.ContainerImage,
-                                                                        options: $"--format=\"{{{{index .Config.Labels \\\"{_nodeJsPathLabel}\\\"}}}}\"");
-
-                    string node;
-                    if (!string.IsNullOrEmpty(container.ContainerBringNodePath))
-                    {
-                        node = container.ContainerBringNodePath;
-                    }
-                    else
-                    {
-                        node = container.TranslateToContainerPath(Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), "node10", "bin", $"node{IOUtil.ExeExtension}"));
-                    }
-                    container.ContainerEntryPoint = node;
-                    container.ContainerEntryPointArgs = $"-e \"setInterval(function(){{}}, 24 * 60 * 60 * 1000);\"";
-                }
-
-                container.ContainerId = await _dockerManger.DockerCreate(executionContext, container);
-                ArgUtil.NotNullOrEmpty(container.ContainerId, nameof(container.ContainerId));
-
-                // Start container
-                int startExitCode = await _dockerManger.DockerStart(executionContext, container.ContainerId);
-                if (startExitCode != 0)
-                {
-                    throw new InvalidOperationException($"Docker start fail with exit code {startExitCode}");
-                }
-            }
-            finally
+            if (container.IsJobContainer)
             {
-                // Logout for private registry
-                if (!string.IsNullOrEmpty(registryServer))
+                // See if this container brings its own Node.js
+                container.ContainerBringNodePath = await _dockerManger.DockerInspect(context: executionContext,
+                                                                    dockerObject: container.ContainerImage,
+                                                                    options: $"--format=\"{{{{index .Config.Labels \\\"{_nodeJsPathLabel}\\\"}}}}\"");
+
+                string node;
+                if (!string.IsNullOrEmpty(container.ContainerBringNodePath))
                 {
-                    int logoutExitCode = await _dockerManger.DockerLogout(executionContext, registryServer);
-                    if (logoutExitCode != 0)
-                    {
-                        executionContext.Error($"Docker logout fail with exit code {logoutExitCode}");
-                    }
+                    node = container.ContainerBringNodePath;
                 }
+                else
+                {
+                    node = container.TranslateToContainerPath(Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), "node10", "bin", $"node{IOUtil.ExeExtension}"));
+                }
+                container.ContainerEntryPoint = node;
+                container.ContainerEntryPointArgs = $"-e \"setInterval(function(){{}}, 24 * 60 * 60 * 1000);\"";
+            }
+
+            container.ContainerId = await _dockerManger.DockerCreate(executionContext, container);
+            ArgUtil.NotNullOrEmpty(container.ContainerId, nameof(container.ContainerId));
+
+            // Start container
+            int startExitCode = await _dockerManger.DockerStart(executionContext, container.ContainerId);
+            if (startExitCode != 0)
+            {
+                throw new InvalidOperationException($"Docker start fail with exit code {startExitCode}");
             }
 
             try
