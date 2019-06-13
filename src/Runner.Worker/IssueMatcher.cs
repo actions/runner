@@ -3,8 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Serialization;
 using System.Text.RegularExpressions;
-using GitHub.Runner.Sdk;
-using GitHub.Services.WebApi;
 
 namespace GitHub.Runner.Worker
 {
@@ -232,7 +230,6 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        // todo: caller should catch
         public void Validate()
         {
             var distinctOwners = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -300,8 +297,6 @@ namespace GitHub.Runner.Worker
 
         public void Validate()
         {
-            // todo: allowed character set for owner name?
-
             // Validate owner
             if (string.IsNullOrEmpty(_owner))
             {
@@ -353,7 +348,7 @@ namespace GitHub.Runner.Worker
         private const string _fromPathPropertyName = "fromPath";
         private const string _loopPropertyName = "loop";
         private const string _regexpPropertyName = "regexp";
-        internal static readonly RegexOptions RegexOptions = RegexOptions.CultureInvariant | RegexOptions.ECMAScript | RegexOptions.IgnoreCase;
+        internal static readonly RegexOptions RegexOptions = RegexOptions.CultureInvariant | RegexOptions.ECMAScript;
 
         [DataMember(Name = _filePropertyName)]
         public int? File { get; set; }
