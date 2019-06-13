@@ -5,11 +5,8 @@ using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using GitHub.Runner.Common;
-using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
-using GitHub.Services.WebApi;
 using DTWebApi = GitHub.DistributedTask.WebApi;
-using Pipelines = GitHub.DistributedTask.Pipelines;
 
 namespace GitHub.Runner.Worker.Handlers
 {
