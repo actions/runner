@@ -115,7 +115,18 @@ namespace GitHub.Runner.Worker
             {
                 if (variable.Value.IsSecret)
                 {
-                    HostContext.SecretMasker.AddValue(variable.Value.Value);
+                    var value = variable.Value.Value?.Trim() ?? string.Empty;
+
+                    // Add the entire value, even if it contains CR or LF. During expression tracing,
+                    // invidual trace info may contain line breaks.
+                    HostContext.SecretMasker.AddValue(value);
+
+                    // Also add each individual line. Typically individual lines are processed from STDOUT of child processes.
+                    var split = value.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+                    foreach (var item in split)
+                    {
+                        HostContext.SecretMasker.AddValue(item.Trim());
+                    }
                 }
             }
 
