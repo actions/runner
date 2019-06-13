@@ -693,7 +693,7 @@ namespace GitHub.Runner.Worker
             _logger.Setup(_mainTimelineId, _record.Id);
 
             // Verbosity (from system.debug).
-            WriteDebug = Variables.System_Debug ?? false;
+            WriteDebug = true;
 
             // Hook up JobServerQueueThrottling event, we will log warning on server tarpit.
             _jobServerQueue.JobServerQueueThrottling += JobServerQueueThrottling_EventReceived;
