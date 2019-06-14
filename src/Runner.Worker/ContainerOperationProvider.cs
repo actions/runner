@@ -25,7 +25,7 @@ namespace GitHub.Runner.Worker
 
     public class ContainerOperationProvider : RunnerService, IContainerOperationProvider
     {
-        private const string _nodeJsPathLabel = "com.azure.dev.pipelines.agent.handler.node.path";
+        private const string _nodeJsPathLabel = "github.actions.runner.node.path";
         private IDockerCommandManager _dockerManger;
 
         public override void Initialize(IHostContext hostContext)
@@ -173,21 +173,18 @@ namespace GitHub.Runner.Worker
                 Trace.Info($"User provided volume: {volume.Value}");
             }
 
-            // Mount folder into container
-#if OS_WINDOWS
-            container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Externals), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Externals))));
-            container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Work), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Work))));
-            container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Tools), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Tools))));
-#else
-
+            // Mount folders into container
             string workingDirectory = executionContext.GetRunnerContext("pipelineworkspace");
-            //container.MountVolumes.Add(new MountVolume(container.TranslateToHostPath(workingDirectory), container.TranslateToContainerPath(workingDirectory)));
+#if OS_WINDOWS
+            container.MountVolumes.Add(new MountVolume(container.TranslateToHostPath(workingDirectory), "C:\\__w"));
+            container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Externals), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Externals))));
+#else
             container.MountVolumes.Add(new MountVolume(container.TranslateToHostPath(workingDirectory), "/__w"));
             container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Temp), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Temp))));
-            container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Tools), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Tools))));
             container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Actions), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Actions))));
             container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Externals), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Externals)), true));
 #endif
+            container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Tools), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Tools))));
 
             if (container.IsJobContainer)
             {

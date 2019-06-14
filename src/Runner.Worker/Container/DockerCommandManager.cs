@@ -173,7 +173,7 @@ namespace GitHub.Runner.Worker.Container
             dockerOptions.Add($"{container.ContainerImage}");
 
             // COMMAND
-            // Intentionally blank. Always overwrite ENTRYPOINT and send ARGs
+            // Intentionally blank. Always overwrite ENTRYPOINT and/or send ARGs
 
             // [ARG...]
             dockerOptions.Add($"{container.ContainerEntryPointArgs}");
@@ -232,7 +232,7 @@ namespace GitHub.Runner.Worker.Container
             dockerOptions.Add($"{container.ContainerImage}");
 
             // COMMAND
-            // Intentionally blank. Always overwrite ENTRYPOINT and send ARGs
+            // Intentionally blank. Always overwrite ENTRYPOINT and/or send ARGs
 
             // [ARG...]
             dockerOptions.Add($"{container.ContainerEntryPointArgs}");
