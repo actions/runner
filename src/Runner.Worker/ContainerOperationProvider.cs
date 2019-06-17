@@ -246,7 +246,9 @@ namespace GitHub.Runner.Worker
                 container.AddPortMappings(await _dockerManger.DockerPort(executionContext, container.ContainerId));
                 foreach (var port in container.PortMappings)
                 {
-                    executionContext.SetRunnerContext($"service.{container.ContainerNetworkAlias}.ports.{port.ContainerPort}", port.HostPort);
+                    var contextVarName = $"service_{container.ContainerNetworkAlias}_ports_{port.ContainerPort}";
+                    contextVarName = contextVarName.ToUpperInvariant();
+                    executionContext.SetRunnerContext(contextVarName, port.HostPort);
                 }
             }
         }
