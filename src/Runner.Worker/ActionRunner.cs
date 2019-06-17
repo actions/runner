@@ -56,15 +56,20 @@ namespace GitHub.Runner.Worker
 
             IStepHost stepHost = HostContext.CreateService<IDefaultStepHost>();
 
+            // Makes directory for event_path data
             var tempDirectory = HostContext.GetDirectory(WellKnownDirectory.Temp);
             var workflowDirectory = Path.Combine(tempDirectory, "workflow");
-
             Directory.CreateDirectory(workflowDirectory);
 
-            var workflowFile = Path.Combine(workflowDirectory, "event.json");
-            var gitHubEvent = ExecutionContext.GetGitHubContext("event").ToString();
-            File.WriteAllText(workflowFile, gitHubEvent);
-            ExecutionContext.SetGitHubContext("event_path", workflowFile);
+            var gitHubEvent = ExecutionContext.GetGitHubContext("event");
+
+            // adds the GitHub event path/file if the event exists
+            if (gitHubEvent != null)
+            {
+                var workflowFile = Path.Combine(workflowDirectory, "event.json");
+                File.WriteAllText(workflowFile, gitHubEvent);
+                ExecutionContext.SetGitHubContext("event_path", workflowFile);
+            }
             
             // Setup container stephost for running inside the container.
             if (ExecutionContext.Container != null)

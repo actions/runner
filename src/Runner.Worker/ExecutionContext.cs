@@ -329,15 +329,14 @@ namespace GitHub.Runner.Worker
             var githubContext = ExpressionValues["github"] as GitHubContext;
             if (githubContext.TryGetValue(name, out var value))
             {
-                if(value is StringContextData){
+                if (value is StringContextData)
+                {
                     return value as StringContextData;
                 }
                 else
                 {
-                    var test = value.ToJToken().ToString();
-                    return test;
+                    return value.ToJToken().ToString();;
                 }
-            
             }
             else
             {
