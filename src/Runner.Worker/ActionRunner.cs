@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.Expressions;
@@ -55,6 +56,16 @@ namespace GitHub.Runner.Worker
 
             IStepHost stepHost = HostContext.CreateService<IDefaultStepHost>();
 
+            var tempDirectory = HostContext.GetDirectory(WellKnownDirectory.Temp);
+            var workflowDirectory = Path.Combine(tempDirectory, "workflow");
+
+            Directory.CreateDirectory(workflowDirectory);
+
+            var workflowFile = Path.Combine(workflowDirectory, "event.json");
+            var gitHubEvent = ExecutionContext.GetGitHubContext("event").ToString();
+            File.WriteAllText(workflowFile, gitHubEvent);
+            ExecutionContext.SetGitHubContext("event_path", workflowFile);
+            
             // Setup container stephost for running inside the container.
             if (ExecutionContext.Container != null)
             {

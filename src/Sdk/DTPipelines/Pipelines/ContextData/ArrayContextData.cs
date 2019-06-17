@@ -5,6 +5,7 @@ using System.ComponentModel;
 using System.Runtime.Serialization;
 using GitHub.Services.WebApi.Internal;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Expressions = GitHub.DistributedTask.Expressions;
 
 namespace GitHub.DistributedTask.Pipelines.ContextData
@@ -46,6 +47,19 @@ namespace GitHub.DistributedTask.Pipelines.ContextData
                 foreach (var item in m_items)
                 {
                     result.m_items.Add(item);
+                }
+            }
+            return result;
+        }
+
+        public override JToken ToJToken()
+        {
+            var result = new JArray();
+            if (m_items?.Count > 0)
+            {
+                foreach (var item in m_items)
+                {
+                    result.Add(item.ToJToken());
                 }
             }
             return result;

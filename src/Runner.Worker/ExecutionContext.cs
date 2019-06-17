@@ -329,7 +329,15 @@ namespace GitHub.Runner.Worker
             var githubContext = ExpressionValues["github"] as GitHubContext;
             if (githubContext.TryGetValue(name, out var value))
             {
-                return value as StringContextData;
+                if(value is StringContextData){
+                    return value as StringContextData;
+                }
+                else
+                {
+                    var test = value.ToJToken().ToString();
+                    return test;
+                }
+            
             }
             else
             {
@@ -563,14 +571,18 @@ namespace GitHub.Runner.Worker
                 // GITHUB_ACTION=dump.env
                 githubContext["action"] = new StringContextData(Variables.Build_Number);
 
+                githubContext["event"] = new StringContextData("testing");
+
                 // GITHUB_EVENT_PATH=/github/workflow/event.json
             }
             else
             {
                 var githubContext = new GitHubContext();
                 var ghDictionary = (DictionaryContextData)ExpressionValues["github"];
+                Trace.Info("Testing GitHub Keys");
                 foreach (var pair in ghDictionary)
                 {
+                    Trace.Info(pair.Key);
                     githubContext.Add(pair.Key, pair.Value);
                 }
 

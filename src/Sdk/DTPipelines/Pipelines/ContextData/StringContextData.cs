@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Runtime.Serialization;
 using GitHub.DistributedTask.Expressions;
 using GitHub.Services.WebApi.Internal;
+using Newtonsoft.Json.Linq;
 
 namespace GitHub.DistributedTask.Pipelines.ContextData
 {
@@ -33,6 +34,11 @@ namespace GitHub.DistributedTask.Pipelines.ContextData
         public override PipelineContextData Clone()
         {
             return new StringContextData(m_value);
+        }
+
+        public override JToken ToJToken()
+        {
+            return (JToken) m_value;
         }
 
         String IString.GetString()
