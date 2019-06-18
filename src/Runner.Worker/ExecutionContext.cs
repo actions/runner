@@ -17,6 +17,7 @@ using ObjectTemplating = GitHub.DistributedTask.ObjectTemplating;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
+using Newtonsoft.Json;
 using System.Text;
 
 namespace GitHub.Runner.Worker
@@ -335,7 +336,7 @@ namespace GitHub.Runner.Worker
                 }
                 else
                 {
-                    return value.ToJToken().ToString();;
+                    return value.ToJToken().ToString(Formatting.Indented);
                 }
             }
             else
