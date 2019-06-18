@@ -175,9 +175,7 @@ namespace GitHub.Runner.Worker
             }
 
             // Mount folders into container
-            var githubContext = executionContext.ExpressionValues["github"] as GitHubContext;
-            var repository = githubContext["repository"] as StringContextData;
-            var defaultSourceDirectory = repository.ToString().Split("/")[1];
+            var defaultSourceDirectory = executionContext.GetRunnerContext("defaultSourceDirectory");
             string workspace = executionContext.GetRunnerContext("pipelineWorkspace");
 #if OS_WINDOWS
             container.ContainerWorkDirectory = Path.Combine("C:\\__w", defaultSourceDirectory);
