@@ -43,13 +43,11 @@ namespace GitHub.Runner.Worker.Container
             this.IsJobContainer = isJobContainer;
 
 #if OS_WINDOWS
-            this.ContainerWorkDirectory = "C:\\__w";
-            _pathMappings[hostContext.GetDirectory(WellKnownDirectory.Work)] = this.ContainerWorkDirectory;
+            _pathMappings[hostContext.GetDirectory(WellKnownDirectory.Work)] = "C:\\__w";
             _pathMappings[hostContext.GetDirectory(WellKnownDirectory.Tools)] = "C:\\__t"; // Tool cache folder may come from ENV, so we need a unique folder to avoid collision
             // add -v '\\.\pipe\docker_engine:\\.\pipe\docker_engine' when they are available (17.09)
 #else
-            this.ContainerWorkDirectory = "/__w";
-            _pathMappings[hostContext.GetDirectory(WellKnownDirectory.Work)] = this.ContainerWorkDirectory;
+            _pathMappings[hostContext.GetDirectory(WellKnownDirectory.Work)] = "/__w";
             _pathMappings[hostContext.GetDirectory(WellKnownDirectory.Tools)] = "/__t"; // Tool cache folder may come from ENV, so we need a unique folder to avoid collision
             if (this.IsJobContainer)
             {
