@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.Expressions;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
@@ -67,7 +68,7 @@ namespace GitHub.Runner.Worker
             if (gitHubEvent != null)
             {
                 var workflowFile = Path.Combine(workflowDirectory, "event.json");
-                File.WriteAllText(workflowFile, gitHubEvent);
+                File.WriteAllText(workflowFile, gitHubEvent, new UTF8Encoding(false));
                 ExecutionContext.SetGitHubContext("event_path", workflowFile);
             }
             

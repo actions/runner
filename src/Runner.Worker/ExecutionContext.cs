@@ -570,18 +570,15 @@ namespace GitHub.Runner.Worker
                 // GITHUB_ACTION=dump.env
                 githubContext["action"] = new StringContextData(Variables.Build_Number);
 
-                githubContext["event"] = new StringContextData("testing");
-
                 // GITHUB_EVENT_PATH=/github/workflow/event.json
             }
             else
             {
                 var githubContext = new GitHubContext();
                 var ghDictionary = (DictionaryContextData)ExpressionValues["github"];
-                Trace.Info("Testing GitHub Keys");
+                Trace.Info("Initialize GitHub context");
                 foreach (var pair in ghDictionary)
                 {
-                    Trace.Info(pair.Key);
                     githubContext.Add(pair.Key, pair.Value);
                 }
 
