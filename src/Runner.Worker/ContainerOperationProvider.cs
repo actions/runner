@@ -13,6 +13,7 @@ using GitHub.Services.Common;
 using Microsoft.Win32;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
+using GitHub.DistributedTask.Pipelines.ContextData;
 
 namespace GitHub.Runner.Worker
 {
@@ -174,12 +175,17 @@ namespace GitHub.Runner.Worker
             }
 
             // Mount folders into container
-            string workingDirectory = executionContext.GetRunnerContext("pipelineworkspace");
+            var githubContext = executionContext.ExpressionValues["github"] as GitHubContext;
+            var repository = githubContext["repository"] as StringContextData;
+            var defaultSourceDirectory = repository.ToString().Split("/")[1];
+            string workspace = executionContext.GetRunnerContext("pipelineWorkspace");
 #if OS_WINDOWS
-            container.MountVolumes.Add(new MountVolume(container.TranslateToHostPath(workingDirectory), "C:\\__w"));
+            container.ContainerWorkDirectory = Path.Combine("C:\\__w", defaultSourceDirectory);
+            container.MountVolumes.Add(new MountVolume(container.TranslateToHostPath(workspace), "C:\\__w"));
             container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Externals), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Externals))));
 #else
-            container.MountVolumes.Add(new MountVolume(container.TranslateToHostPath(workingDirectory), "/__w"));
+            container.ContainerWorkDirectory = Path.Combine("/__w", defaultSourceDirectory);
+            container.MountVolumes.Add(new MountVolume(container.TranslateToHostPath(workspace), "/__w"));
             container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Temp), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Temp))));
             container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Actions), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Actions))));
             container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Externals), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Externals)), true));
