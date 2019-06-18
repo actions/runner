@@ -176,14 +176,13 @@ namespace GitHub.Runner.Worker
 
             // Mount folders into container
             var defaultSourceDirectory = executionContext.GetRunnerContext("defaultSourceDirectory");
-            string workspace = executionContext.GetRunnerContext("pipelineWorkspace");
 #if OS_WINDOWS
             container.ContainerWorkDirectory = Path.Combine("C:\\__w", defaultSourceDirectory);
-            container.MountVolumes.Add(new MountVolume(container.TranslateToHostPath(workspace), "C:\\__w"));
+            container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Work), "C:\\__w"));
             container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Externals), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Externals))));
 #else
             container.ContainerWorkDirectory = Path.Combine("/__w", defaultSourceDirectory);
-            container.MountVolumes.Add(new MountVolume(container.TranslateToHostPath(workspace), "/__w"));
+            container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Work), "/__w"));
             container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Temp), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Temp))));
             container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Actions), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Actions))));
             container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Externals), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Externals)), true));
