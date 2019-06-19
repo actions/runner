@@ -175,7 +175,10 @@ namespace GitHub.Runner.Worker
             }
 
             // Mount folders into container
-            var workingDirectory = executionContext.GetRunnerContext("pipelineWorkspace");
+            var githubContext = executionContext.ExpressionValues["github"] as GitHubContext;
+            ArgUtil.NotNull(githubContext, nameof(githubContext));
+            var workingDirectory = githubContext["workspace"] as StringContextData;
+            ArgUtil.NotNullOrEmpty(workingDirectory, nameof(workingDirectory));
             container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Work), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Work))));
 #if OS_WINDOWS
             container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Externals), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Externals))));
