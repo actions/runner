@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Runtime.Serialization;
 using GitHub.Services.WebApi.Internal;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace GitHub.DistributedTask.Pipelines.ContextData
 {
@@ -24,5 +25,7 @@ namespace GitHub.DistributedTask.Pipelines.ContextData
         internal Int32 Type { get; }
 
         public abstract PipelineContextData Clone();
+
+        public abstract JToken ToJToken();
     }
 }

@@ -17,6 +17,7 @@ using ObjectTemplating = GitHub.DistributedTask.ObjectTemplating;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
+using Newtonsoft.Json;
 using System.Text;
 
 namespace GitHub.Runner.Worker
@@ -329,7 +330,14 @@ namespace GitHub.Runner.Worker
             var githubContext = ExpressionValues["github"] as GitHubContext;
             if (githubContext.TryGetValue(name, out var value))
             {
-                return value as StringContextData;
+                if (value is StringContextData)
+                {
+                    return value as StringContextData;
+                }
+                else
+                {
+                    return value.ToJToken().ToString(Formatting.Indented);
+                }
             }
             else
             {
@@ -569,6 +577,7 @@ namespace GitHub.Runner.Worker
             {
                 var githubContext = new GitHubContext();
                 var ghDictionary = (DictionaryContextData)ExpressionValues["github"];
+                Trace.Info("Initialize GitHub context");
                 foreach (var pair in ghDictionary)
                 {
                     githubContext.Add(pair.Key, pair.Value);
