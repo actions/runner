@@ -78,7 +78,6 @@ namespace GitHub.Runner.Worker
                     string _workDirectory = HostContext.GetDirectory(WellKnownDirectory.Work);
 
                     context.SetRunnerContext("pipelineWorkspace", Path.Combine(_workDirectory, trackingConfig.PipelineDirectory));
-                    context.SetRunnerContext("defaultSourceDirectory", trackingConfig.SourcesDirectory);
                     context.SetGitHubContext("workspace", Path.Combine(_workDirectory, trackingConfig.SourcesDirectory));
 
                     // Download actions if not already in the cache
