@@ -36,24 +36,19 @@ namespace GitHub.Runner.Worker.Container
 
             this.ContainerImage = containerImage;
             this.ContainerDisplayName = $"{container.Alias}_{Pipelines.Validation.NameValidation.Sanitize(containerImage)}_{Guid.NewGuid().ToString("N").Substring(0, 6)}";
-            this.ContainerRegistryEndpoint = container.Endpoint?.Id ?? Guid.Empty;
             this.ContainerCreateOptions = container.Properties.Get<string>("options");
-            this.SkipContainerImagePull = container.Properties.Get<bool>("localimage");
             _environmentVariables = container.Environment;
             this.ContainerEntryPoint = container.Properties.Get<string>("entrypoint", defaultValue: "");
-            this.ContainerCommand = container.Properties.Get<string>("command", defaultValue: "");
             this.ContainerWorkDirectory = container.Properties.Get<string>("workdir", defaultValue: "");
             this.IsJobContainer = isJobContainer;
 
 #if OS_WINDOWS
-            _pathMappings[hostContext.GetDirectory(WellKnownDirectory.Tools)] = "C:\\__t"; // Tool cache folder may come from ENV, so we need a unique folder to avoid collision
             _pathMappings[hostContext.GetDirectory(WellKnownDirectory.Work)] = "C:\\__w";
-            _pathMappings[hostContext.GetDirectory(WellKnownDirectory.Root)] = "C:\\__a";
+            _pathMappings[hostContext.GetDirectory(WellKnownDirectory.Tools)] = "C:\\__t"; // Tool cache folder may come from ENV, so we need a unique folder to avoid collision
             // add -v '\\.\pipe\docker_engine:\\.\pipe\docker_engine' when they are available (17.09)
 #else
-            _pathMappings[hostContext.GetDirectory(WellKnownDirectory.Tools)] = "/__t"; // Tool cache folder may come from ENV, so we need a unique folder to avoid collision
             _pathMappings[hostContext.GetDirectory(WellKnownDirectory.Work)] = "/__w";
-            _pathMappings[hostContext.GetDirectory(WellKnownDirectory.Root)] = "/__a";
+            _pathMappings[hostContext.GetDirectory(WellKnownDirectory.Tools)] = "/__t"; // Tool cache folder may come from ENV, so we need a unique folder to avoid collision
             if (this.IsJobContainer)
             {
                 this.MountVolumes.Add(new MountVolume("/var/run/docker.sock", "/var/run/docker.sock"));
@@ -81,17 +76,11 @@ namespace GitHub.Runner.Worker.Container
         public string ContainerNetworkAlias { get; set; }
         public string ContainerImage { get; set; }
         public string ContainerName { get; set; }
+        public string ContainerEntryPointArgs { get; set; }
         public string ContainerEntryPoint { get; set; }
-        public string ContainerCommand { get; set; }
         public string ContainerWorkDirectory { get; set; }
         public string ContainerBringNodePath { get; set; }
-        public Guid ContainerRegistryEndpoint { get; private set; }
         public string ContainerCreateOptions { get; private set; }
-        public bool SkipContainerImagePull { get; private set; }
-#if !OS_WINDOWS
-        public string CurrentUserName { get; set; }
-        public string CurrentUserId { get; set; }
-#endif
         public bool IsJobContainer { get; set; }
 
         public IDictionary<string, string> ContainerEnvironmentVariables

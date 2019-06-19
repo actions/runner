@@ -80,7 +80,6 @@ namespace GitHub.Runner.Worker
                 var containerStepHost = HostContext.CreateService<IContainerStepHost>();
                 containerStepHost.Container = ExecutionContext.Container;
                 stepHost = containerStepHost;
-                throw new NotSupportedException("Call Ting to fix this.");
             }
 
             // Load the inputs.

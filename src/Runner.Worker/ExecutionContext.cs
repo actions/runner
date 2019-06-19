@@ -591,18 +591,32 @@ namespace GitHub.Runner.Worker
                     var base64EncodingToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"x-access-token:{githubAccessToken}"));
                     HostContext.SecretMasker.AddValue(base64EncodingToken);
                 }
-
+                else
+                {
+                    var selfRepo = message.Resources.Repositories.Single(x => string.Equals(x.Alias, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase));
+                    if (selfRepo.Endpoint != null)
+                    {
+                        var repoEndpoint = message.Resources.Endpoints.FirstOrDefault(x => x.Id == selfRepo.Endpoint.Id);
+                        if (repoEndpoint?.Authorization?.Parameters != null && repoEndpoint.Authorization.Parameters.ContainsKey("accessToken"))
+                        {
+                            githubAccessToken = repoEndpoint.Authorization.Parameters["accessToken"];
+                            githubContext["token"] = new StringContextData(githubAccessToken);
+                            var base64EncodingToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"x-access-token:{githubAccessToken}"));
+                            HostContext.SecretMasker.AddValue(base64EncodingToken);
+                        }
+                    }
+                }
                 ExpressionValues["github"] = githubContext;
             }
 
             // Prepend Path
             PrependPath = new List<string>();
 
-            // Docker (JobContainer)
-            var containerNetwork = $"github_network_{Guid.NewGuid().ToString("N")}";
-
             // Expose the network name through runner context
+            var containerNetwork = $"github_network_{Guid.NewGuid().ToString("N")}";
             SetRunnerContext("containernetwork", containerNetwork);
+
+            // Docker (JobContainer)
             if (!string.IsNullOrEmpty(message.JobContainer))
             {
                 Container = new ContainerInfo(HostContext, message.Resources.Containers.Single(x => string.Equals(x.Alias, message.JobContainer, StringComparison.OrdinalIgnoreCase))) { ContainerNetwork = containerNetwork };

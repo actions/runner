@@ -130,45 +130,31 @@ namespace GitHub.Runner.Worker.Handlers
             ArgUtil.NotNullOrEmpty(Container.ContainerId, nameof(Container.ContainerId));
 
             var dockerManger = HostContext.GetService<IDockerCommandManager>();
-            string containerEnginePath = dockerManger.DockerPath;
+            string dockerClientPath = dockerManger.DockerPath;
 
-            ContainerStandardInPayload payload = new ContainerStandardInPayload()
+            // Usage:  docker exec [OPTIONS] CONTAINER COMMAND [ARG...]
+            IList<string> dockerCommandArgs = new List<string>();
+            dockerCommandArgs.Add($"exec");
+
+            // [OPTIONS]
+            dockerCommandArgs.Add($"-i");
+            foreach (var env in environment)
             {
-                ExecutionHandler = fileName,
-                ExecutionHandlerWorkingDirectory = workingDirectory,
-                ExecutionHandlerArguments = arguments,
-                ExecutionHandlerEnvironment = environment,
-                ExecutionHandlerPrependPath = PrependPath
-            };
-
-            // copy the intermediate script (containerHandlerInvoker.js) into Agent_TempDirectory
-            // Background:
-            //    We rely on environment variables to send task execution information from agent to task execution engine (node/powershell)
-            //    Those task execution information will include all the variables and secrets customer has.
-            //    The only way to pass environment variables to `docker exec` is through command line arguments, ex: `docker exec -e myenv=myvalue -e mysecert=mysecretvalue ...`
-            //    Since command execution may get log into system event log which might cause secret leaking.
-            //    We use this intermediate script to read everything from STDIN, then launch the task execution engine (node/powershell) and redirect STDOUT/STDERR
-
-            string tempDir = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), Constants.Path.TempDirectory);
-            File.Copy(Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Bin), "containerHandlerInvoker.js.template"), Path.Combine(tempDir, "containerHandlerInvoker.js"), true);
-
-            string node;
-            if (!string.IsNullOrEmpty(Container.ContainerBringNodePath))
-            {
-                node = Container.ContainerBringNodePath;
-            }
-            else
-            {
-                node = Container.TranslateToContainerPath(Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), "node", "bin", $"node{IOUtil.ExeExtension}"));
+                // e.g. -e MY_SECRET maps the value into the exec'ed process without exposing
+                // the value directly in the command
+                dockerCommandArgs.Add($"-e {env.Key}");
             }
 
-            string entryScript = Container.TranslateToContainerPath(Path.Combine(tempDir, "containerHandlerInvoker.js"));
+            // CONTAINER
+            dockerCommandArgs.Add($"{Container.ContainerId}");
 
-#if !OS_WINDOWS
-            string containerExecutionArgs = $"exec -i -u {Container.CurrentUserId} {Container.ContainerId} {node} {entryScript}";
-#else
-            string containerExecutionArgs = $"exec -i {Container.ContainerId} {node} {entryScript}";
-#endif
+            // COMMAND
+            dockerCommandArgs.Add(fileName);
+
+            // [ARG...]
+            dockerCommandArgs.Add(arguments);
+
+            string dockerCommandArgstring = string.Join(" ", dockerCommandArgs);
 
             using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
             {
@@ -183,38 +169,17 @@ namespace GitHub.Runner.Worker.Handlers
                 outputEncoding = null;
 #endif
 
-                var redirectStandardIn = Channel.CreateUnbounded<string>(new UnboundedChannelOptions() { SingleReader = true, SingleWriter = true });
-                redirectStandardIn.Writer.TryWrite(JsonUtility.ToString(payload));
-
                 return await processInvoker.ExecuteAsync(workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Work),
-                                                         fileName: containerEnginePath,
-                                                         arguments: containerExecutionArgs,
-                                                         environment: null,
+                                                         fileName: dockerClientPath,
+                                                         arguments: dockerCommandArgstring,
+                                                         environment: environment,
                                                          requireExitCodeZero: requireExitCodeZero,
                                                          outputEncoding: outputEncoding,
                                                          killProcessOnCancel: killProcessOnCancel,
-                                                         redirectStandardIn: redirectStandardIn,
+                                                         redirectStandardIn: null,
                                                          inheritConsoleHandler: inheritConsoleHandler,
                                                          cancellationToken: cancellationToken);
             }
-        }
-
-        private class ContainerStandardInPayload
-        {
-            [JsonProperty("handler")]
-            public String ExecutionHandler { get; set; }
-
-            [JsonProperty("args")]
-            public String ExecutionHandlerArguments { get; set; }
-
-            [JsonProperty("workDir")]
-            public String ExecutionHandlerWorkingDirectory { get; set; }
-
-            [JsonProperty("environment")]
-            public IDictionary<string, string> ExecutionHandlerEnvironment { get; set; }
-
-            [JsonProperty("prependPath")]
-            public string ExecutionHandlerPrependPath { get; set; }
         }
     }
 }
