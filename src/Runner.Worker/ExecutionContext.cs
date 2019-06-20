@@ -612,14 +612,10 @@ namespace GitHub.Runner.Worker
             // Prepend Path
             PrependPath = new List<string>();
 
-            // Expose the network name through runner context
-            var containerNetwork = $"github_network_{Guid.NewGuid().ToString("N")}";
-            SetRunnerContext("containernetwork", containerNetwork);
-
             // Docker (JobContainer)
             if (!string.IsNullOrEmpty(message.JobContainer))
             {
-                Container = new ContainerInfo(HostContext, message.Resources.Containers.Single(x => string.Equals(x.Alias, message.JobContainer, StringComparison.OrdinalIgnoreCase))) { ContainerNetwork = containerNetwork };
+                Container = new ContainerInfo(HostContext, message.Resources.Containers.Single(x => string.Equals(x.Alias, message.JobContainer, StringComparison.OrdinalIgnoreCase)));
             }
             else
             {
@@ -633,7 +629,7 @@ namespace GitHub.Runner.Worker
                 var networkAlias = sidecar.Key;
                 var containerResourceAlias = sidecar.Value;
                 var containerResource = message.Resources.Containers.Single(c => string.Equals(c.Alias, containerResourceAlias, StringComparison.OrdinalIgnoreCase));
-                SidecarContainers.Add(new ContainerInfo(HostContext, containerResource, isJobContainer: false) { ContainerNetwork = containerNetwork, ContainerNetworkAlias = networkAlias });
+                SidecarContainers.Add(new ContainerInfo(HostContext, containerResource, isJobContainer: false) { ContainerNetworkAlias = networkAlias });
             }
 
             // Proxy variables

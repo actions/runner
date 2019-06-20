@@ -59,7 +59,7 @@ namespace GitHub.Runner.Worker
 
             // Makes directory for event_path data
             var tempDirectory = HostContext.GetDirectory(WellKnownDirectory.Temp);
-            var workflowDirectory = Path.Combine(tempDirectory, "workflow");
+            var workflowDirectory = Path.Combine(tempDirectory, "_github_workflow");
             Directory.CreateDirectory(workflowDirectory);
 
             var gitHubEvent = ExecutionContext.GetGitHubContext("event");

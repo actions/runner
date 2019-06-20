@@ -24,7 +24,7 @@ namespace GitHub.Runner.Worker.Container
 
         public ContainerInfo()
         {
-            
+
         }
 
         public ContainerInfo(IHostContext hostContext, Pipelines.ContainerResource container, Boolean isJobContainer = true)
@@ -221,6 +221,11 @@ namespace GitHub.Runner.Worker.Container
             {
                 PortMappings.Add(port);
             }
+        }
+
+        public void AddPathTranslateMapping(string hostCommonPath, string containerCommonPath)
+        {
+            _pathMappings[hostCommonPath] = containerCommonPath;
         }
     }
 
