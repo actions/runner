@@ -8,88 +8,18 @@ using System.Globalization;
 using System.IO;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
+using System.Collections.Generic;
 
 namespace GitHub.Runner.Worker
 {
-    public sealed class TrackingConfig
+    public sealed class RepositoryTrackingConfig
     {
-        public const string FileFormatVersionJsonProperty = "fileFormatVersion";
-
-        // The parameterless constructor is required for deserialization.
-        public TrackingConfig()
-        {
-        }
-
-        public TrackingConfig(
-            IExecutionContext executionContext,
-            int pipelineDirectory,
-            string hashKey)
-        {
-            var repoFullName = executionContext.GetGitHubContext("repository");
-            ArgUtil.NotNullOrEmpty(repoFullName, nameof(repoFullName));
-
-            var repoName = repoFullName.Substring(repoFullName.LastIndexOf('/') + 1);
-            ArgUtil.NotNullOrEmpty(repoName, nameof(repoName));
-            // Set the directories.
-            PipelineDirectory = pipelineDirectory.ToString(CultureInfo.InvariantCulture);
-            ArtifactsDirectory = Path.Combine(PipelineDirectory, Constants.Build.Path.ArtifactsDirectory);
-            SourcesDirectory = Path.Combine(PipelineDirectory, repoName);
-
-            // Set the other properties.
-            CollectionId = executionContext.Variables.System_CollectionId;
-            DefinitionId = executionContext.Variables.System_DefinitionId;
-            HashKey = hashKey;
-            RepositoryUrl = $"https://github.com/{repoFullName}";
-            UpdateJobRunProperties(executionContext);
-        }
-
-        public string CollectionId { get; set; }
-
-        public string DefinitionId { get; set; }
-
-        public string HashKey { get; set; }
-
-        public string RepositoryUrl { get; set; }
-
-        [JsonProperty("runner_artifactdirectory")]
-        public string ArtifactsDirectory { get; set; }
-
-        [JsonProperty("runner_pipelinedirectory")]
-        public string PipelineDirectory { get; set; }
-
-        public string CollectionUrl { get; set; }
-
-        public string DefinitionName { get; set; }
-
-        [JsonProperty(FileFormatVersionJsonProperty)]
-        public int FileFormatVersion
-        {
-            get
-            {
-                return 3;
-            }
-
-            set
-            {
-                // Version 3 changes:
-                //   CollectionName was removed.
-                //   CollectionUrl was added.
-                switch (value)
-                {
-                    case 3:
-                    case 2:
-                        break;
-                    default:
-                        // Should never reach here.
-                        throw new NotSupportedException();
-                }
-            }
-        }
+        public string RepositoryPath { get; set; }
 
         [JsonIgnore]
         public DateTimeOffset? LastRunOn { get; set; }
 
-        [JsonProperty("lastRunOn")]
+        [JsonProperty("LastRunOn")]
         [EditorBrowsableAttribute(EditorBrowsableState.Never)]
         public string LastRunOnString
         {
@@ -109,15 +39,81 @@ namespace GitHub.Runner.Worker
                 LastRunOn = DateTimeOffset.Parse(value, CultureInfo.InvariantCulture);
             }
         }
+    }
 
-        [JsonProperty("runner_sourcesdirectory")]
-        public string SourcesDirectory { get; set; }
-
-        public void UpdateJobRunProperties(IExecutionContext executionContext)
+    public sealed class TrackingConfig
+    {
+        // The parameterless constructor is required for deserialization.
+        public TrackingConfig()
         {
-            CollectionUrl = executionContext.Variables.System_TFCollectionUrl;
-            DefinitionName = executionContext.Variables.Build_DefinitionName;
+        }
+
+        public TrackingConfig(IExecutionContext executionContext)
+        {
+            var repoFullName = executionContext.GetGitHubContext("repository");
+            ArgUtil.NotNullOrEmpty(repoFullName, nameof(repoFullName));
+            RepositoryName = repoFullName;
+
+            var repoName = repoFullName.Substring(repoFullName.LastIndexOf('/') + 1);
+            ArgUtil.NotNullOrEmpty(repoName, nameof(repoName));
+
+            // Set the directories.
+            PipelineDirectory = repoName.ToString(CultureInfo.InvariantCulture);
+            WorkspaceDirectory = Path.Combine(PipelineDirectory, repoName);
+
+            Repositories[repoFullName] = new RepositoryTrackingConfig()
+            {
+                LastRunOn = DateTimeOffset.Now,
+                RepositoryPath = WorkspaceDirectory
+            };
+
+            // Set the other properties.
             LastRunOn = DateTimeOffset.Now;
+        }
+
+        private Dictionary<string, RepositoryTrackingConfig> _repositories;
+
+        public string RepositoryName { get; set; }
+
+        public string PipelineDirectory { get; set; }
+
+        public string WorkspaceDirectory { get; set; }
+
+        public Dictionary<string, RepositoryTrackingConfig> Repositories
+        {
+            get
+            {
+                if (_repositories == null)
+                {
+                    _repositories = new Dictionary<string, RepositoryTrackingConfig>(StringComparer.OrdinalIgnoreCase);
+                }
+
+                return _repositories;
+            }
+        }
+
+        [JsonIgnore]
+        public DateTimeOffset? LastRunOn { get; set; }
+
+        [JsonProperty("LastRunOn")]
+        [EditorBrowsableAttribute(EditorBrowsableState.Never)]
+        public string LastRunOnString
+        {
+            get
+            {
+                return string.Format(CultureInfo.InvariantCulture, "{0}", LastRunOn);
+            }
+
+            set
+            {
+                if (string.IsNullOrEmpty(value))
+                {
+                    LastRunOn = null;
+                    return;
+                }
+
+                LastRunOn = DateTimeOffset.Parse(value, CultureInfo.InvariantCulture);
+            }
         }
     }
 }

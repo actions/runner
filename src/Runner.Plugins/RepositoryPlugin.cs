@@ -85,7 +85,7 @@ namespace GitHub.Runner.Plugins.Repository
                 }
 
                 executionContext.Debug($"Update workspace repository location.");
-                executionContext.UpdateSelfRepositoryPath(expectRepoPath);
+                executionContext.SetRepositoryPath(repoFullName, expectRepoPath, true);
             }
 
             await new GitHubSourceProvider().GetSourceAsync(executionContext, expectRepoPath, token);

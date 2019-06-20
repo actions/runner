@@ -180,31 +180,14 @@ namespace GitHub.Runner.Common
                 public const int RunnerUpdating = 3;
                 public const int RunOnceRunnerUpdating = 4;
             }
-
-            public static class AgentConfigurationProvider
-            {
-                public static readonly string BuildReleasesAgentConfiguration = "BuildReleasesAgentConfiguration";
-                public static readonly string DeploymentAgentConfiguration = "DeploymentAgentConfiguration";
-                public static readonly string SharedDeploymentAgentConfiguration = "SharedDeploymentAgentConfiguration";
-            }
         }
 
-        public static class Build
+        public static class Pipeline
         {
-            public static readonly string NoCICheckInComment = "***NO_CI***";
-
             public static class Path
             {
-                public static readonly string ArtifactsDirectory = "a";
-                public static readonly string BinariesDirectory = "b";
-                public static readonly string GarbageCollectionDirectory = "GC";
-                public static readonly string LegacyArtifactsDirectory = "artifacts";
-                public static readonly string LegacyStagingDirectory = "staging";
-                public static readonly string SourceRootMappingDirectory = "SourceRootMapping";
-                public static readonly string SourcesDirectory = "s";
-                // public static readonly string TestResultsDirectory = "TestResults";
-                public static readonly string TopLevelTrackingConfigFile = "Mappings.json";
-                public static readonly string TrackingConfigFile = "SourceFolder.json";
+                public static readonly string PipelineMappingDirectory = "_PipelineMapping";
+                public static readonly string TrackingConfigFile = "PipelineFolder.json";
             }
         }
 
@@ -217,16 +200,6 @@ namespace GitHub.Runner.Common
             public static readonly string Integrated = "Integrated";
             public static readonly string OAuth = "OAuth";
             public static readonly string ServiceIdentity = "ServiceIdentity";
-        }
-
-        public static class EndpointData
-        {
-            public static readonly string SourcesDirectory = "SourcesDirectory";
-            public static readonly string SourceVersion = "SourceVersion";
-            public static readonly string SourceBranch = "SourceBranch";
-            public static readonly string SourceTfvcShelveset = "SourceTfvcShelveset";
-            public static readonly string GatedShelvesetName = "GatedShelvesetName";
-            public static readonly string GatedRunCI = "GatedRunCI";
         }
 
         public static class Expressions
@@ -254,23 +227,6 @@ namespace GitHub.Runner.Common
             public static readonly string ActionsDirectory = "_actions";
             public static readonly string UpdateDirectory = "_update";
             public static readonly string WorkDirectory = "_work";
-        }
-
-        public static class Release
-        {
-            public static readonly string Map = "Map";
-
-            public static class Path
-            {
-                public static readonly string ArtifactsDirectory = "a";
-                public static readonly string CommitsDirectory = "c";
-                public static readonly string DefinitionMapping = "DefinitionMapping.json";
-                public static readonly string ReleaseDirectoryPrefix = "r";
-                public static readonly string ReleaseTempDirectoryPrefix = "t";
-                public static readonly string RootMappingDirectory = "ReleaseRootMapping";
-                public static readonly string TrackingConfigFile = "DefinitionMapping.json";
-                public static readonly string GarbageCollectionDirectory = "GC";
-            }
         }
 
         // Related to definition variables.
@@ -351,53 +307,6 @@ namespace GitHub.Runner.Common
                 public static readonly string SyncSources = "build.syncSources";
             }
 
-            public static class Common
-            {
-                public static readonly string TestResultsDirectory = "common.testresultsdirectory";
-            }
-
-            public static class Features
-            {
-                //
-                // Keep alphabetical
-                //
-                public static readonly string BuildDirectoryClean = "agent.clean.buildDirectory";
-                public static readonly string GitLfsSupport = "agent.source.git.lfs";
-                public static readonly string GitShallowDepth = "agent.source.git.shallowFetchDepth";
-                public static readonly string SkipSyncSource = "agent.source.skip";
-            }
-
-            public static class Pipeline
-            {
-                public static readonly string Workspace = "pipeline.workspace";
-            }
-
-            public static class Release
-            {
-                //
-                // Keep alphabetical
-                //
-                public static readonly string AgentReleaseDirectory = "agent.releaseDirectory";
-                public static readonly string ArtifactsDirectory = "system.artifactsDirectory";
-                public static readonly string AttemptNumber = "release.attemptNumber";
-                public static readonly string DisableRobocopy = "release.disableRobocopy";
-                public static readonly string ReleaseDefinitionName = "release.definitionName";
-                public static readonly string ReleaseEnvironmentName = "release.environmentName";
-                public static readonly string ReleaseEnvironmentUri = "release.environmentUri";
-                public static readonly string ReleaseDefinitionId = "release.definitionId";
-                public static readonly string ReleaseDescription = "release.releaseDescription";
-                public static readonly string ReleaseId = "release.releaseId";
-                public static readonly string ReleaseName = "release.releaseName";
-                public static readonly string ReleaseRequestedForId = "release.requestedForId";
-                public static readonly string ReleaseUri = "release.releaseUri";
-                public static readonly string ReleaseDownloadBufferSize = "release.artifact.download.buffersize";
-                public static readonly string ReleaseParallelDownloadLimit = "release.artifact.download.parallellimit";
-                public static readonly string ReleaseWebUrl = "release.releaseWebUrl";
-                public static readonly string RequestorId = "release.requestedFor";
-                public static readonly string RobocopyMT = "release.robocopyMT";
-                public static readonly string SkipArtifactsDownload = "release.skipartifactsDownload";
-            }
-
             public static class System
             {
                 //
@@ -421,11 +330,6 @@ namespace GitHub.Runner.Common
                 public static readonly string TeamProject = "system.teamproject";
                 public static readonly string TeamProjectId = "system.teamProjectId";
                 public static readonly string WorkFolder = "system.workfolder";
-            }
-
-            public static class Task
-            {
-                public static readonly string DisplayName = "task.displayname";
             }
         }
     }

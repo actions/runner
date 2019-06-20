@@ -202,6 +202,11 @@ namespace GitHub.Runner.Worker
                             using (var httpClient = new HttpClient(httpClientHandler))
                             {
                                 var authToken = Environment.GetEnvironmentVariable("_GITHUB_ACTION_TOKEN");
+                                if (string.IsNullOrEmpty(authToken))
+                                {
+                                    authToken = executionContext.Variables.Get("PREVIEW_ACTION_TOKEN");
+                                }
+
                                 if (!string.IsNullOrEmpty(authToken))
                                 {
                                     HostContext.SecretMasker.AddValue(authToken);
@@ -350,7 +355,7 @@ namespace GitHub.Runner.Worker
 
                 var dockerManger = HostContext.GetService<IDockerCommandManager>();
                 var imageName = $"{dockerManger.DockerInstanceLabel}:{Guid.NewGuid().ToString("N")}";
-                var buildExitCode = await dockerManger.DockerBuild(executionContext, Directory.GetParent(dockerFile).FullName, imageName);
+                var buildExitCode = await dockerManger.DockerBuild(executionContext, destDirectory, Directory.GetParent(dockerFile).FullName, imageName);
                 if (buildExitCode != 0)
                 {
                     throw new InvalidOperationException($"Docker build failed with exit code {buildExitCode}");

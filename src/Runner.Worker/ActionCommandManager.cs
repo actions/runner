@@ -39,7 +39,7 @@ namespace GitHub.Runner.Worker
             {
                 Trace.Info($"Register action command extension for command {commandExt.Command}");
                 _commandExtensions[commandExt.Command] = commandExt;
-                if (commandExt.Command != "internal-set-self-path")
+                if (commandExt.Command != "internal-set-repo-path")
                 {
                     _registeredCommands.Add(commandExt.Command);
                 }
@@ -49,13 +49,13 @@ namespace GitHub.Runner.Worker
         public void EnablePluginInternalCommand()
         {
             Trace.Info($"Enable plugin internal command extension.");
-            _registeredCommands.Add("internal-set-self-path");
+            _registeredCommands.Add("internal-set-repo-path");
         }
 
         public void DisablePluginInternalCommand()
         {
             Trace.Info($"Disable plugin internal command extension.");
-            _registeredCommands.Remove("internal-set-self-path");
+            _registeredCommands.Remove("internal-set-repo-path");
         }
 
         public bool TryProcessCommand(IExecutionContext context, string input)
@@ -77,8 +77,21 @@ namespace GitHub.Runner.Worker
             {
                 if (_stopProcessCommand)
                 {
-                    context.Debug($"Process commands has been stopped and waiting for '##[{_stopToken}]' to resume.");
-                    return false;
+                    if (!string.IsNullOrEmpty(_stopToken) &&
+                             string.Equals(actionCommand.Command, _stopToken, StringComparison.OrdinalIgnoreCase))
+                    {
+                        context.Output(input);
+                        context.Output($"{WellKnownTags.Debug}Resume processing commands");
+                        _registeredCommands.Remove(_stopToken);
+                        _stopProcessCommand = false;
+                        _stopToken = null;
+                        return true;
+                    }
+                    else
+                    {
+                        context.Debug($"Process commands has been stopped and waiting for '##[{_stopToken}]' to resume.");
+                        return false;
+                    }
                 }
                 else
                 {
@@ -89,16 +102,6 @@ namespace GitHub.Runner.Worker
                         _stopToken = actionCommand.Data;
                         _stopProcessCommand = true;
                         _registeredCommands.Add(_stopToken);
-                        return true;
-                    }
-                    else if (!string.IsNullOrEmpty(_stopToken) &&
-                             string.Equals(actionCommand.Command, _stopToken, StringComparison.OrdinalIgnoreCase))
-                    {
-                        context.Output(input);
-                        context.Output($"{WellKnownTags.Debug}Resume processing commands");
-                        _registeredCommands.Remove(_stopToken);
-                        _stopProcessCommand = false;
-                        _stopToken = null;
                         return true;
                     }
                     else if (_commandExtensions.TryGetValue(actionCommand.Command, out IActionCommandExtension extension))
@@ -144,18 +147,32 @@ namespace GitHub.Runner.Worker
 
     public sealed class InternalPluginSetRepoPathCommandExtension : RunnerService, IActionCommandExtension
     {
-        public string Command => "internal-set-self-path";
+        public string Command => "internal-set-repo-path";
 
         public Type ExtensionType => typeof(IActionCommandExtension);
 
         public void ProcessCommand(IExecutionContext context, string line, ActionCommand command, out bool omitEcho)
         {
-            context.SetGitHubContext("workspace", command.Data);
+            if (!command.Properties.TryGetValue(SetRepoPathCommandProperties.repoFullName, out string repoFullName) || string.IsNullOrEmpty(repoFullName))
+            {
+                throw new Exception(StringUtil.Loc("MissingRepoFullName"));
+            }
+
+            if (!command.Properties.TryGetValue(SetRepoPathCommandProperties.workspaceRepo, out string workspaceRepo) || string.IsNullOrEmpty(workspaceRepo))
+            {
+                throw new Exception(StringUtil.Loc("MissingWorkspaceRepo"));
+            }
 
             var directoryManager = HostContext.GetService<IPipelineDirectoryManager>();
-            var trackingConfig = directoryManager.UpdateDirectory(context);
+            var trackingConfig = directoryManager.UpdateRepositoryDirectory(context, repoFullName, command.Data, StringUtil.ConvertToBoolean(workspaceRepo));
 
             omitEcho = true;
+        }
+
+        private static class SetRepoPathCommandProperties
+        {
+            public const String repoFullName = "repoFullName";
+            public const String workspaceRepo = "workspaceRepo";
         }
     }
 

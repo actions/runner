@@ -50,13 +50,10 @@ namespace GitHub.Runner.Worker.Handlers
             ArgUtil.File(target, nameof(target));
 
             // Resolve the working directory.
-            var githubContext = ExecutionContext.ExpressionValues["github"] as GitHubContext;
-            ArgUtil.NotNull(githubContext, nameof(githubContext));
-
             string workingDirectory = Data.WorkingDirectory;
             if (string.IsNullOrEmpty(workingDirectory))
             {
-                workingDirectory = githubContext["workspace"] as StringContextData;
+                workingDirectory = ExecutionContext.GetGitHubContext("workspace");
                 if (string.IsNullOrEmpty(workingDirectory))
                 {
                     workingDirectory = HostContext.GetDirectory(WellKnownDirectory.Work);
