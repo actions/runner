@@ -190,9 +190,9 @@ namespace GitHub.Runner.Sdk
             Output($"##[command]{Escape(command)}");
         }
 
-        public void UpdateSelfRepositoryPath(string path)
+        public void SetRepositoryPath(string repoName, string path, bool workspaceRepo)
         {
-            Output($"##[internal-set-self-path]{path}");
+            Output($"##[internal-set-repo-path repoFullName={repoName};workspaceRepo={workspaceRepo.ToString()}]{path}");
         }
 
         public String GetRunnerContext(string contextName)

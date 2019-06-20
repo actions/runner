@@ -39,7 +39,7 @@ namespace GitHub.Runner.Worker.Handlers
                 ExecutionContext.Output($"Dockerfile for action: '{dockerFile}'.");
 
                 var imageName = $"{dockerManger.DockerInstanceLabel}:{ExecutionContext.Id.ToString("N")}";
-                var buildExitCode = await dockerManger.DockerBuild(ExecutionContext, Directory.GetParent(dockerFile).FullName, imageName);
+                var buildExitCode = await dockerManger.DockerBuild(ExecutionContext, ExecutionContext.GetGitHubContext("workspace"), Directory.GetParent(dockerFile).FullName, imageName);
                 if (buildExitCode != 0)
                 {
                     throw new InvalidOperationException($"Docker build failed with exit code {buildExitCode}");
@@ -61,9 +61,7 @@ namespace GitHub.Runner.Worker.Handlers
 
             container.ContainerNetwork = ExecutionContext.GetRunnerContext("containernetwork");
 
-            var githubContext = ExecutionContext.ExpressionValues["github"] as GitHubContext;
-            ArgUtil.NotNull(githubContext, nameof(githubContext));
-            var defaultWorkingDirectory = githubContext["workspace"] as StringContextData;
+            var defaultWorkingDirectory = ExecutionContext.GetGitHubContext("workspace");
             var tempDirectory = HostContext.GetDirectory(WellKnownDirectory.Temp);
 
             ArgUtil.NotNullOrEmpty(defaultWorkingDirectory, nameof(defaultWorkingDirectory));

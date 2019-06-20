@@ -4,9 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
-using System.Threading.Channels;
 using System.Threading.Tasks;
-using GitHub.Runner.Common.Util;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
 
@@ -18,10 +16,8 @@ namespace GitHub.Runner.Worker.Container
         string DockerPath { get; }
         string DockerInstanceLabel { get; }
         Task<DockerVersion> DockerVersion(IExecutionContext context);
-        Task<int> DockerLogin(IExecutionContext context, string server, string username, string password);
-        Task<int> DockerLogout(IExecutionContext context, string server);
         Task<int> DockerPull(IExecutionContext context, string image);
-        Task<int> DockerBuild(IExecutionContext context, string path, string tag);
+        Task<int> DockerBuild(IExecutionContext context, string workingDirectory, string dockerFile, string tag);
         Task<string> DockerCreate(IExecutionContext context, ContainerInfo container);
         Task<int> DockerRun(IExecutionContext context, ContainerInfo container, EventHandler<ProcessDataReceivedEventArgs> stdoutDataReceived, EventHandler<ProcessDataReceivedEventArgs> stderrDataReceived);
         Task<int> DockerStart(IExecutionContext context, string containerId);
@@ -86,29 +82,14 @@ namespace GitHub.Runner.Worker.Container
             return new DockerVersion(serverVersion, clientVersion);
         }
 
-        public async Task<int> DockerLogin(IExecutionContext context, string server, string username, string password)
-        {
-#if OS_WINDOWS
-            // Wait for 17.07 to switch using stdin for docker registry password.
-            return await ExecuteDockerCommandAsync(context, "login", $"--username \"{username}\" --password \"{password.Replace("\"", "\\\"")}\" {server}", new List<string>() { password }, context.CancellationToken);
-#else
-            return await ExecuteDockerCommandAsync(context, "login", $"--username \"{username}\" --password-stdin {server}", new List<string>() { password }, context.CancellationToken);
-#endif
-        }
-
-        public async Task<int> DockerLogout(IExecutionContext context, string server)
-        {
-            return await ExecuteDockerCommandAsync(context, "logout", $"{server}", context.CancellationToken);
-        }
-
         public async Task<int> DockerPull(IExecutionContext context, string image)
         {
             return await ExecuteDockerCommandAsync(context, "pull", image, context.CancellationToken);
         }
 
-        public async Task<int> DockerBuild(IExecutionContext context, string path, string tag)
+        public async Task<int> DockerBuild(IExecutionContext context, string workingDirectory, string dockerFile, string tag)
         {
-            return await ExecuteDockerCommandAsync(context, "build", $"-t {tag} \"{path}\"", context.CancellationToken);
+            return await ExecuteDockerCommandAsync(context, "build", $"-t {tag} \"{dockerFile}\"", workingDirectory, context.CancellationToken);
         }
 
         public async Task<string> DockerCreate(IExecutionContext context, ContainerInfo container)
@@ -381,7 +362,7 @@ namespace GitHub.Runner.Worker.Container
             return 0;
 #else
             return await processInvoker.ExecuteAsync(
-                workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Work),
+                workingDirectory: context.GetGitHubContext("workspace"),
                 fileName: DockerPath,
                 arguments: arg,
                 environment: null,
@@ -392,7 +373,7 @@ namespace GitHub.Runner.Worker.Container
 #endif
         }
 
-        private async Task<int> ExecuteDockerCommandAsync(IExecutionContext context, string command, string options, IList<string> standardIns = null, CancellationToken cancellationToken = default(CancellationToken))
+        private async Task<int> ExecuteDockerCommandAsync(IExecutionContext context, string command, string options, string workingDirectory, CancellationToken cancellationToken = default(CancellationToken))
         {
             string arg = $"{command} {options}".Trim();
             context.Command($"{DockerPath} {arg}");
@@ -407,16 +388,6 @@ namespace GitHub.Runner.Worker.Container
             {
                 context.Output(message.Data);
             };
-
-            Channel<string> redirectStandardIn = null;
-            if (standardIns != null)
-            {
-                redirectStandardIn = Channel.CreateUnbounded<string>(new UnboundedChannelOptions() { SingleReader = true, SingleWriter = true });
-                foreach (var input in standardIns)
-                {
-                    redirectStandardIn.Writer.TryWrite(input);
-                }
-            }
 
 #if OS_WINDOWS
             context.Output("");
@@ -433,14 +404,14 @@ namespace GitHub.Runner.Worker.Container
             return 0;
 #else
             return await processInvoker.ExecuteAsync(
-                workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Work),
+                workingDirectory: workingDirectory ?? context.GetGitHubContext("workspace"),
                 fileName: DockerPath,
                 arguments: arg,
                 environment: null,
                 requireExitCodeZero: false,
                 outputEncoding: null,
                 killProcessOnCancel: false,
-                redirectStandardIn: redirectStandardIn,
+                redirectStandardIn: null,
                 cancellationToken: cancellationToken);
 #endif
         }
@@ -470,7 +441,7 @@ namespace GitHub.Runner.Worker.Container
             };
 
             await processInvoker.ExecuteAsync(
-                            workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Work),
+                            workingDirectory: context.GetGitHubContext("workspace"),
                             fileName: DockerPath,
                             arguments: arg,
                             environment: null,
