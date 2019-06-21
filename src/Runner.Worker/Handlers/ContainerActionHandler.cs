@@ -71,15 +71,16 @@ namespace GitHub.Runner.Worker.Handlers
             Directory.CreateDirectory(tempHomeDirectory);
 
             var tempWorkflowDirectory = Path.Combine(tempDirectory, "_github_workflow");
-            Directory.CreateDirectory(tempWorkflowDirectory);
-
-            // _pathMappings[defaultWorkingDirectory] = "/github/workspace";
-            // _pathMappings[tempHomeDirectory] = "/github/home";
+            ArgUtil.Directory(tempWorkflowDirectory, nameof(tempWorkflowDirectory));
 
             container.MountVolumes.Add(new MountVolume("/var/run/docker.sock", "/var/run/docker.sock"));
             container.MountVolumes.Add(new MountVolume(tempHomeDirectory, "/github/home"));
             container.MountVolumes.Add(new MountVolume(tempWorkflowDirectory, "/github/workflow"));
             container.MountVolumes.Add(new MountVolume(defaultWorkingDirectory, "/github/workspace"));
+
+            container.AddPathTranslateMapping(tempHomeDirectory, "/github/home");
+            container.AddPathTranslateMapping(tempWorkflowDirectory, "/github/workflow");
+            container.AddPathTranslateMapping(defaultWorkingDirectory, "/github/workspace");
 
             container.ContainerWorkDirectory = "/github/workspace";
 

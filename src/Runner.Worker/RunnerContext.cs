@@ -10,8 +10,7 @@ namespace GitHub.Runner.Worker
         {
             foreach (var data in this)
             {
-                // Change to RUNNER_ after the new action toolkits released
-                yield return new KeyValuePair<string, string>($"AGENT_{data.Key.ToUpperInvariant()}", data.Value as StringContextData);
+                yield return new KeyValuePair<string, string>($"RUNNER_{data.Key.ToUpperInvariant()}", data.Value as StringContextData);
             }
         }
     }
