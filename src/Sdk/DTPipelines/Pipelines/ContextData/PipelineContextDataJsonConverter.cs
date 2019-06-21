@@ -35,6 +35,17 @@ namespace GitHub.DistributedTask.Pipelines.ContextData
                 return new StringContextData(reader.Value.ToString());
             }
 
+            if (reader.TokenType == JsonToken.Boolean)
+            {
+                return new BooleanContextData(Boolean.Parse(reader.Value.ToString()));
+            }
+
+            if (reader.TokenType == JsonToken.Float || reader.TokenType == JsonToken.Integer)
+            {
+                return new NumberContextData(Double.Parse(reader.Value.ToString()));
+            }
+
+
             if (reader.TokenType != JsonToken.StartObject)
             {
                 return null;
@@ -70,6 +81,14 @@ namespace GitHub.DistributedTask.Pipelines.ContextData
                     newValue = new DictionaryContextData();
                     break;
 
+                case PipelineContextDataType.Boolean:
+                    newValue = new BooleanContextData(false);
+                    break;
+
+                case PipelineContextDataType.Number:
+                    newValue = new NumberContextData(0);
+                    break;
+
                 default:
                     throw new NotSupportedException($"Unexpected {nameof(PipelineContextDataType)} '{type}'");
             }
@@ -98,6 +117,14 @@ namespace GitHub.DistributedTask.Pipelines.ContextData
             else if (value is StringContextData stringData)
             {
                 writer.WriteValue(stringData.Value);
+            }
+            else if (value is BooleanContextData boolData)
+            {
+                writer.WriteValue(boolData.Value);
+            }
+            else if (value is NumberContextData numberData)
+            {
+                writer.WriteValue(numberData.Value);
             }
             else if (value is ArrayContextData arrayData)
             {

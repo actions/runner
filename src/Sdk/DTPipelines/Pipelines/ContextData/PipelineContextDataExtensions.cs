@@ -48,6 +48,32 @@ namespace GitHub.DistributedTask.Pipelines.ContextData
             throw new ArgumentException($"Unexpected type '{value?.GetType().Name}' encountered while reading '{objectDescription}'. The type '{nameof(StringContextData)}' was expected.");
         }
 
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public static BooleanContextData AssertBoolean(
+            this PipelineContextData value,
+            String objectDescription)
+        {
+            if (value is BooleanContextData boolValue)
+            {
+                return boolValue;
+            }
+
+            throw new ArgumentException($"Unexpected type '{value?.GetType().Name}' encountered while reading '{objectDescription}'. The type '{nameof(BooleanContextData)}' was expected.");
+        }
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public static NumberContextData AssertNumber(
+            this PipelineContextData value,
+            String objectDescription)
+        {
+            if (value is NumberContextData num)
+            {
+                return num;
+            }
+
+            throw new ArgumentException($"Unexpected type '{value?.GetType().Name}' encountered while reading '{objectDescription}'. The type '{nameof(NumberContextData)}' was expected.");
+        }
+
         /// <summary>
         /// Returns all context data objects (depth first)
         /// </summary>
@@ -95,6 +121,14 @@ namespace GitHub.DistributedTask.Pipelines.ContextData
             if (value is StringContextData str)
             {
                 result = str.Value ?? String.Empty;
+            }
+            else if (value is BooleanContextData booleanValue)
+            {
+                result = booleanValue.Value;
+            }
+            else if (value is NumberContextData num)
+            {
+                result = num.Value;
             }
             else if (value is ArrayContextData array)
             {
@@ -163,6 +197,12 @@ namespace GitHub.DistributedTask.Pipelines.ContextData
                     return sequence;
 
                 case PipelineContextDataType.String:
+                    return new LiteralToken(null, null, null, data.ToString());
+
+                case PipelineContextDataType.Boolean:
+                    return new LiteralToken(null, null, null, data.ToString());
+
+                case PipelineContextDataType.Number:
                     return new LiteralToken(null, null, null, data.ToString());
 
                 default:

@@ -9,5 +9,9 @@ namespace GitHub.DistributedTask.Pipelines.ContextData
         internal const Int32 Array = 1;
 
         internal const Int32 Dictionary = 2;
+
+        internal const Int32 Boolean = 3;
+
+        internal const Int32 Number = 4;
     }
 }
