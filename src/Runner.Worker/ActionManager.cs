@@ -513,6 +513,21 @@ namespace GitHub.Runner.Worker
 
                             Trace.Info($"Action node.js file: {actionDefinitionData.Execution.Script}.");
                         }
+                        else if (!string.IsNullOrEmpty(actionDefinitionData.Execution.Plugin))
+                        {
+                            var pluginManager = HostContext.GetService<IRunnerPluginManager>();
+                            var plugin = pluginManager.GetPluginAction(actionDefinitionData.Execution.Plugin);
+
+                            ArgUtil.NotNull(plugin, actionDefinitionData.Execution.Plugin);
+                            ArgUtil.NotNullOrEmpty(plugin.PluginTypeName, actionDefinitionData.Execution.Plugin);
+
+                            definition.Data.Execution.RunnerPlugin = new RunnerPluginHandlerData()
+                            {
+                                Target = plugin.PluginTypeName
+                            };
+
+                            Trace.Info($"Action plugin: {plugin.PluginTypeName}.");
+                        }
                         else
                         {
                             throw new NotSupportedException(actionDefinitionData.Execution.ExecutionType);
@@ -561,7 +576,6 @@ namespace GitHub.Runner.Worker
                 definition.Data.FriendlyName = plugin.FriendlyName;
                 definition.Data.Description = plugin.Description;
                 definition.Data.Author = plugin.Author;
-                definition.Data.HelpUrl = plugin.HelpUrl;
             }
 
             return definition;
@@ -626,6 +640,9 @@ namespace GitHub.Runner.Worker
 
         [YamlMember]
         public string Image { get; set; }
+
+        [YamlMember]
+        public string Plugin { get; set; }
 
         [YamlMember(Alias = "main")]
         public string Script { get; set; }
