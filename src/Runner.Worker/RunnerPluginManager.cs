@@ -37,6 +37,20 @@ namespace GitHub.Runner.Worker
                     FriendlyName = "Get sources",
                     PluginTypeName = "GitHub.Runner.Plugins.Repository.CheckoutTask, Runner.Plugins"
                 }
+            },
+            {
+                "publish",
+                new RunnerPluginActionInfo()
+                {
+                    PluginTypeName = "GitHub.Runner.Plugins.PipelineArtifact.PublishPipelineArtifact, Runner.Plugins"
+                }
+            },
+            {
+                "download",
+                new RunnerPluginActionInfo()
+                {
+                    PluginTypeName = "GitHub.Runner.Plugins.PipelineArtifact.DownloadPipelineArtifact, Runner.Plugins"
+                }
             }
         };
 
@@ -81,6 +95,12 @@ namespace GitHub.Runner.Worker
                 Context = context.ExpressionValues as Dictionary<string, PipelineContextData>
             };
 
+            // variables
+            foreach (var variable in context.Variables.AllVariables)
+            {
+                pluginContext.Variables[variable.Name] = new VariableValue(variable.Value, variable.Secret);
+            }
+
             using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
             {
                 var redirectStandardIn = Channel.CreateUnbounded<string>(new UnboundedChannelOptions() { SingleReader = true, SingleWriter = true });
@@ -115,7 +135,6 @@ namespace GitHub.Runner.Worker
         public string Author { get; set; }
         public string Description { get; set; }
         public string FriendlyName { get; set; }
-        public string HelpUrl { get; set; }
         public string PluginTypeName { get; set; }
     }
 }
