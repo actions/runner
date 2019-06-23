@@ -1,5 +1,9 @@
 ## Features
-  - N/A
+  - Remove repository resource. #24
+  - Write event.json to disk #30
+  - Job container + container services #23
+  - New github workspace tracking. #29
+  - Prototype artifact actions. #31
 
 ## Bugs
   - N/A
