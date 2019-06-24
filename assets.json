@@ -3,18 +3,18 @@
         "name": "actions-runner-win-x64-<AGENT_VERSION>.zip",
         "platform": "win-x64",
         "version": "<AGENT_VERSION>",
-        "downloadUrl": "https://vstsagentpackage.azureedge.net/agent/<AGENT_VERSION>/actions-runner-win-x64-<AGENT_VERSION>.zip"
+        "downloadUrl": "https://githubassets.azureedge.net/runners/<AGENT_VERSION>/actions-runner-win-x64-<AGENT_VERSION>.zip"
     },
     {
         "name": "actions-runner-osx-x64-<AGENT_VERSION>.tar.gz",
         "platform": "osx-x64",
         "version": "<AGENT_VERSION>",
-        "downloadUrl": "https://vstsagentpackage.azureedge.net/agent/<AGENT_VERSION>/actions-runner-osx-x64-<AGENT_VERSION>.tar.gz"
+        "downloadUrl": "https://githubassets.azureedge.net/runners/<AGENT_VERSION>/actions-runner-osx-x64-<AGENT_VERSION>.tar.gz"
     },
     {
         "name": "actions-runner-linux-x64-<AGENT_VERSION>.tar.gz",
         "platform": "linux-x64",
         "version": "<AGENT_VERSION>",
-        "downloadUrl": "https://vstsagentpackage.azureedge.net/agent/<AGENT_VERSION>/actions-runner-linux-x64-<AGENT_VERSION>.tar.gz"
+        "downloadUrl": "https://githubassets.azureedge.net/runners/<AGENT_VERSION>/actions-runner-linux-x64-<AGENT_VERSION>.tar.gz"
     }
 ]

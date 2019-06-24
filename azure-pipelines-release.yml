@@ -37,7 +37,7 @@ stages:
       displayName: Publish Artifact (Windows)
       inputs:
         pathToPublish: _package
-        artifactName: agent
+        artifactName: runners
         artifactType: container
 
   ################################################################################
@@ -61,7 +61,7 @@ stages:
       displayName: Publish Artifact (Linux)    
       inputs:
         pathToPublish: _package
-        artifactName: agent
+        artifactName: runners
         artifactType: container
 
   ################################################################################
@@ -85,7 +85,7 @@ stages:
       displayName: Publish Artifact (OSX)    
       inputs:
         pathToPublish: _package
-        artifactName: agent
+        artifactName: runners
         artifactType: container
 
 - stage: Release
@@ -103,7 +103,7 @@ stages:
     - task: DownloadBuildArtifacts@0
       displayName: Download Agent Packages
       inputs:
-        artifactName: agent
+        artifactName: runners
 
     # Upload agent packages to Azure blob storage and refresh Azure CDN
     - powershell: |
@@ -115,21 +115,21 @@ stages:
         $clientId = (Get-ItemProperty -Path "$(ServicePrincipalReg)").ServicePrincipalClientId
         Write-Host "##vso[task.setsecret]$certificateThumbprint"
         Write-Host "##vso[task.setsecret]$clientId"
-        Login-AzureRmAccount -ServicePrincipal -CertificateThumbprint $certificateThumbprint -ApplicationId $clientId -TenantId $(TenantId)
-        Select-AzureRmSubscription -SubscriptionId $(SubscriptionId)
-        $storage = Get-AzureRmStorageAccount -ResourceGroupName vstsagentpackage -AccountName vstsagentpackage
-        Get-ChildItem -LiteralPath "$(System.ArtifactsDirectory)/agent" | ForEach-Object {
+        Login-AzureRmAccount -ServicePrincipal -CertificateThumbprint $certificateThumbprint -ApplicationId $clientId -TenantId $(GitHubTenantId)
+        Select-AzureRmSubscription -SubscriptionId $(GitHubSubscriptionId)
+        $storage = Get-AzureRmStorageAccount -ResourceGroupName githubassets -AccountName githubassets
+        Get-ChildItem -LiteralPath "$(System.ArtifactsDirectory)/runners" | ForEach-Object {
           $versionDir = $_.Name.Trim('.zip').Trim('.tar.gz')
           $versionDir = $versionDir.SubString($versionDir.LastIndexOf('-') + 1)
           Write-Host "##vso[task.setvariable variable=ReleaseAgentVersion;]$versionDir"
-          Write-Host "Uploading $_ to BlobStorage vstsagentpackage/agent/$versionDir"
-          Set-AzureStorageBlobContent -Context $storage.Context -Container agent -File "$(System.ArtifactsDirectory)/agent/$_" -Blob "$versionDir/$_" -Force
-          $uploadFiles.Add("/agent/$versionDir/$_")
+          Write-Host "Uploading $_ to BlobStorage githubassets/runners/$versionDir"
+          Set-AzureStorageBlobContent -Context $storage.Context -Container runners -File "$(System.ArtifactsDirectory)/runners/$_" -Blob "$versionDir/$_" -Force
+          $uploadFiles.Add("/runners/$versionDir/$_")
         }
         Write-Host "Purge Azure CDN Cache"
-        Unpublish-AzureRmCdnEndpointContent -EndpointName vstsagentpackage -ProfileName vstsagentpackage -ResourceGroupName vstsagentpackage -PurgeContent $uploadFiles
+        Unpublish-AzureRmCdnEndpointContent -EndpointName githubassets -ProfileName githubassets -ResourceGroupName githubassets -PurgeContent $uploadFiles
         Write-Host "Force Refresh Azure CDN Cache"
-        Publish-AzureRmCdnEndpointContent -EndpointName vstsagentpackage -ProfileName vstsagentpackage -ResourceGroupName vstsagentpackage -LoadContent $uploadFiles
+        Publish-AzureRmCdnEndpointContent -EndpointName githubassets -ProfileName githubassets -ResourceGroupName githubassets -LoadContent $uploadFiles
       displayName: Upload to Azure Blob
 
     # Create agent release on Github
