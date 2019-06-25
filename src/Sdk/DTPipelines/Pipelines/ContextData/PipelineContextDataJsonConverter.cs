@@ -37,14 +37,13 @@ namespace GitHub.DistributedTask.Pipelines.ContextData
 
             if (reader.TokenType == JsonToken.Boolean)
             {
-                return new BooleanContextData(Boolean.Parse(reader.Value.ToString()));
+                return new BooleanContextData((Boolean)reader.Value);
             }
 
             if (reader.TokenType == JsonToken.Float || reader.TokenType == JsonToken.Integer)
             {
-                return new NumberContextData(Double.Parse(reader.Value.ToString()));
+                return new NumberContextData(Decimal.Parse(reader.Value.ToString()));
             }
-
 
             if (reader.TokenType != JsonToken.StartObject)
             {
