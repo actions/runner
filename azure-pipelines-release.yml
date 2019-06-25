@@ -107,7 +107,6 @@ stages:
 
     # Upload agent packages to Azure blob storage and refresh Azure CDN
     - powershell: |
-        $DebugPreference = 'Continue'
         Write-Host "Preloading Azure modules." # This is for better performance, to avoid module-autoloading.
         Import-Module AzureRM, AzureRM.profile, AzureRM.Storage, Azure.Storage, AzureRM.Cdn -ErrorAction Ignore -PassThru
         Enable-AzureRmAlias -Scope CurrentUser
@@ -128,7 +127,7 @@ stages:
           $uploadFiles.Add("/runners/$versionDir/$_")
         }
         Write-Host "Get CDN info"
-        Get-AzureRmCdnEndpoint -Debug -ProfileName githubassets -ResourceGroupName githubassets
+        Get-AzureRmCdnEndpoint -ProfileName githubassets -ResourceGroupName githubassets
         Write-Host "Purge Azure CDN Cache"
         Unpublish-AzureRmCdnEndpointContent -EndpointName githubassets -ProfileName githubassets -ResourceGroupName githubassets -PurgeContent $uploadFiles
         Write-Host "Force Refresh Azure CDN Cache"
