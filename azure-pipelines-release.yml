@@ -134,7 +134,7 @@ stages:
         $uploadFiles | ForEach-Object {
           $downloadUrl = "https://githubassets.azureedge.net" + $_
           Write-Host $downloadUrl
-          Invoke-WebRequest -Uri $downloadUrl -OutFile $_.SubString($_.IndexOfLast('/') + 1)
+          Invoke-WebRequest -Uri $downloadUrl -OutFile $_.SubString($_.LastIndexOf('/') + 1)
         }
       displayName: Upload to Azure Blob
 
