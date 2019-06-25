@@ -37,6 +37,11 @@ namespace GitHub.DistributedTask.Pipelines.ContextData
             return (JToken)m_value;
         }
 
+        public override String ToString()
+        {
+            return m_value.ToString().ToLower();
+        }
+
         public bool GetBoolean()
         {
             return Value;

@@ -38,7 +38,7 @@ namespace GitHub.DistributedTask.Pipelines.ContextData
 
         public override JToken ToJToken()
         {
-            return (JToken) m_value;
+            return (JToken)m_value;
         }
 
         String IString.GetString()
