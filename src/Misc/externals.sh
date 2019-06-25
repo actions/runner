@@ -3,8 +3,7 @@ PACKAGERUNTIME=$1
 PRECACHE=$2
 
 NODE_URL=https://nodejs.org/dist
-NODE_VERSION="6.10.3"
-NODE10_VERSION="10.13.0"
+NODE12_VERSION="12.4.0"
 
 get_abs_path() {
   # exploits the fact that pwd will print abs path when no args
@@ -125,8 +124,8 @@ function acquireExternalTool() {
 
 # Download the external tools only for Windows.
 if [[ "$PACKAGERUNTIME" == "win-x64" ]]; then
-    acquireExternalTool "$NODE_URL/v${NODE10_VERSION}/win-x64/node.exe" node10/bin
-    acquireExternalTool "$NODE_URL/v${NODE10_VERSION}/win-x64/node.lib" node10/bin
+    acquireExternalTool "$NODE_URL/v${NODE12_VERSION}/win-x64/node.exe" node12/bin
+    acquireExternalTool "$NODE_URL/v${NODE12_VERSION}/win-x64/node.lib" node12/bin
     if [[ "$PRECACHE" != "" ]]; then
         acquireExternalTool "https://github.com/microsoft/vswhere/releases/download/2.6.7/vswhere.exe" vswhere
     fi
@@ -134,14 +133,14 @@ fi
 
 # Download the external tools only for OSX.
 if [[ "$PACKAGERUNTIME" == "osx-x64" ]]; then
-    acquireExternalTool "$NODE_URL/v${NODE10_VERSION}/node-v${NODE10_VERSION}-darwin-x64.tar.gz" node10 fix_nested_dir        
+    acquireExternalTool "$NODE_URL/v${NODE12_VERSION}/node-v${NODE12_VERSION}-darwin-x64.tar.gz" node12 fix_nested_dir        
 fi
 
 # Download the external tools common across Linux PACKAGERUNTIMEs (excluding OSX).
 if [[ "$PACKAGERUNTIME" == "linux-x64" || "$PACKAGERUNTIME" == "rhel.6-x64" ]]; then  
-    acquireExternalTool "$NODE_URL/v${NODE10_VERSION}/node-v${NODE10_VERSION}-linux-x64.tar.gz" node10 fix_nested_dir
+    acquireExternalTool "$NODE_URL/v${NODE12_VERSION}/node-v${NODE12_VERSION}-linux-x64.tar.gz" node12 fix_nested_dir
 fi
 
 if [[ "$PACKAGERUNTIME" == "linux-arm" ]]; then
-    acquireExternalTool "$NODE_URL/v${NODE10_VERSION}/node-v${NODE10_VERSION}-linux-armv7l.tar.gz" node10 fix_nested_dir	
+    acquireExternalTool "$NODE_URL/v${NODE12_VERSION}/node-v${NODE12_VERSION}-linux-armv7l.tar.gz" node12 fix_nested_dir	
 fi

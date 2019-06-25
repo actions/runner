@@ -8,7 +8,7 @@
         <AssetTargetFallback>portable-net45+win8</AssetTargetFallback>
         <NoWarn>NU1701;NU1603</NoWarn>
         <Version>$(Version)</Version>
-        <DefineConstants>NETSTANDARD;TRACE</DefineConstants>
+        <DefineConstants>NETSTANDARD;NET_STANDARD;TRACE</DefineConstants>
         <LangVersion>7.3</LangVersion>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     </PropertyGroup>

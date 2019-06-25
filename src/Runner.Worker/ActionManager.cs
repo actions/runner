@@ -504,7 +504,8 @@ namespace GitHub.Runner.Worker
                                 Trace.Info($"Using action container image: {container.ContainerImage}.");
                             }
                         }
-                        else if (string.Equals(actionDefinitionData.Execution.ExecutionType, "node", StringComparison.OrdinalIgnoreCase))
+                        else if (string.Equals(actionDefinitionData.Execution.ExecutionType, "node12", StringComparison.OrdinalIgnoreCase) ||
+                                 string.Equals(actionDefinitionData.Execution.ExecutionType, "node", StringComparison.OrdinalIgnoreCase))
                         {
                             definition.Data.Execution.NodeAction = new NodeScriptActionHandlerData
                             {

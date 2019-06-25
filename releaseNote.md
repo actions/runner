@@ -15,9 +15,9 @@
 
 |         | Package                                                                                                       |
 | ------- | ----------------------------------------------------------------------------------------------------------- |
-| Windows x64 | [actions-runner-win-x64-<AGENT_VERSION>.zip](https://vstsagentpackage.azureedge.net/agent/<AGENT_VERSION>/actions-runner-win-x64-<AGENT_VERSION>.zip)      |
-| macOS   | [actions-runner-osx-x64-<AGENT_VERSION>.tar.gz](https://vstsagentpackage.azureedge.net/agent/<AGENT_VERSION>/actions-runner-osx-x64-<AGENT_VERSION>.tar.gz)   |
-| Linux x64  | [actions-runner-linux-x64-<AGENT_VERSION>.tar.gz](https://vstsagentpackage.azureedge.net/agent/<AGENT_VERSION>/actions-runner-linux-x64-<AGENT_VERSION>.tar.gz) |
+| Windows x64 | [actions-runner-win-x64-<AGENT_VERSION>.zip](https://githubassets.azureedge.net/runners/<AGENT_VERSION>/actions-runner-win-x64-<AGENT_VERSION>.zip)      |
+| macOS   | [actions-runner-osx-x64-<AGENT_VERSION>.tar.gz](https://githubassets.azureedge.net/runners/<AGENT_VERSION>/actions-runner-osx-x64-<AGENT_VERSION>.tar.gz)   |
+| Linux x64  | [actions-runner-linux-x64-<AGENT_VERSION>.tar.gz](https://githubassets.azureedge.net/runners/<AGENT_VERSION>/actions-runner-linux-x64-<AGENT_VERSION>.tar.gz) |
 
 After Download:  
 

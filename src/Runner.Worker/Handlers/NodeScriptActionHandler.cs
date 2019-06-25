@@ -67,7 +67,7 @@ namespace GitHub.Runner.Worker.Handlers
             }
             else
             {
-                file = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), "node10", "bin", $"node{IOUtil.ExeExtension}");
+                file = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), "node12", "bin", $"node{IOUtil.ExeExtension}");
 
             }
 
