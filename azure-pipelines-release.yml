@@ -107,6 +107,7 @@ stages:
 
     # Upload agent packages to Azure blob storage and refresh Azure CDN
     - powershell: |
+        $DebugPreference = 'Continue'
         Write-Host "Preloading Azure modules." # This is for better performance, to avoid module-autoloading.
         Import-Module AzureRM, AzureRM.profile, AzureRM.Storage, Azure.Storage, AzureRM.Cdn -ErrorAction Ignore -PassThru
         Enable-AzureRmAlias -Scope CurrentUser
