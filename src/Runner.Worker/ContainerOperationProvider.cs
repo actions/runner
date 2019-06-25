@@ -206,7 +206,7 @@ namespace GitHub.Runner.Worker
                 }
                 else
                 {
-                    node = container.TranslateToContainerPath(Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), "node10", "bin", $"node{IOUtil.ExeExtension}"));
+                    node = container.TranslateToContainerPath(Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), "node12", "bin", $"node{IOUtil.ExeExtension}"));
                 }
                 container.ContainerEntryPoint = node;
                 container.ContainerEntryPointArgs = $"-e \"setInterval(function(){{}}, 24 * 60 * 60 * 1000);\"";

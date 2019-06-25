@@ -130,9 +130,12 @@ stages:
         Get-AzureRmCdnEndpoint -ProfileName githubassets -ResourceGroupName githubassets
         Write-Host "Purge Azure CDN Cache"
         Unpublish-AzureRmCdnEndpointContent -EndpointName githubassets -ProfileName githubassets -ResourceGroupName githubassets -PurgeContent $uploadFiles
-        Write-Host "Force Refresh Azure CDN Cache"
-        $DebugPreference = 'Continue'
-        Publish-AzureRmCdnEndpointContent -EndpointName githubassets -ProfileName githubassets -ResourceGroupName githubassets -LoadContent $uploadFiles
+        Write-Host "Pull assets through Azure CDN"
+        $uploadFiles | ForEach-Object {
+          $downloadUrl = "https://githubassets.azureedge.net" + $_
+          Write-Host $downloadUrl
+          Invoke-WebRequest -Uri $downloadUrl -OutFile $_.SubString($_.IndexOfLast('/') + 1)
+        }
       displayName: Upload to Azure Blob
 
     # Create agent release on Github
