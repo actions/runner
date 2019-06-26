@@ -10,7 +10,7 @@ using System.Runtime.Serialization;
 
 namespace GitHub.Services.WebApi
 {
-    [DataContract(IsReference=true)]
+    [DataContract(IsReference = true)]
     public class WrappedException : ISecuredObject
     {
         public WrappedException()
@@ -133,11 +133,38 @@ namespace GitHub.Services.WebApi
 
         private Type m_type;
 
+        private string m_typeName;
+
         [DataMember]
         public String TypeName
         {
-            get;
-            set;
+            get
+            {
+                return m_typeName;
+            }
+
+            set
+            {
+                if (value.Contains("Microsoft.VisualStudio"))
+                {
+                    m_typeName = value.Replace("Microsoft.VisualStudio", "GitHub");
+                    m_typeName = m_typeName.Substring(0, m_typeName.IndexOf(",")) + ", Sdk";
+                }
+                else if (value.Contains("Microsoft.Azure.DevOps"))
+                {
+                    m_typeName = value.Replace("Microsoft.Azure.DevOps", "GitHub");
+                    m_typeName = m_typeName.Substring(0, m_typeName.IndexOf(",")) + ", Sdk";
+                }
+                else if (value.Contains("Microsoft.TeamFoundation"))
+                {
+                    m_typeName = value.Replace("Microsoft.TeamFoundation", "GitHub");
+                    m_typeName = m_typeName.Substring(0, m_typeName.IndexOf(",")) + ", Sdk";
+                }
+                else
+                {
+                    m_typeName = value;
+                }
+            }
         }
 
         [DataMember]
@@ -164,7 +191,7 @@ namespace GitHub.Services.WebApi
         [DataMember(EmitDefaultValue = false, IsRequired = false)]
         public string StackTrace
         {
-            get; 
+            get;
             set;
         }
 
@@ -178,7 +205,7 @@ namespace GitHub.Services.WebApi
             }
 
             Exception exception = null;
-            
+
             // if they have bothered to map type, use that first.
             if (!String.IsNullOrEmpty(TypeKey))
             {
@@ -198,7 +225,7 @@ namespace GitHub.Services.WebApi
                 }
             }
 
-            if(exception == null)
+            if (exception == null)
             {
                 //no standard mapping, fallback to 
                 exception = UnWrap(innerException);
@@ -239,7 +266,7 @@ namespace GitHub.Services.WebApi
                 }
             }
 
-            if(exception != null && exception.GetType() == this.Type)
+            if (exception != null && exception.GetType() == this.Type)
             {
                 TryUnWrapCustomProperties(exception);
             }
@@ -370,7 +397,7 @@ namespace GitHub.Services.WebApi
             //if we get here we are probably in a back compat scenario
             //check the version of the asmName, and if it is 14.0, upgrade it to
             //the same as this assembly version and try it
-            if(asmName.Version == null || asmName.Version.Major <= c_backCompatVer)
+            if (asmName.Version == null || asmName.Version.Major <= c_backCompatVer)
             {
                 //create new instance, don't copy unknown params...
                 AssemblyName newName = new AssemblyName
@@ -393,7 +420,7 @@ namespace GitHub.Services.WebApi
                         return ret;
                     }
                 }
-                catch(Exception)
+                catch (Exception)
                 { }
             }
 
@@ -401,11 +428,11 @@ namespace GitHub.Services.WebApi
             //like in the AssemblyResolve event in other places
             //the assembly should be in the same directory as this one.
             string currentPath = Assembly.GetExecutingAssembly().Location;
-            if(!String.IsNullOrEmpty(currentPath))
+            if (!String.IsNullOrEmpty(currentPath))
             {
                 string fullPath = Path.Combine(Path.GetDirectoryName(currentPath), asmName.Name + ".dll");
 
-                if(File.Exists(fullPath))
+                if (File.Exists(fullPath))
                 {
                     return Assembly.LoadFrom(fullPath);
                 }
@@ -479,7 +506,7 @@ namespace GitHub.Services.WebApi
                     }
                     catch (Exception)
                     {
-                       // if for any reason we can't get the defined types, we don't want an exception here to mask the real exception.
+                        // if for any reason we can't get the defined types, we don't want an exception here to mask the real exception.
                     }
                 }
                 s_assembliesCheckedForExceptionMappings.Add(assembly); // keep track of all assemblies we have either ruled out or cached mappings for, so we don't have to consider them again
@@ -549,7 +576,7 @@ namespace GitHub.Services.WebApi
 
         private void TryUnWrapCustomProperties(Exception exception)
         {
-            if(this.CustomProperties != null)
+            if (this.CustomProperties != null)
             {
                 foreach (var property in GetCustomPropertiesInfo())
                 {
@@ -571,8 +598,8 @@ namespace GitHub.Services.WebApi
 
         private IEnumerable<PropertyInfo> GetCustomPropertiesInfo()
         {
-            return this.Type.GetTypeInfo().DeclaredProperties.Where(p => p.GetMethod.Attributes.HasFlag(MethodAttributes.Public) 
-                && !p.GetMethod.Attributes.HasFlag(MethodAttributes.Static) 
+            return this.Type.GetTypeInfo().DeclaredProperties.Where(p => p.GetMethod.Attributes.HasFlag(MethodAttributes.Public)
+                && !p.GetMethod.Attributes.HasFlag(MethodAttributes.Static)
                 && p.CustomAttributes.Any(a => a.AttributeType.GetTypeInfo().IsAssignableFrom(typeof(DataMemberAttribute).GetTypeInfo())));
         }
 

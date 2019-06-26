@@ -6,6 +6,7 @@ using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
+using GitHub.DistributedTask.WebApi;
 
 namespace GitHub.Runner.Worker.Handlers
 {
@@ -123,7 +124,8 @@ namespace GitHub.Runner.Worker.Handlers
                 // Error
                 if (exitCode != 0)
                 {
-                    throw new Exception(StringUtil.Loc("ProcessCompletedWithExitCode0", exitCode));
+                    ExecutionContext.Error(StringUtil.Loc("ProcessCompletedWithExitCode0", exitCode));
+                    ExecutionContext.Result = TaskResult.Failed;
                 }
             }
         }

@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
+using GitHub.DistributedTask.WebApi;
 
 namespace GitHub.Runner.Worker.Handlers
 {
@@ -94,11 +95,11 @@ namespace GitHub.Runner.Worker.Handlers
                 // Execute the process. Exit code 0 should always be returned.
                 // A non-zero exit code indicates infrastructural failure.
                 // Task failure should be communicated over STDOUT using ## commands.
-                Task step = StepHost.ExecuteAsync(workingDirectory: StepHost.ResolvePathForStepHost(workingDirectory),
+                Task<int> step = StepHost.ExecuteAsync(workingDirectory: StepHost.ResolvePathForStepHost(workingDirectory),
                                                 fileName: StepHost.ResolvePathForStepHost(file),
                                                 arguments: arguments,
                                                 environment: Environment,
-                                                requireExitCodeZero: true,
+                                                requireExitCodeZero: false,
                                                 outputEncoding: outputEncoding,
                                                 killProcessOnCancel: false,
                                                 inheritConsoleHandler: !ExecutionContext.Variables.Retain_Default_Encoding,
@@ -113,7 +114,12 @@ namespace GitHub.Runner.Worker.Handlers
                 }
                 else
                 {
-                    await step;
+                    var exitCode = await step;
+                    if (exitCode != 0)
+                    {
+                        ExecutionContext.Error($"Node run failed with exit code {exitCode}");
+                        ExecutionContext.Result = TaskResult.Failed;
+                    }
                 }
             }
         }
