@@ -1,12 +1,8 @@
 ## Features
-  - Remove repository resource. #24
-  - Write event.json to disk #30
-  - Job container + container services #23
-  - New github workspace tracking. #29
-  - Prototype artifact actions. #31
+  - N/A
 
 ## Bugs
-  - N/A
+  - Support container action's action.yml, fix server exception mapping, fix job container. #38
 
 ## Misc
   - N/A
