@@ -8,6 +8,7 @@ using Pipelines = GitHub.DistributedTask.Pipelines;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
+using GitHub.DistributedTask.WebApi;
 
 namespace GitHub.Runner.Worker.Handlers
 {
@@ -56,8 +57,31 @@ namespace GitHub.Runner.Worker.Handlers
                 ContainerDisplayName = $"{Pipelines.Validation.NameValidation.Sanitize(Data.ContainerImage)}_{Guid.NewGuid().ToString("N").Substring(0, 6)}",
             };
 
-            container.ContainerEntryPoint = Inputs.GetValueOrDefault("entryPoint");
-            container.ContainerEntryPointArgs = Inputs.GetValueOrDefault("args");
+            if (!string.IsNullOrEmpty(Data.EntryPoint))
+            {
+                container.ContainerEntryPoint = Inputs.GetValueOrDefault(Data.EntryPoint);
+            }
+            else
+            {
+                container.ContainerEntryPoint = Inputs.GetValueOrDefault("entryPoint");
+            }
+
+            if (Data.Arguments != null)
+            {
+                container.ContainerEntryPointArgs = "";
+                foreach (var arg in Data.Arguments)
+                {
+                    var value = Inputs.GetValueOrDefault(arg);
+                    if (!string.IsNullOrEmpty(value))
+                    {
+                        container.ContainerEntryPointArgs = container.ContainerEntryPointArgs + $" \"{value.Replace("\"", "\\\"")}\"";
+                    }
+                }
+            }
+            else
+            {
+                container.ContainerEntryPointArgs = Inputs.GetValueOrDefault("args");
+            }
 
             container.ContainerNetwork = ExecutionContext.GetRunnerContext("containernetwork");
 
@@ -107,7 +131,8 @@ namespace GitHub.Runner.Worker.Handlers
                 var runExitCode = await dockerManger.DockerRun(ExecutionContext, container, stdoutManager.OnDataReceived, stderrManager.OnDataReceived);
                 if (runExitCode != 0)
                 {
-                    throw new InvalidOperationException($"Docker run failed with exit code {runExitCode}");
+                    ExecutionContext.Error($"Docker run failed with exit code {runExitCode}");
+                    ExecutionContext.Result = TaskResult.Failed;
                 }
             }
         }

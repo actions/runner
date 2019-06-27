@@ -540,7 +540,7 @@ namespace GitHub.Runner.Worker
                 {
                     definition.Data.Execution.ContainerAction = new ContainerActionHandlerData
                     {
-                        Target = "Dockerfile",
+                        Target = "Dockerfile"
                     };
 
                     if (CachedActionContainers.TryGetValue(action.Id, out var container))

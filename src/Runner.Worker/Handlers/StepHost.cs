@@ -12,6 +12,7 @@ using GitHub.Services.WebApi;
 using Newtonsoft.Json;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
+using System.Linq;
 
 namespace GitHub.Runner.Worker.Handlers
 {
@@ -155,6 +156,12 @@ namespace GitHub.Runner.Worker.Handlers
             dockerCommandArgs.Add(arguments);
 
             string dockerCommandArgstring = string.Join(" ", dockerCommandArgs);
+
+            // make sure all env are using container path
+            foreach (var envKey in environment.Keys.ToList())
+            {
+                environment[envKey] = this.Container.TranslateToContainerPath(environment[envKey]);
+            }
 
             using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
             {

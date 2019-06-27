@@ -175,9 +175,12 @@ namespace GitHub.Runner.Worker.Container
             dockerOptions.Add($"--workdir {container.ContainerWorkDirectory}");
             dockerOptions.Add($"--rm");
 
-            var envFile = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Temp), ".container_env");
-            File.WriteAllLines(envFile, container.ContainerEnvironmentVariables.Select(x => $"{x.Key}={x.Value}"));
-            dockerOptions.Add($"--env-file \"{envFile}\"");
+            foreach (var env in container.ContainerEnvironmentVariables)
+            {
+                // e.g. -e MY_SECRET maps the value into the exec'ed process without exposing
+                // the value directly in the command
+                dockerOptions.Add($"-e {env.Key}");
+            }
 
             if (!string.IsNullOrEmpty(container.ContainerEntryPoint))
             {
@@ -219,7 +222,7 @@ namespace GitHub.Runner.Worker.Container
             dockerOptions.Add($"{container.ContainerEntryPointArgs}");
 
             var optionsString = string.Join(" ", dockerOptions);
-            return await ExecuteDockerCommandAsync(context, "run", optionsString, stdoutDataReceived, stderrDataReceived, context.CancellationToken);
+            return await ExecuteDockerCommandAsync(context, "run", optionsString, container.ContainerEnvironmentVariables, stdoutDataReceived, stderrDataReceived, context.CancellationToken);
         }
 
         public async Task<int> DockerStart(IExecutionContext context, string containerId)
@@ -338,7 +341,7 @@ namespace GitHub.Runner.Worker.Container
             return ExecuteDockerCommandAsync(context, command, options, null, cancellationToken);
         }
 
-        private async Task<int> ExecuteDockerCommandAsync(IExecutionContext context, string command, string options, EventHandler<ProcessDataReceivedEventArgs> stdoutDataReceived, EventHandler<ProcessDataReceivedEventArgs> stderrDataReceived, CancellationToken cancellationToken = default(CancellationToken))
+        private async Task<int> ExecuteDockerCommandAsync(IExecutionContext context, string command, string options, IDictionary<string, string> environment, EventHandler<ProcessDataReceivedEventArgs> stdoutDataReceived, EventHandler<ProcessDataReceivedEventArgs> stderrDataReceived, CancellationToken cancellationToken = default(CancellationToken))
         {
             string arg = $"{command} {options}".Trim();
             context.Command($"{DockerPath} {arg}");
@@ -365,7 +368,7 @@ namespace GitHub.Runner.Worker.Container
                 workingDirectory: context.GetGitHubContext("workspace"),
                 fileName: DockerPath,
                 arguments: arg,
-                environment: null,
+                environment: environment,
                 requireExitCodeZero: false,
                 outputEncoding: null,
                 killProcessOnCancel: false,
