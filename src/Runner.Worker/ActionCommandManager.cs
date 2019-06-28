@@ -299,11 +299,10 @@ namespace GitHub.Runner.Worker
             }
 
             // Load the config
-            var json = File.ReadAllText(file);
-            var config = StringUtil.ConvertFromJson<IssueMatchersConfig>(json);
+            var config = IOUtil.LoadObject<IssueMatchersConfig>(file);
 
             // Add
-            if (config.Matchers.Count > 0)
+            if (config?.Matchers?.Count > 0)
             {
                 config.Validate();
                 context.AddMatchers(config);
@@ -363,11 +362,13 @@ namespace GitHub.Runner.Worker
                 }
 
                 // Load the config
-                var json = File.ReadAllText(file);
-                var config = StringUtil.ConvertFromJson<IssueMatchersConfig>(json);
+                var config = IOUtil.LoadObject<IssueMatchersConfig>(file);
 
-                // Remove
-                context.RemoveMatchers(config.Matchers.Select(x => x.Owner));
+                if (config?.Matchers?.Count > 0)
+                {
+                    // Remove
+                    context.RemoveMatchers(config.Matchers.Select(x => x.Owner));
+                }
             }
         }
 

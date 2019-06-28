@@ -26,7 +26,7 @@ namespace GitHub.Runner.Worker
     public interface IActionManager : IRunnerService
     {
         Dictionary<Guid, ContainerInfo> CachedActionContainers { get; }
-        Task DownloadAsync(IExecutionContext executionContext, IEnumerable<Pipelines.JobStep> steps);
+        Task PrepareActionsAsync(IExecutionContext executionContext, IEnumerable<Pipelines.JobStep> steps);
         Definition LoadAction(IExecutionContext executionContext, Pipelines.ActionStep action);
     }
 
@@ -41,47 +41,27 @@ namespace GitHub.Runner.Worker
 
         public Dictionary<Guid, ContainerInfo> CachedActionContainers => _cachedActionContainers;
 
-        public async Task DownloadAsync(IExecutionContext executionContext, IEnumerable<Pipelines.JobStep> steps)
+        public async Task PrepareActionsAsync(IExecutionContext executionContext, IEnumerable<Pipelines.JobStep> steps)
         {
             ArgUtil.NotNull(executionContext, nameof(executionContext));
             ArgUtil.NotNull(steps, nameof(steps));
 
-            executionContext.Output("Download all required actions.");
-
+            executionContext.Output("Prepare all required actions.");
             IEnumerable<Pipelines.ActionStep> actions = steps.OfType<Pipelines.ActionStep>();
-
-            HashSet<string> actionContainers = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var containerAction in actions.Where(x => x.Reference.Type == Pipelines.ActionSourceType.ContainerRegistry))
+            foreach (var action in actions)
             {
-                var container = containerAction.Reference as Pipelines.ContainerRegistryReference;
-                actionContainers.Add(container.Image);
-            }
-
-            HashSet<string> actionRepositories = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var repositoryAction in actions.Where(x => x.Reference.Type == Pipelines.ActionSourceType.Repository))
-            {
-                var repository = repositoryAction.Reference as Pipelines.RepositoryPathReference;
-                if (!string.IsNullOrEmpty(repository.Name))
+                if (action.Reference.Type == Pipelines.ActionSourceType.ContainerRegistry)
                 {
-                    actionRepositories.Add($"{repository.Type}:{repository.Name}@{repository.Ref}");
+                    await DownloadContainerRegistryActionAsync(executionContext, action);
                 }
-            }
+                else if (action.Reference.Type == Pipelines.ActionSourceType.Repository)
+                {
+                    // only download the repository archive
+                    await DownloadRepositoryActionAsync(executionContext, action);
 
-            if (actionContainers.Count() == 0 &&
-                actionRepositories.Count() == 0)
-            {
-                executionContext.Debug("There is no required tasks/actions need to download.");
-                return;
-            }
-
-            foreach (var containerAction in actions.Where(x => x.Reference.Type == Pipelines.ActionSourceType.ContainerRegistry))
-            {
-                await DownloadContainerRegistryActionAsync(executionContext, containerAction);
-            }
-
-            foreach (var repositoryAction in actions.Where(x => x.Reference.Type == Pipelines.ActionSourceType.Repository))
-            {
-                await DownloadRepositoryActionAsync(executionContext, repositoryAction);
+                    // more preparation base on content in the repository (action.yml)
+                    await PrepareRepositoryActionAsync(executionContext, action);
+                }
             }
         }
 
@@ -126,6 +106,7 @@ namespace GitHub.Runner.Worker
             }
 
             CachedActionContainers[containerAction.Id] = new ContainerInfo() { ContainerImage = containerReference.Image };
+            Trace.Info($"Prepared docker image '{containerReference.Image}' for action {containerAction.Id} ({containerAction.Name})");
         }
 
         private async Task DownloadRepositoryActionAsync(IExecutionContext executionContext, Pipelines.ActionStep repositoryAction)
@@ -134,7 +115,6 @@ namespace GitHub.Runner.Worker
             ArgUtil.NotNull(executionContext, nameof(executionContext));
 
             var repositoryReference = repositoryAction.Reference as Pipelines.RepositoryPathReference;
-
             ArgUtil.NotNull(repositoryReference, nameof(repositoryReference));
 
             if (string.Equals(repositoryReference.RepositoryType, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase))
@@ -151,14 +131,7 @@ namespace GitHub.Runner.Worker
             ArgUtil.NotNullOrEmpty(repositoryReference.Name, nameof(repositoryReference.Name));
             ArgUtil.NotNullOrEmpty(repositoryReference.Ref, nameof(repositoryReference.Ref));
 
-#if OS_WINDOWS
-            string archiveLink = $"https://api.github.com/repos/{repositoryReference.Name}/zipball/{repositoryReference.Ref}";
-#else
-            string archiveLink = $"https://api.github.com/repos/{repositoryReference.Name}/tarball/{repositoryReference.Ref}";
-#endif
-
             string destDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Actions), repositoryReference.Name.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar), repositoryReference.Ref);
-            Trace.Info($"Download archive '{archiveLink}' to '{destDirectory}'.");
             if (File.Exists(destDirectory + ".completed"))
             {
                 executionContext.Debug($"Action '{repositoryReference.Name}@{repositoryReference.Ref}' already downloaded at '{destDirectory}'.");
@@ -170,6 +143,13 @@ namespace GitHub.Runner.Worker
                 IOUtil.DeleteDirectory(destDirectory, executionContext.CancellationToken);
                 Directory.CreateDirectory(destDirectory);
             }
+
+#if OS_WINDOWS
+            string archiveLink = $"https://api.github.com/repos/{repositoryReference.Name}/zipball/{repositoryReference.Ref}";
+#else
+            string archiveLink = $"https://api.github.com/repos/{repositoryReference.Name}/tarball/{repositoryReference.Ref}";
+#endif
+            Trace.Info($"Download archive '{archiveLink}' to '{destDirectory}'.");
 
             //download and extract action in a temp folder and rename it on success
             string tempDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Actions), "_temp_" + Guid.NewGuid());
@@ -336,10 +316,20 @@ namespace GitHub.Runner.Worker
                 {
                     //it is not critical if we fail to delete the temp folder
                     Trace.Warning("Failed to delete temp folder '{0}'. Exception: {1}", tempDirectory, ex);
-                    executionContext.Warning(StringUtil.Loc("FailedDeletingTempDirectory0Message1", tempDirectory, ex.Message));
                 }
             }
+        }
 
+        private async Task PrepareRepositoryActionAsync(IExecutionContext executionContext, Pipelines.ActionStep repositoryAction)
+        {
+            var repositoryReference = repositoryAction.Reference as Pipelines.RepositoryPathReference;
+            if (string.Equals(repositoryReference.RepositoryType, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase))
+            {
+                Trace.Info($"Repository action is in 'self' repository.");
+                return;
+            }
+
+            string destDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Actions), repositoryReference.Name.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar), repositoryReference.Ref);
             string actionEntryDirectory = destDirectory;
             ArgUtil.NotNull(repositoryReference, nameof(repositoryReference));
             if (!string.IsNullOrEmpty(repositoryReference.Path))
@@ -347,8 +337,9 @@ namespace GitHub.Runner.Worker
                 actionEntryDirectory = Path.Combine(destDirectory, repositoryReference.Path);
             }
 
-            // find the docker file
-            string dockerFile = Path.Combine(actionEntryDirectory, "Dockerfile");
+            // find the docker file or action.yml file
+            var dockerFile = Path.Combine(actionEntryDirectory, "Dockerfile");
+            var actionManifest = Path.Combine(actionEntryDirectory, "action.yml");
             if (File.Exists(dockerFile))
             {
                 executionContext.Output($"Dockerfile for action: '{dockerFile}'.");
@@ -363,17 +354,89 @@ namespace GitHub.Runner.Worker
 
                 CachedActionContainers[repositoryAction.Id] = new ContainerInfo() { ContainerImage = imageName };
             }
+            else if (File.Exists(actionManifest))
+            {
+                executionContext.Output($"action.yml for action: '{actionManifest}'.");
+                using (var yamlInput = new StringReader(File.ReadAllText(actionManifest)))
+                {
+                    var deserializer = new DeserializerBuilder().IgnoreUnmatchedProperties().WithNamingConvention(new CamelCaseNamingConvention()).Build();
+                    var actionDefinitionData = deserializer.Deserialize<ActionDefinitionData>(yamlInput);
+
+                    if (string.Equals(actionDefinitionData.Execution.ExecutionType, "docker", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (actionDefinitionData.Execution.Image.EndsWith("Dockerfile"))
+                        {
+                            var dockerFileFullPath = Path.Combine(actionEntryDirectory, actionDefinitionData.Execution.Image);
+                            executionContext.Output($"Dockerfile for action: '{dockerFileFullPath}'.");
+
+                            var dockerManger = HostContext.GetService<IDockerCommandManager>();
+                            var imageName = $"{dockerManger.DockerInstanceLabel}:{Guid.NewGuid().ToString("N")}";
+                            var buildExitCode = await dockerManger.DockerBuild(executionContext, destDirectory, Directory.GetParent(dockerFileFullPath).FullName, imageName);
+                            if (buildExitCode != 0)
+                            {
+                                throw new InvalidOperationException($"Docker build failed with exit code {buildExitCode}");
+                            }
+
+                            CachedActionContainers[repositoryAction.Id] = new ContainerInfo() { ContainerImage = imageName };
+                        }
+                        else if (actionDefinitionData.Execution.Image.StartsWith("docker://", StringComparison.OrdinalIgnoreCase))
+                        {
+                            var actionImage = actionDefinitionData.Execution.Image.Substring("docker://".Length);
+                            executionContext.Output($"Pull down action image '{actionImage}'");
+
+                            // Pull down docker image with retry up to 3 times
+                            var dockerManger = HostContext.GetService<IDockerCommandManager>();
+                            int retryCount = 0;
+                            int pullExitCode = 0;
+                            while (retryCount < 3)
+                            {
+                                pullExitCode = await dockerManger.DockerPull(executionContext, actionImage);
+                                if (pullExitCode == 0)
+                                {
+                                    break;
+                                }
+                                else
+                                {
+                                    retryCount++;
+                                    if (retryCount < 3)
+                                    {
+                                        var backOff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(10));
+                                        executionContext.Warning($"Docker pull failed with exit code {pullExitCode}, back off {backOff.TotalSeconds} seconds before retry.");
+                                        await Task.Delay(backOff);
+                                    }
+                                }
+                            }
+
+                            if (retryCount == 3 && pullExitCode != 0)
+                            {
+                                throw new InvalidOperationException($"Docker pull failed with exit code {pullExitCode}");
+                            }
+
+                            CachedActionContainers[repositoryAction.Id] = new ContainerInfo() { ContainerImage = actionImage };
+                        }
+                        else
+                        {
+                            throw new NotSupportedException(actionDefinitionData.Execution.Image);
+                        }
+                    }
+                    else if (string.Equals(actionDefinitionData.Execution.ExecutionType, "node12", StringComparison.OrdinalIgnoreCase) ||
+                             string.Equals(actionDefinitionData.Execution.ExecutionType, "node", StringComparison.OrdinalIgnoreCase))
+                    {
+                        Trace.Info($"Action node.js file: {actionDefinitionData.Execution.Script}, no more preparation.");
+                    }
+                    else if (!string.IsNullOrEmpty(actionDefinitionData.Execution.Plugin))
+                    {
+                        Trace.Info($"Action plugin: {actionDefinitionData.Execution.Plugin}, no more preparation.");
+                    }
+                    else
+                    {
+                        throw new NotSupportedException(actionDefinitionData.Execution.ExecutionType);
+                    }
+                }
+            }
             else
             {
-                var actionManifest = Path.Combine(actionEntryDirectory, "action.yml");
-                if (File.Exists(actionManifest))
-                {
-                    executionContext.Output($"action.yml for action: '{actionManifest}'.");
-                }
-                else
-                {
-                    throw new InvalidOperationException($"'{actionEntryDirectory}' does not contains any action entry file.");
-                }
+                throw new InvalidOperationException($"'{actionEntryDirectory}' does not contains any action entry file.");
             }
         }
 

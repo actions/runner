@@ -36,8 +36,8 @@ namespace GitHub.Runner.Worker
             ArgUtil.NotNull(jobContext, nameof(jobContext));
             ArgUtil.NotNull(message, nameof(message));
 
-            // create a new timeline record node for 'Initialize job'
-            IExecutionContext context = jobContext.CreateChild(Guid.NewGuid(), StringUtil.Loc("InitializeJob"), $"{nameof(JobExtension)}_Init", null, null);
+            // create a new timeline record node for 'Setup job'
+            IExecutionContext context = jobContext.CreateChild(Guid.NewGuid(), "Setup Job", $"{nameof(JobExtension)}_Init", null, null);
 
             List<IStep> preJobSteps = new List<IStep>();
             List<IStep> jobSteps = new List<IStep>();
@@ -47,7 +47,7 @@ namespace GitHub.Runner.Worker
                 try
                 {
                     context.Start();
-                    context.Section(StringUtil.Loc("StepStarting", StringUtil.Loc("InitializeJob")));
+                    context.Section(StringUtil.Loc("StepStarting", "Setup Job"));
 
                     // Set agent version variable.
                     context.Output(StringUtil.Loc("AgentVersion", BuildConstants.RunnerPackage.Version));
@@ -74,16 +74,10 @@ namespace GitHub.Runner.Worker
                         message.Workspace);
 
                     // Set the directory variables.
-                    context.Output(StringUtil.Loc("SetBuildVars"));
+                    context.Output("Update context data");
                     string _workDirectory = HostContext.GetDirectory(WellKnownDirectory.Work);
-
                     context.SetRunnerContext("pipelineWorkspace", Path.Combine(_workDirectory, trackingConfig.PipelineDirectory));
                     context.SetGitHubContext("workspace", Path.Combine(_workDirectory, trackingConfig.WorkspaceDirectory));
-
-                    // Download actions if not already in the cache
-                    Trace.Info("Downloading actions.");
-                    var actionManager = HostContext.GetService<IActionManager>();
-                    await actionManager.DownloadAsync(context, message.Steps);
 
                     // Parse all actions' conditions.
                     Trace.Info("Parsing all action's condition inputs.");
@@ -195,6 +189,11 @@ namespace GitHub.Runner.Worker
                     steps.AddRange(jobSteps);
                     steps.AddRange(postJobSteps);
 
+                    // Download actions if not already in the cache
+                    Trace.Info("Downloading actions.");
+                    var actionManager = HostContext.GetService<IActionManager>();
+                    await actionManager.PrepareActionsAsync(context, message.Steps);
+
                     // Start agent log plugin host process
                     // var logPlugin = HostContext.GetService<IAgentLogPlugin>();
                     // await logPlugin.StartAsync(context, steps, jobContext.CancellationToken);
@@ -248,13 +247,13 @@ namespace GitHub.Runner.Worker
             ArgUtil.NotNull(jobContext, nameof(jobContext));
 
             // create a new timeline record node for 'Finalize job'
-            IExecutionContext context = jobContext.CreateChild(Guid.NewGuid(), StringUtil.Loc("FinalizeJob"), $"{nameof(JobExtension)}_Final", null, null);
+            IExecutionContext context = jobContext.CreateChild(Guid.NewGuid(), "Complete Job", $"{nameof(JobExtension)}_Final", null, null);
             using (var register = jobContext.CancellationToken.Register(() => { context.CancelToken(); }))
             {
                 try
                 {
                     context.Start();
-                    context.Section(StringUtil.Loc("StepStarting", StringUtil.Loc("FinalizeJob")));
+                    context.Section(StringUtil.Loc("StepStarting", "Complete Job"));
 
                     // Wait for agent log plugin process exits
                     // var logPlugin = HostContext.GetService<IAgentLogPlugin>();

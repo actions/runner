@@ -36,14 +36,8 @@ namespace GitHub.Runner.Worker.Handlers
             contents = contents ?? string.Empty;
 
             Inputs.TryGetValue("workingDirectory", out var workingDirectory);
-            if (string.IsNullOrEmpty(workingDirectory))
-            {
-                workingDirectory = githubContext["workspace"] as StringContextData;
-                if (string.IsNullOrEmpty(workingDirectory))
-                {
-                    workingDirectory = HostContext.GetDirectory(WellKnownDirectory.Work);
-                }
-            }
+            var workspaceDir = githubContext["workspace"] as StringContextData;
+            workingDirectory = Path.Combine(workspaceDir, workingDirectory ?? string.Empty);
 
 #if OS_WINDOWS
             // Fixup contents
