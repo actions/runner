@@ -180,11 +180,11 @@ namespace GitHub.Runner.Worker
             if (container.ContainerImage.StartsWith("./") || container.ContainerImage.StartsWith(@".\\"))
             {
                 var dockerfilePath = Path.Combine(executionContext.GetGitHubContext("workspace"), container.ContainerImage);
-                ArgUtil.File(dockerfilePath, dockerfilePath);
+                ArgUtil.Directory(dockerfilePath, dockerfilePath);
                 executionContext.Output($"Building job container from Dockerfile: '{dockerfilePath}'.");
 
                 var imageName = $"{_dockerManger.DockerInstanceLabel}:{executionContext.Id.ToString("N")}";
-                var buildExitCode = await _dockerManger.DockerBuild(executionContext, executionContext.GetGitHubContext("workspace"), Directory.GetParent(dockerfilePath).FullName, imageName);
+                var buildExitCode = await _dockerManger.DockerBuild(executionContext, executionContext.GetGitHubContext("workspace"), dockerfilePath, imageName);
                 if (buildExitCode != 0)
                 {
                     throw new InvalidOperationException($"Docker build failed with exit code {buildExitCode}");
