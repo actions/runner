@@ -46,61 +46,62 @@ namespace GitHub.Runner.Worker.Handlers
             }
 
             Inputs.TryGetValue("shell", out var shell);
+
+            string commandPath, arguments;
+            var filePath = Path.Combine(tempDirectory, $"{Guid.NewGuid()}");
+#if OS_WINDOWS
+            var resolvedPath = StepHost.ResolvePathForStepHost(filePath);
+
+            // Fixup contents
+            contents = contents.Replace("\r\n", "\n").Replace("\n", "\r\n");
+
+            // Set up command and arguments
             if (string.IsNullOrEmpty(shell))
             {
-                // Set up default shells for windows / linux as below
+                // Note, use @echo off instead of using the /Q command line switch.
+                // When /Q is used, echo can't be turned on.
+                contents = $"@echo off\r\n{contents}";
+
+                commandPath = System.Environment.GetEnvironmentVariable("ComSpec");
+                ArgUtil.NotNullOrEmpty(commandPath, "%ComSpec%");
+
+                arguments = $"/D /E:ON /V:OFF /S /C \"CALL \"{resolvedPath}\"\"";
             }
             else
             {
-                ExecutionContext.Output($"Shell option: {shell}");
-                // Set up given shell / interpreter
-                var shellStringParts = shell.Split(" ", 2);
+                var parsed = ParseShellOptionString(shell);
+                commandPath = parsed.shellCommand;
+                arguments = $"{parsed.shellArgs} {resolvedPath}".TrimStart();
             }
 
-#if OS_WINDOWS
-            // Fixup contents
-            contents = contents.Replace("\r\n", "\n").Replace("\n", "\r\n");
-            // Note, use @echo off instead of using the /Q command line switch.
-            // When /Q is used, echo can't be turned on.
-            contents = $"@echo off\r\n{contents}";
-
-            // Write the script
-            var filePath = Path.Combine(tempDirectory, $"{Guid.NewGuid()}.cmd");
             var encoding = ExecutionContext.Variables.Retain_Default_Encoding && Console.InputEncoding.CodePage != 65001
                 ? Console.InputEncoding
                 : new UTF8Encoding(false);
-            File.WriteAllText(filePath, contents, encoding);
-
-            // Command path
-            var commandPath = System.Environment.GetEnvironmentVariable("ComSpec");
-            ArgUtil.NotNullOrEmpty(commandPath, "%ComSpec%");
-
-            // Arguments
-            var arguments = $"/D /E:ON /V:OFF /S /C \"CALL \"{StepHost.ResolvePathForStepHost(filePath)}\"\"";
 #else
-            // Fixup contents
-            contents = $"set -eo pipefail\n{contents}";
+            var resolvedPath = StepHost.ResolvePathForStepHost(filePath).Replace("\"", "\\\"");
 
-            // Write the script
-            var filePath = Path.Combine(tempDirectory, $"{Guid.NewGuid()}.sh");
-            // Don't add a BOM. It causes the script to fail on some operating systems (e.g. on Ubuntu 14).
-            File.WriteAllText(filePath, contents, new UTF8Encoding(false));
-
-            // Command path
-            string commandPath;
+            // Set up command and arguments
             if (string.IsNullOrEmpty(shell))
             {
+                // Fixup default contents
+                contents = $"set -eo pipefail\n{contents}";
+
                 commandPath = WhichUtil.Which("bash") ?? WhichUtil.Which("sh", true);
+
+                arguments = $"--noprofile --norc {resolvedPath}";
             }
             else
             {
-                // TODO split given shell options to seperate command from any flags
-                commandPath = WhichUtil.Which(shell);
+                var parsed = ParseShellOptionString(shell);
+                commandPath = WhichUtil.Which(parsed.shellCommand, true);
+                arguments = $"{parsed.shellArgs} {resolvedPath}".TrimStart();
             }
 
-            // Arguments
-            var arguments = $"--noprofile --norc {StepHost.ResolvePathForStepHost(filePath).Replace("\"", "\\\"")}";
+            // Don't add a BOM. It causes the script to fail on some operating systems (e.g. on Ubuntu 14).
+            var encoding = new UTF8Encoding(false);
 #endif
+            // Write the script
+            File.WriteAllText(filePath, contents, encoding);
 
             ExecutionContext.Output("Script contents:");
             ExecutionContext.Output(contents);
@@ -148,6 +149,24 @@ namespace GitHub.Runner.Worker.Handlers
                     ExecutionContext.Error(StringUtil.Loc("ProcessCompletedWithExitCode0", exitCode));
                     ExecutionContext.Result = TaskResult.Failed;
                 }
+            }
+        }
+
+        private (string shellCommand, string shellArgs) ParseShellOptionString(string shellOption)
+        {
+            var shellStringParts = shellOption.Split(" ", 2);
+            if (shellStringParts.Length == 2)
+            {
+                return (shellCommand: shellStringParts[0], shellArgs: shellStringParts[1]);
+            }
+            else if (shellStringParts.Length == 1)
+            {
+                return (shellCommand: shellStringParts[0], shellArgs: "");
+            }
+            else
+            {
+                // TODO error handling
+                return (shellCommand: "", shellArgs: "");
             }
         }
     }
