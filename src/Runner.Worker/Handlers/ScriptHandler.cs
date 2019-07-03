@@ -54,6 +54,7 @@ namespace GitHub.Runner.Worker.Handlers
             {
                 ExecutionContext.Output($"Shell option: {shell}");
                 // Set up given shell / interpreter
+                var shellStringParts = shell.Split(" ", 2);
             }
 
 #if OS_WINDOWS
@@ -86,7 +87,16 @@ namespace GitHub.Runner.Worker.Handlers
             File.WriteAllText(filePath, contents, new UTF8Encoding(false));
 
             // Command path
-            var commandPath = WhichUtil.Which("bash") ?? WhichUtil.Which("sh", true);
+            string commandPath;
+            if (string.IsNullOrEmpty(shell))
+            {
+                commandPath = WhichUtil.Which("bash") ?? WhichUtil.Which("sh", true);
+            }
+            else
+            {
+                // TODO split given shell options to seperate command from any flags
+                commandPath = WhichUtil.Which(shell);
+            }
 
             // Arguments
             var arguments = $"--noprofile --norc {StepHost.ResolvePathForStepHost(filePath).Replace("\"", "\\\"")}";
