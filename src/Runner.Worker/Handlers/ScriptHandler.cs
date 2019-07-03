@@ -45,6 +45,17 @@ namespace GitHub.Runner.Worker.Handlers
                 }
             }
 
+            Inputs.TryGetValue("shell", out var shell);
+            if (string.IsNullOrEmpty(shell))
+            {
+                // Set up default shells for windows / linux as below
+            }
+            else
+            {
+                ExecutionContext.Output($"Shell option: {shell}");
+                // Set up given shell / interpreter
+            }
+
 #if OS_WINDOWS
             // Fixup contents
             contents = contents.Replace("\r\n", "\n").Replace("\n", "\r\n");
