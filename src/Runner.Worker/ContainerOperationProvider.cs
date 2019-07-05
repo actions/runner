@@ -194,10 +194,6 @@ namespace GitHub.Runner.Worker
             // Pull container from registry
             else
             {
-                if (container.ContainerImage.StartsWith("docker://"))
-                {
-                    container.ContainerImage = container.ContainerImage.Substring("docker://".Length);
-                }
                 // Pull down docker image with retry up to 3 times
                 int retryCount = 0;
                 int pullExitCode = 0;
