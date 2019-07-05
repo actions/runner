@@ -47,17 +47,16 @@ namespace GitHub.Runner.Worker.Handlers
 
             Inputs.TryGetValue("shell", out var shell);
 
-            string commandPath, arguments;
-            var filePath = Path.Combine(tempDirectory, $"{Guid.NewGuid()}");
+            string commandPath, arguments, scriptFilePath;
 #if OS_WINDOWS
-            var resolvedPath = StepHost.ResolvePathForStepHost(filePath);
-
             // Fixup contents
             contents = contents.Replace("\r\n", "\n").Replace("\n", "\r\n");
 
             // Set up command and arguments
             if (string.IsNullOrEmpty(shell))
             {
+                scriptFilePath = Path.Combine(tempDirectory, $"{Guid.NewGuid()}.cmd");
+
                 // Note, use @echo off instead of using the /Q command line switch.
                 // When /Q is used, echo can't be turned on.
                 contents = $"@echo off\r\n{contents}";
@@ -65,20 +64,23 @@ namespace GitHub.Runner.Worker.Handlers
                 commandPath = System.Environment.GetEnvironmentVariable("ComSpec");
                 ArgUtil.NotNullOrEmpty(commandPath, "%ComSpec%");
 
-                arguments = $"/D /E:ON /V:OFF /S /C \"CALL \"{resolvedPath}\"\"";
+                arguments = $"/D /E:ON /V:OFF /S /C \"CALL \"{StepHost.ResolvePathForStepHost(scriptFilePath)}\"\"";
             }
             else
             {
+                scriptFilePath = Path.Combine(tempDirectory, $"{Guid.NewGuid()}");
+
                 var parsed = ParseShellOptionString(shell);
-                commandPath = parsed.shellCommand;
-                arguments = $"{parsed.shellArgs} {resolvedPath}".TrimStart();
+                commandPath = WhichUtil.Which(parsed.shellCommand, true);
+                arguments = $"{parsed.shellArgs} {StepHost.ResolvePathForStepHost(scriptFilePath)}".TrimStart();
             }
 
             var encoding = ExecutionContext.Variables.Retain_Default_Encoding && Console.InputEncoding.CodePage != 65001
                 ? Console.InputEncoding
                 : new UTF8Encoding(false);
 #else
-            var resolvedPath = StepHost.ResolvePathForStepHost(filePath).Replace("\"", "\\\"");
+            scriptFilePath = Path.Combine(tempDirectory, $"{Guid.NewGuid()}");
+            var resolvedPath = StepHost.ResolvePathForStepHost(scriptFilePath).Replace("\"", "\\\"");
 
             // Set up command and arguments
             if (string.IsNullOrEmpty(shell))
@@ -101,7 +103,7 @@ namespace GitHub.Runner.Worker.Handlers
             var encoding = new UTF8Encoding(false);
 #endif
             // Write the script
-            File.WriteAllText(filePath, contents, encoding);
+            File.WriteAllText(scriptFilePath, contents, encoding);
 
             ExecutionContext.Output("Script contents:");
             ExecutionContext.Output(contents);
