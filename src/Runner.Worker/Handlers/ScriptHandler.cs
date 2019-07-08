@@ -47,15 +47,20 @@ namespace GitHub.Runner.Worker.Handlers
 
             Inputs.TryGetValue("shell", out var shell);
 
-            string commandPath, arguments, scriptFilePath;
+            var scriptFilePath = Path.Combine(tempDirectory, $"{Guid.NewGuid()}");
+            var resolvedPath = StepHost.ResolvePathForStepHost(scriptFilePath).Replace("\"", "\\\"");
+            string commandPath, arguments, shellName;
 #if OS_WINDOWS
             // Fixup contents
             contents = contents.Replace("\r\n", "\n").Replace("\n", "\r\n");
+            var encoding = ExecutionContext.Variables.Retain_Default_Encoding && Console.InputEncoding.CodePage != 65001
+                ? Console.InputEncoding
+                : new UTF8Encoding(false);
 
-            // Set up command and arguments
+            // Set up default command and arguments
             if (string.IsNullOrEmpty(shell))
             {
-                scriptFilePath = Path.Combine(tempDirectory, $"{Guid.NewGuid()}.cmd");
+                shellName = "cmd";
 
                 // Note, use @echo off instead of using the /Q command line switch.
                 // When /Q is used, echo can't be turned on.
@@ -64,46 +69,49 @@ namespace GitHub.Runner.Worker.Handlers
                 commandPath = System.Environment.GetEnvironmentVariable("ComSpec");
                 ArgUtil.NotNullOrEmpty(commandPath, "%ComSpec%");
 
-                arguments = $"/D /E:ON /V:OFF /S /C \"CALL \"{StepHost.ResolvePathForStepHost(scriptFilePath)}\"\"";
+                arguments = ScriptHandlerHelpers.GetScriptArgumentsFormat(shellName);
             }
-            else
-            {
-                scriptFilePath = Path.Combine(tempDirectory, $"{Guid.NewGuid()}");
-
-                var parsed = ParseShellOptionString(shell);
-                commandPath = WhichUtil.Which(parsed.shellCommand, true);
-                arguments = $"{parsed.shellArgs} {StepHost.ResolvePathForStepHost(scriptFilePath)}".TrimStart();
-            }
-
-            var encoding = ExecutionContext.Variables.Retain_Default_Encoding && Console.InputEncoding.CodePage != 65001
-                ? Console.InputEncoding
-                : new UTF8Encoding(false);
 #else
-            scriptFilePath = Path.Combine(tempDirectory, $"{Guid.NewGuid()}");
-            var resolvedPath = StepHost.ResolvePathForStepHost(scriptFilePath).Replace("\"", "\\\"");
+            // Don't add a BOM. It causes the script to fail on some operating systems (e.g. on Ubuntu 14).
+            var encoding = new UTF8Encoding(false);
 
             // Set up command and arguments
             if (string.IsNullOrEmpty(shell))
             {
+                shellName = "sh";
+
                 // Fixup default contents
                 contents = $"set -eo pipefail\n{contents}";
 
                 commandPath = WhichUtil.Which("bash") ?? WhichUtil.Which("sh", true);
 
-                arguments = $"--noprofile --norc {resolvedPath}";
+                arguments = ScriptHandlerHelpers.GetScriptArgumentsFormat(shellName);
             }
+#endif
             else
             {
                 var parsed = ParseShellOptionString(shell);
+                shellName = parsed.shellCommand;
                 commandPath = WhichUtil.Which(parsed.shellCommand, true);
-                arguments = $"{parsed.shellArgs} {resolvedPath}".TrimStart();
+                arguments = $"{parsed.shellArgs}".TrimStart();
             }
 
-            // Don't add a BOM. It causes the script to fail on some operating systems (e.g. on Ubuntu 14).
-            var encoding = new UTF8Encoding(false);
-#endif
+            // We do not not the full path until we know what shell is being used, so that we can determine the file extension
+            var fullyResolvedPath = $"{resolvedPath}{ScriptHandlerHelpers.GetScriptFileExtension(shellName)}";
+
+            // [...args] were given in shell options, or system default was used
+            if (!string.IsNullOrEmpty(arguments))
+            {
+                arguments = FormatArgumentString(arguments, fullyResolvedPath);
+            }
+            // if no [...args] in shell options, look up defaults, finally defaulting to 'command scriptfile'
+            else
+            {
+                arguments = $"{fullyResolvedPath}";
+            }
+
             // Write the script
-            File.WriteAllText(scriptFilePath, contents, encoding);
+            File.WriteAllText(fullyResolvedPath, contents, encoding);
 
             ExecutionContext.Output("Script contents:");
             ExecutionContext.Output(contents);
@@ -154,12 +162,31 @@ namespace GitHub.Runner.Worker.Handlers
             }
         }
 
+        private string FormatArgumentString(string argString, string scriptFilePath)
+        {
+            // No args givin in options and no defaults exist. Only arg is the script file
+            if (string.IsNullOrEmpty(argString))
+            {
+                return scriptFilePath;
+            }
+            else
+            {
+                // Format string, e.g. `-args {0}` may be given in options or come from system defaults
+                if (argString.Contains("{0}"))
+                {
+                    return string.Format(argString, scriptFilePath);
+                }
+                // Regular arg string, e.g. `-abc file.sh` 
+                return $"{argString} {scriptFilePath}";
+            }
+        }
+
         private (string shellCommand, string shellArgs) ParseShellOptionString(string shellOption)
         {
             var shellStringParts = shellOption.Split(" ", 2);
             if (shellStringParts.Length == 2)
             {
-                return (shellCommand: shellStringParts[0], shellArgs: shellStringParts[1]);
+                return (shellCommand: shellStringParts[0], shellArgs: $"{shellStringParts[1]}");
             }
             else if (shellStringParts.Length == 1)
             {
@@ -168,6 +195,7 @@ namespace GitHub.Runner.Worker.Handlers
             else
             {
                 // TODO error handling
+                // ... failed to parse COMMAND [..ARGS] from {string}
                 return (shellCommand: "", shellArgs: "");
             }
         }
