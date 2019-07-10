@@ -47,7 +47,6 @@ namespace GitHub.Runner.Worker.Handlers
 
             Inputs.TryGetValue("shell", out var shell);
 
-            var scriptFilePath = Path.Combine(tempDirectory, $"{Guid.NewGuid()}");
             string commandPath, argFormat, shellName;
 #if OS_WINDOWS
             // Fixup contents
@@ -101,13 +100,15 @@ namespace GitHub.Runner.Worker.Handlers
             }
 
             // We do not not the full path until we know what shell is being used, so that we can determine the file extension
-            var resolvedScriptPath = $"{StepHost.ResolvePathForStepHost(scriptFilePath).Replace("\"", "\\\"")}{ScriptHandlerHelpers.GetScriptFileExtension(shellName)}";
+            var scriptFilePath = Path.Combine(tempDirectory, $"{Guid.NewGuid()}{ScriptHandlerHelpers.GetScriptFileExtension(shellName)}");
+            var resolvedScriptPath = $"{StepHost.ResolvePathForStepHost(scriptFilePath).Replace("\"", "\\\"")}";
 
             // Format arg string with script path
             var arguments = FormatArgumentString(argFormat, resolvedScriptPath);
 
             // Write the script
-            File.WriteAllText(resolvedScriptPath, contents, encoding);
+            // Script is written to local path (ie host) but executed relative to the StepHost, which may be a container
+            File.WriteAllText(scriptFilePath, contents, encoding);
 
             ExecutionContext.Output("Script contents:");
             ExecutionContext.Output(contents);
