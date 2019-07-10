@@ -43,6 +43,16 @@ namespace GitHub.DistributedTask.Expressions
                 kind = ValueKind.String;
                 return str.GetString();
             }
+            else if (val is IBoolean booleanValue)
+            {
+                kind = ValueKind.Boolean;
+                return booleanValue.GetBoolean();
+            }
+            else if (val is INumber num)
+            {
+                kind = ValueKind.Number;
+                return num.GetNumber();
+            }
             else if (val is JToken)
             {
                 var jtoken = val as JToken;
