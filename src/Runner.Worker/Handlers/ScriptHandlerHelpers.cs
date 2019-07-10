@@ -6,19 +6,10 @@ namespace GitHub.Runner.Worker.Handlers
 {
     internal class ScriptHandlerHelpers
     {
-        internal enum WellKnownScriptRunners
-        {
-            cmd,
-            powershell
-        }
-        // internal static string GetDefaultScriptArguments(WellKnownScriptRunners scriptType, string scriptFilePath)
-        // {
-        //     return "";
-        // }
-
         private static readonly Dictionary<string, string> DefaultArguments = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["cmd"] = "/D /E:ON /V:OFF /S /C \"CALL \"{0}\"\"",
+            ["pwsh"] = "-command \"& '{0}'\"",
             ["powershell"] = "-command \"& '{0}'\"",
             ["bash"] = "--noprofile --norc {0}",
             ["sh"] = "--noprofile --norc {0}"
@@ -27,12 +18,11 @@ namespace GitHub.Runner.Worker.Handlers
         private static readonly Dictionary<string, string> Extensions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["cmd"] = ".cmd",
+            ["pwsh"] = ".ps1",
             ["powershell"] = ".ps1",
             ["bash"] = ".sh",
             ["sh"] = ".sh"
         };
-
-        // TODO add lookup for wellknown file ext, needed for windows exec cmd and powershell
 
         internal static bool TryGetDefaultScriptArguments(string scriptType, string scriptFilePath, out string defaultRunArgs)
         {

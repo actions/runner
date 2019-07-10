@@ -48,8 +48,7 @@ namespace GitHub.Runner.Worker.Handlers
             Inputs.TryGetValue("shell", out var shell);
 
             var scriptFilePath = Path.Combine(tempDirectory, $"{Guid.NewGuid()}");
-            var resolvedPath = StepHost.ResolvePathForStepHost(scriptFilePath).Replace("\"", "\\\"");
-            string commandPath, arguments, shellName;
+            string commandPath, argFormat, shellName;
 #if OS_WINDOWS
             // Fixup contents
             contents = contents.Replace("\r\n", "\n").Replace("\n", "\r\n");
@@ -69,7 +68,7 @@ namespace GitHub.Runner.Worker.Handlers
                 commandPath = System.Environment.GetEnvironmentVariable("ComSpec");
                 ArgUtil.NotNullOrEmpty(commandPath, "%ComSpec%");
 
-                arguments = ScriptHandlerHelpers.GetScriptArgumentsFormat(shellName);
+                argFormat = ScriptHandlerHelpers.GetScriptArgumentsFormat(shellName);
             }
 #else
             // Don't add a BOM. It causes the script to fail on some operating systems (e.g. on Ubuntu 14).
@@ -79,13 +78,8 @@ namespace GitHub.Runner.Worker.Handlers
             if (string.IsNullOrEmpty(shell))
             {
                 shellName = "sh";
-
-                // Fixup default contents
-                contents = $"set -eo pipefail\n{contents}";
-
                 commandPath = WhichUtil.Which("bash") ?? WhichUtil.Which("sh", true);
-
-                arguments = ScriptHandlerHelpers.GetScriptArgumentsFormat(shellName);
+                argFormat = ScriptHandlerHelpers.GetScriptArgumentsFormat(shellName);
             }
 #endif
             else
@@ -93,25 +87,27 @@ namespace GitHub.Runner.Worker.Handlers
                 var parsed = ParseShellOptionString(shell);
                 shellName = parsed.shellCommand;
                 commandPath = WhichUtil.Which(parsed.shellCommand, true);
-                arguments = $"{parsed.shellArgs}".TrimStart();
+                argFormat = $"{parsed.shellArgs}".TrimStart();
+                if (string.IsNullOrEmpty(argFormat))
+                {
+                    argFormat = ScriptHandlerHelpers.GetScriptArgumentsFormat(shellName);
+                }
+            }
+
+            // arg format was not given in options or well-known, error
+            if (string.IsNullOrEmpty(argFormat))
+            {
+                throw new Exception("Invalid shell option");
             }
 
             // We do not not the full path until we know what shell is being used, so that we can determine the file extension
-            var fullyResolvedPath = $"{resolvedPath}{ScriptHandlerHelpers.GetScriptFileExtension(shellName)}";
+            var resolvedScriptPath = $"{StepHost.ResolvePathForStepHost(scriptFilePath).Replace("\"", "\\\"")}{ScriptHandlerHelpers.GetScriptFileExtension(shellName)}";
 
-            // [...args] were given in shell options, or system default was used
-            if (!string.IsNullOrEmpty(arguments))
-            {
-                arguments = FormatArgumentString(arguments, fullyResolvedPath);
-            }
-            // if no [...args] in shell options, look up defaults, finally defaulting to 'command scriptfile'
-            else
-            {
-                arguments = $"{fullyResolvedPath}";
-            }
+            // Format arg string with script path
+            var arguments = FormatArgumentString(argFormat, resolvedScriptPath);
 
             // Write the script
-            File.WriteAllText(fullyResolvedPath, contents, encoding);
+            File.WriteAllText(resolvedScriptPath, contents, encoding);
 
             ExecutionContext.Output("Script contents:");
             ExecutionContext.Output(contents);
