@@ -12,7 +12,7 @@ namespace GitHub.Runner.Worker.Handlers
             ["pwsh"] = "-command \"& '{0}'\"",
             ["powershell"] = "-command \"& '{0}'\"",
             ["bash"] = "--noprofile --norc -e -o pipefail {0}",
-            ["sh"] = "-e -o pipefail {0}"
+            ["sh"] = "-e {0}"
         };
 
         private static readonly Dictionary<string, string> Extensions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
