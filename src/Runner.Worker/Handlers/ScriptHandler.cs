@@ -120,16 +120,8 @@ namespace GitHub.Runner.Worker.Handlers
                 }
             }
 
-            string fileName;
-            if (StepHost is ContainerStepHost)
-            {
-                fileName = shellCommand;
-            }
-            else
-            {
-                fileName = StepHost.ResolvePathForStepHost(commandPath);
-            }
             // dump out the command
+            var fileName = StepHost is ContainerStepHost ? shellCommand : StepHost.ResolvePathForStepHost(commandPath);
             ExecutionContext.Command($"{fileName} {arguments}");
 
             using (var stdoutManager = new OutputManager(ExecutionContext, ActionCommandManager))
