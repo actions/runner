@@ -47,66 +47,57 @@ namespace GitHub.Runner.Worker.Handlers
 
             Inputs.TryGetValue("shell", out var shell);
 
-            string commandPath, argFormat, shellName;
-#if OS_WINDOWS
-            // Fixup contents
-            contents = contents.Replace("\r\n", "\n").Replace("\n", "\r\n");
-            var encoding = ExecutionContext.Variables.Retain_Default_Encoding && Console.InputEncoding.CodePage != 65001
-                ? Console.InputEncoding
-                : new UTF8Encoding(false);
-
+            string commandPath, argFormat, shellCommand;
             // Set up default command and arguments
             if (string.IsNullOrEmpty(shell))
             {
-                shellName = "cmd";
-
-                // Note, use @echo off instead of using the /Q command line switch.
-                // When /Q is used, echo can't be turned on.
-                contents = $"@echo off\r\n{contents}";
-
+#if OS_WINDOWS
+                shellCommand = "cmd";
                 commandPath = System.Environment.GetEnvironmentVariable("ComSpec");
                 ArgUtil.NotNullOrEmpty(commandPath, "%ComSpec%");
-
-                argFormat = ScriptHandlerHelpers.GetScriptArgumentsFormat(shellName);
-            }
 #else
-            // Don't add a BOM. It causes the script to fail on some operating systems (e.g. on Ubuntu 14).
-            var encoding = new UTF8Encoding(false);
-
-            // Set up command and arguments
-            if (string.IsNullOrEmpty(shell))
-            {
-                shellName = "sh";
+                shellCommand = "sh";
                 commandPath = WhichUtil.Which("bash") ?? WhichUtil.Which("sh", true);
-                argFormat = ScriptHandlerHelpers.GetScriptArgumentsFormat(shellName);
-            }
 #endif
+                argFormat = ScriptHandlerHelpers.GetScriptArgumentsFormat(shellCommand);
+            }
             else
             {
-                var parsed = ParseShellOptionString(shell);
-                shellName = parsed.shellCommand;
+                var parsed = ScriptHandlerHelpers.ParseShellOptionString(shell);
+                shellCommand = parsed.shellCommand;
                 commandPath = WhichUtil.Which(parsed.shellCommand, true);
                 argFormat = $"{parsed.shellArgs}".TrimStart();
                 if (string.IsNullOrEmpty(argFormat))
                 {
-                    argFormat = ScriptHandlerHelpers.GetScriptArgumentsFormat(shellName);
+                    argFormat = ScriptHandlerHelpers.GetScriptArgumentsFormat(shellCommand);
                 }
             }
 
-            // arg format was not given in options or well-known, error
-            if (string.IsNullOrEmpty(argFormat))
+            // No arg format was given, shell must be a built-in
+            if (string.IsNullOrEmpty(argFormat) || !argFormat.Contains("{0}"))
             {
-                throw new Exception("Invalid shell option");
+                throw new Exception("Invalid shell option. Shell must be a valid built-in (bash, sh, cmd, powershell, pwsh) or a format string containing {0}");
             }
 
             // We do not not the full path until we know what shell is being used, so that we can determine the file extension
-            var scriptFilePath = Path.Combine(tempDirectory, $"{Guid.NewGuid()}{ScriptHandlerHelpers.GetScriptFileExtension(shellName)}");
+            var scriptFilePath = Path.Combine(tempDirectory, $"{Guid.NewGuid()}{ScriptHandlerHelpers.GetScriptFileExtension(shellCommand)}");
             var resolvedScriptPath = $"{StepHost.ResolvePathForStepHost(scriptFilePath).Replace("\"", "\\\"")}";
 
             // Format arg string with script path
-            var arguments = FormatArgumentString(argFormat, resolvedScriptPath);
+            var arguments = ScriptHandlerHelpers.FormatArgumentString(argFormat, resolvedScriptPath);
 
-            // Write the script
+            // Fix up and write the script
+            contents = ScriptHandlerHelpers.FixUpScriptContents(shellCommand, contents);
+#if OS_WINDOWS
+            // Normalize Windows line endings
+            contents = contents.Replace("\r\n", "\n").Replace("\n", "\r\n");
+            var encoding = ExecutionContext.Variables.Retain_Default_Encoding && Console.InputEncoding.CodePage != 65001
+                ? Console.InputEncoding
+                : new UTF8Encoding(false);
+#else
+            // Don't add a BOM. It causes the script to fail on some operating systems (e.g. on Ubuntu 14).
+            var encoding = new UTF8Encoding(false);
+#endif
             // Script is written to local path (ie host) but executed relative to the StepHost, which may be a container
             File.WriteAllText(scriptFilePath, contents, encoding);
 
@@ -129,8 +120,16 @@ namespace GitHub.Runner.Worker.Handlers
                 }
             }
 
+            string fileName;
+            if (StepHost is ContainerStepHost)
+            {
+                fileName = shellCommand;
+            }
+            else
+            {
+                fileName = StepHost.ResolvePathForStepHost(commandPath);
+            }
             // dump out the command
-            var fileName = StepHost.ResolvePathForStepHost(commandPath);
             ExecutionContext.Command($"{fileName} {arguments}");
 
             using (var stdoutManager = new OutputManager(ExecutionContext, ActionCommandManager))
@@ -156,44 +155,6 @@ namespace GitHub.Runner.Worker.Handlers
                     ExecutionContext.Error(StringUtil.Loc("ProcessCompletedWithExitCode0", exitCode));
                     ExecutionContext.Result = TaskResult.Failed;
                 }
-            }
-        }
-
-        private string FormatArgumentString(string argString, string scriptFilePath)
-        {
-            // No args givin in options and no defaults exist. Only arg is the script file
-            if (string.IsNullOrEmpty(argString))
-            {
-                return scriptFilePath;
-            }
-            else
-            {
-                // Format string, e.g. `-args {0}` may be given in options or come from system defaults
-                if (argString.Contains("{0}"))
-                {
-                    return string.Format(argString, scriptFilePath);
-                }
-                // Regular arg string, e.g. `-abc file.sh` 
-                return $"{argString} {scriptFilePath}";
-            }
-        }
-
-        private (string shellCommand, string shellArgs) ParseShellOptionString(string shellOption)
-        {
-            var shellStringParts = shellOption.Split(" ", 2);
-            if (shellStringParts.Length == 2)
-            {
-                return (shellCommand: shellStringParts[0], shellArgs: $"{shellStringParts[1]}");
-            }
-            else if (shellStringParts.Length == 1)
-            {
-                return (shellCommand: shellStringParts[0], shellArgs: "");
-            }
-            else
-            {
-                // TODO error handling
-                // ... failed to parse COMMAND [..ARGS] from {string}
-                return (shellCommand: "", shellArgs: "");
             }
         }
     }
