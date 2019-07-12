@@ -317,6 +317,7 @@ namespace GitHub.Runner.Worker
             int? message = null;
             int? fromPath = null;
 
+            bool messageSet = false;
             // Validate each pattern config
             for (var i = 0; i < _patterns.Length; i++)
             {
@@ -332,6 +333,20 @@ namespace GitHub.Runner.Worker
                     ref code,
                     ref message,
                     ref fromPath);
+
+                if (message != null)
+                {
+                    if (messageSet)
+                    {
+                        throw new ArgumentException($"Only the last pattern may set 'message'");
+                    }
+                    messageSet = true;
+                }
+            }
+
+            if (!messageSet)
+            {
+                throw new ArgumentException($"At least one pattern must set 'message'");
             }
         }
     }
@@ -394,16 +409,10 @@ namespace GitHub.Runner.Worker
                 throw new ArgumentException($"Only the last pattern in a multiline matcher may set '{_loopPropertyName}'");
             }
 
-            // Only the last pattern may set 'message'
-            if (Message != null && !isLast)
+            // Only the last pattern may set 'message' if we are looping
+            if (Loop && Message != null && !isLast)
             {
-                throw new ArgumentException($"Only the last pattern may set '{_messagePropertyName}'");
-            }
-
-            // The last pattern must set 'message'
-            if (Message == null && isLast)
-            {
-                throw new ArgumentException($"The last pattern must set '{_messagePropertyName}'");
+                throw new ArgumentException($"Only the last pattern may set '{_messagePropertyName}' when looping");
             }
 
             var regex = new Regex(Pattern ?? string.Empty, RegexOptions);
