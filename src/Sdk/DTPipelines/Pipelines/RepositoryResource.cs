@@ -23,6 +23,7 @@ namespace GitHub.DistributedTask.Pipelines
         public static readonly String CheckoutOptions = "checkoutOptions";
         public static readonly String DefaultBranch = "defaultBranch";
         public static readonly String ExternalId = "externalId";
+        public static readonly String IsJustInTimeRepository = "isJustInTimeRepository";
     }
 
     [DataContract]

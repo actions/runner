@@ -1,7 +1,9 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.Serialization;
-using GitHub.DistributedTask.Expressions;
+using GitHub.DistributedTask.Expressions2;
+using GitHub.DistributedTask.Expressions2.Sdk;
 using GitHub.Services.WebApi.Internal;
 using Newtonsoft.Json;
 
@@ -11,10 +13,6 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
     /// Base class for all template tokens
     /// </summary>
     [DataContract]
-    [KnownType(typeof(LiteralToken))]
-    [KnownType(typeof(ExpressionToken))]
-    [KnownType(typeof(SequenceToken))]
-    [KnownType(typeof(MappingToken))]
     [JsonConverter(typeof(TemplateTokenJsonConverter))]
     [ClientIgnore]
     [EditorBrowsable(EditorBrowsableState.Never)]
@@ -34,8 +32,6 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
 
         internal Int32? FileId { get; set; }
 
-        internal ExpressionParserOptions ParserOptions { get; set; }
-
         [DataMember(Name = "line", EmitDefaultValue = false)]
         internal Int32? Line { get; }
 
@@ -45,11 +41,14 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
         [DataMember(Name = "type", EmitDefaultValue = false)]
         internal Int32 Type { get; }
 
-        public abstract TemplateToken Clone();
+        public TemplateToken Clone()
+        {
+            return Clone(false);
+        }
 
         public abstract TemplateToken Clone(Boolean omitSource);
 
-        protected LiteralToken EvaluateLiteralToken(
+        protected StringToken EvaluateStringToken(
             TemplateContext context,
             String expression,
             out Int32 bytes)
@@ -57,21 +56,28 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
             var originalBytes = context.Memory.CurrentBytes;
             try
             {
-                var tree = new ExpressionParser(ParserOptions).CreateTree(expression, null, context.GetExpressionNamedValues(), context.ExpressionFunctions);
+                var tree = new ExpressionParser().CreateTree(expression, null, context.GetExpressionNamedValues(), context.ExpressionFunctions);
                 var options = new EvaluationOptions
                 {
-                    Converters = context.ExpressionConverters,
                     MaxMemory = context.Memory.MaxBytes,
-                    UseCollectionInterfaces = true,
                 };
-                var result = tree.EvaluateResult(context.TraceWriter.ToExpressionTraceWriter(), null, context, options);
-                if (TryConvertToLiteralToken(context, result, out LiteralToken literal))
+                var result = tree.Evaluate(context.TraceWriter.ToExpressionTraceWriter(), null, context, options);
+
+                if (result.Raw is LiteralToken literalToken)
                 {
-                    return literal;
+                    var stringToken = new StringToken(FileId, Line, Column, literalToken.ToString());
+                    context.Memory.AddBytes(stringToken);
+                    return stringToken;
                 }
 
-                context.Error(this, TemplateStrings.ExpectedScalar());
-                return CreateLiteralToken(context, expression);
+                if (!result.IsPrimitive)
+                {
+                    context.Error(this, "Expected a string");
+                    return CreateStringToken(context, expression);
+                }
+
+                var stringValue = result.Kind == ValueKind.Null ? String.Empty : result.ConvertToString();
+                return CreateStringToken(context, stringValue);
             }
             finally
             {
@@ -87,14 +93,12 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
             var originalBytes = context.Memory.CurrentBytes;
             try
             {
-                var tree = new ExpressionParser(ParserOptions).CreateTree(expression, null, context.GetExpressionNamedValues(), context.ExpressionFunctions);
+                var tree = new ExpressionParser().CreateTree(expression, null, context.GetExpressionNamedValues(), context.ExpressionFunctions);
                 var options = new EvaluationOptions
                 {
-                    Converters = context.ExpressionConverters,
                     MaxMemory = context.Memory.MaxBytes,
-                    UseCollectionInterfaces = true,
                 };
-                var result = tree.EvaluateResult(context.TraceWriter.ToExpressionTraceWriter(), null, context, options);
+                var result = tree.Evaluate(context.TraceWriter.ToExpressionTraceWriter(), null, context, options);
                 var templateToken = ConvertToTemplateToken(context, result);
                 if (templateToken is SequenceToken sequence)
                 {
@@ -118,14 +122,12 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
             var originalBytes = context.Memory.CurrentBytes;
             try
             {
-                var tree = new ExpressionParser(ParserOptions).CreateTree(expression, null, context.GetExpressionNamedValues(), context.ExpressionFunctions);
+                var tree = new ExpressionParser().CreateTree(expression, null, context.GetExpressionNamedValues(), context.ExpressionFunctions);
                 var options = new EvaluationOptions
                 {
-                    Converters = context.ExpressionConverters,
                     MaxMemory = context.Memory.MaxBytes,
-                    UseCollectionInterfaces = true,
                 };
-                var result = tree.EvaluateResult(context.TraceWriter.ToExpressionTraceWriter(), null, context, options);
+                var result = tree.Evaluate(context.TraceWriter.ToExpressionTraceWriter(), null, context, options);
                 var templateToken = ConvertToTemplateToken(context, result);
                 if (templateToken is MappingToken mapping)
                 {
@@ -144,26 +146,17 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
         protected TemplateToken EvaluateTemplateToken(
             TemplateContext context,
             String expression,
-            Boolean coerceNull,
             out Int32 bytes)
         {
             var originalBytes = context.Memory.CurrentBytes;
             try
             {
-                var tree = new ExpressionParser(ParserOptions).CreateTree(expression, null, context.GetExpressionNamedValues(), context.ExpressionFunctions);
+                var tree = new ExpressionParser().CreateTree(expression, null, context.GetExpressionNamedValues(), context.ExpressionFunctions);
                 var options = new EvaluationOptions
                 {
-                    Converters = context.ExpressionConverters,
                     MaxMemory = context.Memory.MaxBytes,
-                    UseCollectionInterfaces = true,
                 };
-                var result = tree.EvaluateResult(context.TraceWriter.ToExpressionTraceWriter(), null, context, options);
-
-                if (!coerceNull && Object.ReferenceEquals(result.Value, null))
-                {
-                    return null;
-                }
-
+                var result = tree.Evaluate(context.TraceWriter.ToExpressionTraceWriter(), null, context, options);
                 return ConvertToTemplateToken(context, result);
             }
             finally
@@ -203,10 +196,10 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
                 {
                     var mapping = CreateMappingToken(context);
 
-                    foreach (var pair in dictionary)
+                    foreach (KeyValuePair<String, Object> pair in dictionary)
                     {
-                        var keyToken = CreateLiteralToken(context, pair.Key);
-                        var valueResult = EvaluationResult.CreateIntermediateResult(null, pair.Value, out _);
+                        var keyToken = CreateStringToken(context, pair.Key);
+                        var valueResult = EvaluationResult.CreateIntermediateResult(null, pair.Value);
                         var valueToken = ConvertToTemplateToken(context, valueResult);
                         mapping.Add(keyToken, valueToken);
                     }
@@ -219,7 +212,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
 
                     foreach (var item in list)
                     {
-                        var itemResult = EvaluationResult.CreateIntermediateResult(null, item, out _);
+                        var itemResult = EvaluationResult.CreateIntermediateResult(null, item);
                         var itemToken = ConvertToTemplateToken(context, itemResult);
                         sequence.Add(itemToken);
                     }
@@ -236,35 +229,45 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
             EvaluationResult result,
             out LiteralToken literal)
         {
-            if (!Object.ReferenceEquals(result.Raw, null))
+            if (result.Raw is LiteralToken literal2)
             {
-                if (result.Raw is LiteralToken literal2)
-                {
-                    context.Memory.AddBytes(literal2);
-                    literal = literal2;
-                    return true;
-                }
-
-                literal = null;
-                return false;
-            }
-
-            // Leverage the expression SDK to convert to string
-            if (result.TryConvertToString(null, out String str))
-            {
-                literal = CreateLiteralToken(context, str);
+                context.Memory.AddBytes(literal2);
+                literal = literal2;
                 return true;
             }
 
-            literal = null;
-            return false;
+            switch (result.Kind)
+            {
+                case ValueKind.Null:
+                    literal = new NullToken(FileId, Line, Column);
+                    break;
+
+                case ValueKind.Boolean:
+                    literal = new BooleanToken(FileId, Line, Column, (Boolean)result.Value);
+                    break;
+
+                case ValueKind.Number:
+                    literal = new NumberToken(FileId, Line, Column, (Double)result.Value);
+                    break;
+
+                case ValueKind.String:
+                    literal = new StringToken(FileId, Line, Column, (String)result.Value);
+                    break;
+
+                default:
+                    literal = null;
+                    return false;
+            }
+
+            context.Memory.AddBytes(literal);
+            return true;
         }
 
-        private LiteralToken CreateLiteralToken(
+        private StringToken CreateStringToken(
             TemplateContext context,
             String value)
         {
-            var result = new LiteralToken(FileId, Line, Column, value);
+            var result = new StringToken(FileId, Line, Column, value);
             context.Memory.AddBytes(result);
             return result;
         }

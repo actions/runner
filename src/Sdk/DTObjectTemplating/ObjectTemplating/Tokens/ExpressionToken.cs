@@ -2,7 +2,8 @@
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.Serialization;
-using GitHub.DistributedTask.Expressions;
+using GitHub.DistributedTask.Expressions2;
+using GitHub.DistributedTask.Expressions2.Sdk;
 using GitHub.Services.WebApi.Internal;
 
 namespace GitHub.DistributedTask.ObjectTemplating.Tokens
@@ -24,7 +25,6 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
             : base(templateType, fileId, line, column)
         {
             Directive = directive;
-            ParserOptions = new ExpressionParserOptions() { AllowHyphens = true };
         }
 
         internal String Directive { get; }
@@ -46,8 +46,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
             ExpressionNode root = null;
             try
             {
-                var parserOptions = new ExpressionParserOptions() { AllowHyphens = true };
-                root = new ExpressionParser(parserOptions).CreateTree(expression, null, namedValues, null) as ExpressionNode;
+                root = new ExpressionParser().CreateTree(expression, null, namedValues, null) as ExpressionNode;
 
                 result = true;
                 ex = null;

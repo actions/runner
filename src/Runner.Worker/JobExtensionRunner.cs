@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
-using GitHub.DistributedTask.Expressions;
+using GitHub.DistributedTask.Expressions2;
 using GitHub.DistributedTask.Pipelines.ObjectTemplating;
 using GitHub.Runner.Common.Util;
 using Pipelines = GitHub.DistributedTask.Pipelines;

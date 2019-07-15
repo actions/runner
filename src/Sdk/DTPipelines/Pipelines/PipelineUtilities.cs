@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
@@ -317,6 +318,20 @@ namespace GitHub.DistributedTask.Pipelines
                     break;
             }
 
+            return result;
+        }
+
+        public static TaskResult AggregateResult(IEnumerable<TaskResult> results)
+        {
+            var result = TaskResult.Succeeded;
+            if (results == default)
+            {
+                return result;
+            }
+            foreach (var r in results)
+            {
+                result = MergeResult(result, r);
+            }
             return result;
         }
 

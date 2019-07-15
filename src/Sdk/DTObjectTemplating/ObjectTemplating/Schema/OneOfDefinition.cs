@@ -18,20 +18,20 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
         {
             foreach (var definitionPair in definition)
             {
-                var definitionKey = TemplateUtil.AssertLiteral(definitionPair.Key, $"{TemplateConstants.Definition} key");
+                var definitionKey = definitionPair.Key.AssertString($"{TemplateConstants.Definition} key");
                 switch (definitionKey.Value)
                 {
                     case TemplateConstants.OneOf:
-                        var oneOf = TemplateUtil.AssertSequence(definitionPair.Value, TemplateConstants.OneOf);
+                        var oneOf = definitionPair.Value.AssertSequence(TemplateConstants.OneOf);
                         foreach (var oneOfItem in oneOf)
                         {
-                            var reference = TemplateUtil.AssertLiteral(oneOfItem, TemplateConstants.OneOf);
+                            var reference = oneOfItem.AssertString(TemplateConstants.OneOf);
                             OneOf.Add(reference.Value);
                         }
                         break;
 
                     default:
-                        TemplateUtil.AssertUnexpectedValue(definitionKey, $"{TemplateConstants.Definition} key");
+                        definitionKey.AssertUnexpectedValue($"{TemplateConstants.Definition} key");
                         break;
                 }
             }
@@ -51,9 +51,12 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
             }
 
             var foundLooseKeyType = false;
-            List<MappingDefinition> mappings = null;
-            SequenceDefinition sequence = null;
-            List<ScalarDefinition> scalars = null;
+            var mappingDefinitions = default(List<MappingDefinition>);
+            var sequenceDefinition = default(SequenceDefinition);
+            var nullDefinition = default(NullDefinition);
+            var booleanDefinition = default(BooleanDefinition);
+            var numberDefinition = default(NumberDefinition);
+            var stringDefinitions = default(List<StringDefinition>);
 
             foreach (var nestedType in OneOf)
             {
@@ -64,45 +67,75 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
                     throw new ArgumentException($"'{name}' is a one-of definition and references another definition that defines context. This is currently not supported.");
                 }
 
-                if (nestedDefinition is MappingDefinition mapping)
+                if (nestedDefinition is MappingDefinition mappingDefinition)
                 {
-                    if (mappings == null)
+                    if (mappingDefinitions == null)
                     {
-                        mappings = new List<MappingDefinition>();
+                        mappingDefinitions = new List<MappingDefinition>();
                     }
 
-                    mappings.Add(mapping);
+                    mappingDefinitions.Add(mappingDefinition);
 
-                    if (!String.IsNullOrEmpty(mapping.LooseKeyType))
+                    if (!String.IsNullOrEmpty(mappingDefinition.LooseKeyType))
                     {
                         foundLooseKeyType = true;
                     }
                 }
                 else if (nestedDefinition is SequenceDefinition s)
                 {
-                    // Multiple sequences not allowed
-                    if (sequence != null)
+                    // Multiple sequence definitions not allowed
+                    if (sequenceDefinition != null)
                     {
                         throw new ArgumentException($"'{name}' refers to more than one '{TemplateConstants.Sequence}'");
                     }
 
-                    sequence = s;
+                    sequenceDefinition = s;
                 }
-                else if (nestedDefinition is ScalarDefinition scalar)
+                else if (nestedDefinition is NullDefinition n)
                 {
-                    // First scalar
-                    if (scalars == null)
+                    // Multiple sequence definitions not allowed
+                    if (nullDefinition != null)
                     {
-                        scalars = new List<ScalarDefinition>();
+                        throw new ArgumentException($"'{name}' refers to more than one '{TemplateConstants.Null}'");
                     }
-                    // Multiple scalars, all must be 'Constant'
-                    else if ((scalars.Count == 1 && String.IsNullOrEmpty(scalars[0].Constant))
-                        || String.IsNullOrEmpty(scalar.Constant))
+
+                    nullDefinition = n;
+                }
+                else if (nestedDefinition is BooleanDefinition b)
+                {
+                    // Multiple boolean definitions not allowed
+                    if (booleanDefinition != null)
+                    {
+                        throw new ArgumentException($"'{name}' refers to more than one '{TemplateConstants.Boolean}'");
+                    }
+
+                    booleanDefinition = b;
+                }
+                else if (nestedDefinition is NumberDefinition num)
+                {
+                    // Multiple number definitions not allowed
+                    if (numberDefinition != null)
+                    {
+                        throw new ArgumentException($"'{name}' refers to more than one '{TemplateConstants.Number}'");
+                    }
+
+                    numberDefinition = num;
+                }
+                else if (nestedDefinition is StringDefinition stringDefinition)
+                {
+                    // First string definition
+                    if (stringDefinitions == null)
+                    {
+                        stringDefinitions = new List<StringDefinition>();
+                    }
+                    // Multiple string definitions, all must be 'Constant'
+                    else if ((stringDefinitions.Count == 1 && String.IsNullOrEmpty(stringDefinitions[0].Constant))
+                        || String.IsNullOrEmpty(stringDefinition.Constant))
                     {
                         throw new ArgumentException($"'{name}' refers to more than one '{TemplateConstants.Scalar}', but some do not set '{TemplateConstants.Constant}'");
                     }
 
-                    scalars.Add(scalar);
+                    stringDefinitions.Add(stringDefinition);
                 }
                 else
                 {
@@ -110,7 +143,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
                 }
             }
 
-            if (mappings?.Count > 1)
+            if (mappingDefinitions?.Count > 1)
             {
                 if (foundLooseKeyType)
                 {
@@ -119,9 +152,9 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
 
                 var seenProperties = new Dictionary<String, PropertyValue>(StringComparer.Ordinal);
 
-                foreach (var mapping in mappings)
+                foreach (var mappingDefinition in mappingDefinitions)
                 {
-                    foreach (var newProperty in GetMergedProperties(schema, mapping))
+                    foreach (var newProperty in GetMergedProperties(schema, mappingDefinition))
                     {
                         // Already seen
                         if (seenProperties.TryGetValue(newProperty.Key, out PropertyValue existingProperty))

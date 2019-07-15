@@ -1,4 +1,5 @@
 ﻿using System;
+using GitHub.DistributedTask.ObjectTemplating.Tokens;
 
 namespace GitHub.DistributedTask.ObjectTemplating
 {
@@ -8,20 +9,13 @@ namespace GitHub.DistributedTask.ObjectTemplating
     /// </summary>
     internal interface IObjectReader
     {
-        Boolean AllowScalar(
-            out Int32? line,
-            out Int32? column,
-            out String scalar);
+        Boolean AllowLiteral(out LiteralToken token);
 
-        Boolean AllowSequenceStart(
-            out Int32? line,
-            out Int32? column);
+        Boolean AllowSequenceStart(out SequenceToken token);
 
         Boolean AllowSequenceEnd();
 
-        Boolean AllowMappingStart(
-            out Int32? line,
-            out Int32? column);
+        Boolean AllowMappingStart(out MappingToken token);
 
         Boolean AllowMappingEnd();
 

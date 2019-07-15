@@ -15,45 +15,45 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
         {
             foreach (var definitionPair in definition)
             {
-                var definitionKey = TemplateUtil.AssertLiteral(definitionPair.Key, $"{TemplateConstants.Definition} key");
+                var definitionKey = definitionPair.Key.AssertString($"{TemplateConstants.Definition} key");
                 switch (definitionKey.Value)
                 {
                     case TemplateConstants.Mapping:
-                        var mapping = TemplateUtil.AssertMapping(definitionPair.Value, $"{TemplateConstants.Definition} {TemplateConstants.Mapping}");
+                        var mapping = definitionPair.Value.AssertMapping($"{TemplateConstants.Definition} {TemplateConstants.Mapping}");
                         foreach (var mappingPair in mapping)
                         {
-                            var mappingKey = TemplateUtil.AssertLiteral(mappingPair.Key, $"{TemplateConstants.Definition} {TemplateConstants.Mapping} key");
+                            var mappingKey = mappingPair.Key.AssertString($"{TemplateConstants.Definition} {TemplateConstants.Mapping} key");
                             switch (mappingKey.Value)
                             {
                                 case TemplateConstants.Properties:
-                                    var properties = TemplateUtil.AssertMapping(mappingPair.Value, $"{TemplateConstants.Definition} {TemplateConstants.Mapping} {TemplateConstants.Properties}");
+                                    var properties = mappingPair.Value.AssertMapping($"{TemplateConstants.Definition} {TemplateConstants.Mapping} {TemplateConstants.Properties}");
                                     foreach (var propertiesPair in properties)
                                     {
-                                        var propertyName = TemplateUtil.AssertLiteral(propertiesPair.Key, $"{TemplateConstants.Definition} {TemplateConstants.Mapping} {TemplateConstants.Properties} key");
-                                        var propertyValue = TemplateUtil.AssertLiteral(propertiesPair.Value, $"{TemplateConstants.Definition} {TemplateConstants.Mapping} {TemplateConstants.Properties} value");
+                                        var propertyName = propertiesPair.Key.AssertString($"{TemplateConstants.Definition} {TemplateConstants.Mapping} {TemplateConstants.Properties} key");
+                                        var propertyValue = propertiesPair.Value.AssertString($"{TemplateConstants.Definition} {TemplateConstants.Mapping} {TemplateConstants.Properties} value");
                                         Properties.Add(propertyName.Value, new PropertyValue(propertyValue.Value));
                                     }
                                     break;
 
                                 case TemplateConstants.LooseKeyType:
-                                    var looseKeyType = TemplateUtil.AssertLiteral(mappingPair.Value, $"{TemplateConstants.Definition} {TemplateConstants.Mapping} {TemplateConstants.LooseKeyType}");
+                                    var looseKeyType = mappingPair.Value.AssertString($"{TemplateConstants.Definition} {TemplateConstants.Mapping} {TemplateConstants.LooseKeyType}");
                                     LooseKeyType = looseKeyType.Value;
                                     break;
 
                                 case TemplateConstants.LooseValueType:
-                                    var looseValueType = TemplateUtil.AssertLiteral(mappingPair.Value, $"{TemplateConstants.Definition} {TemplateConstants.Mapping} {TemplateConstants.LooseValueType}");
+                                    var looseValueType = mappingPair.Value.AssertString($"{TemplateConstants.Definition} {TemplateConstants.Mapping} {TemplateConstants.LooseValueType}");
                                     LooseValueType = looseValueType.Value;
                                     break;
 
                                 default:
-                                    TemplateUtil.AssertUnexpectedValue(definitionKey, $"{TemplateConstants.Definition} key");
+                                    definitionKey.AssertUnexpectedValue($"{TemplateConstants.Definition} key");
                                     break;
                             }
                         }
                         break;
 
                     default:
-                        TemplateUtil.AssertUnexpectedValue(definitionKey, $"{TemplateConstants.Definition} key");
+                        definitionKey.AssertUnexpectedValue($"{TemplateConstants.Definition} key");
                         break;
                 }
             }

@@ -223,6 +223,13 @@ namespace GitHub.DistributedTask.Pipelines
             }
         }
 
+        protected virtual void UpdateJobContextVariablesFromJob(JobExecutionContext jobContext, Job job)
+        {
+            jobContext.Variables[WellKnownDistributedTaskVariables.JobDisplayName] = job.DisplayName;
+            jobContext.Variables[WellKnownDistributedTaskVariables.JobId] = job.Id.ToString("D");
+            jobContext.Variables[WellKnownDistributedTaskVariables.JobName] = job.Name;
+        }
+
         [OnDeserialized]
         private void OnDeserialized(StreamingContext context)
         {

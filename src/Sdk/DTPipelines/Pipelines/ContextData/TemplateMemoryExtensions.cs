@@ -26,7 +26,7 @@ namespace GitHub.DistributedTask.Pipelines.ContextData
             {
                 // This measurement doesn't have to be perfect
                 // https://codeblog.jonskeet.uk/2011/04/05/of-memory-and-strings/
-                switch (item.Type)
+                switch (item?.Type)
                 {
                     case PipelineContextDataType.String:
                         var str = item.AssertString("string").Value;
@@ -38,10 +38,19 @@ namespace GitHub.DistributedTask.Pipelines.ContextData
 
                     case PipelineContextDataType.Array:
                     case PipelineContextDataType.Dictionary:
+                    case PipelineContextDataType.Boolean:
+                    case PipelineContextDataType.Number:
                         // Min object size is good enough. Allows for base + a few fields.
                         checked
                         {
                             result += TemplateMemory.MinObjectSize;
+                        }
+                        break;
+
+                    case null:
+                        checked
+                        {
+                            result += IntPtr.Size;
                         }
                         break;
 

@@ -39,7 +39,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
             JObject value = JObject.Load(reader);
             if (!value.TryGetValue("type", StringComparison.OrdinalIgnoreCase, out JToken typeValue))
             {
-                type = TokenType.Literal;
+                type = TokenType.String;
             }
             else if (typeValue.Type == JTokenType.Integer)
             {
@@ -53,8 +53,20 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
             Object newValue = null;
             switch (type)
             {
-                case TokenType.Literal:
-                    newValue = new LiteralToken(null, null, null, null);
+                case TokenType.Null:
+                    newValue = new NullToken(null, null, null);
+                    break;
+
+                case TokenType.Boolean:
+                    newValue = new BooleanToken(null, null, null, default(Boolean));
+                    break;
+
+                case TokenType.Number:
+                    newValue = new NumberToken(null, null, null, default(Double));
+                    break;
+
+                case TokenType.String:
+                    newValue = new StringToken(null, null, null, null);
                     break;
 
                 case TokenType.BasicExpression:

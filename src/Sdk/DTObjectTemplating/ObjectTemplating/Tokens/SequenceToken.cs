@@ -2,8 +2,8 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Linq;
 using System.Runtime.Serialization;
+using GitHub.DistributedTask.Expressions2.Sdk;
 using GitHub.Services.WebApi.Internal;
 using Newtonsoft.Json;
 
@@ -13,7 +13,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
     [JsonObject]
     [ClientIgnore]
     [EditorBrowsable(EditorBrowsableState.Never)]
-    public sealed class SequenceToken : TemplateToken, IEnumerable<TemplateToken>
+    public sealed class SequenceToken : TemplateToken, IEnumerable<TemplateToken>, IReadOnlyArray
     {
         public SequenceToken(
             Int32? fileId,
@@ -22,6 +22,8 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
             : base(TokenType.Sequence, fileId, line, column)
         {
         }
+
+        public Int32 Count => m_items?.Count ?? 0;
 
         public TemplateToken this[Int32 index]
         {
@@ -36,7 +38,14 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
             }
         }
 
-        internal Int32 Count => m_items?.Count ?? 0;
+        // IReadOnlyArray (for expressions)
+        Object IReadOnlyArray.this[Int32 index]
+        {
+            get
+            {
+                return m_items[index];
+            }
+        }
 
         public void Add(TemplateToken value)
         {
@@ -46,11 +55,6 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
             }
 
             m_items.Add(value);
-        }
-
-        public override TemplateToken Clone()
-        {
-            return Clone(false);
         }
 
         public override TemplateToken Clone(Boolean omitSource)
@@ -79,6 +83,19 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
         }
 
         IEnumerator IEnumerable.GetEnumerator()
+        {
+            if (m_items?.Count > 0)
+            {
+                return m_items.GetEnumerator();
+            }
+            else
+            {
+                return (new TemplateToken[0] as IEnumerable<TemplateToken>).GetEnumerator();
+            }
+        }
+
+        // IReadOnlyArray (for expressions)
+        IEnumerator IReadOnlyArray.GetEnumerator()
         {
             if (m_items?.Count > 0)
             {

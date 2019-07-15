@@ -1,51 +1,64 @@
 ﻿using System;
 using System.Collections.Generic;
 using GitHub.DistributedTask.ObjectTemplating;
+using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using Newtonsoft.Json.Linq;
 
 namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 {
     internal sealed class JsonObjectReader : IObjectReader
     {
-        internal JsonObjectReader(String input)
+        internal JsonObjectReader(
+            Int32? fileId,
+            String input)
         {
+            m_fileId = fileId;
             var token = JToken.Parse(input);
             m_enumerator = GetEvents(token, true).GetEnumerator();
             m_enumerator.MoveNext();
         }
 
-        public Boolean AllowScalar(
-            out Int32? line,
-            out Int32? column,
-            out String value)
+        public Boolean AllowLiteral(out LiteralToken literal)
         {
-            line = null;
-            column = null;
-
-            if (m_enumerator.Current.Type == ParseEventType.Scalar)
+            var current = m_enumerator.Current;
+            switch (current.Type)
             {
-                value = m_enumerator.Current.Value;
-                m_enumerator.MoveNext();
-                return true;
+                case ParseEventType.Null:
+                    literal = new NullToken(m_fileId, current.Line, current.Column);
+                    m_enumerator.MoveNext();
+                    return true;
+
+                case ParseEventType.Boolean:
+                    literal = new BooleanToken(m_fileId, current.Line, current.Column, (Boolean)current.Value);
+                    m_enumerator.MoveNext();
+                    return true;
+
+                case ParseEventType.Number:
+                    literal = new NumberToken(m_fileId, current.Line, current.Column, (Double)current.Value);
+                    m_enumerator.MoveNext();
+                    return true;
+
+                case ParseEventType.String:
+                    literal = new StringToken(m_fileId, current.Line, current.Column, (String)current.Value);
+                    m_enumerator.MoveNext();
+                    return true;
             }
 
-            value = null;
+            literal = null;
             return false;
         }
 
-        public Boolean AllowSequenceStart(
-            out Int32? line,
-            out Int32? column)
+        public Boolean AllowSequenceStart(out SequenceToken sequence)
         {
-            line = null;
-            column = null;
-
-            if (m_enumerator.Current.Type == ParseEventType.SequenceStart)
+            var current = m_enumerator.Current;
+            if (current.Type == ParseEventType.SequenceStart)
             {
+                sequence = new SequenceToken(m_fileId, current.Line, current.Column);
                 m_enumerator.MoveNext();
                 return true;
             }
 
+            sequence = null;
             return false;
         }
 
@@ -60,19 +73,17 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             return false;
         }
 
-        public Boolean AllowMappingStart(
-            out Int32? line,
-            out Int32? column)
+        public Boolean AllowMappingStart(out MappingToken mapping)
         {
-            line = null;
-            column = null;
-
-            if (m_enumerator.Current.Type == ParseEventType.MappingStart)
+            var current = m_enumerator.Current;
+            if (current.Type == ParseEventType.MappingStart)
             {
+                mapping = new MappingToken(m_fileId, current.Line, current.Column);
                 m_enumerator.MoveNext();
                 return true;
             }
 
+            mapping = null;
             return false;
         }
 
@@ -131,17 +142,20 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             switch (token.Type)
             {
                 case JTokenType.Null:
-                    yield return new ParseEvent(line, column, ParseEventType.Scalar, String.Empty);
+                    yield return new ParseEvent(line, column, ParseEventType.Null, null);
                     break;
 
                 case JTokenType.Boolean:
-                    yield return new ParseEvent(line, column, ParseEventType.Scalar, token.ToObject<String>().ToLowerInvariant());
+                    yield return new ParseEvent(line, column, ParseEventType.Boolean, token.ToObject<Boolean>());
                     break;
 
                 case JTokenType.Float:
                 case JTokenType.Integer:
+                    yield return new ParseEvent(line, column, ParseEventType.Number, token.ToObject<Double>());
+                    break;
+
                 case JTokenType.String:
-                    yield return new ParseEvent(line, column, ParseEventType.Scalar, token.ToObject<String>());
+                    yield return new ParseEvent(line, column, ParseEventType.String, token.ToObject<String>());
                     break;
 
                 case JTokenType.Array:
@@ -160,7 +174,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                     yield return new ParseEvent(line, column, ParseEventType.MappingStart);
                     foreach (var pair in (token as JObject))
                     {
-                        yield return new ParseEvent(line, column, ParseEventType.Scalar, pair.Key ?? String.Empty);
+                        yield return new ParseEvent(line, column, ParseEventType.String, pair.Key ?? String.Empty);
                         foreach (var e in GetEvents(pair.Value))
                         {
                             yield return e;
@@ -185,7 +199,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 Int32 line,
                 Int32 column,
                 ParseEventType type,
-                String value = null)
+                Object value = null)
             {
                 Line = line;
                 Column = column;
@@ -196,13 +210,16 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             public readonly Int32 Line;
             public readonly Int32 Column;
             public readonly ParseEventType Type;
-            public readonly String Value;
+            public readonly Object Value;
         }
 
         private enum ParseEventType
         {
             None = 0,
-            Scalar,
+            Null,
+            Boolean,
+            Number,
+            String,
             SequenceStart,
             SequenceEnd,
             MappingStart,
@@ -212,5 +229,6 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         }
 
         private IEnumerator<ParseEvent> m_enumerator;
+        private Int32? m_fileId;
     }
 }

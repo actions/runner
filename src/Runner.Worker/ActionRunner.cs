@@ -3,7 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using GitHub.DistributedTask.Expressions;
+using GitHub.DistributedTask.Expressions2;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.Pipelines.ObjectTemplating;
 using GitHub.Runner.Common.Util;
@@ -99,7 +99,7 @@ namespace GitHub.Runner.Worker
                     if (!string.IsNullOrEmpty(key) && !inputs.ContainsKey(key))
                     {
                         var defaultValue = input.DefaultValue?.Trim() ?? string.Empty;
-                        defaultInputsTemplateToken.Add(new LiteralToken(null, null, null, key), new LiteralToken(null, null, null, defaultValue));
+                        defaultInputsTemplateToken.Add(new StringToken(null, null, null, key), new StringToken(null, null, null, defaultValue));
                     }
                 }
 

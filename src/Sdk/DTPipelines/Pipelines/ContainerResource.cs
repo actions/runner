@@ -9,11 +9,11 @@ namespace GitHub.DistributedTask.Pipelines
     [EditorBrowsable(EditorBrowsableState.Never)]
     public static class ContainerPropertyNames
     {
-        public static readonly String Env = "env";
-        public static readonly String Image = "image";
-        public static readonly String Options = "options";
-        public static readonly String Volumes = "volumes";
-        public static readonly String Ports = "ports";
+        public const String Env = "env";
+        public const String Image = "image";
+        public const String Options = "options";
+        public const String Volumes = "volumes";
+        public const String Ports = "ports";
     }
 
     [DataContract]

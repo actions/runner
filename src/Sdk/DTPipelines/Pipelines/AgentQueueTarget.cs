@@ -258,6 +258,9 @@ namespace GitHub.DistributedTask.Pipelines
                 case "UBUNTU LATEST":
                 case "UBUNTU-LATEST":
                     return "Hosted Ubuntu 1604";
+                case "UBUNTU 18.04":
+                case "UBUNTU-18.04":
+                    return "Hosted Ubuntu 1804";
                 case "VISUAL STUDIO 2015 ON WINDOWS SERVER 2012R2":
                 case "VS2015-WIN2012R2":
                     return "Hosted";

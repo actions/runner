@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using GitHub.DistributedTask.Expressions;
+using System.Globalization;
+using GitHub.DistributedTask.Expressions2;
+using GitHub.DistributedTask.Expressions2.Sdk;
 using GitHub.DistributedTask.ObjectTemplating;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.Pipelines.ContextData;
@@ -136,14 +138,14 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 {
                     foreach (var includeItem in includeSequence)
                     {
-                        var includeMapping = TemplateUtil.AssertMapping(includeItem, "matrix includes item");
+                        var includeMapping = includeItem.AssertMapping("matrix includes item");
 
                         // Distinguish filters versus extra
                         var filter = new MappingToken(null, null, null);
                         var extra = new DictionaryContextData();
                         foreach (var includePair in includeMapping)
                         {
-                            var includeKeyLiteral = TemplateUtil.AssertLiteral(includePair.Key, "matrix include item key");
+                            var includeKeyLiteral = includePair.Key.AssertString("matrix include item key");
                             if (vectors.ContainsKey(includeKeyLiteral.Value))
                             {
                                 filter.Add(includeKeyLiteral, includePair.Value);
@@ -240,7 +242,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 {
                     foreach (var excludeItem in excludeSequence)
                     {
-                        var excludeMapping = TemplateUtil.AssertMapping(excludeItem, "matrix excludes item");
+                        var excludeMapping = excludeItem.AssertMapping("matrix excludes item");
 
                         // Check empty
                         if (excludeMapping.Count == 0)
@@ -252,7 +254,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                         // Validate first-level keys
                         foreach (var excludePair in excludeMapping)
                         {
-                            var excludeKey = TemplateUtil.AssertLiteral(excludePair.Key, "matrix excludes item key");
+                            var excludeKey = excludePair.Key.AssertString("matrix excludes item key");
                             if (!vectors.ContainsKey(excludeKey.Value))
                             {
                                 context.Error(excludeKey, $"Matrix exclude key '{excludeKey.Value}' does not match any key within the matrix");
@@ -311,7 +313,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                         }
                         else
                         {
-                            var mapping = TemplateUtil.AssertMapping(state.Mapping[state.Index].Value, "matrix filter");
+                            var mapping = state.Mapping[state.Index].Value.AssertMapping("matrix filter");
                             state = new MappingState(state, mapping);
                         }
                     }
@@ -331,7 +333,8 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 
                 foreach (var expression in m_expressions)
                 {
-                    if (!expression.Evaluate<Boolean>(null, null, matrix, s_evaluationOptions))
+                    var result = expression.Evaluate(null, null, matrix, null);
+                    if (result.IsFalsy)
                     {
                         return false;
                     }
@@ -344,16 +347,38 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 MappingState state,
                 LiteralToken literal)
             {
-                var str = $"eq({state.Path}, '{ExpressionUtil.StringEscape(literal.Value)}')";
+                var expressionLiteral = default(String);
+                switch (literal.Type)
+                {
+                    case TokenType.Null:
+                        expressionLiteral = ExpressionConstants.Null;
+                        break;
+
+                    case TokenType.Boolean:
+                        var booleanToken = literal as BooleanToken;
+                        expressionLiteral = booleanToken.Value ? ExpressionConstants.True : ExpressionConstants.False;
+                        break;
+
+                    case TokenType.Number:
+                        var numberToken = literal as NumberToken;
+                        expressionLiteral = String.Format(CultureInfo.InvariantCulture, ExpressionConstants.NumberFormat, numberToken.Value);
+                        break;
+
+                    case TokenType.String:
+                        var stringToken = literal as StringToken;
+                        expressionLiteral = $"'{ExpressionUtility.StringEscape(stringToken.Value)}'";
+                        break;
+
+                    default:
+                        throw new NotSupportedException($"Unexpected literal type '{literal.Type}'");
+                }
+
+                var str = $"{state.Path} == {expressionLiteral}";
                 var parser = new ExpressionParser();
                 var expression = parser.CreateTree(str, null, s_matrixFilterNamedValues, null);
                 m_expressions.Add(expression);
             }
 
-            private static readonly EvaluationOptions s_evaluationOptions = new EvaluationOptions
-            {
-                UseCollectionInterfaces = true,
-            };
             private static readonly INamedValueInfo[] s_matrixFilterNamedValues = new INamedValueInfo[]
             {
                 new NamedValueInfo<MatrixNamedValue>(PipelineTemplateConstants.Matrix),
@@ -376,9 +401,9 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             {
                 if (++Index < Mapping.Count)
                 {
-                    var keyLiteral = TemplateUtil.AssertLiteral(Mapping[Index].Key, "matrix filter key");
+                    var keyLiteral = Mapping[Index].Key.AssertString("matrix filter key");
                     var parentPath = Parent?.Path ?? PipelineTemplateConstants.Matrix;
-                    Path = $"{parentPath}['{ExpressionUtil.StringEscape(keyLiteral.Value)}']";
+                    Path = $"{parentPath}['{ExpressionUtility.StringEscape(keyLiteral.Value)}']";
                     return true;
                 }
                 else
@@ -393,10 +418,13 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             public String Path;
         }
 
-        private sealed class MatrixNamedValue : NamedValueNode
+        private sealed class MatrixNamedValue : NamedValue
         {
-            protected override Object EvaluateCore(EvaluationContext context)
+            protected override Object EvaluateCore(
+                EvaluationContext context,
+                out ResultMemory resultMemory)
             {
+                resultMemory = null;
                 return context.State;
             }
         }

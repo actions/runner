@@ -3,10 +3,9 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text;
-using GitHub.DistributedTask.Expressions;
+using GitHub.DistributedTask.Expressions2.Sdk;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.ObjectTemplating.Schema;
-using System.Collections;
 
 namespace GitHub.DistributedTask.ObjectTemplating
 {
@@ -74,19 +73,18 @@ namespace GitHub.DistributedTask.ObjectTemplating
             m_memory.IncrementEvents();
 
             // Scalar
-            if (m_objectReader.AllowScalar(out Int32? line, out Int32? column, out String rawScalar))
+            if (m_objectReader.AllowLiteral(out LiteralToken literal))
             {
-                var scalar = ParseScalar(line, column, rawScalar, definition.AllowedContext);
+                var scalar = ParseScalar(literal, definition.AllowedContext);
+                Validate(ref scalar, definition);
                 m_memory.AddBytes(scalar);
-                Validate(scalar, definition);
                 return scalar;
             }
 
             // Sequence
-            if (m_objectReader.AllowSequenceStart(out line, out column))
+            if (m_objectReader.AllowSequenceStart(out SequenceToken sequence))
             {
                 m_memory.IncrementDepth();
-                var sequence = new SequenceToken(m_fileId, line, column);
                 m_memory.AddBytes(sequence);
 
                 var sequenceDefinition = definition.Get<SequenceDefinition>().FirstOrDefault();
@@ -121,10 +119,9 @@ namespace GitHub.DistributedTask.ObjectTemplating
             }
 
             // Mapping
-            if (m_objectReader.AllowMappingStart(out line, out column))
+            if (m_objectReader.AllowMappingStart(out MappingToken mapping))
             {
                 m_memory.IncrementDepth();
-                var mapping = new MappingToken(m_fileId, line, column);
                 m_memory.AddBytes(mapping);
 
                 var mappingDefinitions = definition.Get<MappingDefinition>().ToList();
@@ -182,19 +179,19 @@ namespace GitHub.DistributedTask.ObjectTemplating
 
             var keys = new HashSet<String>(StringComparer.OrdinalIgnoreCase);
 
-            while (m_objectReader.AllowScalar(out Int32? line, out Int32? column, out String rawScalar))
+            while (m_objectReader.AllowLiteral(out LiteralToken rawLiteral))
             {
-                var nextKeyScalar = ParseScalar(line, column, rawScalar, definition.AllowedContext);
+                var nextKeyScalar = ParseScalar(rawLiteral, definition.AllowedContext);
 
                 // Expression
-                if (!(nextKeyScalar is LiteralToken nextKey))
+                if (nextKeyScalar is ExpressionToken)
                 {
                     // Legal
                     if (definition.AllowedContext.Length > 0)
                     {
+                        m_memory.AddBytes(nextKeyScalar);
                         var anyDefinition = new DefinitionInfo(definition, TemplateConstants.Any);
                         mapping.Add(nextKeyScalar, ReadValue(anyDefinition));
-                        m_memory.AddBytes(nextKeyScalar);
                     }
                     // Illegal
                     else
@@ -204,6 +201,12 @@ namespace GitHub.DistributedTask.ObjectTemplating
                     }
 
                     continue;
+                }
+
+                // Not a string, convert
+                if (!(nextKeyScalar is StringToken nextKey))
+                {
+                    nextKey = new StringToken(nextKeyScalar.FileId, nextKeyScalar.Line, nextKeyScalar.Column, nextKeyScalar.ToString());
                 }
 
                 // Duplicate
@@ -217,10 +220,10 @@ namespace GitHub.DistributedTask.ObjectTemplating
                 // Well known
                 if (m_schema.TryMatchKey(mappingDefinitions, nextKey.Value, out String nextValueType))
                 {
+                    m_memory.AddBytes(nextKey);
                     var nextValueDefinition = new DefinitionInfo(definition, nextValueType);
                     var nextValue = ReadValue(nextValueDefinition);
                     mapping.Add(nextKey, nextValue);
-                    m_memory.AddBytes(nextKey);
                     continue;
                 }
 
@@ -234,9 +237,9 @@ namespace GitHub.DistributedTask.ObjectTemplating
                     }
 
                     Validate(nextKey, looseKeyDefinition.Value);
+                    m_memory.AddBytes(nextKey);
                     var nextValue = ReadValue(looseValueDefinition.Value);
                     mapping.Add(nextKey, nextValue);
-                    m_memory.AddBytes(nextKey);
                     continue;
                 }
 
@@ -287,21 +290,22 @@ namespace GitHub.DistributedTask.ObjectTemplating
             DefinitionInfo valueDefinition,
             MappingToken mapping)
         {
+            TemplateToken nextValue;
             var keys = new HashSet<String>(StringComparer.OrdinalIgnoreCase);
 
-            while (m_objectReader.AllowScalar(out Int32? line, out Int32? column, out String rawScalar))
+            while (m_objectReader.AllowLiteral(out LiteralToken rawLiteral))
             {
-                var nextKeyScalar = ParseScalar(line, column, rawScalar, mappingDefinition.AllowedContext);
+                var nextKeyScalar = ParseScalar(rawLiteral, mappingDefinition.AllowedContext);
 
                 // Expression
-                if (!(nextKeyScalar is LiteralToken nextKey))
+                if (nextKeyScalar is ExpressionToken)
                 {
                     // Legal
                     if (mappingDefinition.AllowedContext.Length > 0)
                     {
-                        var nextValue = ReadValue(valueDefinition);
-                        mapping.Add(nextKeyScalar, nextValue);
                         m_memory.AddBytes(nextKeyScalar);
+                        nextValue = ReadValue(valueDefinition);
+                        mapping.Add(nextKeyScalar, nextValue);
                     }
                     // Illegal
                     else
@@ -309,25 +313,31 @@ namespace GitHub.DistributedTask.ObjectTemplating
                         m_context.Error(nextKeyScalar, TemplateStrings.ExpressionNotAllowed());
                         SkipValue();
                     }
+
+                    continue;
                 }
-                // Literal
-                else
+
+                // Not a string, convert
+                if (!(nextKeyScalar is StringToken nextKey))
                 {
-                    // Duplicate
-                    if (!keys.Add(nextKey.Value))
-                    {
-                        m_context.Error(nextKey, TemplateStrings.ValueAlreadyDefined(nextKey.Value));
-                        SkipValue();
-                    }
-                    // Not duplicate
-                    else
-                    {
-                        Validate(nextKey, keyDefinition);
-                        var nextValue = ReadValue(valueDefinition);
-                        mapping.Add(nextKey, nextValue);
-                        m_memory.AddBytes(nextKey);
-                    }
+                    nextKey = new StringToken(nextKeyScalar.FileId, nextKeyScalar.Line, nextKeyScalar.Column, nextKeyScalar.ToString());
                 }
+
+                // Duplicate
+                if (!keys.Add(nextKey.Value))
+                {
+                    m_context.Error(nextKey, TemplateStrings.ValueAlreadyDefined(nextKey.Value));
+                    SkipValue();
+                    continue;
+                }
+
+                // Validate
+                Validate(nextKey, keyDefinition);
+                m_memory.AddBytes(nextKey);
+
+                // Add the pair
+                nextValue = ReadValue(valueDefinition);
+                mapping.Add(nextKey, nextValue);
             }
 
             ExpectMappingEnd();
@@ -344,28 +354,26 @@ namespace GitHub.DistributedTask.ObjectTemplating
         private void SkipValue(Boolean error = false)
         {
             m_memory.IncrementEvents();
-            Int32? line;
-            Int32? column;
 
             // Scalar
-            if (m_objectReader.AllowScalar(out line, out column, out String rawValue))
+            if (m_objectReader.AllowLiteral(out LiteralToken literal))
             {
                 if (error)
                 {
-                    m_context.Error(m_fileId, line, column, TemplateStrings.UnexpectedValue(rawValue));
+                    m_context.Error(literal, TemplateStrings.UnexpectedValue(literal));
                 }
 
                 return;
             }
 
             // Sequence
-            if (m_objectReader.AllowSequenceStart(out line, out column))
+            if (m_objectReader.AllowSequenceStart(out SequenceToken sequence))
             {
                 m_memory.IncrementDepth();
 
                 if (error)
                 {
-                    m_context.Error(m_fileId, line, column, TemplateStrings.UnexpectedSequenceStart());
+                    m_context.Error(sequence, TemplateStrings.UnexpectedSequenceStart());
                 }
 
                 while (!m_objectReader.AllowSequenceEnd())
@@ -378,13 +386,13 @@ namespace GitHub.DistributedTask.ObjectTemplating
             }
 
             // Mapping
-            if (m_objectReader.AllowMappingStart(out line, out column))
+            if (m_objectReader.AllowMappingStart(out MappingToken mapping))
             {
                 m_memory.IncrementDepth();
 
                 if (error)
                 {
-                    m_context.Error(m_fileId, line, column, TemplateStrings.UnexpectedMappingStart());
+                    m_context.Error(mapping, TemplateStrings.UnexpectedMappingStart());
                 }
 
                 while (!m_objectReader.AllowMappingEnd())
@@ -402,20 +410,46 @@ namespace GitHub.DistributedTask.ObjectTemplating
         }
 
         private void Validate(
-            ScalarToken scalar,
+            StringToken stringToken,
+            DefinitionInfo definition)
+        {
+            var scalar = stringToken as ScalarToken;
+            Validate(ref scalar, definition);
+        }
+
+        private void Validate(
+            ref ScalarToken scalar,
             DefinitionInfo definition)
         {
             switch (scalar.Type)
             {
-                case TokenType.Literal:
+                case TokenType.Null:
+                case TokenType.Boolean:
+                case TokenType.Number:
+                case TokenType.String:
                     var literal = scalar as LiteralToken;
 
-                    // Illegal value
-                    if (!definition.Get<ScalarDefinition>().Any(x => x.IsMatch(literal)))
+                    // Legal
+                    if (definition.Get<ScalarDefinition>().Any(x => x.IsMatch(literal)))
                     {
-                        m_context.Error(literal, TemplateStrings.UnexpectedValue(literal.Value));
+                        return;
                     }
 
+                    // Not a string, convert
+                    if (literal.Type != TokenType.String)
+                    {
+                        literal = new StringToken(literal.FileId, literal.Line, literal.Column, literal.ToString());
+
+                        // Legal
+                        if (definition.Get<StringDefinition>().Any(x => x.IsMatch(literal)))
+                        {
+                            scalar = literal;
+                            return;
+                        }
+                    }
+
+                    // Illegal
+                    m_context.Error(literal, TemplateStrings.UnexpectedValue(literal));
                     break;
 
                 case TokenType.BasicExpression:
@@ -435,17 +469,22 @@ namespace GitHub.DistributedTask.ObjectTemplating
         }
 
         private ScalarToken ParseScalar(
-            Int32? line,
-            Int32? column,
-            String raw,
+            LiteralToken token,
             String[] allowedContext)
         {
+            // Not a string
+            if (token.Type != TokenType.String)
+            {
+                return token;
+            }
+
             // Check if the value is definitely a literal
+            var raw = token.ToString();
             Int32 startExpression;
             if (String.IsNullOrEmpty(raw) ||
-                (startExpression = raw.IndexOf(c_openExpression)) < 0) // Doesn't contain ${{
+                (startExpression = raw.IndexOf(TemplateConstants.OpenExpression)) < 0) // Doesn't contain ${{
             {
-                return new LiteralToken(m_fileId, line, column, raw);
+                return token;
             }
 
             // Break the value into segments of LiteralToken and ExpressionToken
@@ -460,7 +499,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                     startExpression = i;
                     var endExpression = -1;
                     var inString = false;
-                    for (i += c_openExpression.Length; i < raw.Length; i++)
+                    for (i += TemplateConstants.OpenExpression.Length; i < raw.Length; i++)
                     {
                         if (raw[i] == '\'')
                         {
@@ -477,42 +516,42 @@ namespace GitHub.DistributedTask.ObjectTemplating
                     // Check if not closed
                     if (endExpression < startExpression)
                     {
-                        m_context.Error(m_fileId, line, column, TemplateStrings.ExpressionNotClosed());
-                        return new LiteralToken(m_fileId, line, column, raw);
+                        m_context.Error(token, TemplateStrings.ExpressionNotClosed());
+                        return token;
                     }
 
                     // Parse the expression
                     var rawExpression = raw.Substring(
-                        startExpression + c_openExpression.Length,
-                        endExpression - startExpression + 1 - c_openExpression.Length - c_closeExpression.Length);
-                    var expression = ParseExpression(line, column, rawExpression, allowedContext, out Exception ex);
+                        startExpression + TemplateConstants.OpenExpression.Length,
+                        endExpression - startExpression + 1 - TemplateConstants.OpenExpression.Length - TemplateConstants.CloseExpression.Length);
+                    var expression = ParseExpression(token.Line, token.Column, rawExpression, allowedContext, out Exception ex);
 
                     // Check for error
                     if (ex != null)
                     {
-                        m_context.Error(m_fileId, line, column, ex);
-                        return new LiteralToken(m_fileId, line, column, raw);
+                        m_context.Error(token, ex);
+                        return token;
                     }
 
                     // Check if a directive was used when not allowed
                     if (!String.IsNullOrEmpty(expression.Directive) &&
                         ((startExpression != 0) || (i < raw.Length)))
                     {
-                        m_context.Error(m_fileId, line, column, TemplateStrings.DirectiveNotAllowedInline(expression.Directive));
-                        return new LiteralToken(m_fileId, line, column, raw);
+                        m_context.Error(token, TemplateStrings.DirectiveNotAllowedInline(expression.Directive));
+                        return token;
                     }
 
                     // Add the segment
                     segments.Add(expression);
 
                     // Look for the next expression
-                    startExpression = raw.IndexOf(c_openExpression, i);
+                    startExpression = raw.IndexOf(TemplateConstants.OpenExpression, i);
                 }
                 // The next expression is further ahead:
                 else if (i < startExpression)
                 {
                     // Append the segment
-                    AddLiteral(segments, line, column, raw.Substring(i, startExpression - i));
+                    AddString(segments, token.Line, token.Column, raw.Substring(i, startExpression - i));
 
                     // Adjust the position
                     i = startExpression;
@@ -520,7 +559,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                 // No remaining expressions:
                 else
                 {
-                    AddLiteral(segments, line, column, raw.Substring(i));
+                    AddString(segments, token.Line, token.Column, raw.Substring(i));
                     break;
                 }
             }
@@ -531,7 +570,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                 segments[0] is BasicExpressionToken basicExpression &&
                 IsExpressionString(basicExpression.Expression, out String str))
             {
-                return new LiteralToken(m_fileId, line, column, str);
+                return new StringToken(m_fileId, token.Line, token.Column, str);
             }
 
             // Check if only ony segment
@@ -546,9 +585,9 @@ namespace GitHub.DistributedTask.ObjectTemplating
             var argIndex = 0;
             foreach (var segment in segments)
             {
-                if (segment is LiteralToken literal)
+                if (segment is StringToken literal)
                 {
-                    var text = ExpressionUtil.StringEscape(literal.Value) // Escape quotes
+                    var text = ExpressionUtility.StringEscape(literal.Value) // Escape quotes
                         .Replace("{", "{{") // Escape braces
                         .Replace("}", "}}");
                     format.Append(text);
@@ -564,7 +603,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                 }
             }
 
-            return new BasicExpressionToken(m_fileId, line, column, $"format('{format}'{args})");
+            return new BasicExpressionToken(m_fileId, token.Line, token.Column, $"format('{format}'{args})");
         }
 
         private ExpressionToken ParseExpression(
@@ -604,21 +643,21 @@ namespace GitHub.DistributedTask.ObjectTemplating
             return new BasicExpressionToken(m_fileId, line, column, trimmed);
         }
 
-        private void AddLiteral(
+        private void AddString(
             List<ScalarToken> segments,
             Int32? line,
             Int32? column,
             String value)
         {
             // If the last segment was a LiteralToken, then append to the last segment
-            if (segments.Count > 0 && segments[segments.Count - 1] is LiteralToken lastSegment)
+            if (segments.Count > 0 && segments[segments.Count - 1] is StringToken lastSegment)
             {
-                segments[segments.Count - 1] = new LiteralToken(m_fileId, line, column, lastSegment.Value + value);
+                segments[segments.Count - 1] = new StringToken(m_fileId, line, column, lastSegment.Value + value);
             }
             // Otherwise add a new LiteralToken
             else
             {
-                segments.Add(new LiteralToken(m_fileId, line, column, value));
+                segments.Add(new StringToken(m_fileId, line, column, value));
             }
         }
 
@@ -770,8 +809,6 @@ namespace GitHub.DistributedTask.ObjectTemplating
             public String[] AllowedContext;
         }
 
-        private const String c_openExpression = "${{";
-        private const String c_closeExpression = "}}";
         private readonly TemplateContext m_context;
         private readonly Int32? m_fileId;
         private readonly TemplateMemory m_memory;

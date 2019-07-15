@@ -3,10 +3,10 @@ using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.Serialization;
+using GitHub.DistributedTask.Expressions2.Sdk;
 using GitHub.Services.WebApi.Internal;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using Expressions = GitHub.DistributedTask.Expressions;
 
 namespace GitHub.DistributedTask.Pipelines.ContextData
 {
@@ -14,7 +14,7 @@ namespace GitHub.DistributedTask.Pipelines.ContextData
     [JsonObject]
     [ClientIgnore]
     [EditorBrowsable(EditorBrowsableState.Never)]
-    public sealed class ArrayContextData : PipelineContextData, IEnumerable<PipelineContextData>, Expressions::IReadOnlyArray
+    public sealed class ArrayContextData : PipelineContextData, IEnumerable<PipelineContextData>, IReadOnlyArray
     {
         public ArrayContextData()
             : base(PipelineContextDataType.Array)
@@ -26,7 +26,7 @@ namespace GitHub.DistributedTask.Pipelines.ContextData
 
         public PipelineContextData this[Int32 index] => m_items[index];
 
-        Object IReadOnlyList<Object>.this[Int32 index] => m_items[index];
+        Object IReadOnlyArray.this[Int32 index] => m_items[index];
 
         public void Add(PipelineContextData item)
         {
@@ -76,7 +76,7 @@ namespace GitHub.DistributedTask.Pipelines.ContextData
             }
         }
 
-        IEnumerator<Object> IEnumerable<Object>.GetEnumerator()
+        IEnumerator IEnumerable.GetEnumerator()
         {
             if (m_items?.Count > 0)
             {
@@ -87,7 +87,7 @@ namespace GitHub.DistributedTask.Pipelines.ContextData
             }
         }
 
-        IEnumerator IEnumerable.GetEnumerator()
+        IEnumerator IReadOnlyArray.GetEnumerator()
         {
             if (m_items?.Count > 0)
             {

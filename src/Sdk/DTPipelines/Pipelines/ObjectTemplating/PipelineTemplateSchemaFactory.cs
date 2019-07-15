@@ -19,7 +19,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 json = streamReader.ReadToEnd();
             }
 
-            var objectReader = new JsonObjectReader(json);
+            var objectReader = new JsonObjectReader(null, json);
             return TemplateSchema.Load(objectReader);
         }
     }

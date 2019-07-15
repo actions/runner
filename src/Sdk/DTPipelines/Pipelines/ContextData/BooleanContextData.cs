@@ -1,10 +1,9 @@
-﻿using GitHub.DistributedTask.Expressions;
+﻿using System;
+using System.ComponentModel;
+using System.Runtime.Serialization;
+using GitHub.DistributedTask.Expressions2.Sdk;
 using GitHub.Services.WebApi.Internal;
 using Newtonsoft.Json.Linq;
-using System;
-using System.ComponentModel;
-using System.Linq;
-using System.Runtime.Serialization;
 
 namespace GitHub.DistributedTask.Pipelines.ContextData
 {
@@ -42,7 +41,7 @@ namespace GitHub.DistributedTask.Pipelines.ContextData
             return m_value.ToString().ToLower();
         }
 
-        public bool GetBoolean()
+        Boolean IBoolean.GetBoolean()
         {
             return Value;
         }

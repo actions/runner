@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using GitHub.DistributedTask.ObjectTemplating.Tokens;
 
 namespace GitHub.DistributedTask.ObjectTemplating.Schema
 {

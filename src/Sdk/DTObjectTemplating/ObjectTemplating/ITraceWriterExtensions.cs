@@ -2,7 +2,7 @@
 {
     internal static class ITraceWriterExtensions
     {
-        internal static DistributedTask.Expressions.ITraceWriter ToExpressionTraceWriter(this ITraceWriter trace)
+        internal static DistributedTask.Expressions2.ITraceWriter ToExpressionTraceWriter(this ITraceWriter trace)
         {
             return new ExpressionTraceWriter(trace);
         }

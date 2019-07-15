@@ -74,6 +74,54 @@ namespace GitHub.DistributedTask.Pipelines.ContextData
             throw new ArgumentException($"Unexpected type '{value?.GetType().Name}' encountered while reading '{objectDescription}'. The type '{nameof(NumberContextData)}' was expected.");
         }
 
+        public static void AddJToken(this DictionaryContextData context, JToken value, String propertyName, int depth, int maxDepth)
+        {
+            PipelineContextData contextValue = MapJTokenToContext(value, depth, maxDepth);
+            context[propertyName] = contextValue;
+        }
+
+        internal static PipelineContextData MapJTokenToContext(JToken value, int depth, int maxDepth)
+        {
+            if (depth < maxDepth)
+            {
+                if (value.Type == JTokenType.String)
+                {
+                    return new StringContextData((String)value);
+                }
+                else if (value.Type == JTokenType.Boolean)
+                {
+                    return new BooleanContextData((Boolean)value);
+                }
+                else if (value.Type == JTokenType.Float || value.Type == JTokenType.Integer)
+                {
+                    return new NumberContextData((Double)value);
+                }
+                else if (value.Type == JTokenType.Object)
+                {
+                    var subContext = new DictionaryContextData();
+                    var obj = (JObject)value;
+                    foreach (var property in obj.Properties())
+                    {
+                        subContext.AddJToken(property.Value, property.Name, depth + 1, maxDepth);
+                    }
+                    return subContext;
+                }
+                else if (value.Type == JTokenType.Array)
+                {
+                    var arrayContext = new ArrayContextData();
+                    var arr = (JArray)value;
+                    foreach (var element in arr)
+                    {
+                        arrayContext.Add(MapJTokenToContext(element, depth + 1, maxDepth));
+                    }
+                    return arrayContext;
+                }
+            }
+
+            // We don't understand the type or have reached our max, return as string
+            return new StringContextData(value.ToString());
+        }
+
         /// <summary>
         /// Returns all context data objects (depth first)
         /// </summary>
@@ -168,6 +216,11 @@ namespace GitHub.DistributedTask.Pipelines.ContextData
 
         internal static TemplateToken ToTemplateToken(this PipelineContextData data)
         {
+            if (data is null)
+            {
+                return new NullToken(null, null, null);
+            }
+
             switch (data.Type)
             {
                 case PipelineContextDataType.Dictionary:
@@ -177,7 +230,7 @@ namespace GitHub.DistributedTask.Pipelines.ContextData
                     {
                         foreach (var pair in dictionary)
                         {
-                            var key = new LiteralToken(null, null, null, pair.Key);
+                            var key = new StringToken(null, null, null, pair.Key);
                             var value = pair.Value.ToTemplateToken();
                             mapping.Add(key, value);
                         }
@@ -197,13 +250,16 @@ namespace GitHub.DistributedTask.Pipelines.ContextData
                     return sequence;
 
                 case PipelineContextDataType.String:
-                    return new LiteralToken(null, null, null, data.ToString());
+                    var stringData = data as StringContextData;
+                    return new StringToken(null, null, null, stringData.Value);
 
                 case PipelineContextDataType.Boolean:
-                    return new LiteralToken(null, null, null, data.ToString());
+                    var booleanData = data as BooleanContextData;
+                    return new BooleanToken(null, null, null, booleanData.Value);
 
                 case PipelineContextDataType.Number:
-                    return new LiteralToken(null, null, null, data.ToString());
+                    var numberData = data as NumberContextData;
+                    return new NumberToken(null, null, null, numberData.Value);
 
                 default:
                     throw new NotSupportedException($"Unexpected {nameof(PipelineContextDataType)} type '{data.Type}'");

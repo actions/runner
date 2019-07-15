@@ -4,7 +4,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
 {
     internal static class TokenType
     {
-        internal const Int32 Literal = 0;
+        internal const Int32 String = 0;
 
         internal const Int32 Sequence = 1;
 
@@ -13,5 +13,11 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
         internal const Int32 BasicExpression = 3;
 
         internal const Int32 InsertExpression = 4;
+
+        internal const Int32 Boolean = 5;
+
+        internal const Int32 Number = 6;
+
+        internal const Int32 Null = 7;
     }
 }

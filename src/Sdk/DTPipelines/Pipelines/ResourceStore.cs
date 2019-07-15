@@ -204,6 +204,19 @@ namespace GitHub.DistributedTask.Pipelines
         }
 
         /// <summary>
+        /// Get steps that run after the checkout task.
+        /// </summary>
+        /// <param name="context">The execution context</param>
+        /// <param name="steps"></param>
+        /// <returns></returns>
+        public Dictionary<Guid, List<TaskStep>> GetPostTaskSteps(
+            IPipelineContext context,
+            IReadOnlyList<JobStep> steps)
+        {
+            return new Dictionary<Guid, List<TaskStep>>();
+        }
+
+        /// <summary>
         /// Get steps that are run after all other steps.
         /// </summary>
         /// <param name="context">The execution context</param>
@@ -388,6 +401,13 @@ namespace GitHub.DistributedTask.Pipelines
             return null;
         }
 
+        public Dictionary<Guid, List<TaskStep>> GetPostTaskSteps(
+            IPipelineContext context,
+            IReadOnlyList<JobStep> steps)
+        {
+            return new Dictionary<Guid, List<TaskStep>>();
+        }
+
         public IList<TaskStep> GetPostSteps(
             IPipelineContext context,
             IReadOnlyList<JobStep> steps)
@@ -446,6 +466,13 @@ namespace GitHub.DistributedTask.Pipelines
             IReadOnlyList<JobStep> steps)
         {
             return new List<TaskStep>();
+        }
+
+        public Dictionary<Guid, List<TaskStep>> GetPostTaskSteps(
+            IPipelineContext context,
+            IReadOnlyList<JobStep> steps)
+        {
+            return new Dictionary<Guid, List<TaskStep>>();
         }
 
         public IList<TaskStep> GetPostSteps(
@@ -578,6 +605,13 @@ namespace GitHub.DistributedTask.Pipelines
                     return new[] { checkoutTask };
                 }
             }
+        }
+
+        public Dictionary<Guid, List<TaskStep>> GetPostTaskSteps(
+            IPipelineContext context,
+            IReadOnlyList<JobStep> steps)
+        {
+            return new Dictionary<Guid, List<TaskStep>>();
         }
 
         public IList<TaskStep> GetPostSteps(

@@ -121,6 +121,14 @@ namespace GitHub.DistributedTask.Pipelines
             public static readonly String All = "all";
         }
 
+        public static class EnvironmentVariables
+        {
+            public static readonly String EnvironmentId = "Environment.Id";
+            public static readonly String EnvironmentName = "Environment.Name";
+            public static readonly String EnvironmentResourceId = "Environment.ResourceId";
+            public static readonly String EnvironmentResourceName = "Environment.ResourceName";
+        }
+
         public static readonly TaskDefinition CheckoutTask = new TaskDefinition
         {
             Id = new Guid("6d15af64-176c-496d-b583-fd2ae21d4df4"),

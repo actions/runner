@@ -8,7 +8,7 @@
 // using System.Runtime.CompilerServices;
 // using System.Threading.Tasks;
 // using Xunit;
-// using GitHub.DistributedTask.Expressions;
+// using GitHub.DistributedTask.Expressions2;
 // using GitHub.DistributedTask.Pipelines.ContextData;
 
 // namespace GitHub.Runner.Common.Tests.Worker

@@ -2,7 +2,10 @@
 {
     internal enum DefinitionType
     {
-        Scalar,
+        Null,
+        Boolean,
+        Number,
+        String,
         Sequence,
         Mapping,
         OneOf,

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Threading;
-using GitHub.DistributedTask.Expressions;
+using GitHub.DistributedTask.Expressions2;
 using GitHub.DistributedTask.ObjectTemplating.Schema;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 
@@ -15,16 +15,6 @@ namespace GitHub.DistributedTask.ObjectTemplating
     [EditorBrowsable(EditorBrowsableState.Never)]
     public sealed class TemplateContext
     {
-        public TemplateContext()
-            : this(new Dictionary<Type, Converter<Object, ConversionResult>>(s_defaultConverters))
-        {
-        }
-
-        private TemplateContext(IDictionary<Type, Converter<Object, ConversionResult>> expressionConverters)
-        {
-            ExpressionConverters = expressionConverters;
-        }
-
         internal CancellationToken CancellationToken { get; set; }
 
         internal TemplateValidationErrors Errors
@@ -44,8 +34,6 @@ namespace GitHub.DistributedTask.ObjectTemplating
                 m_errors = value;
             }
         }
-
-        public IDictionary<Type, Converter<Object, ConversionResult>> ExpressionConverters { get; private set; }
 
         /// <summary>
         /// Available functions within expression contexts
@@ -233,58 +221,6 @@ namespace GitHub.DistributedTask.ObjectTemplating
             }
         }
 
-        // Converters for canonicalizing expression results
-        private static readonly Dictionary<Type, Converter<Object, ConversionResult>> s_defaultConverters = new Dictionary<Type, Converter<Object, ConversionResult>>
-        {
-            // Treat LiteralToken as a string
-            {
-                typeof(LiteralToken),
-                (Object obj) =>
-                {
-                    var result = (obj as LiteralToken).Value;
-
-                    return new ConversionResult
-                    {
-                        Result = result,
-                        ResultMemory = new ResultMemory { Bytes = IntPtr.Size }, // Pointer to existing string
-                    };
-                }
-            },
-
-            // Treat SequenceToken as a list
-            {
-                typeof(SequenceToken),
-                (Object obj) =>
-                {
-                    var result = new TemplateTokenReadOnlyList(obj as SequenceToken);
-                    var memory = new MemoryCounter(null, null);
-                    memory.AddMinObjectSize();
-
-                    return new ConversionResult
-                    {
-                        Result = result,
-                        ResultMemory = new ResultMemory { Bytes = memory.CurrentBytes },
-                    };
-                }
-            },
-
-            // Treat MappingToken as dictionary
-            {
-                typeof(MappingToken),
-                (Object obj) =>
-                {
-                    var result = new TemplateTokenReadOnlyDictionary(obj as MappingToken);
-                    var memory = new MemoryCounter(null, null);
-                    memory.AddMinObjectSize();
-
-                    return new ConversionResult
-                    {
-                        Result = new TemplateTokenReadOnlyDictionary(obj as MappingToken),
-                        ResultMemory = new ResultMemory { Bytes = memory.CurrentBytes },
-                    };
-                }
-            },
-        };
         private TemplateValidationErrors m_errors;
         private IList<IFunctionInfo> m_expressionFunctions;
         private IDictionary<String, Object> m_expressionValues;
