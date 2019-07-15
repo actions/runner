@@ -317,7 +317,6 @@ namespace GitHub.Runner.Worker
             int? message = null;
             int? fromPath = null;
 
-            bool messageSet = false;
             // Validate each pattern config
             for (var i = 0; i < _patterns.Length; i++)
             {
@@ -333,18 +332,9 @@ namespace GitHub.Runner.Worker
                     ref code,
                     ref message,
                     ref fromPath);
-
-                if (message != null)
-                {
-                    if (messageSet)
-                    {
-                        throw new ArgumentException($"Only the last pattern may set 'message'");
-                    }
-                    messageSet = true;
-                }
             }
 
-            if (!messageSet)
+            if (message == null)
             {
                 throw new ArgumentException($"At least one pattern must set 'message'");
             }
@@ -409,11 +399,10 @@ namespace GitHub.Runner.Worker
                 throw new ArgumentException($"Only the last pattern in a multiline matcher may set '{_loopPropertyName}'");
             }
 
-            // Only the last pattern may set 'message' if we are looping
-            if (Loop && Message != null && !isLast)
+            if (Loop && Message == null)
             {
-                throw new ArgumentException($"Only the last pattern may set '{_messagePropertyName}' when looping");
-            }
+                throw new ArgumentException($"The {_loopPropertyName} pattern must set '{_messagePropertyName}'");
+            }   
 
             var regex = new Regex(Pattern ?? string.Empty, RegexOptions);
             var groupCount = regex.GetGroupNumbers().Length;
