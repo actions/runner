@@ -6,27 +6,29 @@ namespace GitHub.Runner.Worker.Handlers
 {
     internal class ScriptHandlerHelpers
     {
-        private static readonly Dictionary<string, string> DefaultArguments = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        private static readonly Dictionary<string, string> _defaultArguments = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["cmd"] = "/D /E:ON /V:OFF /S /C \"CALL \"{0}\"\"",
             ["pwsh"] = "-command \". '{0}'\"",
             ["powershell"] = "-command \". '{0}'\"",
             ["bash"] = "--noprofile --norc -e -o pipefail {0}",
-            ["sh"] = "-e {0}"
+            ["sh"] = "-e {0}",
+            ["python"] = "python {0}"
         };
 
-        private static readonly Dictionary<string, string> Extensions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        private static readonly Dictionary<string, string> _extensions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["cmd"] = ".cmd",
             ["pwsh"] = ".ps1",
             ["powershell"] = ".ps1",
             ["bash"] = ".sh",
-            ["sh"] = ".sh"
+            ["sh"] = ".sh",
+            ["python"] = ".py"
         };
 
         internal static string GetScriptArgumentsFormat(string scriptType)
         {
-            if (DefaultArguments.TryGetValue(scriptType, out var argFormat))
+            if (_defaultArguments.TryGetValue(scriptType, out var argFormat))
             {
                 return argFormat;
             }
@@ -35,7 +37,7 @@ namespace GitHub.Runner.Worker.Handlers
 
         internal static string GetScriptFileExtension(string scriptType)
         {
-            if (Extensions.TryGetValue(scriptType, out var extension))
+            if (_extensions.TryGetValue(scriptType, out var extension))
             {
                 return extension;
             }
@@ -61,25 +63,6 @@ namespace GitHub.Runner.Worker.Handlers
             return contents;
         }
 
-        internal static string FormatArgumentString(string argString, string scriptFilePath)
-        {
-            // No args givin in options and no defaults exist. Only arg is the script file
-            if (string.IsNullOrEmpty(argString))
-            {
-                return scriptFilePath;
-            }
-            else
-            {
-                // Format string, e.g. `-args {0}` may be given in options or come from system defaults
-                if (argString.Contains("{0}"))
-                {
-                    return string.Format(argString, scriptFilePath);
-                }
-                // Regular arg string, e.g. `-abc file.sh`
-                return $"{argString} {scriptFilePath}";
-            }
-        }
-
         internal static (string shellCommand, string shellArgs) ParseShellOptionString(string shellOption)
         {
             var shellStringParts = shellOption.Split(" ", 2);
@@ -93,7 +76,7 @@ namespace GitHub.Runner.Worker.Handlers
             }
             else
             {
-                throw new Exception($"Failed to parse COMMAND [..ARGS] from {shellOption}");
+                throw new ArgumentException($"Failed to parse COMMAND [..ARGS] from {shellOption}");
             }
         }
     }

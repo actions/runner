@@ -46,6 +46,7 @@ namespace GitHub.Runner.Worker.Handlers
             }
 
             Inputs.TryGetValue("shell", out var shell);
+            var isContainerStepHost = StepHost is ContainerStepHost;
 
             string commandPath, argFormat, shellCommand;
             // Set up default command and arguments
@@ -65,7 +66,8 @@ namespace GitHub.Runner.Worker.Handlers
             {
                 var parsed = ScriptHandlerHelpers.ParseShellOptionString(shell);
                 shellCommand = parsed.shellCommand;
-                commandPath = WhichUtil.Which(parsed.shellCommand, true);
+                // For non-ContainerStepHost, the command must be located on the host by Which
+                commandPath = WhichUtil.Which(parsed.shellCommand, !isContainerStepHost);
                 argFormat = $"{parsed.shellArgs}".TrimStart();
                 if (string.IsNullOrEmpty(argFormat))
                 {
@@ -76,7 +78,7 @@ namespace GitHub.Runner.Worker.Handlers
             // No arg format was given, shell must be a built-in
             if (string.IsNullOrEmpty(argFormat) || !argFormat.Contains("{0}"))
             {
-                throw new Exception("Invalid shell option. Shell must be a valid built-in (bash, sh, cmd, powershell, pwsh) or a format string containing {0}");
+                throw new ArgumentException("Invalid shell option. Shell must be a valid built-in (bash, sh, cmd, powershell, pwsh) or a format string containing '{0}'");
             }
 
             // We do not not the full path until we know what shell is being used, so that we can determine the file extension
@@ -84,7 +86,7 @@ namespace GitHub.Runner.Worker.Handlers
             var resolvedScriptPath = $"{StepHost.ResolvePathForStepHost(scriptFilePath).Replace("\"", "\\\"")}";
 
             // Format arg string with script path
-            var arguments = ScriptHandlerHelpers.FormatArgumentString(argFormat, resolvedScriptPath);
+            var arguments = string.Format(argFormat, resolvedScriptPath);
 
             // Fix up and write the script
             contents = ScriptHandlerHelpers.FixUpScriptContents(shellCommand, contents);
@@ -121,7 +123,7 @@ namespace GitHub.Runner.Worker.Handlers
             }
 
             // dump out the command
-            var fileName = StepHost is ContainerStepHost ? shellCommand : StepHost.ResolvePathForStepHost(commandPath);
+            var fileName = isContainerStepHost ? shellCommand : commandPath;
             ExecutionContext.Command($"{fileName} {arguments}");
 
             using (var stdoutManager = new OutputManager(ExecutionContext, ActionCommandManager))
