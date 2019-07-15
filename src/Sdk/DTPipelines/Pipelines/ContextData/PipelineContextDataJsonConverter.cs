@@ -40,9 +40,14 @@ namespace GitHub.DistributedTask.Pipelines.ContextData
                 return new BooleanContextData((Boolean)reader.Value);
             }
 
-            if (reader.TokenType == JsonToken.Float || reader.TokenType == JsonToken.Integer)
+            if (reader.TokenType == JsonToken.Float)
             {
-                return new NumberContextData(Decimal.Parse(reader.Value.ToString()));
+                return new NumberContextData((Decimal)(double)reader.Value);
+            }
+
+            if (reader.TokenType == JsonToken.Integer)
+            {
+                return new NumberContextData((Decimal)(Int64)reader.Value);
             }
 
             if (reader.TokenType != JsonToken.StartObject)
