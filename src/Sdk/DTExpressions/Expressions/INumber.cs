@@ -7,6 +7,6 @@ namespace GitHub.DistributedTask.Expressions
     [EditorBrowsable(EditorBrowsableState.Never)]
     public interface INumber
     {
-        Double GetDouble();
+        Decimal GetNumber();
     }
 }
