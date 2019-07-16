@@ -1,4 +1,4 @@
-﻿using GitHub.DistributedTask.WebApi;
+using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common.Util;
 using System;
 using System.Collections.Generic;
@@ -76,7 +76,7 @@ namespace GitHub.Runner.Worker.Handlers
 #if OS_WINDOWS
             if (Environment[key].Length > _environmentVariableMaximumSize)
             {
-                ExecutionContext.Warning(StringUtil.Loc("EnvironmentVariableExceedsMaximumLength", key, value.Length, _environmentVariableMaximumSize));
+                ExecutionContext.Warning($"Environment variable '{key}' exceeds the maximum supported length. Environment variable length: {value.Length} , Maximum supported length: {_environmentVariableMaximumSize}");
             }
 #endif
         }

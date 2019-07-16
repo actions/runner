@@ -176,7 +176,7 @@ namespace GitHub.Runner.Listener.Configuration
             trace.Info("token retrieved: {0} chars", token.Length);
 
             // PAT uses a basic credential
-            VssBasicCredential basicCred = new VssBasicCredential("VstsAgent", token);
+            VssBasicCredential basicCred = new VssBasicCredential("ActionsRunner", token);
             VssCredentials creds = new VssCredentials(null, basicCred, CredentialPromptType.DoNotPrompt);
             trace.Info("cred created");
 

@@ -93,6 +93,7 @@ namespace GitHub.Runner.Worker.Handlers
 
             var tempHomeDirectory = Path.Combine(tempDirectory, "_github_home");
             Directory.CreateDirectory(tempHomeDirectory);
+            this.Environment["HOME"] = tempHomeDirectory;
 
             var tempWorkflowDirectory = Path.Combine(tempDirectory, "_github_workflow");
             ArgUtil.Directory(tempWorkflowDirectory, nameof(tempWorkflowDirectory));

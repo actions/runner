@@ -1,4 +1,4 @@
-﻿#if OS_LINUX || OS_OSX
+#if OS_LINUX || OS_OSX
 using System;
 using System.IO;
 using System.Security.Cryptography;
@@ -74,7 +74,7 @@ namespace GitHub.Runner.Listener.Configuration
         {
             if (!File.Exists(_keyFile))
             {
-                throw new CryptographicException(StringUtil.Loc("RSAKeyFileNotFound", _keyFile));
+                throw new CryptographicException($"RSA key file {_keyFile} was not found");
             }
 
             Trace.Info("Loading RSA key parameters from file {0}", _keyFile);

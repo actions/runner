@@ -47,16 +47,16 @@ namespace GitHub.Runner.Worker
                 try
                 {
                     context.Start();
-                    context.Section(StringUtil.Loc("StepStarting", "Setup Job"));
+                    context.Section($"Starting: Setup Job");
 
                     // Set agent version variable.
-                    context.Output(StringUtil.Loc("AgentVersion", BuildConstants.RunnerPackage.Version));
+                    context.Output($"Current runner version: '{BuildConstants.RunnerPackage.Version}'");
 
                     // Print proxy setting information for better diagnostic experience
-                    var agentWebProxy = HostContext.GetService<IRunnerWebProxy>();
-                    if (!string.IsNullOrEmpty(agentWebProxy.ProxyAddress))
+                    var runnerWebProxy = HostContext.GetService<IRunnerWebProxy>();
+                    if (!string.IsNullOrEmpty(runnerWebProxy.ProxyAddress))
                     {
-                        context.Output(StringUtil.Loc("AgentRunningBehindProxy", agentWebProxy.ProxyAddress));
+                        context.Output($"Runner is running behind proxy server: '{runnerWebProxy.ProxyAddress}'");
                     }
 
                     // Give job extension a chance to initialize
@@ -67,7 +67,7 @@ namespace GitHub.Runner.Worker
                     context.Debug($"Primary repository: {repoFullName}.");
 
                     // Prepare the pipeline directory.
-                    context.Output(StringUtil.Loc("PreparePipelineDir"));
+                    context.Output("Prepare pipeline directory.");
                     var directoryManager = HostContext.GetService<IPipelineDirectoryManager>();
                     TrackingConfig trackingConfig = directoryManager.PrepareDirectory(
                         context,
@@ -122,11 +122,11 @@ namespace GitHub.Runner.Worker
 
                         preJobSteps.Add(new JobExtensionRunner(runAsync: containerProvider.StartContainersAsync,
                                                                           condition: ExpressionManager.Succeeded,
-                                                                          displayName: StringUtil.Loc("InitializeContainer"),
+                                                                          displayName: "Initialize containers",
                                                                           data: (object)containers));
                         postJobStepsBuilder.Push(new JobExtensionRunner(runAsync: containerProvider.StopContainersAsync,
                                                                         condition: ExpressionManager.Always,
-                                                                        displayName: StringUtil.Loc("StopContainer"),
+                                                                        displayName: "Stop Containers",
                                                                         data: (object)containers));
                     }
 
@@ -235,7 +235,7 @@ namespace GitHub.Runner.Worker
                 }
                 finally
                 {
-                    context.Section(StringUtil.Loc("StepFinishing", StringUtil.Loc("InitializeJob")));
+                    context.Section("Finishing: Setup Job");
                     context.Complete();
                 }
             }
@@ -253,7 +253,7 @@ namespace GitHub.Runner.Worker
                 try
                 {
                     context.Start();
-                    context.Section(StringUtil.Loc("StepStarting", "Complete Job"));
+                    context.Section("Starting: Complete Job");
 
                     // Wait for agent log plugin process exits
                     // var logPlugin = HostContext.GetService<IAgentLogPlugin>();
@@ -326,7 +326,7 @@ namespace GitHub.Runner.Worker
                 }
                 finally
                 {
-                    context.Section(StringUtil.Loc("StepFinishing", StringUtil.Loc("FinalizeJob")));
+                    context.Section("Finishing: Complete Job");
                     context.Complete();
                 }
             }

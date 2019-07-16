@@ -1,4 +1,4 @@
-﻿using GitHub.Runner.Common.Util;
+using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
 using System;
 using System.IO;
@@ -61,8 +61,8 @@ namespace GitHub.Runner.Listener.Configuration
         {
             return string.Equals(value, "true", StringComparison.OrdinalIgnoreCase) ||
                    string.Equals(value, "false", StringComparison.OrdinalIgnoreCase) ||
-                   string.Equals(value, StringUtil.Loc("Y"), StringComparison.CurrentCultureIgnoreCase) ||
-                   string.Equals(value, StringUtil.Loc("N"), StringComparison.CurrentCultureIgnoreCase);
+                   string.Equals(value, "Y", StringComparison.CurrentCultureIgnoreCase) ||
+                   string.Equals(value, "N", StringComparison.CurrentCultureIgnoreCase);
         }
 
         public static bool NonEmptyValidator(string value)

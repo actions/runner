@@ -71,7 +71,7 @@ namespace GitHub.Runner.Worker
                 File.WriteAllText(workflowFile, gitHubEvent, new UTF8Encoding(false));
                 ExecutionContext.SetGitHubContext("event_path", workflowFile);
             }
-            
+
             // Setup container stephost for running inside the container.
             if (ExecutionContext.Container != null)
             {
@@ -148,8 +148,15 @@ namespace GitHub.Runner.Worker
             ArgUtil.NotNull(actionDefinition.Data, nameof(actionDefinition.Data));
 
             ExecutionContext.Output("==============================================================================");
-            ExecutionContext.Output($"Action             : {actionDefinition.Data.FriendlyName}");
-            ExecutionContext.Output($"Description        : {actionDefinition.Data.Description}");
+            if (!string.IsNullOrEmpty(actionDefinition.Data.FriendlyName))
+            {
+                ExecutionContext.Output($"Action             : {actionDefinition.Data.FriendlyName}");
+            }
+
+            if (!string.IsNullOrEmpty(actionDefinition.Data.Description))
+            {
+                ExecutionContext.Output($"Description        : {actionDefinition.Data.Description}");
+            }
 
             if (Action.Reference.Type == Pipelines.ActionSourceType.ContainerRegistry)
             {
@@ -169,7 +176,10 @@ namespace GitHub.Runner.Worker
                 }
             }
 
-            ExecutionContext.Output($"Author             : {actionDefinition.Data.Author}");
+            if (!string.IsNullOrEmpty(actionDefinition.Data.Author))
+            {
+                ExecutionContext.Output($"Author             : {actionDefinition.Data.Author}");
+            }
             ExecutionContext.Output("==============================================================================");
         }
     }

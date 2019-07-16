@@ -263,7 +263,7 @@ namespace GitHub.Runner.Worker
             // report total delay caused by server throttling.
             if (_totalThrottlingDelayInMilliseconds > 0)
             {
-                this.Warning(StringUtil.Loc("TotalThrottlingDelay", TimeSpan.FromMilliseconds(_totalThrottlingDelayInMilliseconds).TotalSeconds));
+                this.Warning($"The job has experienced {TimeSpan.FromMilliseconds(_totalThrottlingDelayInMilliseconds).TotalSeconds} seconds total delay caused by server throttling.");
             }
 
             _record.CurrentOperation = currentOperation ?? _record.CurrentOperation;
@@ -633,69 +633,66 @@ namespace GitHub.Runner.Worker
             }
 
             // Proxy variables
-            var agentWebProxy = HostContext.GetService<IRunnerWebProxy>();
-            if (!string.IsNullOrEmpty(agentWebProxy.ProxyAddress))
-            {
-                SetRunnerContext("proxyurl", agentWebProxy.ProxyAddress);
-                Environment.SetEnvironmentVariable("VSTS_HTTP_PROXY", string.Empty);
+//             var agentWebProxy = HostContext.GetService<IRunnerWebProxy>();
+//             if (!string.IsNullOrEmpty(agentWebProxy.ProxyAddress))
+//             {
+//                 SetRunnerContext("proxyurl", agentWebProxy.ProxyAddress);
 
-                if (!string.IsNullOrEmpty(agentWebProxy.ProxyUsername))
-                {
-                    SetRunnerContext("proxyusername", agentWebProxy.ProxyUsername);
-                    Environment.SetEnvironmentVariable("VSTS_HTTP_PROXY_USERNAME", string.Empty);
-                }
+//                 if (!string.IsNullOrEmpty(agentWebProxy.ProxyUsername))
+//                 {
+//                     SetRunnerContext("proxyusername", agentWebProxy.ProxyUsername);
+//                 }
 
-                if (!string.IsNullOrEmpty(agentWebProxy.ProxyPassword))
-                {
-                    HostContext.SecretMasker.AddValue(agentWebProxy.ProxyPassword);
-                    SetRunnerContext("proxypassword", agentWebProxy.ProxyPassword);
-                    Environment.SetEnvironmentVariable("VSTS_HTTP_PROXY_PASSWORD", string.Empty);
-                }
+//                 if (!string.IsNullOrEmpty(agentWebProxy.ProxyPassword))
+//                 {
+//                     HostContext.SecretMasker.AddValue(agentWebProxy.ProxyPassword);
+//                     SetRunnerContext("proxypassword", agentWebProxy.ProxyPassword);
+//                 }
 
-                if (agentWebProxy.ProxyBypassList.Count > 0)
-                {
-                    SetRunnerContext("proxybypasslist", JsonUtility.ToString(agentWebProxy.ProxyBypassList));
-                }
-            }
+//                 if (agentWebProxy.ProxyBypassList.Count > 0)
+//                 {
+//                     SetRunnerContext("proxybypasslist", JsonUtility.ToString(agentWebProxy.ProxyBypassList));
+//                 }
+//             }
 
-            // Certificate variables
-            var agentCert = HostContext.GetService<IRunnerCertificateManager>();
-            if (agentCert.SkipServerCertificateValidation)
-            {
-                SetRunnerContext("sslskipcertvalidation", bool.TrueString);
-            }
+//             // Certificate variables
+//             var agentCert = HostContext.GetService<IRunnerCertificateManager>();
+//             if (agentCert.SkipServerCertificateValidation)
+//             {
+//                 SetRunnerContext("sslskipcertvalidation", bool.TrueString);
+//             }
 
-            if (!string.IsNullOrEmpty(agentCert.CACertificateFile))
-            {
-                SetRunnerContext("sslcainfo", agentCert.CACertificateFile);
-            }
+//             if (!string.IsNullOrEmpty(agentCert.CACertificateFile))
+//             {
+//                 SetRunnerContext("sslcainfo", agentCert.CACertificateFile);
+//             }
 
-            if (!string.IsNullOrEmpty(agentCert.ClientCertificateFile) &&
-                !string.IsNullOrEmpty(agentCert.ClientCertificatePrivateKeyFile) &&
-                !string.IsNullOrEmpty(agentCert.ClientCertificateArchiveFile))
-            {
-                SetRunnerContext("clientcertfile", agentCert.ClientCertificateFile);
-                SetRunnerContext("clientcertprivatekey", agentCert.ClientCertificatePrivateKeyFile);
-                SetRunnerContext("clientcertarchive", agentCert.ClientCertificateArchiveFile);
+//             if (!string.IsNullOrEmpty(agentCert.ClientCertificateFile) &&
+//                 !string.IsNullOrEmpty(agentCert.ClientCertificatePrivateKeyFile) &&
+//                 !string.IsNullOrEmpty(agentCert.ClientCertificateArchiveFile))
+//             {
+//                 SetRunnerContext("clientcertfile", agentCert.ClientCertificateFile);
+//                 SetRunnerContext("clientcertprivatekey", agentCert.ClientCertificatePrivateKeyFile);
+//                 SetRunnerContext("clientcertarchive", agentCert.ClientCertificateArchiveFile);
 
-                if (!string.IsNullOrEmpty(agentCert.ClientCertificatePassword))
-                {
-                    HostContext.SecretMasker.AddValue(agentCert.ClientCertificatePassword);
-                    SetRunnerContext("clientcertpassword", agentCert.ClientCertificatePassword);
-                }
-            }
+//                 if (!string.IsNullOrEmpty(agentCert.ClientCertificatePassword))
+//                 {
+//                     HostContext.SecretMasker.AddValue(agentCert.ClientCertificatePassword);
+//                     SetRunnerContext("clientcertpassword", agentCert.ClientCertificatePassword);
+//                 }
+//             }
 
-            // Runtime option variables
-            var runtimeOptions = HostContext.GetService<IConfigurationStore>().GetRunnerRuntimeOptions();
-            if (runtimeOptions != null)
-            {
-#if OS_WINDOWS
-                if (runtimeOptions.GitUseSecureChannel)
-                {
-                    SetRunnerContext("gituseschannel", runtimeOptions.GitUseSecureChannel.ToString());
-                }
-#endif                
-            }
+//             // Runtime option variables
+//             var runtimeOptions = HostContext.GetService<IConfigurationStore>().GetRunnerRuntimeOptions();
+//             if (runtimeOptions != null)
+//             {
+// #if OS_WINDOWS
+//                 if (runtimeOptions.GitUseSecureChannel)
+//                 {
+//                     SetRunnerContext("gituseschannel", runtimeOptions.GitUseSecureChannel.ToString());
+//                 }
+// #endif                
+//             }
 
             // Job timeline record.
             InitializeTimelineRecord(
@@ -763,7 +760,7 @@ namespace GitHub.Runner.Worker
 
             if (!File.Exists(filePath))
             {
-                throw new FileNotFoundException(StringUtil.Loc("AttachFileNotExist", type, name, filePath));
+                throw new FileNotFoundException($"Can't attach (type:{type} name:{name}) file: {filePath}. File does not exist.");
             }
 
             _jobServerQueue.QueueFileUpload(_mainTimelineId, _record.Id, type, name, filePath, deleteSource: false);
@@ -899,7 +896,7 @@ namespace GitHub.Runner.Worker
 
             if (!_throttlingReported)
             {
-                this.Warning(StringUtil.Loc("ServerTarpit"));
+                this.Warning(string.Format("The job is currently being throttled by the server. You may experience delays in console line output, job status reporting, and action log uploads."));
 
                 if (!String.IsNullOrEmpty(this.Variables.System_TFCollectionUrl))
                 {
@@ -915,7 +912,7 @@ namespace GitHub.Runner.Worker
 
                     // Global RU link
                     uriBuilder.Query = query.ToString();
-                    string global = StringUtil.Loc("ServerTarpitUrl", uriBuilder.ToString());
+                    string global = $"Link to resource utilization page (global 1-hour view): {uriBuilder.ToString()}.";
 
                     if (!String.IsNullOrEmpty(this.Variables.Build_DefinitionName))
                     {
@@ -925,7 +922,7 @@ namespace GitHub.Runner.Worker
 
                     // RU link scoped for the build/release
                     uriBuilder.Query = query.ToString();
-                    this.Warning($"{global}\n{StringUtil.Loc("ServerTarpitUrlScoped", uriBuilder.ToString())}");
+                    this.Warning($"{global}\nLink to resource utilization page (1-hour view by pipeline): {uriBuilder.ToString()}.");
                 }
 
                 _throttlingReported = true;

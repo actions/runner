@@ -217,8 +217,6 @@ namespace GitHub.Runner.Common
             public static readonly string BinDirectory = "bin";
             public static readonly string DiagDirectory = "_diag";
             public static readonly string ExternalsDirectory = "externals";
-            public static readonly string LegacyPSHostDirectory = "vstshost";
-            public static readonly string ServerOMDirectory = "vstsom";
             public static readonly string TempDirectory = "_temp";
             public static readonly string TeeDirectory = "tee";
             public static readonly string ToolDirectory = "_tool";

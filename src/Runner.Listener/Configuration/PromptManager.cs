@@ -1,4 +1,4 @@
-﻿using GitHub.Runner.Common;
+using GitHub.Runner.Common;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
 using System;
@@ -43,11 +43,11 @@ namespace GitHub.Runner.Listener.Configuration
                 argName: argName,
                 description: description,
                 secret: false,
-                defaultValue: defaultValue ? StringUtil.Loc("Y") : StringUtil.Loc("N"),
+                defaultValue: defaultValue ? "Y" : "N",
                 validator: Validators.BoolValidator,
                 unattended: unattended);
             return String.Equals(answer, "true", StringComparison.OrdinalIgnoreCase) ||
-                String.Equals(answer, StringUtil.Loc("Y"), StringComparison.CurrentCultureIgnoreCase);
+                String.Equals(answer, "Y", StringComparison.CurrentCultureIgnoreCase);
         }
 
         public string ReadValue(
@@ -72,7 +72,7 @@ namespace GitHub.Runner.Listener.Configuration
                 }
 
                 // Otherwise throw.
-                throw new Exception(StringUtil.Loc("InvalidConfigFor0TerminatingUnattended", argName));
+                throw new Exception($"Invalid configuration provided for {argName}. Terminating unattended configuration.");
             }
 
             // Prompt until a valid value is read.
@@ -81,8 +81,8 @@ namespace GitHub.Runner.Listener.Configuration
                 // Write the message prompt.
                 string prompt =
                     string.IsNullOrEmpty(defaultValue)
-                    ? StringUtil.Loc("Prompt0", description)
-                    : StringUtil.Loc("Prompt0Default1", description, defaultValue);
+                    ? $"Enter {description}"
+                    : $"Enter {description} (press enter for {defaultValue})";
                 _terminal.Write($"{prompt} > ");
 
                 // Read and trim the value.
@@ -107,7 +107,7 @@ namespace GitHub.Runner.Listener.Configuration
                     else
                     {
                         Trace.Info("Invalid value.");
-                        _terminal.WriteLine(StringUtil.Loc("EnterValidValueFor0", description));
+                        _terminal.WriteLine($"Enter a valid value for {description}.");
                     }
                 }
             }

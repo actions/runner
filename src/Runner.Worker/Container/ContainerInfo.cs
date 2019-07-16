@@ -15,12 +15,7 @@ namespace GitHub.Runner.Worker.Container
         private IDictionary<string, string> _userPortMappings;
         private List<PortMapping> _portMappings;
         private IDictionary<string, string> _environmentVariables;
-
-#if OS_WINDOWS
-        private Dictionary<string, string> _pathMappings = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-#else
-        private Dictionary<string, string> _pathMappings = new Dictionary<string, string>();
-#endif
+        private List<PathMapping> _pathMappings = new List<PathMapping>();
 
         public ContainerInfo()
         {
@@ -43,12 +38,14 @@ namespace GitHub.Runner.Worker.Container
             this.IsJobContainer = isJobContainer;
 
 #if OS_WINDOWS
-            _pathMappings[hostContext.GetDirectory(WellKnownDirectory.Work)] = "C:\\__w";
-            _pathMappings[hostContext.GetDirectory(WellKnownDirectory.Tools)] = "C:\\__t"; // Tool cache folder may come from ENV, so we need a unique folder to avoid collision
+            _pathMappings.Add(new PathMapping(hostContext.GetDirectory(WellKnownDirectory.Work), "C:\\__w"));
+            _pathMappings.Add(new PathMapping(hostContext.GetDirectory(WellKnownDirectory.Tools), "C:\\__t")); // Tool cache folder may come from ENV, so we need a unique folder to avoid collision
+            _pathMappings.Add(new PathMapping(hostContext.GetDirectory(WellKnownDirectory.Externals), "C:\\__e"));
             // add -v '\\.\pipe\docker_engine:\\.\pipe\docker_engine' when they are available (17.09)
 #else
-            _pathMappings[hostContext.GetDirectory(WellKnownDirectory.Work)] = "/__w";
-            _pathMappings[hostContext.GetDirectory(WellKnownDirectory.Tools)] = "/__t"; // Tool cache folder may come from ENV, so we need a unique folder to avoid collision
+            _pathMappings.Add(new PathMapping(hostContext.GetDirectory(WellKnownDirectory.Work), "/__w"));
+            _pathMappings.Add(new PathMapping(hostContext.GetDirectory(WellKnownDirectory.Tools), "/__t")); // Tool cache folder may come from ENV, so we need a unique folder to avoid collision
+            _pathMappings.Add(new PathMapping(hostContext.GetDirectory(WellKnownDirectory.Externals), "/__e"));
             if (this.IsJobContainer)
             {
                 this.MountVolumes.Add(new MountVolume("/var/run/docker.sock", "/var/run/docker.sock"));
@@ -154,25 +151,25 @@ namespace GitHub.Runner.Worker.Container
                 foreach (var mapping in _pathMappings)
                 {
 #if OS_WINDOWS
-                    if (string.Equals(path, mapping.Key, StringComparison.OrdinalIgnoreCase))
+                    if (string.Equals(path, mapping.HostPath, StringComparison.OrdinalIgnoreCase))
                     {
-                        return mapping.Value;
+                        return mapping.ContainerPath;
                     }
 
-                    if (path.StartsWith(mapping.Key + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) ||
-                        path.StartsWith(mapping.Key + Path.AltDirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+                    if (path.StartsWith(mapping.HostPath + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) ||
+                        path.StartsWith(mapping.HostPath + Path.AltDirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
                     {
-                        return mapping.Value + path.Remove(0, mapping.Key.Length);
+                        return mapping.ContainerPath + path.Remove(0, mapping.HostPath.Length);
                     }
 #else
-                    if (string.Equals(path, mapping.Key))
+                    if (string.Equals(path, mapping.HostPath))
                     {
-                        return mapping.Value;
+                        return mapping.ContainerPath;
                     }
 
-                    if (path.StartsWith(mapping.Key + Path.DirectorySeparatorChar))
+                    if (path.StartsWith(mapping.HostPath + Path.DirectorySeparatorChar))
                     {
-                        return mapping.Value + path.Remove(0, mapping.Key.Length);
+                        return mapping.ContainerPath + path.Remove(0, mapping.HostPath.Length);
                     }
 #endif
                 }
@@ -188,25 +185,25 @@ namespace GitHub.Runner.Worker.Container
                 foreach (var mapping in _pathMappings)
                 {
 #if OS_WINDOWS
-                    if (string.Equals(path, mapping.Value, StringComparison.OrdinalIgnoreCase))
+                    if (string.Equals(path, mapping.ContainerPath, StringComparison.OrdinalIgnoreCase))
                     {
-                        return mapping.Key;
+                        return mapping.HostPath;
                     }
 
-                    if (path.StartsWith(mapping.Value + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) ||
-                        path.StartsWith(mapping.Value + Path.AltDirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+                    if (path.StartsWith(mapping.ContainerPath + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) ||
+                        path.StartsWith(mapping.ContainerPath + Path.AltDirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
                     {
-                        return mapping.Key + path.Remove(0, mapping.Value.Length);
+                        return mapping.HostPath + path.Remove(0, mapping.ContainerPath.Length);
                     }
 #else
-                    if (string.Equals(path, mapping.Value))
+                    if (string.Equals(path, mapping.ContainerPath))
                     {
-                        return mapping.Key;
+                        return mapping.HostPath;
                     }
 
-                    if (path.StartsWith(mapping.Value + Path.DirectorySeparatorChar))
+                    if (path.StartsWith(mapping.ContainerPath + Path.DirectorySeparatorChar))
                     {
-                        return mapping.Key + path.Remove(0, mapping.Value.Length);
+                        return mapping.HostPath + path.Remove(0, mapping.ContainerPath.Length);
                     }
 #endif
                 }
@@ -225,7 +222,7 @@ namespace GitHub.Runner.Worker.Container
 
         public void AddPathTranslateMapping(string hostCommonPath, string containerCommonPath)
         {
-            _pathMappings[hostCommonPath] = containerCommonPath;
+            _pathMappings.Insert(0, new PathMapping(hostCommonPath, containerCommonPath));
         }
     }
 
@@ -306,5 +303,17 @@ namespace GitHub.Runner.Worker.Container
 
         public Version ServerVersion { get; set; }
         public Version ClientVersion { get; set; }
+    }
+
+    public class PathMapping
+    {
+        public PathMapping(string hostPath, string containerPath)
+        {
+            this.HostPath = hostPath;
+            this.ContainerPath = containerPath;
+        }
+
+        public string HostPath { get; set; }
+        public string ContainerPath { get; set; }
     }
 }

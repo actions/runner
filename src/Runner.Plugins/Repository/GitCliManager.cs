@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -51,7 +51,7 @@ namespace GitHub.Runner.Plugins.Repository
 
             if (gitVersion < requiredVersion && throwOnNotMatch)
             {
-                throw new NotSupportedException(StringUtil.Loc("MinRequiredGitVersion", requiredVersion, gitPath, gitVersion));
+                throw new NotSupportedException($"Min required git version is '{requiredVersion}', your git ('{gitPath}') version is '{gitVersion}'");
             }
 
             return gitVersion >= requiredVersion;
@@ -64,7 +64,7 @@ namespace GitHub.Runner.Plugins.Repository
 
             if (gitLfsVersion < requiredVersion && throwOnNotMatch)
             {
-                throw new NotSupportedException(StringUtil.Loc("MinRequiredGitLfsVersion", requiredVersion, gitLfsPath, gitLfsVersion));
+                throw new NotSupportedException($"Min required git-lfs version is '{requiredVersion}', your git-lfs ('{gitLfsPath}') version is '{gitLfsVersion}'");
             }
 
             return gitLfsVersion >= requiredVersion;
@@ -101,7 +101,7 @@ namespace GitHub.Runner.Plugins.Repository
             Version recommendGitVersion = new Version(2, 9);
             if (!EnsureGitVersion(recommendGitVersion, throwOnNotMatch: false))
             {
-                context.Output(StringUtil.Loc("UpgradeToLatestGit", recommendGitVersion, gitVersion));
+                context.Output($"To get a better Git experience, upgrade your Git to at least version '{recommendGitVersion}'. Your current Git version is '{gitVersion}'.");
             }
 
             // Set the user agent.

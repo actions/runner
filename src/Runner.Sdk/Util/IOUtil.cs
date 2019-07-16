@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
@@ -409,7 +409,7 @@ namespace GitHub.Runner.Sdk
                 catch (UnauthorizedAccessException ex)
                 {
                     // Permission to read the directory contents is required for '{0}' and each directory up the hierarchy. {1}
-                    string message = StringUtil.Loc("DirectoryHierarchyUnauthorized", directory, ex.Message);
+                    string message = $"Permission to read the directory contents is required for '{directory}' and each directory up the hierarchy. {ex.Message}";
                     throw new UnauthorizedAccessException(message, ex);
                 }
 

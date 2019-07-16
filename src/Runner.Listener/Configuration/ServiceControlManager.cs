@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using GitHub.Runner.Common;
 using GitHub.Runner.Common.Util;
@@ -40,8 +40,7 @@ namespace GitHub.Runner.Listener.Configuration
             Uri accountUri = new Uri(settings.ServerUrl);
             string accountName = string.Empty;
 
-            // TODO: GITHUB_RENAME
-            if (accountUri.Host.Equals("dev.azure.com", StringComparison.OrdinalIgnoreCase))
+            if (accountUri.Host.EndsWith(".githubusercontent.com", StringComparison.OrdinalIgnoreCase))
             {
                 accountName = accountUri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
             }
@@ -52,7 +51,7 @@ namespace GitHub.Runner.Listener.Configuration
 
             if (string.IsNullOrEmpty(accountName))
             {
-                throw new InvalidOperationException(StringUtil.Loc("CannotFindHostName", settings.ServerUrl));
+                throw new InvalidOperationException($"Cannot find GitHub organization name from server url: '{settings.ServerUrl}'");
             }
 
             serviceName = StringUtil.Format(serviceNamePattern, accountName, settings.PoolName, settings.AgentName);

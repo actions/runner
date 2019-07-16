@@ -1,4 +1,4 @@
-﻿#if OS_WINDOWS
+#if OS_WINDOWS
 using System;
 using System.IO;
 using System.Linq;
@@ -35,12 +35,12 @@ namespace GitHub.Runner.Listener.Configuration
             if (!_windowsServiceHelper.IsRunningInElevatedMode())
             {
                 Trace.Error("Needs Administrator privileges for configure runner as windows service.");
-                throw new SecurityException(StringUtil.Loc("NeedAdminForConfigRunnerWinService"));
+                throw new SecurityException("Needs Administrator privileges for configuring runner as windows service.");
             }
 
             // We use NetworkService as default account for actions runner
             NTAccount defaultServiceAccount = _windowsServiceHelper.GetDefaultServiceAccount();
-            string logonAccount = command.GetWindowsLogonAccount(defaultValue: defaultServiceAccount.ToString(), descriptionMsg: StringUtil.Loc("WindowsLogonAccountNameDescription"));
+            string logonAccount = command.GetWindowsLogonAccount(defaultValue: defaultServiceAccount.ToString(), descriptionMsg: "User account to use for the service");
 
             string domainName;
             string userName;
@@ -70,11 +70,11 @@ namespace GitHub.Runner.Listener.Configuration
                         if (!command.Unattended)
                         {
                             Trace.Info("Invalid credential entered");
-                            _term.WriteLine(StringUtil.Loc("InvalidWindowsCredential"));
+                            _term.WriteLine("Invalid windows credentials entered. Try again or ctrl-c to quit");
                         }
                         else
                         {
-                            throw new SecurityException(StringUtil.Loc("InvalidWindowsCredential"));
+                            throw new SecurityException("Invalid windows credentials entered. Try again or ctrl-c to quit");
                         }
                     }
                 }
@@ -85,7 +85,7 @@ namespace GitHub.Runner.Listener.Configuration
             CalculateServiceName(settings, ServiceNamePattern, ServiceDisplayNamePattern, out serviceName, out serviceDisplayName);
             if (_windowsServiceHelper.IsServiceExists(serviceName))
             {
-                _term.WriteLine(StringUtil.Loc("ServiceAlreadyExists", serviceName));
+                _term.WriteLine($"The service already exists: {serviceName}, it will be replaced");
                 _windowsServiceHelper.UninstallService(serviceName);
             }
 
@@ -98,7 +98,7 @@ namespace GitHub.Runner.Listener.Configuration
             {
                 if (!_windowsServiceHelper.GrantUserLogonAsServicePrivilege(domainName, userName))
                 {
-                    throw new InvalidOperationException(StringUtil.Loc("CanNotGrantPermission", logonAccount));
+                    throw new InvalidOperationException($"Cannot grant LogonAsService permission to the user {logonAccount}");
                 }
             }
 
@@ -108,7 +108,7 @@ namespace GitHub.Runner.Listener.Configuration
             string workFolder = HostContext.GetDirectory(WellKnownDirectory.Work);
             Directory.CreateDirectory(workFolder);
             _windowsServiceHelper.GrantDirectoryPermissionForAccount(logonAccount, new[] { runnerRoot, workFolder });
-            _term.WriteLine(StringUtil.Loc("GrantingFilePermissions", logonAccount));
+            _term.WriteLine($"Granting file permissions to '{logonAccount}'.");
 
             // install service.
             _windowsServiceHelper.InstallService(serviceName, serviceDisplayName, logonAccount, logonPassword);
@@ -125,7 +125,7 @@ namespace GitHub.Runner.Listener.Configuration
             if (!_windowsServiceHelper.IsRunningInElevatedMode())
             {
                 Trace.Error("Needs Administrator privileges for unconfigure windows service runner.");
-                throw new SecurityException(StringUtil.Loc("NeedAdminForUnconfigWinServiceRunner"));
+                throw new SecurityException("Needs Administrator privileges for unconfiguring runner that running as windows service.");
             }
 
             string serviceConfigPath = HostContext.GetConfigFile(WellKnownConfigFile.Service);

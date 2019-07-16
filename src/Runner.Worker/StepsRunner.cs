@@ -1,4 +1,4 @@
-﻿using GitHub.DistributedTask.WebApi;
+using GitHub.DistributedTask.WebApi;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 using GitHub.Runner.Common.Util;
 using System;
@@ -197,7 +197,7 @@ namespace GitHub.Runner.Worker
         {
             // Start the step.
             Trace.Info("Starting the step.");
-            step.ExecutionContext.Section(StringUtil.Loc("StepStarting", step.DisplayName));
+            step.ExecutionContext.Section($"Starting: {step.DisplayName}");
             step.ExecutionContext.SetTimeout(timeout: step.Timeout);
 
 #if OS_WINDOWS
@@ -245,7 +245,7 @@ namespace GitHub.Runner.Worker
                     !jobCancellationToken.IsCancellationRequested)
                 {
                     Trace.Error($"Caught timeout exception from step: {ex.Message}");
-                    step.ExecutionContext.Error(StringUtil.Loc("StepTimedOut"));
+                    step.ExecutionContext.Error("The action has timed out.");
                     step.ExecutionContext.Result = TaskResult.Failed;
                 }
                 else
@@ -279,7 +279,7 @@ namespace GitHub.Runner.Worker
                     {
                         // Log the timeout error, set step result to failed if the current result is not canceled.
                         Trace.Error($"Caught timeout exception from async command {command.Name}: {ex}");
-                        step.ExecutionContext.Error(StringUtil.Loc("StepTimedOut"));
+                        step.ExecutionContext.Error("The action has timed out.");
 
                         // if the step already canceled, don't set it to failed.
                         step.ExecutionContext.CommandResult = TaskResultUtil.MergeTaskResults(step.ExecutionContext.CommandResult, TaskResult.Failed);
@@ -323,7 +323,7 @@ namespace GitHub.Runner.Worker
             }
 
             // Complete the step context.
-            step.ExecutionContext.Section(StringUtil.Loc("StepFinishing", step.DisplayName));
+            step.ExecutionContext.Section($"Finishing: {step.DisplayName}");
         }
 
         private bool InitializeScope(IStep step, Dictionary<string, PipelineContextData> scopeInputs)

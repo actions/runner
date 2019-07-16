@@ -1,4 +1,4 @@
-﻿using GitHub.DistributedTask.WebApi;
+using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common.Util;
 using System;
 using System.Diagnostics;
@@ -54,14 +54,14 @@ namespace GitHub.Runner.Listener
             Trace.Info($"An update is available.");
 
             // Print console line that warn user not shutdown runner.
-            await UpdateRunnerUpdateStateAsync(StringUtil.Loc("UpdateInProgress"));
-            await UpdateRunnerUpdateStateAsync(StringUtil.Loc("DownloadRunner", _targetPackage.Version));
+            await UpdateRunnerUpdateStateAsync("Runner update in progress, do not shutdown runner.");
+            await UpdateRunnerUpdateStateAsync($"Downloading {_targetPackage.Version} runner");
 
             await DownloadLatestRunner(token);
             Trace.Info($"Download latest runner and unzip into runner root.");
 
             // wait till all running job finish
-            await UpdateRunnerUpdateStateAsync(StringUtil.Loc("EnsureJobFinished"));
+            await UpdateRunnerUpdateStateAsync("Waiting for current job finish running.");
 
             await jobDispatcher.WaitAsync(token);
             Trace.Info($"All running job has exited.");
@@ -71,7 +71,7 @@ namespace GitHub.Runner.Listener
             Trace.Info($"Delete old version runner backup.");
 
             // generate update script from template
-            await UpdateRunnerUpdateStateAsync(StringUtil.Loc("GenerateAndRunUpdateScript"));
+            await UpdateRunnerUpdateStateAsync("Generate and execute update script.");
 
             string updateScript = GenerateUpdateScript(restartInteractiveRunner);
             Trace.Info($"Generate update script into: {updateScript}");
@@ -88,14 +88,14 @@ namespace GitHub.Runner.Listener
             invokeScript.Start();
             Trace.Info($"Update script start running");
 
-            await UpdateRunnerUpdateStateAsync(StringUtil.Loc("RunnerExit"));
+            await UpdateRunnerUpdateStateAsync("Runner will exit shortly for update, should back online within 10 seconds.");
 
             return true;
         }
 
         private async Task<bool> UpdateNeeded(string targetVersion, CancellationToken token)
         {
-            // when talk to old version tfs server, always prefer latest package.
+            // when talk to old version server, always prefer latest package.
             // old server won't send target version as part of update message.
             if (string.IsNullOrEmpty(targetVersion))
             {
@@ -242,7 +242,7 @@ namespace GitHub.Runner.Listener
                 else if (archiveFile.EndsWith(".tar.gz", StringComparison.OrdinalIgnoreCase))
                 {
                     string tar = WhichUtil.Which("tar", trace: Trace);
-                    
+
                     if (string.IsNullOrEmpty(tar))
                     {
                         throw new NotSupportedException($"tar -xzf");

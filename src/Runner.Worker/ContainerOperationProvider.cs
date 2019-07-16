@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.ServiceProcess;
@@ -50,16 +50,16 @@ namespace GitHub.Runner.Worker
             ServiceController[] scServices = ServiceController.GetServices();
             if (scServices.Any(x => String.Equals(x.ServiceName, "cexecsvc", StringComparison.OrdinalIgnoreCase) && x.Status == ServiceControllerStatus.Running))
             {
-                throw new NotSupportedException(StringUtil.Loc("AgentAlreadyInsideContainer"));
+                throw new NotSupportedException("Container feature is not supported when runner is already running inside container.");
             }
 #elif OS_RHEL6
             // Red Hat and CentOS 6 do not support the container feature
-            throw new NotSupportedException(StringUtil.Loc("AgentDoesNotSupportContainerFeatureRhel6"));
+            throw new NotSupportedException("Runner does not support the container feature on Red Hat Enterprise Linux 6 or CentOS 6.");
 #else
             var initProcessCgroup = File.ReadLines("/proc/1/cgroup");
             if (initProcessCgroup.Any(x => x.IndexOf(":/docker/", StringComparison.OrdinalIgnoreCase) >= 0))
             {
-                throw new NotSupportedException(StringUtil.Loc("AgentAlreadyInsideContainer"));
+                throw new NotSupportedException("Container feature is not supported when runner is already running inside container.");
             }
 #endif
 
@@ -75,7 +75,7 @@ namespace GitHub.Runner.Worker
             {
                 if (!windowsInstallationType.ToString().StartsWith("Server", StringComparison.OrdinalIgnoreCase) || releaseId < 1803)
                 {
-                    throw new NotSupportedException(StringUtil.Loc("ContainerWindowsVersionRequirement"));
+                    throw new NotSupportedException("Container feature requires Windows Server 1803 or higher.");
                 }
             }
             else
@@ -97,11 +97,11 @@ namespace GitHub.Runner.Worker
 
             if (dockerVersion.ServerVersion < requiredDockerEngineAPIVersion)
             {
-                throw new NotSupportedException(StringUtil.Loc("MinRequiredDockerServerVersion", requiredDockerEngineAPIVersion, _dockerManger.DockerPath, dockerVersion.ServerVersion));
+                throw new NotSupportedException($"Min required docker engine API server version is '{requiredDockerEngineAPIVersion}', your docker ('{_dockerManger.DockerPath}') server version is '{dockerVersion.ServerVersion}'");
             }
             if (dockerVersion.ClientVersion < requiredDockerEngineAPIVersion)
             {
-                throw new NotSupportedException(StringUtil.Loc("MinRequiredDockerClientVersion", requiredDockerEngineAPIVersion, _dockerManger.DockerPath, dockerVersion.ClientVersion));
+                throw new NotSupportedException($"Min required docker engine API client version is '{requiredDockerEngineAPIVersion}', your docker ('{_dockerManger.DockerPath}') client version is '{dockerVersion.ClientVersion}'");
             }
 
             // Clean up containers left by previous runs
@@ -236,6 +236,18 @@ namespace GitHub.Runner.Worker
             container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Temp), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Temp))));
             container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Actions), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Actions))));
             container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Tools), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Tools))));
+
+            var tempHomeDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Temp), "_github_home");
+            Directory.CreateDirectory(tempHomeDirectory);
+            container.MountVolumes.Add(new MountVolume(tempHomeDirectory, "/github/home"));
+            container.AddPathTranslateMapping(tempHomeDirectory, "/github/home");
+            container.ContainerEnvironmentVariables["HOME"] = container.TranslateToContainerPath(tempHomeDirectory);
+
+            var tempWorkflowDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Temp), "_github_workflow");
+            Directory.CreateDirectory(tempWorkflowDirectory);
+            container.MountVolumes.Add(new MountVolume(tempWorkflowDirectory, "/github/workflow"));
+            container.AddPathTranslateMapping(tempWorkflowDirectory, "/github/workflow");
+
             container.ContainerWorkDirectory = container.TranslateToContainerPath(workingDirectory);
 
             if (container.IsJobContainer)

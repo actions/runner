@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Text;
 using System.Threading.Tasks;
@@ -118,7 +118,7 @@ namespace GitHub.Runner.Worker.Handlers
                 // Error
                 if (exitCode != 0)
                 {
-                    ExecutionContext.Error(StringUtil.Loc("ProcessCompletedWithExitCode0", exitCode));
+                    ExecutionContext.Error($"Process completed with exit code {exitCode}.");
                     ExecutionContext.Result = TaskResult.Failed;
                 }
             }

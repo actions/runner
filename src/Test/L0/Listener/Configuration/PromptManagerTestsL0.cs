@@ -1,4 +1,4 @@
-﻿using GitHub.Runner.Listener.Configuration;
+using GitHub.Runner.Listener.Configuration;
 using GitHub.Runner.Common.Util;
 using Moq;
 using System;
@@ -14,7 +14,7 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
         private readonly string _description = "Some description";
         private readonly PromptManager _promptManager = new PromptManager();
         private readonly Mock<ITerminal> _terminal = new Mock<ITerminal>();
-        private readonly string _unattendedExceptionMessage = StringUtil.Loc("InvalidConfigFor0TerminatingUnattended", "SomeArgName");
+        private readonly string _unattendedExceptionMessage = "Invalid configuration provided for SomeArgName. Terminating unattended configuration.";
 
         [Fact]
         [Trait("Level", "L0")]

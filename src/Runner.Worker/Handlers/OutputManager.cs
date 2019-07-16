@@ -24,38 +24,38 @@ namespace GitHub.Runner.Worker.Handlers
 
         public OutputManager(IExecutionContext executionContext, IActionCommandManager commandManager)
         {
-//executionContext.Debug("ENTERING OutputManager ctor");
+            //executionContext.Debug("ENTERING OutputManager ctor");
             _executionContext = executionContext;
             _commandManager = commandManager;
 
-//_executionContext.Debug("OutputManager ctor - determine timeout from variable");
+            //_executionContext.Debug("OutputManager ctor - determine timeout from variable");
             // Determine the timeout
             var timeoutStr = _executionContext.Variables.Get(_timeoutKey);
             if (string.IsNullOrEmpty(timeoutStr) ||
                 !TimeSpan.TryParse(timeoutStr, CultureInfo.InvariantCulture, out _timeout) ||
                 _timeout <= TimeSpan.Zero)
             {
-//_executionContext.Debug("OutputManager ctor - determine timeout from env var");
+                //_executionContext.Debug("OutputManager ctor - determine timeout from env var");
                 timeoutStr = Environment.GetEnvironmentVariable(_timeoutKey);
                 if (string.IsNullOrEmpty(timeoutStr) ||
                     !TimeSpan.TryParse(timeoutStr, CultureInfo.InvariantCulture, out _timeout) ||
                     _timeout <= TimeSpan.Zero)
                 {
-//_executionContext.Debug("OutputManager ctor - set timeout to default");
+                    //_executionContext.Debug("OutputManager ctor - set timeout to default");
                     _timeout = TimeSpan.FromSeconds(1);
                 }
             }
 
-//_executionContext.Debug("OutputManager ctor - adding matchers");
+            //_executionContext.Debug("OutputManager ctor - adding matchers");
             // Lock
             lock (_matchersLock)
             {
-//_executionContext.Debug("OutputManager ctor - adding OnMatcherChanged");
+                //_executionContext.Debug("OutputManager ctor - adding OnMatcherChanged");
                 _executionContext.Add(OnMatcherChanged);
-//_executionContext.Debug("OutputManager ctor - getting matchers");
+                //_executionContext.Debug("OutputManager ctor - getting matchers");
                 _matchers = _executionContext.GetMatchers().Select(x => new IssueMatcher(x, _timeout)).ToArray();
             }
-//_executionContext.Debug("LEAVING OutputManager ctor");
+            //_executionContext.Debug("LEAVING OutputManager ctor");
         }
 
         public void Dispose()
@@ -71,7 +71,7 @@ namespace GitHub.Runner.Worker.Handlers
 
         public void OnDataReceived(object sender, ProcessDataReceivedEventArgs e)
         {
-//_executionContext.Debug("ENTERING OutputManager OnDataReceived");
+            //_executionContext.Debug("ENTERING OutputManager OnDataReceived");
             var line = e.Data;
 
             // ## commands
@@ -81,7 +81,7 @@ namespace GitHub.Runner.Worker.Handlers
                 // The logging queues and command handlers are thread-safe.
                 if (_commandManager.TryProcessCommand(_executionContext, line))
                 {
-//_executionContext.Debug("LEAVING OutputManager OnDataReceived - command processed");
+                    //_executionContext.Debug("LEAVING OutputManager OnDataReceived - command processed");
                     return;
                 }
             }
@@ -117,7 +117,7 @@ namespace GitHub.Runner.Worker.Handlers
                             else
                             {
                                 // Warn
-                                _executionContext.Warning(StringUtil.Loc("RemovingIssueMatcher", matcher.Owner, _maxAttempts, ex.Message));
+                                _executionContext.Warning($"Removing issue matcher '{matcher.Owner}'. Matcher failed {_maxAttempts} times. Error: {ex.Message}");
 
                                 // Remove
                                 Remove(matcher);
@@ -141,7 +141,7 @@ namespace GitHub.Runner.Worker.Handlers
                             // Log issue
                             _executionContext.AddIssue(issue, stripped);
 
-//_executionContext.Debug("LEAVING OutputManager OnDataReceived - issue logged");
+                            //_executionContext.Debug("LEAVING OutputManager OnDataReceived - issue logged");
                             return;
                         }
                     }
@@ -150,7 +150,7 @@ namespace GitHub.Runner.Worker.Handlers
 
             // Regular output
             _executionContext.Output(line);
-//_executionContext.Debug("LEAVING OutputManager OnDataReceived");
+            //_executionContext.Debug("LEAVING OutputManager OnDataReceived");
         }
 
         private void OnMatcherChanged(object sender, MatcherChangedEventArgs e)

@@ -1,4 +1,4 @@
-﻿using GitHub.DistributedTask.WebApi;
+using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common.Util;
 using System;
 using System.Collections.Generic;
@@ -516,7 +516,7 @@ namespace GitHub.Runner.Common
                             _bufferedRetryRecords[_jobTimelineId].Any(r => r.Variables.Count > 0))
                         {
                             Trace.Info("Fail to update timeline records with output variables. Throw exception to fail the job since output variables are critical to downstream jobs.");
-                            throw new AggregateException(StringUtil.Loc("OutputVariablePublishFailed"), mainTimelineRecordsUpdateErrors);
+                            throw new AggregateException("Failed to publish output variables.", mainTimelineRecordsUpdateErrors);
                         }
                         else
                         {

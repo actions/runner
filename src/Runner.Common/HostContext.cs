@@ -560,7 +560,7 @@ namespace GitHub.Runner.Common
             }
         }
 
-        // Copied from VSTS code base, used for EventData translation.
+        // Copied from pipelines server code base, used for EventData translation.
         internal enum VssHttpMethod
         {
             UNKNOWN,

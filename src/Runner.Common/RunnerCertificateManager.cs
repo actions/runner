@@ -115,7 +115,7 @@ namespace GitHub.Runner.Common
                     Trace.Info($"Store client cert private key password with lookup key {lookupKey}");
 
                     var credStore = HostContext.GetService<IRunnerCredentialStore>();
-                    credStore.Write($"GITHUB_ACTIONS_RUNNER_CLIENT_CERT_PASSWORD_{lookupKey}", "VSTS", ClientCertificatePassword);
+                    credStore.Write($"GITHUB_ACTIONS_RUNNER_CLIENT_CERT_PASSWORD_{lookupKey}", "GitHub", ClientCertificatePassword);
 
                     setting.ClientCertPasswordLookupKey = lookupKey;
                 }

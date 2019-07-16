@@ -13,7 +13,6 @@ namespace GitHub.Runner.Sdk
     public static class StringUtil
     {
         private static readonly object[] s_defaultFormatArgs = new object[] { null };
-        private static Dictionary<string, object> s_locStrings;
         private static Lazy<JsonSerializerSettings> s_serializerSettings = new Lazy<JsonSerializerSettings>(() => new VssJsonMediaTypeFormatter().SerializerSettings);
 
         static StringUtil()
@@ -91,56 +90,6 @@ namespace GitHub.Runner.Sdk
 #endif
         }
 
-        // Do not combine the non-format overload with the format overload.
-        public static string Loc(string locKey)
-        {
-            string locStr = locKey;
-            try
-            {
-                EnsureLoaded();
-                if (s_locStrings.ContainsKey(locKey))
-                {
-                    object item = s_locStrings[locKey];
-                    if (item is string)
-                    {
-                        locStr = item as string;
-                    }
-                    else if (item is JArray)
-                    {
-                        string[] lines = (item as JArray).ToObject<string[]>();
-                        var sb = new StringBuilder();
-                        for (int i = 0; i < lines.Length; i++)
-                        {
-                            if (i > 0)
-                            {
-                                sb.AppendLine();
-                            }
-
-                            sb.Append(lines[i]);
-                        }
-
-                        locStr = sb.ToString();
-                    }
-                }
-                else
-                {
-                    locStr = StringUtil.Format("notFound:{0}", locKey);
-                }
-            }
-            catch (Exception)
-            {
-                // loc strings shouldn't take down agent.  any failures returns loc key
-            }
-
-            return locStr;
-        }
-
-        // Do not combine the non-format overload with the format overload.
-        public static string Loc(string locKey, params object[] args)
-        {
-            return Format(CultureInfo.CurrentCulture, Loc(locKey), args);
-        }
-
         private static string Format(CultureInfo culture, string format, params object[] args)
         {
             try
@@ -165,59 +114,6 @@ namespace GitHub.Runner.Sdk
                 }
 
                 return format;
-            }
-        }
-
-        private static void EnsureLoaded()
-        {
-            if (s_locStrings == null)
-            {
-                // Determine the list of resource files to load. The fallback "en-US" strings should always be
-                // loaded into the dictionary first.
-                string[] cultureNames;
-                if (string.IsNullOrEmpty(CultureInfo.CurrentCulture.Name) || // Exclude InvariantCulture.
-                    string.Equals(CultureInfo.CurrentCulture.Name, "en-US", StringComparison.Ordinal))
-                {
-                    cultureNames = new[] { "en-US" };
-                }
-                else
-                {
-                    cultureNames = new[] { "en-US", CultureInfo.CurrentCulture.Name };
-                }
-
-                // Initialize the dictionary.
-                var locStrings = new Dictionary<string, object>();
-                foreach (string cultureName in cultureNames)
-                {
-                    // Merge the strings from the file into the instance dictionary.
-                    string assemblyLocation = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
-                    string file = Path.Combine(assemblyLocation, cultureName, "strings.json");
-                    if (File.Exists(file))
-                    {
-                        foreach (KeyValuePair<string, object> pair in IOUtil.LoadObject<Dictionary<string, object>>(file))
-                        {
-                            locStrings[pair.Key] = pair.Value;
-                        }
-                    }
-                    else
-                    {
-                        string sourceDirectory = Environment.GetEnvironmentVariable("GITHUB_RUNNER_SRC_DIR");
-                        if (!string.IsNullOrEmpty(sourceDirectory))
-                        {
-                            file = Path.Combine(sourceDirectory, "..", "_layout", "bin", cultureName, "strings.json");
-                            if (File.Exists(file))
-                            {
-                                foreach (KeyValuePair<string, object> pair in IOUtil.LoadObject<Dictionary<string, object>>(file))
-                                {
-                                    locStrings[pair.Key] = pair.Value;
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Store the instance.
-                s_locStrings = locStrings;
             }
         }
     }

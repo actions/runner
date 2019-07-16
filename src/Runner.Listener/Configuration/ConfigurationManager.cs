@@ -1,4 +1,4 @@
-﻿using GitHub.DistributedTask.WebApi;
+using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common.Capabilities;
 using GitHub.Runner.Common.Util;
 using GitHub.Services.Common;
@@ -71,7 +71,7 @@ namespace GitHub.Runner.Listener.Configuration
             Trace.Info(nameof(ConfigureAsync));
             if (IsConfigured())
             {
-                throw new InvalidOperationException(StringUtil.Loc("AlreadyConfiguredError"));
+                throw new InvalidOperationException("Cannot configure the runner because it is already configured. To reconfigure the runner, run 'config.cmd remove' or './config.sh remove' first.");
             }
 
             // Populate proxy setting from commandline args
@@ -146,7 +146,7 @@ namespace GitHub.Runner.Listener.Configuration
             // Loop getting url and creds until you can connect
             ICredentialProvider credProvider = null;
             VssCredentials creds = null;
-            WriteSection(StringUtil.Loc("ConnectSectionHeader"));
+            WriteSection("Connect");
             while (true)
             {
                 // Get the URL
@@ -162,7 +162,7 @@ namespace GitHub.Runner.Listener.Configuration
                     isHostedServer = await IsHostedServer(runnerSettings.ServerUrl, creds);
 
                     // Validate can connect.
-                    _term.WriteLine(StringUtil.Loc("ConnectingToServer"));
+                    _term.WriteLine("Connecting to server ...");
                     await _runnerServer.ConnectAsync(new Uri(runnerSettings.ServerUrl), creds);
                     Trace.Info("Test Connection complete.");
                     break;
@@ -170,7 +170,7 @@ namespace GitHub.Runner.Listener.Configuration
                 catch (Exception e) when (!command.Unattended)
                 {
                     _term.WriteError(e);
-                    _term.WriteError(StringUtil.Loc("FailedToConnect"));
+                    _term.WriteError("Failed to connect.  Try again or ctrl-c to quit");
                 }
             }
 
@@ -183,7 +183,7 @@ namespace GitHub.Runner.Listener.Configuration
             }
 
             // Loop getting agent name and pool name
-            WriteSection(StringUtil.Loc("RegisterAgentSectionHeader"));
+            WriteSection("Register Runner");
 
             while (true)
             {
@@ -194,7 +194,7 @@ namespace GitHub.Runner.Listener.Configuration
                     TaskAgentPool agentPool = (await _runnerServer.GetAgentPoolsAsync(poolName)).FirstOrDefault();
                     if (agentPool == null)
                     {
-                        throw new TaskAgentPoolNotFoundException(StringUtil.Loc("PoolNotFound", poolName));
+                        throw new TaskAgentPoolNotFoundException($"Runner pool not found: '{poolName}'");
                     }
                     else
                     {
@@ -208,7 +208,7 @@ namespace GitHub.Runner.Listener.Configuration
                 catch (Exception e) when (!command.Unattended)
                 {
                     _term.WriteError(e);
-                    _term.WriteError(StringUtil.Loc("FailedToFindPool"));
+                    _term.WriteError("Failed to find pool name. Try again or ctrl-c to quit");
                 }
             }
 
@@ -218,10 +218,10 @@ namespace GitHub.Runner.Listener.Configuration
                 runnerSettings.AgentName = command.GetAgentName();
 
                 // Get the system capabilities.
-                _term.WriteLine(StringUtil.Loc("ScanToolCapabilities"));
+                _term.WriteLine("Scanning for tool capabilities.");
                 Dictionary<string, string> systemCapabilities = await HostContext.GetService<ICapabilitiesManager>().GetCapabilitiesAsync(runnerSettings, CancellationToken.None);
 
-                _term.WriteLine(StringUtil.Loc("ConnectToServer"));
+                _term.WriteLine("Connecting to the server.");
                 var agents = await _runnerServer.GetAgentsAsync(runnerSettings.PoolId, runnerSettings.AgentName);
                 Trace.Verbose("Returns {0} agents", agents.Count);
                 agent = agents.FirstOrDefault();
@@ -235,19 +235,19 @@ namespace GitHub.Runner.Listener.Configuration
                         try
                         {
                             agent = await _runnerServer.UpdateAgentAsync(runnerSettings.PoolId, agent);
-                            _term.WriteLine(StringUtil.Loc("AgentReplaced"));
+                            _term.WriteLine("Successfully replaced the runner");
                             break;
                         }
                         catch (Exception e) when (!command.Unattended)
                         {
                             _term.WriteError(e);
-                            _term.WriteError(StringUtil.Loc("FailedToReplaceAgent"));
+                            _term.WriteError("Failed to replace the runner.  Try again or ctrl-c to quit");
                         }
                     }
                     else if (command.Unattended)
                     {
                         // if not replace and it is unattended config.
-                        throw new TaskAgentExistsException(StringUtil.Loc("AgentWithSameNameAlreadyExistInPool", runnerSettings.PoolId, runnerSettings.AgentName));
+                        throw new TaskAgentExistsException($"Pool {runnerSettings.PoolId} already contains a runner with name {runnerSettings.AgentName}.");
                     }
                 }
                 else
@@ -258,13 +258,13 @@ namespace GitHub.Runner.Listener.Configuration
                     try
                     {
                         agent = await _runnerServer.AddAgentAsync(runnerSettings.PoolId, agent);
-                        _term.WriteLine(StringUtil.Loc("AgentAddedSuccessfully"));
+                        _term.WriteLine("Successfully added the runner");
                         break;
                     }
                     catch (Exception e) when (!command.Unattended)
                     {
                         _term.WriteError(e);
-                        _term.WriteError(StringUtil.Loc("AddAgentFailed"));
+                        _term.WriteError("Failed to add the runner. Try again or ctrl-c to quit");
                     }
                 }
             }
@@ -299,11 +299,6 @@ namespace GitHub.Runner.Listener.Configuration
                 agent.Authorization.ClientId != Guid.Empty &&
                 agent.Authorization.AuthorizationUrl != null)
             {
-                // We use authorizationUrl as the oauth endpoint url by default.
-                // For TFS, we need make sure the Schema/Host/Port component of the oauth endpoint url also match configuration url. (Incase of customer's agent configure URL and TFS server public URL are different)
-                // Which means, we will keep use the original authorizationUrl in the VssOAuthJwtBearerClientCredential (authorizationUrl is the audience),
-                // But might have different Url in VssOAuthCredential (connection url)
-                // We can't do this for VSTS, since its SPS/TFS urls are different.
                 UriBuilder configServerUrl = new UriBuilder(runnerSettings.ServerUrl);
                 UriBuilder oauthEndpointUrlBuilder = new UriBuilder(agent.Authorization.AuthorizationUrl);
                 if (!isHostedServer && Uri.Compare(configServerUrl.Uri, oauthEndpointUrlBuilder.Uri, UriComponents.SchemeAndServer, UriFormat.Unescaped, StringComparison.OrdinalIgnoreCase) != 0)
@@ -311,7 +306,7 @@ namespace GitHub.Runner.Listener.Configuration
                     oauthEndpointUrlBuilder.Scheme = configServerUrl.Scheme;
                     oauthEndpointUrlBuilder.Host = configServerUrl.Host;
                     oauthEndpointUrlBuilder.Port = configServerUrl.Port;
-                    Trace.Info($"Set oauth endpoint url's scheme://host:port component to match agent configure url's scheme://host:port: '{oauthEndpointUrlBuilder.Uri.AbsoluteUri}'.");
+                    Trace.Info($"Set oauth endpoint url's scheme://host:port component to match runner configure url's scheme://host:port: '{oauthEndpointUrlBuilder.Uri.AbsoluteUri}'.");
                 }
 
                 var credentialData = new CredentialData
@@ -330,24 +325,12 @@ namespace GitHub.Runner.Listener.Configuration
             }
             else
             {
-                switch (Constants.Runner.Platform)
-                {
-                    case Constants.OSPlatform.OSX:
-                    case Constants.OSPlatform.Linux:
-                        // Save the provided admin cred for compat with previous agent.
-                        _store.SaveCredential(credProvider.CredentialData);
-                        break;
-                    case Constants.OSPlatform.Windows:
-                        // Not supported against TFS 2015.
-                        _term.WriteError(StringUtil.Loc("Tfs2015NotSupported"));
-                        return;
-                    default:
-                        throw new NotSupportedException();
-                }
+
+                throw new NotSupportedException("Message queue listen OAuth token.");
             }
 
             // Testing agent connection, detect any protential connection issue, like local clock skew that cause OAuth token expired.
-            _term.WriteLine(StringUtil.Loc("TestAgentConnection"));
+            _term.WriteLine("Testing runner connection.");
             var credMgr = HostContext.GetService<ICredentialManager>();
             VssCredentials credential = credMgr.LoadCredentials();
             try
@@ -361,7 +344,7 @@ namespace GitHub.Runner.Listener.Configuration
                 // 2. The bearer token is not valid until {jwt.ValidFrom}. Current server time is {DateTime.UtcNow}.                
                 Trace.Error("Catch exception during test agent connection.");
                 Trace.Error(ex);
-                throw new Exception(StringUtil.Loc("LocalClockSkewed"));
+                throw new Exception("The local machine's clock may be out of sync with the server time by more than five minutes. Please sync your clock with your domain or internet time and try again.");
             }
 
             // We will Combine() what's stored with root.  Defaults to string a relative path
@@ -388,7 +371,7 @@ namespace GitHub.Runner.Listener.Configuration
                 (runnerCertManager as RunnerCertificateManager).SaveCertificateSetting();
             }
 
-            _term.WriteLine(StringUtil.Loc("SavedSettings", DateTime.UtcNow));
+            _term.WriteLine($"{DateTime.UtcNow:u}: Settings Saved.");
 
             bool saveRuntimeOptions = false;
             var runtimeOptions = new RunnerRuntimeOptions();
@@ -431,23 +414,23 @@ namespace GitHub.Runner.Listener.Configuration
                 //stop, uninstall service and remove service config file
                 if (_store.IsServiceConfigured())
                 {
-                    currentAction = StringUtil.Loc("UninstallingService");
+                    currentAction = "Removing service";
                     _term.WriteLine(currentAction);
 #if OS_WINDOWS
                     var serviceControlManager = HostContext.GetService<IWindowsServiceControlManager>();
                     serviceControlManager.UnconfigureService();
-                    _term.WriteLine(StringUtil.Loc("Success") + currentAction);
+                    _term.WriteLine("Succeeded: " + currentAction);
 #elif OS_LINUX
                     // unconfig system D service first
-                    throw new Exception(StringUtil.Loc("UnconfigureServiceDService"));
+                    throw new Exception("Unconfigure service first");
 #elif OS_OSX
                     // unconfig osx service first
-                    throw new Exception(StringUtil.Loc("UnconfigureOSXService"));
+                    throw new Exception("Unconfigure service first");
 #endif
                 }
 
                 //delete agent from the server
-                currentAction = StringUtil.Loc("UnregisteringAgent");
+                currentAction = "Removing runner from the server";
                 _term.WriteLine(currentAction);
                 bool isConfigured = _store.IsConfigured();
                 bool hasCredentials = _store.HasCredentials();
@@ -463,7 +446,7 @@ namespace GitHub.Runner.Listener.Configuration
 
                     // Determine the service deployment type based on connection data. (Hosted/OnPremises)
                     bool isHostedServer = await IsHostedServer(settings.ServerUrl, creds);
-                    _term.WriteLine(StringUtil.Loc("ConnectingToServer"));
+                    _term.WriteLine("Connecting to server ...");
                     await _runnerServer.ConnectAsync(new Uri(settings.ServerUrl), creds);
 
                     var agents = await _runnerServer.GetAgentsAsync(settings.PoolId, settings.AgentName);
@@ -471,36 +454,36 @@ namespace GitHub.Runner.Listener.Configuration
                     TaskAgent agent = agents.FirstOrDefault();
                     if (agent == null)
                     {
-                        _term.WriteLine(StringUtil.Loc("Skipping") + currentAction);
+                        _term.WriteLine("Does not exist. Skipping " + currentAction);
                     }
                     else
                     {
                         await _runnerServer.DeleteAgentAsync(settings.PoolId, settings.AgentId);
-                        _term.WriteLine(StringUtil.Loc("Success") + currentAction);
+                        _term.WriteLine("Succeeded: " + currentAction);
                     }
                 }
                 else
                 {
-                    _term.WriteLine(StringUtil.Loc("MissingConfig"));
+                    _term.WriteLine("Cannot connect to server, because config files are missing. Skipping removing runner from the server.");
                 }
 
                 //delete credential config files               
-                currentAction = StringUtil.Loc("DeletingCredentials");
+                currentAction = "Removing .credentials";
                 _term.WriteLine(currentAction);
                 if (hasCredentials)
                 {
                     _store.DeleteCredential();
                     var keyManager = HostContext.GetService<IRSAKeyManager>();
                     keyManager.DeleteKey();
-                    _term.WriteLine(StringUtil.Loc("Success") + currentAction);
+                    _term.WriteLine("Succeeded: " + currentAction);
                 }
                 else
                 {
-                    _term.WriteLine(StringUtil.Loc("Skipping") + currentAction);
+                    _term.WriteLine("Does not exist. Skipping " + currentAction);
                 }
 
                 //delete settings config file                
-                currentAction = StringUtil.Loc("DeletingSettings");
+                currentAction = "Removing .runner";
                 _term.WriteLine(currentAction);
                 if (isConfigured)
                 {
@@ -514,16 +497,16 @@ namespace GitHub.Runner.Listener.Configuration
                     _store.DeleteRunnerRuntimeOptions();
 
                     _store.DeleteSettings();
-                    _term.WriteLine(StringUtil.Loc("Success") + currentAction);
+                    _term.WriteLine("Succeeded: " + currentAction);
                 }
                 else
                 {
-                    _term.WriteLine(StringUtil.Loc("Skipping") + currentAction);
+                    _term.WriteLine("Does not exist. Skipping " + currentAction);
                 }
             }
             catch (Exception)
             {
-                _term.WriteLine(StringUtil.Loc("Failed") + currentAction);
+                _term.WriteLine("Failed: " + currentAction);
                 throw;
             }
         }

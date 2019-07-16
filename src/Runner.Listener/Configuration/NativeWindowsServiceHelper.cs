@@ -1,4 +1,4 @@
-﻿#if OS_WINDOWS
+#if OS_WINDOWS
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -54,10 +54,6 @@ namespace GitHub.Runner.Listener.Configuration
         void StartService(string serviceName);
 
         void StopService(string serviceName);
-
-        void CreateVstsAgentRegistryKey();
-
-        void DeleteVstsAgentRegistryKey();
 
         string GetSecurityId(string domainName, string userName);
 
@@ -121,10 +117,10 @@ namespace GitHub.Runner.Listener.Configuration
 
                     case ReturnCode.ERROR_ACCESS_DENIED:
                         // NOTE: None of the exception thrown here are userName facing. The caller logs this exception and prints a more understandable error
-                        throw new UnauthorizedAccessException(StringUtil.Loc("AccessDenied"));
+                        throw new UnauthorizedAccessException("Access Denied");
 
                     default:
-                        throw new Exception(StringUtil.Loc("OperationFailed", nameof(NetLocalGroupGetInfo), returnCode));
+                        throw new Exception($"Error: Operation {nameof(NetLocalGroupGetInfo)} failed with return code {returnCode}");
                 }
             }
             finally
@@ -167,13 +163,13 @@ namespace GitHub.Runner.Listener.Configuration
                     Trace.Info(StringUtil.Format("Group {0} already exists", groupName));
                     break;
                 case ReturnCode.ERROR_ACCESS_DENIED:
-                    throw new UnauthorizedAccessException(StringUtil.Loc("AccessDenied"));
+                    throw new UnauthorizedAccessException("Access Denied");
 
                 case ReturnCode.ERROR_INVALID_PARAMETER:
-                    throw new ArgumentException(StringUtil.Loc("InvalidGroupName", groupName));
+                    throw new ArgumentException($"Invalid Group Name - {groupName}");
 
                 default:
-                    throw new Exception(StringUtil.Loc("OperationFailed", nameof(NetLocalGroupAdd), returnCode));
+                    throw new Exception($"Error: Operation {nameof(NetLocalGroupAdd)} failed with return code {returnCode}");
             }
         }
 
@@ -199,10 +195,10 @@ namespace GitHub.Runner.Listener.Configuration
                     break;
 
                 case ReturnCode.ERROR_ACCESS_DENIED:
-                    throw new UnauthorizedAccessException(StringUtil.Loc("AccessDenied"));
+                    throw new UnauthorizedAccessException("Access Denied");
 
                 default:
-                    throw new Exception(StringUtil.Loc("OperationFailed", nameof(NetLocalGroupDel), returnCode));
+                    throw new Exception($"Error: Operation {nameof(NetLocalGroupDel)} failed with return code {returnCode}");
             }
         }
 
@@ -233,19 +229,19 @@ namespace GitHub.Runner.Listener.Configuration
                     break;
                 case ReturnCode.NERR_GroupNotFound:
                 case ReturnCode.ERROR_NO_SUCH_ALIAS:
-                    throw new ArgumentException(StringUtil.Loc("GroupDoesNotExists", groupName));
+                    throw new ArgumentException($"Group: {groupName} does not Exist");
 
                 case ReturnCode.ERROR_NO_SUCH_MEMBER:
-                    throw new ArgumentException(StringUtil.Loc("MemberDoesNotExists", accountName));
+                    throw new ArgumentException($"Member: {accountName} does not Exist");
 
                 case ReturnCode.ERROR_INVALID_MEMBER:
-                    throw new ArgumentException(StringUtil.Loc("InvalidMember"));
+                    throw new ArgumentException("A new member could not be added to a local group because the member has the wrong account type. If you are configuring on a domain controller, built-in machine accounts cannot be added to local groups. You must use a domain user account instead");
 
                 case ReturnCode.ERROR_ACCESS_DENIED:
-                    throw new UnauthorizedAccessException(StringUtil.Loc("AccessDenied"));
+                    throw new UnauthorizedAccessException("Access Denied");
 
                 default:
-                    throw new Exception(StringUtil.Loc("OperationFailed", nameof(NetLocalGroupAddMembers), returnCode));
+                    throw new Exception($"Error: Operation {nameof(NetLocalGroupAddMembers)} failed with return code {returnCode}");
             }
         }
 
@@ -399,7 +395,7 @@ namespace GitHub.Runner.Listener.Configuration
 
             if (account == null)
             {
-                throw new InvalidOperationException(StringUtil.Loc("NetworkServiceNotFound"));
+                throw new InvalidOperationException("Cannot find network service account");
             }
 
             return account;
@@ -412,7 +408,7 @@ namespace GitHub.Runner.Listener.Configuration
 
             if (account == null)
             {
-                throw new InvalidOperationException(StringUtil.Loc("LocalSystemAccountNotFound"));
+                throw new InvalidOperationException("Cannot find local system account");
             }
 
             return account;
@@ -483,7 +479,7 @@ namespace GitHub.Runner.Listener.Configuration
                 scmHndl = OpenSCManager(null, null, ServiceManagerRights.AllAccess);
                 if (scmHndl.ToInt64() <= 0)
                 {
-                    throw new Exception(StringUtil.Loc("FailedToOpenSCM"));
+                    throw new Exception("Failed to Open Service Control Manager");
                 }
 
                 Trace.Verbose(StringUtil.Format("Opened SCManager. Trying to create service {0}", serviceName));
@@ -502,10 +498,10 @@ namespace GitHub.Runner.Listener.Configuration
                                         logonPassword);
                 if (svcHndl.ToInt64() <= 0)
                 {
-                    throw new InvalidOperationException(StringUtil.Loc("OperationFailed", nameof(CreateService), GetLastError()));
+                    throw new InvalidOperationException($"Error: Operation {nameof(CreateService)} failed with return code {GetLastError()}");
                 }
 
-                _term.WriteLine(StringUtil.Loc("ServiceInstalled", serviceName));
+                _term.WriteLine($"Service {serviceName} successfully installed");
 
                 //set recovery option to restart on failure.
                 ArrayList failureActions = new ArrayList();
@@ -520,7 +516,7 @@ namespace GitHub.Runner.Listener.Configuration
                 svcLock = LockServiceDatabase(scmHndl);
                 if (svcLock.ToInt64() <= 0)
                 {
-                    throw new Exception(StringUtil.Loc("FailedToLockServiceDB"));
+                    throw new Exception("Failed to Lock Service Database for Write");
                 }
 
                 int[] actions = new int[failureActions.Count * 2];
@@ -555,7 +551,7 @@ namespace GitHub.Runner.Listener.Configuration
                     Exception win32exception = new Win32Exception(lastErrorCode);
                     if (lastErrorCode == ReturnCode.ERROR_ACCESS_DENIED)
                     {
-                        throw new SecurityException(StringUtil.Loc("AccessDeniedSettingRecoveryOption"), win32exception);
+                        throw new SecurityException("Access Denied while setting service recovery options.", win32exception);
                     }
                     else
                     {
@@ -564,7 +560,7 @@ namespace GitHub.Runner.Listener.Configuration
                 }
                 else
                 {
-                    _term.WriteLine(StringUtil.Loc("ServiceRecoveryOptionSet", serviceName));
+                    _term.WriteLine($"Service {serviceName} successfully set recovery option");
                 }
 
                 // Change service to delayed auto start
@@ -580,7 +576,7 @@ namespace GitHub.Runner.Listener.Configuration
                     Exception win32exception = new Win32Exception(lastErrorCode);
                     if (lastErrorCode == ReturnCode.ERROR_ACCESS_DENIED)
                     {
-                        throw new SecurityException(StringUtil.Loc("AccessDeniedSettingDelayedStartOption"), win32exception);
+                        throw new SecurityException("Access Denied while setting service delayed auto start options.", win32exception);
                     }
                     else
                     {
@@ -589,10 +585,10 @@ namespace GitHub.Runner.Listener.Configuration
                 }
                 else
                 {
-                    _term.WriteLine(StringUtil.Loc("ServiceDelayedStartOptionSet", serviceName));
+                    _term.WriteLine($"Service {serviceName} successfully set to delayed auto start");
                 }
 
-                _term.WriteLine(StringUtil.Loc("ServiceConfigured", serviceName));
+                _term.WriteLine($"Service {serviceName} successfully configured");
             }
             finally
             {
@@ -634,7 +630,7 @@ namespace GitHub.Runner.Listener.Configuration
 
             if (scmHndl.ToInt64() <= 0)
             {
-                throw new Exception(StringUtil.Loc("FailedToOpenSCManager"));
+                throw new Exception("Failed to Open Service Control Manager");
             }
 
             try
@@ -657,7 +653,7 @@ namespace GitHub.Runner.Listener.Configuration
                     if (result == 0)
                     {
                         result = Marshal.GetLastWin32Error();
-                        throw new Win32Exception(result, StringUtil.Loc("CouldNotRemoveService", serviceName));
+                        throw new Win32Exception(result, $"Could not delete service '{serviceName}'");
                     }
 
                     Trace.Info("successfully removed the service");
@@ -682,17 +678,17 @@ namespace GitHub.Runner.Listener.Configuration
                 if (service != null)
                 {
                     service.Start();
-                    _term.WriteLine(StringUtil.Loc("ServiceStartedSuccessfully", serviceName));
+                    _term.WriteLine($"Service {serviceName} started successfully");
                 }
                 else
                 {
-                    throw new InvalidOperationException(StringUtil.Loc("CanNotFindService", serviceName));
+                    throw new InvalidOperationException($"Cannot find service {serviceName}");
                 }
             }
             catch (Exception exception)
             {
                 Trace.Error(exception);
-                _term.WriteError(StringUtil.Loc("CanNotStartService"));
+                _term.WriteError("Cannot start the service. Check the logs for more details.");
 
                 // This is the last step in the configuration. Even if the start failed the status of the configuration should be error
                 // If its configured through scripts its mandatory we indicate the failure where configuration failed to start the service
@@ -715,12 +711,12 @@ namespace GitHub.Runner.Listener.Configuration
 
                         try
                         {
-                            _term.WriteLine(StringUtil.Loc("WaitForServiceToStop"));
+                            _term.WriteLine("Waiting for service to stop...");
                             service.WaitForStatus(ServiceControllerStatus.Stopped, TimeSpan.FromSeconds(35));
                         }
                         catch (System.ServiceProcess.TimeoutException)
                         {
-                            throw new InvalidOperationException(StringUtil.Loc("CanNotStopService", serviceName));
+                            throw new InvalidOperationException($"Cannot stop the service {serviceName} in a timely fashion.");
                         }
                     }
 
@@ -728,74 +724,15 @@ namespace GitHub.Runner.Listener.Configuration
                 }
                 else
                 {
-                    Trace.Info(StringUtil.Loc("CanNotFindService", serviceName));
+                    Trace.Info($"Cannot find service {serviceName}");
                 }
             }
             catch (Exception exception)
             {
                 Trace.Error(exception);
-                _term.WriteError(StringUtil.Loc("CanNotStopService", serviceName));
+                _term.WriteError($"Cannot stop the service {serviceName} in a timely fashion.");
 
                 // Log the exception but do not report it as error. We can try uninstalling the service and then report it as error if something goes wrong.
-            }
-        }
-
-        public void CreateVstsAgentRegistryKey()
-        {
-            RegistryKey tfsKey = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\TeamFoundationServer\15.0", true);
-            if (tfsKey == null)
-            {
-                //We could be on a machine that doesn't have TFS installed on it, create the key
-                tfsKey = Registry.LocalMachine.CreateSubKey(@"SOFTWARE\Microsoft\TeamFoundationServer\15.0");
-            }
-
-            if (tfsKey == null)
-            {
-                throw new ArgumentNullException("Unable to create regiestry key: 'HKLM\\SOFTWARE\\Microsoft\\TeamFoundationServer\\15.0'");
-            }
-
-            try
-            {
-                using (RegistryKey vstsAgentsKey = tfsKey.CreateSubKey("VstsAgents"))
-                {
-                    String hash = IOUtil.GetPathHash(HostContext.GetDirectory(WellKnownDirectory.Bin));
-                    using (RegistryKey agentKey = vstsAgentsKey.CreateSubKey(hash))
-                    {
-                        agentKey.SetValue("InstallPath", Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Bin), "Runner.Listener.exe"));
-                    }
-                }
-            }
-            finally
-            {
-                tfsKey.Dispose();
-            }
-        }
-
-        public void DeleteVstsAgentRegistryKey()
-        {
-            RegistryKey tfsKey = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\TeamFoundationServer\15.0", true);
-            if (tfsKey != null)
-            {
-                try
-                {
-                    RegistryKey vstsAgentsKey = tfsKey.OpenSubKey("VstsAgents", true);
-                    if (vstsAgentsKey != null)
-                    {
-                        try
-                        {
-                            String hash = IOUtil.GetPathHash(HostContext.GetDirectory(WellKnownDirectory.Bin));
-                            vstsAgentsKey.DeleteSubKeyTree(hash);
-                        }
-                        finally
-                        {
-                            vstsAgentsKey.Dispose();
-                        }
-                    }
-                }
-                finally
-                {
-                    tfsKey.Dispose();
-                }
             }
         }
 
@@ -992,7 +929,7 @@ namespace GitHub.Runner.Listener.Configuration
                 uint hr = LsaOpenPolicy(ref system, ref attrib, (uint)access, out handle);
                 if (hr != 0 || handle == IntPtr.Zero)
                 {
-                    throw new Exception(StringUtil.Loc("OperationFailed", nameof(LsaOpenPolicy), hr));
+                    throw new Exception($"Error: Operation {nameof(LsaOpenPolicy)} failed with return code {hr}");
                 }
 
                 Handle = handle;
@@ -1029,7 +966,7 @@ namespace GitHub.Runner.Listener.Configuration
                 uint winErrorCode = LsaNtStatusToWinError(result);
                 if (winErrorCode != 0)
                 {
-                    throw new Exception(StringUtil.Loc("OperationFailed", nameof(LsaNtStatusToWinError), winErrorCode));
+                    throw new Exception($"Error: Operation {nameof(LsaNtStatusToWinError)} failed with return code {winErrorCode}");
                 }
             }
 

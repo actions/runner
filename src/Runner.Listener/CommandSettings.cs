@@ -1,4 +1,4 @@
-﻿using GitHub.Runner.Listener.Configuration;
+using GitHub.Runner.Listener.Configuration;
 using GitHub.Runner.Common.Util;
 using System;
 using System.Collections;
@@ -152,7 +152,7 @@ namespace GitHub.Runner.Listener
         {
             return TestFlagOrPrompt(
                 name: Constants.Runner.CommandLine.Flags.Replace,
-                description: StringUtil.Loc("Replace"),
+                description: "replace? (Y/N)",
                 defaultValue: false);
         }
 
@@ -160,7 +160,7 @@ namespace GitHub.Runner.Listener
         {
             return TestFlagOrPrompt(
                 name: Constants.Runner.CommandLine.Flags.RunAsService,
-                description: StringUtil.Loc("RunAgentAsServiceDescription"),
+                description: "run runner as service? (Y/N)",
                 defaultValue: false);
         }
 
@@ -168,7 +168,7 @@ namespace GitHub.Runner.Listener
         {
             return TestFlagOrPrompt(
                 name: Constants.Runner.CommandLine.Flags.LaunchBrowser,
-                description: StringUtil.Loc("LaunchBrowser"),
+                description: "to launch browser for AAD Device Code Flow? (Y/N)",
                 defaultValue: true);
         }
         //
@@ -178,7 +178,7 @@ namespace GitHub.Runner.Listener
         {
             return GetArgOrPrompt(
                 name: Constants.Runner.CommandLine.Args.Agent,
-                description: StringUtil.Loc("AgentName"),
+                description: "runner name",
                 defaultValue: Environment.MachineName ?? "myagent",
                 validator: Validators.NonEmptyValidator);
         }
@@ -187,7 +187,7 @@ namespace GitHub.Runner.Listener
         {
             return GetArgOrPrompt(
                 name: Constants.Runner.CommandLine.Args.Auth,
-                description: StringUtil.Loc("AuthenticationType"),
+                description: "authentication type",
                 defaultValue: defaultValue,
                 validator: Validators.AuthSchemeValidator);
         }
@@ -196,7 +196,7 @@ namespace GitHub.Runner.Listener
         {
             return GetArgOrPrompt(
                 name: Constants.Runner.CommandLine.Args.Password,
-                description: StringUtil.Loc("Password"),
+                description: "password",
                 defaultValue: string.Empty,
                 validator: Validators.NonEmptyValidator);
         }
@@ -205,7 +205,7 @@ namespace GitHub.Runner.Listener
         {
             return GetArgOrPrompt(
                 name: Constants.Runner.CommandLine.Args.Pool,
-                description: StringUtil.Loc("AgentMachinePoolNameLabel"),
+                description: "runner pool",
                 defaultValue: "default",
                 validator: Validators.NonEmptyValidator);
         }
@@ -214,7 +214,7 @@ namespace GitHub.Runner.Listener
         {
             return GetArgOrPrompt(
                 name: Constants.Runner.CommandLine.Args.Token,
-                description: StringUtil.Loc("PersonalAccessToken"),
+                description: "personal access token",
                 defaultValue: string.Empty,
                 validator: Validators.NonEmptyValidator);
         }
@@ -230,7 +230,7 @@ namespace GitHub.Runner.Listener
 
             return GetArgOrPrompt(
                 name: Constants.Runner.CommandLine.Args.Url,
-                description: StringUtil.Loc("ServerUrl"),
+                description: "GitHub organization URL",
                 defaultValue: string.Empty,
                 validator: Validators.ServerUrlValidator);
         }
@@ -239,7 +239,7 @@ namespace GitHub.Runner.Listener
         {
             return GetArgOrPrompt(
                 name: Constants.Runner.CommandLine.Args.UserName,
-                description: StringUtil.Loc("UserName"),
+                description: "user name",
                 defaultValue: string.Empty,
                 validator: Validators.NonEmptyValidator);
         }
@@ -257,7 +257,7 @@ namespace GitHub.Runner.Listener
         {
             return GetArgOrPrompt(
                 name: Constants.Runner.CommandLine.Args.WindowsLogonPassword,
-                description: StringUtil.Loc("WindowsLogonPasswordDescription", accountName),
+                description: $"Password for the account {accountName}",
                 defaultValue: string.Empty,
                 validator: Validators.NonEmptyValidator);
         }
@@ -266,7 +266,7 @@ namespace GitHub.Runner.Listener
         {
             return GetArgOrPrompt(
                 name: Constants.Runner.CommandLine.Args.Work,
-                description: StringUtil.Loc("WorkFolderDescription"),
+                description: "work folder",
                 defaultValue: Constants.Path.WorkDirectory,
                 validator: Validators.NonEmptyValidator);
         }

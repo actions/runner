@@ -39,8 +39,7 @@ namespace GitHub.Runner.Plugins.PipelineArtifact
             string hostType = context.Variables.GetValueOrDefault(WellKnownDistributedTaskVariables.HostType)?.Value;
             if (!string.Equals(hostType, "Build", StringComparison.OrdinalIgnoreCase))
             {
-                throw new InvalidOperationException(
-                    StringUtil.Loc("CannotUploadFromCurrentEnvironment", hostType ?? string.Empty));
+                throw new InvalidOperationException($"Cannot upload to a pipeline artifact from {hostType ?? string.Empty} environment.");
             }
 
             if (String.IsNullOrWhiteSpace(artifactName))
@@ -52,7 +51,7 @@ namespace GitHub.Runner.Plugins.PipelineArtifact
 
             if (!PipelineArtifactPathHelper.IsValidArtifactName(artifactName))
             {
-                throw new ArgumentException(StringUtil.Loc("ArtifactNameIsNotValid", artifactName));
+                throw new ArgumentException($"Artifact name is not valid: {artifactName}. It cannot contain '\\', /', \"', ':', '<', '>', '|', '*', and '?'");
             }
 
             // Project ID
@@ -64,7 +63,7 @@ namespace GitHub.Runner.Plugins.PipelineArtifact
             if (!int.TryParse(buildIdStr, out int buildId))
             {
                 // This should not happen since the build id comes from build environment. But a user may override that so we must be careful.
-                throw new ArgumentException(StringUtil.Loc("BuildIdIsNotValid", buildIdStr));
+                throw new ArgumentException($"Build Id is not valid: {buildIdStr}");
             }
 
             string fullPath = Path.GetFullPath(targetPath);
@@ -73,14 +72,14 @@ namespace GitHub.Runner.Plugins.PipelineArtifact
             if (!isFile && !isDir)
             {
                 // if local path is neither file nor folder
-                throw new FileNotFoundException(StringUtil.Loc("PathDoesNotExist", targetPath));
+                throw new FileNotFoundException($"Path does not exists {targetPath}");
             }
 
-            // Upload to VSTS BlobStore, and associate the artifact with the build.
-            context.Output(StringUtil.Loc("UploadingPipelineArtifact", fullPath, buildId));
+            // Upload to BlobStore, and associate the artifact with the build.
+            context.Output($"Uploading pipeline artifact from {fullPath} for build #{buildId}");
             PipelineArtifactServer server = new PipelineArtifactServer();
             await server.UploadAsync(context, projectId, buildId, artifactName, fullPath, token);
-            context.Output(StringUtil.Loc("UploadArtifactFinished"));
+            context.Output("Uploading pipeline artifact finished.");
         }
 
         private string NormalizeJobIdentifier(string jobIdentifier)

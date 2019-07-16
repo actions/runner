@@ -1,4 +1,4 @@
-﻿using GitHub.DistributedTask.WebApi;
+using GitHub.DistributedTask.WebApi;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 using GitHub.Runner.Common.Util;
 using Newtonsoft.Json;
@@ -224,11 +224,11 @@ namespace GitHub.Runner.Worker
                             if (actionDownloadTimeout.Token.IsCancellationRequested)
                             {
                                 // action download didn't finish within timeout
-                                executionContext.Warning(StringUtil.Loc("ActionDownloadTimeout", archiveLink, timeoutSeconds));
+                                executionContext.Warning($"Action '{archiveLink}' didn't finish download within {timeoutSeconds} seconds.");
                             }
                             else
                             {
-                                executionContext.Warning(StringUtil.Loc("ActionDownloadFailed", archiveLink, ex.Message));
+                                executionContext.Warning($"Failed to download action '{archiveLink}'. Error {ex.Message}");
                             }
                         }
                     }

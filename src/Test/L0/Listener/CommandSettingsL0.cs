@@ -1,4 +1,4 @@
-﻿using GitHub.Runner.Listener;
+using GitHub.Runner.Listener;
 using GitHub.Runner.Listener.Configuration;
 using GitHub.Runner.Common.Util;
 using Moq;
@@ -290,7 +290,7 @@ namespace GitHub.Runner.Common.Tests
                 _promptManager
                     .Setup(x => x.ReadBool(
                         Constants.Runner.CommandLine.Flags.Replace, // argName
-                        StringUtil.Loc("Replace"), // description
+                        "replace? (Y/N)", // description
                         false, // defaultValue
                         true)) // unattended
                     .Returns(true);
@@ -315,7 +315,7 @@ namespace GitHub.Runner.Common.Tests
                 _promptManager
                     .Setup(x => x.ReadValue(
                         Constants.Runner.CommandLine.Args.Agent, // argName
-                        StringUtil.Loc("AgentName"), // description
+                        "runner name", // description
                         false, // secret
                         Environment.MachineName, // defaultValue
                         Validators.NonEmptyValidator, // validator
@@ -342,7 +342,7 @@ namespace GitHub.Runner.Common.Tests
                 _promptManager
                     .Setup(x => x.ReadValue(
                         Constants.Runner.CommandLine.Args.Agent, // argName
-                        StringUtil.Loc("AgentName"), // description
+                        "runner name", // description
                         false, // secret
                         Environment.MachineName, // defaultValue
                         Validators.NonEmptyValidator, // validator
@@ -369,7 +369,7 @@ namespace GitHub.Runner.Common.Tests
                 _promptManager
                     .Setup(x => x.ReadValue(
                         Constants.Runner.CommandLine.Args.Auth, // argName
-                        StringUtil.Loc("AuthenticationType"), // description
+                        "authentication type", // description
                         false, // secret
                         "some default auth", // defaultValue
                         Validators.AuthSchemeValidator, // validator
@@ -396,7 +396,7 @@ namespace GitHub.Runner.Common.Tests
                 _promptManager
                     .Setup(x => x.ReadValue(
                         Constants.Runner.CommandLine.Args.Password, // argName
-                        StringUtil.Loc("Password"), // description
+                        "password", // description
                         true, // secret
                         string.Empty, // defaultValue
                         Validators.NonEmptyValidator, // validator
@@ -423,7 +423,7 @@ namespace GitHub.Runner.Common.Tests
                 _promptManager
                     .Setup(x => x.ReadValue(
                         Constants.Runner.CommandLine.Args.Pool, // argName
-                        StringUtil.Loc("AgentMachinePoolNameLabel"), // description
+                        "runner pool", // description
                         false, // secret
                         "default", // defaultValue
                         Validators.NonEmptyValidator, // validator
@@ -450,7 +450,7 @@ namespace GitHub.Runner.Common.Tests
                 _promptManager
                     .Setup(x => x.ReadBool(
                         Constants.Runner.CommandLine.Flags.Replace, // argName
-                        StringUtil.Loc("Replace"), // description
+                        "replace? (Y/N)", // description
                         false, // defaultValue
                         false)) // unattended
                     .Returns(true);
@@ -475,7 +475,7 @@ namespace GitHub.Runner.Common.Tests
                 _promptManager
                     .Setup(x => x.ReadBool(
                         Constants.Runner.CommandLine.Flags.RunAsService, // argName
-                        StringUtil.Loc("RunAgentAsServiceDescription"), // description
+                        "run runner as service? (Y/N)", // description
                         false, // defaultValue
                         false)) // unattended
                     .Returns(true);
@@ -500,7 +500,7 @@ namespace GitHub.Runner.Common.Tests
                 _promptManager
                     .Setup(x => x.ReadValue(
                         Constants.Runner.CommandLine.Args.Token, // argName
-                        StringUtil.Loc("PersonalAccessToken"), // description
+                        "personal access token", // description
                         true, // secret
                         string.Empty, // defaultValue
                         Validators.NonEmptyValidator, // validator
@@ -527,7 +527,7 @@ namespace GitHub.Runner.Common.Tests
                 _promptManager
                     .Setup(x => x.ReadValue(
                         Constants.Runner.CommandLine.Args.Url, // argName
-                        StringUtil.Loc("ServerUrl"), // description
+                        "GitHub organization URL", // description
                         false, // secret
                         string.Empty, // defaultValue
                         Validators.ServerUrlValidator, // validator
@@ -554,7 +554,7 @@ namespace GitHub.Runner.Common.Tests
                 _promptManager
                     .Setup(x => x.ReadValue(
                         Constants.Runner.CommandLine.Args.UserName, // argName
-                        StringUtil.Loc("UserName"), // description
+                        "user name", // description
                         false, // secret
                         string.Empty, // defaultValue
                         Validators.NonEmptyValidator, // validator
@@ -581,7 +581,7 @@ namespace GitHub.Runner.Common.Tests
                 _promptManager
                     .Setup(x => x.ReadValue(
                         Constants.Runner.CommandLine.Args.WindowsLogonAccount, // argName
-                        StringUtil.Loc("WindowsLogonAccountNameDescription"), // description
+                        "User account to use for the service", // description
                         false, // secret
                         "some default account", // defaultValue
                         Validators.NTAccountValidator, // validator
@@ -589,7 +589,7 @@ namespace GitHub.Runner.Common.Tests
                     .Returns("some windows logon account");
 
                 // Act.
-                string actual = command.GetWindowsLogonAccount("some default account", StringUtil.Loc("WindowsLogonAccountNameDescription"));
+                string actual = command.GetWindowsLogonAccount("some default account", "User account to use for the service");
 
                 // Assert.
                 Assert.Equal("some windows logon account", actual);
@@ -609,7 +609,7 @@ namespace GitHub.Runner.Common.Tests
                 _promptManager
                     .Setup(x => x.ReadValue(
                         Constants.Runner.CommandLine.Args.WindowsLogonPassword, // argName
-                        StringUtil.Loc("WindowsLogonPasswordDescription", accountName), // description
+                        string.Format("Password for the account {0}", accountName), // description
                         true, // secret
                         string.Empty, // defaultValue
                         Validators.NonEmptyValidator, // validator
@@ -636,7 +636,7 @@ namespace GitHub.Runner.Common.Tests
                 _promptManager
                     .Setup(x => x.ReadValue(
                         Constants.Runner.CommandLine.Args.Work, // argName
-                        StringUtil.Loc("WorkFolderDescription"), // description
+                        "work folder", // description
                         false, // secret
                         "_work", // defaultValue
                         Validators.NonEmptyValidator, // validator
@@ -665,7 +665,7 @@ namespace GitHub.Runner.Common.Tests
                 _promptManager
                     .Setup(x => x.ReadValue(
                         Constants.Runner.CommandLine.Args.Url, // argName
-                        StringUtil.Loc("ServerUrl"), // description
+                        "GitHub organization URL", // description
                         false, // secret
                         string.Empty, // defaultValue
                         Validators.ServerUrlValidator, // validator
@@ -694,7 +694,7 @@ namespace GitHub.Runner.Common.Tests
                 _promptManager
                     .Setup(x => x.ReadValue(
                         Constants.Runner.CommandLine.Args.Url, // argName
-                        StringUtil.Loc("ServerUrl"), // description
+                        "GitHub organization URL", // description
                         false, // secret
                         string.Empty, // defaultValue
                         Validators.ServerUrlValidator, // validator

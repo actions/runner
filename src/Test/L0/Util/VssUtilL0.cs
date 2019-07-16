@@ -16,8 +16,6 @@ namespace GitHub.Runner.Common.Tests.Util
         [Trait("Category", "Common")]
         public void VerifyOverwriteVssConnectionSetting()
         {
-            Regex _serverSideAgentPlatformMatchingRegex = new Regex("vstsagentcore-(.+)(?=/)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-
             using (TestHostContext hc = new TestHostContext(this))
             {
                 Tracing trace = hc.GetTrace();
@@ -30,7 +28,7 @@ namespace GitHub.Runner.Common.Tests.Util
                     trace.Info("Set httptimeout to 360.");
                     Environment.SetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_HTTP_TIMEOUT", "360");
 
-                    var connect = VssUtil.CreateConnection(new Uri("https://github.com/Microsoft/vsts-agent"), new VssCredentials());
+                    var connect = VssUtil.CreateConnection(new Uri("https://github.com/actions/runner"), new VssCredentials());
 
                     // Assert.
                     Assert.Equal(connect.Settings.MaxRetryRequest.ToString(), "10");
@@ -41,7 +39,7 @@ namespace GitHub.Runner.Common.Tests.Util
                     trace.Info("Set httptimeout to 3600.");
                     Environment.SetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_HTTP_TIMEOUT", "3600");
 
-                    connect = VssUtil.CreateConnection(new Uri("https://github.com/Microsoft/vsts-agent"), new VssCredentials());
+                    connect = VssUtil.CreateConnection(new Uri("https://github.com/actions/runner"), new VssCredentials());
 
                     // Assert.
                     Assert.Equal(connect.Settings.MaxRetryRequest.ToString(), "10");

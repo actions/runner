@@ -139,8 +139,8 @@ namespace GitHub.Runner.Sdk
 #if DEBUG
             Debug(message);
 #else
-            string vstsAgentTrace = Environment.GetEnvironmentVariable("system.debug");
-            if (!string.IsNullOrEmpty(vstsAgentTrace))
+            string actionsRunnerTrace = Environment.GetEnvironmentVariable("system.debug");
+            if (!string.IsNullOrEmpty(actionsRunnerTrace))
             {
                 Debug(message);
             }

@@ -1,4 +1,4 @@
-﻿using GitHub.DistributedTask.WebApi;
+using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Listener.Configuration;
 using GitHub.Runner.Common.Util;
 using System;
@@ -164,7 +164,7 @@ namespace GitHub.Runner.Listener
                     // Error if runner not configured.
                     if (!configManager.IsConfigured())
                     {
-                        _term.WriteError(StringUtil.Loc("RunnerIsNotConfigured"));
+                        _term.WriteError("Runner is not configured.");
                         PrintUsage(command);
                         return Constants.Runner.ReturnCode.TerminatedError;
                     }
@@ -268,7 +268,7 @@ namespace GitHub.Runner.Listener
                 }
 
                 HostContext.WritePerfCounter("SessionCreated");
-                _term.WriteLine(StringUtil.Loc("ListenForJobs", DateTime.UtcNow));
+                _term.WriteLine($"{DateTime.UtcNow:u}: Listening for Jobs");
 
                 IJobDispatcher jobDispatcher = null;
                 CancellationTokenSource messageQueueLoopTokenSource = CancellationTokenSource.CreateLinkedTokenSource(HostContext.RunnerShutdownToken);
@@ -471,21 +471,17 @@ namespace GitHub.Runner.Listener
             separator = "/";
             ext = "sh";
 #endif
+            _term.WriteLine($@"
+Commands:,
+ .{separator}config.{ext}          Configures the runner
+ .{separator}config.{ext} remove   Unconfigures the runner
+ .{separator}run.{ext}             Runs the runner interactively. Does not require any options.
 
-            string commonHelp = StringUtil.Loc("CommandLineHelp_Common");
-            string envHelp = StringUtil.Loc("CommandLineHelp_Env");
-            if (command.Configure)
-            {
-                _term.WriteLine(StringUtil.Loc("CommandLineHelp_Configure", separator, ext, commonHelp, envHelp));
-            }
-            else if (command.Remove)
-            {
-                _term.WriteLine(StringUtil.Loc("CommandLineHelp_Remove", separator, ext, commonHelp, envHelp));
-            }
-            else
-            {
-                _term.WriteLine(StringUtil.Loc("CommandLineHelp", separator, ext));
-            }
+Options:
+ --version  Prints the runner version
+ --commit   Prints the runner commit
+ --help     Prints the help for each command
+");
         }
     }
 }
