@@ -1,4 +1,4 @@
-﻿using GitHub.DistributedTask.Pipelines;
+using GitHub.DistributedTask.Pipelines;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common.Util;
 using System;
@@ -115,7 +115,7 @@ namespace GitHub.Runner.Worker
                         {
                             omitEcho = true;
                             context.Output(input);
-                            context.Error(StringUtil.Loc("CommandProcessFailed", input));
+                            context.Error($"Unable to process command '{input}' successfully.");
                             context.Error(ex);
                             context.CommandResult = TaskResult.Failed;
                         }
@@ -129,7 +129,7 @@ namespace GitHub.Runner.Worker
                     }
                     else
                     {
-                        context.Warning(StringUtil.Loc("CommandNotFound", actionCommand.Command));
+                        context.Warning($"Can't find command extension for ##[{actionCommand.Command}.command].");
                     }
                 }
             }
@@ -155,12 +155,12 @@ namespace GitHub.Runner.Worker
         {
             if (!command.Properties.TryGetValue(SetRepoPathCommandProperties.repoFullName, out string repoFullName) || string.IsNullOrEmpty(repoFullName))
             {
-                throw new Exception(StringUtil.Loc("MissingRepoFullName"));
+                throw new Exception("Required field 'repoFullName' is missing in ##[internal-set-repo-path] command.");
             }
 
             if (!command.Properties.TryGetValue(SetRepoPathCommandProperties.workspaceRepo, out string workspaceRepo) || string.IsNullOrEmpty(workspaceRepo))
             {
-                throw new Exception(StringUtil.Loc("MissingWorkspaceRepo"));
+                throw new Exception("Required field 'workspaceRepo' is missing in ##[internal-set-repo-path] command.");
             }
 
             var directoryManager = HostContext.GetService<IPipelineDirectoryManager>();
@@ -186,7 +186,7 @@ namespace GitHub.Runner.Worker
         {
             if (!command.Properties.TryGetValue(SetEnvCommandProperties.Name, out string envName) || string.IsNullOrEmpty(envName))
             {
-                throw new Exception(StringUtil.Loc("MissingEnvName"));
+                throw new Exception("Required field 'name' is missing in ##[set-env] command.");
             }
 
             context.EnvironmentVariables[envName] = command.Data;
@@ -211,7 +211,7 @@ namespace GitHub.Runner.Worker
         {
             if (!command.Properties.TryGetValue(SetOutputCommandProperties.Name, out string outputName) || string.IsNullOrEmpty(outputName))
             {
-                throw new Exception(StringUtil.Loc("MissingOutputName"));
+                throw new Exception("Required field 'name' is missing in ##[set-output] command.");
             }
 
             context.SetOutput(outputName, command.Data, out var reference);
@@ -236,7 +236,7 @@ namespace GitHub.Runner.Worker
         {
             if (!command.Properties.TryGetValue(SetSecretCommandProperties.Name, out string secretName) || string.IsNullOrEmpty(secretName))
             {
-                throw new Exception(StringUtil.Loc("MissingSecretName"));
+                throw new Exception("Required field 'name' is missing in ##[set-secret] command.");
             }
 
             throw new NotSupportedException("Not supported yet");

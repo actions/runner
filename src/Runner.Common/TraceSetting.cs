@@ -14,8 +14,8 @@ namespace GitHub.Runner.Common
 #if DEBUG
             DefaultTraceLevel = TraceLevel.Verbose;
 #endif            
-            string vstsAgentTrace = Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_TRACE");
-            if (!string.IsNullOrEmpty(vstsAgentTrace))
+            string actionsRunnerTrace = Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_TRACE");
+            if (!string.IsNullOrEmpty(actionsRunnerTrace))
             {
                 DefaultTraceLevel = TraceLevel.Verbose;
             }

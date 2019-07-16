@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -871,7 +871,7 @@ namespace GitHub.Runner.Sdk
         public int ExitCode { get; private set; }
 
         public ProcessExitCodeException(int exitCode, string fileName, string arguments)
-            : base(StringUtil.Loc("ProcessExitCode", exitCode, fileName, arguments))
+            : base($"Exit code {exitCode} returned from process: file name '{fileName}', arguments '{arguments}'.")
         {
             ExitCode = exitCode;
         }

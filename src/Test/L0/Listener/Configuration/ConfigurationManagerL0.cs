@@ -28,7 +28,7 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
         private Mock<IConfigurationStore> _store;
         private Mock<IExtensionManager> _extnMgr;
         // private Mock<IDeploymentGroupServer> _machineGroupServer;
-        private Mock<IRunnerWebProxy> _vstsAgentWebProxy;
+        private Mock<IRunnerWebProxy> _runnerWebProxy;
         private Mock<IRunnerCertificateManager> _cert;
 
 #if OS_WINDOWS
@@ -44,7 +44,6 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
         // private DeploymentGroupAgentConfigProvider _deploymentGroupAgentConfigProvider;
         private string _expectedToken = "expectedToken";
         private string _expectedServerUrl = "https://localhost";
-        private string _expectedVSTSServerUrl = "https://L0ConfigTest.visualstudio.com";
         private string _expectedAgentName = "expectedAgentName";
         private string _expectedPoolName = "poolName";
         private string _expectedCollectionName = "testCollectionName";
@@ -68,7 +67,7 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
             _extnMgr = new Mock<IExtensionManager>();
             _rsaKeyManager = new Mock<IRSAKeyManager>();
             // _machineGroupServer = new Mock<IDeploymentGroupServer>();
-            _vstsAgentWebProxy = new Mock<IRunnerWebProxy>();
+            _runnerWebProxy = new Mock<IRunnerWebProxy>();
             _cert = new Mock<IRunnerCertificateManager>();
 
 #if OS_WINDOWS
@@ -86,7 +85,7 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
             expectedAgent.Authorization = new TaskAgentAuthorization
             {
                 ClientId = Guid.NewGuid(),
-                AuthorizationUrl = new Uri("http://localhost:8080/tfs"),
+                AuthorizationUrl = new Uri("http://localhost:8080/pipelines"),
             };
 
             var connectionData = new ConnectionData()
@@ -146,7 +145,7 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
             tc.SetSingleton<ILocationServer>(_locationServer.Object);
             // tc.SetSingleton<IDeploymentGroupServer>(_machineGroupServer.Object);
             tc.SetSingleton<ICapabilitiesManager>(_capabilitiesManager);
-            tc.SetSingleton<IRunnerWebProxy>(_vstsAgentWebProxy.Object);
+            tc.SetSingleton<IRunnerWebProxy>(_runnerWebProxy.Object);
             tc.SetSingleton<IRunnerCertificateManager>(_cert.Object);
 
 #if OS_WINDOWS

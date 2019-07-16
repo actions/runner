@@ -676,7 +676,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 # Container action
 name: 'Hello World'
 description: 'Greet the world and record the time'
-author: 'Microsoft Corporation'
+author: 'GitHub'
 inputs: 
   greeting: # id of input
     description: 'The greeting we choose - will print ""{greeting}, World!"" on stdout'
@@ -753,7 +753,7 @@ runs:
 # Container action
 name: 'Hello World'
 description: 'Greet the world and record the time'
-author: 'Microsoft Corporation'
+author: 'GitHub'
 inputs: 
   greeting: # id of input
     description: 'The greeting we choose - will print ""{greeting}, World!"" on stdout'
@@ -829,7 +829,7 @@ runs:
 # Container action
 name: 'Hello World'
 description: 'Greet the world and record the time'
-author: 'Microsoft Corporation'
+author: 'GitHub'
 inputs: 
   greeting: # id of input
     description: 'The greeting we choose - will print ""{greeting}, World!"" on stdout'
@@ -881,7 +881,7 @@ runs:
 
         private void CreateAction(string yamlContent, out Pipelines.ActionStep instance, out string directory)
         {
-            directory = Path.Combine(_workFolder, Constants.Path.ActionsDirectory, "microsoft/actions".Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar), "master");
+            directory = Path.Combine(_workFolder, Constants.Path.ActionsDirectory, "GitHub/actions".Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar), "master");
             string file = Path.Combine(directory, Constants.Path.ActionManifestFile);
             Directory.CreateDirectory(Path.GetDirectoryName(file));
             File.WriteAllText(file, yamlContent);
@@ -890,7 +890,7 @@ runs:
                 Id = Guid.NewGuid(),
                 Reference = new Pipelines.RepositoryPathReference()
                 {
-                    Name = "microsoft/actions",
+                    Name = "GitHub/actions",
                     Ref = "master",
                     RepositoryType = Pipelines.RepositoryTypes.GitHub
                 }

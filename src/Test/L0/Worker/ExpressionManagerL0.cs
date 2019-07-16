@@ -6,6 +6,7 @@ using GitHub.Runner.Worker;
 using Moq;
 using Xunit;
 using GitHub.DistributedTask.Expressions;
+using GitHub.DistributedTask.Pipelines.ContextData;
 
 namespace GitHub.Runner.Common.Tests.Worker
 {
@@ -13,193 +14,194 @@ namespace GitHub.Runner.Common.Tests.Worker
     {
         private Mock<IExecutionContext> _ec;
         private ExpressionManager _expressionManager;
-        private Variables _variables;
+        private Dictionary<String, PipelineContextData> _expressions;
 
-        // [Fact]
-        // [Trait("Level", "L0")]
-        // [Trait("Category", "Worker")]
-        // public void AlwaysFunction()
-        // {
-        //     using (TestHostContext hc = CreateTestContext())
-        //     {
-        //         // Arrange.
-        //         var variableSets = new[]
-        //         {
-        //             new { JobStatus = (TaskResult?)null, Expected = true },
-        //             new { JobStatus = (TaskResult?)TaskResult.Canceled, Expected = true },
-        //             new { JobStatus = (TaskResult?)TaskResult.Failed, Expected = true },
-        //             new { JobStatus = (TaskResult?)TaskResult.Succeeded, Expected = true },
-        //             new { JobStatus = (TaskResult?)TaskResult.SucceededWithIssues, Expected = true },
-        //         };
-        //         foreach (var variableSet in variableSets)
-        //         {
-        //             InitializeExecutionContext(hc);
-        //             _ec.Object.Variables.Agent_JobStatus = variableSet.JobStatus;
-        //             IExpressionNode condition = _expressionManager.Parse(_ec.Object, "always()", true);
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void AlwaysFunction()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange.
+                var variableSets = new[]
+                {
+                    new { JobStatus = (TaskResult?)null, Expected = true },
+                    new { JobStatus = (TaskResult?)TaskResult.Canceled, Expected = true },
+                    new { JobStatus = (TaskResult?)TaskResult.Failed, Expected = true },
+                    new { JobStatus = (TaskResult?)TaskResult.Succeeded, Expected = true },
+                    new { JobStatus = (TaskResult?)TaskResult.SucceededWithIssues, Expected = true },
+                };
+                foreach (var variableSet in variableSets)
+                {
+                    InitializeExecutionContext(hc);
+                    _ec.Setup(x => x.GetRunnerContext("jobstatus")).Returns(variableSet.JobStatus?.ToString());
+                    IExpressionNode condition = _expressionManager.Parse(_ec.Object, "always()");
 
-        //             // Act.
-        //             bool actual = _expressionManager.Evaluate(_ec.Object, condition).Value;
+                    // Act.
+                    bool actual = _expressionManager.Evaluate(_ec.Object, condition).Value;
 
-        //             // Assert.
-        //             Assert.Equal(variableSet.Expected, actual);
-        //         }
-        //     }
-        // }
+                    // Assert.
+                    Assert.Equal(variableSet.Expected, actual);
+                }
+            }
+        }
 
-        // [Fact]
-        // [Trait("Level", "L0")]
-        // [Trait("Category", "Worker")]
-        // public void CanceledFunction()
-        // {
-        //     using (TestHostContext hc = CreateTestContext())
-        //     {
-        //         // Arrange.
-        //         var variableSets = new[]
-        //         {
-        //             new { JobStatus = (TaskResult?)TaskResult.Canceled, Expected = true },
-        //             new { JobStatus = (TaskResult?)null, Expected = false },
-        //             new { JobStatus = (TaskResult?)TaskResult.Failed, Expected = false },
-        //             new { JobStatus = (TaskResult?)TaskResult.Succeeded, Expected = false },
-        //             new { JobStatus = (TaskResult?)TaskResult.SucceededWithIssues, Expected = false },
-        //         };
-        //         foreach (var variableSet in variableSets)
-        //         {
-        //             InitializeExecutionContext(hc);
-        //             _ec.Object.Variables.Agent_JobStatus = variableSet.JobStatus;
-        //             IExpressionNode condition = _expressionManager.Parse(_ec.Object, "canceled()", true);
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void CanceledFunction()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange.
+                var variableSets = new[]
+                {
+                    new { JobStatus = (TaskResult?)TaskResult.Canceled, Expected = true },
+                    new { JobStatus = (TaskResult?)null, Expected = false },
+                    new { JobStatus = (TaskResult?)TaskResult.Failed, Expected = false },
+                    new { JobStatus = (TaskResult?)TaskResult.Succeeded, Expected = false },
+                    new { JobStatus = (TaskResult?)TaskResult.SucceededWithIssues, Expected = false },
+                };
 
-        //             // Act.
-        //             bool actual = _expressionManager.Evaluate(_ec.Object, condition).Value;
+                foreach (var variableSet in variableSets)
+                {
+                    InitializeExecutionContext(hc);
+                    _ec.Setup(x => x.GetRunnerContext("jobstatus")).Returns(variableSet.JobStatus?.ToString());
+                    IExpressionNode condition = _expressionManager.Parse(_ec.Object, "canceled()");
 
-        //             // Assert.
-        //             Assert.Equal(variableSet.Expected, actual);
-        //         }
-        //     }
-        // }
+                    // Act.
+                    bool actual = _expressionManager.Evaluate(_ec.Object, condition).Value;
 
-        // [Fact]
-        // [Trait("Level", "L0")]
-        // [Trait("Category", "Worker")]
-        // public void FailedFunction()
-        // {
-        //     using (TestHostContext hc = CreateTestContext())
-        //     {
-        //         // Arrange.
-        //         var variableSets = new[]
-        //         {
-        //             new { JobStatus = (TaskResult?)TaskResult.Failed, Expected = true },
-        //             new { JobStatus = (TaskResult?)null, Expected = false },
-        //             new { JobStatus = (TaskResult?)TaskResult.Canceled, Expected = false },
-        //             new { JobStatus = (TaskResult?)TaskResult.Succeeded, Expected = false },
-        //             new { JobStatus = (TaskResult?)TaskResult.SucceededWithIssues, Expected = false },
-        //         };
-        //         foreach (var variableSet in variableSets)
-        //         {
-        //             InitializeExecutionContext(hc);
-        //             _ec.Object.Variables.Agent_JobStatus = variableSet.JobStatus;
-        //             IExpressionNode condition = _expressionManager.Parse(_ec.Object, "failed()", true);
+                    // Assert.
+                    Assert.Equal(variableSet.Expected, actual);
+                }
+            }
+        }
 
-        //             // Act.
-        //             bool actual = _expressionManager.Evaluate(_ec.Object, condition).Value;
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void FailedFunction()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange.
+                var variableSets = new[]
+                {
+                    new { JobStatus = (TaskResult?)TaskResult.Failed, Expected = true },
+                    new { JobStatus = (TaskResult?)null, Expected = false },
+                    new { JobStatus = (TaskResult?)TaskResult.Canceled, Expected = false },
+                    new { JobStatus = (TaskResult?)TaskResult.Succeeded, Expected = false },
+                    new { JobStatus = (TaskResult?)TaskResult.SucceededWithIssues, Expected = false },
+                };
+                foreach (var variableSet in variableSets)
+                {
+                    InitializeExecutionContext(hc);
+                    _ec.Setup(x => x.GetRunnerContext("jobstatus")).Returns(variableSet.JobStatus?.ToString());
+                    IExpressionNode condition = _expressionManager.Parse(_ec.Object, "failed()");
 
-        //             // Assert.
-        //             Assert.Equal(variableSet.Expected, actual);
-        //         }
-        //     }
-        // }
+                    // Act.
+                    bool actual = _expressionManager.Evaluate(_ec.Object, condition).Value;
 
-        // [Fact]
-        // [Trait("Level", "L0")]
-        // [Trait("Category", "Worker")]
-        // public void SucceededFunction()
-        // {
-        //     using (TestHostContext hc = CreateTestContext())
-        //     {
-        //         // Arrange.
-        //         var variableSets = new[]
-        //         {
-        //             new { JobStatus = (TaskResult?)null, Expected = true },
-        //             new { JobStatus = (TaskResult?)TaskResult.Succeeded, Expected = true },
-        //             new { JobStatus = (TaskResult?)TaskResult.SucceededWithIssues, Expected = true },
-        //             new { JobStatus = (TaskResult?)TaskResult.Canceled, Expected = false },
-        //             new { JobStatus = (TaskResult?)TaskResult.Failed, Expected = false },
-        //         };
-        //         foreach (var variableSet in variableSets)
-        //         {
-        //             InitializeExecutionContext(hc);
-        //             _ec.Object.Variables.Agent_JobStatus = variableSet.JobStatus;
-        //             IExpressionNode condition = _expressionManager.Parse(_ec.Object, "succeeded()", true);
+                    // Assert.
+                    Assert.Equal(variableSet.Expected, actual);
+                }
+            }
+        }
 
-        //             // Act.
-        //             bool actual = _expressionManager.Evaluate(_ec.Object, condition).Value;
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void SucceededFunction()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange.
+                var variableSets = new[]
+                {
+                    new { JobStatus = (TaskResult?)null, Expected = true },
+                    new { JobStatus = (TaskResult?)TaskResult.Succeeded, Expected = true },
+                    new { JobStatus = (TaskResult?)TaskResult.SucceededWithIssues, Expected = true },
+                    new { JobStatus = (TaskResult?)TaskResult.Canceled, Expected = false },
+                    new { JobStatus = (TaskResult?)TaskResult.Failed, Expected = false },
+                };
+                foreach (var variableSet in variableSets)
+                {
+                    InitializeExecutionContext(hc);
+                    _ec.Setup(x => x.GetRunnerContext("jobstatus")).Returns(variableSet.JobStatus?.ToString());
+                    IExpressionNode condition = _expressionManager.Parse(_ec.Object, "succeeded()");
 
-        //             // Assert.
-        //             Assert.Equal(variableSet.Expected, actual);
-        //         }
-        //     }
-        // }
+                    // Act.
+                    bool actual = _expressionManager.Evaluate(_ec.Object, condition).Value;
 
-        // [Fact]
-        // [Trait("Level", "L0")]
-        // [Trait("Category", "Worker")]
-        // public void SucceededOrFailedFunction()
-        // {
-        //     using (TestHostContext hc = CreateTestContext())
-        //     {
-        //         // Arrange.
-        //         var variableSets = new[]
-        //         {
-        //             new { JobStatus = (TaskResult?)null, Expected = true },
-        //             new { JobStatus = (TaskResult?)TaskResult.Succeeded, Expected = true },
-        //             new { JobStatus = (TaskResult?)TaskResult.SucceededWithIssues, Expected = true },
-        //             new { JobStatus = (TaskResult?)TaskResult.Failed, Expected = true },
-        //             new { JobStatus = (TaskResult?)TaskResult.Canceled, Expected = false },
-        //         };
-        //         foreach (var variableSet in variableSets)
-        //         {
-        //             InitializeExecutionContext(hc);
-        //             _ec.Object.Variables.Agent_JobStatus = variableSet.JobStatus;
-        //             IExpressionNode condition = _expressionManager.Parse(_ec.Object, "succeededOrFailed()", true);
+                    // Assert.
+                    Assert.Equal(variableSet.Expected, actual);
+                }
+            }
+        }
 
-        //             // Act.
-        //             bool actual = _expressionManager.Evaluate(_ec.Object, condition).Value;
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void SucceededOrFailedFunction()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange.
+                var variableSets = new[]
+                {
+                    new { JobStatus = (TaskResult?)null, Expected = true },
+                    new { JobStatus = (TaskResult?)TaskResult.Succeeded, Expected = true },
+                    new { JobStatus = (TaskResult?)TaskResult.SucceededWithIssues, Expected = true },
+                    new { JobStatus = (TaskResult?)TaskResult.Failed, Expected = true },
+                    new { JobStatus = (TaskResult?)TaskResult.Canceled, Expected = false },
+                };
+                foreach (var variableSet in variableSets)
+                {
+                    InitializeExecutionContext(hc);
+                    _ec.Setup(x => x.GetRunnerContext("jobstatus")).Returns(variableSet.JobStatus?.ToString());
+                    IExpressionNode condition = _expressionManager.Parse(_ec.Object, "succeededOrFailed()");
 
-        //             // Assert.
-        //             Assert.Equal(variableSet.Expected, actual);
-        //         }
-        //     }
-        // }
+                    // Act.
+                    bool actual = _expressionManager.Evaluate(_ec.Object, condition).Value;
 
-        // [Fact]
-        // [Trait("Level", "L0")]
-        // [Trait("Category", "Worker")]
-        // public void VariablesNamedValue()
-        // {
-        //     using (TestHostContext hc = CreateTestContext())
-        //     {
-        //         // Arrange.
-        //         var variableSets = new[]
-        //         {
-        //             new { Condition = "eq(variables.someVARIABLE, 'someVALUE')", VariableName = "SOMEvariable", VariableValue = "SOMEvalue", Expected = true },
-        //             new { Condition = "eq(variables['some.VARIABLE'], 'someVALUE')", VariableName = "SOME.variable", VariableValue = "SOMEvalue", Expected = true },
-        //             new { Condition = "eq(variables.nosuch, '')", VariableName = "SomeVariable", VariableValue = "SomeValue", Expected = true },
-        //             new { Condition = "eq(variables['some.VARIABLE'], 'other value')", VariableName = "SOME.variable", VariableValue = "SOMEvalue", Expected = false },
-        //             new { Condition = "eq(variables.nosuch, 'SomeValue')", VariableName = "SomeVariable", VariableValue = "SomeValue", Expected = false },
-        //         };
-        //         foreach (var variableSet in variableSets)
-        //         {
-        //             InitializeExecutionContext(hc);
-        //             _ec.Object.Variables.Set(variableSet.VariableName, variableSet.VariableValue);
-        //             IExpressionNode condition = _expressionManager.Parse(_ec.Object, variableSet.Condition, true);
+                    // Assert.
+                    Assert.Equal(variableSet.Expected, actual);
+                }
+            }
+        }
 
-        //             // Act.
-        //             bool actual = _expressionManager.Evaluate(_ec.Object, condition).Value;
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void ContextNamedValue()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange.
+                var variableSets = new[]
+                {
+                    new { Condition = "eq(github.ref, 'refs/heads/master')", VariableName = "ref", VariableValue = "refs/heads/master", Expected = true },
+                    new { Condition = "eq(github['ref'], 'refs/heads/master')", VariableName = "ref", VariableValue = "refs/heads/master", Expected = true },
+                    new { Condition = "eq(github.nosuch, '')", VariableName = "ref", VariableValue = "refs/heads/master", Expected = true },
+                    new { Condition = "eq(github['ref'], 'refs/heads/release')", VariableName = "ref", VariableValue = "refs/heads/master", Expected = false },
+                    new { Condition = "eq(github.ref, 'refs/heads/release')", VariableName = "ref", VariableValue = "refs/heads/master", Expected = false },
+                };
+                foreach (var variableSet in variableSets)
+                {
+                    InitializeExecutionContext(hc);
+                    _ec.Object.ExpressionValues["github"] = new GitHubContext() { { variableSet.VariableName, new StringContextData(variableSet.VariableValue) } };
+                    IExpressionNode condition = _expressionManager.Parse(_ec.Object, variableSet.Condition);
 
-        //             // Assert.
-        //             Assert.Equal(variableSet.Expected, actual);
-        //         }
-        //     }
-        // }
+                    // Act.
+                    bool actual = _expressionManager.Evaluate(_ec.Object, condition).Value;
+
+                    // Assert.
+                    Assert.Equal(variableSet.Expected, actual);
+                }
+            }
+        }
 
         private TestHostContext CreateTestContext([CallerMemberName] String testName = "")
         {
@@ -211,12 +213,11 @@ namespace GitHub.Runner.Common.Tests.Worker
 
         private void InitializeExecutionContext(TestHostContext hc)
         {
-            _variables = new Variables(
-                hostContext: hc,
-                copy: new Dictionary<string, VariableValue>());
+            _expressions = new Dictionary<String, PipelineContextData>();
+
             _ec = new Mock<IExecutionContext>();
             _ec.SetupAllProperties();
-            _ec.Setup(x => x.Variables).Returns(_variables);
+            _ec.Setup(x => x.ExpressionValues).Returns(_expressions);
         }
     }
 }

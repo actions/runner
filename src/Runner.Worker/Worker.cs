@@ -175,8 +175,6 @@ namespace GitHub.Runner.Worker
         private void SetCulture(Pipelines.AgentJobRequestMessage message)
         {
             // Extract the culture name from the job's variable dictionary.
-            // The variable does not exist for TFS 2015 RTM and Update 1.
-            // It was introduced in Update 2.
             VariableValue culture;
             ArgUtil.NotNull(message, nameof(message));
             ArgUtil.NotNull(message.Variables, nameof(message.Variables));

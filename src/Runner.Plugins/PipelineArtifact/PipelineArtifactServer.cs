@@ -52,7 +52,7 @@ namespace GitHub.Runner.Plugins.PipelineArtifact
                 propertiesDictionary.Add(PipelineArtifactConstants.ProofNodes, StringUtil.ConvertToJson(result.ProofNodes.ToArray()));
                 propertiesDictionary.Add(PipelineArtifactConstants.ArtifactSize, result.ContentSize.ToString());
                 var artifact = await buildHelper.AssociateArtifact(projectId, pipelineId, name, ArtifactResourceTypes.PipelineArtifact, result.ManifestId.ValueString, propertiesDictionary, cancellationToken);
-                context.Output(StringUtil.Loc("AssociateArtifactWithBuild", artifact.Id, pipelineId));
+                context.Output($"Associated artifact {artifact.Id} with build {pipelineId}");
             }
         }
 
@@ -123,7 +123,7 @@ namespace GitHub.Runner.Plugins.PipelineArtifact
                     }
                     else
                     {
-                        context.Output(StringUtil.Loc("DownloadingMultiplePipelineArtifacts", pipelineArtifacts.Count()));
+                        context.Output($"Downloading {pipelineArtifacts.Count()} pipeline artifacts...");
 
                         var artifactNameAndManifestIds = pipelineArtifacts.ToDictionary(
                             keySelector: (a) => a.Name, // keys should be unique, if not something is really wrong

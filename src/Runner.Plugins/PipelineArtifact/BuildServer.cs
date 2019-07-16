@@ -8,7 +8,7 @@ using GitHub.Build.WebApi;
 
 namespace GitHub.Runner.Plugins.PipelineArtifact
 {
-    // A client wrapper interacting with TFS/Build's Artifact API
+    // A client wrapper interacting with Build's Artifact API
     public class BuildServer
     {
         private readonly BuildHttpClient _buildHttpClient;

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Linq;
 using GitHub.Runner.Sdk;
@@ -110,7 +110,7 @@ namespace GitHub.Runner.Sdk
             if (require)
             {
                 throw new FileNotFoundException(
-                    message: StringUtil.Loc("FileNotFound", command),
+                    message: $"File not found: '{command}'",
                     fileName: command);
             }
 

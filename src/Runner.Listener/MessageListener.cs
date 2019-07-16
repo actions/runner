@@ -1,4 +1,4 @@
-﻿using GitHub.DistributedTask.WebApi;
+using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common.Capabilities;
 using GitHub.Runner.Listener.Configuration;
 using GitHub.Runner.Common.Util;
@@ -60,7 +60,7 @@ namespace GitHub.Runner.Listener
             Trace.Info(_settings);
 
             // Capabilities.
-            _term.WriteLine(StringUtil.Loc("ScanToolCapabilities"));
+            _term.WriteLine("Scanning for tool capabilities.");
             Dictionary<string, string> systemCapabilities = await HostContext.GetService<ICapabilitiesManager>().GetCapabilitiesAsync(_settings, token);
 
             // Create connection.
@@ -81,7 +81,7 @@ namespace GitHub.Runner.Listener
             string errorMessage = string.Empty;
             bool encounteringError = false;
 
-            _term.WriteLine(StringUtil.Loc("ConnectToServer"));
+            _term.WriteLine("Connecting to the server.");
             while (true)
             {
                 token.ThrowIfCancellationRequested();
@@ -100,7 +100,7 @@ namespace GitHub.Runner.Listener
                     Trace.Info($"Session created.");
                     if (encounteringError)
                     {
-                        _term.WriteLine(StringUtil.Loc("QueueConnected", DateTime.UtcNow));
+                        _term.WriteLine($"{DateTime.UtcNow:u}: Runner reconnected.");
                         _sessionCreationExceptionTracker.Clear();
                         encounteringError = false;
                     }
@@ -124,13 +124,13 @@ namespace GitHub.Runner.Listener
 
                     if (!IsSessionCreationExceptionRetriable(ex))
                     {
-                        _term.WriteError(StringUtil.Loc("SessionCreateFailed", ex.Message));
+                        _term.WriteError($"Failed to create session. {ex.Message}");
                         return false;
                     }
 
                     if (!encounteringError) //print the message only on the first error
                     {
-                        _term.WriteError(StringUtil.Loc("QueueConError", DateTime.UtcNow, ex.Message, _sessionCreationRetryInterval.TotalSeconds));
+                        _term.WriteError($"{DateTime.UtcNow:u}: Runner connect error: {ex.Message}. Retrying until reconnected.");
                         encounteringError = true;
                     }
 
@@ -182,7 +182,7 @@ namespace GitHub.Runner.Listener
 
                     if (encounteringError) //print the message once only if there was an error
                     {
-                        _term.WriteLine(StringUtil.Loc("QueueConnected", DateTime.UtcNow));
+                        _term.WriteLine($"{DateTime.UtcNow:u}: Runner reconnected.");
                         encounteringError = false;
                         continuousError = 0;
                     }
@@ -230,7 +230,7 @@ namespace GitHub.Runner.Listener
                         if (!encounteringError)
                         {
                             //print error only on the first consecutive error
-                            _term.WriteError(StringUtil.Loc("QueueConError", DateTime.UtcNow, ex.Message));
+                            _term.WriteError($"{DateTime.UtcNow:u}: Runner connect error: {ex.Message}. Retrying until reconnected.");
                             encounteringError = true;
                         }
 
@@ -341,20 +341,20 @@ namespace GitHub.Runner.Listener
             if (ex is TaskAgentNotFoundException)
             {
                 Trace.Info("The agent no longer exists on the server. Stopping the runner.");
-                _term.WriteError(StringUtil.Loc("MissingAgent"));
+                _term.WriteError("The runner no longer exists on the server. Please reconfigure the runner.");
                 return false;
             }
             else if (ex is TaskAgentSessionConflictException)
             {
                 Trace.Info("The session for this runner already exists.");
-                _term.WriteError(StringUtil.Loc("SessionExist"));
+                _term.WriteError("A session for this runner already exists.");
                 if (_sessionCreationExceptionTracker.ContainsKey(nameof(TaskAgentSessionConflictException)))
                 {
                     _sessionCreationExceptionTracker[nameof(TaskAgentSessionConflictException)]++;
                     if (_sessionCreationExceptionTracker[nameof(TaskAgentSessionConflictException)] * _sessionCreationRetryInterval.TotalSeconds >= _sessionConflictRetryLimit.TotalSeconds)
                     {
                         Trace.Info("The session conflict exception have reached retry limit.");
-                        _term.WriteError(StringUtil.Loc("SessionExistStopRetry", _sessionConflictRetryLimit.TotalSeconds));
+                        _term.WriteError($"Stop retry on SessionConflictException after retried for {_sessionConflictRetryLimit.TotalSeconds} seconds.");
                         return false;
                     }
                 }
@@ -369,14 +369,14 @@ namespace GitHub.Runner.Listener
             else if (ex is VssOAuthTokenRequestException && ex.Message.Contains("Current server time is"))
             {
                 Trace.Info("Local clock might skewed.");
-                _term.WriteError(StringUtil.Loc("LocalClockSkewed"));
+                _term.WriteError("The local machine's clock may be out of sync with the server time by more than five minutes. Please sync your clock with your domain or internet time and try again.");
                 if (_sessionCreationExceptionTracker.ContainsKey(nameof(VssOAuthTokenRequestException)))
                 {
                     _sessionCreationExceptionTracker[nameof(VssOAuthTokenRequestException)]++;
                     if (_sessionCreationExceptionTracker[nameof(VssOAuthTokenRequestException)] * _sessionCreationRetryInterval.TotalSeconds >= _clockSkewRetryLimit.TotalSeconds)
                     {
                         Trace.Info("The OAuth token request exception have reached retry limit.");
-                        _term.WriteError(StringUtil.Loc("ClockSkewStopRetry", _clockSkewRetryLimit.TotalSeconds));
+                        _term.WriteError($"Stopped retrying OAuth token request exception after {_clockSkewRetryLimit.TotalSeconds} seconds.");
                         return false;
                     }
                 }

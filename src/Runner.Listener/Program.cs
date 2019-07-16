@@ -1,4 +1,4 @@
-﻿using GitHub.Runner.Common;
+using GitHub.Runner.Common;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
 using System;
@@ -14,10 +14,6 @@ namespace GitHub.Runner.Listener
     {
         public static int Main(string[] args)
         {
-            // We can't use the new SocketsHttpHandler for now for both Windows and Linux
-            // On linux, Negotiate auth is not working if the TFS url is behind Https
-            // On windows, Proxy is not working
-            AppContext.SetSwitch("System.Net.Http.UseSocketsHttpHandler", false);
             using (HostContext context = new HostContext("Runner"))
             {
                 return MainAsync(context, args).GetAwaiter().GetResult();
@@ -43,26 +39,26 @@ namespace GitHub.Runner.Listener
                 case Constants.OSPlatform.Linux:
                     if (!RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
                     {
-                        terminal.WriteLine(StringUtil.Loc("NotLinux"));
+                        terminal.WriteLine("This runner version is built for Linux. Please install a correct build for your OS.");
                         return Constants.Runner.ReturnCode.TerminatedError;
                     }
                     break;
                 case Constants.OSPlatform.OSX:
                     if (!RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
                     {
-                        terminal.WriteLine(StringUtil.Loc("NotOSX"));
+                        terminal.WriteLine("This runner version is built for OSX. Please install a correct build for your OS.");
                         return Constants.Runner.ReturnCode.TerminatedError;
                     }
                     break;
                 case Constants.OSPlatform.Windows:
                     if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                     {
-                        terminal.WriteLine(StringUtil.Loc("NotWindows"));
+                        terminal.WriteLine("This runner version is built for Windows. Please install a correct build for your OS.");
                         return Constants.Runner.ReturnCode.TerminatedError;
                     }
                     break;
                 default:
-                    terminal.WriteLine(StringUtil.Loc("PlatformNotSupport", RuntimeInformation.OSDescription, Constants.Runner.Platform.ToString()));
+                    terminal.WriteLine($"Running the runner on this platform is not supported. The current platform is {RuntimeInformation.OSDescription} and it was built for {Constants.Runner.Platform.ToString()}.");
                     return Constants.Runner.ReturnCode.TerminatedError;
             }
 
@@ -82,7 +78,7 @@ namespace GitHub.Runner.Listener
                 }
                 catch (Exception e)
                 {
-                    terminal.WriteError(StringUtil.Loc("ErrorOccurred", e.Message));
+                    terminal.WriteError($"An error occurred: {e.Message}");
                     trace.Error(e);
                     return Constants.Runner.ReturnCode.TerminatedError;
                 }
@@ -111,7 +107,7 @@ namespace GitHub.Runner.Listener
                 var unknownCommandlines = command.Validate();
                 if (unknownCommandlines.Count > 0)
                 {
-                    terminal.WriteError(StringUtil.Loc("UnrecognizedCmdArgs", string.Join(", ", unknownCommandlines)));
+                    terminal.WriteError($"Unrecognized command-line input arguments: '{string.Join(", ", unknownCommandlines)}'. For usage refer to: .\\config.cmd --help or ./config.sh --help");
                 }
 
                 // Defer to the Runner class to execute the command.
@@ -127,7 +123,7 @@ namespace GitHub.Runner.Listener
                 }
                 catch (NonRetryableException e)
                 {
-                    terminal.WriteError(StringUtil.Loc("ErrorOccurred", e.Message));
+                    terminal.WriteError($"An error occurred: {e.Message}");
                     trace.Error(e);
                     return Constants.Runner.ReturnCode.TerminatedError;
                 }
@@ -135,7 +131,7 @@ namespace GitHub.Runner.Listener
             }
             catch (Exception e)
             {
-                terminal.WriteError(StringUtil.Loc("ErrorOccurred", e.Message));
+                terminal.WriteError($"An error occurred: {e.Message}");
                 trace.Error(e);
                 return Constants.Runner.ReturnCode.RetryableError;
             }

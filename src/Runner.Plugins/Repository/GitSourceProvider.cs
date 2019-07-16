@@ -1,4 +1,4 @@
-﻿using Pipelines = GitHub.DistributedTask.Pipelines;
+using Pipelines = GitHub.DistributedTask.Pipelines;
 using System;
 using System.Collections.Generic;
 using System.Threading;
@@ -191,7 +191,7 @@ namespace GitHub.Runner.Plugins.Repository
                 }
             }
 
-            // prepare askpass for client cert private key, if the repository's endpoint url match the TFS/VSTS url
+            // prepare askpass for client cert private key, if the repository's endpoint url match the runner config url
             var systemConnection = executionContext.Endpoints.Single(x => string.Equals(x.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
             if (runnerCert != null && Uri.Compare(repositoryUrl, systemConnection.Url, UriComponents.SchemeAndServer, UriFormat.Unescaped, StringComparison.OrdinalIgnoreCase) == 0)
             {
@@ -413,7 +413,7 @@ namespace GitHub.Runner.Plugins.Repository
                 additionalLfsFetchArgs.Add($"-c http.sslVerify=false");
             }
 
-            // Prepare self-signed CA cert config for fetch from TFS.
+            // Prepare self-signed CA cert config for fetch from server.
             if (useSelfSignedCACert)
             {
                 executionContext.Debug($"Use self-signed certificate '{runnerCert.CACertificateFile}' for git fetch.");
@@ -421,7 +421,7 @@ namespace GitHub.Runner.Plugins.Repository
                 additionalLfsFetchArgs.Add($"-c http.sslcainfo=\"{runnerCert.CACertificateFile}\"");
             }
 
-            // Prepare client cert config for fetch from TFS.
+            // Prepare client cert config for fetch from server.
             if (useClientCert)
             {
                 executionContext.Debug($"Use client certificate '{runnerCert.ClientCertificateFile}' for git fetch.");
@@ -505,7 +505,7 @@ namespace GitHub.Runner.Plugins.Repository
                     // this will happen when the checkout commit is older than tip -> fetchDepth
                     if (fetchDepth > 0)
                     {
-                        executionContext.Warning(StringUtil.Loc("ShallowLfsFetchFail", fetchDepth, sourcesToBuild));
+                        executionContext.Warning($"Git lfs fetch failed on shallow repository, this might because of git fetch with depth '{fetchDepth}' doesn't include the lfs fetch commit '{sourcesToBuild}'.");
                     }
 
                     // git lfs fetch failed, get lfs log, the log is critical for debug.
@@ -522,7 +522,7 @@ namespace GitHub.Runner.Plugins.Repository
                 // this will happen when the checkout commit is older than tip -> fetchDepth
                 if (fetchDepth > 0)
                 {
-                    executionContext.Warning(StringUtil.Loc("ShallowCheckoutFail", fetchDepth, sourcesToBuild));
+                    executionContext.Warning($"Git checkout failed on shallow repository, this might because of git fetch with depth '{fetchDepth}' doesn't include the checkout commit '{sourcesToBuild}'.");
                 }
 
                 throw new InvalidOperationException($"Git checkout failed with exit code: {exitCode_checkout}");
@@ -648,7 +648,7 @@ namespace GitHub.Runner.Plugins.Repository
                 // if unable to use git.exe unset http.extraheader, http.proxy or core.askpass, modify git config file on disk. make sure we don't left credential.
                 if (!string.IsNullOrEmpty(configValue))
                 {
-                    executionContext.Warning(StringUtil.Loc("AttemptRemoveCredFromConfig"));
+                    executionContext.Warning("An unsuccessful attempt was made using git command line to remove \"http.extraheader\" from the git config. Attempting to modify the git config file directly to remove the credential.");
                     string gitConfig = Path.Combine(targetPath, ".git/config");
                     if (File.Exists(gitConfig))
                     {
@@ -670,7 +670,7 @@ namespace GitHub.Runner.Plugins.Repository
                 }
                 else
                 {
-                    executionContext.Warning(StringUtil.Loc("FailToRemoveGitConfig", configKey, configKey, targetPath));
+                    executionContext.Warning($"Unable to remove \"{configKey}\" from the git config. To remove the credential, execute \"git config --unset - all {configKey}\" from the repository root \"{targetPath}\".");
                 }
             }
         }

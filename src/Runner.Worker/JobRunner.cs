@@ -46,24 +46,7 @@ namespace GitHub.Runner.Worker
 
             DateTime jobStartTimeUtc = DateTime.UtcNow;
 
-            // Agent.RunMode
-            RunMode runMode;
-            if (message.Variables.ContainsKey(Constants.Variables.Agent.RunMode) &&
-                Enum.TryParse(message.Variables[Constants.Variables.Agent.RunMode].Value, ignoreCase: true, result: out runMode) &&
-                runMode == RunMode.Local)
-            {
-                HostContext.RunMode = runMode;
-            }
-
             ServiceEndpoint systemConnection = message.Resources.Endpoints.Single(x => string.Equals(x.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
-
-            // Make sure SystemConnection Url and Endpoint Url match Config Url base for OnPremises server
-            // System.ServerType will always be there after M133
-            if (!message.Variables.ContainsKey(Constants.Variables.System.ServerType) ||
-                string.Equals(message.Variables[Constants.Variables.System.ServerType]?.Value, "OnPremises", StringComparison.OrdinalIgnoreCase))
-            {
-                ReplaceConfigUriBaseInJobRequestMessage(message);
-            }
 
             // Setup the job server and job server queue.
             var jobServer = HostContext.GetService<IJobServer>();
@@ -75,8 +58,6 @@ namespace GitHub.Runner.Worker
             _jobServerQueue = HostContext.GetService<IJobServerQueue>();
             VssConnection jobConnection = VssUtil.CreateConnection(jobServerUrl, jobServerCredential, new DelegatingHandler[] { new ThrottlingReportHandler(_jobServerQueue) });
             await jobServer.ConnectAsync(jobConnection);
-
-            MakeJobMessageCompat(message);
 
             _jobServerQueue.Start(message);
             HostContext.WritePerfCounter($"WorkerJobServerQueueStarted_{message.RequestId.ToString()}");
@@ -90,7 +71,7 @@ namespace GitHub.Runner.Worker
                 jobContext.InitializeJob(message, jobRequestCancellationToken);
                 Trace.Info("Starting the job execution context.");
                 jobContext.Start();
-                jobContext.Section(StringUtil.Loc("StepStarting", message.JobDisplayName));
+                jobContext.Section($"Starting: {message.JobDisplayName}");
 
                 runnerShutdownRegistration = HostContext.RunnerShutdownToken.Register(() =>
                 {
@@ -100,10 +81,10 @@ namespace GitHub.Runner.Worker
                     switch (HostContext.RunnerShutdownReason)
                     {
                         case ShutdownReason.UserCancelled:
-                            errorMessage = StringUtil.Loc("UserShutdownRunner");
+                            errorMessage = "The runner has received a shutdown signal. This can happen when the runner service is stopped, or a manually started runner is canceled.";
                             break;
                         case ShutdownReason.OperatingSystemShutdown:
-                            errorMessage = StringUtil.Loc("OperatingSystemShutdown", Environment.MachineName);
+                            errorMessage = $"Operating system is shutting down for computer '{Environment.MachineName}'";
                             break;
                         default:
                             throw new ArgumentException(HostContext.RunnerShutdownReason.ToString(), nameof(HostContext.RunnerShutdownReason));
@@ -129,8 +110,6 @@ namespace GitHub.Runner.Worker
                 string toolsDirectory = HostContext.GetDirectory(WellKnownDirectory.Tools);
                 Directory.CreateDirectory(toolsDirectory);
                 jobContext.SetRunnerContext("toolsdirectory", toolsDirectory);
-                jobContext.SetRunnerContext("workfolder", HostContext.GetDirectory(WellKnownDirectory.Work));
-                jobContext.SetRunnerContext("version", BuildConstants.RunnerPackage.Version);
 
                 // Setup TEMP directories
                 _tempDirectoryManager = HostContext.GetService<ITempDirectoryManager>();
@@ -235,7 +214,7 @@ namespace GitHub.Runner.Worker
 
         private async Task<TaskResult> CompleteJobAsync(IJobServer jobServer, IExecutionContext jobContext, Pipelines.AgentJobRequestMessage message, TaskResult? taskResult = null)
         {
-            jobContext.Section(StringUtil.Loc("StepFinishing", message.JobDisplayName));
+            jobContext.Section($"Finishing: {message.JobDisplayName}");
             TaskResult result = jobContext.Complete(taskResult);
 
             try
@@ -317,127 +296,6 @@ namespace GitHub.Runner.Worker
                     _jobServerQueue = null; // Prevent multiple attempts.
                 }
             }
-        }
-
-        // the scheme://hostname:port (how the agent knows the server) is external to our server
-        // in other words, an agent may have it's own way (DNS, hostname) of refering
-        // to the server.  it owns that.  That's the scheme://hostname:port we will use.
-        // Example: Server's notification url is http://tfsserver:8080/tfs 
-        //          Agent config url is https://tfsserver.mycompany.com:9090/tfs 
-        private Uri ReplaceWithConfigUriBase(Uri messageUri)
-        {
-            RunnerSettings settings = HostContext.GetService<IConfigurationStore>().GetSettings();
-            try
-            {
-                Uri result = null;
-                Uri configUri = new Uri(settings.ServerUrl);
-                if (Uri.TryCreate(new Uri(configUri.GetComponents(UriComponents.SchemeAndServer, UriFormat.Unescaped)), messageUri.PathAndQuery, out result))
-                {
-                    //replace the schema and host portion of messageUri with the host from the
-                    //server URI (which was set at config time)
-                    return result;
-                }
-            }
-            catch (InvalidOperationException ex)
-            {
-                //cannot parse the Uri - not a fatal error
-                Trace.Error(ex);
-            }
-            catch (UriFormatException ex)
-            {
-                //cannot parse the Uri - not a fatal error
-                Trace.Error(ex);
-            }
-
-            return messageUri;
-        }
-
-        private void ReplaceConfigUriBaseInJobRequestMessage(Pipelines.AgentJobRequestMessage message)
-        {
-            ServiceEndpoint systemConnection = message.Resources.Endpoints.Single(x => string.Equals(x.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
-            Uri systemConnectionUrl = systemConnection.Url;
-
-            // fixup any endpoint Url that match SystemConnection Url.
-            foreach (var endpoint in message.Resources.Endpoints)
-            {
-                if (Uri.Compare(endpoint.Url, systemConnectionUrl, UriComponents.SchemeAndServer, UriFormat.Unescaped, StringComparison.OrdinalIgnoreCase) == 0)
-                {
-                    endpoint.Url = ReplaceWithConfigUriBase(endpoint.Url);
-                    Trace.Info($"Ensure endpoint url match config url base. {endpoint.Url}");
-                }
-            }
-
-            // fixup any repository Url that match SystemConnection Url.
-            foreach (var repo in message.Resources.Repositories)
-            {
-                if (Uri.Compare(repo.Url, systemConnectionUrl, UriComponents.SchemeAndServer, UriFormat.Unescaped, StringComparison.OrdinalIgnoreCase) == 0)
-                {
-                    repo.Url = ReplaceWithConfigUriBase(repo.Url);
-                    Trace.Info($"Ensure repository url match config url base. {repo.Url}");
-                }
-            }
-
-            // fixup well known variables. (taskDefinitionsUrl, tfsServerUrl, tfsCollectionUrl)
-            if (message.Variables.ContainsKey(WellKnownDistributedTaskVariables.TaskDefinitionsUrl))
-            {
-                string taskDefinitionsUrl = message.Variables[WellKnownDistributedTaskVariables.TaskDefinitionsUrl].Value;
-                message.Variables[WellKnownDistributedTaskVariables.TaskDefinitionsUrl] = ReplaceWithConfigUriBase(new Uri(taskDefinitionsUrl)).AbsoluteUri;
-                Trace.Info($"Ensure System.TaskDefinitionsUrl match config url base. {message.Variables[WellKnownDistributedTaskVariables.TaskDefinitionsUrl].Value}");
-            }
-
-            if (message.Variables.ContainsKey(WellKnownDistributedTaskVariables.TFCollectionUrl))
-            {
-                string tfsCollectionUrl = message.Variables[WellKnownDistributedTaskVariables.TFCollectionUrl].Value;
-                message.Variables[WellKnownDistributedTaskVariables.TFCollectionUrl] = ReplaceWithConfigUriBase(new Uri(tfsCollectionUrl)).AbsoluteUri;
-                Trace.Info($"Ensure System.TFCollectionUrl match config url base. {message.Variables[WellKnownDistributedTaskVariables.TFCollectionUrl].Value}");
-            }
-
-            if (message.Variables.ContainsKey(Constants.Variables.System.TFServerUrl))
-            {
-                string tfsServerUrl = message.Variables[Constants.Variables.System.TFServerUrl].Value;
-                message.Variables[Constants.Variables.System.TFServerUrl] = ReplaceWithConfigUriBase(new Uri(tfsServerUrl)).AbsoluteUri;
-                Trace.Info($"Ensure System.TFServerUrl match config url base. {message.Variables[Constants.Variables.System.TFServerUrl].Value}");
-            }
-        }
-
-        private void MakeJobMessageCompat(Pipelines.AgentJobRequestMessage message)
-        {
-            var steps = new List<Pipelines.JobStep>();
-            foreach (var action in message.Steps.OfType<Pipelines.ActionStep>())
-            {
-                if (action.Reference.Type == Pipelines.ActionSourceType.AgentPlugin)
-                {
-                    bool fixInput = true;
-                    var inputs = TemplateUtil.AssertMapping(action.Inputs, "inputs");
-                    foreach (var input in inputs)
-                    {
-                        var inputName = TemplateUtil.AssertLiteral(input.Key, "input");
-                        if (string.Equals(inputName.Value, Pipelines.PipelineConstants.CheckoutTaskInputs.Version, StringComparison.OrdinalIgnoreCase) ||
-                            string.Equals(inputName.Value, Pipelines.PipelineConstants.CheckoutTaskInputs.Ref, StringComparison.OrdinalIgnoreCase) ||
-                            string.Equals(inputName.Value, Pipelines.PipelineConstants.CheckoutTaskInputs.Token, StringComparison.OrdinalIgnoreCase))
-                        {
-                            fixInput = false;
-                            break;
-                        }
-                    }
-
-                    if (fixInput)
-                    {
-                        var newInputs = new MappingToken(null, null, null);
-                        newInputs.Add(new LiteralToken(null, null, null, Pipelines.PipelineConstants.CheckoutTaskInputs.Repository), new BasicExpressionToken(null, null, null, "github.repository"));
-                        newInputs.Add(new LiteralToken(null, null, null, Pipelines.PipelineConstants.CheckoutTaskInputs.Ref), new BasicExpressionToken(null, null, null, "github.ref"));
-                        newInputs.Add(new LiteralToken(null, null, null, Pipelines.PipelineConstants.CheckoutTaskInputs.Version), new BasicExpressionToken(null, null, null, "github.sha"));
-                        newInputs.Add(new LiteralToken(null, null, null, Pipelines.PipelineConstants.CheckoutTaskInputs.Token), new BasicExpressionToken(null, null, null, "github.token"));
-                        newInputs.Add(new LiteralToken(null, null, null, Pipelines.PipelineConstants.CheckoutTaskInputs.WorkspaceRepo), new LiteralToken(null, null, null, bool.TrueString));
-                        action.Inputs = newInputs;
-                    }
-                }
-
-                steps.Add(action);
-            }
-
-            message.Steps.Clear();
-            message.Steps.AddRange(steps);
         }
     }
 }

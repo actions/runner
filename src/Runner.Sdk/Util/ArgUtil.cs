@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 
 namespace GitHub.Runner.Sdk
@@ -11,7 +11,7 @@ namespace GitHub.Runner.Sdk
             if (!System.IO.Directory.Exists(directory))
             {
                 throw new DirectoryNotFoundException(
-                    message: StringUtil.Loc("DirectoryNotFound", directory));
+                    message: $"Directory not found: '{directory}'");
             }
         }
 
@@ -38,7 +38,7 @@ namespace GitHub.Runner.Sdk
             if (!System.IO.File.Exists(fileName))
             {
                 throw new FileNotFoundException(
-                    message: StringUtil.Loc("FileNotFound", fileName),
+                    message: $"File not found: '{fileName}'",
                     fileName: fileName);
             }
         }

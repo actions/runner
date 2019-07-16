@@ -60,7 +60,7 @@ namespace GitHub.Runner.Plugins.PipelineArtifact
 
             if (!PipelineArtifactPathHelper.IsValidArtifactName(artifactName))
             {
-                throw new ArgumentException(StringUtil.Loc("ArtifactNameIsNotValid", artifactName));
+                throw new ArgumentException($"Artifact name is not valid: {artifactName}. It cannot contain '\\', /', \"', ':', '<', '>', '|', '*', and '?'");
             }
 
             string[] minimatchPatterns = itemPattern.Split(
@@ -90,25 +90,12 @@ namespace GitHub.Runner.Plugins.PipelineArtifact
                 int pipelineId = 0;
                 if (int.TryParse(environmentBuildId, out pipelineId) && pipelineId != 0)
                 {
-                    context.Output(StringUtil.Loc("DownloadingFromBuild", pipelineId));
+                    context.Output($"Download from the specified build: #{pipelineId}");
                 }
                 else
                 {
-                    string hostType = context.Variables.GetValueOrDefault("system.hosttype")?.Value;
-                    if (string.Equals(hostType, "Release", StringComparison.OrdinalIgnoreCase) ||
-                        string.Equals(hostType, "DeploymentGroup", StringComparison.OrdinalIgnoreCase))
-                    {
-                        throw new InvalidOperationException(StringUtil.Loc("BuildIdIsNotAvailable", hostType ?? string.Empty));
-                    }
-                    else if (!string.Equals(hostType, "Build", StringComparison.OrdinalIgnoreCase))
-                    {
-                        throw new InvalidOperationException(StringUtil.Loc("CannotDownloadFromCurrentEnvironment", hostType ?? string.Empty));
-                    }
-                    else
-                    {
-                        // This should not happen since the build id comes from build environment. But a user may override that so we must be careful.
-                        throw new ArgumentException(StringUtil.Loc("BuildIdIsNotValid", environmentBuildId));
-                    }
+                    // This should not happen since the build id comes from build environment. But a user may override that so we must be careful.
+                    throw new ArgumentException($"Build Id is not valid: {environmentBuildId}");
                 }
 
                 downloadParameters = new PipelineArtifactDownloadParameters
@@ -175,9 +162,9 @@ namespace GitHub.Runner.Plugins.PipelineArtifact
                 downloadOptions = DownloadOptions.SingleDownload;
             }
 
-            context.Output(StringUtil.Loc("DownloadArtifactTo", targetPath));
+            context.Output($"Download artifact to: {targetPath}");
             await server.DownloadAsyncV2(context, downloadParameters, downloadOptions, token);
-            context.Output(StringUtil.Loc("DownloadArtifactFinished"));
+            context.Output("Downloading artifact finished.");
         }
 
         private string CreateDirectoryIfDoesntExist(string targetPath)

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
@@ -313,7 +313,7 @@ namespace GitHub.Runner.Listener
             }
 
             var term = HostContext.GetService<ITerminal>();
-            term.WriteLine(StringUtil.Loc("RunningJob", DateTime.UtcNow, message.JobDisplayName));
+            term.WriteLine($"{DateTime.UtcNow:u}: Running job: {message.JobDisplayName}");
 
             // first job request renew succeed.
             TaskCompletionSource<int> firstJobRequestRenewed = new TaskCompletionSource<int>();
@@ -493,7 +493,7 @@ namespace GitHub.Runner.Listener
 
                             TaskResult result = TaskResultUtil.TranslateFromReturnCode(returnCode);
                             Trace.Info($"finish job request for job {message.JobId} with result: {result}");
-                            term.WriteLine(StringUtil.Loc("JobCompleted", DateTime.UtcNow, message.JobDisplayName, result));
+                            term.WriteLine($"{DateTime.UtcNow:u}: Job {message.JobDisplayName} completed with result: {result}");
 
                             Trace.Info($"Stop renew job request for job {message.JobId}.");
                             // stop renew lock
@@ -585,7 +585,7 @@ namespace GitHub.Runner.Listener
                         }
 
                         Trace.Info($"finish job request for job {message.JobId} with result: {resultOnAbandonOrCancel}");
-                        term.WriteLine(StringUtil.Loc("JobCompleted", DateTime.UtcNow, message.JobDisplayName, resultOnAbandonOrCancel));
+                        term.WriteLine($"{DateTime.UtcNow:u}: Job {message.JobDisplayName} completed with result: {resultOnAbandonOrCancel}");
                         // complete job request with cancel result, stop renew lock, job has finished.
 
                         Trace.Info($"Stop renew job request for job {message.JobId}.");

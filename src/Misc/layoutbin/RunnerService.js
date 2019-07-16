@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) GitHub. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 var childProcess = require("child_process");
